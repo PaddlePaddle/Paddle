@@ -15,15 +15,14 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-from op_test import OpTest
 
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 import numpy as np
-from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid.core as core
+from op_test import OpTest
+from paddle.fluid.op import Operator
+
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 # Situation 1: Attr(shape) is a list(without tensor)

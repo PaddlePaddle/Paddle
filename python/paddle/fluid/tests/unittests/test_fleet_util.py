@@ -13,16 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
-import paddle.fluid as fluid
+
+import sys
 import unittest
+
 import numpy as np
+import os
+import paddle.distributed.fleet.base.role_maker as role_maker
 import tarfile
 import tempfile
-import os
-import sys
-from paddle.dataset.common import download, DATA_HOME
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.dataset.common import download
 
 
 class TestFleetUtil(unittest.TestCase):

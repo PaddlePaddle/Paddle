@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import paddle
-import paddle.fluid as fluid
+from dist_mnist import cnn_model
 from paddle.distributed.fleet.meta_optimizers import FP16AllReduceOptimizer as FP16AllReduce
 from test_dist_base import TestDistRunnerBase, runtime_main
-from dist_mnist import cnn_model
+
+import paddle
+import paddle.fluid as fluid
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()

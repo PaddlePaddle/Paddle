@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from paddle.fluid.dygraph import to_variable
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import ParamBase
 
 

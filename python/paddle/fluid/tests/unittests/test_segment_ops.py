@@ -15,8 +15,8 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import sys
 from op_test import OpTest
 
 

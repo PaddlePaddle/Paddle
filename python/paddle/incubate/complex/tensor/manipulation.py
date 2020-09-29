@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from paddle.common_ops_import import *
-from ..helper import is_complex, is_real, complex_variable_exists
-from ....fluid.framework import ComplexVariable
+
+from ..helper import complex_variable_exists
 from ....fluid import layers
+from ....fluid.framework import ComplexVariable
 
 __all__ = [
     'reshape',

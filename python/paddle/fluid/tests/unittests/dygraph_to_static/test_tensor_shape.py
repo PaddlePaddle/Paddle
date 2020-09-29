@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import numpy
-
 import unittest
-import paddle.fluid as fluid
+
+import numpy
 from paddle.fluid.dygraph.jit import declarative
+
+import paddle.fluid as fluid
 
 
 def dyfunc_tensor_shape_1(x):

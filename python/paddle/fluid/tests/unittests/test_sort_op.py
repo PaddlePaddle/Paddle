@@ -15,12 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
+import numpy as np
+import paddle.fluid.core as core
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
-import six
-import paddle.fluid.core as core
 
 
 class TestSortOnCPU(unittest.TestCase):

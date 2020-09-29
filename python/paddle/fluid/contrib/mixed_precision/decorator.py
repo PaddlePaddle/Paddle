@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .amp_nn import check_finite_and_unscale
+from .amp_nn import update_loss_scaling
+from .fp16_lists import AutoMixedPrecisionLists
+from .fp16_utils import rewrite_program
+from .fp16_utils import update_role_var_grad
 from ... import default_main_program
 from ... import default_startup_program
 from ... import layers
 from ... import unique_name
-from . import fp16_utils
-from .fp16_utils import rewrite_program
-from .fp16_utils import update_role_var_grad
-from .fp16_lists import AutoMixedPrecisionLists
-from .amp_nn import check_finite_and_unscale
-from .amp_nn import update_loss_scaling
 
 __all__ = ["decorate"]
 

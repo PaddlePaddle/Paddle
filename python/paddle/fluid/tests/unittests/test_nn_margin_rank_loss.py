@@ -15,11 +15,13 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.static import Program, program_guard
+
+import paddle
+import paddle.fluid as fluid
 
 
 def calc_margin_rank_loss(x, y, label, margin=0.0, reduction='none'):

@@ -13,14 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
-import os
-import shutil
+
 import unittest
+
 import math
+import numpy as np
+import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 
 
 def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,

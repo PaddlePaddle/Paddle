@@ -15,28 +15,27 @@
 from __future__ import division
 from __future__ import print_function
 
+import shutil
 import unittest
 
-import os
 import numpy as np
-import shutil
+import os
 import tempfile
-
-import paddle
-from paddle import fluid
-from paddle import to_tensor
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
-
-from paddle import Model
-from paddle.static import InputSpec
-from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.jit import declarative
+from paddle.hapi.model import prepare_distributed_context
+from paddle.io import DistributedBatchSampler
 from paddle.metric import Accuracy
+from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-from paddle.io import DistributedBatchSampler
-from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+
+import paddle
+from paddle import Model
+from paddle import fluid
+from paddle import to_tensor
 
 
 class LeNetDygraph(paddle.nn.Layer):

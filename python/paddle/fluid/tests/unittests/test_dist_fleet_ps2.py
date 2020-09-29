@@ -14,15 +14,16 @@
 
 from __future__ import print_function
 
-import os
-import unittest
-import tempfile
 import shutil
+import unittest
+
+import os
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 

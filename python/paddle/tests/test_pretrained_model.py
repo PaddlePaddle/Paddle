@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import tempfile
 import shutil
+import unittest
+
 import numpy as np
+import paddle.vision.models as models
+import tempfile
+from paddle.static import InputSpec
 
 import paddle
-from paddle.static import InputSpec
-import paddle.vision.models as models
 
 
 # test the predicted resutls of static graph and dynamic graph are equal

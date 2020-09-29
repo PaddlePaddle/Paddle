@@ -17,20 +17,17 @@ __all__ = [
     'ComposeNotAligned', 'firstn', 'xmap_readers', 'multiprocess_reader'
 ]
 
-from threading import Thread
-import subprocess
+import itertools
 import multiprocessing
-import six
 import sys
+from threading import Thread
 
-from six.moves.queue import Queue
-from six.moves import zip_longest
+import random
+import six
 from six.moves import map
 from six.moves import zip
-import itertools
-import random
-import zlib
-import paddle.compat as cpt
+from six.moves import zip_longest
+from six.moves.queue import Queue
 
 # On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
 # Paddle is currently unable to solve this, so forces the process to start using 

@@ -14,16 +14,13 @@
 
 from __future__ import print_function
 
-from . import dataset
-from .dataset import *
-
 from . import batch_sampler
-from .batch_sampler import *
-
 from . import dataloader_iter
-from .dataloader_iter import *
-
+from . import dataset
 from . import sampler
+from .batch_sampler import *
+from .dataloader_iter import *
+from .dataset import *
 from .sampler import *
 
 __all__ = dataset.__all__ \

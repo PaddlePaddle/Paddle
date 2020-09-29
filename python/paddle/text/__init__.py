@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import text
-from .text import *
-
 from . import datasets
+from . import text
 from .datasets import *
+from .text import *
 
 __all__ = text.__all__ \
         + datasets.__all__

@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+import random
+from simple_nets import simple_fc_net
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import Parameter
-import numpy as np
-from simple_nets import simple_fc_net
-import random
-import unittest
-import os
 
 batch_size = 32
 

@@ -14,15 +14,17 @@
 
 from __future__ import print_function
 
-import os
-import inspect
 import unittest
+
+import inspect
 import numpy as np
-import paddle
-import paddle.fluid as fluid
+import os
 from paddle.fluid.core import EnforceNotMet
 from paddle.fluid.dygraph.dygraph_to_static import error
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import unwrap
+
+import paddle
+import paddle.fluid as fluid
 
 
 def inner_func():

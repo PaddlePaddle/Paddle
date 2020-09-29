@@ -16,12 +16,11 @@ from __future__ import print_function
 
 import unittest
 
-import paddle.fluid.framework as framework
+import paddle.fluid.clip as clip
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.regularizer as regularizer
-import paddle.fluid.clip as clip
-import paddle.compat as cpt
-from paddle.fluid.backward import append_backward
+
+import paddle.fluid.framework as framework
 
 
 class TestDGCMomentumOptimizer(unittest.TestCase):

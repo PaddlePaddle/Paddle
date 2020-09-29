@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 import os
+
 os.environ['FLAGS_enable_parallel_graph'] = str(1)
 import paddle.fluid.core as core
 import os

@@ -13,11 +13,14 @@
 #limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-import numpy as np
+
 import copy
+import numpy as np
 from op_test import OpTest
 from test_multiclass_nms_op import iou
+
 import paddle.fluid as fluid
 
 

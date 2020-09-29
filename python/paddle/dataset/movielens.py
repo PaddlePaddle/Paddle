@@ -24,14 +24,14 @@ set and test set into paddle reader creators.
 
 from __future__ import print_function
 
-import numpy as np
-import zipfile
-import paddle.dataset.common
-import re
-import random
 import functools
-import six
+import re
+
+import numpy as np
 import paddle.compat as cpt
+import paddle.dataset.common
+import six
+import zipfile
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
+from .checkport import *
 from .program_utils import *
 from .ufind import *
-from .checkport import *
 from .vars_distributed import *

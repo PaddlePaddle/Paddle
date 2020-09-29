@@ -14,11 +14,13 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
+import unittest
+
+import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor
-import numpy as np
-import unittest
+
+import paddle.fluid as fluid
 
 
 class TestLoDTensor(unittest.TestCase):

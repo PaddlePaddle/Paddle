@@ -16,8 +16,9 @@ from __future__ import print_function
 
 import unittest
 
-import paddle.fluid as fluid
 from simple_nets import simple_fc_net, init_data
+
+import paddle.fluid as fluid
 
 
 class TestMNIST(unittest.TestCase):

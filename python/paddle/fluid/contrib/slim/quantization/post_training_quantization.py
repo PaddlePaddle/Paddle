@@ -11,25 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import math
-import os
-import re
 import logging
+
+import math
 import numpy as np
-from .... import io
-from .... import core
-from .... import framework
-from ....executor import global_scope, Executor
-from ....framework import IrGraph
-from ....log_helper import get_logger
-from .quantization_pass import QuantizationTransformPass
-from .quantization_pass import QuantizationFreezePass
+import os
+
 from .quantization_pass import AddQuantDequantPass
-from .quantization_pass import _out_scale_op_list
+from .quantization_pass import QuantizationFreezePass
+from .quantization_pass import QuantizationTransformPass
+from .quantization_pass import _channelwise_quant_axis1_ops
 from .quantization_pass import _get_op_input_var_names
 from .quantization_pass import _get_op_output_var_names
 from .quantization_pass import _get_output_name_index
-from .quantization_pass import _channelwise_quant_axis1_ops
+from .quantization_pass import _out_scale_op_list
+from .... import core
+from .... import framework
+from .... import io
+from ....executor import global_scope, Executor
+from ....framework import IrGraph
+from ....log_helper import get_logger
 
 __all__ = ['PostTrainingQuantization', 'WeightQuantization']
 

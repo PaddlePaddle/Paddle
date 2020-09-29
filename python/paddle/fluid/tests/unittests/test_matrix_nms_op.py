@@ -13,10 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-import numpy as np
+
 import copy
+import numpy as np
 from op_test import OpTest
+
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 

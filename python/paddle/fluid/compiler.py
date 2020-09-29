@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
-import os
-import six
 import sys
-from .. import compat as cpt
-from . import framework
-from .framework import cuda_places, cpu_places
+
+import six
 
 from . import core
+from . import framework
+from .framework import cuda_places, cpu_places
+from .. import compat as cpt
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
 

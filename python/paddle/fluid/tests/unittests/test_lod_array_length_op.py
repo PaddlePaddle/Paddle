@@ -15,12 +15,14 @@
 from __future__ import print_function
 
 import unittest
+
+import numpy
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
-import paddle.fluid.core as core
+
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-import numpy
+from paddle.fluid import Program, program_guard
 
 
 class TestLoDArrayLength(unittest.TestCase):

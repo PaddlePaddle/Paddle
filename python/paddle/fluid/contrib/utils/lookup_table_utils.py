@@ -15,15 +15,15 @@
 
 from __future__ import print_function
 
-import os
-import time
 import logging
+import time
 
-import paddle
+import os
+from paddle.fluid.log_helper import get_logger
+
+from paddle.fluid import Program
 from paddle.fluid import core
 from paddle.fluid import io
-from paddle.fluid import Program
-from paddle.fluid.log_helper import get_logger
 
 __all__ = [
     "load_persistables_for_increment", "load_persistables_for_inference",

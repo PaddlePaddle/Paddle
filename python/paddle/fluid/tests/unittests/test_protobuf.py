@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.fluid.proto.framework_pb2 as framework_pb2
 import unittest
+
+import paddle.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestFrameworkProto(unittest.TestCase):

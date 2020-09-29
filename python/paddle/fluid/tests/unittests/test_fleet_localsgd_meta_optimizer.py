@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import os
 
+import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+
+import paddle
 
 
 class TestFleetLocalSGDMetaOptimizer(unittest.TestCase):

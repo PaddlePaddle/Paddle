@@ -22,14 +22,12 @@ __all__ = [
     'conv_transpose3d',
 ]
 
-import numpy as np
 from ...device import get_cudnn_version
-from ...fluid.framework import Variable, in_dygraph_mode
-from ...fluid import core, dygraph_utils
-from ...fluid.layers import nn, utils
+from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.param_attr import ParamAttr
+from ...fluid.framework import Variable, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
+from ...fluid.layers import nn, utils
 
 
 def _is_list_or_tuple(input):

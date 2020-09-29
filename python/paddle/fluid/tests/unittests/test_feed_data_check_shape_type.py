@@ -15,14 +15,15 @@
 from __future__ import print_function
 
 import multiprocessing
+import unittest
+
 import numpy as np
 import os
-import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
 import six
-import unittest
+
+import paddle.fluid as fluid
 
 os.environ['CPU_NUM'] = str(4)
 np.random.seed(123)

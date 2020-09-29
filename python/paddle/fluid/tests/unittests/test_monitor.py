@@ -16,12 +16,14 @@ TestCases for Monitor
 """
 
 from __future__ import print_function
+
+import unittest
+
+import os
+import paddle.fluid.core as core
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
-import os
-import unittest
 
 
 class TestDatasetWithStat(unittest.TestCase):

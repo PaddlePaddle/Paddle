@@ -13,25 +13,23 @@
 # limitations under the License.
 
 from __future__ import print_function
-import multiprocessing
-import os
-import six
+
+import logging
 import sys
 import threading
 
-from ..data_feeder import DataFeeder
+import six
+
+from paddle.fluid.framework import static_only
 from .control_flow import BlockGuard
-from .layer_function_generator import templatedoc
 from .. import core
+from ..data_feeder import DataFeeder
+from ..data_feeder import check_type
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
-
-import logging
-from ..data_feeder import check_dtype, check_type
-from paddle.fluid.framework import static_only
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',

@@ -15,8 +15,10 @@
 decorator to deprecate a function or class
 """
 
-import warnings
 import functools
+
+import warnings
+
 import paddle
 
 # NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,

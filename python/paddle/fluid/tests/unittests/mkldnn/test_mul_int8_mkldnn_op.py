@@ -15,9 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+
 '''
  test case for s8 * s8
 '''

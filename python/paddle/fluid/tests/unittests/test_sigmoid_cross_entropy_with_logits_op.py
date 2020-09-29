@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
+import unittest
+
 import numpy as np
 from op_test import OpTest
-from scipy.special import logit
 from scipy.special import expit
-import paddle.fluid.core as core
-import unittest
-from paddle.fluid import compiler, Program, program_guard
+from scipy.special import logit
+
 import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):

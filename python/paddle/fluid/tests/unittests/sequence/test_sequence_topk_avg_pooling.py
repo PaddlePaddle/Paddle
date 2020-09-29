@@ -14,10 +14,12 @@
 
 from __future__ import print_function
 
+import sys
 import unittest
+
 import numpy as np
 from copy import deepcopy
-import sys
+
 sys.path.append("../")
 from op_test import OpTest
 

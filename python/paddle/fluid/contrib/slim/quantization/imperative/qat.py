@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import logging
-import numpy as np
 import sys
-import paddle
-from paddle.fluid import dygraph
+
 from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
+
 from . import quant_nn
 
 __all__ = ['ImperativeQuantAware']

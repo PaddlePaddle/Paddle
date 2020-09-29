@@ -13,25 +13,16 @@
 # limitations under the License.
 """HDFS Utils."""
 
-import os
-import sys
-import subprocess
-import multiprocessing
-from datetime import datetime
-
-import re
-import copy
-import errno
-import time
-import logging
-import six
-from . import fs
-from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
-from paddle.fluid import core
 import functools
+import re
+import time
+from pathlib import PurePosixPath
 
-from pathlib import PurePosixPath, Path
-import shutil
+import os
+import six
+
+from paddle.fluid import core
+from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
 
 __all__ = ["HDFSClient"]
 

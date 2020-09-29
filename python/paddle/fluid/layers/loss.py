@@ -15,17 +15,16 @@
 from __future__ import print_function
 
 import numpy as np
-from functools import partial, reduce
 from paddle.utils import deprecated
+
 from . import nn
 from .layer_function_generator import templatedoc
-from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
-from ..param_attr import ParamAttr
+from ..framework import Variable, in_dygraph_mode
 from ..initializer import NumpyArrayInitializer, Constant
-from .. import core
+from ..layer_helper import LayerHelper
+from ..param_attr import ParamAttr
 
 __all__ = [
     'center_loss',

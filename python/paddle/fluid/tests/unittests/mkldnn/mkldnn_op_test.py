@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import paddle.fluid.core as core
+
 import paddle.fluid as fluid
 
 

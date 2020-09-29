@@ -15,10 +15,9 @@
 from __future__ import division
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-
-from paddle.fluid import core
 
 
 def sigmoid(x):

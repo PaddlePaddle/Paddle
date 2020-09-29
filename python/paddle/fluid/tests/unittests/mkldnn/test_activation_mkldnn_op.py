@@ -15,13 +15,14 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from scipy.special import expit
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
-from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, \
+    TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.test_gelu_op import gelu
+from scipy.special import expit
 
 
 class TestMKLDNNReluDim2(TestRelu):

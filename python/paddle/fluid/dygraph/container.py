@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from ..framework import Parameter
+
 from .layers import Layer
+from ..framework import Parameter
 
 __all__ = [
     'Sequential',

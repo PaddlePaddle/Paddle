@@ -14,15 +14,15 @@
 
 from __future__ import print_function
 
-from . import control_flow
-from . import tensor
-from . import ops
-from . import nn
 import math
 import numpy as np
 import warnings
 
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from . import control_flow
+from . import nn
+from . import ops
+from . import tensor
+from ..data_feeder import check_variable_and_dtype, check_type
 
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 

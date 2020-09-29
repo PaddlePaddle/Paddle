@@ -29,11 +29,10 @@ images per class.
 
 from __future__ import print_function
 
-import itertools
 import numpy
 import paddle.dataset.common
-import tarfile
 import six
+import tarfile
 from six.moves import cPickle as pickle
 
 __all__ = ['train100', 'test100', 'train10', 'test10']

@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import time
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.initializer import MSRA
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
-
 import unittest
 
+import numpy as np
+from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.fluid.initializer import MSRA
+from paddle.fluid.param_attr import ParamAttr
 from predictor_utils import PredictorTools
+
+import paddle
+import paddle.fluid as fluid
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,

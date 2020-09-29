@@ -14,14 +14,13 @@
 
 from __future__ import print_function
 
-import os
 import gzip
-import struct
 import numpy as np
+import struct
+from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 import paddle
-from paddle.io import Dataset
-from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["MNIST"]
 

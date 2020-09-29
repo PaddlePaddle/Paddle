@@ -16,17 +16,17 @@ from __future__ import division
 from __future__ import print_function
 
 import unittest
-import random
 
 import numpy as np
+import random
+from paddle.fluid.dygraph import Embedding, Linear, Layer
+from paddle.fluid.layers import BeamSearchDecoder
+from paddle.static import InputSpec as Input
+from paddle.text import *
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Embedding, Linear, Layer
-from paddle.fluid.layers import BeamSearchDecoder
 from paddle import Model, set_device
-from paddle.static import InputSpec as Input
-from paddle.text import *
 
 paddle.enable_static()
 

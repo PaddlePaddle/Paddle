@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
+from inference_pass_test import InferencePassTest
 from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import PassVersionChecker
+
+import paddle.fluid as fluid
 
 
 class TensorRTSubgraphPassConvTest(InferencePassTest):

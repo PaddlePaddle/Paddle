@@ -21,10 +21,11 @@ into paddle reader creators.
 
 from __future__ import print_function
 
-import paddle.dataset.common
 import collections
-import tarfile
+
+import paddle.dataset.common
 import six
+import tarfile
 
 __all__ = ['train', 'test', 'build_dict']
 

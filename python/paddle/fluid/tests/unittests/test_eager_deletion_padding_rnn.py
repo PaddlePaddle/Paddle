@@ -17,17 +17,17 @@ from __future__ import division
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-import os
 
-from paddle.fluid import ParamAttr
+import numpy as np
+import os
+import paddle.fluid.layers as layers
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import ParamAttr
 
 os.environ["CPU_NUM"] = "1"
 

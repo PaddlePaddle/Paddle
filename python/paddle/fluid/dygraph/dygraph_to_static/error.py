@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import os
 import six
-import sys
 import traceback
-
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
 
 ERROR_DATA = "Error data about original source code information and traceback."

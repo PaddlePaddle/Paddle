@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+
 import paddle.fluid as fluid
 
 g_array_size = 102400

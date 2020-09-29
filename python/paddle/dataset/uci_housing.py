@@ -22,11 +22,11 @@ parse training set and test set into paddle reader creators.
 from __future__ import print_function
 
 import numpy as np
-import six
-import tempfile
-import tarfile
 import os
 import paddle.dataset.common
+import six
+import tarfile
+import tempfile
 
 __all__ = ['train', 'test']
 

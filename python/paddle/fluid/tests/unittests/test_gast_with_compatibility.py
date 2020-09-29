@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
+import sys
+import unittest
+
 import ast
 import gast
-import sys
 import textwrap
-import unittest
 
 
 class GastNodeTransformer(gast.NodeTransformer):

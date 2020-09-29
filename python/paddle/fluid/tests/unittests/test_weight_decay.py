@@ -13,14 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
-import contextlib
 
 import unittest
 from functools import partial
+
+import contextlib
 import numpy as np
-import paddle
 import paddle.fluid.core as core
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 

@@ -16,15 +16,15 @@ from __future__ import print_function
 
 import io
 import logging
-import os
 import sys
 import unittest
 
 import gast
+import os
 import six
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 
 # TODO(liym27): library mock needs to be installed separately in PY2,
 #  but CI environment has not installed mock yet.

@@ -14,11 +14,10 @@
 
 from __future__ import print_function
 
-from . import quant_nn
-from .quant_nn import *
-
 from . import qat
+from . import quant_nn
 from .qat import *
+from .quant_nn import *
 
 __all__ = []
 __all__ += quant_nn.__all__

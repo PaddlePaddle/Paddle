@@ -15,11 +15,13 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
+
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestLRNOp(OpTest):

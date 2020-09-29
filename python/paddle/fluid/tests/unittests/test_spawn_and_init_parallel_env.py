@@ -14,16 +14,15 @@
 
 from __future__ import print_function
 
-import os
-import numpy as np
 import unittest
 
-import paddle
+import os
 import paddle.distributed as dist
 from paddle.distributed.spawn import _get_subprocess_env_list
+from paddle.fluid.dygraph import parallel_helper
 
 from paddle.fluid import core
-from paddle.fluid.dygraph import parallel_helper
+
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be 

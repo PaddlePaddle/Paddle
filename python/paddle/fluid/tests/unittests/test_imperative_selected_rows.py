@@ -15,13 +15,14 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.optimizer import SGDOptimizer
+
 import numpy as np
 import paddle.fluid.core as core
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.optimizer import SGDOptimizer
+
 import paddle
+import paddle.fluid as fluid
 
 
 class SimpleNet(paddle.nn.Layer):

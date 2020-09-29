@@ -14,15 +14,15 @@
 
 from __future__ import print_function
 
-import os
-import six
 import unittest
+
 import numpy as np
+import six
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
 
 
 def convolutional_neural_network(img):

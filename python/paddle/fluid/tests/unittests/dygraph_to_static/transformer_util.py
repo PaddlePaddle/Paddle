@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pickle
-import warnings
-import six
 from functools import partial
+
 import numpy as np
+import paddle.dataset.wmt16 as wmt16
+import pickle
+import six
+import warnings
 
 import paddle
 import paddle.fluid as fluid
-import paddle.dataset.wmt16 as wmt16
 
 
 def get_input_descs(args, mode="train"):

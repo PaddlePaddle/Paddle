@@ -13,14 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest
-import numpy as np
 
-from operator import mul
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+import unittest
 from functools import reduce
+
+import numpy as np
+import paddle.fluid.core as core
 from op_test import _set_use_system_allocator
+from operator import mul
+
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 np.random.random(123)

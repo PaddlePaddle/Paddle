@@ -16,16 +16,17 @@
 
 from __future__ import print_function
 
-import os
-import six
-import tarfile
-import numpy as np
 from collections import defaultdict
 
-import paddle
-from paddle.io import Dataset
+import numpy as np
+import os
 import paddle.compat as cpt
+import six
+import tarfile
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
+
+import paddle
 
 __all__ = ['WMT16']
 

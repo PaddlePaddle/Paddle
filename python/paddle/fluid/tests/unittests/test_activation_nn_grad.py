@@ -15,14 +15,14 @@
 from __future__ import print_function
 
 import unittest
+
+import gradient_checker
 import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from decorator_helper import prog_scope
 
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-import gradient_checker
-
-from decorator_helper import prog_scope
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):

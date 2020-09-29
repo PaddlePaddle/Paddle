@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import collections
-import random
-import math
 import functools
+import sys
 
+import math
 import numbers
 import numpy as np
-
+import random
 from paddle.utils import try_import
 
 if sys.version_info < (3, 3):

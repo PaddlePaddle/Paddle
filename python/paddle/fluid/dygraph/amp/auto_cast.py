@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-from paddle.fluid import core
-import contextlib
-from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
-import warnings
+
 import copy
+import warnings
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 
 __all__ = ['amp_guard']
 

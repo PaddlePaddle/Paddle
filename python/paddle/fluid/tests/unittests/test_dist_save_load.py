@@ -13,16 +13,14 @@
 # limitations under the License.
 from __future__ import print_function
 
-import os
 import shutil
 import unittest
-import tempfile
 
 import numpy as np
-
-from test_dist_base import TestDistBase, RUN_STEP
-
 import os
+import tempfile
+from test_dist_base import TestDistBase
+
 flag_name = os.path.splitext(__file__)[0]
 
 

@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.voc2012
 import unittest
+
+import paddle.dataset.voc2012
 
 
 class TestVOC(unittest.TestCase):

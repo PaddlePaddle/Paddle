@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
+
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_mul_op import ElementwiseMulOp

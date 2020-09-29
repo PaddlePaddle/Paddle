@@ -14,14 +14,16 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
+import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
+import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import ConditionalBlock
+
+import paddle.fluid as fluid
 
 
 class ConditionalBlockTest(unittest.TestCase):

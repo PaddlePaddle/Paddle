@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import unittest
-import os
-import numpy as np
 
+import numpy as np
 from paddle.vision.datasets import voc2012, VOC2012
 
 # VOC2012 is too large for unittest to download, stub a small dataset here

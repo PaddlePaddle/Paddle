@@ -13,25 +13,22 @@
 # limitations under the License.
 
 import collections
-import contextlib
-import sys
-import numpy as np
-import six
 import re
-import copy
-import weakref
-import warnings
 
-from . import parallel_helper
-from .. import unique_name
-from paddle.fluid import core
-from .layer_object_helper import LayerObjectHelper
-from .base import program_desc_tracing_guard, param_guard
-from paddle.fluid import framework
-from ..param_attr import ParamAttr
+import copy
+import six
+import warnings
+import weakref
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import in_dygraph_mode
+
+from paddle.fluid import core
+from paddle.fluid import framework
 from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.framework import in_dygraph_mode
+from . import parallel_helper
+from .base import program_desc_tracing_guard, param_guard
+from .layer_object_helper import LayerObjectHelper
+from .. import unique_name
 
 __all__ = ['Layer']
 

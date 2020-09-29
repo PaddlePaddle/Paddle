@@ -21,12 +21,13 @@ with segmentation has been increased from 7,062 to 9,993.
 
 from __future__ import print_function
 
-import tarfile
 import io
+
 import numpy as np
+import tarfile
+from PIL import Image
 from paddle.dataset.common import download
 from paddle.dataset.image import *
-from PIL import Image
 
 __all__ = ['train', 'test', 'val']
 

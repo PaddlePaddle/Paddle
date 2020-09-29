@@ -12,28 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import sys
-import six
-import numpy as np
-import threading
-import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
-from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider
-from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
-from .dataloader import BatchSampler, Dataset, IterableDataset
-from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind, default_collate_fn
-from .dataloader.batch_sampler import _InfiniteIterableSampler
-from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
-from .unique_name import UniqueNameGenerator
 import logging
+### Dygraph DataLoader configs ###
+import multiprocessing
+import sys
+import threading
+
+import numpy as np
+import six
 import warnings
 
-### Dygraph DataLoader configs ###
-import os
-import multiprocessing
-import signal
+import paddle
+from . import core
+from .data_feeder import DataFeeder, BatchedTensorProvider
+from .dataloader import BatchSampler, Dataset, IterableDataset
+from .dataloader.batch_sampler import _InfiniteIterableSampler
+from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind, \
+    default_collate_fn
+from .executor import global_scope
+from .framework import Program, program_guard, default_main_program, default_startup_program, in_dygraph_mode, \
+    _current_expected_place
+from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
+from .multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
+from .unique_name import UniqueNameGenerator
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:

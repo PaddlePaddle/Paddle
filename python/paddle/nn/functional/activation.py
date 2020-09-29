@@ -13,16 +13,16 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
-from ...fluid.layers import brelu  #DEFINE_ALIAS
-from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import hard_swish  #DEFINE_ALIAS
-from ...fluid.layers import maxout  #DEFINE_ALIAS
-from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
-from ...tensor.math import tanh  #DEFINE_ALIAS
+from ...fluid.layers import brelu  # DEFINE_ALIAS
+from ...fluid.layers import erf  # DEFINE_ALIAS
+from ...fluid.layers import hard_sigmoid  # DEFINE_ALIAS
+from ...fluid.layers import hard_swish  # DEFINE_ALIAS
+from ...fluid.layers import maxout  # DEFINE_ALIAS
+from ...fluid.layers import sigmoid  # DEFINE_ALIAS
+from ...fluid.layers import soft_relu  # DEFINE_ALIAS
+from ...fluid.layers import swish  # DEFINE_ALIAS
+from ...fluid.layers import thresholded_relu  # DEFINE_ALIAS
+from ...tensor.math import tanh  # DEFINE_ALIAS
 
 __all__ = [
     'brelu',
@@ -54,12 +54,10 @@ __all__ = [
     'log_softmax',
 ]
 
-import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-import paddle
 
 
 def elu(x, alpha=1.0, name=None):

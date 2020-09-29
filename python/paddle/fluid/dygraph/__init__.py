@@ -14,49 +14,35 @@
 
 from __future__ import print_function
 
-from . import base
-from .base import *
-
-from . import layers
-from .layers import *
-
-from . import container
-from .container import *
-
-from . import nn
-from .nn import *
-
-from . import tracer
-from .tracer import *
-
-from . import parallel
-from .parallel import *
-
-from . import checkpoint
-from .checkpoint import *
-
-from . import learning_rate_scheduler
-from .learning_rate_scheduler import *
-
-from . import jit
-from .jit import *
-
-from . import io
-from .io import *
-
-from . import static_runner
-from .static_runner import StaticModelRunner
-
-from . import dygraph_to_static
-from .dygraph_to_static import ProgramTranslator
-
-from . import rnn
-from .rnn import *
-
 from . import amp
+from . import base
+from . import checkpoint
+from . import container
+from . import dygraph_to_static
+from . import io
+from . import jit
+from . import layers
+from . import learning_rate_scheduler
+from . import nn
+from . import parallel
+from . import rnn
+from . import static_runner
+from . import tracer
 from .amp import *
-
+from .base import *
+from .checkpoint import *
+from .container import *
+from .dygraph_to_static import ProgramTranslator
+from .io import *
+from .jit import *
+from .layers import *
+from .learning_rate_scheduler import *
 from .math_op_patch import monkey_patch_math_varbase
+from .nn import *
+from .parallel import *
+from .rnn import *
+from .static_runner import StaticModelRunner
+from .tracer import *
 
 __all__ = []
 __all__ += layers.__all__

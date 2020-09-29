@@ -15,9 +15,7 @@
 from __future__ import division
 
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
 from paddle.io import *
 
 

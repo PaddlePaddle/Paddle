@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
+import collections
+
 import inspect
 import numpy as np
-import collections
+import six
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph import layers
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
-from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 
 class FunctionSpec(object):

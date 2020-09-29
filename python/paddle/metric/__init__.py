@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .metrics import *
 from . import metrics
-
-from ..fluid.layers.metric_op import accuracy, auc
-from ..fluid.layers.nn import chunk_eval, mean_iou
+from .metrics import *
 
 __all__ = metrics.__all__ + [
     'accuracy',

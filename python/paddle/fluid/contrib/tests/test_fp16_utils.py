@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+from paddle.fluid.contrib.mixed_precision import fp16_utils
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision import fp16_utils
-import paddle
 
 paddle.enable_static()
 

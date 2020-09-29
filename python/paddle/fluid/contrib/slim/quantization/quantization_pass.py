@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import collections
+
 import numpy as np
-from ..... import compat as cpt
+
 from .... import core
+from .... import unique_name
+from ....data import data
+from ....executor import scope_guard
 from ....framework import IrGraph
 from ....framework import IrNode
 from ....framework import Operator
-from .... import unique_name
-
-from ....framework import Program, program_guard, default_startup_program
-from ....data import data
+from ....framework import Program, program_guard
 from ....layers import mean
-from ....executor import scope_guard
+from ..... import compat as cpt
 
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',

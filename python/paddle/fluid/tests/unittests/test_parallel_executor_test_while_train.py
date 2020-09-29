@@ -13,15 +13,18 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import sys
+import unittest
+
+import math
+import numpy as np
+import os
+import paddle.fluid.core as core
 from simple_nets import simple_fc_net
+
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle.fluid.core as core
-import numpy as np
-import unittest
-import os
-import sys
-import math
 
 
 class ParallelExecutorTestingDuringTraining(unittest.TestCase):

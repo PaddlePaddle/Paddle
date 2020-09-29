@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
+from functools import partial
+
 import seresnext_net
 from seresnext_test_base import TestResnetBase
-from functools import partial
 
 
 class TestResnetCPU(TestResnetBase):

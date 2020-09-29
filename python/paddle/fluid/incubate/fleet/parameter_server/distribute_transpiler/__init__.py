@@ -15,41 +15,35 @@
 Convert the fluid program to distributed data-parallelism programs.
 """
 
-import os
 import sys
-import warnings
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import default_startup_program
-from paddle.fluid.framework import Program
+import os
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
-from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.fluid.optimizer import Optimizer
-
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
-
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
-
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _has_global_step
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
-
-from paddle.fluid.transpiler.details.checkport import wait_server_ready
-
-from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
-from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
-
-from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
 from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
 from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
+from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _has_global_step
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
+from paddle.fluid.optimizer import Optimizer
+from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.transpiler.details.checkport import wait_server_ready
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.framework import Program
+from paddle.fluid.framework import default_main_program
+from paddle.fluid.framework import default_startup_program
 
 
 class FleetTranspiler(Fleet):

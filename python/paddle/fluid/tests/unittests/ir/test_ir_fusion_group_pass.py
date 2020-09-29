@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from pass_test import PassTest
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from pass_test import PassTest
+
+import paddle.fluid as fluid
 
 
 class FusionGroupPassTest(PassTest):

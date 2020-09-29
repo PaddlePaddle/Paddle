@@ -14,16 +14,17 @@
 
 from __future__ import print_function
 
-import os
 import unittest
+
 import numpy as np
+import os
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name
+from paddle.fluid.op import Operator
+
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import grad_var_name
 
 _set_use_system_allocator(True)
 

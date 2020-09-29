@@ -14,13 +14,11 @@
 
 from __future__ import print_function
 
-from . import convert_operators
-from .convert_operators import *
-
 from . import convert_call_func
-from .convert_call_func import *
-
+from . import convert_operators
 from . import variable_trans_func
+from .convert_call_func import *
+from .convert_operators import *
 from .variable_trans_func import *
 
 __all__ = []

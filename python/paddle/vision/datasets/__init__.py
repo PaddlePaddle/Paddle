@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import cifar
+from . import flowers
 from . import folder
 from . import mnist
-from . import flowers
-from . import cifar
 from . import voc2012
-
+from .cifar import *
+from .flowers import *
 from .folder import *
 from .mnist import *
-from .flowers import *
-from .cifar import *
 from .voc2012 import *
 
 __all__ = folder.__all__ \

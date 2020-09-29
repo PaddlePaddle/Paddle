@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.io import Dataset, DataLoader
+
+import paddle.fluid as fluid
 
 
 def get_random_images_and_labels(image_shape, label_shape):

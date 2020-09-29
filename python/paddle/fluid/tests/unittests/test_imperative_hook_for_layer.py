@@ -14,17 +14,14 @@
 
 from __future__ import print_function
 
-import contextlib
 import unittest
-import numpy as np
-import six
 
-import paddle
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid.dygraph.base as base
-
 from test_imperative_lod_tensor_to_selected_rows import SimpleNet
+
+import paddle.fluid as fluid
 
 call_forward_hook = False
 call_forward_pre_hook = False

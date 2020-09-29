@@ -14,18 +14,18 @@
 
 from __future__ import print_function
 
-import os
-import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import unittest
 
+import numpy as np
+import os
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+
+import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 
 np.random.seed(123)
 os.environ["CPU_NUM"] = "1"

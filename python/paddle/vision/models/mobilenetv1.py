@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import paddle.nn as nn
-
 from paddle.utils.download import get_weights_path_from_url
+
+import paddle
 
 __all__ = ['MobileNetV1', 'mobilenet_v1']
 

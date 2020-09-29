@@ -18,8 +18,9 @@ import unittest
 
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
 from paddle.fluid.executor import Executor
+
+import paddle.fluid.framework as framework
 from paddle.fluid.framework import default_startup_program
 
 

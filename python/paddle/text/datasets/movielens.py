@@ -14,17 +14,13 @@
 
 from __future__ import print_function
 
-import numpy as np
-import zipfile
 import re
-import random
-import functools
-import six
 
-import paddle
-from paddle.io import Dataset
+import numpy as np
 import paddle.compat as cpt
+import zipfile
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = ['Movielens']
 

@@ -16,39 +16,37 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import socket
+import time
+
+import contextlib
 import inspect
+import numpy as np
 import os
 import pickle
-import numpy as np
 import six
 import warnings
-import time
-import socket
-import contextlib
-from collections import Iterable
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.executor import global_scope
+from paddle.fluid.executor import scope_guard, Executor
+from paddle.fluid.incubate.fleet.base import role_maker
+from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
+from paddle.fluid.io import is_belong_to_optimizer
+from paddle.fluid.layers import collective
+from paddle.fluid.layers.utils import flatten
+from paddle.io import DataLoader, Dataset, DistributedBatchSampler
+from paddle.metric import Metric
+from paddle.static import InputSpec as Input
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.executor import global_scope
-from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers import collective
-from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
-from paddle.fluid.incubate.fleet.base import role_maker
-
-from paddle.io import DataLoader, Dataset, DistributedBatchSampler
-from paddle.fluid.executor import scope_guard, Executor
-from paddle.fluid.dygraph.layers import Layer
-from paddle.metric import Metric
-from paddle.static import InputSpec as Input
-
+from paddle.fluid.framework import in_dygraph_mode, ParamBase, _current_expected_place
+from paddle.fluid.framework import in_dygraph_mode, Variable
 from .callbacks import config_callbacks
 from .model_summary import summary
 

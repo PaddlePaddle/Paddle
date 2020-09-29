@@ -13,6 +13,6 @@
 # limitations under the License.
 from __future__ import print_function
 
-from ...fluid.dygraph.dygraph_to_static.convert_call_func import convert_call  #DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_call_func import convert_call  # DEFINE_ALIAS
 
 __all__ = ['convert_call']

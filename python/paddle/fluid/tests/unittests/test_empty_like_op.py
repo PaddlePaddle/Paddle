@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.data_feeder import convert_dtype
 import paddle.fluid.core as core
+from paddle.fluid.data_feeder import convert_dtype
 from paddle.static import program_guard, Program
+
+import paddle
 
 
 class TestEmptyLikeAPICommon(unittest.TestCase):

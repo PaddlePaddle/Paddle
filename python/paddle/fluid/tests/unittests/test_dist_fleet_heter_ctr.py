@@ -14,10 +14,11 @@
 
 from __future__ import print_function
 
-import os
 import unittest
-import tempfile
+
+import os
 from test_dist_fleet_heter_base import TestFleetHeterBase
+
 import paddle
 
 paddle.enable_static()

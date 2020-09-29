@@ -15,56 +15,52 @@
 math functions
 """
 from __future__ import print_function
-import numpy as np
 
+import numpy as np
 from paddle.common_ops_import import *
 from paddle.tensor import cast
+
 import paddle
 from ..fluid import layers
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
-
 # TODO: define math functions
 # yapf: disable
-from ..fluid.layers import abs    #DEFINE_ALIAS
-from ..fluid.layers import acos    #DEFINE_ALIAS
-from ..fluid.layers import asin    #DEFINE_ALIAS
-from ..fluid.layers import ceil    #DEFINE_ALIAS
-from ..fluid.layers import cos    #DEFINE_ALIAS
-from ..fluid.layers import sinh    #DEFINE_ALIAS
-from ..fluid.layers import cosh    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
-from ..fluid.layers import exp    #DEFINE_ALIAS
-from ..fluid.layers import floor    #DEFINE_ALIAS
-from ..fluid.layers import log    #DEFINE_ALIAS
-from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
-from ..fluid.layers import round    #DEFINE_ALIAS
-from ..fluid.layers import rsqrt    #DEFINE_ALIAS
-from ..fluid.layers import scale    #DEFINE_ALIAS
-from ..fluid.layers import square    #DEFINE_ALIAS
-from ..fluid.layers import stanh    #DEFINE_ALIAS
-from ..fluid.layers import atan    #DEFINE_ALIAS
-from ..fluid.layers import erf    #DEFINE_ALIAS
-from ..fluid.layers import sqrt    #DEFINE_ALIAS
-from ..fluid.layers import sin    #DEFINE_ALIAS
-
-from ..fluid.layers import increment    #DEFINE_ALIAS
-from ..fluid.layers import multiplex    #DEFINE_ALIAS
-from ..fluid.layers import sums    #DEFINE_ALIAS
-from ..fluid import layers
-
+from ..fluid.layers import abs  # DEFINE_ALIAS
+from ..fluid.layers import acos  # DEFINE_ALIAS
+from ..fluid.layers import asin  # DEFINE_ALIAS
+from ..fluid.layers import atan  # DEFINE_ALIAS
+from ..fluid.layers import ceil  # DEFINE_ALIAS
+from ..fluid.layers import cos  # DEFINE_ALIAS
+from ..fluid.layers import cosh  # DEFINE_ALIAS
+from ..fluid.layers import elementwise_add  # DEFINE_ALIAS
+from ..fluid.layers import elementwise_div  # DEFINE_ALIAS
+from ..fluid.layers import elementwise_floordiv  # DEFINE_ALIAS
+from ..fluid.layers import elementwise_mod  # DEFINE_ALIAS
+from ..fluid.layers import elementwise_pow  # DEFINE_ALIAS
+from ..fluid.layers import elementwise_sub  # DEFINE_ALIAS
+from ..fluid.layers import erf  # DEFINE_ALIAS
+from ..fluid.layers import exp  # DEFINE_ALIAS
+from ..fluid.layers import floor  # DEFINE_ALIAS
+from ..fluid.layers import increment  # DEFINE_ALIAS
+from ..fluid.layers import log  # DEFINE_ALIAS
+from ..fluid.layers import multiplex  # DEFINE_ALIAS
+from ..fluid.layers import reciprocal  # DEFINE_ALIAS
+from ..fluid.layers import reduce_max  # DEFINE_ALIAS
+from ..fluid.layers import reduce_min  # DEFINE_ALIAS
+from ..fluid.layers import reduce_prod  # DEFINE_ALIAS
+from ..fluid.layers import reduce_sum  # DEFINE_ALIAS
+from ..fluid.layers import round  # DEFINE_ALIAS
+from ..fluid.layers import rsqrt  # DEFINE_ALIAS
+from ..fluid.layers import scale  # DEFINE_ALIAS
+from ..fluid.layers import sin  # DEFINE_ALIAS
+from ..fluid.layers import sinh  # DEFINE_ALIAS
+from ..fluid.layers import sqrt  # DEFINE_ALIAS
+from ..fluid.layers import square  # DEFINE_ALIAS
+from ..fluid.layers import stanh  # DEFINE_ALIAS
+from ..fluid.layers import sums  # DEFINE_ALIAS
+from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_layer_fn
 
 __all__ = [
         'abs',

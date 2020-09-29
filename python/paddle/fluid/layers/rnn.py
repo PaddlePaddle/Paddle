@@ -17,19 +17,19 @@ from __future__ import print_function
 import sys
 from functools import partial, reduce
 
-from . import nn
-from . import tensor
 from . import control_flow
-from . import utils
+from . import nn
 from . import sequence_lod
+from . import tensor
+from . import utils
 from .utils import *
 from .. import core
-from ..framework import default_main_program
-from ..data_feeder import convert_dtype
-from ..layer_helper import LayerHelper
-from ..framework import in_dygraph_mode
-from ..param_attr import ParamAttr
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..data_feeder import convert_dtype
+from ..framework import default_main_program
+from ..framework import in_dygraph_mode
+from ..layer_helper import LayerHelper
+from ..param_attr import ParamAttr
 
 __all__ = [
     'RNNCell',

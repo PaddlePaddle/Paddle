@@ -14,20 +14,19 @@
 
 from __future__ import print_function
 
+import unittest
+
 import astor
 import gast
 import inspect
 import numpy as np
 import textwrap
-import unittest
+from ifelse_simple_func import dyfunc_with_if_else
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.jit import declarative
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.nn import Linear
-
-from ifelse_simple_func import dyfunc_with_if_else
 
 np.random.seed(0)
 

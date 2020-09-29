@@ -15,15 +15,15 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import sys
-import math
-import paddle
-import paddle.fluid as fluid
-from op_test import OpTest
-from test_multiclass_nms_op import nms
-from test_anchor_generator_op import anchor_generator_in_python
+
 import copy
+import math
+import numpy as np
+from op_test import OpTest
+from test_anchor_generator_op import anchor_generator_in_python
+from test_multiclass_nms_op import nms
+
+import paddle
 
 
 def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,

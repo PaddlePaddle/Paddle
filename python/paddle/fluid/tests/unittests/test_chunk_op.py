@@ -14,12 +14,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import numpy as np
-from paddle.fluid import Program, program_guard
-from paddle import fluid
+
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestChunkOpError(unittest.TestCase):

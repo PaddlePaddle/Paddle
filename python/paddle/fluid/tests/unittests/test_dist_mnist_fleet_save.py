@@ -13,10 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import shutil
-import os
 import unittest
+
+import os
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()

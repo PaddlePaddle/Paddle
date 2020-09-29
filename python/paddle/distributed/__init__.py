@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import spawn
-from .spawn import spawn
-
-from . import parallel
-from .parallel import init_parallel_env
-from .parallel import get_rank
-from .parallel import get_world_size
-from paddle.fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
-from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
 from paddle.distributed.fleet.dataset import *
 
 from . import collective
+from . import parallel
+from . import spawn
 from .collective import *
+from .parallel import get_rank
+from .parallel import get_world_size
+from .parallel import init_parallel_env
+from .spawn import spawn
 
 # start multiprocess apis
 __all__ = ["spawn"]

@@ -12,35 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import paddle
-from ...fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
-from ...fluid.layers import core
-from ...fluid import dygraph_utils
-# TODO: define the common functions to build a neural network  
-from ...fluid import one_hot  #DEFINE_ALIAS
-from ...fluid.layers import pad2d  #DEFINE_ALIAS
-from ...fluid.layers import unfold  #DEFINE_ALIAS
-from ...fluid.layers import assign  #DEFINE_ALIAS
-from ...fluid.layers import squeeze  #DEFINE_ALIAS
-from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
-from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
-from ...tensor import clip
-from ...tensor import sum
-from ...tensor import sqrt
-from ...tensor import sum  #DEFINE_ALIAS
-from ...tensor import sqrt  #DEFINE_ALIAS
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
-#from ...fluid.layers import fc  #DEFINE_ALIAS
-from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
-from ...fluid.framework import in_dygraph_mode
-from ...fluid import core, dygraph_utils
+import paddle
 from ...fluid import core, layers
+from ...fluid import dygraph_utils
+# TODO: define the common functions to build a neural network
+from ...fluid import one_hot  # DEFINE_ALIAS
+from ...fluid.data_feeder import check_dtype
 from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.framework import Variable, _varbase_creator
+from ...fluid.framework import default_main_program
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.layers import assign  # DEFINE_ALIAS
+from ...fluid.layers import elementwise_mul  # DEFINE_ALIAS
+from ...fluid.layers import pad2d  # DEFINE_ALIAS
+# from ...fluid.layers import fc  #DEFINE_ALIAS
+from ...fluid.layers import pad_constant_like  # DEFINE_ALIAS
+from ...fluid.layers import squeeze  # DEFINE_ALIAS
+from ...fluid.layers import unfold  # DEFINE_ALIAS
+from ...fluid.layers import unsqueeze  # DEFINE_ALIAS
+from ...tensor import clip
+from ...tensor import sqrt  # DEFINE_ALIAS
+from ...tensor import sum  # DEFINE_ALIAS
 
 __all__ = [
     'dropout',

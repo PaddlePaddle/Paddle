@@ -15,13 +15,12 @@
 from __future__ import print_function
 
 import numpy as np
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Embedding
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph.base import to_variable
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
 class SimpleNet(fluid.Layer):

@@ -15,9 +15,11 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
 from test_imperative_base import new_program_scope
+
+import paddle.fluid as fluid
 
 
 class MLP(fluid.Layer):

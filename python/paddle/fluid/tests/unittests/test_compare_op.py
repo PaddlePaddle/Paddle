@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
-import op_test
 import unittest
+
 import numpy
 import numpy as np
+import op_test
+import paddle.fluid.core as core
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 

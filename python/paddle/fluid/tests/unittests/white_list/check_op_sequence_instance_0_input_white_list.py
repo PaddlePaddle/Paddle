@@ -21,6 +21,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import sys
+# !/usr/bin/env python
+from __future__ import print_function
+
+import sys
 
 # For ops in this whitelist, the check of instance size is 0 input will be skipped.
 # Ops in this whitelist need to be fixed later.

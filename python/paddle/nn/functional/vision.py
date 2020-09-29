@@ -13,48 +13,44 @@
 # limitations under the License.
 
 from ...device import get_cudnn_version
+from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import core, in_dygraph_mode, Variable
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import dygraph_utils
-import numpy as np
-
-# TODO: define specitial functions used in computer vision task  
-from ...fluid.layers import affine_channel  #DEFINE_ALIAS
-from ...fluid.layers import anchor_generator  #DEFINE_ALIAS
-from ...fluid.layers import bipartite_match  #DEFINE_ALIAS
-from ...fluid.layers import box_clip  #DEFINE_ALIAS
-from ...fluid.layers import box_coder  #DEFINE_ALIAS
-from ...fluid.layers import box_decoder_and_assign  #DEFINE_ALIAS
-from ...fluid.layers import collect_fpn_proposals  #DEFINE_ALIAS
-from ...fluid.layers import deformable_roi_pooling  #DEFINE_ALIAS
-from ...fluid.layers import density_prior_box  #DEFINE_ALIAS
-from ...fluid.layers import detection_output  #DEFINE_ALIAS
-from ...fluid.layers import distribute_fpn_proposals  #DEFINE_ALIAS
-from ...fluid.layers import generate_mask_labels  #DEFINE_ALIAS
-from ...fluid.layers import generate_proposal_labels  #DEFINE_ALIAS
-from ...fluid.layers import generate_proposals  #DEFINE_ALIAS
-from ...fluid.layers import grid_sampler  #DEFINE_ALIAS
-from ...fluid.layers import image_resize  #DEFINE_ALIAS
-from ...fluid.layers import prior_box  #DEFINE_ALIAS
-from ...fluid.layers import prroi_pool  #DEFINE_ALIAS
-from ...fluid.layers import psroi_pool  #DEFINE_ALIAS
-from ...fluid.layers import resize_bilinear  #DEFINE_ALIAS
-from ...fluid.layers import resize_nearest  #DEFINE_ALIAS
-from ...fluid.layers import resize_trilinear  #DEFINE_ALIAS
-from ...fluid.layers import roi_align  #DEFINE_ALIAS
-from ...fluid.layers import roi_pool  #DEFINE_ALIAS
-from ...fluid.layers import space_to_depth  #DEFINE_ALIAS
-from ...fluid.layers import yolo_box  #DEFINE_ALIAS
-from ...fluid.layers import yolov3_loss  #DEFINE_ALIAS
-
-from ...fluid.layers import fsp_matrix  #DEFINE_ALIAS
-from ...fluid.layers import image_resize_short  #DEFINE_ALIAS
+# TODO: define specitial functions used in computer vision task
+from ...fluid.layers import affine_channel  # DEFINE_ALIAS
+from ...fluid.layers import anchor_generator  # DEFINE_ALIAS
+from ...fluid.layers import bipartite_match  # DEFINE_ALIAS
+from ...fluid.layers import box_clip  # DEFINE_ALIAS
+from ...fluid.layers import box_coder  # DEFINE_ALIAS
+from ...fluid.layers import box_decoder_and_assign  # DEFINE_ALIAS
+from ...fluid.layers import collect_fpn_proposals  # DEFINE_ALIAS
+from ...fluid.layers import deformable_roi_pooling  # DEFINE_ALIAS
+from ...fluid.layers import density_prior_box  # DEFINE_ALIAS
+from ...fluid.layers import detection_output  # DEFINE_ALIAS
+from ...fluid.layers import distribute_fpn_proposals  # DEFINE_ALIAS
+from ...fluid.layers import fsp_matrix  # DEFINE_ALIAS
+from ...fluid.layers import generate_mask_labels  # DEFINE_ALIAS
+from ...fluid.layers import generate_proposal_labels  # DEFINE_ALIAS
+from ...fluid.layers import generate_proposals  # DEFINE_ALIAS
+from ...fluid.layers import grid_sampler  # DEFINE_ALIAS
+from ...fluid.layers import image_resize  # DEFINE_ALIAS
+from ...fluid.layers import image_resize_short  # DEFINE_ALIAS
+from ...fluid.layers import prior_box  # DEFINE_ALIAS
+from ...fluid.layers import prroi_pool  # DEFINE_ALIAS
+from ...fluid.layers import psroi_pool  # DEFINE_ALIAS
+from ...fluid.layers import resize_bilinear  # DEFINE_ALIAS
+from ...fluid.layers import resize_nearest  # DEFINE_ALIAS
+from ...fluid.layers import resize_trilinear  # DEFINE_ALIAS
 # from ...fluid.layers import pixel_shuffle  #DEFINE_ALIAS
-from ...fluid.layers import retinanet_detection_output  #DEFINE_ALIAS
-from ...fluid.layers import retinanet_target_assign  #DEFINE_ALIAS
-from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
-from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
+from ...fluid.layers import retinanet_detection_output  # DEFINE_ALIAS
+from ...fluid.layers import retinanet_target_assign  # DEFINE_ALIAS
+from ...fluid.layers import roi_align  # DEFINE_ALIAS
+from ...fluid.layers import roi_perspective_transform  # DEFINE_ALIAS
+from ...fluid.layers import roi_pool  # DEFINE_ALIAS
+from ...fluid.layers import shuffle_channel  # DEFINE_ALIAS
+from ...fluid.layers import space_to_depth  # DEFINE_ALIAS
+from ...fluid.layers import yolo_box  # DEFINE_ALIAS
+from ...fluid.layers import yolov3_loss  # DEFINE_ALIAS
 
 __all__ = [
     'affine_channel',

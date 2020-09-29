@@ -16,29 +16,28 @@ All layers just related to the neural network.
 """
 from __future__ import print_function
 
-import os
-import inspect
-import warnings
-
-import numpy as np
-import six
-
-import paddle
-from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator
-from .. import dygraph_utils
-from ..param_attr import ParamAttr
-from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
-from . import utils
-from .. import unique_name
 from functools import reduce
-from .. import core
-from ...utils import deprecated
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-import paddle
+
+import inspect
+import numpy as np
+import os
+import six
+import warnings
 from paddle.utils import deprecated
+
+import paddle
+from . import utils
+from .layer_function_generator import templatedoc, _generate_doc_string_
+from .tensor import assign, fill_constant, zeros
+from .. import core
+from .. import dygraph_utils
+from .. import unique_name
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, \
+    _varbase_creator
+from ..initializer import Normal, Constant
+from ..layer_helper import LayerHelper
+from ..param_attr import ParamAttr
 
 __all__ = [
     'fc',

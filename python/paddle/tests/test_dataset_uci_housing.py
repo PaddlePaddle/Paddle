@@ -13,12 +13,8 @@
 # limitations under the License.
 
 import unittest
-import os
-import numpy as np
-import tempfile
-import shutil
-import cv2
 
+import numpy as np
 from paddle.text.datasets import *
 
 

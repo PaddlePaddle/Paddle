@@ -17,13 +17,11 @@ from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
 
 __all__ = ['mean', 'reduce_mean', 'std', 'var', 'numel']
 
-import numpy as np
 from ..fluid.framework import Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import core, in_dygraph_mode
-from ..fluid import layers
 from .search import where
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_variable_and_dtype, check_type
 import paddle
 
 

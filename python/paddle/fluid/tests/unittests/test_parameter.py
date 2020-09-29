@@ -15,12 +15,14 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.framework import default_main_program
-import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
-import paddle.fluid.io as io
-from paddle.fluid.initializer import ConstantInitializer
+
 import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid.io as io
+from paddle.fluid.executor import Executor
+from paddle.fluid.initializer import ConstantInitializer
+
+from paddle.fluid.framework import default_main_program
 
 main_program = default_main_program()
 

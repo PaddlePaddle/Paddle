@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from .node import DownpourServer
-from .node import DownpourWorker
-from ..backward import append_backward
 import ps_pb2 as pslib
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
-from google.protobuf import text_format
+
+from .node import DownpourServer
+from .node import DownpourWorker
+from ..backward import append_backward
 
 
 class DownpourSGD(object):

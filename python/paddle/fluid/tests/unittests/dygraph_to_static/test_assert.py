@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
-import numpy
 import unittest
+
+import numpy
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.jit import declarative
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
 
 
 @paddle.jit.to_static

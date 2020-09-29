@@ -14,16 +14,19 @@
 
 from __future__ import print_function
 
+import multiprocessing
+import threading
 import unittest
+
+import numpy as np
+import os
+import paddle.fluid.core as core
+import paddle.fluid.unique_name as unique_name
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle.fluid.unique_name as unique_name
-import paddle.fluid.core as core
-import numpy as np
-import threading
-import multiprocessing
-import os
+
 os.environ['CPU_NUM'] = str(4)
 
 

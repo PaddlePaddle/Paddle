@@ -14,9 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.fluid.core
 import unittest
-import six
+
+import paddle.fluid.core
 
 
 class TestScope(unittest.TestCase):

@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
-import paddle.fluid as fluid
 
+import numpy as np
 from paddle.fluid.dygraph import declarative
+
+import paddle.fluid as fluid
 
 
 def call_lambda_as_func(x):

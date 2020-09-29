@@ -15,8 +15,10 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid.core as core
+
 import paddle.compat as cpt
+import paddle.fluid.core as core
+
 from paddle.fluid.framework import Program
 
 

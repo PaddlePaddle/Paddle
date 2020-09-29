@@ -14,16 +14,16 @@
 
 from __future__ import print_function
 
-from . import quantization_pass
-from .quantization_pass import *
-from . import quant_int8_mkldnn_pass
-from .quant_int8_mkldnn_pass import *
-from . import quant2_int8_mkldnn_pass
-from .quant2_int8_mkldnn_pass import *
-from . import post_training_quantization
-from .post_training_quantization import *
 from . import imperative
+from . import post_training_quantization
+from . import quant2_int8_mkldnn_pass
+from . import quant_int8_mkldnn_pass
+from . import quantization_pass
 from .imperative import *
+from .post_training_quantization import *
+from .quant2_int8_mkldnn_pass import *
+from .quant_int8_mkldnn_pass import *
+from .quantization_pass import *
 
 __all__ = quantization_pass.__all__
 __all__ += quant_int8_mkldnn_pass.__all__

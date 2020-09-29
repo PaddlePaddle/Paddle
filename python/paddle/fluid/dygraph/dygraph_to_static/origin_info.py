@@ -15,11 +15,12 @@
 from __future__ import print_function
 
 import collections
-import inspect
 
 import gast
-from paddle.fluid import core
+import inspect
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
+
+from paddle.fluid import core
 from paddle.fluid.framework import Program
 
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.

@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
-import paddle.fluid as fluid
-import contextlib
+
 import unittest
+
+import contextlib
+
+import paddle.fluid as fluid
 
 
 def train_simulator(test_batch_size=10):

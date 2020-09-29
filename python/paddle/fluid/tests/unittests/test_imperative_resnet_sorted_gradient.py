@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 import six
+from paddle.fluid.dygraph.base import to_variable
+from test_imperative_base import new_program_scope
+from test_imperative_resnet import ResNet
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from test_imperative_resnet import ResNet
 
 batch_size = 8
 train_parameters = {

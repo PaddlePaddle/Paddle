@@ -13,21 +13,20 @@
 # limitations under the License.
 
 from __future__ import print_function
-import numpy as np
-import unittest
-import time
-import argparse
-import os
-import six
-import sys
+
 import subprocess
-import traceback
-import functools
-import pickle
-from contextlib import closing
-from six import string_types
-import paddle.fluid as fluid
+import sys
+import time
+import unittest
+
+import numpy as np
+import os
 import paddle.fluid.unique_name as nameGen
+import pickle
+import six
+from six import string_types
+
+import paddle.fluid as fluid
 from paddle.fluid import core
 
 
@@ -132,7 +131,6 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

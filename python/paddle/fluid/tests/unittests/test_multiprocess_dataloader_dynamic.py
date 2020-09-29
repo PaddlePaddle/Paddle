@@ -14,21 +14,18 @@
 
 from __future__ import division
 
-import os
 import sys
-import six
 import time
 import unittest
-import multiprocessing
+
 import numpy as np
+import six
+from paddle.fluid.dygraph.nn import Linear
+from paddle.io import DataLoader
+from test_multiprocess_dataloader_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
+from test_multiprocess_dataloader_static import RandomDataset, prepare_places
 
 import paddle.fluid as fluid
-from paddle.io import Dataset, BatchSampler, DataLoader
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
-
-from test_multiprocess_dataloader_static import RandomDataset, prepare_places
-from test_multiprocess_dataloader_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
 
 
 class SimpleFCNet(fluid.dygraph.Layer):

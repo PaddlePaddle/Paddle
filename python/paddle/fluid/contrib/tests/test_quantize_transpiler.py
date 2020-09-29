@@ -12,15 +12,15 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
+import unittest
+
 import numpy as np
 import six
+from paddle.fluid.contrib.quantize.quantize_transpiler import QuantizeTranspiler
+from paddle.fluid.contrib.quantize.quantize_transpiler import _original_var_name
 
-import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.quantize.quantize_transpiler import _original_var_name
-from paddle.fluid.contrib.quantize.quantize_transpiler import QuantizeTranspiler
-import paddle
 
 paddle.enable_static()
 

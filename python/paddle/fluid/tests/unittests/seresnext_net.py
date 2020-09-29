@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import paddle.fluid as fluid
+
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
-import paddle.fluid.layers.ops as ops
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
-import math
 import os
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)

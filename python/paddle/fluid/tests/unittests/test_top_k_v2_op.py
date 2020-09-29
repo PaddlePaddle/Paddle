@@ -15,10 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle
 import paddle.fluid.core as core
+from op_test import OpTest
+
+import paddle
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):

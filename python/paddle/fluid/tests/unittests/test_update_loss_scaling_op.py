@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
 import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
+from op_test import OpTest
+
+import paddle.fluid as fluid
 
 
 class TestUpdateLossScalingOp(OpTest):

@@ -17,14 +17,12 @@ All layers just related to metric.
 
 from __future__ import print_function
 
-import warnings
-from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
-from ..framework import Variable, in_dygraph_mode, _varbase_creator
-from .. import core
-from ..param_attr import ParamAttr
 from . import nn
+from .. import core
 from ..data_feeder import check_variable_and_dtype
+from ..framework import Variable, in_dygraph_mode, _varbase_creator
+from ..initializer import Constant
+from ..layer_helper import LayerHelper
 
 __all__ = ['accuracy', 'auc']
 

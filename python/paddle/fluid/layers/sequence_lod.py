@@ -15,10 +15,10 @@
 from __future__ import print_function
 
 from .layer_function_generator import templatedoc
+from ..core import VarDesc
+from ..data_feeder import check_variable_and_dtype, check_type
 from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..core import VarDesc
 
 __all__ = [
     'sequence_conv',

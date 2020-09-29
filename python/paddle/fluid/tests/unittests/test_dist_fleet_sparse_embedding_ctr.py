@@ -14,15 +14,16 @@
 
 from __future__ import print_function
 
-import os
 import shutil
-import tempfile
 import unittest
+
+import os
+import tempfile
+from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
+from test_dist_fleet_base import TestFleetBase
+
 import paddle
 import paddle.fluid as fluid
-
-from test_dist_fleet_base import TestFleetBase
-from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 
 
 class TestDistMnistSync2x2(TestFleetBase):

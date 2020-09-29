@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-from . import framework
-from . import core
-from .framework import in_dygraph_mode, default_main_program
 import numpy as np
-from .core import VarDesc
+
+from . import framework
 from . import unique_name
-from .data_feeder import check_variable_and_dtype, check_type, check_dtype
+from .core import VarDesc
+from .data_feeder import check_variable_and_dtype, check_type
+from .framework import in_dygraph_mode, default_main_program
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',

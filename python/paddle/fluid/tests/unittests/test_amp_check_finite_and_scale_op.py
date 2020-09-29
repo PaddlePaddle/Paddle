@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
+from op_test import OpTest
 
 
 class TestCheckFiniteAndUnscaleOp(OpTest):

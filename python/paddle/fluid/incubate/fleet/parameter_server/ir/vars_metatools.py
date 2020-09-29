@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+
 from functools import reduce
 
-from paddle.fluid.framework import Variable
 from paddle.fluid import core
+from paddle.fluid.framework import Variable
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,

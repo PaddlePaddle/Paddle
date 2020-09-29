@@ -15,11 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
+
+import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.dygraph import LSTMCell
 
-import numpy as np
+import paddle.fluid as fluid
 
 np.random.seed = 123
 

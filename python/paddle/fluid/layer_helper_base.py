@@ -17,11 +17,11 @@ from __future__ import print_function
 import copy
 import numpy as np
 
-from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place
-from . import unique_name
-from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
+from . import unique_name
+from .framework import Variable, default_main_program, default_startup_program, in_dygraph_mode, _current_expected_place
 from .initializer import _global_weight_initializer, _global_bias_initializer
+from .param_attr import ParamAttr, WeightNormParamAttr
 
 __all__ = ['LayerHelperBase']
 

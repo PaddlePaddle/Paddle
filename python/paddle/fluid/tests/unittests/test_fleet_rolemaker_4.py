@@ -14,9 +14,10 @@
 """Test cloud role maker."""
 
 from __future__ import print_function
-import os
+
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+import os
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -32,9 +33,7 @@ class TestCloudRoleMaker(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import sys
         import threading
-        import paddle.fluid as fluid
         try:
             from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
@@ -74,8 +73,6 @@ class TestCloudRoleMaker(unittest.TestCase):
                 if b == 0:
                     raise ValueError("this is only for test")
                 return "fake"
-
-        import os
 
         try:
 
@@ -126,8 +123,6 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("warning: no KVHandler, skip test_pslib_4")
             return
-
-        import sys
 
         try:
 

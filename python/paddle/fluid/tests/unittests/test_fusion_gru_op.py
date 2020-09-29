@@ -15,11 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import math
 from op_test import OpTest
-from test_gru_op import gru
 from test_fusion_lstm_op import fc, ACTIVATION
+from test_gru_op import gru
 
 
 def fusion_gru(

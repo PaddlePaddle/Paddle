@@ -13,16 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-import re
-import functools
-import warnings
-import string
 
+import re
+
+import string
 from six.moves import cStringIO
-from ..proto import framework_pb2
+
+from ..data_feeder import check_variable_and_dtype
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_variable_and_dtype
+from ..proto import framework_pb2
 
 __all__ = [
     'generate_layer_fn', 'generate_activation_fn', 'autodoc', 'templatedoc'

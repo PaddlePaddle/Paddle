@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
+import unittest
+
+import os
 import paddle.dataset.conll05 as conll05
+import paddle.fluid.core as core
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle.fluid.core as core
-import unittest
-import paddle
-import numpy as np
-import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)

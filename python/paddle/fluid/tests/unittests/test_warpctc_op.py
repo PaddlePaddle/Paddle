@@ -16,13 +16,15 @@ from __future__ import print_function
 
 import sys
 import unittest
+
 import numpy as np
+import paddle.nn.functional as F
 from op_test import OpTest
 from test_softmax_op import stable_softmax
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-import paddle
-import paddle.nn.functional as F
 
 paddle.enable_static()
 

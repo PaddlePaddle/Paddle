@@ -14,14 +14,14 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
 
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.initializer as initializer
-from paddle.fluid import Program, program_guard
-
 from op_test import OpTest
+
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,

@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
+import unittest
+
 import gast
 import inspect
 import numpy as np
-import paddle.fluid as fluid
-import unittest
-
 from paddle.fluid.dygraph.dygraph_to_static import NodeVarType, StaticAnalysisVisitor
+
+import paddle.fluid as fluid
 
 
 def func_to_test1(a, b):

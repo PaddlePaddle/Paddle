@@ -12,25 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import subprocess
-import multiprocessing
-from datetime import datetime
-
-import re
-import copy
-import errno
-import time
-import logging
-import six
 import abc
-import paddle.fluid as fluid
-from paddle.fluid import core
 import functools
-
-from pathlib import PurePosixPath, Path
+import re
 import shutil
+import time
+from pathlib import PurePosixPath, Path
+
+import os
+import six
+
+from paddle.fluid import core
 
 __all__ = ['LocalFS', 'HDFSClient']
 

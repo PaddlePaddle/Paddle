@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import paddle
-from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
-from .param_attr import ParamAttr
-from .initializer import Constant
-from . import layers
-from . import backward
-from .dygraph import Layer, nn
-from . import executor
-from . import optimizer
-from . import core
-from . import compiler
 import logging
+
 import numpy as np
+
+import paddle
+from . import backward
+from . import compiler
+from . import core
+from . import executor
+from . import layers
+from . import optimizer
+from .dygraph import Layer, nn
+from .framework import Program, program_guard, unique_name, cuda_places
+from .initializer import Constant
+from .param_attr import ParamAttr
 
 __all__ = ['run_check']
 

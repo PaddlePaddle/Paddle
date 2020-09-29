@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
+
 from test_post_training_quantization_mobilenetv1 import TestPostTrainingQuantization
+
 import paddle
 
 paddle.enable_static()

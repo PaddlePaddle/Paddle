@@ -15,11 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import paddle
-import paddle.fluid as fluid
+
+import inspect
 import numpy as np
 import six
-import inspect
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):

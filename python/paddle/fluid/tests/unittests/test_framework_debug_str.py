@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+
 from paddle.fluid.framework import Program
 
 

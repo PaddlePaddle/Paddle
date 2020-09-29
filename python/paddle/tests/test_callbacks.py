@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import shutil
 import time
+import unittest
+
 import random
 import tempfile
-import shutil
-
-from paddle import Model
+from paddle.hapi.callbacks import config_callbacks
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
-from paddle.hapi.callbacks import config_callbacks
+
+from paddle import Model
 
 
 class TestCallbacks(unittest.TestCase):

@@ -14,15 +14,15 @@
 
 from __future__ import print_function
 
-import contextlib
-import math
-import numpy as np
-import os
 import time
 import unittest
 
-import paddle
+import contextlib
+import numpy as np
+import os
 import paddle.dataset.conll05 as conll05
+
+import paddle
 import paddle.fluid as fluid
 
 paddle.enable_static()

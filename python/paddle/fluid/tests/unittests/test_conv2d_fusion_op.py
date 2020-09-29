@@ -15,11 +15,10 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 
+import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
-
 from test_conv2d_op import conv2d_forward_naive
 
 

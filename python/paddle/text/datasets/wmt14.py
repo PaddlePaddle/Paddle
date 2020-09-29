@@ -14,13 +14,11 @@
 
 from __future__ import print_function
 
-import tarfile
 import numpy as np
-import gzip
-
-from paddle.io import Dataset
 import paddle.compat as cpt
+import tarfile
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = ['WMT14']
 

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import numpy as np
-import paddle.fluid as fluid
 import os
 from paddle.fluid.layer_helper import LayerHelper
+
+import paddle.fluid as fluid
 
 
 def check():

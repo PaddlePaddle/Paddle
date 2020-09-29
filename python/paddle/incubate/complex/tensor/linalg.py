@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ..helper import is_complex, is_real, complex_variable_exists
-from ....fluid.framework import ComplexVariable
 from ....fluid import layers
+from ....fluid.framework import ComplexVariable
 
 __all__ = ['matmul', ]
 

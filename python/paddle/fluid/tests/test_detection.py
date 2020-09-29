@@ -14,17 +14,19 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.layers import detection
-from paddle.fluid.framework import Program, program_guard
 import unittest
+
 import contextlib
 import numpy as np
-from unittests.test_imperative_base import new_program_scope
+import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import base
-from paddle.fluid import core
+from paddle.fluid.layers import detection
+from unittests.test_imperative_base import new_program_scope
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 

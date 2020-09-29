@@ -16,20 +16,19 @@ from __future__ import print_function
 
 import unittest
 
-import os
-import six
 import numpy as np
+import os
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-import warnings
-
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+import six
+import warnings
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
-from paddle.fluid.transpiler import memory_optimize
+
+import paddle.fluid as fluid
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestBook(unittest.TestCase):

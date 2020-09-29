@@ -15,15 +15,16 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
 import numpy as np
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
 
+import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 
 np.random.seed(123)
 

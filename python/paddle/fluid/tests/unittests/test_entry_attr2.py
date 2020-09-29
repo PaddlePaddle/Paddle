@@ -16,8 +16,6 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 
 class EntryAttrChecks(unittest.TestCase):

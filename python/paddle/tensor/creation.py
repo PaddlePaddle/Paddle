@@ -13,25 +13,24 @@
 # limitations under the License.
 
 from __future__ import print_function
-import numpy as np
 
-from ..fluid.framework import Variable
-from ..fluid.framework import unique_name
-from ..fluid.framework import _current_expected_place
-from ..fluid.framework import dygraph_only
-from ..fluid.initializer import Constant
-from ..fluid.layers import core
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
-from ..fluid.layers import fill_constant
+import numpy as np
 from paddle.common_ops_import import *
 
-# TODO: define functions to get create a tensor  
-from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
-from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..fluid.framework import Variable
+from ..fluid.framework import _current_expected_place
+from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
+from ..fluid.framework import dygraph_only
+from ..fluid.framework import unique_name
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers import core
+# TODO: define functions to get create a tensor
+from ..fluid.layers import crop_tensor  # DEFINE_ALIAS
+from ..fluid.layers import fill_constant
+from ..fluid.layers import fill_constant  # DEFINE_ALIAS
+from ..fluid.layers import linspace  # DEFINE_ALIAS
 
 __all__ = [
     'to_tensor',

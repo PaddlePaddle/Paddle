@@ -15,19 +15,18 @@
 from __future__ import print_function
 
 import unittest
+
+import numpy as np
+import os
+import paddle.fluid.core as core
+import pickle
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.optimizer import Adam
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import Adam
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from paddle.fluid.executor import global_scope
-import numpy as np
-import six
-import pickle
-import os
 
 
 class SimpleLSTMRNN(fluid.Layer):

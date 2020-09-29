@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
+
+import numpy as np
 from numpy import linalg as LA
 from op_test import OpTest
 

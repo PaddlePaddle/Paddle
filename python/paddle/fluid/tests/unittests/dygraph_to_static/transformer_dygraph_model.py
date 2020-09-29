@@ -15,12 +15,12 @@
 from __future__ import print_function
 
 import numpy as np
-
-import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import Embedding, Layer, LayerNorm, Linear, to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
+
+import paddle.fluid as fluid
 
 
 def position_encoding_init(n_position, d_pos_vec):

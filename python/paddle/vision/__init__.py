@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import models
-from .models import *
-
-from . import transforms
-from .transforms import *
-
 from . import datasets
+from . import models
+from . import transforms
 from .datasets import *
+from .models import *
+from .transforms import *
 
 __all__ = models.__all__ \
         + transforms.__all__ \

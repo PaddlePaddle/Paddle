@@ -13,14 +13,14 @@
 # limitations under the License.
 import time
 import unittest
+
 import numpy as np
+from paddle.fluid.dygraph import to_variable, ProgramTranslator, declarative
+from paddle.fluid.dygraph.nn import Conv2D, Linear, Embedding
+from test_lac import DynamicGRU
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Embedding
-from paddle.fluid.dygraph import to_variable, ProgramTranslator, declarative
-
-from test_lac import DynamicGRU
 
 SEED = 2020
 program_translator = ProgramTranslator()

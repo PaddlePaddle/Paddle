@@ -14,20 +14,15 @@
 
 from __future__ import division
 
-import os
-import sys
-import six
-import time
-import unittest
 import multiprocessing
+import unittest
+
 import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.dataloader.dataloader_iter import _worker_loop
+from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dataloader.dataloader_iter import _worker_loop
 
 
 class RandomDataset(Dataset):

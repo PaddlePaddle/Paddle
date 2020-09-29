@@ -15,17 +15,18 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid.core as core
-import numpy
-import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 
-from paddle.fluid.layers.control_flow import lod_rank_table
-from paddle.fluid.layers.control_flow import max_sequence_len
-from paddle.fluid.layers.control_flow import lod_tensor_to_array
+import numpy
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import array_to_lod_tensor
+from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import lod_tensor_to_array
+from paddle.fluid.layers.control_flow import max_sequence_len
+
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):

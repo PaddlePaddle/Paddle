@@ -22,8 +22,9 @@ __all__ = [
     'Transformer',
 ]
 
-import copy
 import collections
+
+import copy
 import numpy as np
 
 import paddle

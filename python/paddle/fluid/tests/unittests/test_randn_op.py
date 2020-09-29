@@ -15,10 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
+
+import paddle
 
 
 class TestRandnOp(unittest.TestCase):

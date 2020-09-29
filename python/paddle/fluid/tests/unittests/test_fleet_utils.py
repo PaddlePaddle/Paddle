@@ -13,20 +13,20 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
-import paddle.fluid as fluid
+
+import sys
 import unittest
+
 import numpy as np
+import os
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.fluid.incubate.fleet.utils.utils as utils
 import tarfile
 import tempfile
-import os
-import sys
-from paddle.dataset.common import download, DATA_HOME
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.dataset.common import download
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.utils.fleet_barrier_util import check_all_trainers_ready
 from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-import paddle.fluid.incubate.fleet.utils.utils as utils
 
 
 class TestFleetUtils(unittest.TestCase):

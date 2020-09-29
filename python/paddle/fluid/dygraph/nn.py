@@ -14,24 +14,21 @@
 
 from __future__ import print_function
 
-import paddle
-from six.moves import reduce
-from .. import core
-from ..layers import utils
-from ..layers import nn as F
-from .. import dygraph_utils
-from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..param_attr import ParamAttr
-from ..initializer import Normal, Constant, NumpyArrayInitializer
-from .. import unique_name
-from .layer_object_helper import LayerObjectHelper
-from ..data_feeder import check_variable_and_dtype, check_type
-import numpy as np
-import numbers
 import logging
+
+import numbers
+import numpy as np
 import paddle.utils.deprecated as deprecated
+
+import paddle
+from . import layers
+from .. import core
+from .. import dygraph_utils
+from ..data_feeder import check_variable_and_dtype, check_type
+from ..framework import Variable, in_dygraph_mode, Parameter, _varbase_creator, default_main_program
+from ..initializer import Normal, Constant, NumpyArrayInitializer
+from ..layers import utils
+from ..param_attr import ParamAttr
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',

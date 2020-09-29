@@ -11,19 +11,18 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import unittest
-import os
-import time
 import sys
-import random
-import math
-import functools
-import contextlib
+import time
+import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
+import os
+import random
 from paddle.dataset.common import download
 from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

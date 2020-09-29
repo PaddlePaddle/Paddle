@@ -14,17 +14,14 @@
 
 from __future__ import print_function
 
-import paddle.fluid.core as core
-import math
-import os
-import sys
 import unittest
 
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-from simple_nets import init_data
+import paddle.fluid.core as core
 from parallel_executor_test_base import TestParallelExecutorBase
+from simple_nets import init_data
+
+import paddle.fluid as fluid
 
 batch_size = 12
 img_shape = [1, 28, 28]

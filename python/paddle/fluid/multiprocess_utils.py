@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-import sys
-import signal
 import atexit
+import signal
+import sys
+
+import six
 
 from . import core
 

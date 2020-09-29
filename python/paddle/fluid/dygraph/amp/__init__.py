@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from . import auto_cast
-from .auto_cast import *
-
 from . import loss_scaler
+from .auto_cast import *
 from .loss_scaler import *
 
 __all__ = []

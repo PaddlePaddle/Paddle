@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import warnings
+
 """
     Class of all kinds of Average.
 

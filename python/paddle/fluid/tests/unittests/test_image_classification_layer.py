@@ -16,8 +16,9 @@ from __future__ import print_function
 
 import unittest
 
-import paddle.fluid as fluid
 import paddle.fluid.nets as nets
+
+import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
 

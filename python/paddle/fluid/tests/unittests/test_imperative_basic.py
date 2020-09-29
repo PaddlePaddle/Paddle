@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import Linear
-from paddle.fluid.layer_helper import LayerHelper
-from test_imperative_base import new_program_scope
+import numpy as np
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
+from paddle.fluid.layer_helper import LayerHelper
+from test_imperative_base import new_program_scope
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Linear
+from paddle.fluid import core
 
 
 class MyLayer(fluid.Layer):

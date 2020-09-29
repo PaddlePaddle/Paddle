@@ -15,26 +15,26 @@
 from __future__ import print_function
 
 from . import decoder
-from .decoder import *
+from . import extend_optimizer
+from . import layers
 from . import memory_usage_calc
-from .memory_usage_calc import *
+from . import mixed_precision
+from . import model_stat
 from . import op_frequence
-from .op_frequence import *
 from . import quantize
-from .quantize import *
 from . import reader
-from .reader import *
 from . import slim
 from . import utils
-from .utils import *
-from . import extend_optimizer
+from .decoder import *
 from .extend_optimizer import *
-from . import model_stat
-from .model_stat import *
-from . import mixed_precision
-from .mixed_precision import *
-from . import layers
 from .layers import *
+from .memory_usage_calc import *
+from .mixed_precision import *
+from .model_stat import *
+from .op_frequence import *
+from .quantize import *
+from .reader import *
+from .utils import *
 
 __all__ = []
 __all__ += decoder.__all__

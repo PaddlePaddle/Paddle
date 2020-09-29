@@ -13,17 +13,15 @@
 # limitations under the License.
 """hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
 
-import os
-import sys
-import subprocess
+import errno
+import logging
 import multiprocessing
+import re
+import subprocess
 from datetime import datetime
 
-import re
 import copy
-import errno
-
-import logging
+import os
 from paddle.fluid.log_helper import get_logger
 
 __all__ = ["HDFSClient", "multi_download", "multi_upload"]

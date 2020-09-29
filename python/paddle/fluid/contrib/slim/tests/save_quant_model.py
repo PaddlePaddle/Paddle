@@ -12,20 +12,17 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import unittest
-import os
-import sys
 import argparse
-import logging
-import struct
-import six
-import numpy as np
-import time
+import sys
+import unittest
+
+import os
+from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
 from paddle.fluid import core
+from paddle.fluid.framework import IrGraph
 
 paddle.enable_static()
 

@@ -14,11 +14,11 @@
 
 from __future__ import print_function
 
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node  #DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node  # DEFINE_ALIAS
 
 __all__ = [
     'create_fill_constant_node', 'create_static_variable_gast_node',

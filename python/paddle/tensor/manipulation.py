@@ -14,27 +14,27 @@
 
 from __future__ import print_function
 
-from ..fluid.layers import core
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers.tensor import fill_constant
-from ..fluid.layers import utils
 import numpy as np
 import six
-# TODO: define functions to manipulate a tensor  
-from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import slice  #DEFINE_ALIAS
-from ..fluid.layers import strided_slice  #DEFINE_ALIAS
-from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unstack  #DEFINE_ALIAS
 
-from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
-from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
-from ..fluid.layers import shard_index  #DEFINE_ALIAS
-from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
-from ..fluid import layers
 import paddle
+from ..fluid import layers
+from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.framework import Variable, in_dygraph_mode, convert_np_dtype_to_dtype_
+from ..fluid.layer_helper import LayerHelper
+# TODO: define functions to manipulate a tensor
+from ..fluid.layers import cast  # DEFINE_ALIAS
+from ..fluid.layers import core
+from ..fluid.layers import scatter_nd  # DEFINE_ALIAS
+from ..fluid.layers import scatter_nd_add  # DEFINE_ALIAS
+from ..fluid.layers import shard_index  # DEFINE_ALIAS
+from ..fluid.layers import slice  # DEFINE_ALIAS
+from ..fluid.layers import strided_slice  # DEFINE_ALIAS
+from ..fluid.layers import transpose  # DEFINE_ALIAS
+from ..fluid.layers import unique_with_counts  # DEFINE_ALIAS
+from ..fluid.layers import unstack  # DEFINE_ALIAS
+from ..fluid.layers import utils
+from ..fluid.layers.tensor import fill_constant
 
 __all__ = [
     'cast',

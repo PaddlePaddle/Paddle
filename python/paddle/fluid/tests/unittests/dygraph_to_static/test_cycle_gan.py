@@ -26,13 +26,15 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 import time
-import random
 import unittest
+
 import numpy as np
+import os
+import random
 from PIL import Image, ImageOps
 
-import os
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 

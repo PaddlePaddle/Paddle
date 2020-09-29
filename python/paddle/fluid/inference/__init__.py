@@ -14,4 +14,3 @@
 
 from .wrapper import Config, DataType, PlaceType, PrecisionType, Tensor, Predictor
 
-from ..core import create_predictor, get_version, get_num_bytes_of_data_type, PredictorPool

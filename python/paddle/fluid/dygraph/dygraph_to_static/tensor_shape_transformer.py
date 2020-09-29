@@ -16,11 +16,10 @@ from __future__ import print_function
 
 import copy
 import gast
-
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
 
 
 def create_convert_shape_node(var_shape_node):

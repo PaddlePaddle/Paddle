@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import six
-import warnings
-from multiprocessing import Process, Manager
 import time
-import sys
+from multiprocessing import Process, Manager
 
-from paddle import compat as cpt
+import os
+import warnings
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.dygraph.parallel import ParallelEnv
 
 # deprecated module import
 from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
-from paddle.fluid.dygraph import parallel_helper
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 __all__ = ["init_parallel_env"]
 

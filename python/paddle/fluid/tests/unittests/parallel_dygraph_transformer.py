@@ -16,12 +16,12 @@ from __future__ import print_function
 
 import numpy as np
 import six
+from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, to_variable, Layer
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, to_variable, Layer
 
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 """
 Note(chenweihang): To compare loss of single-card and multi-card 
     in our dist test framework, two parameters need to be adjusted:

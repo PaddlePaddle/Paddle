@@ -13,27 +13,28 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
 
 import contextlib
-import numpy as np
-from decorator_helper import prog_scope
 import inspect
+import numpy as np
+import paddle.fluid.layers as layers
+import paddle.fluid.nets as nets
+from decorator_helper import prog_scope
+from paddle.fluid.dygraph import base
+from paddle.fluid.dygraph import nn
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.initializer import Constant
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.param_attr import ParamAttr
 from six.moves import filter
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-import paddle.fluid.nets as nets
-from paddle.fluid.framework import Program, program_guard, default_main_program
-from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid import core
-from paddle.fluid.initializer import Constant
-import paddle.fluid.layers as layers
-from test_imperative_base import new_program_scope
-from paddle.fluid.dygraph import nn
-from paddle.fluid.dygraph import base
-from paddle.fluid.dygraph import to_variable
+from paddle.fluid.framework import Program, program_guard, default_main_program
 
 
 class LayerTest(unittest.TestCase):

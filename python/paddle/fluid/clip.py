@@ -18,11 +18,9 @@ import copy
 import six
 import warnings
 
-import functools
-from . import layers
-from . import framework
 from . import core
-from . import name_scope
+from . import framework
+from . import layers
 from .dygraph import base as imperative_base
 
 __all__ = [

@@ -14,22 +14,19 @@
 
 from __future__ import print_function
 
-import os
-import six
-import random
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
+import numpy as np
+import os
 import paddle.fluid.core as core
-from paddle.fluid.core import PaddleTensor
-from paddle.fluid.core import PaddleDType
+import random
+from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
+from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
+import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 
 
 class InferencePassTest(unittest.TestCase):

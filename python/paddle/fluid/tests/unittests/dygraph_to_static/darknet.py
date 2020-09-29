@@ -12,12 +12,11 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
-import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
-from paddle.fluid.dygraph.base import to_variable
+import paddle.fluid as fluid
 
 
 class ConvBNLayer(fluid.dygraph.Layer):

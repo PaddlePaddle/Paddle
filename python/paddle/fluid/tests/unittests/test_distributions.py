@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import math
+import numpy as np
+from paddle.fluid.layers.distributions import *
+
 from paddle import fluid
 from paddle.fluid import layers
-from paddle.fluid.layers.distributions import *
-import math
 
 
 class DistributionNumpy():

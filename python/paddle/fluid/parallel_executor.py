@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-from . import core
-from . import framework
-from . import executor
-from . import compiler
-from .data_feeder import check_type
+
 import sys
+
+from . import compiler
+from . import core
+from . import executor
+from . import framework
+from .data_feeder import check_type
 
 __all__ = ['ParallelExecutor']
 

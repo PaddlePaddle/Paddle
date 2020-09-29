@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers.tensor import fill_constant
-from ..fluid.layers import utils
-from ..fluid.dygraph.parallel import prepare_context
-import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
+
+import paddle
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
 
 __all__ = [
     'broadcast',

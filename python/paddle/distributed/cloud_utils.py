@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import paddle
 from paddle.distributed.utils import get_cluster, logger
 
 

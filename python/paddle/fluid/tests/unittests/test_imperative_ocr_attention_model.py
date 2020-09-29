@@ -14,14 +14,16 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
 import six
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm, Embedding, GRUUnit
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm, Embedding, GRUUnit
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
 
 
 class Config(object):

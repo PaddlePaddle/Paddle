@@ -15,10 +15,11 @@
 from __future__ import division
 
 import unittest
+
 import numpy as np
-from scipy.special import logit
-from scipy.special import expit
 from op_test import OpTest
+from scipy.special import expit
+from scipy.special import logit
 
 from paddle.fluid import core
 

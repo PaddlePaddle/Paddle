@@ -15,11 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
+
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 

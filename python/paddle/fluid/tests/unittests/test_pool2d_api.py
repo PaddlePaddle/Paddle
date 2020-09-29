@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_pool2d_op import adaptive_start_index, adaptive_end_index, pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive
 import unittest
-from op_test import OpTest
+
 import numpy as np
 import paddle.fluid.core as core
 from paddle.nn.functional import avg_pool2d, max_pool2d
-import paddle.fluid as fluid
+from test_pool2d_op import pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TestPool2d_API(unittest.TestCase):

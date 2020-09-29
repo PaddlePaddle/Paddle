@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
+
 import copy
+import numpy as np
+
+import paddle
 
 np.random.seed(10)
 paddle.manual_seed(10)

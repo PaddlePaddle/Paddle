@@ -16,11 +16,12 @@ from __future__ import print_function
 
 import copy
 import six
-from ..framework import Parameter, in_dygraph_mode
-from ..param_attr import ParamAttr
-from .. import core
 from six.moves import zip
+
+from .. import core
+from ..framework import Parameter
 from ..layer_helper_base import LayerHelperBase
+from ..param_attr import ParamAttr
 
 
 class LayerObjectHelper(LayerHelperBase):

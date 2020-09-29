@@ -12,17 +12,16 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
-from . import resnet
-from . import vgg
+from . import lenet
 from . import mobilenetv1
 from . import mobilenetv2
-from . import lenet
-
-from .resnet import *
+from . import resnet
+from . import vgg
+from .lenet import *
 from .mobilenetv1 import *
 from .mobilenetv2 import *
+from .resnet import *
 from .vgg import *
-from .lenet import *
 
 __all__ = resnet.__all__ \
         + vgg.__all__ \

@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
+
+import numpy as np
+import paddle.fluid.initializer as initializer
+from paddle.fluid.core import VarDesc
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.initializer as initializer
-from paddle.fluid.core import VarDesc
 
 DELTA = 0.00001
 

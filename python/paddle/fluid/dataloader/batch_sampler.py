@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from __future__ import division
+from __future__ import print_function
 
-import numpy as np
 import math
+import numpy as np
 
-from .sampler import Sampler, SequenceSampler, RandomSampler
 from .dataset import Dataset, IterableDataset
+from .sampler import Sampler, SequenceSampler, RandomSampler
 
 __all__ = ["BatchSampler", "DistributedBatchSampler"]
 

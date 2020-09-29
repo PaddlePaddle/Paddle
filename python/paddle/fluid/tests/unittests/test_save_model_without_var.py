@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import warnings
 import unittest
-import paddle
+
+import warnings
+
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-from paddle.fluid.executor import as_numpy
 
 
 class TestSaveModelWithoutVar(unittest.TestCase):

@@ -14,14 +14,14 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-from op_test import OpTest
 
+import numpy as np
 import paddle.fluid.core as core
-from paddle import rand
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+
 import paddle
+import paddle.fluid as fluid
+from paddle import rand
+from paddle.fluid import Program, program_guard
 
 
 class TestRandOpError(unittest.TestCase):

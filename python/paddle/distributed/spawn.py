@@ -15,15 +15,14 @@
 from __future__ import print_function, division
 
 import multiprocessing
-import os
 import signal
-import six
 import sys
-import warnings
 
+import os
+import six
+from paddle.device import get_device
 from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
 from paddle.distributed.utils import _prepare_trainer_env
-from paddle.device import get_device
 
 # deprecated module import
 from paddle.fluid import core

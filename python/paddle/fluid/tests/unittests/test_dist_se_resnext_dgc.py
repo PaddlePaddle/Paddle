@@ -13,11 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-from test_dist_base import TestDistBase
-import os
 
 import os
+from test_dist_base import TestDistBase
+
 flag_name = os.path.splitext(__file__)[0]
 
 

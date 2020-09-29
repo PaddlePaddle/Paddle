@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import collections
-import itertools
-import six
-import math
 import sys
-import warnings
-from functools import partial, reduce
+from functools import reduce
+
+import math
+import six
+from paddle.fluid.dygraph import Layer, LayerList
+from paddle.fluid.layers import utils
+from paddle.fluid.layers.utils import map_structure, flatten
+from paddle.nn import functional as F
+from paddle.nn import initializer as I
 
 import paddle
 from paddle import framework
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
-from paddle.fluid.dygraph import Layer, LayerList
-from paddle.fluid.layers import utils
-from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
-from paddle.fluid.data_feeder import convert_dtype
 
 __all__ = [
     'RNNCellBase',

@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
-from paddle.fluid.dygraph.jit import SaveLoadConfig
 from paddle.fluid.dygraph.io import TranslatedLayer
+from paddle.fluid.dygraph.jit import SaveLoadConfig
 
 
 # NOTE: This class will be deprecated later.

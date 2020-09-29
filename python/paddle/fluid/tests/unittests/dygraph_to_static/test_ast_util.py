@@ -15,14 +15,15 @@
 from __future__ import print_function
 
 import unittest
-import textwrap
+
 import gast
 import inspect
 import numpy as np
-import paddle.fluid as fluid
+import textwrap
+from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 
-from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
+import paddle.fluid as fluid
 
 
 class TestAST2Func(unittest.TestCase):

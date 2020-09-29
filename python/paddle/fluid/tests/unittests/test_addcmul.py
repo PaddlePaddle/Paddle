@@ -17,10 +17,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from paddle.fluid import compiler, Program, program_guard
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid import Program, program_guard
 
 
 class TestAddcmulLayer(unittest.TestCase):

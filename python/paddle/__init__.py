@@ -27,29 +27,11 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import paddle.reader
-import paddle.dataset
-import paddle.batch
 batch = batch.batch
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
 monkey_patch_math_varbase()
-import paddle.framework
-from .framework import VarBase as Tensor
-from .framework import ComplexVariable as ComplexTensor
-import paddle.compat
-import paddle.distributed
-import paddle.sysconfig
-import paddle.tensor
-import paddle.distribution
-import paddle.nn
-import paddle.distributed.fleet
-import paddle.optimizer
-import paddle.metric
-import paddle.device
-import paddle.incubate.complex as complex
-import paddle.regularizer
 
 # TODO: define alias in tensor and framework directory
 
@@ -257,7 +239,6 @@ from .tensor.stat import numel  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
-from .device import is_compiled_with_cuda  #DEFINE_ALIAS
 from .device import is_compiled_with_xpu
 from .device import XPUPlace
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
@@ -276,7 +257,5 @@ from . import static
 from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
-import paddle.text
-import paddle.vision
 
 disable_static()

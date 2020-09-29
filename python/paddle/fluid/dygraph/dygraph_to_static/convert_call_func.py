@@ -17,16 +17,15 @@ from __future__ import print_function
 __all__ = ['convert_call']
 
 import collections
-import copy
 import functools
-import inspect
-import pdb
 import re
 import types
 
+import copy
+import inspect
 import numpy
+import pdb
 import six
-
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction

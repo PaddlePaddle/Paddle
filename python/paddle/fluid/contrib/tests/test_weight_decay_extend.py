@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
-import six
 import unittest
 from functools import partial
+
+import contextlib
 import numpy as np
+import six
+
 import paddle
 import paddle.fluid as fluid
-import contextlib
 
 paddle.enable_static()
 

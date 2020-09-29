@@ -15,11 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import textwrap
+
 import gast
+import textwrap
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import get_name_ids
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
 
 

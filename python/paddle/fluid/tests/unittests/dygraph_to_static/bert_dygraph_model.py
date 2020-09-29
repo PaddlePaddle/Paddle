@@ -14,11 +14,11 @@
 
 from __future__ import absolute_import, division, print_function
 
-import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.fluid.dygraph.jit import declarative
-
 from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+
+import paddle.fluid as fluid
 
 
 class PositionwiseFeedForwardLayer(Layer):

@@ -14,12 +14,12 @@
 
 from __future__ import print_function
 
-import six
 import gast
+import six
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers import fill_constant
 
 from paddle.fluid import core
-from paddle.fluid.layers import fill_constant
-from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
     'create_fill_constant_node', 'create_static_variable_gast_node',

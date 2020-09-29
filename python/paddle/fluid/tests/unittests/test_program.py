@@ -13,11 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
 
-from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
 import paddle.fluid.layers as layers
+
 import paddle.fluid as fluid
+from paddle.fluid.framework import Program, default_main_program, program_guard
 
 main_program = default_main_program()
 

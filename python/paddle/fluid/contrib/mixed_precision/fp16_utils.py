@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 from ... import core
-from ... import layers
 
 
 def _rename_arg(op, old_name, new_name):

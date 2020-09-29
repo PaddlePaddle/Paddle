@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
-from ..layers.layer_function_generator import OpProtoHolder
-from . import no_grad
-
 import numpy as np
 import six
+
+from . import no_grad
+from .. import core
+from ..framework import convert_np_dtype_to_dtype_, _varbase_creator
+from ..layers.layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,

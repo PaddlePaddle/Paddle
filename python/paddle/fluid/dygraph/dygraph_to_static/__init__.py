@@ -15,27 +15,20 @@
 from __future__ import print_function
 
 from . import ast_transformer
-from .ast_transformer import *
-
-from . import static_analysis
-from .static_analysis import *
-
-from . import loop_transformer
-from .loop_transformer import *
-
-from . import variable_trans_func
-from .variable_trans_func import *
-
-from . import program_translator
-from .program_translator import *
-
 from . import convert_call_func
-from .convert_call_func import *
-
 from . import convert_operators
-
 from . import logging_utils
+from . import loop_transformer
+from . import program_translator
+from . import static_analysis
+from . import variable_trans_func
+from .ast_transformer import *
+from .convert_call_func import *
 from .logging_utils import *
+from .loop_transformer import *
+from .program_translator import *
+from .static_analysis import *
+from .variable_trans_func import *
 
 __all__ = []
 __all__ += ast_transformer.__all__

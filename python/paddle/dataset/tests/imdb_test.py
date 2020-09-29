@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import paddle.dataset.imdb
-import unittest
 import re
+import unittest
+
+import paddle.dataset.imdb
 
 TRAIN_POS_PATTERN = re.compile("aclImdb/train/pos/.*\.txt$")
 TRAIN_NEG_PATTERN = re.compile("aclImdb/train/neg/.*\.txt$")

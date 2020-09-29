@@ -12,5 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.inference import Config, DataType, PlaceType, PrecisionType, Tensor, \
-    Predictor, create_predictor, get_version, get_num_bytes_of_data_type, PredictorPool

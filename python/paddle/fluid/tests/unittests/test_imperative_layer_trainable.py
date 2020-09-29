@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import numpy as np
 
+import numpy as np
 import paddle.fluid.dygraph as dygraph
+
+import paddle.fluid as fluid
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):

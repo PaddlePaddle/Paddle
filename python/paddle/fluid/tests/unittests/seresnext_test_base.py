@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-import seresnext_net
-import paddle.fluid.core as core
-from parallel_executor_test_base import TestParallelExecutorBase
+
 import numpy as np
+import paddle.fluid.core as core
+import seresnext_net
+from parallel_executor_test_base import TestParallelExecutorBase
 
 
 class TestResnetBase(TestParallelExecutorBase):

@@ -24,20 +24,18 @@ __all__ = [
 ]
 
 
-from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl,\
-            AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
-            FtrlOptimizer, AdadeltaOptimizer, ModelAverage, \
-            LookaheadOptimizer
-
-from .optimizer import Optimizer
-from .adam import Adam
-from .adamw import AdamW
-from .adamax import Adamax
-from .rmsprop import RMSProp
-from .adadelta import Adadelta
-from .sgd import SGD
-from .momentum import Momentum
-
 from . import lr_scheduler
+from .adadelta import Adadelta
+from .adam import Adam
+from .adamax import Adamax
+from .adamw import AdamW
 from .lr_scheduler import _LRScheduler, NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
-            LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR
+    LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR
+from .momentum import Momentum
+from .optimizer import Optimizer
+from .rmsprop import RMSProp
+from .sgd import SGD
+from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl, \
+    AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
+    FtrlOptimizer, AdadeltaOptimizer, ModelAverage, \
+    LookaheadOptimizer

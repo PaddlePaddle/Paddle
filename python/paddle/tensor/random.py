@@ -14,12 +14,12 @@
 
 # TODO: define random functions  
 
+import paddle
 from ..fluid import core
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.framework import in_dygraph_mode, Variable, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
-import paddle
 
 __all__ = [
     'bernoulli',

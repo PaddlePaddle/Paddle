@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import unittest
 
-import paddle
-import paddle.nn as nn
 import numpy as np
+
+import paddle
 
 paddle.disable_static()
 

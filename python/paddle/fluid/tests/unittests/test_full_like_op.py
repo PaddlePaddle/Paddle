@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-import paddle
+import unittest
+
+import numpy as np
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
-import paddle.compat as cpt
-import unittest
-import numpy as np
-from op_test import OpTest
+
+import paddle
 
 
 class TestFullOp(unittest.TestCase):

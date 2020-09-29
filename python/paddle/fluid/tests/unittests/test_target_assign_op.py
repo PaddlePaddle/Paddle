@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
 import random
 from op_test import OpTest

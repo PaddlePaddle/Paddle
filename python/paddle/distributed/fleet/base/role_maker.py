@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Defination of Role Makers."""
-import os
 import time
-import numpy as np
-import warnings
 from multiprocessing import Process, Manager
 
-import paddle.fluid as fluid
+import numpy as np
+import os
+import warnings
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+
+import paddle.fluid as fluid
 
 
 class Role:

@@ -15,10 +15,9 @@
 from __future__ import print_function
 
 import numpy as np
-import six
-
 import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
+import six
 
 
 def get_all_op_protos():

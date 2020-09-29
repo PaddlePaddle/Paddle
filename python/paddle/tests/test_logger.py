@@ -15,12 +15,11 @@
 from __future__ import division
 from __future__ import print_function
 
-import unittest
-import os
-import numpy as np
 import shutil
-import tempfile
+import unittest
 
+import os
+import tempfile
 from paddle.hapi.logger import setup_logger
 
 

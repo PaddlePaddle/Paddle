@@ -13,11 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
 
-import paddle.fluid as fluid
 import numpy as np
 from decorator_helper import prog_scope
+
+import paddle.fluid as fluid
 
 
 class TestRegistry(unittest.TestCase):

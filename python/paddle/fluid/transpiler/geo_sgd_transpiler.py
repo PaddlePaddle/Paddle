@@ -26,19 +26,16 @@ Steps to transpile pserver:
 4. append sum ops that should run on current server instance.
 5. add listen_and_serv op
 """
-import sys
 import collections
 import six
-import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework
 from ..framework import Program, default_main_program, \
-    default_startup_program, Block, Parameter
+    default_startup_program, Parameter
 from .details import wait_server_ready, VarsDistributed
-from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(

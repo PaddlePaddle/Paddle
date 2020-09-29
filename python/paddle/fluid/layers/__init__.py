@@ -14,31 +14,31 @@
 
 from __future__ import print_function
 
-from . import ops
-from .ops import *
-from . import nn
-from .nn import *
-from . import io
-from .io import *
-from . import tensor
-from .tensor import *
 from . import control_flow
-from .control_flow import *
-from . import device
-from .device import *
-from . import math_op_patch
-from .math_op_patch import *
-from . import loss
-from .loss import *
 from . import detection
-from .detection import *
+from . import device
+from . import io
+from . import loss
+from . import math_op_patch
 from . import metric_op
-from .metric_op import *
-from .learning_rate_scheduler import *
-from .collective import *
-from .distributions import *
-from .sequence_lod import *
+from . import nn
+from . import ops
 from . import rnn
+from . import tensor
+from .collective import *
+from .control_flow import *
+from .detection import *
+from .device import *
+from .distributions import *
+from .io import *
+from .learning_rate_scheduler import *
+from .loss import *
+from .math_op_patch import *
+from .metric_op import *
+from .nn import *
+from .ops import *
+from .sequence_lod import *
+from .tensor import *
 
 __all__ = []
 __all__ += nn.__all__

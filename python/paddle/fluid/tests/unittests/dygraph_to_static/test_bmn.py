@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import math
 import numpy as np
-import unittest
-import paddle
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 from paddle.jit import to_static
+from predictor_utils import PredictorTools
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
-
-from predictor_utils import PredictorTools
 
 SEED = 2020
 DATATYPE = 'float32'

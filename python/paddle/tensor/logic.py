@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers.layer_function_generator import templatedoc
-from .. import fluid
-from ..fluid.framework import in_dygraph_mode
 from paddle.common_ops_import import *
 
-# TODO: define logic functions of a tensor  
-from ..fluid.layers import is_empty  #DEFINE_ALIAS
-from ..fluid.layers import isfinite  #DEFINE_ALIAS
-from ..fluid.layers import logical_and  #DEFINE_ALIAS
-from ..fluid.layers import logical_not  #DEFINE_ALIAS
-from ..fluid.layers import logical_or  #DEFINE_ALIAS
-from ..fluid.layers import logical_xor  #DEFINE_ALIAS
-from ..fluid.layers import reduce_all  #DEFINE_ALIAS
-from ..fluid.layers import reduce_any  #DEFINE_ALIAS
+from .. import fluid
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
+# TODO: define logic functions of a tensor
+from ..fluid.layers import is_empty  # DEFINE_ALIAS
+from ..fluid.layers import isfinite  # DEFINE_ALIAS
+from ..fluid.layers import logical_and  # DEFINE_ALIAS
+from ..fluid.layers import logical_not  # DEFINE_ALIAS
+from ..fluid.layers import logical_or  # DEFINE_ALIAS
+from ..fluid.layers import logical_xor  # DEFINE_ALIAS
+from ..fluid.layers import reduce_all  # DEFINE_ALIAS
+from ..fluid.layers import reduce_any  # DEFINE_ALIAS
+from ..fluid.layers.layer_function_generator import templatedoc
 
 __all__ = [
     'equal',

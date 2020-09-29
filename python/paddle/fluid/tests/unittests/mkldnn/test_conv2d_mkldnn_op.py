@@ -15,9 +15,8 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestConv2dOp_v2
 

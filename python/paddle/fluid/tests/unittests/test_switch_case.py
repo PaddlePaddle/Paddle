@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
+from functools import partial
 
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
-from functools import partial
 
 
 class TestAPISwitchCase(unittest.TestCase):

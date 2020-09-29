@@ -14,7 +14,9 @@
 """Defination of trainers."""
 
 import sys
+
 import os
+
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
     'HeterXpuTrainer'
@@ -262,7 +264,6 @@ class TrainerDesc(object):
             config_dict.get("sparse_copy_by_feasign", True)
 
     def _desc(self):
-        from google.protobuf import text_format
         return self.proto_desc.SerializeToString()
 
     def __str__(self):

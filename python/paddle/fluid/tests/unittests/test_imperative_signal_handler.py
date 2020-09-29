@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import signal
-import unittest
 import multiprocessing
+import signal
+import sys
 import time
+import unittest
 
+import os
 import paddle.compat as cpt
+
 from paddle.fluid import core
 
 

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+
 os.environ['CPU_NUM'] = '2'
 
 import unittest
@@ -22,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
-from paddle.fluid.backward import append_backward
 import paddle.fluid.compiler as compiler
 import numpy
 import multiprocessing

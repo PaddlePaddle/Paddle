@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import copy
-
-from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
+
+from paddle.fluid import layers, unique_name
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 

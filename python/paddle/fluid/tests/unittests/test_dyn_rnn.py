@@ -14,18 +14,19 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import paddle
 import unittest
-import numpy
 
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers.control_flow import lod_rank_table
-from paddle.fluid.layers.control_flow import max_sequence_len
-from paddle.fluid.layers.control_flow import lod_tensor_to_array
-from paddle.fluid.layers.control_flow import array_to_lod_tensor
-from paddle.fluid.layers.control_flow import shrink_memory
+import numpy
 from fake_reader import fake_imdb_reader
+from paddle.fluid.layers.control_flow import array_to_lod_tensor
+from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import lod_tensor_to_array
+from paddle.fluid.layers.control_flow import max_sequence_len
+from paddle.fluid.layers.control_flow import shrink_memory
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import Program, program_guard
 
 numpy.random.seed(2020)
 

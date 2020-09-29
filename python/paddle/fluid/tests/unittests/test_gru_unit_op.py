@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
-import math
 import unittest
+
+import math
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
-from paddle import fluid
 from paddle.fluid.layers import gru_unit
+
+from paddle import fluid
 from paddle.fluid.framework import program_guard, Program
 
 

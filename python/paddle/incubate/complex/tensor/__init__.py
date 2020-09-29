@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from . import linalg
-from . import math
 from . import manipulation
+from . import math
 from .linalg import *
-from .math import *
 from .manipulation import *
+from .math import *
 
 __all__ = math.__all__
 __all__ += linalg.__all__

@@ -14,15 +14,12 @@
 
 from __future__ import print_function
 
-import traceback
-import math
-import collections
-
-import six
-import unittest
-import numpy as np
-
 import gc
+import unittest
+
+import math
+import numpy as np
+import six
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 

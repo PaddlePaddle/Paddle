@@ -16,9 +16,11 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
 import unittest
+
 from ir_memory_optimize_net_base import TestIrMemOptBase
+
+import paddle.fluid as fluid
 
 
 def lstm_net(data,

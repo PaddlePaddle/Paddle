@@ -14,10 +14,12 @@
 
 from __future__ import print_function
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import unittest
 
 
 def smooth_l1_loss_forward(val, delta):

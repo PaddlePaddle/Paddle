@@ -13,10 +13,9 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
-import paddle
-from paddle.fluid.proto import data_feed_pb2
-from google.protobuf import text_format
 import paddle.fluid.core as core
+from google.protobuf import text_format
+from paddle.fluid.proto import data_feed_pb2
 
 
 class DatasetBase(object):

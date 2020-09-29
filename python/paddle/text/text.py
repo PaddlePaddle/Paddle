@@ -16,22 +16,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import collections
-import six
 import sys
 from functools import partial, reduce
 
+import copy
 import numpy as np
-
-import paddle
-import paddle.fluid as fluid
 import paddle.fluid.layers.utils as utils
-from paddle.fluid import layers
-from paddle.fluid.layers import BeamSearchDecoder
-from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
-from paddle.fluid.dygraph import Layer, Embedding, Linear, LayerNorm, GRUUnit, Conv2D, Pool2D
+import six
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.dygraph import Layer, Embedding, Linear, LayerNorm, Conv2D, Pool2D
+from paddle.fluid.layers.utils import map_structure, flatten
+
+import paddle.fluid as fluid
+from paddle.fluid import layers
 
 __all__ = [
     'RNNCell',

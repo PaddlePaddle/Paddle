@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
 from . import Layer
 from ..layers import sigmoid, tanh, concat, fill_constant, matmul, elementwise_add, elementwise_mul, split
-import copy
 
 __all__ = ['LSTMCell', 'GRUCell']
 

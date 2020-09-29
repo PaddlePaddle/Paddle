@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define framework api 
-from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.data_feeder import convert_dtype
 import numpy as np
+# TODO: define framework api
+from paddle.fluid.layer_helper_base import LayerHelperBase
 
 __all__ = ['set_default_dtype', 'get_default_dtype']
 

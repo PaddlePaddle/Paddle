@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import six
+
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 

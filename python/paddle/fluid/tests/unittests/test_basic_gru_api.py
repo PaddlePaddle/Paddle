@@ -15,15 +15,15 @@
 from __future__ import print_function
 
 import unittest
-import numpy
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from paddle.fluid.contrib.layers import basic_gru
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
 
 import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.contrib.layers import basic_gru
+from paddle.fluid.executor import Executor
+
+import paddle.fluid as fluid
+from paddle.fluid import framework
 
 np.set_seed(123)
 

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import os
+
+import paddle
 
 
 class TestFleetRecomputeMetaOptimizer(unittest.TestCase):

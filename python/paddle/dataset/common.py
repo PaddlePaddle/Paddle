@@ -14,17 +14,18 @@
 
 from __future__ import print_function
 
-import requests
-import hashlib
-import os
 import errno
 import shutil
-import six
 import sys
-import importlib
-import paddle.dataset
-import six.moves.cPickle as pickle
+
 import glob
+import hashlib
+import importlib
+import os
+import paddle.dataset
+import requests
+import six
+import six.moves.cPickle as pickle
 
 __all__ = [
     'DATA_HOME',

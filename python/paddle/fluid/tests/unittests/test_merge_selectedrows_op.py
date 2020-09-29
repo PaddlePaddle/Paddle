@@ -15,8 +15,9 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid.core as core
+
 import numpy as np
+import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
 

@@ -13,20 +13,20 @@
 # limitations under the License.
 
 import logging
-import math
 import time
 import unittest
+
+import math
 import numpy as np
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
-from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
-
-from predictor_utils import PredictorTools
 
 SEED = 2020
 np.random.seed(SEED)

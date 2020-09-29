@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
-from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.fluid.initializer as I
 import paddle.nn.functional as F
-import unittest
+
+from paddle import fluid, nn
 
 
 class RowConvTestCase(unittest.TestCase):

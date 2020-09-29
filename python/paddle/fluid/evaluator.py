@@ -14,14 +14,14 @@
 
 from __future__ import print_function
 
-import warnings
 import numpy as np
+import warnings
 
 from . import layers
-from .framework import Program, Variable, program_guard
 from . import unique_name
-from .layer_helper import LayerHelper
+from .framework import Program, Variable, program_guard
 from .initializer import Constant
+from .layer_helper import LayerHelper
 from .layers import detection
 
 __all__ = [

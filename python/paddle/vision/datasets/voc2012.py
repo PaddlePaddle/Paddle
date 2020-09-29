@@ -15,13 +15,14 @@
 from __future__ import print_function
 
 import io
-import tarfile
+
 import numpy as np
+import tarfile
 from PIL import Image
+from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 import paddle
-from paddle.io import Dataset
-from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["VOC2012"]
 

@@ -15,12 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 
+import numpy as np
 import paddle.fluid.core as core
+from test_conv3d_transpose_op import TestConv3dTransposeOp
+
 import paddle.fluid as fluid
-from op_test import OpTest
-from test_conv3d_transpose_op import conv3dtranspose_forward_naive, TestConv3dTransposeOp
 
 
 class TestWithSymmetricPad_NHWC(TestConv3dTransposeOp):

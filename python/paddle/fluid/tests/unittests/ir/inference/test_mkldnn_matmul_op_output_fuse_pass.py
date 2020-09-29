@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
+from inference_pass_test import InferencePassTest
 
 import paddle.fluid as fluid
-from inference_pass_test import InferencePassTest
 
 
 class TestMKLDNNMatmulFuseOp(InferencePassTest):

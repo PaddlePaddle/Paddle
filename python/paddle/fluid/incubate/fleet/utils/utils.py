@@ -13,20 +13,20 @@
 # limitations under the License.
 
 from __future__ import print_function, absolute_import
-import os
-import sys
+
 import logging
 import subprocess
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
+import os
+from google.protobuf import text_format
+from paddle.fluid.proto import framework_pb2
+
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.log_helper import get_logger
-
-from google.protobuf import text_format
 from paddle.fluid import debugger
 from paddle.fluid.framework import Program
-from paddle.fluid.proto import framework_pb2
 
 __all__ = [
     "load_program", "save_program", "program_type_trans",

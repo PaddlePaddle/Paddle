@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-import six
-import tarfile
-import numpy as np
 import collections
 
-from paddle.io import Dataset
+import numpy as np
+import six
+import tarfile
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = ['Imikolov']
 

@@ -15,15 +15,15 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
+import paddle.fluid.layers as layers
+from op_test import OpTest
+from paddle.fluid.backward import append_backward
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.op import Operator
-from paddle.fluid.backward import append_backward
+from paddle.fluid import Program, program_guard
 
 
 class TestWhereOp(OpTest):

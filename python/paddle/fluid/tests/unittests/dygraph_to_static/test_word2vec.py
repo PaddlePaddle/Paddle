@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-import os
-import sys
-import requests
-from collections import OrderedDict
-import math
-import random
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.nn import Embedding
+import math
+import numpy as np
+import random
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.nn import Embedding
+
+import paddle.fluid as fluid
 
 
 def fake_text():

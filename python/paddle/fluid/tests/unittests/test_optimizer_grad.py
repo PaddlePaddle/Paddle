@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 from collections import defaultdict
 
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import _append_grad_suffix_
+
+import paddle.fluid as fluid
 
 np.random.seed(10)
 

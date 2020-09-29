@@ -14,16 +14,16 @@
 
 from __future__ import print_function
 
-import os
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-
+import os
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.jit import declarative
+
+import paddle.fluid as fluid
 
 SEED = 2020
 

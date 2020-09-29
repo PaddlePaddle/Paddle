@@ -15,10 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-from paddle import fluid
 from paddle.fluid.layers import lstm_unit
+
+from paddle import fluid
 from paddle.fluid.framework import program_guard, Program
 
 

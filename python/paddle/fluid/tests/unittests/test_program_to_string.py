@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle.fluid as fluid
+
 import unittest
+
+import paddle.fluid as fluid
 
 
 class TestProgram(unittest.TestCase):

@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.wmt16
 import unittest
+
+import paddle.dataset.wmt16
 
 
 class TestWMT16(unittest.TestCase):

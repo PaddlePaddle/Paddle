@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import os
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
+import os
 import paddle.fluid.layers as layers
-import paddle.fluid.core as core
+import paddle.fluid.profiler as profiler
+
+import paddle.fluid as fluid
 
 
 class TestNVProf(unittest.TestCase):

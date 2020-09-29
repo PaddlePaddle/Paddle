@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-from paddle.fluid.default_scope_funcs import *
 import unittest
+
+from paddle.fluid.default_scope_funcs import *
 
 
 class TestDefaultScopeFuncs(unittest.TestCase):

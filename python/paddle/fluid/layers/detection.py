@@ -17,22 +17,17 @@ All layers just related to the detection neural network.
 
 from __future__ import print_function
 
-from .layer_function_generator import generate_layer_fn
-from .layer_function_generator import autodoc, templatedoc
-from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode
-from .. import core
-from .loss import softmax_with_cross_entropy
-from . import tensor
-from . import nn
-from . import ops
-from ... import compat as cpt
-from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import six
-import numpy as np
-from functools import reduce
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+
+from . import nn
+from . import tensor
+from .layer_function_generator import templatedoc
+from .loss import softmax_with_cross_entropy
+from .. import core
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..framework import Variable, in_dygraph_mode
+from ..layer_helper import LayerHelper
 
 __all__ = [
     'prior_box',

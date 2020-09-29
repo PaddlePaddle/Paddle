@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+import unittest
+
+import numpy as np
+import six
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import time
-import six
-import unittest
 
 EPOCH_NUM = 20
 BATCH_SIZE = 32

@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-import six
-import warnings
 import sys
+
+import six
+from paddle.fluid.data_feeder import check_type
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
-from paddle.fluid.data_feeder import check_type
 
 __all__ = [
     'ParamAttr',

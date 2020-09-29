@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.dygraph import layers
+from paddle.fluid.initializer import Constant
+from paddle.fluid.param_attr import ParamAttr
+
 from paddle.fluid import core
 from paddle.fluid import dygraph_utils
 from paddle.fluid import unique_name
-from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.framework import _varbase_creator
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.initializer import Constant
-from paddle.fluid.data_feeder import check_variable_and_dtype
 
 __all__ = [
     'FakeQuantMovingAverage', 'FakeQuantAbsMax', 'QuantizedConv2D',

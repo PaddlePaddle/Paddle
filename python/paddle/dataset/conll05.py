@@ -22,11 +22,10 @@ to initialize SRL model.
 
 from __future__ import print_function
 
-import tarfile
 import gzip
-import itertools
-import paddle.dataset.common
 import paddle.compat as cpt
+import paddle.dataset.common
+import tarfile
 from six.moves import zip, range
 
 __all__ = ['test, get_dict', 'get_embedding']

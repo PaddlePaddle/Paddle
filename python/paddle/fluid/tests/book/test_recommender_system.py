@@ -14,17 +14,19 @@
 
 from __future__ import print_function
 
-import math
 import sys
-import os
+
+import math
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+import os
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 paddle.enable_static()
 

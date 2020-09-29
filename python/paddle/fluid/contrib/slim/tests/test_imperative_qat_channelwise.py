@@ -14,23 +14,24 @@
 
 from __future__ import print_function
 
-import os
-import numpy as np
-import random
-import unittest
 import logging
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.framework import IrGraph
+import unittest
+
+import numpy as np
+import os
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.nn import Conv2D
-from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
+from paddle.fluid.optimizer import AdamOptimizer
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.framework import IrGraph
 
 paddle.enable_static()
 

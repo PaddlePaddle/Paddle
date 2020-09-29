@@ -15,10 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import calc_gradient
+
+import paddle.fluid as fluid
 
 
 class TestCalcGradient(unittest.TestCase):

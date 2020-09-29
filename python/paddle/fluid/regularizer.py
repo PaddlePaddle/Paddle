@@ -13,11 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import logging
 
-from . import framework
-from .framework import in_dygraph_mode, _varbase_creator
 from . import core
+from . import framework
+from .framework import in_dygraph_mode
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 

@@ -15,17 +15,17 @@
 from __future__ import print_function
 
 import unittest
+
+import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
-import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import switch_main_program
-from paddle.fluid.framework import Program
-import numpy as np
+from paddle.fluid.executor import Executor
 from simple_nets import simple_fc_net, init_data
-from paddle.fluid import compiler, Program, program_guard
-from op_test import OpTest
+
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import switch_main_program
 
 
 class TestPrintOpCPU(unittest.TestCase):

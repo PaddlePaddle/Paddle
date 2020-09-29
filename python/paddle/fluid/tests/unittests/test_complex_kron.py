@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid, tensor
-import paddle
-import paddle.fluid.dygraph as dg
-import numpy as np
 import unittest
+
+import numpy as np
+import paddle.fluid.dygraph as dg
+
+import paddle
+from paddle import fluid
 
 
 class ComplexKronTestCase(unittest.TestCase):

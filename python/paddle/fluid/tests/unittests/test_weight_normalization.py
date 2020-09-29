@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy
 import collections
-import paddle.fluid as fluid
+import unittest
+
+import numpy
 import paddle.fluid.core as core
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.param_attr import WeightNormParamAttr
+
+import paddle.fluid as fluid
 
 
 class TestWeightNormalization(unittest.TestCase):

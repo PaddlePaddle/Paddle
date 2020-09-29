@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from .progressbar import ProgressBar

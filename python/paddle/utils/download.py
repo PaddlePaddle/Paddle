@@ -16,16 +16,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-import sys
-import os.path as osp
 import shutil
-import requests
-import hashlib
-import tarfile
-import zipfile
+import sys
 import time
 from collections import OrderedDict
+
+import hashlib
+import os
+import os.path as osp
+import requests
+import tarfile
+import zipfile
 
 try:
     from tqdm import tqdm

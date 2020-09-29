@@ -15,17 +15,18 @@
 from __future__ import print_function
 
 import unittest
-import paddle
-import paddle.fluid as fluid
+
+import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
+import six
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.optimizer import SGDOptimizer
 from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
-import numpy as np
-import six
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):

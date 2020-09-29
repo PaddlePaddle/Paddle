@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import six
-import numpy as np
-import warnings
 from collections import OrderedDict
 
-from paddle.fluid import core
-from paddle.fluid import framework
+import numpy as np
+import os
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
+
+from paddle.fluid import core
+from paddle.fluid import framework
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 

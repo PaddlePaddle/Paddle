@@ -15,11 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import paddle
-import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
 import numpy as np
+import paddle.nn.functional as F
+
+import paddle
+import paddle.fluid as fluid
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):

@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import logging
-from paddle.fluid.op import Operator, DynamicRecurrentOp
-import paddle.fluid.core as core
 import unittest
+
 import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 

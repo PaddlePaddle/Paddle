@@ -14,11 +14,12 @@
 """Test cases for role makers."""
 
 from __future__ import print_function
-import paddle
-import os
+
 import unittest
 
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import os
+
+import paddle
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
@@ -256,7 +257,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp._role_maker = TmpClass()
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         tmp = RoleMakerBase()
         tmp.all_gather(1)
         tmp.all_reduce_worker([], [])

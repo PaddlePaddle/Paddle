@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
-from py_precise_roi_pool import PyPrRoIPool
+
+import numpy as np
 from op_test import OpTest
+from py_precise_roi_pool import PyPrRoIPool
+
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 class TestPRROIPoolOp(OpTest):

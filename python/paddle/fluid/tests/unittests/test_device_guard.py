@@ -15,12 +15,11 @@
 from __future__ import print_function
 
 import unittest
-from op_test import OpTest
 
-import numpy as np
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import warnings
+
+import paddle.fluid as fluid
 
 
 def execute(main_program, startup_program):

@@ -32,8 +32,9 @@ the image layout as follows.
 
 from __future__ import print_function
 
-import six
 import numpy as np
+import six
+
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
 # https://github.com/numpy/numpy/issues/12497
 if six.PY3:

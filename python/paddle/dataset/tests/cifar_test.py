@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.cifar
 import unittest
+
+import paddle.dataset.cifar
 
 
 class TestCIFAR(unittest.TestCase):

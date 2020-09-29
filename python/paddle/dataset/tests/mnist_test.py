@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.mnist
 import unittest
+
+import paddle.dataset.mnist
 
 
 class TestMNIST(unittest.TestCase):

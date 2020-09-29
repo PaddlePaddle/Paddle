@@ -27,8 +27,10 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
+
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, DistributedStrategy
+
+import paddle.fluid as fluid
 
 
 class CollectiveOptimizerTest(unittest.TestCase):

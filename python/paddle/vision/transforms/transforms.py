@@ -14,18 +14,16 @@
 
 from __future__ import division
 
-import math
-import sys
-import random
-
-import numpy as np
-import numbers
-import types
 import collections
-import warnings
-import traceback
+import sys
 
+import math
+import numbers
+import numpy as np
+import random
+import traceback
 from paddle.utils import try_import
+
 from . import functional as F
 
 if sys.version_info < (3, 3):

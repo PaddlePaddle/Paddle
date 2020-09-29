@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import time
+import unittest
+
+import os
 from paddle.dataset.common import download, DATA_HOME
 from paddle.fluid.contrib.slim.quantization import WeightQuantization
+
 import paddle
 
 paddle.enable_static()

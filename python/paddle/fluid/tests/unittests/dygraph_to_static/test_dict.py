@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
-import six
-import numpy as np
 import unittest
 
-import paddle.fluid as fluid
-from paddle.jit import to_static
+import numpy as np
+import six
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.jit import to_static
+
+import paddle.fluid as fluid
 
 PLACE = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )

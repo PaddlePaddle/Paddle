@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 
 
 class TestProdOp(unittest.TestCase):

@@ -57,20 +57,19 @@ launch a process on each of the given gpu card or cpu machine.
 from __future__ import print_function
 
 import shutil
-import sys
-import tempfile
-from sys import version
 import subprocess
-import os
+import sys
 import time
-import six
-import copy
 from argparse import ArgumentParser, REMAINDER
-import paddle
-import paddle.fluid as fluid
 
-from paddle.distributed.fleet.launch_utils import *
+import copy
+import os
 import paddle.distributed.fleet.cloud_utils as cloud_utils
+import six
+import tempfile
+from paddle.distributed.fleet.launch_utils import *
+
+import paddle.fluid as fluid
 
 
 def _print_arguments(args):

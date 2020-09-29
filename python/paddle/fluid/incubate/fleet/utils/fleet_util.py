@@ -14,19 +14,21 @@
 """Fleet Utils."""
 
 import collections
+import logging
+import sys
+import time
+
 import copy
 import json
-import logging
 import math
 import numpy as np
 import os
-import sys
-import time
-import paddle.fluid as fluid
-from paddle.fluid.log_helper import get_logger
+from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_pslib
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+from paddle.fluid.log_helper import get_logger
+
+import paddle.fluid as fluid
 from . import utils
 
 __all__ = ["FleetUtil"]

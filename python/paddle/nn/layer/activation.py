@@ -36,13 +36,11 @@ __all__ = [
     'HSigmoid',
 ]
 
-from ...fluid.dygraph import layers
-from ...fluid import core
-from ...fluid.framework import in_dygraph_mode
-from ...fluid.param_attr import ParamAttr
-from ...fluid.initializer import Constant
 from paddle.framework import get_default_dtype
+
 from .. import functional as F
+from ...fluid.dygraph import layers
+from ...fluid.initializer import Constant
 
 
 class ELU(layers.Layer):

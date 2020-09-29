@@ -25,11 +25,10 @@ __all__ = [
 
 import numpy as np
 
+from .. import functional as F
 from ...fluid.dygraph import layers
 from ...fluid.initializer import Normal
-from .. import functional as F
 from ...fluid.layers import utils
-from ..functional.conv import _update_padding_nd
 
 
 def _get_default_param_initializer(num_channels, filter_size):

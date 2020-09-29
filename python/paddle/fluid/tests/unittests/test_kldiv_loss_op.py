@@ -13,10 +13,12 @@
 
 from __future__ import division
 
-import paddle
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
 
 
 def kldiv_loss(x, target, reduction):

@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-import math
+
 import time
-import numpy as np
 import unittest
 
+import math
+import numpy as np
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle

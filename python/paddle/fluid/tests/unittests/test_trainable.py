@@ -14,10 +14,12 @@
 
 from __future__ import print_function
 
-from collections import Counter
 import unittest
-import paddle.fluid as fluid
+from collections import Counter
+
 from simple_nets import init_data
+
+import paddle.fluid as fluid
 
 
 def test_trainable():

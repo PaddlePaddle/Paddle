@@ -14,12 +14,13 @@
 
 from __future__ import print_function
 
+import functools
+import logging
+import subprocess
+
 import os
 import random
 import six
-import functools
-import subprocess
-import logging
 
 
 def crepr(v):

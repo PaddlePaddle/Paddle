@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, HashName, PSDispatcher
 
 

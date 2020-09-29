@@ -13,10 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
-import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
 import unittest
+
+import numpy as np
+import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):

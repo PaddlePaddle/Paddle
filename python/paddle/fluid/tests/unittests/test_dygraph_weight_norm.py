@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy
 import collections
+import unittest
 from functools import reduce
+
+import numpy
+from paddle.nn.utils import weight_norm, remove_weight_norm
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.nn.utils import weight_norm, remove_weight_norm
 
 
 class TestDygraphWeightNorm(unittest.TestCase):

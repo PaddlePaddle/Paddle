@@ -14,17 +14,18 @@
 
 from __future__ import print_function
 
-import numpy as np
-import os
 import unittest
 
-import paddle.fluid as fluid
+import numpy as np
+import os
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
 from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
+
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+from paddle.fluid.framework import Program, program_guard
 
 np.random.seed(123)
 

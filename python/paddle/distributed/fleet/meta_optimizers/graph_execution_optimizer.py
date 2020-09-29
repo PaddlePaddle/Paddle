@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle
-from paddle.fluid.framework import core
-from paddle.fluid import compiler
-from .meta_optimizer_base import MetaOptimizerBase
-from ..base.private_helper_function import wait_server_ready
 import logging
+
+import paddle
+from paddle.fluid import compiler
+from paddle.fluid.framework import core
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
@@ -90,7 +90,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             })
 
     def _try_to_compile(self, startup_program, main_program, loss):
-        import copy
         dist_strategy = self.user_defined_strategy
         local_build_strategy = paddle.fluid.BuildStrategy()
         local_build_strategy.enable_sequential_execution = \

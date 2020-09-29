@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import logging
-import hashlib
+import sys
+import time
+from threading import current_thread
+
 import json
 import os
 import six
-import time
-import collections
-from threading import Thread, current_thread
-from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
-from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
 from paddle.fluid.framework import in_dygraph_mode, Program
+from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
 
 g_train_epoch_range = None
 g_checker = None

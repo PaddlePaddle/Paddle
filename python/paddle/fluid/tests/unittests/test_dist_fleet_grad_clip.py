@@ -14,14 +14,16 @@
 
 from __future__ import print_function
 
-import os
 import unittest
-import paddle.fluid as fluid
+
+import os
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from dist_fleet_simnet_bow import train_network
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from test_dist_fleet_base import TestFleetBase
-from dist_fleet_simnet_bow import train_network
+
+import paddle.fluid as fluid
 
 
 @unittest.skip(reason="Skip unstable ut, add it after PR 22957 merged")

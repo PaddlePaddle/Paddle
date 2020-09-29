@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-import numpy as np
-import os
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import numpy as np
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 
 
 class TestQueue(unittest.TestCase):

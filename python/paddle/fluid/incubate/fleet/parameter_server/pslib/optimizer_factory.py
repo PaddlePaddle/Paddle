@@ -14,14 +14,13 @@
 """Optimizer Factory."""
 
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
-import paddle.fluid as fluid
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
-from google.protobuf import text_format
 from collections import OrderedDict
-from .node import DownpourWorker, DownpourServer
+
+from google.protobuf import text_format
+
+import paddle.fluid as fluid
 from . import ps_pb2 as pslib
+from .node import DownpourWorker, DownpourServer
 
 # this dict is for store info about pull/push sparse ops.
 FLEET_GLOBAL_DICT = {

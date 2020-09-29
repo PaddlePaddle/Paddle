@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
-import math
-import paddle.fluid as fluid
-from paddle.fluid import compiler
-import paddle.fluid.core as core
 import unittest
+
+import math
 import numpy as np
 import os
+import paddle.fluid.core as core
+
+import paddle.fluid as fluid
+from paddle.fluid import compiler
 
 
 def Lenet(data, class_dim):

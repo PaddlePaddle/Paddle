@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)

@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.static import Program, program_guard
 import unittest
 import paddle.fluid.core as core
 import sys

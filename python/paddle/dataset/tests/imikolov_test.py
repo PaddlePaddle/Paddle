@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.imikolov
 import unittest
+
+import paddle.dataset.imikolov
 
 WORD_DICT = paddle.dataset.imikolov.build_dict()
 

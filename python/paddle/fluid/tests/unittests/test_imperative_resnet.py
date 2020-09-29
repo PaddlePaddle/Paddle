@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
+
 import numpy as np
 import six
+from paddle.fluid.dygraph import TracedLayer
+from paddle.fluid.layer_helper import LayerHelper
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph import TracedLayer
+from paddle.fluid import core
 
 #NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 

@@ -13,11 +13,12 @@
 # limitations under the License.
 """Fleet Metrics"""
 
-import paddle.fluid as fluid
 import math
 import numpy as np
-from paddle.fluid.framework import Variable
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+
+import paddle.fluid as fluid
+from paddle.fluid.framework import Variable
 
 
 def sum(input, scope=None):

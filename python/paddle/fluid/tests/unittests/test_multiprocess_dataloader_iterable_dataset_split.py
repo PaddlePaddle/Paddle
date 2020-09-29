@@ -14,12 +14,13 @@
 
 from __future__ import division
 
-import math
 import unittest
+
+import math
 import numpy as np
+from paddle.io import IterableDataset, DataLoader, get_worker_info
 
 import paddle.fluid as fluid
-from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):

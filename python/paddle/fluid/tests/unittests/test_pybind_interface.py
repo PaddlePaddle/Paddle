@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-from paddle.fluid import core
+
 from paddle import compat as cpt
+from paddle.fluid import core
 
 
 class TestPybindInference(unittest.TestCase):

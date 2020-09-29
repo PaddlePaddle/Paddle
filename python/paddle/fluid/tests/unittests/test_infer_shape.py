@@ -16,8 +16,8 @@ from __future__ import print_function
 
 import unittest
 
-import six
 import paddle.fluid.core as core
+import six
 
 
 class TestInferShape(unittest.TestCase):

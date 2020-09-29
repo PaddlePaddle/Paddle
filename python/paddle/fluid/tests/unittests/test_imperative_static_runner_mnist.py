@@ -16,14 +16,13 @@ from __future__ import print_function
 
 import unittest
 
-import contextlib
 import numpy as np
 import six
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
 
 LOADED_VAR_SUFFIX = ".load_0"
 

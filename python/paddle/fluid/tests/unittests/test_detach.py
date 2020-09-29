@@ -14,13 +14,13 @@
 
 from __future__ import print_function
 
-import numpy as np
-import paddle.fluid as fluid
+import unittest
 
+import numpy as np
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 
-import unittest
+import paddle.fluid as fluid
 
 
 class Test_Detach(unittest.TestCase):

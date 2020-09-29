@@ -14,16 +14,16 @@
 
 from __future__ import print_function
 
+import unittest
+
 import copy
 import math
 import numpy as np
-import unittest
-
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
 import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 
 def exponential_decay(learning_rate,

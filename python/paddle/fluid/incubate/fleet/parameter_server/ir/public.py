@@ -13,22 +13,18 @@
 # limitations under the License.
 
 from __future__ import print_function
-from functools import reduce
 
 import collections
-import math
-import os
-import warnings
+from functools import reduce
 
+import math
 import six
-import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid.core import CommContext
-import paddle.fluid.framework as framework
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
-from paddle.fluid.transpiler.details.program_utils import delete_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+
+from paddle.fluid import core
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"

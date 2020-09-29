@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import logging
-import socket
-import time
-import os
 import signal
-import copy
-import sys
-import subprocess
-from contextlib import closing
 import socket
+import subprocess
+import sys
+import time
+
+import copy
+import os
+from contextlib import closing
 
 logger = logging.getLogger("root")
 logger.propagate = False

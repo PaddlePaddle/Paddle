@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from numpy.random import random as rand
-from paddle import complex as cpx
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from numpy.random import random as rand
+
+import paddle.fluid as fluid
+from paddle import complex as cpx
 
 
 class TestComplexSumLayer(unittest.TestCase):

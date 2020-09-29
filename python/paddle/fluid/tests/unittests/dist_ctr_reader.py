@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import logging
-import paddle
-import tarfile
 
+import tarfile
 from paddle.fluid.log_helper import get_logger
+
+import paddle
 
 logger = get_logger("paddle", logging.INFO)
 

@@ -15,11 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import os
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

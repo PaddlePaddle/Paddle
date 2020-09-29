@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import threading
 
+import os
 import six
-from paddle.fluid import log_helper
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+
+from paddle.fluid import log_helper
 
 __all__ = ["TranslatorLogger", "set_verbosity", "set_code_level"]
 

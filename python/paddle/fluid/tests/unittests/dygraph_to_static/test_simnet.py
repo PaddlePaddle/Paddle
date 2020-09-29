@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import random
 import unittest
 
+import numpy as np
+import random
 from paddle.fluid.dygraph import ProgramTranslator
 from simnet_dygraph_model import BOW, HingeLoss
+
+import paddle
+import paddle.fluid as fluid
 
 SEED = 102
 random.seed(SEED)

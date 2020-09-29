@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import logging
-import tarfile
+
 import os
+import paddle.distributed.fleet as fleet
+import tarfile
+from paddle.fluid.log_helper import get_logger
 
 import paddle
-import paddle.distributed.fleet as fleet
-from paddle.fluid.log_helper import get_logger
 
 logger = get_logger(
     "paddle", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s')

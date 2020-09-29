@@ -15,10 +15,9 @@
 from __future__ import division
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-
-from paddle.fluid import core
 
 
 def temporal_shift(x, seg_num, shift_ratio):

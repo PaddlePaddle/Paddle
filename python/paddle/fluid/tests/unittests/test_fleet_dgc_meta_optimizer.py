@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from paddle import fluid
+
 import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+
+import paddle
+from paddle import fluid
 
 
 class TestFleetDGCOptimizer(unittest.TestCase):

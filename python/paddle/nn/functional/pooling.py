@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define pooling functions
-from ...fluid.layers import pool2d  #DEFINE_ALIAS
-from ...fluid.layers import pool3d  #DEFINE_ALIAS
-from ...fluid.layers import adaptive_pool2d  #DEFINE_ALIAS
-from ...fluid.layers import adaptive_pool3d  #DEFINE_ALIAS
 from ...fluid import core
-from ...fluid.framework import in_dygraph_mode
-from ...fluid.layers import utils, LayerHelper, unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.layers import adaptive_pool2d  # DEFINE_ALIAS
+from ...fluid.layers import adaptive_pool3d  # DEFINE_ALIAS
+# TODO: define pooling functions
+from ...fluid.layers import pool2d  # DEFINE_ALIAS
+from ...fluid.layers import pool3d  # DEFINE_ALIAS
+from ...fluid.layers import utils, LayerHelper, unsqueeze, squeeze
 
 __all__ = [
     'pool2d',

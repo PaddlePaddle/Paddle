@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
-import numpy as np
-import tempfile
 import shutil
-import cv2
+import unittest
 
-from paddle.vision.datasets import *
+import cv2
+import numpy as np
+import os
+import tempfile
 from paddle.dataset.common import _check_exists_and_download
+from paddle.vision.datasets import *
 
 
 class TestFolderDatasets(unittest.TestCase):

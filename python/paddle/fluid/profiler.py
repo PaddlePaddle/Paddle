@@ -14,10 +14,11 @@
 
 from __future__ import print_function
 
-from . import core
-from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
+
+from . import core
+from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
     'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',

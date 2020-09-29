@@ -14,25 +14,24 @@
 
 from __future__ import print_function
 
-import logging
-import os
-import multiprocessing
 import sys
-import warnings
+
+import copy
 import numpy as np
-from .wrapped_decorator import signature_safe_contextmanager
 import six
+import warnings
+
+from . import compiler
+from . import core
+from . import framework
+from . import unique_name
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
-from . import core
-from . import unique_name
-from . import compiler
-from .. import compat as cpt
-from .trainer_factory import TrainerFactory
-from .trainer_factory import FetchHandlerMonitor
-import copy
-from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
+from .trainer_factory import FetchHandlerMonitor
+from .trainer_factory import TrainerFactory
+from .wrapped_decorator import signature_safe_contextmanager
+from .. import compat as cpt
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -1366,7 +1365,6 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
             from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
             fu = FleetUtil()
             ret = fu.split_program_by_device(program)

@@ -15,16 +15,15 @@
 
 from __future__ import print_function
 
-import unittest
-import six
 import collections
-import numpy as np
 from itertools import product
 
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
+import six
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
+
+import paddle.fluid as fluid
 
 
 def _product(t):

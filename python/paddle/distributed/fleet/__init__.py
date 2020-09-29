@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define distributed api under this directory,
-from .base.role_maker import Role, UserDefinedRoleMaker, PaddleCloudRoleMaker
 from .base.distributed_strategy import DistributedStrategy
 from .base.fleet_base import Fleet
+# TODO: define distributed api under this directory,
+from .base.role_maker import Role, UserDefinedRoleMaker, PaddleCloudRoleMaker
 from .base.util_factory import UtilBase
-from .dataset import *
 from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
+from .dataset import *
+
 #from . import metrics
 
 __all__ = [

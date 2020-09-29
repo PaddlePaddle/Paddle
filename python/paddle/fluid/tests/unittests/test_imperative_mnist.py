@@ -14,19 +14,18 @@
 
 from __future__ import print_function
 
-import contextlib
 import unittest
+
 import numpy as np
 import six
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.optimizer import SGDOptimizer
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):

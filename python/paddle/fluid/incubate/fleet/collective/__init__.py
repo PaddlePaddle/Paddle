@@ -13,27 +13,19 @@
 
 import logging
 
-import paddle.fluid as fluid
+import os
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+import six
 from paddle.fluid.executor import Executor
-from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.framework import Program
-
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel, CheckpointSaver
+from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
-from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
+import paddle.fluid as fluid
 from paddle.fluid import compiler
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel, CheckpointSaver
-
-import os
-import sys
-import six
-import json
-import re
-import shutil
+from paddle.fluid.framework import Program
 
 
 class LambConfig(object):

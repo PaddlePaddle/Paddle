@@ -15,11 +15,11 @@
 from __future__ import print_function
 
 import gast
+from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = ['BreakContinueTransformer']
 

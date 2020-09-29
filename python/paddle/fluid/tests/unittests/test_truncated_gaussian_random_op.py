@@ -15,12 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy
+import paddle.fluid.core as core
+from paddle.fluid.executor import Executor
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):

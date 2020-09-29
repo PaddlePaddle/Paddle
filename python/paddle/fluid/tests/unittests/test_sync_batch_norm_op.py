@@ -19,16 +19,17 @@ for both FP64 and FP16 input.
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
 import os
-import six
-import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler
-from paddle.fluid import Program, program_guard
-
+import six
 from op_test import OpTest, _set_use_system_allocator
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+from paddle.fluid import compiler
 
 _set_use_system_allocator(True)
 

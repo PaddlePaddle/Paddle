@@ -16,14 +16,14 @@ from __future__ import print_function
 
 import astor
 import gast
-
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
-from paddle.fluid.framework import core, Variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
 from paddle.fluid.layers import assign, fill_constant, slice
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
+
+from paddle.fluid.framework import core, Variable
 
 
 # TODO(liym27): A better way to slice tensor array.

@@ -13,17 +13,17 @@
 # limitations under the License.
 from __future__ import print_function
 
-from ...fluid.dygraph.dygraph_to_static.convert_operators import cast_bool_if_necessary  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_assert  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_ifelse  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_len  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_and  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_not  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_or  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_print  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_shape  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  #DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import cast_bool_if_necessary  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_assert  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_ifelse  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_len  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_and  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_not  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_or  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_print  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_shape  # DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  # DEFINE_ALIAS
 
 __all__ = [
     'cast_bool_if_necessary', 'convert_assert', 'convert_ifelse', 'convert_len',

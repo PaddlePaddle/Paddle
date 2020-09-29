@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
-import os
 import sys
 import unittest
 
-import paddle.fluid as fluid
-from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
+import os
 from parallel_dygraph_mnist import TestMnist
+from spawn_runner_base import TestDistSpawnRunner
+from test_dist_base import TestDistBase
+
+import paddle.fluid as fluid
 
 flag_name = os.path.splitext(__file__)[0]
 

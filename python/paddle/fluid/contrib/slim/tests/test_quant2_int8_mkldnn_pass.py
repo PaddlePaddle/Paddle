@@ -13,12 +13,14 @@
 # limitations under the license.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import IrGraph
 
 paddle.enable_static()
 

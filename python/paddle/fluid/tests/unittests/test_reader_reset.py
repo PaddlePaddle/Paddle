@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import os
+
 os.environ['CPU_NUM'] = str(1)
 import paddle.fluid as fluid
 from paddle.fluid import compiler

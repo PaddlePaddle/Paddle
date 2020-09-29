@@ -15,16 +15,17 @@
 from __future__ import print_function
 
 import unittest
+
+import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program, switch_main_program
-from paddle.fluid.framework import Program, program_guard
-import numpy as np
-
-from paddle.fluid.layers.control_flow import shrink_memory
+from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import shrink_memory
+
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.framework import switch_main_program
 
 
 class TestShrinkRNNMemoryBase(unittest.TestCase):

@@ -15,13 +15,14 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from scipy.special import erf
+import paddle.fluid.dygraph as dg
 from op_test import OpTest
+from scipy.special import erf
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dg
 
 
 class TestErfOp(OpTest):

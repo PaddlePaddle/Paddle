@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-import six
 from fake_reader import fake_imdb_reader
+
+import paddle
+import paddle.fluid as fluid
 
 
 def bow_net(data,

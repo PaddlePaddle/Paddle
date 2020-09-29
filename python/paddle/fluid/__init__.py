@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
-import os
+
 import sys
+
+import os
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepadde without -U option
@@ -68,7 +70,7 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .core import LoDTensor
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
@@ -90,7 +92,6 @@ from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from . import generator
-from .core import _cuda_synchronize
 
 Tensor = LoDTensor
 enable_imperative = enable_dygraph

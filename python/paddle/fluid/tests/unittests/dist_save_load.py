@@ -14,29 +14,19 @@
 
 from __future__ import print_function
 
-import os
 import sys
-import signal
-import subprocess
-import argparse
-import time
-import math
-import random
-from multiprocessing import Process
-from functools import reduce
 
 import numpy as np
+import os
 import pickle
-import unittest
 import six
+from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
+from test_dist_base import runtime_main, RUN_STEP
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import io
-
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
 
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):

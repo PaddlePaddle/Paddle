@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_resnet import ResNet, train_parameters, optimizer_setting
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import six
-from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 
 
 class SimpleConv(fluid.dygraph.Layer):

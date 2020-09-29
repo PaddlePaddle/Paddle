@@ -20,11 +20,12 @@ parse training set and test set into paddle reader creators.
 
 from __future__ import print_function
 
-import paddle.dataset.common
 import gzip
 import numpy
+import paddle.dataset.common
 import struct
 from six.moves import range
+
 __all__ = ['train', 'test']
 
 URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'

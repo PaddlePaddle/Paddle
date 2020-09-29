@@ -12,14 +12,16 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import unittest
-import os
-import sys
 import argparse
-import paddle.fluid as fluid
-from paddle.fluid.framework import IrGraph
-from paddle.fluid import core
+import sys
+import unittest
+
+import os
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.framework import IrGraph
 
 paddle.enable_static()
 

@@ -14,12 +14,12 @@
 
 from __future__ import print_function
 
-import warnings
 import inspect
+import warnings
 
+from .layer_function_generator import OpProtoHolder
 from .. import core
 from ..framework import Variable, unique_name
-from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,

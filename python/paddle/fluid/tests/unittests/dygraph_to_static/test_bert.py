@@ -16,14 +16,13 @@ import time
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
-
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
-
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 from predictor_utils import PredictorTools
+
+import paddle.fluid as fluid
 
 program_translator = ProgramTranslator()
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(

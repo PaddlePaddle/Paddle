@@ -16,12 +16,13 @@ from __future__ import print_function
 
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.compat as cpt
+import contextlib
 import numpy as np
 import os
-import contextlib
+import paddle.compat as cpt
+
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 
 class TestPrune(unittest.TestCase):

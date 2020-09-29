@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import os
-import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+
+import paddle
 import paddle.fluid as fluid
 
 

@@ -14,34 +14,34 @@
 
 from __future__ import print_function
 
-import numpy as np
-import six
 import logging
 from collections import defaultdict
+from functools import reduce
+
+import numpy as np
+import six
+from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+from paddle.fluid.dygraph.parallel import apply_collective_grads
+from paddle.fluid.layers import tensor
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
-
+from paddle.fluid import core
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, \
+    device_guard
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
+from .backward import append_backward, _get_no_grad_set_name
 from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
+from .dygraph import base as imperative_base
+from .dygraph import no_grad
+from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
-from .dygraph import base as imperative_base
-from .dygraph import no_grad
-from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
-from paddle.fluid import core
-from paddle.fluid.layers import tensor
-from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',

@@ -14,12 +14,13 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy as np
-import math
 import functools
+import unittest
+
+import numpy as np
 from op_test import OpTest
 from test_lstm_op import ACTIVATION
+
 from paddle import fluid
 from paddle.fluid import Program, program_guard
 

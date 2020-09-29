@@ -13,15 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-
-from test_fetch_feed import Linear
 
 import unittest
+
+import numpy as np
+from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.layers.utils import flatten
+from test_fetch_feed import Linear
+
+import paddle
+import paddle.fluid as fluid
 
 SEED = 2020
 

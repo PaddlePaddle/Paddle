@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
 import itertools
+import unittest
+
 import numpy as np
 import six
 from op_test import OpTest

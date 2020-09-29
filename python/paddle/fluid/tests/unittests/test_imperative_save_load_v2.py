@@ -14,19 +14,18 @@
 
 from __future__ import print_function
 
-import os
 import unittest
-import paddle.fluid as fluid
+
+import numpy as np
+import os
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding, Linear
-import paddle.fluid.framework as framework
-from paddle.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from test_imperative_base import new_program_scope
-import numpy as np
-import six
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.optimizer import Adam
+
 import paddle
+import paddle.fluid as fluid
 
 
 class SimpleLSTMRNN(fluid.Layer):

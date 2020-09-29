@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-
 import paddle.nn as nn
-import paddle.nn.functional as F
-
 from paddle.utils.download import get_weights_path_from_url
+
+import paddle
 
 __all__ = ['MobileNetV2', 'mobilenet_v2']
 

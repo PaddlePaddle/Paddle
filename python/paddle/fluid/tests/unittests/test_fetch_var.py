@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import op_test
-import numpy
 import unittest
+
+import numpy
+import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 
 
 class TestFetchVar(unittest.TestCase):

@@ -17,16 +17,15 @@ Fluid Metrics
 
 from __future__ import print_function
 
-import numpy as np
 import copy
-import warnings
+import numpy as np
 import six
 
-from .layer_helper import LayerHelper
-from .initializer import Constant
+from . import layers
 from . import unique_name
 from .framework import Program, Variable, program_guard
-from . import layers
+from .initializer import Constant
+from .layer_helper import LayerHelper
 from .layers import detection
 
 __all__ = [

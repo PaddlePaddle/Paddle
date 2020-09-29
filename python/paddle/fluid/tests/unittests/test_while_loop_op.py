@@ -13,16 +13,15 @@
 # limitations under the License.
 from __future__ import print_function
 
-import numpy as np
 import unittest
 
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.backward import append_backward
+
+import paddle.fluid as fluid
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestApiWhileLoop(unittest.TestCase):

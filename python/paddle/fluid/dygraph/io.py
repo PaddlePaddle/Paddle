@@ -14,20 +14,20 @@
 
 from __future__ import print_function
 
-import os
-import six
-import pickle
 import numpy as np
+import os
+import pickle
+import six
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.layers import nn
 
 import paddle
 from paddle import compat as cpt
+from paddle.fluid import backward
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid import backward
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph import layers
-from paddle.fluid.layers import nn
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 __all__ = ['TranslatedLayer']
 

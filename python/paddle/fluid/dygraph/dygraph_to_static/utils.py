@@ -14,18 +14,19 @@
 
 from __future__ import print_function
 
+import atexit
+import collections
+
 import ast
 import astor
-import atexit
 import copy
-import collections
 import gast
 import inspect
+import numpy as np
 import os
 import six
 import tempfile
 import textwrap
-import numpy as np
 
 from paddle.fluid import unique_name
 
@@ -197,7 +198,6 @@ def is_control_flow_to_transform(node,
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    import paddle.fluid as fluid
     full_args = eval("inspect.getargspec({})".format(func_src))
     full_args_name = full_args[0]
 
@@ -274,7 +274,6 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    import paddle.fluid as fluid
     if method_name == "__init__" or eval(
             "issubclass({}, fluid.dygraph.Layer)".format(class_src)):
         full_args = eval("inspect.getargspec({}.{})".format(class_src,

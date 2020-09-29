@@ -18,14 +18,15 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid import layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from seq2seq_utils import Seq2SeqModelHyperParams as args
+
+import paddle.fluid as fluid
+from paddle.fluid import ParamAttr
+from paddle.fluid import layers
 
 INF = 1. * 1e5
 alpha = 0.6

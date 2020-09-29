@@ -14,8 +14,8 @@
 
 __all__ = ['RowConv']
 
-from ...fluid.dygraph import layers
 from .. import functional as F
+from ...fluid.dygraph import layers
 
 
 class RowConv(layers.Layer):

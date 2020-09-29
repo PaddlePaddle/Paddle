@@ -13,18 +13,20 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import copy
 import warnings
+from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.wrapped_decorator import wrap_decorator
+
 import paddle
-from paddle.fluid.framework import dygraph_only
 from paddle.fluid import compiler
-from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
-from .strategy_compiler import StrategyCompiler
+from paddle.fluid.framework import dygraph_only
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
+from .role_maker import PaddleCloudRoleMaker, RoleMakerBase
 from .runtime_factory import RuntimeFactory
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.dygraph import parallel_helper
+from .strategy_compiler import StrategyCompiler
 
 
 def _inited_runtime_handler_(func):

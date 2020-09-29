@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import paddle.fluid.core as core
 import unittest
+
 import numpy as np
+import paddle.fluid.core as core
 
 
 class TestSelectedRows(unittest.TestCase):

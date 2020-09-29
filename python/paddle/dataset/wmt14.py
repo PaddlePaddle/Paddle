@@ -22,12 +22,10 @@ parse training set and test set into paddle reader creators.
 
 from __future__ import print_function
 
+import paddle.compat as cpt
+import paddle.dataset.common
 import six
 import tarfile
-import gzip
-
-import paddle.dataset.common
-import paddle.compat as cpt
 
 __all__ = [
     'train',

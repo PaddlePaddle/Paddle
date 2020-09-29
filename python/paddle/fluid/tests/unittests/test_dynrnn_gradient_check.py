@@ -14,12 +14,14 @@
 
 from __future__ import print_function
 
+import collections
+import unittest
+
 import numpy
 import random
-import collections
-import paddle.fluid as fluid
-import unittest
 from decorator_helper import *
+
+import paddle.fluid as fluid
 
 
 class Memory(object):

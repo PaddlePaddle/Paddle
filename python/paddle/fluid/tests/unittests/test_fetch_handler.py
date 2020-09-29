@@ -16,11 +16,12 @@ from __future__ import print_function
 
 import time
 import unittest
-import numpy as np
-from paddle.fluid.framework import Program
 
+import numpy as np
 import paddle.fluid.core as core
+
 import paddle.fluid as fluid
+from paddle.fluid.framework import Program
 
 
 class TestFetchHandler(unittest.TestCase):

@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define normalization api  
+# TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode, core
-from ...framework import create_parameter
-from ...fluid.layers import lrn  #DEFINE_ALIAS
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
+from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.layers import lrn  # DEFINE_ALIAS
 
 __all__ = [
     'batch_norm',

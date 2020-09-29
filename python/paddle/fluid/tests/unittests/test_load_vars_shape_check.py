@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import shutil
-import numpy as np
-import paddle as paddle
-import paddle.fluid as fluid
+import unittest
+
+import os
 from paddle.fluid.executor import Executor
+
+import paddle.fluid as fluid
 
 
 class TestLoadVarsShapeCheck(unittest.TestCase):

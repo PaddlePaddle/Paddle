@@ -14,15 +14,14 @@
 """Test cloud role maker."""
 
 from __future__ import print_function
-import os
-import unittest
-import paddle.fluid.generator as generator
 
-import time  # temp for debug
-import paddle.fluid as fluid
+import unittest
+
 import numpy as np
-import paddle
 import paddle.fluid.core as core
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestGeneratorSeed(unittest.TestCase):

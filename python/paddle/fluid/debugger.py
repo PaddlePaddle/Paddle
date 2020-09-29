@@ -14,19 +14,18 @@
 
 from __future__ import print_function
 
-import sys
-import six
-import random
-import os
 import re
-from .graphviz import GraphPreviewGenerator
-from .proto import framework_pb2
-from google.protobuf import text_format
-from . import unique_name
-from .framework import Program, default_main_program, Variable
+
+import random
+import six
+
 from . import core
 from . import io
+from . import unique_name
+from .framework import default_main_program
+from .graphviz import GraphPreviewGenerator
 from .layer_helper import LayerHelper
+from .proto import framework_pb2
 
 _vartype2str_ = [
     "UNK",

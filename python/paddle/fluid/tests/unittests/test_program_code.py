@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import time
-import unittest
 import sys
-from multiprocessing import Process
-import signal
+import unittest
 
-import numpy
-
-import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.fluid.layers.ops as ops
 from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
-import paddle.fluid.layers.ops as ops
+
+import paddle.fluid as fluid
 
 
 class TestProgram2Code(unittest.TestCase):

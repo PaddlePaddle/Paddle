@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+import logging
+import multiprocessing
+import sys
+import threading
+from collections import namedtuple
+
+import numpy as np
 import os
 import six
-import sys
-import time
-import signal
-import logging
-import itertools
-import threading
-import numpy as np
-import multiprocessing
-from collections import namedtuple
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:

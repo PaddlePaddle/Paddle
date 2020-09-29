@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import logging
-import os
 import time
 import unittest
 
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-
+import os
 import transformer_util as util
 from transformer_dygraph_model import CrossEntropyCriterion, Transformer, position_encoding_init
+
+import paddle
+import paddle.fluid as fluid
 
 trainer_count = 1
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(

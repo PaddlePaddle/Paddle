@@ -15,9 +15,11 @@
 from __future__ import print_function
 
 import unittest
-from decorator_helper import prog_scope
-import paddle.fluid as fluid
+
 import numpy
+from decorator_helper import prog_scope
+
+import paddle.fluid as fluid
 
 
 class TestMathOpPatches(unittest.TestCase):

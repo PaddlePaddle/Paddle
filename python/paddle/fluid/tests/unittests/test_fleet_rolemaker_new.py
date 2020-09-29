@@ -14,13 +14,16 @@
 """Test cloud role maker."""
 
 from __future__ import print_function
-import os
-import platform
+
 import shutil
-import tempfile
 import unittest
-import paddle
+
+import os
 import paddle.distributed.fleet.base.role_maker as role_maker
+import platform
+import tempfile
+
+import paddle
 
 
 class TestRoleMakerBase(unittest.TestCase):

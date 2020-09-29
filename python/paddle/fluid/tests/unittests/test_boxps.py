@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
-import os
-import shutil
-import paddle.fluid.core as core
 import unittest
-from paddle.fluid.layers.nn import _pull_box_sparse
+
+import paddle.fluid.core as core
 from paddle.fluid.transpiler import collective
+
+import paddle.fluid as fluid
 
 
 class TestTranspile(unittest.TestCase):

@@ -27,30 +27,25 @@
 
 # TODO: define normalization api  
 
-import six
-from ...fluid.dygraph.nn import InstanceNorm
-
-from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
-
-#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
-
-from ...fluid.dygraph import layers
-from ...framework import get_default_dtype, set_default_dtype
-from ...fluid.framework import in_dygraph_mode
-
-from ...fluid.initializer import Constant
-from ...fluid.param_attr import ParamAttr
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid import core, dygraph_utils
+import numbers
+import numpy as np
+import warnings
 
 from ..functional import batch_norm, layer_norm, instance_norm
-
-import numpy as np
-import numbers
-import warnings
+from ...fluid import core
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.dygraph import BatchNorm  # DEFINE_ALIAS
+# from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import SpectralNorm  # DEFINE_ALIAS
+from ...fluid.dygraph import layers
 from ...fluid.dygraph.base import no_grad
+from ...fluid.dygraph.nn import InstanceNorm
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.initializer import Constant
+from ...fluid.param_attr import ParamAttr
+from ...framework import get_default_dtype, set_default_dtype
+
+# from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
 
 __all__ = [
     'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',

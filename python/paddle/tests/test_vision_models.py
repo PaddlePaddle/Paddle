@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+import paddle.vision.models as models
+from paddle.static import InputSpec
 
 import paddle
-from paddle.static import InputSpec
-import paddle.vision.models as models
 
 
 class TestVisonModels(unittest.TestCase):

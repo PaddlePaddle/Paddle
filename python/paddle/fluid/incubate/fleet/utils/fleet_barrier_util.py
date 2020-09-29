@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.contrib.utils import HDFSClient
-import os
 import time
+
+import os
+from paddle.fluid.contrib.utils import HDFSClient
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
 
 def check_all_trainers_ready(ready_path, epoch):

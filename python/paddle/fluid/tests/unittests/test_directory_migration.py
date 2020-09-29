@@ -14,13 +14,9 @@
 
 from __future__ import print_function
 
-import os
-import sys
-import time
 import subprocess
+import sys
 import unittest
-import numpy as np
-import paddle
 
 
 class TestDirectory(unittest.TestCase):

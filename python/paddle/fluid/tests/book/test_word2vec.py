@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
+import sys
+import unittest
+
+import math
+import numpy as np
+import os
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-import unittest
-import os
-import numpy as np
-import math
-import sys
 
 paddle.enable_static()
 

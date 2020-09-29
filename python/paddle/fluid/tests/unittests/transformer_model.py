@@ -15,11 +15,11 @@
 from __future__ import print_function
 
 from functools import partial
-import numpy as np
 
-import os
-import paddle.fluid as fluid
+import numpy as np
 import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 
 pos_enc_param_names = (
     "src_pos_enc_table",

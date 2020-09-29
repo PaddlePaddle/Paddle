@@ -21,9 +21,7 @@ import os
 import sys
 import subprocess
 
-import six
 import shutil
-import numpy as np
 import argparse
 from contextlib import closing
 import socket
@@ -35,7 +33,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 

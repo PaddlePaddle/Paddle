@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph import layers
-from ...fluid.layer_helper import LayerHelper
 from .. import functional as F
+from ...fluid.dygraph import layers
 
 __all__ = [
     'AvgPool1d',

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define loss functions of neural network
-import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle
+# TODO: define loss functions of neural network
+import paddle.fluid as fluid
+from paddle.fluid.framework import core
 from .. import functional as F
-from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
 __all__ = [
     'BCEWithLogitsLoss',

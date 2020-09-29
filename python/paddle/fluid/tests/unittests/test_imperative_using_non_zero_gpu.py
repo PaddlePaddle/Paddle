@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
-from paddle.fluid.dygraph import to_variable, Embedding, guard
+
 import numpy as np
+from paddle.fluid.dygraph import to_variable, guard
+
+import paddle.fluid as fluid
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):

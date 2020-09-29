@@ -13,19 +13,19 @@
 # limitations under the License.
 """Defination of TrainerFactory."""
 
+import logging
 import threading
 import time
-import logging
+
 import numpy as np
 from paddle.fluid.log_helper import get_logger
 
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer
-from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
+from .trainer_desc import MultiTrainer
+from .device_worker import Hogwild
 from .framework import Variable
-from multiprocessing import Process, Manager
 
 __all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
 

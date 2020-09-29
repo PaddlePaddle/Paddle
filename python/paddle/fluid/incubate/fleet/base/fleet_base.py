@@ -16,13 +16,13 @@ from __future__ import print_function
 
 import abc
 
-import paddle.fluid as fluid
-from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import SGD
-
-from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+from paddle.fluid.executor import Executor
+from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.fluid.optimizer import SGD
+
+import paddle.fluid as fluid
 from . import mode
 
 

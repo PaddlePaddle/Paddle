@@ -12,20 +12,21 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import os
 import unittest
-import random
+
 import numpy as np
-import six
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
-from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
+import os
+import random
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
+from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
+from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
+from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
+from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import IrGraph
 
 paddle.enable_static()
 

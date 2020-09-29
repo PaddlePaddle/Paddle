@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-import numpy as np
-import paddle.fluid as fluid
-import paddle
 
 from test_collective_base import TestDistBase
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

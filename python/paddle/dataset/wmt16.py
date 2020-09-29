@@ -30,14 +30,14 @@ Multi30K: Multilingual English-German Image Descriptions.
 
 from __future__ import print_function
 
-import os
-import six
-import tarfile
-import gzip
 from collections import defaultdict
 
-import paddle
+import os
 import paddle.compat as cpt
+import six
+import tarfile
+
+import paddle
 
 __all__ = [
     "train",

@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
+
+import paddle.fluid as fluid
 
 
 def l2_norm(x, axis, epsilon):

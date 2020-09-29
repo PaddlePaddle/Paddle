@@ -15,9 +15,10 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
 import paddle.fluid.core as core
+from op_test import OpTest
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

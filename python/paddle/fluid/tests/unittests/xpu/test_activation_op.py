@@ -25,7 +25,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import compiler, Program, program_guard
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),

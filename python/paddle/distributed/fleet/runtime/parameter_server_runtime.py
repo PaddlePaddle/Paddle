@@ -14,14 +14,13 @@
 
 import os
 import warnings
-
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid.framework import Program
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 

@@ -34,6 +34,7 @@ Example:
     Total FLOPs: 11692747751(11.69G)
 '''
 from collections import OrderedDict
+
 from prettytable import PrettyTable
 
 

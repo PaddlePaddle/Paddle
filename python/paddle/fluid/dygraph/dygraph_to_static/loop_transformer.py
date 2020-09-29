@@ -14,19 +14,20 @@
 
 from __future__ import print_function
 
+from collections import defaultdict
+
 import copy
 import gast
-
-from collections import defaultdict
-from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
+
+from paddle.fluid import unique_name
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 

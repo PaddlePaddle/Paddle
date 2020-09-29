@@ -17,11 +17,11 @@ from __future__ import print_function
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.optimizer import AdamOptimizer
 from test_fetch_feed import Linear
+
+import paddle.fluid as fluid
 
 np.random.seed(2020)
 

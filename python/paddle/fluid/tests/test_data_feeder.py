@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
 import unittest
+
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

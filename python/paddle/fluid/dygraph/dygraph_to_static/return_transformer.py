@@ -15,11 +15,11 @@
 from __future__ import print_function
 
 import gast
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'

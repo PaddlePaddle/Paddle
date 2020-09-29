@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle
+import paddle.fluid.core as core
 import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.fluid.core as core
 
+import paddle
 from paddle.fluid import Program, program_guard, Executor, default_main_program
 
 

@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
-import tempfile
-import cv2
 import shutil
-import numpy as np
+import unittest
 
+import cv2
+import numpy as np
+import os
+import paddle.vision.transforms.functional as F
+import tempfile
 from paddle.vision.datasets import DatasetFolder
 from paddle.vision.transforms import transforms
-import paddle.vision.transforms.functional as F
 
 
 class TestTransforms(unittest.TestCase):

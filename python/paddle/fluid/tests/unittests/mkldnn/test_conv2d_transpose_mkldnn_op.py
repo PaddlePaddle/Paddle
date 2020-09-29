@@ -14,12 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
 import numpy as np
-import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2dTransposeOp
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import TestConv2dTransposeOp
 
 
 def conv2d_bias_naive(out, bias):

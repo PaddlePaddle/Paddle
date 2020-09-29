@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.flowers
 import unittest
+
+import paddle.dataset.flowers
 
 
 class TestFlowers(unittest.TestCase):

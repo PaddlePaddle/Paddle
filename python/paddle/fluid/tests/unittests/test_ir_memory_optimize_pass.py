@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
-import paddle
-import paddle.dataset.mnist as mnist
 import unittest
-import os
+
+import numpy as np
+import paddle.fluid.core as core
+from parallel_executor_test_base import TestParallelExecutorBase
+
+import paddle.fluid as fluid
 
 
 def _feed_data_helper():

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import time
 import unittest
+
 import numpy as np
+import paddle.compat as cpt
+
 import paddle.fluid as fluid
 from paddle.fluid import core
-import paddle.compat as cpt
 
 
 def get_random_images_and_labels(image_shape, label_shape):

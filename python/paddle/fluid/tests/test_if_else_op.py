@@ -14,19 +14,20 @@
 
 from __future__ import print_function
 
-import paddle
-import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import MomentumOptimizer
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.layers.control_flow import split_lod_tensor
-from paddle.fluid.layers.control_flow import merge_lod_tensor
-from paddle.fluid.layers.control_flow import ConditionalBlock
-
 import unittest
+
 import numpy as np
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+from paddle.fluid.executor import Executor
+from paddle.fluid.layers.control_flow import ConditionalBlock
+from paddle.fluid.layers.control_flow import merge_lod_tensor
+from paddle.fluid.layers.control_flow import split_lod_tensor
+from paddle.fluid.optimizer import MomentumOptimizer
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 

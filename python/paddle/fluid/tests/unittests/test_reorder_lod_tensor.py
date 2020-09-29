@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
+import functools
 import unittest
-import paddle.fluid as fluid
+
+import numpy
 import paddle.fluid.core as core
 from paddle.fluid.layers.control_flow import lod_rank_table
+
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-import numpy
-import functools
 
 
 def convert_to_offset(lod):

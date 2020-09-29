@@ -14,17 +14,16 @@
 
 from __future__ import print_function
 
-import os
-import six
-import random
 import unittest
-import warnings
+
 import numpy as np
+import paddle.fluid.core as core
+import random
+import six
+import warnings
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import Program, Block
-from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Block
 
 
 class PassTest(unittest.TestCase):

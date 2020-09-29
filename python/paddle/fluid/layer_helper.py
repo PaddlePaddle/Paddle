@@ -16,14 +16,14 @@ from __future__ import print_function
 
 import copy
 import six
-
-from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder
-from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
-from .param_attr import ParamAttr
-from . import core
 from six.moves import zip
+
+from . import core
+from . import unique_name
+from .framework import Parameter, dtype_is_floating
 from .layer_helper_base import LayerHelperBase
+from .param_attr import ParamAttr
 
 
 class LayerHelper(LayerHelperBase):

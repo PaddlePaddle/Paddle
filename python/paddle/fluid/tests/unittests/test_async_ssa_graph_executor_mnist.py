@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import os
+import time
 import unittest
 
 import numpy
-import time
+import os
+
 import paddle
 import paddle.fluid as fluid
 

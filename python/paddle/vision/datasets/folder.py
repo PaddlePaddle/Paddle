@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 
-import paddle
+import os
 from paddle.io import Dataset
 from paddle.utils import try_import
+
+import paddle
 
 __all__ = ["DatasetFolder", "ImageFolder"]
 

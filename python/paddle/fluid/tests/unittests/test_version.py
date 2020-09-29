@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
-import unittest
 import re
+import unittest
 
 import paddle.version as fluid_version
 

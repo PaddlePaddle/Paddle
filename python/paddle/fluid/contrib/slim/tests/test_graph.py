@@ -13,14 +13,16 @@
 # limitations under the license.
 
 from __future__ import print_function
-import os
-import six
-import numpy as np
+
 import unittest
+
+import numpy as np
+import os
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import IrGraph
 from paddle.fluid import core
+from paddle.fluid.framework import IrGraph
 
 paddle.enable_static()
 

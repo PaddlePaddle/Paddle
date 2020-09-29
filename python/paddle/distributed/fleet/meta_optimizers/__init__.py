@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 
 from .amp_optimizer import AMPOptimizer
-from .recompute_optimizer import RecomputeOptimizer
+from .dgc_optimizer import DGCOptimizer
+from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
+from .lamb_optimizer import LambOptimizer
+from .lars_optimizer import LarsOptimizer
+from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
+from .localsgd_optimizer import LocalSGDOptimizer
+from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
 from .parameter_server_optimizer import ParameterServerOptimizer
 from .pipeline_optimizer import PipelineOptimizer
-from .localsgd_optimizer import LocalSGDOptimizer
-from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
-from .lars_optimizer import LarsOptimizer
-from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
-from .dgc_optimizer import DGCOptimizer
-from .lamb_optimizer import LambOptimizer
-from .fp16_allreduce_optimizer import FP16AllReduceOptimizer
+from .recompute_optimizer import RecomputeOptimizer

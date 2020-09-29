@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import os
 import unittest
+
+import os
 import tempfile
 from test_dist_fleet_base import TestFleetBase
 

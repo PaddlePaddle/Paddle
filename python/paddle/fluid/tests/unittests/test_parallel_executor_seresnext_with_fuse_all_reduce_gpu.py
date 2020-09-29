@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import paddle.fluid as fluid
+
 fluid.core._set_fuse_parameter_group_size(3)
 fluid.core._set_fuse_parameter_memory_size(131072)
 

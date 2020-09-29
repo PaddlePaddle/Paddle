@@ -14,13 +14,13 @@
 
 from __future__ import print_function, division
 
-import numpy as np
 import unittest
 
-import paddle
-
+import numpy as np
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
+
+import paddle
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args

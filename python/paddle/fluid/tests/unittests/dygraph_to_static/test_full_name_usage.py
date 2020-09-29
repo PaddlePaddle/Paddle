@@ -14,10 +14,12 @@
 
 from __future__ import print_function
 
-import numpy as np
-import paddle.fluid as fluid
 import unittest
+
+import numpy as np
 from paddle.fluid.dygraph import declarative
+
+import paddle.fluid as fluid
 
 
 @fluid.dygraph.declarative

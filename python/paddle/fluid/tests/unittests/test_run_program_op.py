@@ -14,14 +14,15 @@
 
 from __future__ import print_function
 
-import contextlib
 import unittest
+
+import contextlib
 import numpy as np
 import six
 
 import paddle.fluid as fluid
 from paddle import compat as cpt
-from paddle.fluid import core, framework, executor
+from paddle.fluid import core, framework
 
 
 @contextlib.contextmanager

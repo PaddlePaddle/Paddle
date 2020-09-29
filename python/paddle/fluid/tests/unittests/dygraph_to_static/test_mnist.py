@@ -18,17 +18,16 @@ import unittest
 from time import time
 
 import numpy as np
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
+from paddle.fluid.optimizer import AdamOptimizer
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-
-from predictor_utils import PredictorTools
 
 SEED = 2020
 

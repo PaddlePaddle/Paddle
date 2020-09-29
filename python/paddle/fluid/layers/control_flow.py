@@ -13,22 +13,22 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..wrapped_decorator import signature_safe_contextmanager
 
-from .layer_function_generator import autodoc, templatedoc
+from functools import reduce, partial
+
+import six
+
+from .layer_function_generator import templatedoc
+from .nn import logical_and, logical_not
 from .tensor import assign, cast, fill_constant
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 from .. import core
+from ..backward import _infer_var_data_type_shape_
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
-import numpy
-import warnings
-import six
-from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..wrapped_decorator import signature_safe_contextmanager
 from ... import compat as cpt
-from ..backward import _infer_var_data_type_shape_
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',

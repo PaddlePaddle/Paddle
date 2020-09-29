@@ -14,14 +14,14 @@
 
 from __future__ import print_function
 
-import tarfile
 import numpy as np
 import six
+import tarfile
+from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 from six.moves import cPickle as pickle
 
 import paddle
-from paddle.io import Dataset
-from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ['Cifar10', 'Cifar100']
 

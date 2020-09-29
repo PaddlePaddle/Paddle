@@ -28,8 +28,9 @@ invoked in a new local scope.
 
 from __future__ import print_function
 
-import paddle.fluid.core
 import threading
+
+import paddle.fluid.core
 
 __tl_scope__ = threading.local()
 

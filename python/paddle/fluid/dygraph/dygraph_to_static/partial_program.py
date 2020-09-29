@@ -13,17 +13,18 @@
 # limitations under the License.
 
 from __future__ import print_function
-import numpy as np
-import six
 
-from paddle.fluid import framework, backward, core
+import numpy as np
+import paddle.compat as cpt
+import six
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
-import paddle.compat as cpt
+
+from paddle.fluid import framework, backward, core
 
 
 class NestSequence(object):

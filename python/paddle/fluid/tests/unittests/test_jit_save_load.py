@@ -14,16 +14,18 @@
 
 from __future__ import print_function
 
+import unittest
+
+import numpy as np
 import os
 import pickle
-import unittest
-import numpy as np
-import paddle
-from paddle.static import InputSpec
-import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME
+from paddle.static import InputSpec
+
+import paddle
+import paddle.fluid as fluid
 
 BATCH_SIZE = 32
 BATCH_NUM = 10

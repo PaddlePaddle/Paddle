@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import six
+
 import paddle.fluid as fluid
 from paddle.fluid.framework import Variable
 

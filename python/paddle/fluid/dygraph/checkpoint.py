@@ -14,18 +14,18 @@
 
 from __future__ import print_function
 
-import os
-import collections
 import functools
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer
+
+import os
 import pickle
 import six
-from . import learning_rate_scheduler
 import warnings
-from .. import core
-from .base import guard
-from paddle.fluid.dygraph.jit import SaveLoadConfig, deprecate_save_load_configs
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.jit import SaveLoadConfig, deprecate_save_load_configs
+
+from .base import guard
+from .. import core
+from ..framework import Variable, dygraph_only, ParamBase, _varbase_creator, _dygraph_tracer
 
 __all__ = [
     'save_dygraph',

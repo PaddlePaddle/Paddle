@@ -13,23 +13,23 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import numpy
 import six
-from six.moves import reduce
+from paddle.utils import deprecated
+
+from . import utils
+from .layer_function_generator import templatedoc
+from .utils import check_shape
+from .. import core
+from ..core import VarDesc
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..framework import Variable
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
+from ..initializer import Constant
+from ..initializer import Initializer
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
-from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
-from ..framework import Variable
-from ..initializer import Constant
-from ..core import VarDesc
-from .. import core
-from .layer_function_generator import templatedoc
-from . import utils
-from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from paddle.utils import deprecated
-import numpy
-import warnings
-from .utils import check_shape
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',

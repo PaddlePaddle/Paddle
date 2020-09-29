@@ -14,12 +14,14 @@
 
 from __future__ import print_function
 
-import paddle
-from paddle.fluid import core
-from paddle.static import program_guard, Program
 import unittest
+
 import numpy as np
 from op_test import OpTest
+from paddle.static import program_guard, Program
+
+import paddle
+from paddle.fluid import core
 
 
 class TestArangeOp(OpTest):

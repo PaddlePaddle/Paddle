@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from paddle.fluid.dygraph.nn import *
+
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import *
-import numpy as np
 
 
 class TestDygraphLoadStatic(unittest.TestCase):

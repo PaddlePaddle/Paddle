@@ -14,12 +14,11 @@
 
 from __future__ import print_function
 
-from . import nn
-from .nn import *
-
-from .rnn_impl import *
 from . import metric_op
+from . import nn
 from .metric_op import *
+from .nn import *
+from .rnn_impl import *
 
 __all__ = []
 __all__ += nn.__all__

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..meta_optimizers import *
-
 meta_optimizer_names = list(
     filter(lambda name: name.endswith("Optimizer"), dir()))
 

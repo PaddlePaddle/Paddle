@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable, set_flags, core
-from paddle.fluid.wrapped_decorator import wrap_decorator
-import google.protobuf.text_format
 import google.protobuf
+import google.protobuf.text_format
+from paddle.distributed.fleet.proto import distributed_strategy_pb2
+from paddle.fluid.wrapped_decorator import wrap_decorator
+
+import paddle
+from paddle.fluid.framework import Variable, core
 
 __all__ = ["DistributedStrategy"]
 

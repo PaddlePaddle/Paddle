@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import paddle.dataset.mq2007
 import unittest
+
+import paddle.dataset.mq2007
 
 
 class TestMQ2007(unittest.TestCase):

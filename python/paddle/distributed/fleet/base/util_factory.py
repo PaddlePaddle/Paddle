@@ -16,17 +16,20 @@
 """basic collective operations in python"""
 """remote file system"""
 
-from ..utils.fs import FS, LocalFS, HDFSClient
-from paddle.fluid.proto import framework_pb2
-from paddle.fluid.framework import Program
-from paddle.fluid import debugger
-from google.protobuf import text_format
-import paddle.fluid as fluid
-from collections import OrderedDict
-from paddle.fluid import core
 import subprocess
-import os
+from collections import OrderedDict
+
 import numpy as np
+import os
+from google.protobuf import text_format
+from paddle.fluid.proto import framework_pb2
+
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid import debugger
+from paddle.fluid.framework import Program
+from ..utils.fs import FS
+
 __all__ = ['UtilBase']
 
 

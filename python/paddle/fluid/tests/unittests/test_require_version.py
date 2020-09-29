@@ -15,10 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
+
 import paddle.version as fluid_version
 import warnings
+
 import paddle
+import paddle.fluid as fluid
 
 
 class VersionTest(unittest.TestCase):

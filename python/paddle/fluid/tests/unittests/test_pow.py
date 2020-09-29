@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
-import paddle.tensor as tensor
-import paddle.fluid as fluid
-from paddle.static import Program, program_guard
-import numpy as np
+
 import unittest
+
+import numpy as np
+from paddle.static import Program, program_guard
+
+import paddle
+import paddle.fluid as fluid
 
 DYNAMIC = 1
 STATIC = 2

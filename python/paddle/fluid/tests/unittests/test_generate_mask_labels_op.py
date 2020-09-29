@@ -15,12 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import sys
+
 import math
+import numpy as np
 import six
-import paddle.fluid as fluid
 from op_test import OpTest
+
 '''
 # Equivalent code
 rles = mask_util.frPyObjects([segm], im_h, im_w)

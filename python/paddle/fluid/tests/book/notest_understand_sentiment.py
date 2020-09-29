@@ -14,15 +14,16 @@
 
 from __future__ import print_function
 
-from paddle.fluid.layers.device import get_places
+import sys
 import unittest
-import paddle.fluid as fluid
-import paddle
+
 import contextlib
 import math
 import numpy as np
-import sys
 import os
+
+import paddle
+import paddle.fluid as fluid
 
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,

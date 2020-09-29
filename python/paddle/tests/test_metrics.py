@@ -15,14 +15,13 @@
 from __future__ import division
 from __future__ import print_function
 
-import os
 import unittest
+
 import numpy as np
+from paddle.hapi.model import to_list
 
 import paddle
 import paddle.fluid as fluid
-
-from paddle.hapi.model import to_list
 
 
 def accuracy(pred, label, topk=(1, )):

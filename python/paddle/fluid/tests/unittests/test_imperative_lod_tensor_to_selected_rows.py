@@ -15,17 +15,18 @@
 from __future__ import print_function
 
 import unittest
+
+import numpy as np
+import paddle.fluid.core as core
+import six
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.optimizer import SGDOptimizer
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-import numpy as np
-import six
-from utils import DyGraphProgramDescTracerTestHelper
 
 
 class SimpleNet(fluid.Layer):

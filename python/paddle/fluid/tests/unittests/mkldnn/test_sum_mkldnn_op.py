@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
+
 import numpy as np
+import paddle.fluid.core as core
 import paddle.fluid.op as fluid_op
+from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 
 class TestSumMKLDNN(TestSumOp):

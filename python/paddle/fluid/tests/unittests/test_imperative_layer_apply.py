@@ -16,11 +16,11 @@ from __future__ import print_function
 
 import unittest
 
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-
 import numpy as np
+import paddle.nn as nn
+
+import paddle
+import paddle.fluid as fluid
 
 
 class LeNetDygraph(fluid.dygraph.Layer):

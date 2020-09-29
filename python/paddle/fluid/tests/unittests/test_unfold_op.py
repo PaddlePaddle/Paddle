@@ -14,9 +14,9 @@
 
 from __future__ import print_function
 
-import math
-import numpy as np
 import unittest
+
+import numpy as np
 from op_test import OpTest
 
 

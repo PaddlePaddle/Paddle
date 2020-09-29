@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import signal
-import unittest
 import multiprocessing
+import signal
+import sys
 import time
+import unittest
 
 import paddle.compat as cpt
 
@@ -25,7 +25,7 @@ if sys.version_info[0] == 2:
 else:
     import queue
 
-from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
+from paddle.fluid.reader import _cleanup, CleanupFuncRegistrar
 
 # NOTE: These special functions cannot be detected by the existing coverage mechanism,
 # so the following unittests are added for these internal functions.

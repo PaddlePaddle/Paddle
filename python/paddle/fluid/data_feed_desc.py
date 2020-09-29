@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
+from paddle.fluid.proto import data_feed_pb2
 
 __all__ = ['DataFeedDesc']
 

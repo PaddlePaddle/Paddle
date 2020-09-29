@@ -14,25 +14,16 @@
 
 from __future__ import print_function
 
-import numpy as np
-import argparse
-import time
-import math
+import re
+
+import os
+import six
+import string
+import tarfile
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
-import os
-import signal
-import six
-import tarfile
-import string
-import re
-from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'

@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..layer_helper import LayerHelper, unique_name
+
 from ..framework import Variable
+from ..layer_helper import LayerHelper, unique_name
 
 
 def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
-import unittest
-import numpy as np
 import time
+import unittest
+
+import numpy as np
+from paddle.fluid.layer_helper import LayerHelper
+
+import paddle.fluid as fluid
 
 
 def inplace_add(x, bias):

@@ -31,19 +31,18 @@ http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 from __future__ import print_function
 
-import itertools
 import functools
-from .common import download
-import tarfile
+from multiprocessing import cpu_count
+
 import scipy.io as scio
+import six
 from paddle.dataset.image import *
 from paddle.reader import map_readers, xmap_readers
-from paddle import compat as cpt
-import os
-import numpy as np
-from multiprocessing import cpu_count
-import six
 from six.moves import cPickle as pickle
+
+from paddle import compat as cpt
+from .common import download
+
 __all__ = ['train', 'test', 'valid']
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-import six
-import unittest
 import time
+import unittest
+
 import math
-import multiprocessing
 import numpy as np
+import os
+import paddle.fluid.core as core
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 

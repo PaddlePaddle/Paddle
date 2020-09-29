@@ -14,19 +14,19 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
-import inspect
+
 import gast
+import inspect
+import numpy as np
+import paddle.fluid.dygraph as dygraph
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-
 from paddle import to_tensor
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
 
 SEED = 2020
 np.random.seed(SEED)

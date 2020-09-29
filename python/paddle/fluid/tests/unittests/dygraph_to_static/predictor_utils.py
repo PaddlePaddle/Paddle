@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import unittest
-
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-
+import os
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
+
+import paddle.fluid as fluid
 
 
 class PredictorTools(object):

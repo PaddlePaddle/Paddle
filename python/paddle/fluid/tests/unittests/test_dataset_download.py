@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
+
+import os
 from paddle.dataset.common import download, DATA_HOME, md5file
 
 

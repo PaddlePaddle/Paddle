@@ -13,12 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle
+
+import unittest
+
+import numpy as np
 import paddle.tensor as tensor
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-import numpy as np
-import unittest
 
 
 class TestMultiplyAPI(unittest.TestCase):

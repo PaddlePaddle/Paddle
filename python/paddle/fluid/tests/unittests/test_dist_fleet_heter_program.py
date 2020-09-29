@@ -13,14 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-import paddle
-import os
+
 import math
-import paddle.fluid as fluid
+import os
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
+
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

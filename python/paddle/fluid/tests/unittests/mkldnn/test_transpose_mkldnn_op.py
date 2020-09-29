@@ -16,8 +16,8 @@ from __future__ import print_function
 
 import unittest
 
-from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
 import numpy as np
+from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
 
 
 class TestTransposeMKLDNN(TestTransposeOp):

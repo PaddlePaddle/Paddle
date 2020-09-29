@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
 import os
+import six
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle
-import unittest
-import six
-import numpy as np
 
 dev_cnt = 2
 if fluid.core.is_compiled_with_cuda():

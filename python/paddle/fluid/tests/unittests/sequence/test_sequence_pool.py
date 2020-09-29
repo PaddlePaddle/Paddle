@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest, skip_check_grad_ci
 from test_reorder_lod_tensor import convert_to_offset

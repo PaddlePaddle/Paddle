@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import math
+import six
 
 __all__ = [
     'long_type',

@@ -16,7 +16,6 @@ from __future__ import division
 
 import unittest
 
-import paddle.fluid as fluid
 from paddle.io import BatchSampler, Dataset, Sampler, SequenceSampler, RandomSampler
 from paddle.io import DistributedBatchSampler
 

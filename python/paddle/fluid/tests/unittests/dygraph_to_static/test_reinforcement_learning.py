@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+import unittest
+
 import gym
 import math
-import itertools
 import numpy as np
+import paddle.fluid.dygraph.nn as nn
+from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph import to_variable, Layer
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph.nn as nn
-from paddle.fluid.dygraph import to_variable, Layer
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-
-import unittest
 
 SEED = 2020
 program_translator = ProgramTranslator()

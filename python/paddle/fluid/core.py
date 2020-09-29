@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-import site
 import sys
+
 import os
-import warnings
 import platform
+import site
+import warnings
 
 core_suffix = 'so'
 if os.name == 'nt':

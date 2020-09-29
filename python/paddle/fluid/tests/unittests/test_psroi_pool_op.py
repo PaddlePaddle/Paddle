@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
+import unittest
+
 import math
 import numpy as np
-import unittest
 from op_test import OpTest
 
 

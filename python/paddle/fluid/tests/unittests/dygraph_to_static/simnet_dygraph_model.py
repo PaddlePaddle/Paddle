@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.fluid.param_attr as attr
-
 from functools import reduce
-from paddle.fluid.dygraph import declarative, to_variable
+
+import paddle.fluid.param_attr as attr
 from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.fluid.dygraph import declarative
+
+import paddle.fluid as fluid
 
 
 class EmbeddingLayer(object):

@@ -14,17 +14,19 @@
 
 from __future__ import print_function
 
-from paddle.fluid import framework as framework
-from . import core
 import collections
+import logging
+
 import copy
 import six
-import logging
-from .. import compat as cpt
-from . import unique_name
+
+from paddle.fluid import framework as framework
+from . import core
 from . import log_helper
-import paddle.fluid
+from . import unique_name
 from .data_feeder import check_type
+from .. import compat as cpt
+
 __all__ = [
     'append_backward',
     'gradients',

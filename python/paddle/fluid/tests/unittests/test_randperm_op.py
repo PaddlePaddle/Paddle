@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle
 import paddle.fluid.core as core
+from op_test import OpTest
 from paddle.static import program_guard, Program
+
+import paddle
 
 
 def check_randperm_out(n, data_np):

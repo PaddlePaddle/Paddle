@@ -14,8 +14,8 @@
 
 # TODO: define specitial functions used in computer vision task 
 
-from ...fluid.dygraph import layers
 from .. import functional
+from ...fluid.dygraph import layers
 
 __all__ = ['PixelShuffle']
 

@@ -15,9 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
+
+import paddle.fluid as fluid
 
 SEED = 2020
 np.random.seed(SEED)

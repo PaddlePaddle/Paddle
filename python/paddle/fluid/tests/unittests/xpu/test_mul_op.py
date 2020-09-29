@@ -14,11 +14,13 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy as np
-import paddle
-import paddle.fluid.core as core
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle.fluid as fluid

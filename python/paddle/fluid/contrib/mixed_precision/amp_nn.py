@@ -14,7 +14,6 @@
 
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import Variable
 
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 

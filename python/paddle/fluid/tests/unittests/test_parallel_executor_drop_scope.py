@@ -15,9 +15,11 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
+
 import numpy
 import os
+
+import paddle.fluid as fluid
 
 
 class TestParallelExecutorDropExeScope(unittest.TestCase):

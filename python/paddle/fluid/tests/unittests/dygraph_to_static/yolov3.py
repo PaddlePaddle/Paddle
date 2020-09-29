@@ -15,17 +15,14 @@
 from __future__ import division
 from __future__ import print_function
 
-import paddle.fluid as fluid
+from darknet import ConvBNLayer
+from darknet import DarkNet53_conv_body
 from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
-from paddle.fluid.initializer import Constant
-from paddle.fluid.initializer import Normal
+from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from darknet import DarkNet53_conv_body
-from darknet import ConvBNLayer
+import paddle.fluid as fluid
 
 
 class AttrDict(dict):

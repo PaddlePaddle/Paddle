@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 
-from op_test import OpTest
-import paddle
-import paddle.nn.functional as F
+import numpy as np
 import paddle.fluid.core as core
+import paddle.nn.functional as F
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 
 

@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from __future__ import division
+from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
 import paddle.fluid.core as core
-from op_test import OpTest
-import paddle.fluid as fluid
 from paddle.nn.functional import avg_pool3d, max_pool3d
-from test_pool3d_op import adaptive_start_index, adaptive_end_index, pool3D_forward_naive, avg_pool3D_forward_naive, max_pool3D_forward_naive
+from test_pool3d_op import pool3D_forward_naive, avg_pool3D_forward_naive, max_pool3D_forward_naive
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestPool3d_API(unittest.TestCase):

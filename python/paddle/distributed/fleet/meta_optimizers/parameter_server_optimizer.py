@@ -11,12 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle import fluid
-from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid import core
-import subprocess
 import re
+import subprocess
+
 import platform
+
+from paddle import fluid
+from paddle.fluid import core
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):

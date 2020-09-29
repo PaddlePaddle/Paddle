@@ -15,11 +15,13 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5, TestSoftmaxOp6
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, \
+    TestSoftmaxOp5, TestSoftmaxOp6
 
 
 def stable_softmax(x):

@@ -14,16 +14,17 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import transformer_model
-import numpy as np
-from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
-import paddle
-import paddle.fluid.core as core
-import paddle.dataset.wmt16 as wmt16
+
+import numpy as np
 import os
+import paddle.dataset.wmt16 as wmt16
+import paddle.fluid.core as core
+import transformer_model
 from feed_data_reader import FeedDataReader
+from parallel_executor_test_base import TestParallelExecutorBase
+
+import paddle
 
 os.environ['CPU_NUM'] = str(4)
 

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import time
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
+import os
 from paddle.fluid.clip import GradientClipByGlobalNorm
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-
 from seq2seq_dygraph_model import BaseModel, AttentionModel
 from seq2seq_utils import Seq2SeqModelHyperParams as args
 from seq2seq_utils import get_data_iter
+
+import paddle.fluid as fluid
+
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
 program_translator = ProgramTranslator()

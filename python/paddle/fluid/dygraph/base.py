@@ -11,20 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import decorator
-import contextlib
-import functools
-import inspect
 import sys
+
+import decorator
+import inspect
 import numpy as np
+import warnings
+from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
+
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
-import logging
 from ..data_feeder import convert_dtype
-import warnings
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',

@@ -14,11 +14,13 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.layers.device import get_places
-from decorator_helper import prog_scope
 import unittest
+
+import paddle.fluid.core as core
+from decorator_helper import prog_scope
+from paddle.fluid.layers.device import get_places
+
+import paddle.fluid as fluid
 
 
 class TestGetPlaces(unittest.TestCase):

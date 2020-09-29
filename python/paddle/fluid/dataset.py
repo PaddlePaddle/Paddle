@@ -13,10 +13,12 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
-from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
+from paddle.fluid.proto import data_feed_pb2
+
 from . import core
 from ..utils import deprecated
+
 __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 

@@ -14,14 +14,16 @@
 
 from __future__ import print_function
 
+import sys
+import unittest
+
+import contextlib
+import math
+import numpy
+import os
+
 import paddle
 import paddle.fluid as fluid
-import contextlib
-import numpy
-import unittest
-import math
-import sys
-import os
 
 paddle.enable_static()
 

@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 from op_test import OpTest
+from paddle.fluid.op import Operator
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):

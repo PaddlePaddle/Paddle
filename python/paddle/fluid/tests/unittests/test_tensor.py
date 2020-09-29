@@ -14,11 +14,13 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import unittest
-import numpy
+
 import numbers
+import numpy
+import paddle.fluid.core as core
+
+import paddle.fluid as fluid
 
 
 class TestTensor(unittest.TestCase):

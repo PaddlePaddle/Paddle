@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import os
 
 __all__ = ["distributed_batch_reader"]

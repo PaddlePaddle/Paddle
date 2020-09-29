@@ -18,12 +18,13 @@ import unittest
 
 import contextlib
 import numpy as np
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from simple_nets import init_data, simple_fc_net, fc_with_batchnorm
 import seresnext_net
-from test_parallel_executor_transformer import transformer, get_feed_data_reader
 from fake_reader import fake_imdb_reader
+from simple_nets import init_data, simple_fc_net, fc_with_batchnorm
+from test_parallel_executor_transformer import transformer, get_feed_data_reader
+
+import paddle.fluid as fluid
 
 
 def lstm_net(use_feed):

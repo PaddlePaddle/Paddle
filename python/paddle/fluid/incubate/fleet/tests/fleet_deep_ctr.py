@@ -16,14 +16,13 @@ import argparse
 import logging
 import time
 
-import paddle.fluid as fluid
+import ctr_dataset_reader
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-
 from paddle.fluid.log_helper import get_logger
 
-import ctr_dataset_reader
+import paddle.fluid as fluid
 
 logger = get_logger(
     "fluid", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s')

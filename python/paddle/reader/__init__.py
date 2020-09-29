@@ -63,7 +63,6 @@ An example implementation for multiple item data reader creator:
 
 """
 
-import paddle.reader.decorator
 from paddle.reader.decorator import *
 
 __all__ = []

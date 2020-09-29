@@ -14,18 +14,17 @@
 
 from __future__ import print_function
 
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
-import contextlib
-import math
 import sys
 import unittest
+
+import contextlib
+import math
+import numpy as np
 from paddle.fluid.executor import Executor
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 paddle.enable_static()
 

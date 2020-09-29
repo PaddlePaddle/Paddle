@@ -13,13 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-from functools import partial
-import numpy
+
 import unittest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from simple_nets import init_data, simple_fc_net
+from functools import partial
+
+import numpy
 import os
+import paddle.fluid.core as core
+from simple_nets import init_data, simple_fc_net
+
+import paddle.fluid as fluid
 
 
 class TestFeedPersistableVar(unittest.TestCase):

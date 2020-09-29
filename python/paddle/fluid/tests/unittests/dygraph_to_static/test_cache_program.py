@@ -15,16 +15,15 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
 from collections import Counter
 
-import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
-
+from paddle.fluid.dygraph.jit import declarative
 from test_fetch_feed import Pool2D, Linear
+
+import paddle.fluid as fluid
 
 
 class TestCacheProgram(unittest.TestCase):

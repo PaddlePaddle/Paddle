@@ -14,22 +14,21 @@
 
 from __future__ import print_function
 
-import os
+import signal
 import time
 import unittest
 from multiprocessing import Process
-import signal
 
 import numpy
-
-import paddle.fluid as fluid
+import os
 import paddle.fluid.layers as layers
+import paddle.fluid.layers.ops as ops
+from dist_test_utils import *
 from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
-import paddle.fluid.layers.ops as ops
-from dist_test_utils import *
 
+import paddle.fluid as fluid
 from paddle.fluid import core
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(

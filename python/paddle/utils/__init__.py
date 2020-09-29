@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .profiler import ProfilerOptions
-from .profiler import Profiler
-from .profiler import get_profiler
+from . import download
 from .deprecated import deprecated
 from .lazy_import import try_import
-from ..fluid.framework import unique_name
+from .profiler import Profiler
+from .profiler import ProfilerOptions
+from .profiler import get_profiler
 from ..fluid.framework import load_op_library
 from ..fluid.framework import require_version
-
-from . import download
+from ..fluid.framework import unique_name
 
 __all__ = ['dump_config', 'deprecated', 'download']
 

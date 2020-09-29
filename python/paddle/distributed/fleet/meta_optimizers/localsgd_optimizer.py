@@ -16,8 +16,8 @@ from __future__ import print_function
 
 import paddle
 from paddle.fluid import program_guard, layers, default_main_program
+from .common import OpRole, OP_ROLE_KEY, CollectiveHelper
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
 
 
 class LocalSGDOptimizer(MetaOptimizerBase):

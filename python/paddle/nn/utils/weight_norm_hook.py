@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from ... import fluid
 from ...fluid import dygraph
 from ...fluid import layers as F
-from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
 from ...tensor.math import multiply
 
 __all__ = ['weight_norm', 'remove_weight_norm']

@@ -14,34 +14,26 @@
 
 from __future__ import print_function
 
-import numpy as np
-import six
 import logging
 from collections import defaultdict
 
-import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+import numpy as np
 from paddle.fluid.dygraph.parallel import apply_collective_grads
 
+import paddle
+from paddle.fluid import core
+from paddle.fluid.framework import Variable, name_scope, default_main_program, device_guard
+from .lr_scheduler import _LRScheduler
 from ..fluid import framework
 from ..fluid import layers
 from ..fluid import unique_name
-from ..fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from ..fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
+from ..fluid.backward import append_backward, _get_no_grad_set_name
+from ..fluid.clip import GradientClipBase, error_clip_callback, append_gradient_clip_ops
+from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import ops
 from ..fluid.regularizer import append_regularization_ops
-from ..fluid.dygraph import base as imperative_base
-from ..fluid.dygraph import no_grad
-from paddle.fluid import core
-from paddle.fluid.layers import tensor
-from functools import reduce
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
-from .lr_scheduler import _LRScheduler
 
 __all__ = ['Optimizer']
 

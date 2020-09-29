@@ -15,12 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import numpy
 
+import numpy
 import op_test
+import paddle.fluid.layers as layers
+
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
 
 
 class TestAssignValueOp(op_test.OpTest):

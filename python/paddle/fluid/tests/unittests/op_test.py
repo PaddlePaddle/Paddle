@@ -14,28 +14,26 @@
 
 from __future__ import print_function
 
-import os
 import unittest
-import warnings
+from collections import defaultdict
+
 import numpy as np
+import paddle.fluid.core as core
 import random
 import six
 import struct
-import time
-import itertools
-import collections
-from collections import defaultdict
+import warnings
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.op import Operator
+from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, \
+    no_check_set_white_list
+from white_list import op_threshold_white_list, no_grad_set_white_list
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
-from white_list import op_threshold_white_list, no_grad_set_white_list
+from paddle.fluid.framework import Program, OpProtoHolder
 
 
 def _set_use_system_allocator(value=None):

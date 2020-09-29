@@ -14,22 +14,13 @@
 
 from __future__ import print_function
 
-import os
-import contextlib
-import unittest
 import numpy as np
-import six
-import pickle
+from paddle.fluid.dygraph.base import to_variable
+from paddle.nn import Conv2d, SyncBatchNorm
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.nn import Conv2d, Pool2D, Linear, SyncBatchNorm
-from paddle.fluid.dygraph.base import to_variable
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
 class TestLayer(fluid.dygraph.Layer):

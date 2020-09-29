@@ -30,33 +30,24 @@ __all__ += [
 ]
 
 from . import random
-from .random import manual_seed
 from .framework import get_default_dtype
 from .framework import set_default_dtype
-
-from ..fluid.framework import Variable  #DEFINE_ALIAS
-from ..fluid.framework import ComplexVariable  #DEFINE_ALIAS
-from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
-from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS
-from ..fluid.layers.tensor import create_parameter  #DEFINE_ALIAS
-from ..fluid.core import CPUPlace  #DEFINE_ALIAS
-from ..fluid.core import CUDAPlace  #DEFINE_ALIAS
-from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
-from ..fluid.core import VarBase  #DEFINE_ALIAS
-
-from paddle.fluid import core  #DEFINE_ALIAS
-from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
-from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
-from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
-from .io import save
 from .io import load
-from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
-from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
-
-from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import NaturalExpDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS
+from .io import save
+from .random import manual_seed
+from ..fluid.dygraph.base import grad  # DEFINE_ALIAS
+from ..fluid.dygraph.base import no_grad  # DEFINE_ALIAS
+from ..fluid.dygraph.base import to_variable  # DEFINE_ALIAS
+from ..fluid.dygraph.jit import SaveLoadConfig  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import NaturalExpDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  # DEFINE_ALIAS
+from ..fluid.dygraph.parallel import DataParallel  # DEFINE_ALIAS
+from ..fluid.framework import Variable  # DEFINE_ALIAS
+from ..fluid.layers.tensor import create_global_var  # DEFINE_ALIAS
+from ..fluid.layers.tensor import create_parameter  # DEFINE_ALIAS
+from ..fluid.param_attr import ParamAttr  # DEFINE_ALIAS

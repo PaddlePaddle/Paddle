@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import numpy as np
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid import core, layers
 
-# TODO: define searching & indexing functions of a tensor  
-from ..fluid.layers import has_inf  #DEFINE_ALIAS
-from ..fluid.layers import has_nan  #DEFINE_ALIAS
+from ..fluid import core, layers
+from ..fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ..fluid.layer_helper import LayerHelper
+# TODO: define searching & indexing functions of a tensor
+from ..fluid.layers import has_inf  # DEFINE_ALIAS
+from ..fluid.layers import has_nan  # DEFINE_ALIAS
 
 __all__ = [
     'argmax',

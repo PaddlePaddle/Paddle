@@ -14,10 +14,12 @@
 
 from __future__ import print_function
 
-import os
 import unittest
-import paddle
+
+import os
 from test_dist_base import TestDistBase
+
+import paddle
 
 
 def download_files():

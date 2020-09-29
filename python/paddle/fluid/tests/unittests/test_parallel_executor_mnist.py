@@ -17,10 +17,11 @@ from __future__ import print_function
 import unittest
 
 import numpy as np
-import paddle.fluid.core as core
 import os
-import paddle.fluid as fluid
+import paddle.fluid.core as core
 from parallel_executor_test_base import TestParallelExecutorBase
+
+import paddle.fluid as fluid
 
 
 def simple_fc_net(use_feed):

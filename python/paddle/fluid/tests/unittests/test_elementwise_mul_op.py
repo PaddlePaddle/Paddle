@@ -13,13 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 class ElementwiseMulOp(OpTest):

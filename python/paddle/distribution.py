@@ -21,18 +21,17 @@
 
 from __future__ import print_function
 
-from .fluid.layers import control_flow
-from .fluid.layers import tensor
-from .fluid.layers import ops
-from .fluid.layers import nn
-from .fluid import core
-from .fluid.framework import in_dygraph_mode
-from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 import math
 import numpy as np
 import warnings
 
-from .fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from .fluid import core
+from .fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type
+from .fluid.framework import in_dygraph_mode
+from .fluid.layers import nn
+from .fluid.layers import ops
+from .fluid.layers import tensor
+from .tensor.math import elementwise_div, elementwise_add, elementwise_sub
 
 __all__ = ['Distribution', 'Uniform', 'Normal']
 

@@ -36,17 +36,14 @@ launch a process on each of the given gpu card.
 """
 
 from __future__ import print_function
-import sys
-from sys import version
-import subprocess
-import os
+
 import time
-import six
-import copy
 from argparse import ArgumentParser, REMAINDER
 
-from paddle.distributed.utils import *
+import os
+import six
 from paddle.distributed import cloud_utils
+from paddle.distributed.utils import *
 
 
 def _print_arguments(args):

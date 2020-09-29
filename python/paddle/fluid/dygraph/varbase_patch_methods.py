@@ -16,12 +16,12 @@ import inspect
 import numpy as np
 
 import paddle
-from .. import framework
-from .. import core
-from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
+from .. import core
+from .. import framework
+from ..framework import Variable, Parameter, ParamBase
 
 
 def monkey_patch_varbase():

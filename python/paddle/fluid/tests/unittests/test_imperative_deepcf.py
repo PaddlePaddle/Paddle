@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import random
-import os
 import sys
+import unittest
+
+import numpy as np
+import os
+import paddle.fluid.core as core
+import random
+from paddle.fluid.dygraph import Linear
+from paddle.fluid.dygraph.base import to_variable
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from test_imperative_base import new_program_scope
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph import Linear
 
 # Can use Amusic dataset as the DeepCF describes.
 DATA_PATH = os.environ.get('DATA_PATH', '')

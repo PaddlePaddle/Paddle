@@ -22,12 +22,13 @@ Besides, this module also provides API for building dictionary.
 
 from __future__ import print_function
 
-import paddle.dataset.common
 import collections
-import tarfile
 import re
-import string
+
+import paddle.dataset.common
 import six
+import string
+import tarfile
 
 __all__ = ['build_dict', 'train', 'test']
 

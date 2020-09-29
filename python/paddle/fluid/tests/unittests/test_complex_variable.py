@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 import paddle.fluid.dygraph as dg
+
+import paddle
 
 
 class TestComplexVariable(unittest.TestCase):

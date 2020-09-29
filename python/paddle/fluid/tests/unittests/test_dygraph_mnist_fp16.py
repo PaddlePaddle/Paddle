@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):

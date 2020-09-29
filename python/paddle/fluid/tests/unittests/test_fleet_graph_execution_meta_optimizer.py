@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import os
 from launch_function_helper import launch_func, wait, _find_free_port
+
+import paddle
 
 paddle.enable_static()
 

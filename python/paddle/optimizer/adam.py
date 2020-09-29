@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid.dygraph.parallel import apply_collective_grads
+
+import paddle
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
-
-import paddle
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 __all__ = ["Adam"]
 

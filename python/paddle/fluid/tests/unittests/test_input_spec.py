@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from paddle.static import InputSpec
-from paddle.fluid.framework import core, convert_np_dtype_to_dtype_
+
+import paddle.fluid as fluid
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestInputSpec(unittest.TestCase):

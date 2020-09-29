@@ -14,16 +14,16 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
 
-import paddle.fluid as fluid
+import numpy as np
+import os
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+
+import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
-import paddle.fluid.core as core
-import paddle.fluid.compiler as compiler
-import os
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784

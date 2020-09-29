@@ -15,13 +15,15 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-import math
+
 import copy
+import math
+import numpy as np
 from op_test import OpTest
+
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid import Program, program_guard
+from paddle.fluid import core
 
 
 def sigmoid_focal_loss_forward(x_data, label_data, fg_num_data, gamma, alpha,

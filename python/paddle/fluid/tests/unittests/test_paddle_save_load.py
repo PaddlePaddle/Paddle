@@ -15,10 +15,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
+
+import paddle
 
 BATCH_SIZE = 16
 BATCH_NUM = 4

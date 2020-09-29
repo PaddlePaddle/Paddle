@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import collections
-import numpy as np
 
-from paddle.fluid.framework import default_main_program, default_startup_program, program_guard
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import unique_name
-from paddle.fluid import core
+import numpy as np
+from paddle.fluid.executor import global_scope
 from paddle.fluid.initializer import Constant
-from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.nn import autoincreased_step_counter
+from paddle.fluid.param_attr import ParamAttr
+
+from paddle.fluid import core
+from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
-from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import default_main_program, default_startup_program, program_guard
 
 __all__ = ['QuantizeTranspiler']
 

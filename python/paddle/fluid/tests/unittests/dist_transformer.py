@@ -14,32 +14,22 @@
 
 from __future__ import print_function
 
-import numpy as np
-import argparse
-import time
-import math
-import os
-import sys
-import six
-import argparse
-import ast
-import multiprocessing
 import time
 from functools import partial
-from os.path import expanduser
+
 import glob
-import random
-import tarfile
-
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid import core
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+import numpy as np
+import os
 import paddle.compat as cpt
+import paddle.fluid.layers as layers
+import random
+import six
+import tarfile
+from os.path import expanduser
 from paddle.compat import long_type
+from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
 
-import hashlib
+import paddle.fluid as fluid
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr

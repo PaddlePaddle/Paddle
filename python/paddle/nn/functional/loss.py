@@ -12,40 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype
-import paddle.fluid as fluid
-
 # TODO: define loss functions of neural network
-import numpy as np
 import paddle
 import paddle.fluid as fluid
-from ...fluid.framework import core, in_dygraph_mode
-from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
-from ...fluid.layers import center_loss  #DEFINE_ALIAS
-from ...fluid.layers import dice_loss  #DEFINE_ALIAS
-from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
-from ...fluid.layers import log_loss  #DEFINE_ALIAS
-from ...fluid.layers import npair_loss  #DEFINE_ALIAS
-from ...fluid.layers import rank_loss  #DEFINE_ALIAS
-from ...fluid.layers import reshape
-from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
-from ...fluid.layers import sigmoid_focal_loss  #DEFINE_ALIAS
-from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
-from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
-from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
-from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
-from ...fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
-
-from ...fluid.layers import edit_distance  #DEFINE_ALIAS
-from ...fluid.layers import huber_loss  #DEFINE_ALIAS
-from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode
-from ...fluid.framework import _varbase_creator
+import paddle.fluid as fluid
 from ...fluid.framework import Variable
+from ...fluid.framework import _varbase_creator
+from ...fluid.framework import core
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.layers import bpr_loss  # DEFINE_ALIAS
+from ...fluid.layers import center_loss  # DEFINE_ALIAS
+from ...fluid.layers import dice_loss  # DEFINE_ALIAS
+from ...fluid.layers import edit_distance  # DEFINE_ALIAS
+from ...fluid.layers import huber_loss  # DEFINE_ALIAS
+from ...fluid.layers import iou_similarity  # DEFINE_ALIAS
+from ...fluid.layers import log_loss  # DEFINE_ALIAS
+from ...fluid.layers import npair_loss  # DEFINE_ALIAS
+from ...fluid.layers import rank_loss  # DEFINE_ALIAS
+from ...fluid.layers import reshape
+from ...fluid.layers import sampled_softmax_with_cross_entropy  # DEFINE_ALIAS
+from ...fluid.layers import sigmoid_cross_entropy_with_logits  # DEFINE_ALIAS
+from ...fluid.layers import sigmoid_focal_loss  # DEFINE_ALIAS
+from ...fluid.layers import smooth_l1  # DEFINE_ALIAS
+from ...fluid.layers import softmax_with_cross_entropy  # DEFINE_ALIAS
+from ...fluid.layers import square_error_cost  # DEFINE_ALIAS
+from ...fluid.layers import ssd_loss  # DEFINE_ALIAS
+from ...fluid.layers import teacher_student_sigmoid_loss  # DEFINE_ALIAS
+from ...fluid.layers.nn import _elementwise_op_in_dygraph
 
 __all__ = [
     'binary_cross_entropy',

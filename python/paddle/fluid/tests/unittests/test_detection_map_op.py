@@ -14,13 +14,12 @@
 
 from __future__ import print_function
 
+import collections
 import unittest
+
+import math
 import numpy as np
 import six
-import sys
-import collections
-import math
-import paddle.fluid as fluid
 from op_test import OpTest
 
 

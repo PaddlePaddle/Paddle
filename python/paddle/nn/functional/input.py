@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-import warnings
+
+from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import Variable, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.layers import core
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 __all__ = ['one_hot', 'embedding']
 

@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import numpy as np
 import unittest
-import random
-import paddle
-import paddle.fluid as fluid
+
+import numpy as np
+import os
 import paddle.fluid.layers as layers
 from simple_nets import simple_fc_net_with_inputs, simple_fc_net
+
+import paddle.fluid as fluid
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):

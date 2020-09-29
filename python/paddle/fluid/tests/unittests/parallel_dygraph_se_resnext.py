@@ -14,24 +14,14 @@
 
 from __future__ import print_function
 
-import os
-import contextlib
-import unittest
+import math
 import numpy as np
-import six
-import pickle
-import sys
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.layer_helper import LayerHelper
-import math
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 batch_size = 64
 momentum_rate = 0.9

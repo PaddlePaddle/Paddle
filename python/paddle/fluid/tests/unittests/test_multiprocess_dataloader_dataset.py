@@ -15,12 +15,13 @@
 from __future__ import division
 
 import unittest
+
 import numpy as np
+from paddle.fluid.dygraph.base import to_variable
+from paddle.io import TensorDataset, DataLoader
 
 import paddle
 import paddle.fluid as fluid
-from paddle.io import TensorDataset, DataLoader
-from paddle.fluid.dygraph.base import to_variable
 
 
 class TestTensorDataset(unittest.TestCase):

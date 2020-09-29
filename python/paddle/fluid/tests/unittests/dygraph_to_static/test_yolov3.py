@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import random
 import time
 import unittest
 
-import paddle
-import paddle.fluid as fluid
+import numpy as np
+import random
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
-
 from yolov3 import cfg, YOLOv3
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 random.seed(0)

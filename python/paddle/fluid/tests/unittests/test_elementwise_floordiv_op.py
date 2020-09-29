@@ -13,14 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+import random
 from op_test import OpTest
 
-import random
+import paddle
+import paddle.fluid as fluid
 
 
 class TestElementwiseModOp(OpTest):

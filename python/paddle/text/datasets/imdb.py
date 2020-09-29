@@ -14,15 +14,15 @@
 
 from __future__ import print_function
 
+import collections
 import re
+
+import numpy as np
 import six
 import string
 import tarfile
-import numpy as np
-import collections
-
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = ['Imdb']
 

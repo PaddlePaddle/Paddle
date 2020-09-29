@@ -14,16 +14,15 @@
 
 from __future__ import division
 
-import os
 import sys
-import six
 import time
 import unittest
-import multiprocessing
+
 import numpy as np
+import six
+from paddle.io import Dataset, DataLoader
 
 import paddle.fluid as fluid
-from paddle.io import Dataset, BatchSampler, DataLoader
 
 EPOCH_NUM = 3
 BATCH_SIZE = 8

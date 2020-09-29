@@ -14,15 +14,16 @@
 
 from __future__ import print_function
 
-import os
 import logging
+
+import os
+import paddle.distributed.fleet as fleet
+import random
 import tarfile
 import tempfile
-import random
 import warnings
 
 import paddle
-import paddle.distributed.fleet as fleet
 
 logging.basicConfig()
 logger = logging.getLogger("paddle")

@@ -16,7 +16,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
@@ -27,7 +26,6 @@ from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
 
 import numpy as np
-from paddle.io import Dataset, BatchSampler, DataLoader
 
 BATCH_NUM = 4
 BATCH_SIZE = 1

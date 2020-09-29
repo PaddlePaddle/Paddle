@@ -15,15 +15,13 @@
 from __future__ import print_function
 
 import unittest
-import paddle.fluid as fluid
+
+import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-import numpy as np
-import six
+
+import paddle.fluid as fluid
 
 
 class RecurrentTest(fluid.Layer):

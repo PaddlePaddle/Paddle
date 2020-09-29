@@ -15,10 +15,10 @@
 from __future__ import division
 from __future__ import print_function
 
-import paddle
 import paddle.nn as nn
-
 from paddle.utils.download import get_weights_path_from_url
+
+import paddle
 
 __all__ = [
     'ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'

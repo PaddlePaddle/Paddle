@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle
 from op_test import OpTest
+
+import paddle
 
 
 class TestFlattenOp(OpTest):

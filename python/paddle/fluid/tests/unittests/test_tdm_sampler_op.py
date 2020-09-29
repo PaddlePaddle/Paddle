@@ -16,15 +16,12 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid.layers as layers
+from op_test import OpTest
+
 import paddle.fluid as fluid
-import random
-import six
-from sys import version_info
 
 
 def create_tdm_travel():

@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
+import unittest
+
 import paddle.compat as cpt
 import paddle.fluid.core as core
-import unittest
 
 
 class TestException(unittest.TestCase):

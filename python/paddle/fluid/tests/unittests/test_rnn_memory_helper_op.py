@@ -16,11 +16,11 @@ from __future__ import print_function
 
 import unittest
 
-from paddle.fluid.framework import Program
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 import numpy as np
 import paddle.fluid.core as core
+from paddle.fluid.executor import Executor
+
+from paddle.fluid.framework import Program
 
 
 class RNNMemoryHelperOpTest(unittest.TestCase):

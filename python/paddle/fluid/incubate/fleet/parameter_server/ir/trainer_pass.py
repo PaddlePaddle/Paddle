@@ -14,21 +14,21 @@
 # limitations under the License.
 
 from __future__ import print_function
-import six
+
 import collections
-import warnings
-import math
-
 from functools import reduce
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
 
-from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+import paddle.fluid.core as core
+import six
+import warnings
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.fluid.transpiler.details.program_utils import delete_ops
+
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"

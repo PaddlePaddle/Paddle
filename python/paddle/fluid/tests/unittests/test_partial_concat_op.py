@@ -15,10 +15,11 @@
 from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
 import random
 import six
+from op_test import OpTest
 
 
 def np_partial_concat(inputs, start, length):

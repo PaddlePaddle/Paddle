@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import unittest
+
+import paddle.fluid.layers as layers
+
+import paddle.fluid as fluid
 
 
 class TestAssertOp(unittest.TestCase):
