@@ -2327,8 +2327,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             import paddle
 
             paddle.enable_static()
-            a = paddle.data(name='a', shape=[-1, 1], dtype='float32')
-            b = paddle.data(name='b', shape=[-1, 1], dtype='float32')
+            a = paddle.static.data(name='a', shape=[-1, 1], dtype='float32')
+            b = paddle.static.data(name='b', shape=[-1, 1], dtype='float32')
             c = a * b
             out = paddle.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
