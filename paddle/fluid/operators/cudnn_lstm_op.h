@@ -249,6 +249,7 @@ void CacluateLSTMLayer(const framework::ExecutionContext& ctx,
     } else {
     }
     Tensor* input_temp = output;
+    input_temp->Resize(output->dims());
     if (dropout_prob != 0 && (!is_test) && (i < num_layers - 1)) {
       // only train mode just need dropout
       dropout_cpu_function_inplace<T>(ctx, input_temp, dropout_mask,
