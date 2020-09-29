@@ -4877,6 +4877,15 @@ class LookaheadOptimizer(object):
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
+            def sample_data():
+               res = []
+               for i in range(2):
+                   data = np.random.normal(size=(2,))
+                   label = np.random.randint(2, size=(1,))
+                   res.append((data, label))
+               return res
+
 	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
 	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
@@ -4897,7 +4906,8 @@ class LookaheadOptimizer(object):
 	    step = 0
             while(step < 10):
                 step += 1
-		exe.run(fluid.default_main_program(),
+		batch_data = sample_data()
+                exe.run(fluid.default_main_program(),
             	feed=feeder.feed(batch_data))
 
     """
