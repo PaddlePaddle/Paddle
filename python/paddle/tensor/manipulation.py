@@ -175,9 +175,6 @@ def flip(x, axis, name=None):
     return out
 
 
-reverse = flip  #DEFINE_ALIAS
-
-
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     """
     **Flatten op**
@@ -363,7 +360,7 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = layers.reshape(out, shape=origin_shape, inplace=True)
+    out = layers.reshape(out, shape=origin_shape)
     return out
 
 
@@ -1258,9 +1255,6 @@ broadcast_to = expand
 
 def reshape(x, shape, name=None):
     """
-    :alias_main: paddle.reshape
-	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-
     This operator changes the shape of ``x`` without changing its data.
 
     Some tricks exist when specifying the target shape.
@@ -1309,22 +1303,18 @@ def reshape(x, shape, name=None):
             import numpy as np
             import paddle
 
-            paddle.disable_static()
-
-            data = np.random.random([2, 4, 6]).astype("float32")
-            x = paddle.to_tensor(data)
-
-            positive_four = paddle.fill_constant([1], "int32", 4)
-
-            out_1 = paddle.reshape(x, [-1, 0, 3, 2])
-            # the shape of out_1 is [2,4,3,2].
-
-            out_2 = paddle.reshape(x, shape=[positive_four, 12])
+            x = paddle.rand([2, 4, 6], dtype="float32")
+            positive_four = paddle.full([1], 4, "int32")
+            out = paddle.reshape(x, [-1, 0, 3, 2])
+            print(out)
+            # the shape is [2,4,3,2].
+            out = paddle.reshape(x, shape=[positive_four, 12])
+            print(out)
             # the shape of out_2 is [4, 12].
-
             shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
-            out_3 = paddle.reshape(x, shape=shape_tensor)
-            # the shape of out_2 is [8, 6].
+            out = paddle.reshape(x, shape=shape_tensor)
+            print(out)
+            # the shape is [8, 6].
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
 
