@@ -42,18 +42,15 @@ class SparseLoadKernel : public framework::OpKernel<T> {
                           "whether the model file is complete or damaged.",
                           filename));
     auto name = ctx.OutputNames("Out")[0];
-    VLOG(1) << "Sparse Load Var name: " << name;
+    VLOG(4) << "Sparse Load Var name: " << name;
     auto *out_var = ctx.OutputVar("Out");
-    VLOG(1) << "Sparse Load get out_var";
     PADDLE_ENFORCE_NOT_NULL(
         out_var, platform::errors::InvalidArgument(
                      "The variable %s to be loaded cannot be found.", name));
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      VLOG(1) << "Sparse Load LoadLodTensor";
       LoadLodTensor(fin, place, out_var, ctx);
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      VLOG(1) << "Sparse Load LoadSelectedRows";
       LoadSelectedRows(fin, place, out_var, ctx);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -73,9 +70,9 @@ class SparseLoadKernel : public framework::OpKernel<T> {
     auto node_index = ctx.Attr<int64_t>("node_index");
     auto node_num = ctx.Attr<int64_t>("node_num");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-    VLOG(1) << "Sparse LoadLodTensor node_num" << node_num;
-    VLOG(1) << "Sparse LoadLodTensor node_index" << node_index;
-    VLOG(1) << "Sparse LoadLodTensor shape[0]" << shape[0];
+    VLOG(4) << "Sparse LoadLodTensor node_num" << node_num;
+    VLOG(4) << "Sparse LoadLodTensor node_index" << node_index;
+    VLOG(4) << "Sparse LoadLodTensor shape[0]" << shape[0];
     PADDLE_ENFORCE_GE(node_index, 0, platform::errors::InvalidArgument(
                                          "node_num great than or equal to 0"));
     PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
@@ -96,9 +93,9 @@ class SparseLoadKernel : public framework::OpKernel<T> {
                                          "node_num great than or equal to 0"));
     PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
                                        "node_num great than or equal to 1"));
-    VLOG(1) << "Sparse LoadSelectedRows node_num" << node_num;
-    VLOG(1) << "Sparse LoadSelectedRows node_index" << node_index;
-    VLOG(1) << "Sparse LoadSelectedRows shape[0]" << shape[0];
+    VLOG(4) << "Sparse LoadSelectedRows node_num" << node_num;
+    VLOG(4) << "Sparse LoadSelectedRows node_index" << node_index;
+    VLOG(4) << "Sparse LoadSelectedRows shape[0]" << shape[0];
     DeserializeFromStream(fin, selectedRows, dev_ctx, node_index, node_num,
                           shape);
   }

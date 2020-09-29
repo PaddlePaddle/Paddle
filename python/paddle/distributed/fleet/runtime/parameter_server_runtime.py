@@ -85,7 +85,6 @@ class ParameterServerRuntime(RuntimeBase):
 
         load_vars = list(
             filter(_in_varnames, fluid.default_main_program().list_vars()))
-        print("load sparse params: load_vars: {}".format(load_vars))
         if main_program is None:
             main_program = self.origin_main_program
 

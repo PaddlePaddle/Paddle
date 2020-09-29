@@ -871,8 +871,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto line_size = line_numel * framework::SizeOfType(desc.data_type());
       char* cur_buf = static_cast<char*>(buf);
       char* temp_row = new char[line_size];
-      VLOG(1) << "TensorFromStream: line_size " << line_size;
-      VLOG(1) << "TensorFromStream: total_line " << total_line;
+      VLOG(4) << "TensorFromStream: line_size " << line_size;
+      VLOG(4) << "TensorFromStream: total_line " << total_line;
       for (size_t line_index = 0; line_index < total_line; ++line_index) {
         is.read(temp_row, line_size);
         if (static_cast<int64_t>(line_index) % node_num == node_index) {
