@@ -123,7 +123,7 @@ class CosSimLayer(object):
         """
         operation
         """
-        sim = paddle.metric.cos_sim(x, y)
+        sim = paddle.nn.functional.cosine_similarity(x, y)
         return sim
 
 
