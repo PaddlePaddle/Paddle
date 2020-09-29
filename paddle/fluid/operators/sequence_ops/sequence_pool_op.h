@@ -43,12 +43,15 @@ class SequencePoolKernel : public framework::OpKernel<T> {
                                         "does not contain LoD information."));
     PADDLE_ENFORCE_LE(lod_level, 2UL,
                       platform::errors::InvalidArgument(
-                          "The lod level of input shall be no more than 2."));
+                          "The lod level of input shall be no more than 2."
+                          "Received lod level is %d.", lod_level));
     PADDLE_ENFORCE_GE(
         dims[0],
         /*batch size = */ static_cast<int64_t>(lod[lod_level - 1].size() - 1),
         platform::errors::InvalidArgument(
-            "The first dimension of Input(X) must be large than batch size."));
+            "The first dimension of Input(X) must be large than batch size."
+            "But received first dimension of Input(X) is %d, while batch"
+            "size is %d.", dims[0], static_cast<int64_t>(lod[lod_level - 1].size() - 1)));
     if (lod_level > 1UL) {
       PADDLE_ENFORCE_EQ(lod[0][lod[0].size() - 1], lod[1].size() - 1,
                         platform::errors::InvalidArgument(
