@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <map>
@@ -22,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -1661,6 +1663,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+  m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
 
   m.def("get_float_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
@@ -2528,6 +2533,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property(
+          "enable_addto",
+          [](const BuildStrategy &self) { return self.enable_addto_; },
+          [](BuildStrategy &self, bool b) { self.enable_addto_ = b; })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) {

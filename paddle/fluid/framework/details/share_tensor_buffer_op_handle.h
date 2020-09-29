@@ -17,13 +17,26 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
 namespace paddle {
 namespace framework {
+class Scope;
+namespace ir {
+class MemOptVarInfo;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
+
+class ComputationOpHandle;
 
 class ShareTensorBufferOpHandle : public OpHandleBase {
  public:
@@ -31,7 +44,7 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
       ir::Node *node, Scope *scope, size_t scope_idx,
       const std::string &op_type,
       const std::vector<const ir::MemOptVarInfo *> &in_vars_infos,
-      const std::vector<std::string> &out_var_names);
+      const std::vector<std::string> &out_var_names, bool share_dims = false);
 
   std::unordered_map<std::string, std::string> ReusedVars() const;
 
@@ -41,6 +54,8 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);
+
+  void SetShareDims(bool share_dims);
 
   const ShareTensorBufferFunctor &Functor() const { return functor_; }
 

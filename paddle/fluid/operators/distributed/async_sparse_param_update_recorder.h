@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -22,8 +23,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <ThreadPool.h>
 
 #include "paddle/fluid/platform/enforce.h"
 

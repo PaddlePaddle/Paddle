@@ -14,8 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/softmax_op.h"
-#include "paddle/fluid/platform/cudnn_desc.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+
+namespace paddle {
+namespace platform {
+struct CUDAPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

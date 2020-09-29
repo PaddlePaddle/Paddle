@@ -19,7 +19,7 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
-from paddle.distributed.fleet.utils import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
 
 java_home = os.environ["JAVA_HOME"]
 
@@ -156,13 +156,6 @@ class FSTestBase(unittest.TestCase):
         fs.delete(dst_file)
 
         assert fs.need_upload_download()
-
-        fs.download(src_file, dst_file)
-        try:
-            fs.download(src_file, dst_file)
-            self.assertFalse(True)
-        except FSFileExistsError as e:
-            pass
 
         self.assertTrue(fs.is_exist(dst_file))
         fs.delete(dst_file)

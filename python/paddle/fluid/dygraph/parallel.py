@@ -416,7 +416,7 @@ class DataParallel(layers.Layer):
                 g_var_shapes.append(g_var.shape)
                 flattened_vars.append(
                     nn.reshape(
-                        x=g_var, shape=[np.prod(g_var.shape)], inplace=True))
+                        x=g_var, shape=[np.prod(g_var.shape)]))
             coalesced_grad = nn.concat(flattened_vars)
             coalesced_grads_and_grad_vars.append(
                 [coalesced_grad, grad_vars, g_var_shapes])
@@ -610,13 +610,13 @@ class DataParallel(layers.Layer):
 
                 paddle.disable_static()
 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
                 emb = fluid.dygraph.DataParallel(emb, strategy)
 
                 state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
-                para_state_dict, _ = paddle.load("paddle_dy")
+                para_state_dict = paddle.load("paddle_dy.pdparams")
 
                 emb.set_state_dict(para_state_dict)
 

@@ -162,7 +162,7 @@ class TestAdaptiveMaxPool3dAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
-            x = paddle.to_variable(self.x_np)
+            x = paddle.to_tensor(self.x_np)
 
             out_1 = paddle.nn.functional.adaptive_max_pool3d(
                 x=x, output_size=[3, 3, 3])
@@ -257,7 +257,7 @@ class TestAdaptiveMaxPool3dClassAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
-            x = paddle.to_variable(self.x_np)
+            x = paddle.to_tensor(self.x_np)
 
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
                 output_size=[3, 3, 3])

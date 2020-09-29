@@ -26,7 +26,7 @@ function(train_test TARGET_NAME)
                     ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
         endif()
         set_tests_properties(test_train_${TARGET_NAME}${arg}
-                PROPERTIES DEPENDS test_${TARGET_NAME})
+                PROPERTIES FIXTURES_REQUIRED test_${TARGET_NAME}_infer_model)
         if(NOT WIN32 AND NOT APPLE)
             set_tests_properties(test_train_${TARGET_NAME}${arg}
                     PROPERTIES TIMEOUT 150)

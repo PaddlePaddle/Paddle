@@ -23,7 +23,6 @@ from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
-import objgraph
 from ..data_feeder import convert_dtype
 import warnings
 
@@ -364,26 +363,8 @@ def guard(place=None):
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(place):
+                with framework._dygraph_place_guard(expected_place):
                     yield
-
-
-def _print_debug_msg(parameter_list, limit=5, is_test=False):
-    if not core._is_dygraph_debug_enabled():
-        logging.warn(
-            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
-        )
-        return
-    unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(parameter_list)
-    alive_cpp_var_size = len(core.VarBase._alive_vars())
-    if not is_test:
-        logging.warn(
-            'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
-            .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
-        objgraph.show_growth(limit=limit)
-    else:
-        return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
 @framework.dygraph_only
