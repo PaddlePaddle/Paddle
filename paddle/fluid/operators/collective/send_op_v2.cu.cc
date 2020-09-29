@@ -27,6 +27,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
+#if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<framework::LoDTensor>("X");
     int numel = x->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
@@ -58,18 +59,17 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         cudaMemcpy(numel_ptr, &numel, sizeof(int), cudaMemcpyHostToDevice));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
-#if NCCL_VERSION_CODE >= 2703
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         numel_ptr, 1, ncclInt, peer, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
+    VLOG(3) << "rank " << comm->rank() << " send "
+            << framework::product(x->dims()) << " to " << peer;
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
-    VLOG(3) << "rank " << comm->rank() << " send "
-            << framework::product(x->dims()) << " to " << peer;
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));

@@ -27,6 +27,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
+#if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int send_numel = x->numel();
@@ -58,7 +59,6 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     size_t offset = 0;
     send_numel /= nranks;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
-#if NCCL_VERSION_CODE >= 2703
     for (auto i = 0; i < nranks; ++i) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
           send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
@@ -66,11 +66,11 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
           recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
       offset += send_numel;
     }
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
