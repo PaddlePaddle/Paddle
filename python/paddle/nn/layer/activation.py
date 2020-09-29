@@ -197,11 +197,14 @@ class Hardswish(layers.Layer):
 
     .. math::
 
-        Hardswish(x)= \\begin{cases}
-                        0, \\text{if } x \\leq -3 \\\\
-                        x, \\text{if } x \\geq 3 \\\\
-                        \\frac{x(x+3)}{6},  \\text{otherwise}
-                        \\end{cases}
+        Hardswish(x)=
+            \\left\\{
+            \\begin{aligned}
+            &0, & & \\text{if } x \\leq -3 \\\\
+            &x, & & \\text{if } x \\geq 3 \\\\
+            &\\frac{x(x+3)}{6}, & & \\text{otherwise}
+            \\end{aligned}
+            \\right.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -736,11 +739,14 @@ class Hardsigmoid(layers.Layer):
 
     .. math::
 
-        Hardsigmoid(x)= \\begin{cases}
-                        0, \\text{if } x \\leq -3 \\\\
-                        1, \\text{if } x \\geq 3 \\\\
-                        x/6 + 1/2,  \\text{otherwise}
-                        \\end{cases}
+        Hardsigmoid(x)=
+            \\left\\{
+            \\begin{aligned}
+            &0, & & \\text{if } x \\leq -3 \\\\
+            &1, & & \\text{if } x \\geq 3 \\\\
+            &x/6 + 1/2, & & \\text{otherwise}
+            \\end{aligned}
+            \\right.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
