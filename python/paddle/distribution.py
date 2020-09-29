@@ -727,20 +727,6 @@ class Categorical(Distribution):
             if self.dtype != convert_dtype(self.logits.dtype):
                 self.logits = tensor.cast(self.logits, dtype=self.dtype)
 
-    '''
-    def _get_prob(self):
-        """Calculate probability of Categorical distribution according to input logits.
-
-        Returns:
-          Tensor: A tensor represents the probability.
-        """
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        e_logits = ops.exp(logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
-        prob = e_logits / z
-        return prob
-    '''
-
     def sample(self, shape):
         """Generate samples of the specified shape.
 
@@ -768,25 +754,6 @@ class Categorical(Distribution):
 
         sample_index = multinomial(logits, num_samples, True)
         return nn.reshape(sample_index, sample_shape, name=name)
-        """
-        if in_dygraph_mode():
-            sample_index = core.ops.multinomial(
-                logits, 'num_samples', num_samples, 'replacement', True)
-            return nn.reshape(sample_index, sample_shape)
-
-        check_type(shape, 'shape', (list), 'sample')
-
-        helper = LayerHelper("multinomial", **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=convert_np_dtype_to_dtype_('int64'))
-        helper.append_op(
-            type='multinomial',
-            inputs={"X": logits},
-            outputs={'Out': out},
-            attrs={'num_samples': num_samples,
-                   'replacement': True})
-        return nn.reshape(out, sample_shape, name=name)
-        """
 
     def kl_divergence(self, other):
         """The KL-divergence between two Categorical distributions.

@@ -702,8 +702,16 @@ class CategoricalTest(unittest.TestCase):
         self.value_np = np.array([2, 1, 3])
 
         self.logits_shape = [batch_size, dims]
+        # dist_shape = logits_shape[:-1], it represents the number of 
+        #  different distributions.
         self.dist_shape = [batch_size]
+        # sample shape represents the number of samples
         self.sample_shape = [2, 4]
+        # value used in probs and log_prob method
+        # If value is 1-D and logits is 2-D or higher dimension, value will be
+        #  broadcasted to have the same number of distributions with logits.
+        # If value is 2-D or higher dimentsion, it should have the same number 
+        #  of distributions with logtis. ``value[:-1] = logits[:-1]
         self.value_shape = [3]
 
     def init_dynamic_data(self, batch_size, dims):
@@ -809,11 +817,6 @@ class CategoricalTest2(CategoricalTest):
         self.dist_shape = [batch_size]
         self.sample_shape = [2, 4]
         self.value_shape = [3]
-
-    def init_dynamic_data(self, batch_size, dims):
-        self.logits = paddle.to_tensor(self.logits_np)
-        self.other_logits = paddle.to_tensor(self.other_logits_np)
-        self.value = paddle.to_tensor(self.value_np)
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
