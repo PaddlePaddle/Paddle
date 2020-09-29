@@ -845,9 +845,6 @@ class Categorical(Distribution):
             index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
             index_prefix = nn.unsqueeze(index_prefix, axes=-1)
 
-            # print("xxxxxxxxxxxx", index_prefix.dtype)
-            # print("yyyyyyyyyyyyy", index_value.dtype)
-
             index = concat([index_prefix, index_value], axis=-1)
 
         # value is the category index to search for the corresponding probability.
