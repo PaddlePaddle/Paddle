@@ -15,13 +15,13 @@ else
   exit 2
 fi
 
-URL="http://nccl2-deb.gz.bcebos.com/$DEB"
+URL="http://nccl2-deb.cdn.bcebos.com/$DEB"
 
 DIR="/nccl2"
 mkdir -p $DIR
 # we cached the nccl2 deb package in BOS, so we can download it with wget
 # install nccl2: http://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html#down
-wget -O $DIR/$DEB $URL
+wget -q -O $DIR/$DEB $URL
 
 cd $DIR && ar x $DEB && tar xf data.tar.xz
 DEBS=$(find ./var/ -name "*.deb")
