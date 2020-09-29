@@ -623,7 +623,7 @@ def _rnn_static_graph(cell,
         inputs = map_structure(rnn.step_input, inputs)
         states = map_structure(rnn.memory, initial_states)
         copy_states = map_structure(lambda x: x, states)
-        outputs, new_states = cell.call(inputs, copy_states, **kwargs)
+        outputs, new_states = cell(inputs, copy_states, **kwargs)
         assert_same_structure(states, new_states)
         if sequence_length:
             step_mask = rnn.step_input(mask)

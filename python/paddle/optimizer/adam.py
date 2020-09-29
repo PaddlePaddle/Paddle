@@ -17,6 +17,9 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
+import paddle
+from paddle.fluid.dygraph.parallel import apply_collective_grads
+
 __all__ = ["Adam"]
 
 
@@ -276,7 +279,9 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
-        parameter_list = self._parameter_list
+        if paddle.distributed.get_world_size() > 1:
+            apply_collective_grads(self._parameter_list)
+
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:

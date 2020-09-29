@@ -922,9 +922,9 @@ def mv(x, vec, name=None):
     Performs a matrix-vector product of the matrix x and the vector vec.
 
     Args:
-        x (Variable): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
+        x (Tensor): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
             should be one of float32, float64.
-        vec (Variable): A tensor with shape :math:`[N]` , The data type of the input Tensor x
+        vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
             should be one of float32, float64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
