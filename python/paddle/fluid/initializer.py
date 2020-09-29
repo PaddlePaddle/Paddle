@@ -729,36 +729,26 @@ class BilinearInitializer(Initializer):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            from paddle.regularizer import L2Decay
             import math
-            factor = 2
-            C = 2
-            B = 8
-            H = W = 32
-            w_attr = fluid.param_attr.ParamAttr(
-                learning_rate=0., 
-                regularizer=fluid.regularizer.L2Decay(0.),
-                initializer=fluid.initializer.Bilinear())
-            x = fluid.data(name="data", shape=[B, 3, H, W], 
-                                  dtype="float32")
-            conv_up = fluid.layers.conv2d_transpose(
-                input=x,
-                num_filters=C,
-                output_size=None,
-                filter_size=2 * factor - factor % 2,
-                padding=int(math.ceil((factor - 1) / 2.)),
-                stride=factor,
-                groups=C,
-                param_attr=w_attr,
-                bias_attr=False)
+            import paddle.nn as nn
 
-    Where, `num_filters=C` and `groups=C` means this is channel-wise transposed
-    convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
-    This initializer will set a (K, K) interpolation kernel for every channel
-    of the filter identically. The resulting shape of the output feature map
-    will be (B, C, factor * H, factor * W). Note that the learning rate and the
-    weight decay are set to 0 in order to keep coefficient values of bilinear
-    interpolation unchanged during training.
+            paddle.disable_static()
+            factor = 2
+            w_attr = paddle.ParamAttr(learning_rate=0.,
+                                      regularizer=L2Decay(0.),
+                                      initializer=nn.initializer.Bilinear())
+            data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+            data = paddle.to_tensor(data)
+            conv_up = nn.ConvTranspose2d(4,
+                                         6, (3, 3),
+                                         padding=int(
+                                             math.ceil((factor - 1) / 2.)),
+                                         stride=factor,
+                                         weight_attr=w_attr,
+                                         bias_attr=False)
 
     """
 
