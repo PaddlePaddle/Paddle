@@ -813,18 +813,16 @@ def bmm(x, y, name=None):
     if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
 
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor.
-        y (Variable): The input variable which is a Tensor or LoDTensor.
+        x (Tensor): The input Tensor.
+        y (Tensor): The input Tensor.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor (or LoDTensor) variable.
+        Tensor: The product Tensor.
 
     Examples:
         import paddle
-
-        paddle.disable_static()
 
         # In imperative mode:
         # size x: (2, 2, 3) and y: (2, 3, 2)
