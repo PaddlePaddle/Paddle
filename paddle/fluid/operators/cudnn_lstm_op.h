@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/dropout_op.h"
 
 namespace paddle {
 namespace operators {
@@ -84,6 +85,61 @@ struct BidirLayer {
   Cell<T> cell_;
 };
 
+template <typename T>
+void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
+                                  Tensor* x, Tensor* mask,
+                                  const float& dropout_prob,
+                                  const int& seed_number,
+                                  const bool& upscale_in_train,
+                                  const bool& is_test) {
+  auto* x_data = x->data<T>();
+  if (!is_test) {
+    size_t size = framework::product(mask->dims());
+
+    if (!mask->IsInitialized()) {
+      auto mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
+      // Special case when dropout_prob is 1.0
+      if (dropout_prob == 1.0f) {
+        std::memset(x_data, 0, size * sizeof(*x_data));
+        std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
+        return;
+      }
+      auto engine = framework::GetCPURandomEngine(seed_number);
+      std::uniform_real_distribution<float> dist(0, 1);
+      for (size_t i = 0; i < size; ++i) {
+        if (dist(*engine) < dropout_prob) {
+          mask_data[i] = 0;
+        } else {
+          mask_data[i] = 1;
+          if (upscale_in_train) {
+            x_data[i] /= static_cast<T>(1.0f - dropout_prob);
+          }
+        }
+      }
+      return;
+    }
+    auto mask_data = mask->data<uint8_t>();
+    if (dropout_prob == 1.0f) {
+      std::memset(x_data, 0, size * sizeof(*x_data));
+      return;
+    }
+    for (size_t i = 0; i < size; ++i) {
+      if (mask_data[i] == 1) {
+        if (upscale_in_train) {
+          x_data[i] /= static_cast<T>(1.0f - dropout_prob);
+        }
+      }
+    }
+  } else {
+    if (!upscale_in_train) {
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto& place =
+          *context.template device_context<platform::CPUDeviceContext>()
+               .eigen_device();
+      X.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+    }
+  }
+}
 template <typename T>
 std::vector<TensorList> parameter_split(
     const Tensor* weight, const int& gate_num, const int& layers_num,
@@ -156,12 +212,15 @@ std::vector<TensorList> parameter_split(
 
 template <typename CellType, template <typename> class LayerT,
           template <typename> class BidirLayerT, typename T>
-void CacluateLSTMLayer(const Tensor* input, const Tensor* weight,
+void CacluateLSTMLayer(const framework::ExecutionContext& ctx,
+                       const Tensor* input, const Tensor* weight,
                        const Tensor* init_h, const Tensor* init_c,
                        Tensor* last_h, Tensor* last_c, Tensor* output,
-                       const int& num_layers, const int& gate_num,
-                       const int& input_size, const int& hidden_size,
-                       const bool& is_bidirec, const std::string& cell_type) {
+                       Tensor* dropout_mask, const int& num_layers,
+                       const int& gate_num, const int& input_size,
+                       const int& hidden_size, const bool& is_bidirec,
+                       const std::string& cell_type, const float& dropout_prob,
+                       const bool& is_test, const int& seed) {
   // check the dim message of init state
   const auto& init_h_dims = init_h->dims();
   const auto& init_c_dims = init_c->dims();
@@ -186,8 +245,17 @@ void CacluateLSTMLayer(const Tensor* input, const Tensor* weight,
       BidirLayerT<T> layer(cell);
       layer(input, parameter_lists[i], init_h, init_c, last_h, last_c, output,
             i, init_offset);
+
     } else {
     }
+    Tensor* input_temp = output;
+    if (dropout_prob != 0 && (!is_test) && (i < num_layers - 1)) {
+      // only train mode just need dropout
+      dropout_cpu_function_inplace<T>(ctx, input_temp, dropout_mask,
+                                      dropout_prob, seed,
+                                      true /*upscale_in_train*/, is_test);
+    }
+    input = input_temp;
   }
 }
 
@@ -200,7 +268,9 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& input_size = ctx.Attr<int>("input_size");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
-
+    const float& dropout_prob = ctx.Attr<float>("dropout_prob");
+    const bool& is_test = ctx.Attr<bool>("is_test");
+    const int& seed = ctx.Attr<int>("seed");
     // get the input and weight tensor for the cacluate rnn cell
     auto* input = ctx.Input<Tensor>("Input");
     auto* weight = ctx.Input<Tensor>("W");
@@ -209,13 +279,16 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     auto* last_h = ctx.Output<Tensor>("LastH");
     auto* last_c = ctx.Output<Tensor>("LastC");
     auto* output = ctx.Output<Tensor>("Out");
+    auto* dropout_mask = ctx.Output<Tensor>("StateOut");
 
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
+    // dropout_mask->mutable_data<T>(ctx.GetPlace());
     if (cell_type == "lstm") {
       CacluateLSTMLayer<LSTMCell<T>, SingleLayer, BidirLayer, T>(
-          input, weight, init_h, init_c, last_h, last_c, output, num_layers, 4,
-          input_size, hidden_size, is_bidirec, cell_type);
+          ctx, input, weight, init_h, init_c, last_h, last_c, output,
+          dropout_mask, num_layers, 4, input_size, hidden_size, is_bidirec,
+          cell_type, dropout_prob, is_test, seed);
     }
   }
 };

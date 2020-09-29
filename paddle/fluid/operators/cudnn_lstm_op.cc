@@ -136,7 +136,8 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput("StateOut",
               "Share memory with State. "
-              "Store the global drop state when training");
+              "Store the global drop state when training")
+        .AsIntermediate();
     AddOutput("Out",
               "(Tensor) the hidden state of LSTM operator. "
               "The shape is ( seq_len x batch_size x hidden_size) if "
