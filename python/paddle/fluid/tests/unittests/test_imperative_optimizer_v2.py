@@ -73,6 +73,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CPUPlace()
 
         try:
+            paddle.disable_static()
             paddle.manual_seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             mlp = MLP()
@@ -80,6 +81,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 parameter_list=mlp.parameters())
         except Exception as e:
             assert str(e) == exception_message
+        finally:
+            paddle.enable_static()
 
     def _check_mlp(self, place=None):
         seed = 90
@@ -368,11 +371,7 @@ class TestImperativeOptimizerLinearLrWarmup(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.LinearLrWarmup(
-                learning_rate=0.5,
-                warmup_steps=20,
-                start_lr=0,
-                end_lr=0.5,
-                verbose=True),
+                learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5),
             parameters=parameter_list)
         return optimizer
 
