@@ -466,6 +466,7 @@ class TestSeResnet(unittest.TestCase):
         flat_st_pre = st_pre.flatten()
         flat_predictor_pre = np.array(predictor_pre).flatten()
         for i in range(len(flat_predictor_pre)):
+            # modify precision to 1e-6, avoid unittest failed
             self.assertAlmostEqual(
                 flat_predictor_pre[i],
                 flat_st_pre[i],
