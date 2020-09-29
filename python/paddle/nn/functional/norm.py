@@ -19,7 +19,6 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
-from ...fluid.layers import lrn  #DEFINE_ALIAS
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
@@ -29,7 +28,7 @@ __all__ = [
     #       'data_norm',
     'instance_norm',
     'layer_norm',
-    'lrn',
+    'local_response_norm',
     'normalize',
     #       'spectral_norm'
 ]
@@ -403,3 +402,118 @@ def instance_norm(x,
     helper.append_op(
         type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
     return instance_norm_out
+
+
+def local_response_norm(x,
+                        size,
+                        alpha=1e-4,
+                        beta=0.75,
+                        k=1.,
+                        data_format="NCHW",
+                        name=None):
+    """
+        Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
+        For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+        The formula is as follows:
+
+        .. math::
+
+            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
+
+        In the above equation:
+
+        - :math:`size` : The number of channels to sum over.
+        - :math:`k` : The offset (avoid being divided by 0).
+        - :math:`\\alpha` : The scaling parameter.
+        - :math:`\\beta` : The exponent parameter.
+
+
+        Args:
+            x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float32.
+            size (int): The number of channels to sum over.
+            alpha (float, optional): The scaling parameter, positive. Default:1e-4
+            beta (float, optional): The exponent, positive. Default:0.75
+            k (float, optional): An offset, positive. Default: 1.0
+            data_format (str, optional): Specify the data format of the input, and the data format of the output
+                will be consistent with that of the input. An optional string from:
+                If x is 3-D Tensor, the string could be `"NCL"` or `"NLC"` . When it is `"NCL"`,
+                the data is stored in the order of: `[batch_size, input_channels, feature_length]`.
+                If x is 4-D Tensor, the string could be  `"NCHW"`, `"NHWC"`. When it is `"NCHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
+                If x is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+            name (str, optional): Name for the operation (optional, default is None). For more information,
+                please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            A tensor storing the transformation result with the same shape and data type as input.
+
+
+        Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            y = paddle.nn.functional.local_response_norm(x, size=5)
+            print(y.shape)  # [3, 3, 112, 112]
+        """
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
+    if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
+        raise ValueError(
+            "Attr(data_format) of Op(local_response_norm) got wrong value: received "
+            + data_format +
+            " but only 'NCL'/'NLC'/'NCHW'/'NHWC'/'NCDHW'/'NDHWC' supported.")
+
+    sizes = x.shape
+    dim = len(sizes)
+    if dim < 3:
+        raise ValueError(
+            'Expected 3D or higher dimensionality input, but got {} dimensions'.
+            format(dim))
+
+    channel_last = True if data_format[-1] == "C" else False
+
+    div = fluid.layers.unsqueeze(paddle.multiply(x, x), axes=[1])
+    if channel_last:
+        if dim == 3:
+            div = fluid.layers.pad(
+                div, paddings=[0, 0, 0, 0, 0, 0, size // 2, (size - 1) // 2])
+            div = fluid.layers.pool2d(
+                div, pool_size=(1, size), pool_type='avg', pool_stride=1)
+            div = fluid.layers.squeeze(div, axes=[1])
+        else:
+            div = fluid.layers.reshape(
+                div, shape=[sizes[0], 1, sizes[1], -1, sizes[-1]])
+            div = fluid.layers.pad(
+                div,
+                paddings=[0, 0, 0, 0, 0, 0, 0, 0, size // 2, (size - 1) // 2])
+            div = fluid.layers.pool3d(
+                div, pool_size=(1, 1, size), pool_type='avg', pool_stride=1)
+            div = fluid.layers.squeeze(div, axes=[1])
+            div = fluid.layers.reshape(div, sizes)
+    else:
+        if dim == 3:
+            div = fluid.layers.pad(
+                div, paddings=[0, 0, 0, 0, size // 2, (size - 1) // 2, 0, 0])
+            div = fluid.layers.pool2d(
+                div, pool_size=(size, 1), pool_type='avg', pool_stride=1)
+            div = fluid.layers.squeeze(div, axes=[1])
+        else:
+            div = fluid.layers.reshape(
+                div, shape=[sizes[0], 1, sizes[1], sizes[2], -1])
+            div = fluid.layers.pad(
+                div,
+                paddings=[0, 0, 0, 0, size // 2, (size - 1) // 2, 0, 0, 0, 0])
+            div = fluid.layers.pool3d(
+                div, pool_size=(size, 1, 1), pool_type='avg', pool_stride=1)
+            div = fluid.layers.squeeze(div, axes=[1])
+            div = fluid.layers.reshape(div, sizes)
+
+    div = fluid.layers.scale(div, scale=alpha, bias=k)
+    div = fluid.layers.pow(div, factor=beta)
+    res = fluid.layers.elementwise_div(x, div, name=name)
+    return res

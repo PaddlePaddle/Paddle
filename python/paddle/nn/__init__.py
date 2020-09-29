@@ -149,6 +149,7 @@ from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 from .layer.rnn import *
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
