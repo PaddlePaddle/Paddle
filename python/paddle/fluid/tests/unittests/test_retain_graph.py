@@ -105,8 +105,8 @@ class TestRetainGraph(unittest.TestCase):
         A = np.random.rand(2, 3, 32, 32).astype('float32')
         B = np.random.rand(2, 3, 32, 32).astype('float32')
 
-        realA = paddle.to_variable(A)
-        realB = paddle.to_variable(B)
+        realA = paddle.to_tensor(A)
+        realB = paddle.to_tensor(B)
         fakeB = g(realA)
 
         optim_d.clear_gradients()

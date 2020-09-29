@@ -10,10 +10,5 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
 
-# TODO: define functions to save & load a tensor  
-from ..fluid import save  #DEFINE_ALIAS
-from ..fluid.io import load  #DEFINE_ALIAS
-
-__all__ = ['save', 'load']
+from .data_generator import *

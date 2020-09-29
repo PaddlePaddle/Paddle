@@ -6,8 +6,8 @@ TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
 TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/TensorRT/include
 TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
-
-inference_install_dir=${PADDLE_ROOT}/build/fluid_inference_install_dir
+MSVC_STATIC_CRT=$7
+inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 
 cd `dirname $0`
 current_dir=`pwd`
@@ -66,43 +66,49 @@ mkdir -p build
 cd build
 rm -rf *
 
-if [ $(echo `uname` | grep "Win") != "" ]; then
-  # -----simple_on_word2vec on windows-----
-  cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
-    -DWITH_MKL=$TURN_ON_MKL \
-    -DDEMO_NAME=simple_on_word2vec \
-    -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=OFF
-  msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
-  Release/simple_on_word2vec.exe \
-      --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
-      --use_gpu=False
-  if [ $? -ne 0 ]; then
-    echo "simple_on_word2vec demo runs fail."
-    exit 1
-  fi
+for WITH_STATIC_LIB in ON OFF; do
+  if [ $(echo `uname` | grep "Win") != "" ]; then
+    # -----simple_on_word2vec on windows-----
+    cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
+      -DWITH_MKL=$TURN_ON_MKL \
+      -DDEMO_NAME=simple_on_word2vec \
+      -DWITH_GPU=$TEST_GPU_CPU \
+      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT
+    msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+    for use_gpu in $use_gpu_list; do
+      Release/simple_on_word2vec.exe \
+        --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
+        --use_gpu=$use_gpu
+      if [ $? -ne 0 ]; then
+        echo "simple_on_word2vec demo runs fail."
+        exit 1
+      fi
+    done
 
-  # -----vis_demo on windows-----
-  rm -rf *
-  cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
-    -DWITH_MKL=$TURN_ON_MKL \
-    -DDEMO_NAME=vis_demo \
-    -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=OFF
-  msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
-  for vis_demo_name in $vis_demo_list; do
-    Release/vis_demo.exe \
-      --modeldir=$DATA_DIR/$vis_demo_name/model \
-      --data=$DATA_DIR/$vis_demo_name/data.txt \
-      --refer=$DATA_DIR/$vis_demo_name/result.txt \
-      --use_gpu=False
-    if [ $? -ne 0 ]; then
-      echo "vis demo $vis_demo_name runs fail."
-      exit 1
-    fi
-  done
-else
-  for WITH_STATIC_LIB in ON OFF; do
+    # -----vis_demo on windows-----
+    rm -rf *
+    cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
+      -DWITH_MKL=$TURN_ON_MKL \
+      -DDEMO_NAME=vis_demo \
+      -DWITH_GPU=$TEST_GPU_CPU \
+      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT
+    msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
+    for use_gpu in $use_gpu_list; do
+      for vis_demo_name in $vis_demo_list; do
+        Release/vis_demo.exe \
+          --modeldir=$DATA_DIR/$vis_demo_name/model \
+          --data=$DATA_DIR/$vis_demo_name/data.txt \
+          --refer=$DATA_DIR/$vis_demo_name/result.txt \
+          --use_gpu=$use_gpu
+        if [ $? -ne 0 ]; then
+          echo "vis demo $vis_demo_name runs fail."
+          exit 1
+        fi
+      done
+    done
+  else
     # -----simple_on_word2vec on linux/mac-----
     rm -rf *
     cmake .. -DPADDLE_LIB=${inference_install_dir} \
@@ -123,7 +129,6 @@ else
         fi
       done
     fi
-
     # ---------vis_demo on linux/mac---------
     rm -rf *
     cmake .. -DPADDLE_LIB=${inference_install_dir} \
@@ -145,7 +150,6 @@ else
         fi
       done
     done
-
     # --------tensorrt mobilenet on linux/mac------
     if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
       rm -rf *
@@ -167,6 +171,6 @@ else
         exit 1
       fi
     fi
-  done
-fi
+  fi
+done
 set +x

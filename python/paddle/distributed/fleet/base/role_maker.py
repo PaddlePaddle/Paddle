@@ -108,7 +108,6 @@ class Gloo(object):
                 raise ValueError(self._err_type)
             http_server = self._init_http(ip, port, self._prefix,
                                           start_http_server, http_server_d)
-
         else:
             raise ValueError(self._err_type)
 
@@ -266,26 +265,33 @@ class Gloo(object):
         """
         get default physical interface
         """
-        import netifaces
-        gateways = netifaces.gateways()
-        if gateways.get(netifaces.AF_INET) != None:
-            gateway = gateways[netifaces.AF_INET]
-            if len(gateway) > 0 and len(gateway[0]) > 1:
-                return gateway[0][1]
+        res = os.popen("route -A inet").read().strip().split("\n")
+
+        gateway_idx = None
+        iface_idx = None
+        for item in res:
+            item = item.split()
+            if "Gateway" in item and "Iface" in item:
+                gateway_idx = item.index("Gateway")
+                iface_idx = item.index("Iface")
+            elif gateway_idx != None and iface_idx != None:
+                gateway = None
+                if len(item) > gateway_idx:
+                    gateway = item[gateway_idx]
+                if gateway and gateway != '*' and gateway != "0.0.0.0" and len(
+                        item) > iface_idx:
+                    return item[iface_idx]
         return "lo"
 
     def __get_default_iface_from_interfaces(self):
         """
         get default physical interface
         """
-        import netifaces
-        for intf_name in netifaces.interfaces():
-            addresses = netifaces.ifaddresses(intf_name)
-            if netifaces.AF_INET in addresses:
-                ipv4_addresses = addresses[netifaces.AF_INET]
-                for ipv4_address in ipv4_addresses:
-                    if 'broadcast' in ipv4_address:
-                        return intf_name
+        res = os.popen("ip -f inet addr | awk NR%3==1").read().strip().split(
+            "\n")
+        for item in res:
+            if "BROADCAST" in item:
+                return item.split(":")[1].strip()
         return "lo"
 
     def barrier(self, comm_world):
@@ -507,7 +513,7 @@ class RoleMakerBase(object):
         Returns:
             string: all heter_trainers'endpoints
         """
-        assert self._heter_trainer_endpoints != []
+        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
         return self._heter_trainer_endpoints
 
     def _get_heter_worker_endpoint(self):
@@ -517,10 +523,10 @@ class RoleMakerBase(object):
 
         e.g: if we have 4 cpu-trainer(default), 2 gpu-trainer(heter)
              then No.0 and No.2 cpu-trainer will work with No.0 gpu-trainer
-             and No.1 and No.3 cpu-trainer will work with No.1 gpu-trainerr
+             and No.1 and No.3 cpu-trainer will work with No.1 gpu-trainer
         """
-        assert self._heter_trainer_endpoints != []
-        return self._heter_trainer_endpoints[(self._current_id + 1) %
+        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
+        return self._heter_trainer_endpoints[(self._current_id) %
                                              self._heter_worker_num()]
 
     def _get_heter_worker_device(self):
@@ -617,7 +623,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        return len(self._get_pserver_endpoints())
+        return len(self._get_pserver_endpoints(
+        )) if self._get_pserver_endpoints() is not None else 0
 
     def _node_num(self):
         """

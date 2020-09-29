@@ -285,13 +285,21 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     if (use_filter) {
       if (white_list_len != 0) {
         _filter = (math::bloomfilter*)_blobs_1->data<float>();
-        PADDLE_ENFORCE_EQ(math::bloomfilter_check(_filter), 1,
-                          "white filter not load");
+        PADDLE_ENFORCE_EQ(
+            math::bloomfilter_check(_filter), 1,
+            platform::errors::PreconditionNotMet(
+                "The white filter is not loaded successfully, please make sure "
+                "'white_list_len': %d is valid for Input(WhiteList).",
+                white_list_len));
       }
       if (black_list_len != 0) {
         _black_filter = (math::bloomfilter*)_blobs_2->data<float>();
-        PADDLE_ENFORCE_EQ(math::bloomfilter_check(_black_filter), 1,
-                          "black filter not load");
+        PADDLE_ENFORCE_EQ(
+            math::bloomfilter_check(_black_filter), 1,
+            platform::errors::PreconditionNotMet(
+                "The black filter is not loaded successfully, please make sure "
+                "'black_list_len': %d is valid for Input(BlackList).",
+                black_list_len));
       }
     }
 

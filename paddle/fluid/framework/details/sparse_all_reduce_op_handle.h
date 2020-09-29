@@ -25,6 +25,17 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class NCCLCommunicator;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 class SparseAllReduceOpHandle : public AllReduceOpHandle {

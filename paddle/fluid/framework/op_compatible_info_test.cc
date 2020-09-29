@@ -13,13 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_compatible_info.h"
-#include <iostream>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {
+
+namespace proto {
+class OpCompatibleMap;
+}  // namespace proto
 
 TEST(test_op_compatible_info, test_op_compatible) {
   auto comp_map = OpCompatibleMap();
