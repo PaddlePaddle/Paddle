@@ -15,7 +15,7 @@
 import numpy as np
 import unittest
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import layers
 from paddle.distribution import *
 import math
@@ -299,6 +299,41 @@ class UniformTest9(UniformTest):
         with fluid.program_guard(self.test_program):
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
+
+
+class NormalNumpy(DistributionNumpy):
+    def __init__(self, loc, scale):
+        self.loc = np.array(loc)
+        self.scale = np.array(scale)
+        if str(self.loc.dtype) not in ['float32', 'float64']:
+            self.loc = self.loc.astype('float32')
+            self.scale = self.scale.astype('float32')
+
+    def sample(self, shape):
+        shape = tuple(shape) + (self.loc + self.scale).shape
+        return self.loc + (np.random.randn(*shape) * self.scale)
+
+    def log_prob(self, value):
+        var = self.scale * self.scale
+        log_scale = np.log(self.scale)
+        return -((value - self.loc) * (value - self.loc)) / (
+            2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+
+    def probs(self, value):
+        var = self.scale * self.scale
+        return np.exp(-1. * ((value - self.loc) * (value - self.loc)) /
+                      (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
+
+    def entropy(self):
+        return 0.5 + 0.5 * np.log(
+            np.array(2. * math.pi).astype(self.loc.dtype)) + np.log(self.scale)
+
+    def kl_divergence(self, other):
+        var_ratio = (self.scale / other.scale)
+        var_ratio = var_ratio * var_ratio
+        t1 = ((self.loc - other.loc) / other.scale)
+        t1 = (t1 * t1)
+        return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
 
 
 class NormalTest(unittest.TestCase):
