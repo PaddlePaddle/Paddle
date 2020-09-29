@@ -9586,6 +9586,9 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
             data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
@@ -9790,7 +9793,9 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
     .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
+            paddle.enable_static()
 
             input_brelu = np.array([[-1,6],[1,15.6]])
             with fluid.dygraph.guard():
@@ -12552,6 +12557,9 @@ def maxout(x, groups, name=None, axis=1):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
             input = fluid.data(
                 name='data',
                 shape=[None, 256, 32, 32],
@@ -14851,7 +14859,9 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
         import numpy as np
+        paddle.enable_static()
 
         DATATYPE='float32'
 
