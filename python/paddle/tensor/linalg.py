@@ -156,8 +156,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'],
-                                     'matmul')
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
 
     __check_input(x, y)
 
@@ -707,20 +707,14 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle import to_variable
-            import numpy as np
-
             paddle.disable_static()
 
-            data_x = np.array([[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0],
-                               [3.0, 3.0, 3.0]])
-            data_y = np.array([[1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0]])
-            x = to_variable(data_x)
-            y = to_variable(data_y)
-
+            x = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [2.0, 2.0, 2.0],
+                                  [3.0, 3.0, 3.0]])
+            y = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0]])
             z1 = paddle.cross(x, y)
             print(z1.numpy())
             # [[-1. -1. -1.]
@@ -819,18 +813,16 @@ def bmm(x, y, name=None):
     if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
 
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor.
-        y (Variable): The input variable which is a Tensor or LoDTensor.
+        x (Tensor): The input Tensor.
+        y (Tensor): The input Tensor.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor (or LoDTensor) variable.
+        Tensor: The product Tensor.
 
     Examples:
         import paddle
-
-        paddle.disable_static()
 
         # In imperative mode:
         # size x: (2, 2, 3) and y: (2, 3, 2)
@@ -928,9 +920,9 @@ def mv(x, vec, name=None):
     Performs a matrix-vector product of the matrix x and the vector vec.
 
     Args:
-        x (Variable): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
+        x (Tensor): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
             should be one of float32, float64.
-        vec (Variable): A tensor with shape :math:`[N]` , The data type of the input Tensor x
+        vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
             should be one of float32, float64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.

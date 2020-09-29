@@ -14,6 +14,7 @@
 
 import paddle
 paddle.framework.set_default_dtype("float64")
+paddle.enable_static()
 
 import numpy as np
 import unittest

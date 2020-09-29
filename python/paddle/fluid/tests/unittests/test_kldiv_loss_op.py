@@ -90,7 +90,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
         with paddle.fluid.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
             pred_loss = kldiv_criterion(
-                paddle.to_variable(x), paddle.to_variable(target))
+                paddle.to_tensor(x), paddle.to_tensor(target))
             self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
 
     def test_kl_loss_batchmean(self):

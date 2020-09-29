@@ -543,9 +543,9 @@ class TestJitSaveMultiCases(unittest.TestCase):
         loaded_layer = paddle.jit.load(model_path)
         loaded_layer.eval()
         # inference & compare
-        x = paddle.to_variable(np.random.random((1, 784)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         if with_label:
-            y = paddle.to_variable(np.random.random((1, 1)).astype('int64'))
+            y = paddle.to_tensor(np.random.random((1, 1)).astype('int64'))
             pred, _ = layer(x, y)
             pred = pred.numpy()
         else:
@@ -677,7 +677,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
 
         model_path = "test_not_prune_output_spec_name_warning"
         configs = paddle.SaveLoadConfig()
-        out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
+        out = paddle.to_tensor(np.random.random((1, 1)).astype('float'))
         configs.output_spec = [out]
         paddle.jit.save(layer, model_path, configs=configs)
 
@@ -709,7 +709,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
 
         model_path = "test_prune_to_static_after_train"
         configs = paddle.SaveLoadConfig()
-        out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
+        out = paddle.to_tensor(np.random.random((1, 1)).astype('float'))
         configs.output_spec = [out]
         with self.assertRaises(ValueError):
             paddle.jit.save(
@@ -730,7 +730,7 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
 
     def test_save_load_empty_layer(self):
         layer = EmptyLayer()
-        x = paddle.to_variable(np.random.random((10)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((10)).astype('float32'))
         out = layer(x)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)
@@ -746,8 +746,8 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
 
     def test_save_load_no_param_layer(self):
         layer = NoParamLayer()
-        x = paddle.to_variable(np.random.random((5)).astype('float32'))
-        y = paddle.to_variable(np.random.random((5)).astype('float32'))
+        x = paddle.to_tensor(np.random.random((5)).astype('float32'))
+        y = paddle.to_tensor(np.random.random((5)).astype('float32'))
         out = layer(x, y)
         paddle.jit.save(layer, self.model_path)
         load_layer = paddle.jit.load(self.model_path)

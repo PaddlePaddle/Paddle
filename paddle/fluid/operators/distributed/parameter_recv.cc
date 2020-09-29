@@ -175,10 +175,6 @@ void RecvGeoSparseRecords(const CommContext &rpc_ctx,
 
 template <typename T>
 void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto cpu_place = platform::CPUPlace();
-  auto &cpu_ctx = *pool.Get(cpu_place);
-
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
@@ -188,8 +184,13 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
   if (rpc_ctx.origin_varnames.size() == 1 &&
       rpc_ctx.splited_varnames.size() == 1) {
     auto varname = rpc_ctx.origin_varnames[0];
-    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0];
-    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], cpu_ctx,
+    const auto place =
+        scope.FindVar(varname)->Get<framework::LoDTensor>().place();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
+    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0] << " in gpu? "
+            << platform::is_gpu_place(place);
+    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], ctx,
                                                     scope, varname, varname));
 
     for (size_t i = 0; i < rets.size(); i++) {

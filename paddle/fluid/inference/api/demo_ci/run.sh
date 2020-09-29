@@ -68,11 +68,6 @@ rm -rf *
 
 for WITH_STATIC_LIB in ON OFF; do
   if [ $(echo `uname` | grep "Win") != "" ]; then
-    # TODO(xingzhaolong, jiweibo): remove this if windows GPU library is ready.
-    if [ $TEST_GPU_CPU == ON] && [ $WITH_STATIC_LIB ==ON ]; then
-      return 0
-    fi
-    
     # -----simple_on_word2vec on windows-----
     cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \

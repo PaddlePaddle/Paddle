@@ -487,24 +487,24 @@ class TestTransformer(unittest.TestCase):
                 dropout=dropout,
                 weight_attr=[None],
                 bias_attr=[False])
-            src = paddle.to_variable(
+            src = paddle.to_tensor(
                 np.random.rand(batch_size, source_length, d_model).astype(
                     "float32"))
-            tgt = paddle.to_variable(
+            tgt = paddle.to_tensor(
                 np.random.rand(batch_size, target_length, d_model).astype(
                     "float32"))
             src_mask = np.zeros((batch_size, n_head, source_length,
                                  source_length)).astype("float32")
             src_mask[0][0][0][0] = -np.inf
-            src_mask = paddle.to_variable(src_mask)
+            src_mask = paddle.to_tensor(src_mask)
             tgt_mask = np.zeros((batch_size, n_head, target_length,
                                  target_length)).astype("float32")
             tgt_mask[0][0][0][0] = -1e9
             memory_mask = np.zeros((batch_size, n_head, target_length,
                                     source_length)).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_variable(
-                tgt_mask), paddle.to_variable(memory_mask)
+            tgt_mask, memory_mask = paddle.to_tensor(
+                tgt_mask), paddle.to_tensor(memory_mask)
             trans_output = transformer(src, tgt, src_mask, tgt_mask,
                                        memory_mask)
 
@@ -521,24 +521,24 @@ class TestTransformer(unittest.TestCase):
                 dropout=dropout,
                 weight_attr=[None, None],
                 bias_attr=[False, False])
-            src = paddle.to_variable(
+            src = paddle.to_tensor(
                 np.random.rand(batch_size, source_length, d_model).astype(
                     "float32"))
-            tgt = paddle.to_variable(
+            tgt = paddle.to_tensor(
                 np.random.rand(batch_size, target_length, d_model).astype(
                     "float32"))
             src_mask = np.zeros((batch_size, n_head, source_length,
                                  source_length)).astype("float32")
             src_mask[0][0][0][0] = -np.inf
-            src_mask = paddle.to_variable(src_mask)
+            src_mask = paddle.to_tensor(src_mask)
             tgt_mask = np.zeros((batch_size, n_head, target_length,
                                  target_length)).astype("float32")
             tgt_mask[0][0][0][0] = -1e9
             memory_mask = np.zeros((batch_size, n_head, target_length,
                                     source_length)).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_variable(
-                tgt_mask), paddle.to_variable(memory_mask)
+            tgt_mask, memory_mask = paddle.to_tensor(
+                tgt_mask), paddle.to_tensor(memory_mask)
             trans_output = transformer(src, tgt, src_mask, tgt_mask,
                                        memory_mask)
 
@@ -555,24 +555,24 @@ class TestTransformer(unittest.TestCase):
                 dropout=dropout,
                 weight_attr=[None, None, None],
                 bias_attr=[False, False, True])
-            src = paddle.to_variable(
+            src = paddle.to_tensor(
                 np.random.rand(batch_size, source_length, d_model).astype(
                     "float32"))
-            tgt = paddle.to_variable(
+            tgt = paddle.to_tensor(
                 np.random.rand(batch_size, target_length, d_model).astype(
                     "float32"))
             src_mask = np.zeros((batch_size, n_head, source_length,
                                  source_length)).astype("float32")
             src_mask[0][0][0][0] = -np.inf
-            src_mask = paddle.to_variable(src_mask)
+            src_mask = paddle.to_tensor(src_mask)
             tgt_mask = np.zeros((batch_size, n_head, target_length,
                                  target_length)).astype("float32")
             tgt_mask[0][0][0][0] = -1e9
             memory_mask = np.zeros((batch_size, n_head, target_length,
                                     source_length)).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_variable(
-                tgt_mask), paddle.to_variable(memory_mask)
+            tgt_mask, memory_mask = paddle.to_tensor(
+                tgt_mask), paddle.to_tensor(memory_mask)
             trans_output = transformer(src, tgt, src_mask, tgt_mask,
                                        memory_mask)
 
@@ -588,26 +588,33 @@ class TestTransformer(unittest.TestCase):
                 dim_feedforward=dim_feedforward,
                 dropout=dropout,
                 bias_attr=False)
-            src = paddle.to_variable(
+            src = paddle.to_tensor(
                 np.random.rand(batch_size, source_length, d_model).astype(
                     "float32"))
-            tgt = paddle.to_variable(
+            tgt = paddle.to_tensor(
                 np.random.rand(batch_size, target_length, d_model).astype(
                     "float32"))
             src_mask = np.zeros((batch_size, n_head, source_length,
                                  source_length)).astype("float32")
             src_mask[0][0][0][0] = -np.inf
-            src_mask = paddle.to_variable(src_mask)
+            src_mask = paddle.to_tensor(src_mask)
             tgt_mask = np.zeros((batch_size, n_head, target_length,
                                  target_length)).astype("float32")
             tgt_mask[0][0][0][0] = -1e9
             memory_mask = np.zeros((batch_size, n_head, target_length,
                                     source_length)).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_variable(
-                tgt_mask), paddle.to_variable(memory_mask)
+            tgt_mask, memory_mask = paddle.to_tensor(
+                tgt_mask), paddle.to_tensor(memory_mask)
             trans_output = transformer(src, tgt, src_mask, tgt_mask,
                                        memory_mask)
+
+    def test_generate_square_subsequent_mask(self):
+        length = 5
+        d_model, n_head, dim_feedforward = 8, 4, 64
+        transformer = Transformer(
+            d_model, n_head, dim_feedforward=dim_feedforward)
+        mask = transformer.generate_square_subsequent_mask(length)
 
 
 if __name__ == "__main__":
