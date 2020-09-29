@@ -12413,7 +12413,7 @@ def clip_by_norm(x, max_norm, name=None):
     Examples:
         .. code-block:: python
 
-	    import paddle
+            import paddle
             import numpy as np
 
             paddle.disable_static()
