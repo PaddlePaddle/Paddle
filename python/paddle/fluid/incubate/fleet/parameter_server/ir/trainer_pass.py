@@ -252,10 +252,11 @@ def append_send_ops_pass(program, config):
     sends = config.get_trainer_send_context()
 
     if mode == DistributedMode.GEO:
-        dummys.append(_append_send_op())
+        dummys.append(_append_sparse_ids_send_op())
     else:
         for merged_name, send in sends.items():
-            dummys.append(_append_send_op(send.origin_varnames(), merged_name))
+            dummys.append(
+                _append_grad_send_op(send.origin_varnames(), merged_name))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)
