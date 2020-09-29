@@ -220,7 +220,7 @@ def launch_collective(args):
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = "1"
-    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
     procs = start_local_trainers(
@@ -333,7 +333,7 @@ def launch_ps(args):
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     current_env["PADDLE_WITH_GLOO"] = "1"
-    current_env["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    current_env["PADDLE_GLOO_RENDEZVOUS"] = "3"
     current_env["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
     current_env.pop("http_proxy", None)

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
+import paddle
 from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
@@ -21,26 +21,22 @@ import paddle.fluid.initializer as I
 import unittest
 
 
-class AffineGridTestCase(unittest.TestCase):
+class LabelSmoothTestCase(unittest.TestCase):
     def __init__(self,
                  methodName='runTest',
-                 theta_shape=(20, 2, 3),
-                 output_shape=[20, 2, 5, 7],
-                 align_corners=True,
-                 dtype="float32",
-                 invalid_theta=False,
-                 variable_output_shape=False):
-        super(AffineGridTestCase, self).__init__(methodName)
+                 label_shape=(20, 1),
+                 prior_dist=None,
+                 epsilon=0.1,
+                 dtype="float32"):
+        super(LabelSmoothTestCase, self).__init__(methodName)
 
-        self.theta_shape = theta_shape
-        self.output_shape = output_shape
-        self.align_corners = align_corners
+        self.label_shape = label_shape
+        self.prior_dist = prior_dist
         self.dtype = dtype
-        self.invalid_theta = invalid_theta
-        self.variable_output_shape = variable_output_shape
+        self.epsilon = epsilon
 
     def setUp(self):
-        self.theta = np.random.randn(*(self.theta_shape)).astype(self.dtype)
+        self.label = np.random.randn(*(self.label_shape)).astype(self.dtype)
 
     def fluid_layer(self, place):
         paddle.enable_static()
@@ -48,10 +44,14 @@ class AffineGridTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                theta_var = fluid.data(
-                    "input", self.theta_shape, dtype=self.dtype)
-                y_var = fluid.layers.affine_grid(theta_var, self.output_shape)
-        feed_dict = {"input": self.theta}
+                label_var = fluid.data(
+                    "input", self.label_shape, dtype=self.dtype)
+                y_var = fluid.layers.label_smooth(
+                    label_var,
+                    prior_dist=self.prior_dist,
+                    epsilon=self.epsilon,
+                    dtype=self.dtype)
+        feed_dict = {"input": self.label}
         exe = fluid.Executor(place)
         exe.run(start)
         y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
@@ -63,13 +63,11 @@ class AffineGridTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                theta_var = fluid.data(
-                    "input", self.theta_shape, dtype=self.dtype)
-                y_var = F.affine_grid(
-                    theta_var,
-                    self.output_shape,
-                    align_corners=self.align_corners)
-        feed_dict = {"input": self.theta}
+                label_var = fluid.data(
+                    "input", self.label_shape, dtype=self.dtype)
+                y_var = F.label_smooth(
+                    label_var, prior_dist=self.prior_dist, epsilon=self.epsilon)
+        feed_dict = {"input": self.label}
         exe = fluid.Executor(place)
         exe.run(start)
         y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
@@ -77,13 +75,9 @@ class AffineGridTestCase(unittest.TestCase):
 
     def paddle_dygraph_layer(self):
         paddle.disable_static()
-        theta_var = dg.to_variable(
-            self.theta) if not self.invalid_theta else "invalid"
-        output_shape = dg.to_variable(
-            self.
-            output_shape) if self.variable_output_shape else self.output_shape
-        y_var = F.affine_grid(
-            theta_var, output_shape, align_corners=self.align_corners)
+        label_var = dg.to_variable(self.label)
+        y_var = F.label_smooth(
+            label_var, prior_dist=self.prior_dist, epsilon=self.epsilon)
         y_np = y_var.numpy()
         return y_np
 
@@ -92,20 +86,18 @@ class AffineGridTestCase(unittest.TestCase):
         result1 = self.fluid_layer(place)
         result2 = self.functional(place)
         result3 = self.paddle_dygraph_layer()
-        if self.align_corners:
-            np.testing.assert_array_almost_equal(result1, result2)
+        np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
     def runTest(self):
         place = fluid.CPUPlace()
         self._test_equivalence(place)
-
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             self._test_equivalence(place)
 
 
-class AffineGridErrorTestCase(AffineGridTestCase):
+class LabelSmoothErrorTestCase(LabelSmoothTestCase):
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -114,30 +106,14 @@ class AffineGridErrorTestCase(AffineGridTestCase):
 
 
 def add_cases(suite):
-    suite.addTest(AffineGridTestCase(methodName='runTest'))
-    suite.addTest(AffineGridTestCase(methodName='runTest', align_corners=True))
-
-    suite.addTest(AffineGridTestCase(methodName='runTest', align_corners=False))
+    suite.addTest(LabelSmoothTestCase(methodName='runTest'))
     suite.addTest(
-        AffineGridTestCase(
-            methodName='runTest', variable_output_shape=True))
-
-    suite.addTest(
-        AffineGridTestCase(
-            methodName='runTest',
-            theta_shape=(20, 2, 3),
-            output_shape=[20, 1, 7, 7],
-            align_corners=True))
+        LabelSmoothTestCase(
+            methodName='runTest', label_shape=[2, 3, 1]))
 
 
 def add_error_cases(suite):
-    suite.addTest(
-        AffineGridErrorTestCase(
-            methodName='runTest', output_shape="not_valid"))
-    suite.addTest(
-        AffineGridErrorTestCase(
-            methodName='runTest',
-            invalid_theta=True))  # to test theta not variable error checking
+    suite.addTest(LabelSmoothErrorTestCase(methodName='runTest', epsilon=2))
 
 
 def load_tests(loader, standard_tests, pattern):
