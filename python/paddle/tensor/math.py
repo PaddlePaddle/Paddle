@@ -472,6 +472,7 @@ def multiply(x, y, axis=-1, name=None):
     """
     op_type = 'elementwise_mul'
     act = None
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
@@ -484,6 +485,13 @@ def multiply(x, y, axis=-1, name=None):
             y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
+
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        x = paddle.static.data(
+            name='x', shape=x.shape, dtype=x.dtype)
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        y = paddle.static.data(
+            name='y', shape=y.shape, dtype=y.dtype)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
