@@ -734,7 +734,6 @@ class BilinearInitializer(Initializer):
             import math
             import paddle.nn as nn
 
-            paddle.disable_static()
             factor = 2
             C = 2
             B = 8
