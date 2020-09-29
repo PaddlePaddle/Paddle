@@ -48,12 +48,13 @@ class TestSimpleNet(unittest.TestCase):
             for dtype in ["float32", "float64"]:
                 for sort_sum_gradient in [True, False]:
                     paddle.disable_static(place)
-                    backward_strategy = paddle.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = sort_sum_gradient
+                    fluid.set_flags({
+                        'FLAGS_sort_sum_gradient': sort_sum_gradient
+                    })
                     # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
-                    input = paddle.to_variable(input_word)
+                    input = paddle.to_tensor(input_word)
 
                     simplenet = SimpleNet(20, 32, dtype)
                     adam = SGDOptimizer(
@@ -65,7 +66,7 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(emb.weight.gradient() is None)
                     self.assertTrue(input_emb.gradient() is None)
 
-                    input_emb.backward(backward_strategy)
+                    input_emb.backward()
                     adam.minimize(input_emb)
                     self.assertTrue(emb.weight.gradient() is not None)
 
@@ -84,8 +85,9 @@ class TestSimpleNet(unittest.TestCase):
         for place in places:
             for sort_sum_gradient in [True, False]:
                 with fluid.dygraph.guard(place):
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = sort_sum_gradient
+                    fluid.set_flags({
+                        'FLAGS_sort_sum_gradient': sort_sum_gradient
+                    })
                     grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
@@ -101,7 +103,7 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(emb.weight.gradient() is None)
                     self.assertTrue(input_emb.gradient() is None)
 
-                    input_emb.backward(backward_strategy)
+                    input_emb.backward()
                     adam.minimize(input_emb)
                     self.assertTrue(emb.weight.gradient() is not None)
 

@@ -240,22 +240,22 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
             self.assertEqual((out_result == (2 / x)).all(), True)
 
 
-class TestDivOp(unittest.TestCase):
+class TestDivideOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = paddle.div(x, y, name='div_res')
+            y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
-            z = paddle.div(x, y)
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.divide(x, y)
             np_z = z.numpy()
             z_expected = np.array([2., 0.6, 2.])
             self.assertEqual((np_z == z_expected).all(), True)

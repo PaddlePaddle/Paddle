@@ -32,6 +32,7 @@ from paddle.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
 from paddle.fluid.tests.unittests.test_auto_checkpoint import AutoCheckPointACLBase
 
+paddle.enable_static()
 logger = get_logger()
 
 
@@ -57,19 +58,7 @@ class AutoCheckpointTest2(AutoCheckPointACLBase):
         os.environ.update(proc_env)
 
     def test_corner_epoch_no(self):
-        logger.info("begin test_corener_epoch_no")
-        checker = acp._get_checker()
-        fs = HDFSClient(checker.hdfs_home, None)
-
-        for i in range(3):
-            fs.delete(checker.hdfs_checkpoint_path)
-            self._reset_generator()
-            self._run_save_0(break_epoch_no=i)
-            self._reset_generator()
-            self._run_load_0(break_epoch_no=i)
-
-        fs.delete(checker.hdfs_checkpoint_path)
-        logger.info("end test_corener_epoch_no")
+        self._test_corner_epoch_no(1)
 
 
 if __name__ == '__main__':

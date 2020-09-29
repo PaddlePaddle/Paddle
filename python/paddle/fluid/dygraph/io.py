@@ -19,6 +19,7 @@ import six
 import pickle
 import numpy as np
 
+import paddle
 from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -182,9 +183,9 @@ class _ProgramHolder(object):
         super(_ProgramHolder, self).__init__()
 
         # input, output, persistable var info
-        self._input_names = []
-        self._persistable_names = []
+        self._input_descs = []
         self._output_descs = []
+        self._persistable_names = []
 
         # execution scope
         self._inner_scope = core.Scope()
@@ -207,11 +208,11 @@ class _ProgramHolder(object):
         return self._train_program_desc
 
     @property
-    def input_names(self):
-        return self._input_names
+    def input_descs(self):
+        return self._input_descs
 
     @property
-    def output_decs(self):
+    def output_descs(self):
         return self._output_descs
 
     @property
@@ -233,7 +234,8 @@ class _ProgramHolder(object):
                 ops_to_remove.append(i)
                 feed_var_name = cpt.to_bytes(op.input('X')[0])
                 root_block._remove_var(feed_var_name)
-                self._input_names.append(cpt.to_bytes(op.output('Out')[0]))
+                self._input_descs.append(
+                    root_block.find_var(cpt.to_bytes(op.output('Out')[0])))
             elif op.type() == 'scale' and op.output('Out')[0].startswith(
                     'save_infer_model/scale_'):
                 ops_to_remove.append(i)
@@ -257,7 +259,7 @@ class _ProgramHolder(object):
             root_block._remove_op(op_idx, op_idx + 1)
 
         # 2. Input processing, reverse feed vars
-        self._input_names.reverse()
+        self._input_descs.reverse()
 
         # 3. Output processing, add scale for outputs
         tmp_program = _build_program_by_desc(program_desc)
@@ -378,7 +380,7 @@ def _load_persistable_vars_by_program(model_path,
             new_var = framework._varbase_creator(
                 type=each_var.type(),
                 name=each_var.name(),
-                shpae=each_var.shape(),
+                shape=each_var.shape(),
                 dtype=each_var.dtype(),
                 persistable=True)
         if params_filename is None:
@@ -437,8 +439,16 @@ def _load_persistable_vars(model_path,
         value: key
         for key, value in program_holder._suffix_varname_dict.items()
     }
-    # NOTE: some var may not be Parameter
-    for name in sorted(extra_var_info):
+
+    # NOTE(chenweihang): we need load persistable vars based the program,
+    # because the program may be pruned when `save_inference_model`, some
+    # var in `extra_var_info` may have been pruned 
+    for name in sorted(inv_suffix_varname_dict):
+        if name not in extra_var_info:
+            raise RuntimeError(
+                "The model to be loaded is not complete."
+                "The variable `%s` of program cannot be found in loaded model.",
+                name)
         # get suffix var name, see [why need to append suffix to persistable vars]
         new_name = inv_suffix_varname_dict[name]
         # create output varbase
@@ -471,13 +481,26 @@ def _load_persistable_vars(model_path,
             var_file_path = os.path.join(model_path, params_filename)
         else:
             var_file_path = os.path.join(model_path, VARIABLE_FILENAME)
-        framework._dygraph_tracer().trace_op(
-            type='load_combine',
-            inputs={},
-            outputs={'Out': load_var_list},
-            attrs={'file_path': var_file_path})
+        if not os.path.exists(var_file_path):
+            if len(extra_var_info) != 0:
+                raise ValueError("The model to be loaded is incomplete.")
+        else:
+            framework._dygraph_tracer().trace_op(
+                type='load_combine',
+                inputs={},
+                outputs={'Out': load_var_list},
+                attrs={'file_path': var_file_path})
 
     return load_var_dict
+
+
+# NOTE(chenweihang): to adapt paddle.load to get state_dict
+def _remove_varname_suffix(var_dict, program_holder):
+    no_suffix_var_dict = dict()
+    for var_name in var_dict:
+        no_suffix_name = program_holder._suffix_varname_dict[var_name]
+        no_suffix_var_dict[no_suffix_name] = var_dict[var_name]
+    return no_suffix_var_dict
 
 
 def _construct_program_holders(model_path, model_filename=None):
@@ -509,7 +532,8 @@ def _construct_program_holders(model_path, model_filename=None):
 def _construct_params_and_buffers(model_path,
                                   programs,
                                   separate_params=False,
-                                  params_filename=None):
+                                  params_filename=None,
+                                  append_suffix=True):
     var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
@@ -518,6 +542,10 @@ def _construct_params_and_buffers(model_path,
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
+
+    if not append_suffix:
+        var_dict = _remove_varname_suffix(var_dict, programs['forward'])
+
     return var_dict
 
 
@@ -534,89 +562,92 @@ class TranslatedLayer(layers.Layer):
         .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
-            from paddle.fluid.dygraph import Linear
-            from paddle.fluid.dygraph import declarative
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
 
-            BATCH_SIZE = 32
-            BATCH_NUM = 20
+            BATCH_SIZE = 16
+            BATCH_NUM = 4
+            EPOCH_NUM = 4
 
-            def random_batch_reader():
-                def _get_random_images_and_labels(image_shape, label_shape):
-                    image = np.random.random(size=image_shape).astype('float32')
-                    label = np.random.random(size=label_shape).astype('int64')
+            IMAGE_SIZE = 784
+            CLASS_NUM = 10
+
+            # define a random dataset
+            class RandomDataset(paddle.io.Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+
+                def __getitem__(self, idx):
+                    image = np.random.random([IMAGE_SIZE]).astype('float32')
+                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                     return image, label
 
-                def __reader__():
-                    for _ in range(BATCH_NUM):
-                        batch_image, batch_label = _get_random_images_and_labels(
-                            [BATCH_SIZE, 784], [BATCH_SIZE, 1])
-                        yield batch_image, batch_label
+                def __len__(self):
+                    return self.num_samples
 
-                return __reader__
-
-            class LinearNet(fluid.dygraph.Layer):
-                def __init__(self, in_size, out_size):
+            class LinearNet(nn.Layer):
+                def __init__(self):
                     super(LinearNet, self).__init__()
-                    self._linear = Linear(in_size, out_size)
+                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
-                @declarative
+                @paddle.jit.to_static
                 def forward(self, x):
                     return self._linear(x)
 
+            def train(layer, loader, loss_fn, opt):
+                for epoch_id in range(EPOCH_NUM):
+                    for batch_id, (image, label) in enumerate(loader()):
+                        out = layer(image)
+                        loss = loss_fn(out, label)
+                        loss.backward()
+                        opt.step()
+                        opt.clear_grad()
+                        print("Epoch {} batch {}: loss = {}".format(
+                            epoch_id, batch_id, np.mean(loss.numpy())))
+
             # enable dygraph mode
-            fluid.enable_dygraph() 
+            place = paddle.CPUPlace()
+            paddle.disable_static(place) 
 
             # 1. train & save model.
+
             # create network
-            net = LinearNet(784, 1)
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            layer = LinearNet()
+            loss_fn = nn.CrossEntropyLoss()
+            adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+
             # create data loader
-            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-            train_loader.set_batch_generator(random_batch_reader())
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            loader = paddle.io.DataLoader(dataset,
+                places=place,
+                batch_size=BATCH_SIZE,
+                shuffle=True,
+                drop_last=True,
+                num_workers=2)
+
             # train
-            for data in train_loader():
-                img, label = data
-                label.stop_gradient = True
+            train(layer, loader, loss_fn, adam)
 
-                cost = net(img)
-
-                loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
-
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                net.clear_gradients()
-
+            # save
             model_path = "linear.example.model"
-            fluid.dygraph.jit.save(
-                layer=net,
-                model_path=model_path,
-                input_spec=[img])
+            paddle.jit.save(layer, model_path)
 
             # 2. load model as TranslatedLayer
-            translated_layer = fluid.dygraph.jit.load(model_path)
+
+            # load
+            translated_layer = paddle.jit.load(model_path)
+
             # inference
             translated_layer.eval()
-            x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
+            x = paddle.randn([1, IMAGE_SIZE], 'float32')
             pred = translated_layer(x)
+
             # fine-tune
             translated_layer.train()
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=translated_layer.parameters())
-            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-            train_loader.set_batch_generator(random_batch_reader())
-            for data in train_loader():
-                img, label = data
-                label.stop_gradient = True
+            adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
+            train(translated_layer, loader, loss_fn, adam)
 
-                cost = translated_layer(img)
-
-                loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
-
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                translated_layer.clear_gradients()
     """
 
     def __init__(self, programs, persistable_vars):
@@ -628,7 +659,7 @@ class TranslatedLayer(layers.Layer):
             )
         if not isinstance(persistable_vars, dict):
             raise TypeError(
-                "TranslatedLayer need to use persisatbale variable dict for initialization."
+                "TranslatedLayer need to use persistable variable dict for initialization."
             )
 
         self._program_holder_dict = programs
@@ -641,19 +672,21 @@ class TranslatedLayer(layers.Layer):
         # name contains `.` originally, such as `linear_0.w_0`, so here
         # need to generate new var name for each var
         self._persistable_var_name_dict = dict()
-        for name, var in persistable_vars.items():
-            if isinstance(var, framework.ParamBase):
-                dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
-                self._persistable_var_name_dict[name] = dy_name
-                self.add_parameter(dy_name, var)
-            elif isinstance(var, core.VarBase):
-                dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
-                self._persistable_var_name_dict[name] = dy_name
-                self.register_buffer(dy_name, var)
-            else:
-                raise TypeError(
-                    "Adding persistent variable which  to layer is not supported now"
-                )
+        # the TranslatedLayer object holded var names count started from 0
+        with unique_name.guard():
+            for name, var in persistable_vars.items():
+                if isinstance(var, framework.ParamBase):
+                    dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
+                    self._persistable_var_name_dict[name] = dy_name
+                    self.add_parameter(dy_name, var)
+                elif isinstance(var, core.VarBase):
+                    dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
+                    self._persistable_var_name_dict[name] = dy_name
+                    self.register_buffer(dy_name, var)
+                else:
+                    raise TypeError(
+                        "Adding persistent variable which  to layer is not supported now"
+                    )
 
         self._is_test = True
 
@@ -675,7 +708,7 @@ class TranslatedLayer(layers.Layer):
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
-        # 2. load layer parameters & parameter attirbutes
+        # 2. load layer parameters & buffers
         persistable_vars = _construct_params_and_buffers(
             model_path, programs, separate_params, params_filename)
 
@@ -707,7 +740,7 @@ class TranslatedLayer(layers.Layer):
                 if isinstance(value, np.ndarray):
                     var = core.VarBase(
                         value=value,
-                        name=program_holder.input_names[i],
+                        name=program_holder.input_descs[i].name(),
                         persistable=False,
                         place=framework._current_expected_place(),
                         zero_copy=True)
@@ -715,7 +748,7 @@ class TranslatedLayer(layers.Layer):
                     var = value
                     # NOTE: we changed var name here, 
                     # but it may be an important name set by user
-                    var.name = program_holder.input_names[i]
+                    var.name = program_holder.input_descs[i].name()
                 input_vars.append(var)
 
             persistable_vars = []
@@ -731,7 +764,7 @@ class TranslatedLayer(layers.Layer):
                         % var_name)
 
             output_vars = []
-            for var_desc in program_holder.output_decs:
+            for var_desc in program_holder.output_descs:
                 var = core.VarBase(var_desc.dtype(),
                                    var_desc.shape(),
                                    var_desc.name(), var_desc.type(), False)
@@ -743,7 +776,7 @@ class TranslatedLayer(layers.Layer):
                                          core.VarDesc.VarType.STEP_SCOPES, True)
             tmp_scope_vec.value().set_scope(program_holder.scope)
 
-            # 2. run prorgam by op
+            # 2. run program by op
             trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
             end_op_index = program_holder.infer_program.block(0).op_size()
             framework._dygraph_tracer().trace_op(
@@ -764,7 +797,7 @@ class TranslatedLayer(layers.Layer):
             # will be SelectedRows, not LoDTensor. But tracer will just
             # set param grad VarBase by forward VarBase(LoDTensor)
             # If we don't change grad_var type here, RunProgramOp need
-            # transform SelectedRows to LoDTensor forcely, it may not
+            # transform SelectedRows to LoDTensor forcibly, it may not
             # be user wanted result.
             for persistable_var in persistable_vars:
                 grad_var_name = var.name + core.grad_var_suffix()
@@ -790,3 +823,144 @@ class TranslatedLayer(layers.Layer):
 
     def eval(self):
         self._is_test = True
+
+    def program(self, method_name='forward'):
+        """
+        Gets translated program of specified method.
+
+        Args:
+            - method_name (string): mehtod name corresponding to the program
+                to be obtained. Default: 'forward'.
+        
+        Returns:
+            Program
+
+        Examples:
+            .. code-block:: python
+            
+                import numpy as np
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+
+                BATCH_SIZE = 16
+                BATCH_NUM = 4
+                EPOCH_NUM = 4
+
+                IMAGE_SIZE = 784
+                CLASS_NUM = 10
+
+                # define a random dataset
+                class RandomDataset(paddle.io.Dataset):
+                    def __init__(self, num_samples):
+                        self.num_samples = num_samples
+
+                    def __getitem__(self, idx):
+                        image = np.random.random([IMAGE_SIZE]).astype('float32')
+                        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                        return image, label
+
+                    def __len__(self):
+                        return self.num_samples
+
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+                    @paddle.jit.to_static
+                    def forward(self, x):
+                        return self._linear(x)
+
+                def train(layer, loader, loss_fn, opt):
+                    for epoch_id in range(EPOCH_NUM):
+                        for batch_id, (image, label) in enumerate(loader()):
+                            out = layer(image)
+                            loss = loss_fn(out, label)
+                            loss.backward()
+                            opt.step()
+                            opt.clear_grad()
+                            print("Epoch {} batch {}: loss = {}".format(
+                                epoch_id, batch_id, np.mean(loss.numpy())))
+
+                # enable dygraph mode
+                place = paddle.CPUPlace()
+                paddle.disable_static(place) 
+
+                # create network
+                layer = LinearNet()
+                loss_fn = nn.CrossEntropyLoss()
+                adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+
+                # create data loader
+                dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                loader = paddle.io.DataLoader(dataset,
+                    places=place,
+                    batch_size=BATCH_SIZE,
+                    shuffle=True,
+                    drop_last=True,
+                    num_workers=2)
+
+                # train
+                train(layer, loader, loss_fn, adam)
+
+                # save
+                model_path = "linear.example.model"
+                paddle.jit.save(layer, model_path)
+
+                # load
+                translated_layer = paddle.jit.load(model_path)
+
+                # get program
+                program = translated_layer.program()
+        """
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. get inference program desc
+        program_desc = program_holder.infer_program
+
+        # 3. construct program
+        program = _build_program_by_desc(program_desc)
+        return program
+
+    def _get_program_holder(self, method_name='forward'):
+        program_holder = self._program_holder_dict.get(method_name, None)
+        if program_holder is None:
+            raise ValueError(
+                "The method `%s` does not exist in loaded TranslatedLayer." %
+                method_name)
+        return program_holder
+
+    def _input_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build input spec by input desc
+        input_spec = []
+        for var_desc in program_holder.input_descs:
+            spec = paddle.static.InputSpec(
+                shape=var_desc.shape(),
+                dtype=var_desc.dtype(),
+                name=var_desc.name())
+            input_spec.append(spec)
+
+        return input_spec
+
+    def _output_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build output spec by output desc
+        output_spec = []
+        for var_desc in program_holder.output_descs:
+            # NOTE(chenweihang): InputSpec describes a tensor, not just input. 
+            # Maybe the name is not good enough. Here we use InputSpec to 
+            # construct the description of Output tensor
+            spec = paddle.static.InputSpec(
+                shape=var_desc.shape(),
+                dtype=var_desc.dtype(),
+                name=var_desc.name())
+            output_spec.append(spec)
+
+        return output_spec

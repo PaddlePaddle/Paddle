@@ -37,7 +37,6 @@ class TestFunctionalConv3D(TestCase):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NDHWC"
 
     def prepare(self):
@@ -88,7 +87,6 @@ class TestFunctionalConv3D(TestCase):
                     param_attr=I.NumpyArrayInitializer(self.weight),
                     bias_attr=False
                     if self.no_bias else I.NumpyArrayInitializer(self.bias),
-                    use_cudnn=self.use_cudnn,
                     act=self.act,
                     data_format=self.data_format)
         exe = fluid.Executor(self.place)
@@ -121,9 +119,11 @@ class TestFunctionalConv3D(TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    act=self.act,
-                    data_format=self.data_format,
-                    use_cudnn=self.use_cudnn)
+                    data_format=self.data_format)
+
+                if self.act == 'sigmoid':
+                    y = F.sigmoid(y)
+
         exe = fluid.Executor(self.place)
         exe.run(start)
         feed_dict = {"input": self.input, "weight": self.weight}
@@ -144,10 +144,12 @@ class TestFunctionalConv3D(TestCase):
                 padding=self.padding,
                 stride=self.stride,
                 dilation=self.dilation,
-                act=self.act,
                 groups=self.groups,
-                data_format=self.data_format,
-                use_cudnn=self.use_cudnn)
+                data_format=self.data_format)
+
+            if self.act == 'sigmoid':
+                y = F.sigmoid(y)
+
             out = y.numpy()
         return out
 
@@ -185,7 +187,6 @@ class TestFunctionalConv3DError(TestCase):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NDHWC"
 
     def test_exception(self):
@@ -228,9 +229,10 @@ class TestFunctionalConv3DError(TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    act=self.act,
-                    data_format=self.data_format,
-                    use_cudnn=self.use_cudnn)
+                    data_format=self.data_format)
+
+                if self.act == 'sigmoid':
+                    y = F.sigmoid(y)
 
 
 class TestFunctionalConv3DCase2(TestFunctionalConv3D):
@@ -244,7 +246,6 @@ class TestFunctionalConv3DCase2(TestFunctionalConv3D):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NDHWC"
 
 
@@ -259,7 +260,6 @@ class TestFunctionalConv3DCase3(TestFunctionalConv3D):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NDHWC"
 
 
@@ -274,7 +274,6 @@ class TestFunctionalConv3DCase4(TestFunctionalConv3D):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NDHWC"
 
 
@@ -289,7 +288,6 @@ class TestFunctionalConv3DCase5(TestFunctionalConv3D):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NDHWC"
 
 
@@ -304,7 +302,6 @@ class TestFunctionalConv3DCase6(TestFunctionalConv3D):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCDHW"
 
 
@@ -319,7 +316,6 @@ class TestFunctionalConv3DCase7(TestFunctionalConv3D):
         self.groups = 2
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCDHW"
 
 
@@ -349,7 +345,6 @@ class TestFunctionalConv3DErrorCase2(TestFunctionalConv3DError):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = False
         self.data_format = "NCDHW"
 
 
@@ -364,7 +359,6 @@ class TestFunctionalConv3DErrorCase3(TestFunctionalConv3DError):
         self.groups = 2
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = False
         self.data_format = "not_valid"
 
 
@@ -379,22 +373,6 @@ class TestFunctionalConv3DErrorCase4(TestFunctionalConv3DError):
         self.groups = 2
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = False
-        self.data_format = "NCDHW"
-
-
-class TestFunctionalConv3DErrorCase6(TestFunctionalConv3DError):
-    def setUp(self):
-        self.in_channels = 3
-        self.out_channels = 5
-        self.filter_shape = 3
-        self.padding = "same"
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 1
-        self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = "not_valid"
         self.data_format = "NCDHW"
 
 
@@ -409,7 +387,6 @@ class TestFunctionalConv3DErrorCase7(TestFunctionalConv3DError):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "not_valid"
 
 
@@ -424,7 +401,6 @@ class TestFunctionalConv3DErrorCase8(TestFunctionalConv3DError):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCDHW"
 
 
@@ -439,7 +415,6 @@ class TestFunctionalConv3DErrorCase9(TestFunctionalConv3DError):
         self.groups = 1
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = False
         self.data_format = "NCDHW"
 
 
@@ -454,7 +429,6 @@ class TestFunctionalConv3DErrorCase10(TestFunctionalConv3DError):
         self.groups = 2
         self.no_bias = False
         self.act = "sigmoid"
-        self.use_cudnn = False
         self.data_format = "NDHWC"
 
 

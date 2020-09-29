@@ -82,17 +82,21 @@ class MKLDNNHandlerT {
         fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src_mem_p");
   }
 
+  template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
-    T* ptr = output->mutable_data<T>(place_, fwd_pd_->dst_desc().get_size());
+    T_out* ptr =
+        output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
                                             "@dst_mem_p");
   }
 
+  template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       const framework::Tensor* output) {
-    const T* output_data = output->data<T>();
-    return this->AcquireMemoryFromPrimitive(
-        bwd_pd_->dst_desc(), to_void_cast<T>(output_data), "@bwd-dst_mem_p");
+    const T_out* output_data = output->data<T_out>();
+    return this->AcquireMemoryFromPrimitive(bwd_pd_->dst_desc(),
+                                            to_void_cast<T_out>(output_data),
+                                            "@bwd-dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(

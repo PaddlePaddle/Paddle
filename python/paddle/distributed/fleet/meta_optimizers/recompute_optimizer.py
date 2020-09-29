@@ -14,8 +14,6 @@
 from paddle.fluid.optimizer import RecomputeOptimizer as RO
 from .meta_optimizer_base import MetaOptimizerBase
 
-__all__ = ["RecomputeOptimizer"]
-
 
 class RecomputeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -24,15 +22,25 @@ class RecomputeOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.wrapped_opt = RO(optimizer)
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "LarsOptimizer",
+            "LambOptimizer",
+            "GradientMergeOptimizer",
+            "GraphExecutionOptimizer",
+        ]
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
         super(RecomputeOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        self.wrapped_opt._set_checkpoints([])
+        self.wrapped_opt._set_checkpoints(
+            list(user_defined_strategy.recompute_configs["checkpoints"]))
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.recompute == True:
             if len(self.user_defined_strategy.recompute_configs[
                     "checkpoints"]) == 0:
@@ -42,7 +50,11 @@ class RecomputeOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.recompute = False
-        dist_strategy.recompute_configs = {"checkpoints": []}
+        dist_strategy.recompute_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        # we do not support automatically recompute checkpoints currently
+        return
 
     def backward(self,
                  loss,

@@ -28,17 +28,19 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
-                      "The Var(%s)'s type should be LoDTensor, "
-                      "but the received is %s",
-                      ctx.InputNames("Param").front(),
-                      framework::ToTypeName(param_var->Type()));
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
-                      "The Var(%s)'s type should be LoDTensor, "
-                      "but the received is %s",
-                      ctx.InputNames("Grad").front(),
-                      framework::ToTypeName(grad_var->Type()));
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Grad").front(),
+                          framework::ToTypeName(grad_var->Type())));
 
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 

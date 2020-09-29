@@ -15,14 +15,8 @@
 from __future__ import print_function
 
 import gast
-import logging
 
-from paddle.fluid import log_helper
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-
-_logger = log_helper.get_logger(
-    __name__, logging.WARNING, fmt='%(asctime)s-%(levelname)s: %(message)s')
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
 
 class PrintTransformer(gast.NodeTransformer):
@@ -57,6 +51,5 @@ class PrintTransformer(gast.NodeTransformer):
 
     def _create_print_node(self, print_args):
         convert_print_func = gast.parse(
-            'fluid.dygraph.dygraph_to_static.convert_operators.convert_print'
-        ).body[0].value
+            'paddle.jit.dy2static.convert_print').body[0].value
         return gast.Call(func=convert_print_func, args=print_args, keywords=[])

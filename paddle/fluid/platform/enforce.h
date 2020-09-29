@@ -70,6 +70,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
+namespace paddle {
+namespace platform {
+class ErrorSummary;
+}  // namespace platform
+}  // namespace paddle
+
 DECLARE_int32(call_stack_level);
 
 namespace paddle {
@@ -266,7 +272,7 @@ inline std::string GetErrorSumaryString(StrType&& what, const char* file,
   std::ostringstream sout;
   sout << "\n----------------------\nError Message "
           "Summary:\n----------------------\n";
-  sout << string::Sprintf("%s at (%s:%d)", std::forward<StrType>(what), file,
+  sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
                           line)
        << std::endl;
   return sout.str();

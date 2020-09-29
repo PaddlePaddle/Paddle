@@ -104,6 +104,42 @@ inline void TransToChannelFirst(const framework::ExecutionContext& context,
 }
 
 template <typename DeviceContext, typename T>
+inline void ResizeToChannelLast(const framework::ExecutionContext& context,
+                                const Tensor* input,
+                                Tensor* transformed_input) {
+  int dim = input->dims().size() - 2;
+  if (dim == 3) {
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[3];
+    in_dims_vec[3] = input->dims()[4];
+    in_dims_vec[4] = input->dims()[1];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+
+  } else if (dim == 2) {
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[3];
+    in_dims_vec[3] = input->dims()[1];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+  } else if (dim == 1) {
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[1];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+  }
+}
+
+template <typename DeviceContext, typename T>
 inline void TransToChannelLast(const framework::ExecutionContext& context,
                                const Tensor* input, Tensor* transformed_input) {
   int dim = input->dims().size() - 2;
@@ -154,6 +190,16 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
+class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+};
+
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
@@ -161,6 +207,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
 
 template <typename T>
 class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override;
+};
+
+template <typename T>
+class BatchNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -186,6 +241,12 @@ class BatchNormKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class BatchNormGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override;
+};
+
+template <typename DeviceContext, typename T>
+class BatchNormDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override;
 };

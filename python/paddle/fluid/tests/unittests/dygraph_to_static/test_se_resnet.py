@@ -331,8 +331,8 @@ def train(train_reader, to_static):
     np.random.seed(SEED)
 
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         se_resnext = SeResNeXt()
         optimizer = optimizer_setting(train_parameters, se_resnext.parameters())
 
