@@ -422,6 +422,7 @@ def predict_static(data):
     pred_res = exe.run(inference_program,
                        feed={feed_target_names[0]: data},
                        fetch_list=fetch_targets)
+
     return pred_res[0]
 
 
