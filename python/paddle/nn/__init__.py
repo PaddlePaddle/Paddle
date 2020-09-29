@@ -70,7 +70,6 @@ from .layer.activation import Softshrink  #DEFINE_ALIAS
 from .layer.activation import Softsign  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
-from .layer.activation import HSigmoid  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
@@ -129,6 +128,7 @@ from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
+from .layer.loss import HSigmoidLoss  #DEFINE_ALIAS
 from .layer.loss import MSELoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer.loss import NLLLoss  #DEFINE_ALIAS
