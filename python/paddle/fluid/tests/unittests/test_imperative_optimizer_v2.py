@@ -72,15 +72,14 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
 
-        with fluid.dygraph.guard(place):
-            try:
-                paddle.manual_seed(seed)
-                paddle.framework.random._manual_program_seed(seed)
-                mlp = MLP()
-                optimizer = self.get_optimizer_dygraph(
-                    parameter_list=mlp.parameters())
-            except Exception as e:
-                assert str(e) == exception_message
+        try:
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+            mlp = MLP()
+            optimizer = self.get_optimizer_dygraph(
+                parameter_list=mlp.parameters())
+        except Exception as e:
+            assert str(e) == exception_message
 
     def _check_mlp(self, place=None):
         seed = 90
@@ -90,50 +89,55 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
 
-        with fluid.dygraph.guard(place):
-            paddle.manual_seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+        paddle.disable_static(place)
+        paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
-            mlp = MLP()
-            optimizer = self.get_optimizer_dygraph(
-                parameter_list=mlp.parameters())
+        mlp = MLP()
+        optimizer = self.get_optimizer_dygraph(parameter_list=mlp.parameters())
 
-            batch_py_reader = fluid.io.PyReader(capacity=1)
-            batch_py_reader.decorate_sample_list_generator(
-                paddle.batch(
-                    self.reader_decorator(paddle.dataset.mnist.train()),
-                    batch_size=batch_size,
-                    drop_last=True),
-                places=fluid.CPUPlace())
+        batch_py_reader = fluid.io.PyReader(capacity=1)
+        batch_py_reader.decorate_sample_list_generator(
+            paddle.batch(
+                self.reader_decorator(paddle.dataset.mnist.train()),
+                batch_size=batch_size,
+                drop_last=True),
+            places=fluid.CPUPlace())
 
-            dy_param_init_value = {}
-            for batch_id, data in enumerate(batch_py_reader()):
-                if batch_id >= self.batch_num:
-                    break
+        dy_param_init_value = {}
+        for batch_id, data in enumerate(batch_py_reader()):
+            if batch_id >= self.batch_num:
+                break
 
-                img = data[0]
-                label = data[1]
-                label.stop_gradient = True
+            img = data[0]
+            label = data[1]
 
-                img = fluid.layers.reshape(img, shape=[batch_size, -1])
-                cost = mlp(img)
-                avg_loss = fluid.layers.reduce_mean(cost)
-                dy_out = avg_loss.numpy()
+            label.stop_gradient = True
 
-                if batch_id == 0:
-                    for param in mlp.parameters():
-                        dy_param_init_value[param.name] = param.numpy()
+            img = fluid.layers.reshape(img, shape=[batch_size, -1])
+            cost = mlp(img)
+            avg_loss = fluid.layers.reduce_mean(cost)
+            dy_out = avg_loss.numpy()
 
-                avg_loss.backward()
-                optimizer.minimize(avg_loss)
-                if isinstance(optimizer._learning_rate,
-                              paddle.optimizer._LRScheduler):
-                    optimizer._learning_rate.step()
-                mlp.clear_gradients()
-                dy_param_value = {}
+            if batch_id == 0:
                 for param in mlp.parameters():
-                    dy_param_value[param.name] = param.numpy()
+                    dy_param_init_value[param.name] = param.numpy()
 
+            avg_loss.backward()
+            optimizer.minimize(avg_loss)
+            if isinstance(optimizer._learning_rate,
+                          paddle.optimizer.lr_scheduler._LRScheduler):
+                if isinstance(optimizer._learning_rate,
+                              paddle.optimizer.lr_scheduler.ReduceLROnPlateau):
+                    optimizer._learning_rate.step(avg_loss)
+                else:
+                    optimizer._learning_rate.step()
+            mlp.clear_gradients()
+            dy_param_value = {}
+            for param in mlp.parameters():
+                dy_param_value[param.name] = param.numpy()
+
+        paddle.enable_static()
         with new_program_scope():
             paddle.manual_seed(seed)
             paddle.framework.random._manual_program_seed(seed)
@@ -185,8 +189,13 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                                     "label": y_data},
                               fetch_list=fetch_list)
                 if isinstance(optimizer._learning_rate,
-                              paddle.optimizer._LRScheduler):
-                    optimizer._learning_rate.step()
+                              paddle.optimizer.lr_scheduler._LRScheduler):
+                    if isinstance(
+                            optimizer._learning_rate,
+                            paddle.optimizer.lr_scheduler.ReduceLROnPlateau):
+                        optimizer._learning_rate.step(out[0])
+                    else:
+                        optimizer._learning_rate.step()
 
                 static_param_value = {}
                 static_out = out[0]
@@ -228,13 +237,14 @@ class TestImperativeOptimizerNaturalExpLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.NaturalExpLR(
-                learning_rate=0.1, gamma=0.5, parameters=parameter_list))
+                learning_rate=0.5, gamma=0.9),
+            parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.NaturalExpLR(
-                learning_rate=0.1, gamma=0.5))
+                learning_rate=0.5, gamma=0.9))
         return optimizer
 
     def test_sgd(self):
@@ -245,14 +255,14 @@ class TestImperativeOptimizerExponentialLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.ExponentialLR(
-                learning_rate=0.1, gamma=0.5),
+                learning_rate=0.5, gamma=0.9),
             parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.ExponentialLR(
-                learning_rate=0.1, gamma=0.05))
+                learning_rate=0.5, gamma=0.9))
         return optimizer
 
     def test_sgd(self):
@@ -263,14 +273,14 @@ class TestImperativeOptimizerInverseTimeLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr_scheduler.InverseTimeLR(
-                learning_rate=0.1, gamma=0.5),
+                learning_rate=0.5, gamma=0.9),
             parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr_scheduler.InverseTimeLR(
-                learning_rate=0.1, gamma=0.5))
+                learning_rate=0.5, gamma=0.9))
         return optimizer
 
     def test_adam(self):
@@ -281,14 +291,14 @@ class TestImperativeOptimizerPolynomialLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.PolynomialLR(
-                learning_rate=0.1, decay_steps=5, cycle=self.cycle),
+                learning_rate=0.5, decay_steps=5, cycle=self.cycle),
             parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.PolynomialLR(
-                learning_rate=0.1, decay_steps=5, cycle=self.cycle))
+                learning_rate=0.5, decay_steps=5, cycle=self.cycle))
         return optimizer
 
     def test_sgd_cycle(self):
@@ -300,36 +310,134 @@ class TestImperativeOptimizerPolynomialLR(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-class TestImperativeOptimizerCosineLR(TestImperativeOptimizerBase):
+class TestImperativeOptimizerCosineAnnealingLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.CosineAnnealingLR(
-                learning_rate=0.1, T_max=120),
-            parameter=parameter_list)
+                learning_rate=0.5, T_max=5),
+            parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.CosineAnnealingLR(
-                learning_rate=0.1, T_max=120))
+                learning_rate=0.5, T_max=5))
         return optimizer
 
     def test_sgd(self):
         self._check_mlp()
 
 
-class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
+class TestImperativeOptimizerNoamLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.NoamLR(
-                d_model=512, warmup_steps=8000),
-            parameter=parameter_list)
+                d_model=0.01, warmup_steps=100, verbose=True),
+            parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.SGD(
             learning_rate=paddle.optimizer.lr_scheduler.NoamLR(
-                d_model=512, warmup_steps=8000))
+                d_model=0.01, warmup_steps=100))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerLambdaLR(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.LambdaLR(
+                learning_rate=0.5, lr_lambda=lambda epoch: 0.9**epoch),
+            parameters=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.LambdaLR(
+                learning_rate=0.5, lr_lambda=lambda epoch: 0.9**epoch))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerLinearLrWarmup(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.LinearLrWarmup(
+                learning_rate=0.5,
+                warmup_steps=20,
+                start_lr=0,
+                end_lr=0.5,
+                verbose=True),
+            parameters=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.LinearLrWarmup(
+                learning_rate=0.5,
+                warmup_steps=20,
+                start_lr=0,
+                end_lr=0.5,
+                verbose=True))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerMultiStepLR(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.MultiStepLR(
+                learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8),
+            parameters=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.MultiStepLR(
+                learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerStepLR(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.StepLR(
+                learning_rate=0.5, step_size=5, gamma=0.8),
+            parameters=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.StepLR(
+                learning_rate=0.5, step_size=5, gamma=0.8))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerReduceLROnPlateau(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.ReduceLROnPlateau(
+                learning_rate=0.5),
+            parameters=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr_scheduler.ReduceLROnPlateau(
+                learning_rate=0.5))
         return optimizer
 
     def test_sgd(self):
@@ -376,7 +484,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
 
-            scheduler = paddle.optimizer.PiecewiseLR(bd, value)
+            scheduler = paddle.optimizer.lr_scheduler.PiecewiseLR(bd, value)
             adam = paddle.optimizer.Adam(
                 scheduler, parameters=linear.parameters())
 
@@ -391,7 +499,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 self.assertTrue(np.allclose(lr, ret[i], rtol=1e-06, atol=0.0))
                 scheduler.step()
 
-    def test_lr_decay_natural_exp(self):
+    def test_lr_scheduler_natural_exp(self):
         with fluid.dygraph.guard():
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
@@ -402,8 +510,8 @@ class TestOptimizerLearningRate(unittest.TestCase):
             loss = fluid.layers.reduce_mean(b)
             base_lr = 1.0
 
-            scheduler = paddle.optimizer.NaturalExpLR(1.0, gamma=0.5)
-            print("scheduler.last_lr", scheduler.last_lr)
+            scheduler = paddle.optimizer.lr_scheduler.NaturalExpLR(
+                1.0, gamma=0.5)
             adam = paddle.optimizer.Adam(
                 scheduler, parameters=linear.parameters())
 
@@ -448,7 +556,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             with self.assertRaises(RuntimeError):
                 adam = paddle.optimizer.Adam(
-                    paddle.optimizer.NaturalExpLR(
+                    paddle.optimizer.lr_scheduler.NaturalExpLR(
                         learning_rate=0.1, gamma=0.5),
                     parameters=linear.parameters())
                 adam.set_lr(0.01)
@@ -690,10 +798,10 @@ class TestImperativeOptimizerList(unittest.TestCase):
             linear_1 = Linear(10, 10)
             linear_2 = Linear(10, 10)
 
-            sgd = SGDOptimizer(
-                1.0,
-                parameter_list=itertools.chain(linear_1.parameters(),
-                                               linear_2.parameters()))
+            sgd = paddle.optimizer.SGD(1.0,
+                                       parameters=itertools.chain(
+                                           linear_1.parameters(),
+                                           linear_2.parameters()))
 
             in_np = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             in_data = fluid.dygraph.to_variable(in_np)

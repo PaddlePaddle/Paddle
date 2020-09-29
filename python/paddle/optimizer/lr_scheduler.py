@@ -18,9 +18,9 @@ import warnings
 from paddle import Tensor
 
 __all__ = [
-    'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
-    'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR',
-    'ReduceLROnPlateau', 'CosineAnnealingLR'
+    '_LRScheduler', 'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR',
+    'PolynomialLR', 'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR',
+    'LambdaLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
 ]
 
 
@@ -33,6 +33,8 @@ class _LRScheduler(object):
     User can import it by ``form paddle.optimizer.lr_scheduler import _LRScheduler`` ,
 
     then overload it for your subclass and have a custom implementation of ``get_lr()`` .
+
+    Otherwise, an ``NotImplementedError`` exception will be thrown.
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
@@ -105,7 +107,7 @@ class _LRScheduler(object):
             None
         
         Examples:
-            Please refer to the subclass of ``_LRScheduler`` (Base Class). ``MultiStepLR`` is used as an example here.
+            Please refer to the subclass of ``_LRScheduler`` (Base Class). ``StepLR`` is used as an example here.
             
             .. code-block:: python
                 import paddle
@@ -167,9 +169,11 @@ class _LRScheduler(object):
     # (Note): you can change it for your subclass.
     def _state_keys(self):
         """
-        For those subclass who overload ``_LRScheduler`` (Base Class), "last_epoch, last_lr" will be saved by default.
+        For those subclass who overload ``_LRScheduler`` (Base Class). Acquiescently, "last_epoch, last_lr" will be saved by ``self.keys = ['last_epoch', 'last_lr']`` .
 
-        User can change it by define a dict ``self.keys = ['last_epoch', 'last_lr']`` .
+        ``last_epoch`` is the current epoch num, and ``last_lr`` is the current learning rate.
+
+        User can change the default behavior by redefining the dict ``self.keys`` .
 
         """
         self.keys = ['last_epoch', 'last_lr']
@@ -198,7 +202,7 @@ class _LRScheduler(object):
         """
         For those subclass who overload ``_LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
 
-        Otherwise, an exception will be thrown.
+        Otherwise, an ``NotImplementedError`` exception will be thrown.
         """
         # calculate by python float
         raise NotImplementedError
@@ -1360,7 +1364,6 @@ class ReduceLROnPlateau(_LRScheduler):
                             self.last_lr))
 
     def _is_better(self, current, best):
-        print("mode", self.mode, 'threshold_mode', self.threshold_mode)
         if self.mode == 'min' and self.threshold_mode == 'rel':
             return current < best - best * self.threshold
 

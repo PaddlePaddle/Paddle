@@ -431,76 +431,78 @@ class TestLRScheduler(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             paddle.optimizer.lr_scheduler._LRScheduler().step()
         with self.assertRaises(TypeError):
-            paddle.optimizer.MultiStepLR(
+            paddle.optimizer.lr_scheduler.MultiStepLR(
                 learning_rate="test", milestones=[1, 2, 3])
         with self.assertRaises(TypeError):
-            paddle.optimizer.MultiStepLR(learning_rate=0.5, milestones='test')
+            paddle.optimizer.lr_scheduler.MultiStepLR(
+                learning_rate=0.5, milestones='test')
         with self.assertRaises(ValueError):
-            paddle.optimizer.MultiStepLR(
+            paddle.optimizer.lr_scheduler.MultiStepLR(
                 learning_rate=0.5, milestones=[3, 2, 1])
         with self.assertRaises(ValueError):
-            paddle.optimizer.MultiStepLR(
+            paddle.optimizer.lr_scheduler.MultiStepLR(
                 learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
 
-        func_api_kwargs = [(noam_lr, paddle.optimizer.NoamLR, {
+        func_api_kwargs = [(noam_lr, paddle.optimizer.lr_scheduler.NoamLR, {
             "d_model": 0.01,
             "warmup_steps": 100,
             "verbose": False
-        }), (piecewise_lr, paddle.optimizer.PiecewiseLR, {
+        }), (piecewise_lr, paddle.optimizer.lr_scheduler.PiecewiseLR, {
             "boundaries": [3, 6, 9, 15, 20],
             "values": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
             "verbose": False
-        }), (natural_exp_lr, paddle.optimizer.NaturalExpLR, {
+        }), (natural_exp_lr, paddle.optimizer.lr_scheduler.NaturalExpLR, {
             "learning_rate": 0.5,
             "gamma": 0.1,
             "verbose": True
-        }), (inverse_time_lr, paddle.optimizer.InverseTimeLR, {
+        }), (inverse_time_lr, paddle.optimizer.lr_scheduler.InverseTimeLR, {
             "learning_rate": 0.5,
             "gamma": 0.1,
             "verbose": False
-        }), (polynomial_lr, paddle.optimizer.PolynomialLR, {
+        }), (polynomial_lr, paddle.optimizer.lr_scheduler.PolynomialLR, {
             "learning_rate": 0.5,
             "decay_steps": 20,
             "end_lr": 0,
             "power": 1.0,
             "cycle": False,
             "verbose": True
-        }), (polynomial_lr, paddle.optimizer.PolynomialLR, {
+        }), (polynomial_lr, paddle.optimizer.lr_scheduler.PolynomialLR, {
             "learning_rate": 0.5,
             "decay_steps": 20,
             "end_lr": 0,
             "power": 1.0,
             "cycle": True,
             "verbose": False
-        }), (linear_warmup_lr, paddle.optimizer.LinearLrWarmup, {
+        }), (linear_warmup_lr, paddle.optimizer.lr_scheduler.LinearLrWarmup, {
             'learning_rate': 0.5,
             'warmup_steps': 20,
             'start_lr': 0,
             'end_lr': 0.5,
             "verbose": True
-        }), (exponential_lr, paddle.optimizer.ExponentialLR, {
+        }), (exponential_lr, paddle.optimizer.lr_scheduler.ExponentialLR, {
             "learning_rate": 0.5,
             "gamma": 0.9,
             "verbose": False
-        }), (multi_step_lr, paddle.optimizer.MultiStepLR, {
+        }), (multi_step_lr, paddle.optimizer.lr_scheduler.MultiStepLR, {
             "learning_rate": 0.5,
             "milestones": [3, 6, 9, 15, 20],
             "gamma": 0.8,
             "verbose": True
-        }), (step_lr, paddle.optimizer.StepLR, {
+        }), (step_lr, paddle.optimizer.lr_scheduler.StepLR, {
             "learning_rate": 0.5,
             "step_size": 2,
             "gamma": 0.8,
             "verbose": False
-        }), (lambda_lr, paddle.optimizer.LambdaLR, {
+        }), (lambda_lr, paddle.optimizer.lr_scheduler.LambdaLR, {
             "learning_rate": 0.5,
             "lr_lambda": lambda x: 0.95**x,
             "verbose": True
-        }), (cosine_annealing_lr, paddle.optimizer.CosineAnnealingLR, {
-            "learning_rate": 0.5,
-            "T_max": 10,
-            "verbose": False
-        })]
+        }), (cosine_annealing_lr,
+             paddle.optimizer.lr_scheduler.CosineAnnealingLR, {
+                 "learning_rate": 0.5,
+                 "T_max": 10,
+                 "verbose": False
+             })]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
             places = [paddle.CPUPlace()]

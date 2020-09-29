@@ -456,7 +456,7 @@ class TestAdamOpV2(unittest.TestCase):
         adam.set_state_dict(state_dict)
 
         #learning_rate is _LRScheduler
-        learning_rate = paddle.optimizer.CosineAnnealingLR(
+        learning_rate = paddle.optimizer.lr_scheduler.CosineAnnealingLR(
             learning_rate=0.1, T_max=10)
         adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
