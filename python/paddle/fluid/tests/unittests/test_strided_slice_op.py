@@ -498,6 +498,18 @@ class TestStridedSliceAPI(unittest.TestCase):
         assert np.array_equal(res_6, input[-3:3, 0:100:2, :, -1:2:-1])
         assert np.array_equal(res_7, input[-1, 0:100:2, :, -1:2:-1])
 
+    def test_dygraph_op(self):
+        import paddle
+        paddle.disable_static()
+        x = paddle.zeros(shape=[3, 4, 5, 6], dtype="float32")
+        axes = [1, 2, 3]
+        starts = [-3, 0, 2]
+        ends = [3, 2, 4]
+        strides_1 = [1, 1, 1]
+        sliced_1 = paddle.strided_slice(
+            x, axes=axes, starts=starts, ends=ends, strides=strides_1)
+        assert np.array_equal(sliced_1.numpy(), np.zeros([3, 2, 2, 2]))
+
 
 if __name__ == "__main__":
     unittest.main()
