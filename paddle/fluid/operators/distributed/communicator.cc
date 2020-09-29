@@ -266,48 +266,47 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const framework::Scope &scope) {
   waiting_ = false;
 
-  PADDLE_ENFORCE_EQ(
-      var_tables.size(), 1,
-      platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
+  for (size_t i = 0; i < var_tables.size(); i++) {
+    auto table_name = var_tables[i];
+    auto &queue = send_varname_to_queue_.at(table_name);
 
-  auto table_name = var_tables[0];
-  auto &queue = send_varname_to_queue_.at(table_name);
-
-  if (table_name == STEP_COUNTER) {
-    auto tmp_var = std::make_shared<Variable>();
-    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(framework::make_ddim({1}));
-    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
-    out_d[0] = 1;
-    VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
-    queue->Push(tmp_var);
-  } else {
-    PADDLE_ENFORCE_GE(var_names.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "var_names.size() >= 1 is permitted"));
-
-    auto *var = scope.FindVar(var_names[0]);
-
-    PADDLE_ENFORCE_EQ(
-        var->IsInitialized(), true,
-        platform::errors::InvalidArgument("grad var should be inited"));
-
-    auto tmp_var = std::make_shared<Variable>();
-    if (var->IsType<framework::SelectedRows>()) {
-      framework::CopyVariable(*var, tmp_var.get());
-      VLOG(3) << "send to " << table_name << " with queue size "
-              << queue->Size();
-      queue->Push(tmp_var);
-    } else if (var->IsType<framework::LoDTensor>()) {
-      // push var into send queue by var_name
-      auto var_name = var_names[0];
-      framework::CopyVariable(*var, tmp_var.get());
+    if (table_name == STEP_COUNTER) {
+      auto tmp_var = std::make_shared<Variable>();
+      auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+      tensor->Resize(framework::make_ddim({1}));
+      auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+      out_d[0] = 1;
       VLOG(3) << "send to " << table_name << " with queue size "
               << queue->Size();
       queue->Push(tmp_var);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "unknown var type to copy, only support LoDTensor/SelectedRows"));
+      PADDLE_ENFORCE_GE(var_names.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "var_names.size() >= 1 is permitted"));
+
+      auto *var = scope.FindVar(var_names[i]);
+
+      PADDLE_ENFORCE_EQ(
+          var->IsInitialized(), true,
+          platform::errors::InvalidArgument("grad var should be inited"));
+
+      auto tmp_var = std::make_shared<Variable>();
+      if (var->IsType<framework::SelectedRows>()) {
+        framework::CopyVariable(*var, tmp_var.get());
+        VLOG(3) << "send to " << table_name << " with queue size "
+                << queue->Size();
+        queue->Push(tmp_var);
+      } else if (var->IsType<framework::LoDTensor>()) {
+        // push var into send queue by var_name
+        auto var_name = var_names[0];
+        framework::CopyVariable(*var, tmp_var.get());
+        VLOG(3) << "send to " << table_name << " with queue size "
+                << queue->Size();
+        queue->Push(tmp_var);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "unknown var type to copy, only support LoDTensor/SelectedRows"));
+      }
     }
   }
 }
@@ -472,9 +471,7 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
 
   for (size_t i = 0; i < var_tables.size(); i++) {
     auto table_name = var_tables[i];
-    if (table_name == STEP_COUNTER) {
-      continue;
-    } else {
+    if (table_name != STEP_COUNTER) {
       size_t splited_var_nums =
           send_varname_to_ctx_[table_name].splited_varnames.size();
 
@@ -489,15 +486,13 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
       }
 
       auto *var = scope.FindVar(var_names[i]);
-      auto var_tensor = var->Get<framework::LoDTensor>();
-      int element_number = var_tensor.numel();
-      const int64_t *var_mutable_data = var_tensor.data<int64_t>();
+      auto &rows = var->Get<framework::SelectedRows>().rows();
 
       // insert ids which has not been record
-      for (int j = 0; j < element_number; j++) {
-        auto ep_idx = var_mutable_data[j] % splited_var_nums;
+      for (size_t j = 0; j < rows.size(); j++) {
+        auto ep_idx = rows[j] % splited_var_nums;
         ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
-            .insert(var_mutable_data[j]);
+            .insert(rows[j]);
       }
     }
   }
