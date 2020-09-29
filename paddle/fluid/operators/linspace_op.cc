@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/linspace_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -21,7 +22,7 @@ class LinspaceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Start"), "Input", "Start", "linspace");
     OP_INOUT_CHECK(ctx->HasInput("Stop"), "Input", "Stop", "linspace");
     OP_INOUT_CHECK(ctx->HasInput("Num"), "Input", "Num", "linspace");
@@ -50,10 +51,16 @@ class LinspaceOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return expected_kernel_type;
   }
 };
 

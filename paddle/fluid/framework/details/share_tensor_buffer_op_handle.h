@@ -24,7 +24,19 @@
 
 namespace paddle {
 namespace framework {
+class Scope;
+namespace ir {
+class MemOptVarInfo;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
+
+class ComputationOpHandle;
 
 class ShareTensorBufferOpHandle : public OpHandleBase {
  public:

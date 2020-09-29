@@ -23,7 +23,7 @@ from ..fluid.dygraph.jit import declarative as to_static  #DEFINE_ALIAS
 from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
 from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
 
-from . import dygraph_to_static
+from . import dy2static
 
 __all__ = [
     'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',

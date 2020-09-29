@@ -30,6 +30,17 @@
 
 namespace paddle {
 namespace framework {
+class VarDesc;
+namespace details {
+class ComputationOpHandle;
+class ShareTensorBufferOpHandle;
+struct VarHandle;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
 
 /*
@@ -71,6 +82,8 @@ namespace ir {
  * a pass to clean all ShareTensorBufferOpHandles and move sharing to
  * ComputationOpHandle::Run() in the future.
  */
+class Graph;
+
 class MemoryReusePass : public Pass {
  protected:
   void ApplyImpl(Graph *graph) const final;

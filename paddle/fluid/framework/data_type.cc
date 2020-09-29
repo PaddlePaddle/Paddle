@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_type.h"
-#include <stdint.h>
 #include <string>
 #include <unordered_map>
 

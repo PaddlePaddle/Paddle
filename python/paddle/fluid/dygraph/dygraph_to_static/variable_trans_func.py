@@ -74,13 +74,13 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 
 
 def to_static_variable_gast_node(name):
-    func_code = "{} = paddle.jit.dygraph_to_static.variable_trans_func\
-        .to_static_variable({})".format(name, name)
+    func_code = "{} = paddle.jit.dy2static.to_static_variable({})".format(name,
+                                                                          name)
     return gast.parse(func_code).body[0]
 
 
 def create_static_variable_gast_node(name):
-    func_code = "{} = paddle.jit.dygraph_to_static.variable_trans_func\
+    func_code = "{} = paddle.jit.dy2static\
         .data_layer_not_check(name='{}', shape=[-1], dtype='float32')".format(
         name, name)
     return gast.parse(func_code).body[0]
