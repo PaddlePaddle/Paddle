@@ -15,18 +15,18 @@
 __all__ = [
     'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
     'Adamax', 'AdamW', 'DecayedAdagrad', 'DecayedAdagradOptimizer', 'Dpsgd',
-    'DpsgdOptimizer', 'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer',
-    'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
-    'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer', '_LRScheduler', 'NoamLR',
-    'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
-    'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR',
-    'ReduceLROnPlateau', 'CosineAnnealingLR'
+    'DpsgdOptimizer', 'Ftrl', 'FtrlOptimizer', 'LookaheadOptimizer',
+    'ModelAverage', 'Momentum', 'MomentumOptimizer', 'RMSProp', 'SGD',
+    'SGDOptimizer', 'Optimizer', '_LRScheduler', 'NoamLR', 'PiecewiseLR',
+    'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR', 'LinearLrWarmup',
+    'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR', 'ReduceLROnPlateau',
+    'CosineAnnealingLR'
 ]
 
 
 from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl,\
             AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
-            FtrlOptimizer, AdadeltaOptimizer, ExponentialMovingAverage
+            FtrlOptimizer, AdadeltaOptimizer
 
 from .optimizer import Optimizer
 from .adam import Adam
