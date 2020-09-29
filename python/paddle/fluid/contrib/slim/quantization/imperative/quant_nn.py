@@ -23,9 +23,9 @@ from paddle.fluid.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype
 
 __all__ = [
-    'FakeQuantMovingAverage', 'FakeQuantAbsMax', 'QuantizedConv2D',
-    'QuantizedLinear', 'QuantizedNoweightLayer',
-    'FakeChannelWiseQuantDequantAbsMax'
+    'FakeQuantMovingAverage', 'FakeQuantAbsMax',
+    'FakeChannelWiseQuantDequantAbsMax', 'QuantizedConv2D', 'QuantizedLinear',
+    'QuantizedNoweightLayer'
 ]
 
 
@@ -503,13 +503,13 @@ class QuantizedNoweightLayer(layers.Layer):
                  weight_bits=8,
                  activation_bits=8,
                  moving_rate=0.9,
-                 weight_quantize_type='abs_max',
-                 activation_quantize_type='abs_max'):
+                 *args,
+                 **kwargs):
 
         super(QuantizedNoweightLayer, self).__init__()
-        self.layer = layer
+        self._layer = layer
         self._fake_quant_input = _get_fake_quant_type(
-            activation_quantize_type,
+            'moving_average_abs_max',
             name=layer.full_name(),
             moving_rate=moving_rate,
             quant_bits=activation_bits,
@@ -518,4 +518,4 @@ class QuantizedNoweightLayer(layers.Layer):
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
-        return self.layer.forward(quant_input)
+        return self._layer.forward(quant_input)

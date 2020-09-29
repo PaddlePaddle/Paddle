@@ -336,7 +336,7 @@ class TestImperativeQat(unittest.TestCase):
                 dynamic_loss_rec.append(avg_loss.numpy()[0])
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
-
+                lenet.eval()
         paddle.jit.save(
             layer=lenet,
             model_path="./dynamic_mnist",

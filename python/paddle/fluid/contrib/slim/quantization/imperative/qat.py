@@ -18,7 +18,7 @@ import sys
 import paddle
 from paddle.fluid import dygraph
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
-from paddle.nn.layer import ReLU, LeakyReLU
+from paddle.nn.layer import ReLU, LeakyReLU, ReLU6, Softmax, Tanh
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
@@ -123,7 +123,10 @@ class ImperativeQuantAware(object):
             'Linear': Linear,
             'Pool2D': Pool2D,
             'ReLU': ReLU,
-            'LeakyReLU': LeakyReLU
+            'LeakyReLU': LeakyReLU,
+            'ReLU6': ReLU6,
+            'Softmax': Softmax,
+            'Tanh': Tanh
         }
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
@@ -174,7 +177,8 @@ class ImperativeQuantAware(object):
                 layer.full_name()))
             sys.exit(-1)
         no_weight_layer = [
-            'QuantizedPool2D', 'QuantizedReLU', 'QuantizedLeakyReLU'
+            'QuantizedPool2D', 'QuantizedReLU', 'QuantizedLeakyReLU',
+            'QuantizedReLU6', 'QuantizedSoftmax', 'QuantizedTanh'
         ]
         if quantized_counterpart[index] in no_weight_layer:
             quant_layer_class_name = 'QuantizedNoweightLayer'
