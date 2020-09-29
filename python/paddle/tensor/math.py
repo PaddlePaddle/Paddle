@@ -1483,8 +1483,7 @@ def clip(x, min=None, max=None, name=None):
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
-	:alias_main: paddle.trace
-	:alias: paddle.trace,paddle.tensor.trace,paddle.tensor.math.trace
+    **trace**
 
     This OP computes the sum along diagonals of the input tensor x.
 
@@ -1502,14 +1501,14 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
 
     Args:
-        x(Variable): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
         offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        Variable: the output data type is the same as input data type.
+        Tensor: the output data type is the same as input data type.
 
     Examples:
         .. code-block:: python
