@@ -1,4 +1,4 @@
 PyGithub
 coverage
-pycrypto
+pycrypto ; platform_system != "Windows"
 mock
