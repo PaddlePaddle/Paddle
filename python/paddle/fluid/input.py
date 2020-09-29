@@ -223,12 +223,16 @@ def embedding(input,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy as np
-          data = fluid.data(name='x', shape=[None, 10], dtype='int64')
+
+          paddle.enable_static()
+
+          data = paddle.static.data(name='x', shape=[None, 10], dtype='int64')
 
           # example 1
-          emb_1 = fluid.embedding(input=data, size=[128, 64])
+          emb = paddle.nn.Embedding(10, 3, sparse=True)
+          out = emb(data)
 
           # example 2: load custom or pre-trained word vectors
           weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
