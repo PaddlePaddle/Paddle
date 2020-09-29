@@ -377,31 +377,35 @@ def cuda_places(device_ids=None):
         For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
         The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
-    This function creates a list of :code:`fluid.CUDAPlace` objects.
+    This function creates a list of :code:`paddle.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
     :code:`FLAGS_selected_gpus` would be checked first. For example, if
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
-    be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    be [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
     gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
 
     If :code:`device_ids` is not None, it should be the device
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
-    [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
     
     Parameters:
         device_ids (list or tuple of int, optional): list of GPU device ids.
 
     Returns:
-        list of fluid.CUDAPlace: Created GPU place list.
+        list of paddle.CUDAPlace: Created GPU place list.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            cuda_places = fluid.cuda_places()
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+
+            cuda_places = static.cuda_places()
 
     """
     assert core.is_compiled_with_cuda(), \
@@ -415,7 +419,7 @@ def cuda_places(device_ids=None):
 
 def cpu_places(device_count=None):
     """
-    This function creates a list of :code:`fluid.CPUPlace` objects, and returns the created list.
+    This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
@@ -428,13 +432,17 @@ def cpu_places(device_count=None):
         device_count (int, optional): device number. Default: None.
 
     Returns:
-        list of fluid.CPUPlace: Created list of CPU places.
+        list of paddle.CPUPlace: Created list of CPU places.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            cpu_places = fluid.cpu_places()
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+
+            cpu_places = static.cpu_places()
     """
 
     if device_count is None:
