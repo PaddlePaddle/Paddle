@@ -9000,10 +9000,6 @@ def crop(x, shape=None, offsets=None, name=None):
 
 def crop_tensor(x, shape=None, offsets=None, name=None):
     """
-    :alias_main: paddle.crop_tensor
-	:alias: paddle.crop_tensor,paddle.tensor.crop_tensor,paddle.tensor.creation.crop_tensor
-	:old_api: paddle.fluid.layers.crop_tensor
-
     Crop input into output, as specified by offsets and shape.
 
     .. code-block:: text

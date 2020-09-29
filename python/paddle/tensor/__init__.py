@@ -23,7 +23,6 @@ from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS
-from .creation import crop_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
 from .creation import fill_constant  #DEFINE_ALIAS

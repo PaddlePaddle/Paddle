@@ -59,7 +59,6 @@ from .tensor.random import bernoulli
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
 from .tensor.creation import to_tensor  #DEFINE_ALIAS
-from .tensor.creation import crop_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
 from .tensor.creation import fill_constant  #DEFINE_ALIAS
@@ -268,6 +267,8 @@ from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
 from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
+from .fluid.layers import crop_tensor as crop  #DEFINE_ALIAS
+
 
 from . import jit
 from . import static

@@ -28,14 +28,12 @@ from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
-from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
     'to_tensor',
-    'crop_tensor',
     'diag',
     'fill_constant',
     #       'get_tensor_from_selected_rows',
