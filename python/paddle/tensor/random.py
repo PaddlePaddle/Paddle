@@ -98,7 +98,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
         x(Tensor):  A tensor with probabilities for generating the random number. The data type
             should be float32, float64.
         num_samples(int, optional): Number of samples, default is 1.
-        replacement(bool, optional): whether it is a replaceable sample, default is False.
+        replacement(bool, optional): Whether it is a replaceable sample, default is False.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.

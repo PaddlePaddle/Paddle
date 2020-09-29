@@ -27,19 +27,10 @@ class TestMultinomialOp(OpTest):
         self.init_data()
         self.inputs = {"X": self.input_np}
 
-    """
     def init_data(self):
         # input probability is a vector, and replacement is True
         self.input_np = np.random.rand(4)
         self.outputs = {"Out": np.zeros(100000).astype("int64")}
-        self.attrs = {"num_samples": 100000, "replacement": True}
-    """
-
-    def init_data(self):
-        # input probability is a vector, and replacement is True
-        self.input_np = np.random.rand(4)
-        self.outputs = {"Out": np.zeros(100000).astype("int64")}
-        # self.outputs = {"yokiOut": np.zeros(4).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def test_check_output(self):
@@ -55,9 +46,6 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
-        # sample_prob = np.array(outs[0])
-        # print("input", self.input_np)
-        # print("sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
         self.assertTrue(
             np.allclose(
                 sample_prob, prob, rtol=0, atol=0.01),
@@ -69,7 +57,6 @@ class TestMultinomialOp2(TestMultinomialOp):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4)
         self.outputs = {"Out": np.zeros((3, 100000)).astype("int64")}
-        # self.outputs = {"yokiOut": np.zeros((3, 4)).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def sample_output(self, out):
@@ -92,25 +79,15 @@ class TestMultinomialOp3(TestMultinomialOp):
 
     def verify_output(self, outs):
         out = np.array(outs[0])
-        # print("op3out", out)
         unique_out = np.unique(out)
         self.assertEqual(
             len(unique_out), 100,
             "replacement is False. categories can't be sampled repeatedly")
 
 
-"""
-class TestReplacementError(unittest.TestCase):
-    def init_data(self):
-        # replacement is False. if number of samples is larger than number of categories, raise error.
-        self.input_np = np.random.rand(4)
-        self.outputs = {"Out": np.zeros(10).astype("int64")}
-        self.attrs = {"num_samples": 10, "replacement": False}
-"""
-
-
 class TestMultinomialApi(unittest.TestCase):
     def test_dygraph(self):
+        # input probability is a vector, and replacement is True
         paddle.disable_static()
         x = paddle.rand([4])
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
@@ -128,6 +105,7 @@ class TestMultinomialApi(unittest.TestCase):
             "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
 
     def test_dygraph2(self):
+        # input probability is a matrix, and replacement is True
         paddle.disable_static()
         x = paddle.rand([3, 4])
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
@@ -149,6 +127,7 @@ class TestMultinomialApi(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph3(self):
+        # replacement is False. number of samples must be less than number of categories.
         paddle.disable_static()
         x = paddle.rand([1000])
         out = paddle.multinomial(x, num_samples=100, replacement=False)
@@ -185,16 +164,6 @@ class TestMultinomialApi(unittest.TestCase):
             np.allclose(
                 sample_prob, prob, rtol=0, atol=0.01),
             "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
-
-    """
-    def test_replacement_error(self):
-        def test_error():
-            paddle.disable_static()
-            x = paddle.rand([5])
-            out = paddle.multinomial(x, num_samples=10, replacement=False)
-
-        self.assertRaises(paddle.fluid.core.EnforceNotMet, test_error)
-    """
 
 
 class TestMultinomialAlias(unittest.TestCase):
