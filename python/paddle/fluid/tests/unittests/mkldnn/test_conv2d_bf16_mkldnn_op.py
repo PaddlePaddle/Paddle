@@ -19,7 +19,7 @@ import numpy as np
 import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
 
 
@@ -203,6 +203,6 @@ class TestWithInput1x1Filter1x1(TestConv2dBf16Op):
     def init_group(self):
         self.groups = 3
 
-
-if __name__ == '__main__':
-    unittest.main()
+    if __name__ == '__main__':
+        if core.is_bfloat16():
+            unittest.main()
