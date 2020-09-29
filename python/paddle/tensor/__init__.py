@@ -166,6 +166,7 @@ from .math import isfinite  #DEFINE_ALIAS
 from .math import isinf  #DEFINE_ALIAS
 from .math import isnan  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
+from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
 from .random import uniform  #DEFINE_ALIAS
