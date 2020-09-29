@@ -47,17 +47,10 @@ class SparseLoadKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(
         out_var, platform::errors::InvalidArgument(
                      "The variable %s to be loaded cannot be found.", name));
-
-    if (out_var->IsType<framework::LoDTensor>()) {
-      LoadLodTensor(fin, place, out_var, ctx);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      LoadSelectedRows(fin, place, out_var, ctx);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Load operator only supports loading LoDTensor and SelectedRows "
-          "variable, %s has wrong type",
-          name));
-    }
+    PADDLE_ENFORCE_EQ(out_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "SparseLoad OP only support LoDTensor"));
+    LoadLodTensor(fin, place, out_var, ctx);
   }
 
   void LoadLodTensor(std::istream &fin, const platform::Place &place,
@@ -78,26 +71,6 @@ class SparseLoadKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
                                        "node_num great than or equal to 1"));
     DeserializeFromStream(fin, tensor, dev_ctx, node_index, node_num, shape);
-  }
-
-  void LoadSelectedRows(std::istream &fin, const platform::Place &place,
-                        framework::Variable *var,
-                        const framework::ExecutionContext &ctx) const {
-    auto *selectedRows = var->GetMutable<framework::SelectedRows>();
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-    auto node_index = ctx.Attr<int64_t>("node_index");
-    auto node_num = ctx.Attr<int64_t>("node_num");
-    auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-    PADDLE_ENFORCE_GE(node_index, 0, platform::errors::InvalidArgument(
-                                         "node_num great than or equal to 0"));
-    PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
-                                       "node_num great than or equal to 1"));
-    VLOG(4) << "Sparse LoadSelectedRows node_num" << node_num;
-    VLOG(4) << "Sparse LoadSelectedRows node_index" << node_index;
-    VLOG(4) << "Sparse LoadSelectedRows shape[0]" << shape[0];
-    DeserializeFromStream(fin, selectedRows, dev_ctx, node_index, node_num,
-                          shape);
   }
 };
 
