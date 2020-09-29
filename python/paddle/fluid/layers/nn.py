@@ -7084,9 +7084,7 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The dice loss with shape [1], data type is the same as `input` .
-    Return Type:
-        Varaible
+        Tensor, which shape [1], data type is the same as `input` .
 
     Example:
         .. code-block:: python
@@ -13113,7 +13111,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Variable: A 2-D tensor with shape [N x 1], the negative log loss.
+        Tensor, which shape is [N x 1], data type is float32.
 
     Examples:
         .. code-block:: python
