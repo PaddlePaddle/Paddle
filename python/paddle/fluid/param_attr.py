@@ -87,6 +87,10 @@ class ParamAttr(object):
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+        check_type(initializer, "initializer", (Initializer, type(None)),
+                   "ParamAttr")
+        check_type(regularizer, "regularizer",
+                   (WeightDecayRegularizer, type(None)), "ParamAttr")
 
         self.name = name
         if self.name == "":
