@@ -133,7 +133,7 @@ class InferencePassTest(unittest.TestCase):
         for place_ in use_gpu:
             self.check_output_with_option(place_, atol)
 
-    def check_output_with_option(self, use_gpu, atol=1e-5):
+    def check_output_with_option(self, use_gpu, atol=1e-5, flatten=False):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT 
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
@@ -155,9 +155,13 @@ class InferencePassTest(unittest.TestCase):
             format(device))
 
         for out, analysis_output in zip(outs, analysis_outputs):
+            out = np.array(out)
+            if flatten:
+                out = out.flatten()
+                analysis_output = analysis_output.flatten()
             self.assertTrue(
                 np.allclose(
-                    np.array(out), analysis_output, atol=atol),
+                    out, analysis_output, atol=atol),
                 "Output has diff between inference and training forward at {} ".
                 format(device))
 
@@ -172,9 +176,13 @@ class InferencePassTest(unittest.TestCase):
                 "The number of outputs is different between GPU and TensorRT. ")
 
             for out, tensorrt_output in zip(outs, tensorrt_outputs):
+                out = np.array(out)
+                if flatten:
+                    out = out.flatten()
+                    tensorrt_output = tensorrt_output.flatten()
                 self.assertTrue(
                     np.allclose(
-                        np.array(out), tensorrt_output, atol=atol),
+                        out, tensorrt_output, atol=atol),
                     "Output has diff between GPU and TensorRT. ")
 
         # Check whether the mkldnn results and the CPU results are the same. 
