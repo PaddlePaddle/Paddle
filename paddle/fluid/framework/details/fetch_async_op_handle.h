@@ -53,6 +53,8 @@ struct FetchAsyncOpHandle : public OpHandleBase {
 
   bool IsMultiDeviceTransfer() override;
 
+  Priority GetPriority() const override { return kHighest; }
+
  protected:
   void RunImpl() override;
 
