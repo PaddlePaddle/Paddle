@@ -182,9 +182,6 @@ class GradientClipByValue(GradientClipBase):
         .. code-block:: python
         
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(10, 10)
@@ -300,9 +297,6 @@ class GradientClipByNorm(GradientClipBase):
         .. code-block:: python
         
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(10, 10)
@@ -411,9 +405,6 @@ class GradientClipByGlobalNorm(GradientClipBase):
         .. code-block:: python
         
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(10, 10)
