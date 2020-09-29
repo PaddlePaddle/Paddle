@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -90,3 +91,9 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(scale_matmul_fuse_pass,
               paddle::framework::ir::ScaleMatmulFusePass);
+
+REGISTER_PASS_CAPABILITY(scale_matmul_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("scale", 0)
+            .EQ("matmul", 0));

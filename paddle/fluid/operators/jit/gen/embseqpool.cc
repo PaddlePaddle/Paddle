@@ -132,11 +132,31 @@ class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const emb_seq_pool_attr_t& attr) const override {
-    PADDLE_ENFORCE_GT(attr.table_height, 0);
-    PADDLE_ENFORCE_GT(attr.table_width, 0);
-    PADDLE_ENFORCE_GT(attr.index_height, 0);
-    PADDLE_ENFORCE_GT(attr.index_width, 0);
-    PADDLE_ENFORCE_GT(attr.out_width, 0);
+    PADDLE_ENFORCE_GT(attr.table_height, 0,
+                      platform::errors::InvalidArgument(
+                          "The attribute table_height of EmbSeqPool should "
+                          "be larger than 0. But it is %d.",
+                          attr.table_height));
+    PADDLE_ENFORCE_GT(attr.table_width, 0,
+                      platform::errors::InvalidArgument(
+                          "The attribute table_width of EmbSeqPool should "
+                          "be larger than 0. But it is %d.",
+                          attr.table_width));
+    PADDLE_ENFORCE_GT(attr.index_height, 0,
+                      platform::errors::InvalidArgument(
+                          "The attribute index_height of EmbSeqPool should "
+                          "be larger than 0. But it is %d.",
+                          attr.index_height));
+    PADDLE_ENFORCE_GT(attr.index_width, 0,
+                      platform::errors::InvalidArgument(
+                          "The attribute index_width of EmbSeqPool should "
+                          "be larger than 0. But it is %d.",
+                          attr.index_width));
+    PADDLE_ENFORCE_GT(attr.out_width, 0,
+                      platform::errors::InvalidArgument(
+                          "The attribute out_width of EmbSeqPool should be "
+                          "larger than 0. But it is %d.",
+                          attr.out_width));
     return make_unique<EmbSeqPoolJitCode>(attr, CodeSize(attr));
   }
 };
