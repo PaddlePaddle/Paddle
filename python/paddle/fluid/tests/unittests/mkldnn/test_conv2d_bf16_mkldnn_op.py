@@ -203,6 +203,7 @@ class TestWithInput1x1Filter1x1(TestConv2dBf16Op):
     def init_group(self):
         self.groups = 3
 
-    if __name__ == '__main__':
-        if core.is_bfloat16():
-            unittest.main()
+
+if __name__ == '__main__':
+    if core.is_bfloat16():
+        unittest.main()
