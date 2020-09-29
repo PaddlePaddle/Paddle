@@ -41,24 +41,25 @@ class SparseLoadKernel : public framework::OpKernel<T> {
                           "Load operator fail to open file %s, please check "
                           "whether the model file is complete or damaged.",
                           filename));
-    auto out_var_name = ctx.OutputNames("Out").data();
+    auto name = ctx.OutputNames("Out")[0];
+    VLOG(1) << "Sparse Load Var name: " << name;
     auto *out_var = ctx.OutputVar("Out");
-
+    VLOG(1) << "Sparse Load get out_var";
     PADDLE_ENFORCE_NOT_NULL(
-        out_var,
-        platform::errors::InvalidArgument(
-            "The variable %s to be loaded cannot be found.", out_var_name));
-    return;
+        out_var, platform::errors::InvalidArgument(
+                     "The variable %s to be loaded cannot be found.", name));
 
     if (out_var->IsType<framework::LoDTensor>()) {
+      VLOG(1) << "Sparse Load LoadLodTensor";
       LoadLodTensor(fin, place, out_var, ctx);
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      VLOG(1) << "Sparse Load LoadSelectedRows";
       LoadSelectedRows(fin, place, out_var, ctx);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Load operator only supports loading LoDTensor and SelectedRows "
           "variable, %s has wrong type",
-          out_var_name));
+          name));
     }
   }
 
@@ -70,12 +71,15 @@ class SparseLoadKernel : public framework::OpKernel<T> {
     auto *tensor = var->GetMutable<framework::LoDTensor>();
 
     auto node_index = ctx.Attr<int64_t>("node_index");
-    auto node_num = ctx.Attr<int64_t>("node_nums");
+    auto node_num = ctx.Attr<int64_t>("node_num");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
+    VLOG(1) << "Sparse LoadLodTensor node_num" << node_num;
+    VLOG(1) << "Sparse LoadLodTensor node_index" << node_index;
+    VLOG(1) << "Sparse LoadLodTensor shape[0]" << shape[0];
     PADDLE_ENFORCE_GE(node_index, 0, platform::errors::InvalidArgument(
                                          "node_num great than or equal to 0"));
     PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
-                                       "node_num great than or equal to 0"));
+                                       "node_num great than or equal to 1"));
     DeserializeFromStream(fin, tensor, dev_ctx, node_index, node_num, shape);
   }
 
@@ -86,12 +90,15 @@ class SparseLoadKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto node_index = ctx.Attr<int64_t>("node_index");
-    auto node_num = ctx.Attr<int64_t>("node_nums");
+    auto node_num = ctx.Attr<int64_t>("node_num");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
     PADDLE_ENFORCE_GE(node_index, 0, platform::errors::InvalidArgument(
                                          "node_num great than or equal to 0"));
     PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
-                                       "node_num great than or equal to 0"));
+                                       "node_num great than or equal to 1"));
+    VLOG(1) << "Sparse LoadSelectedRows node_num" << node_num;
+    VLOG(1) << "Sparse LoadSelectedRows node_index" << node_index;
+    VLOG(1) << "Sparse LoadSelectedRows shape[0]" << shape[0];
     DeserializeFromStream(fin, selectedRows, dev_ctx, node_index, node_num,
                           shape);
   }
@@ -119,8 +126,8 @@ class SparseLoadOpMaker : public framework::OpProtoAndCheckerMaker {
                          R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddAttr<int>("node_index", "role id from 0 ~ server_num.").SetDefault(0);
-    AddAttr<int>("node_num", "role nums which need load current varibale.")
+    AddAttr<int64_t>("node_index", "role id from 0 ~ node_num.").SetDefault(0);
+    AddAttr<int64_t>("node_num", "role nums which need load current varibale.")
         .SetDefault(0);
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) The shape of the output")

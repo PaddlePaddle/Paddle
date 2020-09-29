@@ -819,6 +819,16 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
         platform::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
+    std::vector<int64_t> dims;
+    dims.reserve(static_cast<size_t>(desc.dims().size()));
+    std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
+
+    int64_t line_numel = 1;
+    for (size_t dim = 1; dim < dims.size(); dim++) {
+      line_numel *= dims[dim];
+    }
+    auto total_line = dims[0];
+
     tensor->Resize(framework::make_ddim(shape));
 
     void* buf;
@@ -834,13 +844,11 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto line_size = framework::SizeOfType(desc.data_type());
       auto total_line = tensor->numel();
       char* cur_buf = static_cast<char*>(buf);
-      size_t last_line_index = 0;
+      char* temp_row = new char[line_size];
       for (size_t line_index = 0; line_index < total_line; ++line_index) {
+        is.read(temp_row, line_size);
         if (static_cast<int64_t>(line_index) % node_num == node_index) {
-          size_t seekg = (line_index - last_line_index) * line_size;
-          is.seekg(seekg, is.cur);
-          last_line_index = line_index;
-          is.read(static_cast<char*>(cur_buf), line_size);
+          memcpy(cur_buf, temp_row, line_size);
           cur_buf += line_size;
         }
       }
@@ -859,16 +867,16 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
-      auto line_size = framework::SizeOfType(desc.data_type());
-      auto total_line = tensor->numel();
+
+      auto line_size = line_numel * framework::SizeOfType(desc.data_type());
       char* cur_buf = static_cast<char*>(buf);
-      size_t last_line_index = 0;
+      char* temp_row = new char[line_size];
+      VLOG(1) << "TensorFromStream: line_size " << line_size;
+      VLOG(1) << "TensorFromStream: total_line " << total_line;
       for (size_t line_index = 0; line_index < total_line; ++line_index) {
+        is.read(temp_row, line_size);
         if (static_cast<int64_t>(line_index) % node_num == node_index) {
-          size_t seekg = (line_index - last_line_index) * line_size;
-          is.seekg(seekg, is.cur);
-          last_line_index = line_index;
-          is.read(static_cast<char*>(cur_buf), line_size);
+          memcpy(cur_buf, temp_row, line_size);
           cur_buf += line_size;
         }
       }

@@ -43,15 +43,17 @@ class TestLoadOp(unittest.TestCase):
                 [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]
                 ...])
         """
-        emb_array = np.arange(0, 1000, 0.1).repeat(10).reshape(10000, 10)
+        emb_array = np.arange(0, 1, 0.1).repeat(10).reshape(10, 10)
         fc_array = np.arange(0, 1, 0.1).repeat(10).reshape(10, 10)
+
+        print("emb_array: {}".format(emb_array))
 
         dense_input = fluid.data('input', shape=[None, 1], dtype="int64")
 
         emb = fluid.layers.embedding(
             input=dense_input,
             is_sparse=True,
-            size=[10000, 10],
+            size=[10, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
                 initializer=fluid.initializer.NumpyArrayInitializer(emb_array)),
