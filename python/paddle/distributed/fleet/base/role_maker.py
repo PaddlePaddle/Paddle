@@ -869,7 +869,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            #self._gloo_init()
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
