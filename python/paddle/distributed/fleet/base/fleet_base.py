@@ -181,6 +181,8 @@ class Fleet(object):
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
                     format(type(role_maker)))
         self._role_maker._generate_role()
+        if not paddle.fluid.framework.in_dygraph_mode():
+            self._role_maker._gloo_init()
 
         import paddle.distributed.fleet as fleet
         fleet.util._set_role_maker(self._role_maker)
