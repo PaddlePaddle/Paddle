@@ -37,14 +37,19 @@ struct Cell {
 
 template <typename T>
 struct LSTMCell : Cell<T> {
-  void operator()(const Tensor* input, const TensorList& vec,
+  void operator()(const framework::ExecutionContext& context,
+                  const Tensor* input, const TensorList& vec,
                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                  Tensor* last_c, Tensor* output, const int& layer_idx,
-                  const int& init_offset, const int& time_step) {
+                  Tensor* last_c, Tensor* output) {
     // TODO(wawltor)
     return;
   }
 };
+
+// input_w = input * w_ih + b_ih
+// input_tensors = unbind(input_w)
+// input_tensors[i], w_hh, b_hh
+// init_h N*D
 
 template <typename T>
 struct Layer {
@@ -55,16 +60,16 @@ struct Layer {
 template <typename T>
 struct SingleLayer {
   explicit SingleLayer(Cell<T>& cell) : cell_(cell) {}
-  void operator()(Tensor* input, const TensorList& vec, const Tensor* init_h,
-                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
-                  Tensor* output, const int& layer_idx,
+  void operator()(const framework::ExecutionContext& context,
+                  const Tensor* input, const TensorList& vec,
+                  const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
+                  Tensor* last_c, Tensor* output, const int& layer_idx,
                   const int& init_offset) {
     const int& time_step = input->dims()[0];
     TensorList output_tensors;
     output_tensors.reserve(time_step);
     for (int i = 0; i < time_step; i++) {
-      cell_(input, vec, init_h, init_c, last_h, last_c, output, layer_idx,
-            init_offset, time_step);
+      cell_(context, input, vec, init_h, init_c, last_h, last_c, output);
       init_h = last_h;
       init_c = last_h;
     }
@@ -78,7 +83,8 @@ struct SingleLayer {
 template <typename T>
 struct BidirLayer {
   explicit BidirLayer(Cell<T>& cell) : cell_(cell) {}
-  void operator()(const Tensor* input, const TensorList& vec,
+  void operator()(const framework::ExecutionContext& context,
+                  const Tensor* input, const TensorList& vec,
                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
                   Tensor* last_c, Tensor* output, const int& layer_idx,
                   const int& init_offset) {}
@@ -271,11 +277,11 @@ void CacluateLSTMLayer(const framework::ExecutionContext& ctx,
     if (is_bidirec) {
       BidirLayerT<T> layer(cell);
       if (i == 0) {
-        layer(input, parameter_lists[i], init_h, init_c, last_h, last_c,
+        layer(ctx, input, parameter_lists[i], init_h, init_c, last_h, last_c,
               output_holder, i, init_offset);
       } else {
-        layer(input_holder, parameter_lists[i], init_h, init_c, last_h, last_c,
-              output_holder, i, init_offset);
+        layer(ctx, input_holder, parameter_lists[i], init_h, init_c, last_h,
+              last_c, output_holder, i, init_offset);
       }
     }
   }
