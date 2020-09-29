@@ -24,10 +24,10 @@ import paddle
 PRINT_STEP = 20
 SEED = 2020
 
-program_translator = paddle.fluid.dygraph.dygraph_to_static.ProgramTranslator()
+program_translator = paddle.jit.ProgramTranslator()
 
 
-class SimpleLSTMRNN(paddle.fluid.Layer):
+class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(self,
                  hidden_size,
                  num_steps,
@@ -96,26 +96,26 @@ class SimpleLSTMRNN(paddle.fluid.Layer):
                 step_input = m
 
                 if self._dropout is not None and self._dropout > 0.0:
-                    step_input = paddle.fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
                         dropout_prob=self._dropout,
                         dropout_implementation='upscale_in_train')
             res.append(step_input)
         real_res = paddle.concat(x=res, axis=1)
-        real_res = paddle.fluid.layers.reshape(
-            real_res, [-1, self._num_steps, self._hidden_size])
+        real_res = paddle.reshape(real_res,
+                                  [-1, self._num_steps, self._hidden_size])
         last_hidden = paddle.concat(x=hidden_array, axis=1)
-        last_hidden = paddle.fluid.layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size])
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
         last_cell = paddle.concat(x=cell_array, axis=1)
-        last_cell = paddle.fluid.layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size])
         last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(paddle.fluid.Layer):
+class PtbModel(paddle.nn.Layer):
     def __init__(self,
                  hidden_size,
                  vocab_size,
@@ -160,21 +160,21 @@ class PtbModel(paddle.fluid.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @paddle.fluid.dygraph.jit.declarative
+    @paddle.jit.to_static
     def forward(self, input, label, init_hidden, init_cell):
 
-        init_h = paddle.fluid.layers.reshape(
+        init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size])
 
-        init_c = paddle.fluid.layers.reshape(
+        init_c = paddle.reshape(
             init_cell, shape=[self.num_layers, -1, self.hidden_size])
 
         x_emb = self.embedding(input)
 
-        x_emb = paddle.fluid.layers.reshape(
+        x_emb = paddle.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size])
         if self.dropout is not None and self.dropout > 0.0:
-            x_emb = paddle.fluid.layers.dropout(
+            x_emb = paddle.nn.functional.dropout(
                 x_emb,
                 dropout_prob=self.dropout,
                 dropout_implementation='upscale_in_train')
@@ -186,7 +186,7 @@ class PtbModel(paddle.fluid.Layer):
 
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False)
-        loss = paddle.fluid.layers.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.reduce_mean(loss, dim=[0])
         loss = paddle.reduce_sum(loss)
 
@@ -291,7 +291,7 @@ def train_static(place):
 
 class TestPtb(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda() \
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_check_result(self):
