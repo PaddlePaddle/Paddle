@@ -1110,9 +1110,6 @@ def assign_skip_lod_tensor_array(input, output):
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.nn.while_loop
-	:alias: paddle.nn.while_loop,paddle.nn.control_flow.while_loop
-	:old_api: paddle.fluid.layers.while_loop
 
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
@@ -2298,9 +2295,6 @@ def copy_var_to_parent_block(var, layer_helper):
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.nn.cond
-	:alias: paddle.nn.cond,paddle.nn.control_flow.cond
-	:old_api: paddle.fluid.layers.cond
     
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
