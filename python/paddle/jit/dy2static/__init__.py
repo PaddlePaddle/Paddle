@@ -14,18 +14,16 @@
 
 from __future__ import print_function
 
-from ..fluid.dygraph.jit import save  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import load  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import set_code_level  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import set_verbosity  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import declarative as to_static  #DEFINE_ALIAS
-from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
-from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
+from . import convert_operators
+from .convert_operators import *
 
-from . import dy2static
+from . import convert_call_func
+from .convert_call_func import *
 
-__all__ = [
-    'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',
-    'TranslatedLayer', 'set_code_level', 'set_verbosity'
-]
+from . import variable_trans_func
+from .variable_trans_func import *
+
+__all__ = []
+__all__ += convert_operators.__all__
+__all__ += convert_call_func.__all__
+__all__ += variable_trans_func.__all__
