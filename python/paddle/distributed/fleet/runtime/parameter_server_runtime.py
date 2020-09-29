@@ -23,6 +23,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 
 from .runtime_base import RuntimeBase
+from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerRuntime(RuntimeBase):
@@ -94,8 +95,8 @@ class ParameterServerRuntime(RuntimeBase):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -161,6 +162,17 @@ class ParameterServerRuntime(RuntimeBase):
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
+        dist_strategy = self.context["valid_strategy"]
+        launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
+        if launch_barrier:
+            # for trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+            # for ps-heter mode, wait heter worker ready
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            ):
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+
         lrs = _has_global_step(_get_lr_ops(self.origin_main_program))
 
         if lrs:
@@ -220,11 +232,11 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             model_dirname = None
 
-        if self.role_maker._is_heter_worker():
-            self._init_worker()
-
         executor = self._get_executor()
         executor.run(fluid.default_startup_program())
+
+        if self.role_maker._is_heter_worker():
+            self._init_worker()
 
         if self.role_maker._is_heter_worker():
             return
@@ -312,7 +324,7 @@ class ParameterServerRuntime(RuntimeBase):
         opts = _get_optimize_ops(self.origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):

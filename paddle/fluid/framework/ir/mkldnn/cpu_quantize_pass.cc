@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
-#include <limits>
+
 #include <sstream>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/platform/errors.h"
+
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 

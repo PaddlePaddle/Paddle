@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticFunction
 
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -81,14 +81,14 @@ class SimpleNet(Layer):
         return z
 
 
-class TestStaticLayerInstance(unittest.TestCase):
+class TestStaticFunctionInstance(unittest.TestCase):
     def test_instance_same_class(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             net_1 = SimpleNet()
             net_2 = SimpleNet()
 
-            self.assertTrue(isinstance(net_1.forward, StaticLayer))
-            self.assertTrue(isinstance(net_2.forward, StaticLayer))
+            self.assertTrue(isinstance(net_1.forward, StaticFunction))
+            self.assertTrue(isinstance(net_2.forward, StaticFunction))
             self.assertNotEqual(net_1.forward, net_2.forward)
 
             # convert layer into static progam of net_1
@@ -356,6 +356,25 @@ class TestDecorateModelDirectly(unittest.TestCase):
         net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
         input_shape = net.forward.inputs[0].shape
         self.assertListEqual(list(input_shape), [-1, 16, 10])
+
+
+class TestErrorWithInitFromStaticMode(unittest.TestCase):
+    def test_raise_error(self):
+        # disable imperative
+        paddle.enable_static()
+
+        net = SimpleNet()
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.concrete_program
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.inputs
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.outputs
 
 
 if __name__ == '__main__':

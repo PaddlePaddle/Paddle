@@ -13,8 +13,6 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/threadpool.h"
-#include <memory>
-#include <utility>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"

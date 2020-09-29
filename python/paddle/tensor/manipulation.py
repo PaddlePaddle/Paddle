@@ -53,7 +53,7 @@ __all__ = [
     'shard_index',
     'slice',
     'split',
-    'chunk'
+    'chunk',
     'squeeze',
     'stack',
     'strided_slice',

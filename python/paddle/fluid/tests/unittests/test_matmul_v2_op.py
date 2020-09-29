@@ -65,15 +65,21 @@ class TestMatMulV2Op(OpTest):
         self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
+
+    def init_kernel_type(self):
         self.dtype = "float64"
 
     def setUp(self):
+        self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
         x = np.random.random(self.x_shape).astype(self.dtype)
         y = np.random.random(self.y_shape).astype(self.dtype)
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
         result = reference_matmul(x, y, self.trans_x, self.trans_y)
-
+        result = result.astype(self.dtype)
         self.inputs = {
             'X': x,
             'Y': y,
@@ -98,7 +104,6 @@ class TestMatMuklOp2(TestMatMulV2Op):
         self.y_shape = (1, 3, 2, 100)
         self.trans_x = False
         self.trans_y = True
-        self.dtype = "float64"
 
 
 class TestMatMuklOp3(TestMatMulV2Op):
@@ -111,7 +116,6 @@ class TestMatMuklOp3(TestMatMulV2Op):
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp4(TestMatMulV2Op):
@@ -124,7 +128,6 @@ class TestMatMuklOp4(TestMatMulV2Op):
         self.y_shape = (1, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp5(TestMatMulV2Op):
@@ -133,11 +136,10 @@ class TestMatMuklOp5(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 1, 100, 2)
+        self.x_shape = (1, 1, 100, 1)
         self.y_shape = (100, )
         self.trans_x = True
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp6(TestMatMulV2Op):
@@ -150,7 +152,6 @@ class TestMatMuklOp6(TestMatMulV2Op):
         self.y_shape = (100, )
         self.trans_x = True
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp7(TestMatMulV2Op):
@@ -163,7 +164,6 @@ class TestMatMuklOp7(TestMatMulV2Op):
         self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp8(TestMatMulV2Op):
@@ -176,7 +176,6 @@ class TestMatMuklOp8(TestMatMulV2Op):
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp9(TestMatMulV2Op):
@@ -189,7 +188,6 @@ class TestMatMuklOp9(TestMatMulV2Op):
         self.y_shape = (2, 1, 2, 100)
         self.trans_x = False
         self.trans_y = True
-        self.dtype = "float64"
 
 
 class TestMatMuklOp10(TestMatMulV2Op):
@@ -198,11 +196,10 @@ class TestMatMuklOp10(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 1, 2, 100)
-        self.y_shape = (1, 2, 100, 2)
+        self.x_shape = (1, 1, 25, 4)
+        self.y_shape = (1, 2, 4, 25)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp11(TestMatMulV2Op):
@@ -215,7 +212,6 @@ class TestMatMuklOp11(TestMatMulV2Op):
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp12(TestMatMulV2Op):
@@ -224,11 +220,10 @@ class TestMatMuklOp12(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (2, 1, 100, 2)
-        self.y_shape = (1, 1, 100, 2)
+        self.x_shape = (2, 1, 4, 25)
+        self.y_shape = (1, 1, 4, 25)
         self.trans_x = True
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp13(TestMatMulV2Op):
@@ -237,11 +232,10 @@ class TestMatMuklOp13(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (2, 2, 100, 2)
-        self.y_shape = (2, 2, 100, 2)
+        self.x_shape = (2, 2, 2, 50)
+        self.y_shape = (2, 2, 2, 50)
         self.trans_x = True
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp14(TestMatMulV2Op):
@@ -254,7 +248,6 @@ class TestMatMuklOp14(TestMatMulV2Op):
         self.y_shape = (1, 2, 2, 100, 2)
         self.trans_x = True
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp15(TestMatMulV2Op):
@@ -267,7 +260,6 @@ class TestMatMuklOp15(TestMatMulV2Op):
         self.y_shape = (1, 2, 2, 100, 1)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp16(TestMatMulV2Op):
@@ -277,10 +269,9 @@ class TestMatMuklOp16(TestMatMulV2Op):
 
     def config(self):
         self.x_shape = (100)
-        self.y_shape = (1, 2, 2, 100, 1)
+        self.y_shape = (1, 2, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
 
 
 class TestMatMuklOp17(TestMatMulV2Op):
@@ -293,7 +284,54 @@ class TestMatMuklOp17(TestMatMulV2Op):
         self.y_shape = (100)
         self.trans_x = False
         self.trans_y = False
-        self.dtype = "float64"
+
+
+#--------------------test matmul fp16--------------------
+
+
+def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestMatMulOpFp16Case(parent):
+        def init_kernel_type(self):
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(
+                    place, ['X', 'Y'],
+                    'Out',
+                    max_relative_error=max_relative_error)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestMatMulOpFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestMatMulOpFp16Case
+
+
+create_test_fp16_class(TestMatMulV2Op)
+create_test_fp16_class(TestMatMuklOp2)
+create_test_fp16_class(TestMatMuklOp3)
+create_test_fp16_class(TestMatMuklOp4)
+create_test_fp16_class(TestMatMuklOp5)
+create_test_fp16_class(TestMatMuklOp6)
+create_test_fp16_class(TestMatMuklOp7)
+create_test_fp16_class(TestMatMuklOp8)
+create_test_fp16_class(TestMatMuklOp9)
+create_test_fp16_class(TestMatMuklOp10)
+create_test_fp16_class(TestMatMuklOp11)
+create_test_fp16_class(TestMatMuklOp12)
+create_test_fp16_class(TestMatMuklOp13)
+create_test_fp16_class(TestMatMuklOp14)
+create_test_fp16_class(TestMatMuklOp15)
+create_test_fp16_class(TestMatMuklOp16)
+create_test_fp16_class(TestMatMuklOp17)
 
 
 class TestMatMulV2API(unittest.TestCase):
@@ -330,6 +368,17 @@ class TestMatMulV2API(unittest.TestCase):
                 x = paddle.to_tensor(input_x)
                 y = paddle.to_tensor(input_y)
                 result = paddle.matmul(x, y)
+
+    def test_dygraph_fp16(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                with fluid.dygraph.guard(place):
+                    input_x = np.random.random([4, 3]).astype("float16")
+                    input_y = np.random.random([3, 4]).astype("float16")
+                    x = paddle.to_tensor(input_x)
+                    y = paddle.to_tensor(input_y)
+                    result = paddle.matmul(x, y)
 
 
 if __name__ == "__main__":

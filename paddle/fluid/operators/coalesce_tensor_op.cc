@@ -33,29 +33,37 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     auto out_vars = context.MultiOutputVar("Output");
 
     PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0),
-                      "The CoalesceTensorOp has no input.");
-    PADDLE_ENFORCE_EQ(
-        in_var_names.size(), out_var_names.size(),
-        "The number of CoalesceTensorOp's input and output is not match.");
+                      platform::errors::InvalidArgument(
+                          "The CoalesceTensor operator has no input."));
+    PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of CoalesceTensor operator's input and "
+                          "output is not match, "
+                          "input number is %u, output number is %u.",
+                          in_var_names.size(), out_var_names.size()));
 
     // Input & Output check: only support LoDTensor
     for (size_t i = 0; i < in_var_names.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
           in_vars[i],
-          "The input variable %s of CoalesceTensorOp does not exist.",
-          in_var_names[i]);
+          platform::errors::NotFound("The input variable %s of CoalesceTensor "
+                                     "operator does not exist.",
+                                     in_var_names[i]));
       PADDLE_ENFORCE_NOT_NULL(
           out_vars[i],
-          "The output variable %s of CoalesceTensorOp does not exist.",
-          out_var_names[i]);
-      PADDLE_ENFORCE_EQ(
-          in_vars[i]->IsType<framework::LoDTensor>(), true,
-          "The input variable %s of CoalesceTensorOp is not LoDTensor.",
-          in_var_names[i]);
-      PADDLE_ENFORCE_EQ(
-          out_vars[i]->IsType<framework::LoDTensor>(), true,
-          "The output variable %s of CoalesceTensorOp is not LoDTensor.",
-          in_var_names[i]);
+          platform::errors::NotFound("The output variable %s of CoalesceTensor "
+                                     "operator does not exist.",
+                                     out_var_names[i]));
+      PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensor>(), true,
+                        platform::errors::InvalidArgument(
+                            "The input variable %s of CoalesceTensor operator "
+                            "is not LoDTensor.",
+                            in_var_names[i]));
+      PADDLE_ENFORCE_EQ(out_vars[i]->IsType<framework::LoDTensor>(), true,
+                        platform::errors::InvalidArgument(
+                            "The output variable %s of CoalesceTensor operator "
+                            "is not LoDTensor.",
+                            in_var_names[i]));
     }
 
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
@@ -64,7 +72,10 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         PADDLE_ENFORCE_EQ(
             in_var_names[i], out_var_names[i],
-            "The input and output variable of CoalesceTensorOp is different.");
+            platform::errors::InvalidArgument(
+                "The input and output variable of CoalesceTensor operator is "
+                "different, %dth input is %s, %dth output is %s.",
+                i, in_var_names[i], i, out_var_names[i]));
       }
     } else {
       // Init the output as input
@@ -134,16 +145,25 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
       const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
       const size_t &size_of_dtype, const platform::Place &place) const {
-    PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
+    PADDLE_ENFORCE_EQ(
+        lod_tensors.size(), var_names.size(),
+        platform::errors::InvalidArgument(
+            "The number of input tensor and variable does not match, the "
+            "number of input tensor is %u, the number of input variable is %u.",
+            lod_tensors.size(), var_names.size()));
     *numel = 0;
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
       PADDLE_ENFORCE_EQ(lod_tensors[i]->IsInitialized(), true,
-                        "%s is not initialized.", var_names[i]);
+                        platform::errors::InvalidArgument(
+                            "Tensor `%s` is not initialized.", var_names[i]));
 
       auto size = lod_tensors[i]->numel();
-      PADDLE_ENFORCE_GT(size, 0);
+      PADDLE_ENFORCE_GT(
+          size, 0,
+          platform::errors::InvalidArgument(
+              "The number of tensor `%s`'s elements is 0.", var_names[i]));
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
          << ") "
          << " addres:" << lod_tensors[i]->data<void>() << ", ";

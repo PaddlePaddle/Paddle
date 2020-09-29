@@ -217,7 +217,16 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in dynamic mode, please call 'paddle.disable_static()' to enter dynamic mode." % func.__name__
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+def _static_only_(func):
+    def __impl__(*args, **kwargs):
+        assert not in_dygraph_mode(
+        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -260,6 +269,7 @@ def deprecate_stat_dict(func):
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
@@ -603,7 +613,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
-        return core.VarDesc.VarType.INT16
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        return core.VarDesc.VarType.BF16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:

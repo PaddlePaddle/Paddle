@@ -20,6 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 class IsTestPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

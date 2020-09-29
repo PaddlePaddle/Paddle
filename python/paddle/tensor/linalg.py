@@ -32,7 +32,8 @@ __all__ = [
     'cholesky',
     #       'tensordot',
     'bmm',
-    'histogram'
+    'histogram',
+    'mv'
 ]
 
 
@@ -155,8 +156,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'],
-                                     'matmul')
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
 
     __check_input(x, y)
 
@@ -706,20 +707,14 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle import to_variable
-            import numpy as np
-
             paddle.disable_static()
 
-            data_x = np.array([[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0],
-                               [3.0, 3.0, 3.0]])
-            data_y = np.array([[1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0]])
-            x = to_variable(data_x)
-            y = to_variable(data_y)
-
+            x = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [2.0, 2.0, 2.0],
+                                  [3.0, 3.0, 3.0]])
+            y = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0]])
             z1 = paddle.cross(x, y)
             print(z1.numpy())
             # [[-1. -1. -1.]
@@ -919,4 +914,65 @@ def histogram(input, bins=100, min=0, max=0):
         attrs={'bins': bins,
                'min': min,
                'max': max})
+    return out
+
+
+def mv(x, vec, name=None):
+    """
+    Performs a matrix-vector product of the matrix x and the vector vec.
+
+    Args:
+        x (Variable): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
+            should be one of float32, float64.
+        vec (Variable): A tensor with shape :math:`[N]` , The data type of the input Tensor x
+            should be one of float32, float64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor which is producted by x and vec.
+
+    Examples:
+        .. code-block:: python
+
+            # x: [M, N], vec: [N]
+            # paddle.mv(x, vec)  # out: [M]
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+            x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
+            x = paddle.to_tensor(x_data)
+            vec_data = np.array([3, 5, 1])
+            vec = paddle.to_tensor(vec_data).astype("float64")
+            out = paddle.mv(x, vec)
+            paddle.enable_static()
+    """
+    if in_dygraph_mode():
+        out = core.ops.mv(x, vec)
+        return out
+
+    def __check_input(x, vec):
+        var_names = {'x': x, 'vec': vec}
+        for name, val in var_names.items():
+            check_variable_and_dtype(val, name, ['float32', 'float64'], 'mv')
+        x_shape = list(x.shape)
+        vec_shape = list(vec.shape)
+        if len(x_shape) != 2:
+            raise ValueError(
+                "x should be 2-dimensional. But received x's dimention: {}".
+                format(x_shape))
+        if len(vec_shape) != 1:
+            raise ValueError(
+                "vec should be 1-dimensional. But received vec's dimention: {}".
+                format(vec_shape))
+
+    __check_input(x, vec)
+
+    helper = LayerHelper('mv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mv', inputs={'X': x,
+                           'Vec': vec}, outputs={'Out': out})
     return out

@@ -74,7 +74,11 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   } else {
     recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
+
+  InitParams();
 }
+
+void AsyncCommunicator::InitParams() { RecvNoBarrier(); }
 
 AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
@@ -157,16 +161,18 @@ void AsyncCommunicator::MainThread() {
   }
 
   while (running_) {
-    int meet = Meet();
+    int batches = BatchesCounter();
 
-    VLOG(1) << "async_meet: " << meet;
-
-    SendGlobalStep(meet);
-    SendByCommunicator(meet);
-    BarrierSend();
-    RecvByCommunicator();
-    BarrierRecv();
-    BarrierWeakUp();
+    if (batches > 0) {
+      SendGlobalStep(batches);
+      SendByCommunicator(batches);
+      BarrierSend();
+      RecvByCommunicator();
+      BarrierRecv();
+      BarrierWeakUp();
+    } else {
+      VLOG(1) << "get nothing from sending queue, will skip send/recv";
+    }
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
@@ -187,7 +193,7 @@ void AsyncCommunicator::RecvNoBarrier() {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      recv_functor(iter.second, *recv_scope_, false);
+      recv_functor(iter.second, *recv_scope_);
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -197,7 +203,7 @@ void AsyncCommunicator::RecvNoBarrier() {
   }
 }
 
-int AsyncCommunicator::Meet() {
+int AsyncCommunicator::BatchesCounter() {
   auto &step_queue = send_varname_to_queue_.at(STEP_COUNTER);
 
   size_t merged_var_num = 0;
@@ -316,7 +322,7 @@ void HalfAsyncCommunicator::Clean() {
   }
 }
 
-int HalfAsyncCommunicator::Meet() {
+int HalfAsyncCommunicator::BatchesCounter() {
   while (running_) {
     if (barrier_counter_.load() >= barrier_trigger_.load() &&
         barrier_trigger_.load() != 0) {
@@ -443,7 +449,7 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
 
-  Init();
+  InitParams();
 }
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
@@ -626,9 +632,7 @@ void GeoCommunicator::RecvByCommunicator() {
       if (recv_ctx.is_sparse) {
         RecvSparse(var_name);
       } else {
-        VLOG(1) << "recv dense " << var_name << " begin";
         RecvDense(var_name);
-        VLOG(1) << "recv dense " << var_name << " done";
       }
     };
     tasks.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
@@ -696,7 +700,7 @@ void GeoCommunicator::RecvDense(const std::string &varname) {
 
   auto &ctx = recv_varname_to_ctx_.at(varname);
   auto recv = distributed::ParameterRecv<float>();
-  recv(ctx, *pserver_scope_, true);
+  recv(ctx, *pserver_scope_);
 
   PADDLE_ENFORCE_EQ(
       var_psrever->IsInitialized(), true,
@@ -721,7 +725,7 @@ void GeoCommunicator::RecvDense(const std::string &varname) {
              t_timestamp->data<float>());
 }
 
-void GeoCommunicator::Init() {
+void GeoCommunicator::InitParams() {
   std::vector<std::future<void>> tasks;
   tasks.reserve(recv_varname_to_ctx_.size());
 
@@ -744,12 +748,17 @@ void GeoCommunicator::Init() {
 }
 
 void GeoCommunicator::InitDense(const std::string varname) {
-  auto *var = old_scope_->Var(varname);
-  var->GetMutable<framework::LoDTensor>();
-
   auto &ctx = recv_varname_to_ctx_.at(varname);
   auto recv = distributed::ParameterRecv<float>();
-  recv(ctx, *old_scope_);
+  recv(ctx, *recv_scope_);
+
+  auto *global_var = recv_scope_->FindVar(varname);
+  global_var->GetMutable<framework::LoDTensor>();
+
+  auto *old_var = old_scope_->Var(varname);
+  old_var->GetMutable<framework::LoDTensor>();
+
+  framework::CopyVariable(*global_var, old_var);
   VLOG(1) << "init dense variable " << varname << " done";
 }
 
@@ -781,22 +790,41 @@ void GeoCommunicator::InitSparse() {
 
   LargeScaleKV::Init(metas);
 
-  for (size_t i = 0; i < metas.size(); i++) {
-    auto &varname = metas[i].name;
-    auto &dict = dicts[i];
+  for (auto &meta : metas) {
+    auto &ctx = recv_varname_to_ctx_.at(meta.name);
+    auto recv = distributed::ParameterRecv<float>();
 
-    std::vector<int64_t> ids;
-    ids.reserve(dict);
+    auto *global_var = recv_scope_->FindVar(meta.name);
+    auto global_value = global_var->Get<framework::LoDTensor>();
+    auto rows = global_value.dims()[0];
+    auto dim1 = global_value.dims()[1];
 
-    for (auto j = 0; j < dict; ++j) {
-      ids.push_back(j);
-    }
+    recv(ctx, *recv_scope_);
+    VLOG(1) << "recv " << meta.name << " with global scope for init";
+
+    auto n_rows = global_var->Get<framework::LoDTensor>().dims()[0];
+
+    PADDLE_ENFORCE_EQ(
+        rows, n_rows,
+        platform::errors::InvalidArgument(
+            "global var: %s origin dim must equal recved rows", meta.name));
+
+    std::vector<int64_t> ids(rows);
+    std::iota(ids.begin(), ids.end(), 0);
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
-    ins->Get(varname)->Init(ids);
+    std::vector<std::vector<std::vector<float> *>> values;
 
-    VLOG(3) << "GeoCommunicator init sparse " << varname << " with size "
-            << ids.size();
+    ins->Get(meta.name)->Init(ids);
+    ins->Get(meta.name)->Get(ids, {"Param"}, &values);
+
+    auto blas = math::GetBlas<platform::CPUDeviceContext, float>(
+        paddle::platform::CPUDeviceContext());
+
+    for (auto &id : ids) {
+      blas.VCOPY(dim1, global_value.data<float>() + id * dim1,
+                 values[id][0]->data());
+    }
   }
 
   VLOG(3) << "init sparse variable done";
