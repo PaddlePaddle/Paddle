@@ -22,6 +22,7 @@ limitations under the License. */
 #include <cblas.h>
 #endif
 
+#include <memory>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
@@ -43,6 +44,13 @@ template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
 template struct SetConstant<platform::CPUDeviceContext, uint8_t>;
+
+template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
+template struct SetConstant<platform::XPUDeviceContext, float>;
+template struct SetConstant<platform::XPUDeviceContext, double>;
+template struct SetConstant<platform::XPUDeviceContext, int>;
+template struct SetConstant<platform::XPUDeviceContext, int64_t>;
+template struct SetConstant<platform::XPUDeviceContext, bool>;
 
 #define DEFINE_CPU_TRANS(RANK)                                              \
   template struct Transpose<platform::CPUDeviceContext, platform::float16,  \
@@ -127,11 +135,35 @@ struct TensorSetConstantCPU {
   float value_;
 };
 
+struct TensorSetConstantXPU {
+  TensorSetConstantXPU(framework::Tensor* tensor, float value)
+      : tensor_(tensor), value_(value) {}
+  template <typename T>
+  void apply() const {
+    int dev_id = -1;
+    xpu_current_device(&dev_id);
+    if (dev_id >= 64) {
+      // if dev_id >= 64, the device is a simulator device, -64 to get real
+      // dev_id
+      dev_id -= 64;
+    }
+    auto xpu = platform::XPUPlace(dev_id);
+    auto* begin = tensor_->mutable_data<T>(xpu);
+    int numel = tensor_->numel();
+    std::unique_ptr<T[]> data_cpu(new T[numel]);
+    std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
+    memory::Copy(xpu, begin, platform::CPUPlace(),
+                 static_cast<void*>(data_cpu.get()), numel * sizeof(T));
+  }
+  framework::Tensor* tensor_;
+  float value_;
+};
+
 template <>
 void set_constant_with_place<platform::XPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
-  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+  framework::VisitDataType(tensor->type(), TensorSetConstantXPU(tensor, value));
 }
 
 template <>

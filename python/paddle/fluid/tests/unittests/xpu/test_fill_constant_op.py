@@ -42,7 +42,8 @@ class TestFillConstantOp1(OpTest):
         self.outputs = {'Out': np.full((123, 92), 3.8)}
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -58,7 +59,8 @@ class TestFillConstantOp2(OpTest):
         self.outputs = {'Out': np.full((123, 92), 0.0)}
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -74,7 +76,8 @@ class TestFillConstantOp3(OpTest):
         self.outputs = {'Out': np.full((123, 92), 10000000000)}
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -90,35 +93,8 @@ class TestFillConstantOp4(OpTest):
         self.outputs = {'Out': np.full((123, 92), 3)}
 
     def test_check_output(self):
-        self.check_output()
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestFillConstantOpWithSelectedRows(unittest.TestCase):
-    def check_with_place(self, place):
-        scope = core.Scope()
-        # create Out Variable
-        out = scope.var('Out').get_selected_rows()
-
-        # create and run fill_constant_op operator
-        fill_constant_op = Operator(
-            "fill_constant", shape=[123, 92], value=3.8, Out='Out')
-        fill_constant_op.run(scope, place)
-
-        # get result from Out
-        result_array = np.array(out.get_tensor())
-        full_array = np.full((123, 92), 3.8, 'float32')
-
-        self.assertTrue(np.array_equal(result_array, full_array))
-
-    def test_fill_constant_with_selected_rows(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
-            self.check_with_place(place)
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 # Situation 2: Attr(shape) is a list(with tensor)
@@ -145,7 +121,8 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -170,7 +147,8 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         self.infer_shape = [-1, -1]
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -210,7 +188,8 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 # Situation 4: value is a tensor
@@ -236,7 +215,8 @@ class TestFillConstantOp1_ValueTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 # Situation 5: value is a tensor
@@ -262,7 +242,8 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
 
 
 if __name__ == "__main__":
