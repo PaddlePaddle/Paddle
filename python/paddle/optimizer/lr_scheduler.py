@@ -26,9 +26,8 @@ __all__ = [
 
 class _LRScheduler(object):
     """
-    LRScheduler Base class.
 
-    Define the common interface of an learning rate scheduler.
+    LRScheduler Base class. Define the common interface of a learning rate scheduler.
 
     User can import it by ``form paddle.optimizer.lr_scheduler import _LRScheduler`` ,
 
@@ -97,6 +96,7 @@ class _LRScheduler(object):
 
     def step(self, epoch=None):
         """
+
         ``step`` should be called after ``optimizer.step`` . It will update the learning rate in optimizer according to current ``epoch`` .  
         The new learning rate will take effect on next ``optimizer.step`` .
 
@@ -105,29 +105,7 @@ class _LRScheduler(object):
 
         Returns:
             None
-        
-        Examples:
-            Please refer to the subclass of ``_LRScheduler`` (Base Class). ``StepLR`` is used as an example here.
-            
-            .. code-block:: python
-                import paddle
-                import numpy as np
 
-                # train on default dynamic graph mode
-                paddle.disable_static()
-                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = paddle.nn.Linear(10, 10)
-                scheduler = paddle.optimizer.lr_scheduler.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
-                sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
-                for epoch in range(20):
-                    for batch_id in range(2):
-                        x = paddle.to_tensor(x)
-                        out = linear(x)
-                        loss = paddle.reduce_mean(out)
-                        loss.backward()
-                        sgd.step()
-                        sgd.clear_gradients()
-                    scheduler.step()
         """
         if epoch is None:
             self.last_epoch += 1
@@ -145,9 +123,10 @@ class _LRScheduler(object):
 
     def state_dict(self):
         """
+
         Returns the state of the scheduler as a :class:`dict`.
 
-        It is a subset of self.__dict__ .
+        It is a subset of ``self.__dict__`` .
         """
         self._state_keys()
         state_dict = {}
@@ -169,17 +148,19 @@ class _LRScheduler(object):
     # (Note): you can change it for your subclass.
     def _state_keys(self):
         """
+
         For those subclass who overload ``_LRScheduler`` (Base Class). Acquiescently, "last_epoch, last_lr" will be saved by ``self.keys = ['last_epoch', 'last_lr']`` .
 
         ``last_epoch`` is the current epoch num, and ``last_lr`` is the current learning rate.
 
-        User can change the default behavior by redefining the dict ``self.keys`` .
+        If you want to change the default behavior, you should have a custom implementation of ``_state_keys()`` to redefine ``self.keys`` .
 
         """
         self.keys = ['last_epoch', 'last_lr']
 
     def set_state_dict(self, state_dict):
         """
+
         Loads the schedulers state.
         """
         self._state_keys()
@@ -200,6 +181,7 @@ class _LRScheduler(object):
 
     def get_lr(self):
         """
+        
         For those subclass who overload ``_LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
 
         Otherwise, an ``NotImplementedError`` exception will be thrown.
@@ -239,14 +221,12 @@ class NoamLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.NoamLR(d_model=0.01, warmup_steps=100, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -337,14 +317,12 @@ class PiecewiseLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -421,14 +399,12 @@ class NaturalExpLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.NaturalExpLR(learning_rate=0.5, gamma=0.1, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -500,14 +476,12 @@ class InverseTimeLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.InverseTimeLR(learning_rate=0.5, gamma=0.1, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -596,14 +570,12 @@ class PolynomialLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.PolynomialLR(learning_rate=0.5, decay_steps=20, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -678,15 +650,15 @@ class LinearLrWarmup(_LRScheduler):
     
     When epoch < warmup_steps, learning rate is updated as:
     
-    .. code-block:: text
+    .. math::
     
-            lr = start_lr + (end_lr - start_lr) * (epoch / warmup_steps)
+            lr = start\_lr + (end\_lr - start\_lr) * \\frac{epoch}{warmup\_steps}
     
     where start_lr is the initial learning rate, and end_lr is the final learning rate;
     
     When epoch >= warmup_steps, learning rate is updated as:
     
-    .. code-block:: text
+    .. math::
     
             lr = learning_rate
     
@@ -711,15 +683,13 @@ class LinearLrWarmup(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.LinearLrWarmup(
                     learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -791,7 +761,7 @@ class LinearLrWarmup(_LRScheduler):
 class ExponentialLR(_LRScheduler):
     """
 
-    Update learning rate by 'gamma' each epoch.
+    Update learning rate by `gamma` each epoch.
 
     The algorithm can be described as following.
     
@@ -817,14 +787,12 @@ class ExponentialLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.ExponentialLR(learning_rate=0.5, gamma=0.9, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -905,14 +873,12 @@ class MultiStepLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.MultiStepLR(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -1014,14 +980,12 @@ class StepLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -1089,9 +1053,9 @@ class LambdaLR(_LRScheduler):
         learning_rate = 0.5        # init learning_rate
         lr_lambda = lambda epoch: 0.95 ** epoch
 
-        learning_rate = 0.5        # epoch 0
-        learning_rate = 0.475      # epoch 1
-        learning_rate = 0.45125    # epoch 2
+        learning_rate = 0.5        # epoch 0, 0.5*0.95**0
+        learning_rate = 0.475      # epoch 1, 0.5*0.95**1
+        learning_rate = 0.45125    # epoch 2, 0.5*0.95**2
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
@@ -1110,14 +1074,12 @@ class LambdaLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.LambdaLR(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -1210,14 +1172,12 @@ class ReduceLROnPlateau(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            paddle.disable_static()
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.ReduceLROnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
@@ -1312,7 +1272,7 @@ class ReduceLROnPlateau(_LRScheduler):
 
     def step(self, metrics, epoch=None):
         """
-        step should be called after 'minimize' . It will update the learning rate in optimizer according to ``metrics`` .  
+        step should be called after `optimizer.step()` . It will update the learning rate in optimizer according to ``metrics`` .  
         The new learning rate will take effect on next epoch.
 
         Args:
@@ -1387,12 +1347,13 @@ class CosineAnnealingLR(_LRScheduler):
     The algorithm can be described as following.
 
     .. math::
-        \begin{aligned}
-            \eta_t & = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1
-            + \cos\left(\frac{T_{cur}}{T_{max}}\pi\right)\right),
-            & T_{cur} \neq (2k+1)T_{max}; \\
-            \eta_{t+1} & = \eta_{t} + \frac{1}{2}(\eta_{max} - \eta_{min})
-            \left(1 - \cos\left(\frac{1}{T_{max}}\pi\right)\right),
+
+        \\begin{aligned}
+            \eta_t & = \eta_{min} + \\frac{1}{2}(\eta_{max} - \eta_{min})\left(1
+            + \cos\left(\\frac{T_{cur}}{T_{max}}\pi\\right)\\right),
+            & T_{cur} \\neq (2k+1)T_{max}; \\
+            \eta_{t+1} & = \eta_{t} + \\frac{1}{2}(\eta_{max} - \eta_{min})
+            \left(1 - \cos\left(\\frac{1}{T_{max}}\pi\\right)\\right),
             & T_{cur} = (2k+1)T_{max}.
         \end{aligned}
     
@@ -1417,13 +1378,12 @@ class CosineAnnealingLR(_LRScheduler):
             import numpy as np
 
             # train on default dynamic graph mode
-            x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
-            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
-                    x = paddle.to_tensor(x)
+                    x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
