@@ -732,10 +732,9 @@ class BilinearInitializer(Initializer):
             import math
 
             import paddle
-            from paddle.regularizer import L2Decay
             import paddle.nn as nn
+            from paddle.regularizer import L2Decay
 
-            #paddle.disable_static()
             factor = 2
             C = 2
             B = 8
@@ -744,7 +743,6 @@ class BilinearInitializer(Initializer):
                                       regularizer=L2Decay(0.),
                                       initializer=nn.initializer.Bilinear())
             data = paddle.rand([B, 3, H, W], dtype='float32')
-            #data = paddle.to_tensor(data)
             conv_up = nn.ConvTranspose2d(3,
                                          out_channels=C,
                                          kernel_size=2 * factor - factor % 2,
