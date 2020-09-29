@@ -729,7 +729,6 @@ class BilinearInitializer(Initializer):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             from paddle.regularizer import L2Decay
             import math
@@ -737,18 +736,31 @@ class BilinearInitializer(Initializer):
 
             paddle.disable_static()
             factor = 2
+            C = 2
+            B = 8
+            H = W = 32
             w_attr = paddle.ParamAttr(learning_rate=0.,
                                       regularizer=L2Decay(0.),
                                       initializer=nn.initializer.Bilinear())
-            data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+            data = paddle.rand([B, 3, H, W], dtype='float32')
             data = paddle.to_tensor(data)
-            conv_up = nn.ConvTranspose2d(4,
-                                         6, (3, 3),
+            conv_up = nn.ConvTranspose2d(3,
+                                         out_channels=C,
+                                         kernel_size=2 * factor - factor % 2,
                                          padding=int(
                                              math.ceil((factor - 1) / 2.)),
                                          stride=factor,
                                          weight_attr=w_attr,
                                          bias_attr=False)
+            x = conv_up(data)
+
+    Where, `out_channels=C` and `groups=C` means this is channel-wise transposed
+    convolution. The filter shape will be (C, 1, K, K) where K is `kernel_size`,
+    This initializer will set a (K, K) interpolation kernel for every channel
+    of the filter identically. The resulting shape of the output feature map
+    will be (B, C, factor * H, factor * W). Note that the learning rate and the
+    weight decay are set to 0 in order to keep coefficient values of bilinear
+    interpolation unchanged during training.
 
     """
 
