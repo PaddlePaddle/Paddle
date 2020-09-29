@@ -134,9 +134,8 @@ def build_data(corpus,
             positive_word_range = (max(0, center_word_idx - window_size), min(
                 len(line) - 1, center_word_idx + window_size))
             positive_word_candidates = [
-                line[idx]
-                for idx in range(positive_word_range[0], positive_word_range[1]
-                                 + 1)
+                line[idx] for idx in range(positive_word_range[0],
+                                           positive_word_range[1] + 1)
                 if idx != center_word_idx and line[idx] != line[center_word_idx]
             ]
 

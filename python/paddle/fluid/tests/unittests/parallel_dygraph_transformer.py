@@ -21,7 +21,6 @@ from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 import paddle
 import paddle.fluid as fluid
-
 """
 Note(chenweihang): To compare loss of single-card and multi-card 
     in our dist test framework, two parameters need to be adjusted:

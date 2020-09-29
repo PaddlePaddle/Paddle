@@ -20,7 +20,6 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle.fluid as fluid
-
 """Test for fusion of conv and bias."""
 
 

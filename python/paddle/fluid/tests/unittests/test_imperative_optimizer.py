@@ -31,7 +31,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 

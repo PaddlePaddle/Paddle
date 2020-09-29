@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 from benchmark import BenchmarkSuite
 
-
 # This is a demo op test case for operator benchmarking and high resolution number stability alignment.
 
 

@@ -21,7 +21,6 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 
-
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar
 #   TestFusedElementwiseActivationOp_scalar2

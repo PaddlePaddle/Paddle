@@ -23,7 +23,6 @@ __all__ = [
     'CosineAnnealingLR'
 ]
 
-
 from . import lr_scheduler
 from .adadelta import Adadelta
 from .adam import Adam

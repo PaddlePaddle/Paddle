@@ -23,7 +23,6 @@ from paddle.fluid.dygraph import parallel_helper
 
 from paddle.fluid import core
 
-
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be 
 # executed in the python3 sub-process. 

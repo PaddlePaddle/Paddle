@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .wrapper import Config, DataType, PlaceType, PrecisionType, Tensor, Predictor
-

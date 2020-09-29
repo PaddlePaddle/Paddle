@@ -20,7 +20,6 @@ import math
 import numpy as np
 import six
 from op_test import OpTest
-
 '''
 # Equivalent code
 rles = mask_util.frPyObjects([segm], im_h, im_w)

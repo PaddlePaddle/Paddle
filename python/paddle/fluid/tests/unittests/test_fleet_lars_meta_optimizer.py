@@ -100,9 +100,9 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         ops_without_wd = [
-            op for op in avg_cost.block.ops
-            if op.type == 'lars_momentum' and ("batch_norm" in op.attr(
-                'op_role_var')[0] or ".b" in op.attr('op_role_var')[0])
+            op for op in avg_cost.block.ops if op.type == 'lars_momentum' and
+            ("batch_norm" in op.attr('op_role_var')[0] or
+             ".b" in op.attr('op_role_var')[0])
         ]
         for op in ops_without_wd:
             self.assertEqual(op.attr('lars_weight_decay'), 0)

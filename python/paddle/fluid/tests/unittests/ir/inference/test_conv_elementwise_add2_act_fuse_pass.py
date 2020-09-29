@@ -22,7 +22,6 @@ from inference_pass_test import InferencePassTest
 from paddle.fluid.core import PassVersionChecker
 
 import paddle.fluid as fluid
-
 """Test for fusion of conv, elementwise_add and 2 act."""
 
 

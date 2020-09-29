@@ -348,9 +348,8 @@ class Layer(core.Layer):
             list of :ref:`api_guide_Variable_en` : a list of Parameters.
         """
         ret = [
-            param
-            for _, param in self.named_parameters(
-                include_sublayers=include_sublayers)
+            param for _, param in
+            self.named_parameters(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -414,9 +413,8 @@ class Layer(core.Layer):
             list of Layer : a list of sub layers.
         """
         ret = [
-            layer
-            for _, layer in self.named_sublayers(
-                include_sublayers=include_sublayers)
+            layer for _, layer in
+            self.named_sublayers(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -584,9 +582,8 @@ class Layer(core.Layer):
             list of :ref:`api_guide_Variable_en` : a list of buffers.
         """
         ret = [
-            buffer
-            for _, buffer in self.named_buffers(
-                include_sublayers=include_sublayers)
+            buffer for _, buffer in
+            self.named_buffers(include_sublayers=include_sublayers)
         ]
         return ret
 
