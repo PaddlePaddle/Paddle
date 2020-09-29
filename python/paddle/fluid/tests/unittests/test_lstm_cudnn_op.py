@@ -20,11 +20,13 @@ import math
 
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import random
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
+paddle.enable_static()
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
@@ -504,7 +506,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                                       'float64', 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
-                                              dropout_prob, False, True)
+                                              dropout_prob, False)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(
