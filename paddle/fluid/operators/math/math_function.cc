@@ -45,12 +45,14 @@ template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
 template struct SetConstant<platform::CPUDeviceContext, uint8_t>;
 
+#ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::XPUDeviceContext, float>;
 template struct SetConstant<platform::XPUDeviceContext, double>;
 template struct SetConstant<platform::XPUDeviceContext, int>;
 template struct SetConstant<platform::XPUDeviceContext, int64_t>;
 template struct SetConstant<platform::XPUDeviceContext, bool>;
+#endif
 
 #define DEFINE_CPU_TRANS(RANK)                                              \
   template struct Transpose<platform::CPUDeviceContext, platform::float16,  \
@@ -135,6 +137,7 @@ struct TensorSetConstantCPU {
   float value_;
 };
 
+#ifdef PADDLE_WITH_XPU
 struct TensorSetConstantXPU {
   TensorSetConstantXPU(framework::Tensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
@@ -165,6 +168,7 @@ void set_constant_with_place<platform::XPUPlace>(
     float value) {
   framework::VisitDataType(tensor->type(), TensorSetConstantXPU(tensor, value));
 }
+#endif
 
 template <>
 void set_constant_with_place<platform::CPUPlace>(
