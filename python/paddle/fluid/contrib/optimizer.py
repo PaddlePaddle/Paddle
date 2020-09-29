@@ -14,10 +14,18 @@
 from ..optimizer import Optimizer
 from ..regularizer import L1DecayRegularizer
 from ..regularizer import L2DecayRegularizer
-from .. import framework
 from .. import core
+from .. import framework
+from .. import global_scope
+from .. import unique_name
 from ..framework import program_guard
+from ..framework import device_guard
+from ..initializer import Xavier
+from ..layer_helper import LayerHelper
 from ..clip import append_gradient_clip_ops
+from collections import defaultdict
+import numpy as np
+import warnings
 
 __all__ = ['Momentum']
 
@@ -101,13 +109,16 @@ class Momentum(Optimizer):
                  use_nesterov=False,
                  regularization=None,
                  grad_clip=None,
+                 multi_precision=False,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
+        predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
+        py_regular = None if predicate(regularization) else regularization
         super(Momentum, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
-            regularization=regularization,
+            regularization=py_regular,
             grad_clip=grad_clip,
             name=name)
         self.type = "momentum"
@@ -119,32 +130,90 @@ class Momentum(Optimizer):
             self._regularization_method = "l1_decay"
         if (isinstance(regularization, L2DecayRegularizer)):
             self._regularization_method = "l2_decay"
+        self._multi_precision = multi_precision
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        var_name = param.name + "_fp32_master"
+        var_name = unique_name.generate(var_name)
+        self._opti_name_list.append(var_name)
+
+        assert isinstance(self.helper, LayerHelper)
+        var = self.helper.create_global_variable(
+            name=var_name,
+            persistable=True,
+            dtype='float32',
+            type=param.type,
+            shape=param.shape,
+            belong_to_optimizer=True)
+        device = self._get_device_for_param(param.name)
+        with device_guard(device):
+            self.helper.set_variable_initializer(
+                var, initializer=Xavier(uniform=False))
+        self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        target_param = self._master_weights[
+            param.name] if self._multi_precision else param
+        target_name = target_param.name
+        if (name not in self._accumulators or
+                target_name not in self._accumulators[name]):
+            raise Exception("Accumulator {} does not exist for parameter {}".
+                            format(name, target_name))
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(self._velocity_acc_str, p)
+            if self._multi_precision:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._velocity_acc_str, master_p)
+            else:
+                if p.dtype == core.VarDesc.VarType.FP16:
+                    warnings.warn(
+                        "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                        "Consider using multi_precision=True option of the Momentum optimizer."
+                    )
+                self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
+        master_weight = (self._master_weights[param_and_grad[0].name]
+                         if self._multi_precision else None)
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
-                                     velocity_acc, lr, param_and_grad[0],
-                                     velocity_acc, 'mu', self._momentum,
-                                     'use_nesterov', self._use_nesterov)
+            _, _, _ = core.ops.momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                master_weight, param_and_grad[0], velocity_acc, master_weight,
+                'mu', self._momentum, 'use_nesterov', self._use_nesterov,
+                'regularization_method', self._regularization_method,
+                'regularization_coeff', self._regularization_coeff,
+                'multi_precision', self._multi_precision)
             return None
 
         attrs = {
             "mu": self._momentum,
             "use_nesterov": self._use_nesterov,
             "regularization_method": self._regularization_method,
-            "regularization_coeff": self._regularization_coeff
+            "regularization_coeff": self._regularization_coeff,
+            "multi_precision": self._multi_precision
         }
         inputs = {
             "Param": [param_and_grad[0]],
@@ -152,11 +221,15 @@ class Momentum(Optimizer):
             "Velocity": [velocity_acc],
             "LearningRate": [lr]
         }
-
         outputs = {
             "ParamOut": [param_and_grad[0]],
             "VelocityOut": [velocity_acc]
         }
+
+        if self._multi_precision:
+            inputs["MasterParam"] = master_weight
+            outputs["MasterParamOut"] = master_weight
+
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,
@@ -166,61 +239,3 @@ class Momentum(Optimizer):
             stop_gradient=True)
 
         return momentum_op
-
-    def apply_gradients(self, params_grads):
-        """
-        Second part of `minimize`, appending optimization operators for
-        given `params_grads` pairs.
-
-        Args:
-            params_grads (list): list of (param, grad) pair to do optimization.
-
-        Returns:
-            list: A list of operators appended to the current program.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                params_grads = optimizer.backward(loss)
-                # you may append operations for params_grads here
-                # ...
-                optimizer.apply_gradients(params_grads)
-        """
-
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
-        # 'optimizer(grad_clip)' or 'set_gradient_clip'
-        if self._grad_clip is not None:
-            params_grads = self._grad_clip(params_grads)
-        else:
-            params_grads = append_gradient_clip_ops(params_grads)
-
-        optimize_ops = self._create_optimization_pass(params_grads)
-        return optimize_ops
-
-    def apply_optimize(self, loss, startup_program, params_grads):
-        """
-        Second part of `minimize`, appending optimization operators for
-        given `params_grads` pairs.
-        Args:
-            loss (Variable): loss variable to run optimizations.
-            startup_program (Program): startup_program for initializing parameters
-                in `parameter_list`.
-            params_grads (list): list of (param, grad) pair to do optimization.
-        Returns:
-            list: A list of operators appended to the current program.
-        """
-        if framework.in_dygraph_mode():
-            with program_guard(framework.default_main_program(),
-                               framework.default_startup_program()):
-                if self._grad_clip is not None:
-                    params_grads = self._grad_clip(params_grads)
-                optimize_ops = self._create_optimization_pass(params_grads)
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                optimize_ops = self.apply_gradients(params_grads)
-        return optimize_ops

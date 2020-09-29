@@ -48,13 +48,17 @@ void MomentumOpMaker::Make() {
   AddInput("LearningRate",
            "(Tensor, default Tensor<float>) "
            "Input learning rate");
-
+  AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
   AddOutput("ParamOut",
             "(Tensor) This output is updated parameter. "
             "It shared memory with Input(Param).");
   AddOutput("VelocityOut",
             "(Tensor) This output is updated velocity. "
             "It shared memory with Input(Velocity).");
+  AddOutput("MasterParamOut",
+            "The updated FP32 master weight for AMP. "
+            "It shared memory with Input(MasterParam).")
+      .AsDispensable();
 
   AddAttr<float>("mu", "(float) Momentum coefficient");
   AddAttr<bool>("use_nesterov",
@@ -66,6 +70,10 @@ void MomentumOpMaker::Make() {
       .SetDefault("");
   AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
       .SetDefault(1.0);
+  AddAttr<bool>("multi_precision",
+                "(bool, default false) "
+                "Whether to use multi-precision during weight updating.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Momentum Optimizer.
 

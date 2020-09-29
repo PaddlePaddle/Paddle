@@ -16,6 +16,12 @@ from __future__ import print_function
 
 from ... import core
 from ... import layers
+from ... import global_scope
+from ...log_helper import get_logger
+import logging
+import numpy as np
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def _rename_arg(op, old_name, new_name):
@@ -188,6 +194,94 @@ def _is_in_black_varnames(op, amp_lists):
             return True
 
     return False
+
+
+def cast_net_to_fp16(program):
+    valid_types = [
+        core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
+        core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    ]
+    global_block = program.global_block()
+
+    for block in program.blocks:
+        ops = block.ops
+        for op in ops:
+            for in_name in op.input_names:
+                if op.type == 'batch_norm' and in_name != 'X':
+                    continue
+                for in_var_name in op.input(in_name):
+                    in_var = None
+                    try:
+                        in_var = block.var(in_var_name)
+                    except ValueError as e:
+                        _logger.debug(
+                            "-- {}, try to get it in the global block. --".
+                            format(e))
+                        in_var = global_block.var(in_var_name)
+                        if in_var is not None:
+                            _logger.debug(
+                                "-- var {} is got in the global block. --".
+                                format(in_var_name))
+
+                    if in_var is None or in_var.type not in valid_types:
+                        continue
+
+                    if in_var.dtype == core.VarDesc.VarType.FP32:
+                        in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+
+                    _logger.debug(
+                        "-- op type: {}, in var name: {}, in var dtype: {} --".
+                        format(op.type, in_var_name, in_var.dtype))
+
+            for out_name in op.output_names:
+                if op.type == 'batch_norm' and out_name != 'Y':
+                    continue
+                for out_var_name in op.output(out_name):
+                    out_var = None
+                    try:
+                        out_var = block.var(out_var_name)
+                    except ValueError as e:
+                        _logger.debug(
+                            "-- {}, try to get it in the global block. --".
+                            format(e))
+                        out_var = global_block.var(out_var_name)
+                        if out_var is not None:
+                            _logger.debug(
+                                "-- var {} is got in the global block. --".
+                                format(out_var_name))
+
+                    if out_var is None or out_var.type not in valid_types:
+                        continue
+
+                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+
+                    _logger.debug(
+                        "-- op type: {}, out var name: {}, out var dtype: {} --".
+                        format(op.type, out_var_name, out_var.dtype))
+            if op.has_attr('in_dtype') and op.attr(
+                    'in_dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+            if op.has_attr('out_dtype') and op.attr(
+                    'out_dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+            if op.has_attr('dtype') and op.attr(
+                    'dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('dtype', core.VarDesc.VarType.FP16)
+
+
+def cast_parameters_to_fp16(exe, program, scope=None):
+    exe_scope = scope if scope is not None else global_scope()
+    global_block = program.global_block()
+    all_parameters = global_block.all_parameters()
+    for param in all_parameters:
+        if not (param.name.find('bn') != -1 and
+                (param.name.endswith('_offset') or param.name.endswith('_mean')
+                 or param.name.endswith('_scale') or
+                 param.name.endswith('_variance'))):
+            param_t = exe_scope.find_var(param.name).get_tensor()
+            data = np.array(param_t)
+            param_t.set(np.float16(data), exe.place)
 
 
 def rewrite_program(main_prog, amp_lists):
