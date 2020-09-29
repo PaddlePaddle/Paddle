@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import os
-import paddle
-import re
 import collections
+import os
+import re
+import sys
 import time
+
+import paddle
 import paddle.distributed.fleet as fleet
 
 
