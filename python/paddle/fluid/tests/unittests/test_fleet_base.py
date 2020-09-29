@@ -18,6 +18,7 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 import paddle.fluid as fluid
+import paddle.nn as nn
 import numpy as np
 
 
@@ -203,9 +204,7 @@ class TestFleetDygraphSingle(unittest.TestCase):
             outputs = dp_layer(inputs)
             labels = paddle.randn([10, 1], 'float32')
             loss = loss_fn(outputs, labels)
-            loss = dp_layer.scale_loss(loss)
             loss.backward()
-            dp_layer.apply_collective_grads()
             adam.step()
             adam.clear_grad()
 
