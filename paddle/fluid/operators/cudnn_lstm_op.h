@@ -16,6 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/detail/activation_functions.h"
+#include "paddle/fluid/operators/math/lstm_compute.h"
+#include "paddle/fluid/operators/unique_op.h"
 
 namespace paddle {
 namespace operators {
@@ -36,12 +40,39 @@ struct Cell {
 
 template <typename T>
 struct LSTMCell : Cell<T> {
-  void operator()(const Tensor* input, const TensorList& vec,
-                  const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                  Tensor* last_c, Tensor* output, const int& layer_idx,
-                  const int& init_offset, const int& time_step) {
-    // TODO(wawltor)
-    return;
+  void operator()(const DeviceContext* context, Tensor* input,
+                  const Tensor* weight_h, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* output) {
+    // input + w_hh * h_{t-1} + b_hh
+    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
+    blas.MatMul(init_h, false, weight_h, false, static_cast<T>(1.0), &input,
+                static_cast<T>(1.0));
+
+    math::LstmMetaValue<T> lstm_value;
+    lstm_value.check_ig = nullptr;
+    lstm_value.check_fg = nullptr;
+    lstm_value.check_og = nullptr;
+
+    auto gate_act = math::detail::GetActivationType("sigmoid");
+    auto cell_act = math::detail::GetActivationType("tanh");
+    auto cand_act = math::detail::GetActivationType("tanh ");
+
+    size_t frame_size = init_h->dims()[1];
+    size_t batch_size = init_h->dims()[0];
+
+    Tensor cell_pre_act;
+    cell_pre_act->mutable_data<T>(init_h->dims(), context.GetPlace());
+
+    lstm_value.prev_state_value = init_c->data<T>();
+    lstm_value.gate_value = input->data<T>();
+    lstm_value.output_value = output->data<T>();
+    lstm_value.state_value = last_c->data<T>();
+    lstm_value.state_active_value = cell_pre_act.data<T>();
+    T cell_clip = 0.0;
+    math::LstmUnitFunctor<DeviceContext, T>::compute(
+        contex, lstm_value, frame_size, cur_batch_size, cell_clip, gate_act,
+        cell_act, cand_act);
   }
 };
 
@@ -54,18 +85,35 @@ struct Layer {
 template <typename T>
 struct SingleLayer {
   explicit SingleLayer(Cell<T>& cell) : cell_(cell) {}
-  void operator()(const Tensor* input, const TensorList& vec,
-                  const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                  Tensor* last_c, Tensor* output, const int& layer_idx,
+  void operator()(const DeviceContext* context, const Tensor* input,
+                  const TensorList& vec, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* output, const int& layer_idx,
                   const int& init_offset) {
     const int& time_step = input->dims()[0];
-    TensorList output_tensors;
-    output_tensors.reserve(time_step);
+    Tensor input_w;
+    auto dims = input->dims();
+    dims[0] = vec[0].dims()[0];
+    Input_w->mutable_data<T>(dims, context.GetPlace());
+    // TensorList output_tensors;
+    // output_tensors.reserve(time_step);
+
+    TensorList step_hiddens;
+    // TensorList step_cells
+    // input_w = input * w_hi + b_hi
+    // or input_w = input * w_hi + b_hi + b_hh
+    auto blas = math::GetBlas<DeviceContext, T>(context);
+    blas.MatMul(init_h, false, weight_h, false, static_cast<T>(1.0), &input_w,
+                static_cast<T>(1.0));
+
+    auto input_w = input * vec[0] + vec[2] + vec[3];
+    auto input_tensors = Unbind(input_w);
     for (int i = 0; i < time_step; i++) {
-      cell_(input, vec, init_h, init_c, last_h, last_c, output, layer_idx,
-            init_offset, time_step);
+      cell_(input_tensors[i], vec, init_h, init_c, last_h, last_c);
+      step_hiddens.emplace_back(last_h);
+      // step_cells.emplace_back(last_c);
       init_h = last_h;
-      init_c = last_h;
+      init_c = last_c;
     }
     // TODO(wawltor)
   }
@@ -181,12 +229,21 @@ void CacluateLSTMLayer(const Tensor* input, const Tensor* weight,
   const int& init_offset = init_h->numel() / num_layers;
   const std::vector<TensorList>& parameter_lists = parameter_split<T>(
       weight, gate_num, num_layers, input_size, hidden_size, is_bidirec);
+
+  auto init_h_unbind = Unbind(init_h);
+  auto init_c_unbind = Unbind(init_c);
+  auto last_h_unbind = Unbind(last_h);
+  auto last_c_unbind = Unbind(last_c);
+
   for (int i = 0; i < num_layers; i++) {
     if (is_bidirec) {
       BidirLayerT<T> layer(cell);
       layer(input, parameter_lists[i], init_h, init_c, last_h, last_c, output,
             i, init_offset);
     } else {
+      LayerT<T> layer(cell);
+      layer(input, parameter_lists[i], init_h_unbind[i], init_c_unbind[i],
+            last_h_unbind[i], last_c_unbind[i], output, i, init_offest);
     }
   }
 }
