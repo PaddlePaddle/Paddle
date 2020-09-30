@@ -18,19 +18,19 @@ import random
 import unittest
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
-
 import paddle
 import paddle.nn as nn
 from paddle import Model, set_device
 from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
 from paddle.text import BeamSearchDecoder, dynamic_decode
+
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+
+from paddle.fluid.executor import Executor
+from paddle.fluid import framework
 
 
 class EncoderCell(layers.RNNCell):
@@ -444,6 +444,7 @@ class TestDynamicDecode(unittest.TestCase):
         self.exe = Executor(place)
 
     def test_mle_train(self):
+        paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "train_greedy"
         agent = SeqPGAgent(
             model_cls=Seq2SeqModel,
@@ -476,6 +477,7 @@ class TestDynamicDecode(unittest.TestCase):
                   (iter_idx, reward.mean(), cost))
 
     def test_greedy_train(self):
+        paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "infer_greedy"
         agent = SeqPGAgent(
             model_cls=Seq2SeqModel,
@@ -501,6 +503,7 @@ class TestDynamicDecode(unittest.TestCase):
                   (iter_idx, reward.mean(), cost))
 
     def test_sample_train(self):
+        paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "infer_sample"
         agent = SeqPGAgent(
             model_cls=Seq2SeqModel,
@@ -526,6 +529,7 @@ class TestDynamicDecode(unittest.TestCase):
                   (iter_idx, reward.mean(), cost))
 
     def test_beam_search_infer(self):
+        paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "beam_search"
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -666,7 +670,7 @@ class TestBeamSearch(ModuleApiTest):
                    eos_id=1,
                    beam_size=4,
                    max_step_num=20):
-        embedder = nn.Embedding(size=[vocab_size, embed_dim])
+        embedder = nn.Embedding(vocab_size, embed_dim)
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num
