@@ -84,7 +84,7 @@ void HeartBeatMonitor::LostWorkerMonitor() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
   }
   VLOG(1) << "worker heartbeat monitor stopped, thread exit";
 }
