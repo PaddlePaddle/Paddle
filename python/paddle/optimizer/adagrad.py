@@ -49,11 +49,13 @@ class Adagrad(Optimizer):
         parameters (list, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+	    It canbe a float value as coeff of L2 regularization or \
+	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+	    the regularization setting here in optimizer will be ignored for this parameter. \
+	    Otherwise, the regularization setting here in optimizer will take effect. \
+	    Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
@@ -89,7 +91,7 @@ class Adagrad(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  parameters=None,
-                 regularization=None,
+                 weight_decay=None,
                  grad_clip=None,
                  name=None,
                  initial_accumulator_value=0.0):
@@ -98,7 +100,7 @@ class Adagrad(Optimizer):
         super(Adagrad, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
-            regularization=regularization,
+            weight_decay=weight_decay,
             grad_clip=grad_clip,
             name=name)
         self.type = "adagrad"
