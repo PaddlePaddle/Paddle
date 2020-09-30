@@ -704,7 +704,7 @@ class Categorical(Distribution):
     def __init__(self, logits, name=None):
         """
         Args:
-            logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32.
+            logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32 or float64.
         """
         if not in_dygraph_mode():
             check_type(logits, 'logits', (np.ndarray, tensor.Variable, list),
