@@ -31,7 +31,6 @@ __all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
-# from .clip import ErrorClipByValue        #DEFINE_ALIAS
 from .clip import GradientClipByGlobalNorm  #DEFINE_ALIAS
 from .clip import GradientClipByNorm  #DEFINE_ALIAS
 from .clip import GradientClipByValue  #DEFINE_ALIAS
