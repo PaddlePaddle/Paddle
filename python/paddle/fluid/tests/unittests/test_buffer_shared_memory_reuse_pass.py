@@ -34,6 +34,7 @@ class InplaceTestBase(unittest.TestCase):
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = False
+        self.fuse_all_reduce_ops = False
 
     def setUp(self):
         paddle.enable_static()
@@ -93,6 +94,7 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
                 build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                build_strategy.fuse_all_reduce_ops = self.fuse_all_reduce_ops
                 compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
                     loss_name=loss.name,
                     build_strategy=build_strategy,
@@ -146,6 +148,7 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
                 build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                build_strategy.fuse_all_reduce_ops = self.fuse_all_reduce_ops
                 compiled_program = fluid.CompiledProgram(
                     prog).with_data_parallel(
                         loss_name=loss.name,
