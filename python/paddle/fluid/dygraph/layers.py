@@ -70,7 +70,7 @@ class Layer(core.Layer):
             can be "my_layer_0.w_n", where "w" is the parameter
             base name and "n" is an unique suffix auto-generated.
             If None, prefix name will be snake cased class name. Default: None.
-        dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
+        dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
                 Default: "float32"
@@ -198,7 +198,7 @@ class Layer(core.Layer):
               def init_weights(layer):
                   if type(layer) == nn.Linear:
                       print('before init weight:', layer.weight.numpy())
-                      new_weight = paddle.fill_constant(layer.weight.shape, layer.weight.dtype, value=0.9)
+                      new_weight = paddle.fill(layer.weight.shape, layer.weight.dtype, value=0.9)
                       layer.weight.set_value(new_weight)
                       print('after init weight:', layer.weight.numpy())
 
@@ -350,17 +350,17 @@ class Layer(core.Layer):
         
         Parameters:
             shape(list): Shape of the parameter.
-            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`. Default: None.
-            dtype(str or core.VarDesc.VarType or str, optional): Data type of this parameter.
+            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
+            dtype(str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
             is_bias(bool, optional): if this is a bias parameter. Default: False.
             default_initializer(Initializer, optional): the default initializer for this parameter.
-                If set None, default initializer will be set to :ref:`api_fluid_initializer_XavierInitializer` and :ref:`api_fluid_initializer_ConstantInitializer`
+                If set None, default initializer will be set to :ref:`_api_paddle_fluid_initializer_Xavier` and :ref:`_api_paddle_fluid_initializer_Constant`
                 for non-bias and bias parameter, respectively. Default: None.
 
         Returns:
-            :ref:`api_guide_Variable_en` : created parameter.
+            :Tensor, created parameter.
 
         Examples:
             .. code-block:: python
@@ -389,24 +389,19 @@ class Layer(core.Layer):
                                              default_initializer)
 
     # TODO: Add more parameter list when we need them
-    def create_variable(self,
-                        name=None,
-                        persistable=None,
-                        dtype=None,
-                        type=core.VarDesc.VarType.LOD_TENSOR):
+    def create_variable(self, name=None, persistable=None, dtype=None):
         """Create Variable for this layer.
 
         Parameters:
             name(str, optional): name of the variable. Please refer to :ref:`api_guide_Name` . Default: None
             persistable(bool, optional): if set this variable persistable. Default: False
-            dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
+            dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
                 If set None, it will be "float32". Default: None
-            type(core.VarDesc.VarType, optional): type of the variable. No need to set this parameter. Default: ``core.VarDesc.VarType.LOD_TENSOR``
 
         Returns:
-            :ref:`api_guide_Variable_en` : created Variable.
+            Tensor, created Variable.
 
         Examples:
             .. code-block:: python
@@ -436,7 +431,10 @@ class Layer(core.Layer):
                 [self._full_name, "_generated_var"]))
 
         return self._helper.main_program.current_block().create_var(
-            name=var_name, persistable=persistable, dtype=dtype, type=type)
+            name=var_name,
+            persistable=persistable,
+            dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR)
 
     def parameters(self, include_sublayers=True):
         """Returns a list of all Parameters from current layer and its sub-layers.
@@ -445,7 +443,7 @@ class Layer(core.Layer):
             include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from sublayers. Default: True
 
         Returns:
-            list of :ref:`api_guide_Variable_en` : a list of Parameters.
+            list of Tensor : a list of Parameters.
 
         Examples:
             .. code-block:: python
@@ -634,11 +632,11 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
-    def register_buffer(self, name, variable, persistable=True):
+    def register_buffer(self, name, tensor, persistable=True):
         """
-        Registers a variable as buffer into the layer.
+        Registers a tensor as buffer into the layer.
 
-        `buffer` is a non-parameteric variable and will not be updated by optimizer,
+        `buffer` is a non-trainable tensor and will not be updated by optimizer,
         but is necessary for evaluation and inference. For example, the mean and variance in BatchNorm layers.
         The registered buffer is persistable by default, and will be saved into
         `state_dict` alongside parameters. If set persistable=False, it registers
@@ -649,7 +647,7 @@ class Layer(core.Layer):
         Parameters:
             name (string): name of the buffer. The buffer can be accessed
                 from this layer using the given name
-            variable (Variable): the variable to be registered as buffer.
+            tensor (Tensor): the tensor to be registered as buffer.
             persistable (bool): whether the buffer is part of this layer's
                 state_dict.
 
@@ -688,12 +686,12 @@ class Layer(core.Layer):
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif variable is not None and not type(variable) == core.VarBase:
+        elif tensor is not None and not type(tensor) == core.VarBase:
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
-                format(type(variable).__name__))
+                format(type(tensor).__name__))
         else:
-            self._buffers[name] = variable
+            self._buffers[name] = tensor
             if persistable:
                 self._non_persistable_buffer_names_set.discard(name)
             else:
@@ -707,7 +705,7 @@ class Layer(core.Layer):
             include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
 
         Returns:
-            list of :ref:`api_guide_Variable_en` : a list of buffers.
+            list of Tensor : a list of buffers.
 
         Examples:
             .. code-block:: python
@@ -732,7 +730,7 @@ class Layer(core.Layer):
 
     def named_buffers(self, prefix='', include_sublayers=True):
         """
-        Returns an iterator over all buffers in the Layer, yielding tuple of name and Variable.
+        Returns an iterator over all buffers in the Layer, yielding tuple of name and Tensor.
 
         Parameters:
             prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
@@ -740,7 +738,7 @@ class Layer(core.Layer):
                 If True, also include the named buffers from sublayers. Default: True.
 
         Yields:
-            (string, Variable): Tuple of name and Variable
+            (string, Tensor): Tuple of name and tensor
 
         Examples:
             .. code-block:: python
@@ -750,12 +748,12 @@ class Layer(core.Layer):
 
                 fc1 = paddle.nn.Linear(10, 3)
                 buffer1 = paddle.to_tensor(np.array([0]).astype("float32"))
-                # register a variable as buffer by specific `persistable`
+                # register a tensor as buffer by specific `persistable`
                 fc1.register_buffer("buf_name_1", buffer1, persistable=True)
 
                 fc2 = paddle.nn.Linear(3, 10)
                 buffer2 = paddle.to_tensor(np.array([1]).astype("float32"))
-                # register a buffer by assigning an attribute with Variable.
+                # register a buffer by assigning an attribute with Tensor.
                 # The `persistable` can only be False by this way.
                 fc2.buf_name_2 = buffer2
 
@@ -800,7 +798,7 @@ class Layer(core.Layer):
                                             parameters=linear.parameters())
                 out = linear(a)
                 out.backward()
-                adam.minimize(out)
+                adam.step()
                 linear.clear_gradients()
 
         """
