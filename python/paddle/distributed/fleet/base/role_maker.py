@@ -860,6 +860,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             http_server_d['running'] = False
         if self._role == Role.WORKER:
             self._gloo.barrier('worker')
+        print("GLOO initialized.")
 
     def _generate_role(self):
         """
