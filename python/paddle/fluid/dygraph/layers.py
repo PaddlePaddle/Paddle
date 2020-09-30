@@ -198,7 +198,7 @@ class Layer(core.Layer):
               def init_weights(layer):
                   if type(layer) == nn.Linear:
                       print('before init weight:', layer.weight.numpy())
-                      new_weight = paddle.fill(layer.weight.shape, layer.weight.dtype, value=0.9)
+                      new_weight = paddle.full(shape=layer.weight.shape, dtype=layer.weight.dtype, fill_value=0.9)
                       layer.weight.set_value(new_weight)
                       print('after init weight:', layer.weight.numpy())
 
@@ -356,7 +356,7 @@ class Layer(core.Layer):
                 "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
             is_bias(bool, optional): if this is a bias parameter. Default: False.
             default_initializer(Initializer, optional): the default initializer for this parameter.
-                If set None, default initializer will be set to :ref:`_api_paddle_fluid_initializer_Xavier` and :ref:`_api_paddle_fluid_initializer_Constant`
+                If set None, default initializer will be set to paddle.nn.initializer.Xavier and paddle.nn.initializer.Constant
                 for non-bias and bias parameter, respectively. Default: None.
 
         Returns:
