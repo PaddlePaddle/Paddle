@@ -380,65 +380,53 @@ def hsigmoid_loss(input,
             and D is the feature size. Its data type supports float32 or float64.
         label (Tensor): A tensor contains the labels of training data. Its shape is [N, 1]
             and data type is int64.
-         num_classes (int): The number of classes or the size of word dict, must be greater than 2.
-            If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
-            should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
-            :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
+        num_classes (int): The number of classes or the size of word dict, must be greater than 2.
+            If the default tree is used (path_code and path_table is None are None), `num_classes`
+            should not be None. If the custom tree is used (path_code and path_table is None are not None),
+            `num_classes` should be the number of non-leaf nodes, which indicates the num of
             classes using by the binary classifier.
-        weight (Tensor): A tensor with shape (num_classes - 1, D) if not using custom tree(path_code and path_table is None),
-            or (num_classes, D) if using custom tree.
-        bias (Tensor, optional): A tensor with shape (num_classes - 1, 1) if not using custom tree(path_code and path_table is None),
-            or (num_classes, 1) if using custom tree.
-       
-        path_table (Variable, optional): A tensor that stores each batch of samples' path from leaf to root
+        weight (Tensor): A tensor with shape (num_classes - 1, D), with the same data type as `input`.
+        bias (Tensor, optional): A tensor with shape (num_classes - 1, 1), with the same data type as `input`.
+            If `bias` is None, no bias will be add. Default is None.
+        path_table (Tensor, optional): A tensor that stores each batch of samples' path from leaf to root
             node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
             path_table[i] is a np.array like structure and each element in this array is the indexes in parent
-            nodes' weight matrix. Default: None.
-        path_code (Variable, optional): A tensor that stores each batch of samples' code of path from leaf
+            nodes' weight matrix. If `path_table` and `path_code` are None, the default tree will be used.
+            Default is None.
+        path_code (Tensor, optional): A tensor that stores each batch of samples' code of path from leaf
             to root node, its shape is [N, L] and data type is int64, which is the same as :attr:`path_table`.
-            Each code of path is consisted with the code of nodes from leaf to root node. Default: None.
-        is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
-            gradient of W and input will be sparse. Default: False.
+            Each code of path is consisted with the code of nodes from leaf to root node. If `path_table` and
+            `path_code` are None, the default tree will be used. Default is None.
+        is_sparse (bool, optional): Whether use sparse updating instead of dense updating. If `is_sparse` is True,
+            the gradient of `weight` and `input` will be sparse. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
+        A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as `input`.
 
     Examples:
         .. code-block:: python
 
-            from paddle import fluid, nn
-            import paddle.fluid.dygraph as dg
+            import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            main = fluid.Program()
-            start = fluid.Program()
-            feature_size = 6
-            num_classes = 8
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, start):
-                    x = fluid.data("input", [-1, feature_size],
-                                  dtype="float32")
-                    label = fluid.data("labels", [-1, 1], dtype="int64")
-                    w = fluid.data("weight", (num_classes -1, feature_size), dtype="float32")
-                    b = fluid.data("bias", (num_classes -1, ), dtype="float32")
-                    y = F.hsigmoid(x, label, w, b, num_classes)
+            paddle.set_device('cpu')
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(start)
-            feed_dict = {
-                "input": np.random.randn(4, feature_size).astype(np.float32),
-                "labels": np.random.randint(0, num_classes, (4, 1)).astype(np.int64),
-                "weight": np.random.randn(num_classes - 1, feature_size).astype(np.float32),
-                "bias": np.random.randn(num_classes - 1, ).astype(np.float32),
-            }
-            y_np, = exe.run(main, feed=feed_dict, fetch_list=[y])
-            print(y_np.shape)
+            input = paddle.uniform([2, 3])
+            # [[-0.8018668   0.8736385  -0.9064771 ] # random
+            #  [-0.10228515 -0.87188244 -0.8783718 ]] # random
+            label = paddle.to_tensor([0, 1, 4, 5])
+            num_classes = 5
+            weight=paddle.uniform([num_classes-1, 3])
+            # [[-0.24148715  0.8449961  -0.7399121 ] # random
+            #  [-0.9800559   0.43509364  0.9091208 ] # random
+            #  [ 0.60194826  0.10430074 -0.4521166 ] # random
+            #  [-0.4469818  -0.01536179 -0.604454  ]] # random
 
-          # (4, 1)
+            out=F.hsigmoid_loss(input, label, num_classes, weight)
+            # [[3.0159328]
+            #  [2.2407534]]
     """
 
     if in_dygraph_mode():

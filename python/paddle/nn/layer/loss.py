@@ -276,25 +276,25 @@ class HSigmoidLoss(fluid.dygraph.Layer):
        to the same batch of inputs.
 
     Parameters:
-        feature_size (int): The feature size.
+        feature_size (int): The number of features.
         num_classes (int): The number of classes or the size of word dict, must be greater than 2.
             If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
             should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
             :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
             classes using by the binary classifier.
-        param_attr (ParamAttr, optional): The parameter attribute for the learnable parameters/weights
+        weight_attr (ParamAttr, optional): The parameter attribute for the learnable weights
             of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid will create a
             ParamAttr as param_attr. If the Initializer of the param_attr is not set, the parameter is
-            initialized with Xavier. Default: None.
+            initialized with Xavier. Default is None.
         bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of hsigmoid. If it
             is set to False, no bias will be added. If it is set to None or one attribute of ParamAttr,
             hsigmoid will create a ParamAttr as bias_attr. If the Initializer of the bias_attr is not
-            set, the bias is initialized zero. Default: None.
+            set, the bias is initialized zero. Default is None.
         is_custom (bool, optional): Whether use custom binary tree. If it's True, `path_table` and 
             `path_code` should be passed to its forward method, otherwise `path_table` and `path_code`
-            should not be passed to its forward method. Default: False.
-        is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
-            gradient of W and input will be sparse. Default: False.
+            should not be passed to its forward method. Default is False.
+        is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True,
+            the gradient of weight and input will be sparse. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -306,34 +306,17 @@ class HSigmoidLoss(fluid.dygraph.Layer):
     Examples:
         .. code-block:: python
 
-          from paddle import fluid, nn
-          import paddle.fluid.dygraph as dg
-          import paddle.nn.functional as F
-          import numpy as np
+            import paddle
+            paddle.set_device('cpu')
 
-          main = fluid.Program()
-          start = fluid.Program()
-          feature_size = 6
-          num_classes = 8
-          with fluid.unique_name.guard():
-              with fluid.program_guard(main, start):
-                  x = fluid.data("input", [-1, feature_size],
-                              dtype="float32")
-                  label = fluid.data("labels", [-1, 1], dtype="int64")
-                  hsm = nn.HSigmoid(feature_size, num_classes)
-                  y = hsm(x, label)
-
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(start)
-          feed_dict = {
-              "input": np.random.randn(4, feature_size).astype(np.float32),
-              "labels": np.random.randint(0, num_classes, (4, 1)).astype(np.int64),
-          }
-          y_np, = exe.run(main, feed=feed_dict, fetch_list=[y])
-          print(y_np.shape)
-
-          # (4, 1)
+            input = paddle.uniform([2, 3])
+            # [[-0.2820413   0.9528898  -0.81638825] # random
+            #  [-0.6733154  -0.33866507  0.25770962]] # random
+            label = paddle.to_tensor([0, 1, 4, 5])
+            m = paddle.nn.HSigmoidLoss(3, 5)
+            out = m(input, label)
+            # [[2.4543471]
+            #  [1.9359267]]
     """
 
     def __init__(self,
