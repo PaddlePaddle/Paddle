@@ -204,25 +204,35 @@ def grid_sample(x,
     data x and y is indexing the 3rd dimension (in height dimension),
     finally results is the bilinear interpolation or nearest value of 4 nearest corner
     points. The output tensor shape will be [N, C, H, W].
+
+
+    Step 1:
+
+    Get (x, y) grid coordinates and scale to [0, H-1/W-1].
+
     .. code-block:: text
-        Step 1:
-        Get (x, y) grid coordinates and scale to [0, H-1/W-1].
-        .. code-block:: text
-            grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
-            grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
-        Step 2:
-        Indices input data X with grid (x, y) in each [H, W] area, and bilinear
-        interpolate point value by 4 nearest points or nearest interpolate point value
-        by nearest point.
-          wn ------- y_n ------- en
-          |           |           |
-          |          d_n          |
-          |           |           |
-         x_w --d_w-- grid--d_e-- x_e
-          |           |           |
-          |          d_s          |
-          |           |           |
-          ws ------- y_s ------- wn
+
+        grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+        grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+
+    Step 2:
+    
+    Indices input data X with grid (x, y) in each [H, W] area, and bilinear
+    interpolate point value by 4 nearest points or nearest interpolate point value
+    by nearest point.
+
+    .. code-block:: text
+
+        wn ------- y_n ------- en
+        |           |           |
+        |          d_n          |
+        |           |           |
+        x_w --d_w-- grid--d_e-- x_e
+        |           |           |
+        |          d_s          |
+        |           |           |
+        ws ------- y_s ------- wn
+
         For bilinear interpolation:
         x_w = floor(x)              // west side x coord
         x_e = x_w + 1               // east side x coord
@@ -236,8 +246,10 @@ def grid_sample(x,
         en = X[:, :, y_n, x_e]      // north-east point value
         ws = X[:, :, y_s, x_w]      // south-east point value
         es = X[:, :, y_s, x_w]      // north-east point value
+
         output = wn * d_e * d_s + en * d_w * d_s
-               + ws * d_e * d_n + es * d_w * d_n
+                + ws * d_e * d_n + es * d_w * d_n
+
     Args:
         x(Tensor): The input tensor, which is a 4-d tensor with shape
                      [N, C, H, W], N is the batch size, C is the channel
@@ -261,7 +273,9 @@ def grid_sample(x,
         Tensor, The shape of output is [N, C, grid_H, grid_W] in which `grid_H` is the height of grid and `grid_W` is the width of grid. The data type is same as input tensor.
 
     Examples:
+
         .. code-block:: python
+        
             import paddle
             import paddle.nn.functional as F
             import numpy as np
