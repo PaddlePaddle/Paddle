@@ -1492,4 +1492,4 @@ def strided_slice(x, axes, starts, ends, strides):
     """
 
     return paddle.fluid.layers.strided_slice(
-        input=x, axies=axes, starts=starts, ends=ends, strides=strides)
+        input=x, axes=axes, starts=starts, ends=ends, strides=strides)

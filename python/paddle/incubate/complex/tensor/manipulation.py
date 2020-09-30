@@ -132,8 +132,9 @@ def transpose(x, perm, name=None):
             paddle.disable_static()
             x = paddle.to_tensor([[1.0 + 1.0j, 2.0 + 1.0j], [3.0+1.0j, 4.0+1.0j], [5.0+1.0j, 6.0+1.0j]])
             x_transposed = paddle.complex.transpose(x, [1, 0])
-            print(x_transposed.shape)
-            #(2L, 3L)
+            print(x_transposed.numpy())
+            #[[1.+1.j 3.+1.j 5.+1.j]
+            # [2.+1.j 4.+1.j 6.+1.j]]
 
     """
     complex_variable_exists([x], "transpose")
