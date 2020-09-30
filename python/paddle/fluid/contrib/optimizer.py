@@ -16,15 +16,8 @@ from ..regularizer import L1DecayRegularizer
 from ..regularizer import L2DecayRegularizer
 from .. import core
 from .. import framework
-from .. import global_scope
 from .. import unique_name
-from ..framework import program_guard
-from ..framework import device_guard
-from ..initializer import Xavier
 from ..layer_helper import LayerHelper
-from ..clip import append_gradient_clip_ops
-from collections import defaultdict
-import numpy as np
 import warnings
 
 __all__ = ['Momentum']
@@ -146,10 +139,22 @@ class Momentum(Optimizer):
             type=param.type,
             shape=param.shape,
             belong_to_optimizer=True)
-        device = self._get_device_for_param(param.name)
-        with device_guard(device):
-            self.helper.set_variable_initializer(
-                var, initializer=Xavier(uniform=False))
+        block = self.helper.startup_program.global_block()
+        block.create_var(
+            name=var_name,
+            persistable=True,
+            dtype='float32',
+            type=param.type,
+            shape=param.shape,
+            belong_to_optimizer=True)
+        block.append_op(
+            type="cast",
+            inputs={"X": [param]},
+            outputs={"Out": [var]},
+            attrs={
+                "in_dtype": param.dtype,
+                "out_dtype": core.VarDesc.VarType.FP32
+            })
         self._master_weights[param.name] = var
         return var
 
@@ -165,8 +170,9 @@ class Momentum(Optimizer):
         """
         if self._name is not None:
             name = self._name + "_" + name
+        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
         target_param = self._master_weights[
-            param.name] if self._multi_precision else param
+            param.name] if find_master else param
         target_name = target_param.name
         if (name not in self._accumulators or
                 target_name not in self._accumulators[name]):
@@ -178,24 +184,26 @@ class Momentum(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            if self._multi_precision:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
-            else:
-                if p.dtype == core.VarDesc.VarType.FP16:
-                    warnings.warn(
-                        "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
-                        "Consider using multi_precision=True option of the Momentum optimizer."
-                    )
-                self._add_accumulator(self._velocity_acc_str, p)
+                continue
+            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Momentum optimizer."
+                )
+            self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
+        find_master = self._multi_precision and param_and_grad[
+            0].dtype == core.VarDesc.VarType.FP16
         master_weight = (self._master_weights[param_and_grad[0].name]
-                         if self._multi_precision else None)
+                         if find_master else None)
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
@@ -205,7 +213,7 @@ class Momentum(Optimizer):
                 'mu', self._momentum, 'use_nesterov', self._use_nesterov,
                 'regularization_method', self._regularization_method,
                 'regularization_coeff', self._regularization_coeff,
-                'multi_precision', self._multi_precision)
+                'multi_precision', find_master)
             return None
 
         attrs = {
@@ -213,7 +221,7 @@ class Momentum(Optimizer):
             "use_nesterov": self._use_nesterov,
             "regularization_method": self._regularization_method,
             "regularization_coeff": self._regularization_coeff,
-            "multi_precision": self._multi_precision
+            "multi_precision": find_master
         }
         inputs = {
             "Param": [param_and_grad[0]],
@@ -226,7 +234,7 @@ class Momentum(Optimizer):
             "VelocityOut": [velocity_acc]
         }
 
-        if self._multi_precision:
+        if find_master:
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 

@@ -196,18 +196,19 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def cast_net_to_fp16(program):
+def cast_net_to_fp16(main_program):
     valid_types = [
         core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
         core.VarDesc.VarType.LOD_TENSOR_ARRAY
     ]
-    global_block = program.global_block()
+    global_block = main_program.global_block()
 
-    for block in program.blocks:
+    for block in main_program.blocks:
         ops = block.ops
         for op in ops:
             for in_name in op.input_names:
-                if op.type == 'batch_norm' and in_name != 'X':
+                if op.type in {'batch_norm', 'fused_bn_add_activation'
+                               } and in_name not in {'X', 'Z'}:
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -234,7 +235,8 @@ def cast_net_to_fp16(program):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if op.type == 'batch_norm' and out_name != 'Y':
+                if op.type in {'batch_norm', 'fused_bn_add_activation'
+                               } and out_name != 'Y':
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None
@@ -270,15 +272,23 @@ def cast_net_to_fp16(program):
                 op._set_attr('dtype', core.VarDesc.VarType.FP16)
 
 
-def cast_parameters_to_fp16(exe, program, scope=None):
-    exe_scope = scope if scope is not None else global_scope()
-    global_block = program.global_block()
+def cast_parameters_to_fp16(exe, main_program, scope=None):
+    all_ops = []
+    for block in main_program.blocks:
+        all_ops.extend(block.ops)
+    bn_params = set()
+    for op in all_ops:
+        if op.type not in {'batch_norm', 'fused_bn_add_activation'}:
+            continue
+        for in_name in op.input_names:
+            if in_name not in {'X', 'Z'}:
+                for in_var_name in op.input(in_name):
+                    bn_params.add(in_var_name)
+    global_block = main_program.global_block()
     all_parameters = global_block.all_parameters()
+    exe_scope = scope if scope is not None else global_scope()
     for param in all_parameters:
-        if not (param.name.find('bn') != -1 and
-                (param.name.endswith('_offset') or param.name.endswith('_mean')
-                 or param.name.endswith('_scale') or
-                 param.name.endswith('_variance'))):
+        if param.name not in bn_params:
             param_t = exe_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(np.float16(data), exe.place)

@@ -43,17 +43,17 @@ class MPTypeTrait<platform::float16> {
   using Type = float;
 };
 
-template <typename T, typename MT>
+template <typename T>
 struct CPUDenseUpdater {
   template <typename G>
-  void operator()(const Tensor& param, const Tensor& velocity, const MT& mu,
-                  const MT& lr, const bool use_nesterov, G&& g,
+  void operator()(const Tensor& param, const Tensor& velocity, const T& mu,
+                  const T& lr, const bool use_nesterov, G&& g,
                   Tensor* param_out, Tensor* velocity_out) const {
-    auto p_out = framework::EigenVector<MT>::Flatten(*param_out);
-    auto v_out = framework::EigenVector<MT>::Flatten(*velocity_out);
+    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
+    auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
 
-    auto p = framework::EigenVector<MT>::Flatten(param);
-    auto v = framework::EigenVector<MT>::Flatten(velocity);
+    auto p = framework::EigenVector<T>::Flatten(param);
+    auto v = framework::EigenVector<T>::Flatten(velocity);
     v_out = v * mu + g;
     if (use_nesterov) {
       p_out = p - (g + v_out * mu) * lr;
@@ -155,25 +155,25 @@ class MomentumOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T, typename MT>
+template <typename T>
 class CPUDenseMomentumFunctor {
  public:
   void operator()(const Tensor* param, const Tensor* grad,
                   const Tensor* velocity, const Tensor* learning_rate,
-                  const MT mu, const bool use_nesterov,
+                  const T mu, const bool use_nesterov,
                   const RegularizationFlag regularization_flag,
-                  const MT regularization_coeff, Tensor* param_out,
+                  const T regularization_coeff, Tensor* param_out,
                   Tensor* velocity_out) {
-    auto g = framework::EigenVector<MT>::Flatten(*grad);
-    auto* lr = learning_rate->data<LRType<MT>>();
+    auto g = framework::EigenVector<T>::Flatten(*grad);
+    auto* lr = learning_rate->data<LRType<T>>();
 
-    details::CPUDenseUpdater<T, MT> updater;
+    details::CPUDenseUpdater<T> updater;
     if (regularization_flag == RegularizationFlag::kL2DECAY) {
-      auto p = framework::EigenVector<MT>::Flatten(*param);
-      updater(*param, *velocity, mu, static_cast<MT>(lr[0]), use_nesterov,
+      auto p = framework::EigenVector<T>::Flatten(*param);
+      updater(*param, *velocity, mu, static_cast<T>(lr[0]), use_nesterov,
               p * regularization_coeff + g, param_out, velocity_out);
     } else {
-      updater(*param, *velocity, mu, static_cast<MT>(lr[0]), use_nesterov, g,
+      updater(*param, *velocity, mu, static_cast<T>(lr[0]), use_nesterov, g,
               param_out, velocity_out);
     }
   }
@@ -497,7 +497,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       if (platform::is_cpu_place(ctx.GetPlace())) {
-        CPUDenseMomentumFunctor<T, MT> functor;
+        CPUDenseMomentumFunctor<MT> functor;
         functor(param, grad, velocity, learning_rate, mu, use_nesterov,
                 regularization_flag, regularization_coeff, param_out,
                 velocity_out);
