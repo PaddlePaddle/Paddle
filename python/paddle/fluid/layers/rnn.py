@@ -882,23 +882,27 @@ class BeamSearchDecoder(Decoder):
 
         .. code-block:: python
             
-            import paddle.fluid as fluid
-            from paddle.fluid.layers import GRUCell, BeamSearchDecoder
-            trg_embeder = lambda x: fluid.embedding(
-                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
-                                            size=10000,
-                                            num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
-                                                                        "output_w"),
-                                            bias_attr=False)
-            decoder_cell = GRUCell(hidden_size=128)
+            import numpy as np
+            import paddle
+            from paddle.text import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import GRUCell
+            from paddle.nn import functional as F
+            paddle.set_default_dtype("float64")
+            print(paddle.get_default_dtype())
+            weight = paddle.to_tensor(
+                np.array(np.random.rand(100, 32), dtype=paddle.get_default_dtype()))
+            weight_linear = paddle.to_tensor(
+                np.array(np.random.rand(32, 32), dtype=paddle.get_default_dtype()))
+            trg_embeder = lambda x: F.embedding(x, weight=weight, padding_idx=0)
+            output_layer = lambda x: F.linear(x, weight=weight_linear)
+            decoder_cell = GRUCell(input_size=32, hidden_size=32)
             decoder = BeamSearchDecoder(decoder_cell,
                                         start_token=0,
                                         end_token=1,
                                         beam_size=4,
                                         embedding_fn=trg_embeder,
                                         output_fn=output_layer)
+
     """
 
     def __init__(self,
@@ -1627,31 +1631,30 @@ def dynamic_decode(decoder,
 
         .. code-block:: python
             
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            from paddle.fluid.layers import GRUCell, BeamSearchDecoder, dynamic_decode
-
-            encoder_output = fluid.data(name="encoder_output",
-                                    shape=[-1, 32, 128],
-                                    dtype="float32")
-            trg_embeder = lambda x: fluid.embedding(
-                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
-                                            size=10000,
-                                            num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
-                                                                        "output_w"),
-                                            bias_attr=False)
-            decoder_cell = GRUCell(hidden_size=128)
+            import numpy as np
+            import paddle
+            from paddle.text import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import GRUCell
+            from paddle.nn import functional as F
+            paddle.set_default_dtype("float64")
+            print(paddle.get_default_dtype())
+            weight = paddle.to_tensor(
+                np.array(np.random.rand(100, 32), dtype=paddle.get_default_dtype()))
+            weight_linear = paddle.to_tensor(
+                np.array(np.random.rand(32, 32), dtype=paddle.get_default_dtype()))
+            trg_embeder = lambda x: F.embedding(x, weight=weight, padding_idx=0)
+            output_layer = lambda x: F.linear(x, weight=weight_linear)
+            decoder_cell = GRUCell(input_size=32, hidden_size=32)
             decoder = BeamSearchDecoder(decoder_cell,
                                         start_token=0,
                                         end_token=1,
                                         beam_size=4,
                                         embedding_fn=trg_embeder,
                                         output_fn=output_layer)
-
-            outputs = dynamic_decode(
-                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
+            encoder_output = paddle.ones((4, 8, 32), dtype=paddle.get_default_dtype())
+            outputs = dynamic_decode(decoder=decoder,
+                                    inits=decoder_cell.get_initial_states(encoder_output),
+                                    max_step_num=10)
     """
     if in_dygraph_mode():
         return _dynamic_decode_imperative(decoder, inits, max_step_num,

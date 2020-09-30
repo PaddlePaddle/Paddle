@@ -30,6 +30,7 @@ import paddle.nn as nn
 from paddle import Model, set_device
 from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
+from paddle.text import BeamSearchDecoder, dynamic_decode
 
 
 class EncoderCell(layers.RNNCell):
@@ -669,7 +670,7 @@ class TestBeamSearch(ModuleApiTest):
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num
-        self.beam_search_decoder = nn.BeamSearchDecoder(
+        self.beam_search_decoder = BeamSearchDecoder(
             cell,
             start_token=bos_id,
             end_token=eos_id,
@@ -679,7 +680,7 @@ class TestBeamSearch(ModuleApiTest):
 
     @staticmethod
     def model_forward(model, init_hidden, init_cell):
-        return nn.dynamic_decode(
+        return dynamic_decode(
             model.beam_search_decoder, [init_hidden, init_cell],
             max_step_num=model.max_step_num,
             is_test=True)[0]
