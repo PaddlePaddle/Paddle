@@ -57,7 +57,10 @@ cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 if(WITH_XPU)
-cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce)
+ message("add dependency")
+ message("XPU_CTX_DEPS")
+ message( ${XPU_CTX_DEPS} ) 
+ cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce XPU_CTX_DEPS)
 endif()
 
 add_subdirectory(dynload)
