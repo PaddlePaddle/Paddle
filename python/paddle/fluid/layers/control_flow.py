@@ -259,24 +259,24 @@ def Print(input,
     Examples:
         .. code-block:: python
            
-           import paddle.fluid as fluid
-           
-           input = fluid.layers.fill_constant(shape=[10,2], value=3, dtype='int64')
-           input = fluid.layers.Print(input, message="The content of input layer:")
-           
-           main_program = fluid.default_main_program()
-           exe = fluid.Executor(fluid.CPUPlace())
-           exe.run(main_program)
+           import paddle
 
-    Output at runtime:
-        .. code-block:: bash 
-           
-           The content of input layer:     The place is:CPUPlace
-           Tensor[fill_constant_0.tmp_0]
-               shape: [10,2,]
-               dtype: x
-               data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
-               
+           paddle.enable_static()
+        
+           x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
+           out = paddle.static.Print(x, message="The content of input layer:")
+
+           main_program = paddle.static.default_main_program()
+           exe = paddle.static.Executor(place=paddle.CPUPlace())
+           res = exe.run(main_program, fetch_list=[out])
+           # Variable: fill_constant_1.tmp_0
+           #   - message: The content of input layer:
+           #   - lod: {}
+           #   - place: CPUPlace
+           #   - shape: [2, 3]
+           #   - layout: NCHW
+           #   - dtype: long
+           #   - data: [3 3 3 3 3 3]
     '''
     check_variable_and_dtype(input, 'input',
                              ['float32', 'float64', 'int32', 'int64', 'bool'],
@@ -3788,45 +3788,46 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     return out
 
 
-def is_empty(x, cond=None):
+def is_empty(x, name=None):
     """
-    :alias_main: paddle.is_empty
-	:alias: paddle.is_empty,paddle.tensor.is_empty,paddle.tensor.logic.is_empty
-	:old_api: paddle.fluid.layers.is_empty
 
-    Test whether a Variable is empty.
+    Test whether a Tensor is empty.
 
     Args:
-        x (Variable): The Variable to be tested.
-        cond (Variable, optional): Output parameter. Default: None. If this parameter is given, it
-                              saves the test result of given 'x'.
+        x (Tensor): The Tensor to be tested.
+        name (str, optional): The default value is ``None`` . Normally users
+                            don't have to set this parameter. For more information,
+                            please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A bool scalar. True if 'x' is an empty Variable.
-
-    Raises:
-        TypeError: If input cond is not a variable, or cond's dtype is
-                   not bool.
+        Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-          res = fluid.layers.is_empty(x=input)
-          # or:
-          # fluid.layers.is_empty(x=input, cond=res)
+            import paddle
+
+            input = paddle.rand(shape=[4, 32, 32], dtype='float32')
+            res = paddle.is_empty(x=input)
+            print("res:", res)
+            # ('res:', Tensor: eager_tmp_1
+            #    - place: CPUPlace
+            #    - shape: [1]
+            #    - layout: NCHW
+            #    - dtype: bool
+            #    - data: [0])
 
     """
+    if in_dygraph_mode():
+        return core.ops.is_empty(x)
+
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')
-    check_type(cond, 'cond', (Variable, type(None)), 'is_empty')
+    check_type(name, "name", (str, type(None)), "is_empty")
+
     helper = LayerHelper("is_empty", **locals())
-    if cond is None:
-        cond = helper.create_variable_for_type_inference(dtype='bool')
-        cond.stop_gradient = True
-    else:
-        check_dtype(cond.dtype, 'cond', ['bool'], 'is_empty')
+    cond = helper.create_variable_for_type_inference(dtype='bool')
+    cond.stop_gradient = True
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
     return cond
