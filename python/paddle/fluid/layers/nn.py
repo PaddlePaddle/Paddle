@@ -13421,7 +13421,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     ${comment}
 
     Args:
-        x(Variable): ${x_comment}
+        x(Tensor): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
         name(str, optional): For detailed information, please refer
@@ -13429,7 +13429,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
                              None by default.
 
     Returns:
-        out(Variable): The temporal shifting result is a tensor variable with the
+        out(Tensor): The temporal shifting result is a tensor with the
         same shape and same data type as the input.
 
     Raises:
@@ -13438,9 +13438,11 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
-            out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.randn([6, 4, 2, 2])
+            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
@@ -13451,6 +13453,10 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
 
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
+
+    if in_dygraph_mode():
+        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                       shift_ratio)
 
     helper.append_op(
         type="temporal_shift",
