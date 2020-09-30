@@ -331,8 +331,6 @@ class CompileTimeStrategy(object):
                                   param_ctx.is_distributed())
 
                 send_ctx[ctx.var_name()] = ctx
-            name, ctx = self._step_ctx()
-            send_ctx[name] = ctx
         return send_ctx
 
     def get_communicator_send_context(self):
