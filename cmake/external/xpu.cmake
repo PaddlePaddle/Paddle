@@ -45,6 +45,7 @@ ExternalProject_Add(
 
 ADD_LIBRARY(shared_xpuapi SHARED IMPORTED GLOBAL)
 set_property(TARGET shared_xpuapi PROPERTY IMPORTED_LOCATION "${XPU_API_LIB}")
+ADD_DEPENDENCIES(shared_xpuapi ${XPU_PROJECT})
 
 # generate a static dummy target to track xpulib dependencies
 # for cc_library(xxx SRCS xxx.c DEPS xpulib)
