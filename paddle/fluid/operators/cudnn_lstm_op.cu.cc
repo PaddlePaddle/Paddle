@@ -226,7 +226,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       LSTMInferece<T>(has_seq_length, handle, seq_length, &rnn, x_data,
                       init_h_data, init_c_data, w_data, out_data, last_h_data,
                       last_c_data, &workspace_data_, workspace_size);
-      if (ctx.HasInput("W") && ctx.HasInput("WeightList")) {
+      if (!w_initialized && ctx.HasInput("W") && ctx.HasInput("WeightList")) {
         auto *W = const_cast<Tensor *>(ctx.Input<Tensor>("W"));
         auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
         W->mutable_data<T>({weight_numel}, place);
