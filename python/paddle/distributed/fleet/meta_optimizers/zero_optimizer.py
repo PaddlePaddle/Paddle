@@ -265,7 +265,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             return True
         for suffix in [
                 "_moment1_0", "_moment2_0", "_beta1_pow_acc_0",
-                "_beta2_pow_acc_0"
+                "_beta2_pow_acc_0", "_velocity_0"
         ]:
             base_name = re.sub(suffix, '', var_name)
             if base_name in self._params:
@@ -279,7 +279,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             return self._param2device[var_name]
         for suffix in [
                 "_moment1_0", "_moment2_0", "_beta1_pow_acc_0",
-                "_beta2_pow_acc_0"
+                "_beta2_pow_acc_0", "_velocity_0"
         ]:
             base_name = re.sub(suffix, '', var_name)
             if base_name in self._param2device:
@@ -630,14 +630,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                     self._sub_progs) - 2 else []
             cast_ops = self._sub_progs[idx + 2]._cast_ops if idx < len(
                 self._sub_progs) - 2 else {}
-
-            # for x in fill_constant_vars:
-            #     print("fill_constant_vars: ", x)
-
-            # step1: modify calculate ops
-            # for op_idx in reversed(range(subprog._start_idx, subprog._end_idx)):
-            #     op = block.ops[op_idx]
-            #     print(_pretty_op_desc_(op.desc, "subprog_op"))
 
             for op_idx in reversed(range(subprog._start_idx, subprog._end_idx)):
                 op = block.ops[op_idx]
@@ -1076,53 +1068,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                 attrs={'ring_id': ring_id,
                        OP_ROLE_KEY: OpRole.Forward})
 
-    # def _insert_broadcast_ops(self, block, fuse_broadcast=False):
-    #     def _insert_cache(cache,
-    #                       prepend_comm_sync=False,
-    #                       append_comm_sync=False):
-    #         insert_idx = cache["insert_idx"]
-    #         dummy_var_name = cache["dummy_var_name"]
-    #         assert (len(cache["broadcast_ops"]) > 0)
-
-    #         if prepend_comm_sync:
-    #             insert_idx += self._insert_comm_sync(block, insert_idx,
-    #                                                  [dummy_var_name])
-
-    #         if len(cache["fill_constant_ops"]) > 0:
-    #             insert_idx += self._insert_fill_constant(
-    #                 block, insert_idx, cache["fill_constant_ops"],
-    #                 [dummy_var_name])
-
-    #         insert_idx += self._insert_broadcast_inner(block, insert_idx,
-    #                                                    cache["broadcast_ops"])
-
-    #         if append_comm_sync:
-    #             insert_idx += self._insert_comm_sync(block, insert_idx,
-    #                                                  [dummy_var_name])
-
-    #         return insert_idx - cache["insert_idx"]
-
-    #     print("insert_idx: ", [x["insert_idx"] for x in self._sub_progs])
-    #     move_ahead = 1
-    #     for idx, cache in reversed(list(enumerate(self._sub_progs))):
-    #         if idx < move_ahead:
-    #             cache["insert_idx"] = 0
-    #         else:
-    #             cache["insert_idx"] = self._sub_progs[idx - move_ahead][
-    #                 "insert_idx"]
-    #     print("insert_idx: ", [x["insert_idx"] for x in self._sub_progs])
-
-    #     inserted_op_num = 0
-    #     for idx, cache in enumerate(self._sub_progs):
-    #         prepend_comm_sync = True
-    #         append_comm_sync = True
-    #         cache["insert_idx"] += inserted_op_num
-    #         inserted_op_num += _insert_cache(
-    #             cache,
-    #             prepend_comm_sync=prepend_comm_sync,
-    #             append_comm_sync=append_comm_sync)
-    #     return
-
     def _insert_allreduce_ops_tmp(self, block):
         ring_id = -1
         grad = None
@@ -1219,34 +1164,3 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._insert_allreduce_ops_tmp(main_block)
         print("insert allreduce done")
         return optimize_ops, params_grads
-
-    # def _insert_comm_sync(self, block, insert_idx, var_names):
-    #     for r in range(self._nrings):
-    #         block._insert_op(
-    #             insert_idx,
-    #             type='c_sync_comm_stream',
-    #             inputs={'X': var_names},
-    #             outputs={'Out': var_names},
-    #             attrs={'ring_id': r,
-    #                    OP_ROLE_KEY: OpRole.Backward})
-    #         insert_idx += 1
-    #     return self._nrings
-
-    # def _insert_broadcast_inner(self, block, insert_idx, broadcast_attrs):
-    #     for attr in broadcast_attrs:
-    #         block._insert_op(insert_idx, **attr)
-    #         insert_idx += 1
-    #     return len(broadcast_attrs)
-
-    # def _insert_fill_constant(self, block, insert_idx, fill_constant_attrs,
-    #                           var_names):
-    #     for attr in fill_constant_attrs:
-    #         block._insert_op(insert_idx, **attr)
-    #         insert_idx += 1
-    #     block._insert_op(
-    #         insert_idx,
-    #         type='c_sync_calc_stream',
-    #         inputs={'X': var_names},
-    #         outputs={'Out': var_names},
-    #         attrs={OP_ROLE_KEY: OpRole.Backward})
-    #     return len(fill_constant_attrs) + 1
