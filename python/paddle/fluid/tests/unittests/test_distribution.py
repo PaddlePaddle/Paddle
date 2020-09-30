@@ -725,7 +725,7 @@ class CategoricalTest(unittest.TestCase):
         self.logits_np = np.random.rand(batch_size, dims).astype('float32')
         self.other_logits_np = np.random.rand(batch_size,
                                               dims).astype('float32')
-        self.value_np = np.array([2, 1, 3])
+        self.value_np = np.array([2, 1, 3]).astype('int64')
 
         self.logits_shape = [batch_size, dims]
         # dist_shape = logits_shape[:-1], it represents the number of 
@@ -837,7 +837,7 @@ class CategoricalTest2(CategoricalTest):
         self.logits_np = np.random.rand(batch_size, dims).astype('float64')
         self.other_logits_np = np.random.rand(batch_size,
                                               dims).astype('float64')
-        self.value_np = np.array([2, 1, 3])
+        self.value_np = np.array([2, 1, 3]).astype('int64')
 
         self.logits_shape = [batch_size, dims]
         self.dist_shape = [batch_size]
@@ -877,7 +877,7 @@ class CategoricalTest4(CategoricalTest):
         self.logits_np = np.random.rand(batch_size, dims).astype('float64')
         self.other_logits_np = np.random.rand(batch_size,
                                               dims).astype('float64')
-        self.value_np = np.array([2, 1, 3])
+        self.value_np = np.array([2, 1, 3]).astype('int64')
 
         self.logits_shape = [batch_size, dims]
         self.dist_shape = [batch_size]
@@ -904,7 +904,7 @@ class CategoricalTest5(CategoricalTest):
         # value used in probs and log_prob method is 1-D Tensor
         self.logits_np = np.random.rand(dims).astype('float32')
         self.other_logits_np = np.random.rand(dims).astype('float32')
-        self.value_np = np.array([2, 1, 3])
+        self.value_np = np.array([2, 1, 3]).astype('int64')
 
         self.logits_shape = [dims]
         self.dist_shape = []
@@ -924,7 +924,7 @@ class CategoricalTest6(CategoricalTest):
         # value used in probs and log_prob method has the same number of batches with input
         self.logits_np = np.random.rand(3, 5).astype('float32')
         self.other_logits_np = np.random.rand(3, 5).astype('float32')
-        self.value_np = np.array([[2, 1], [0, 3], [2, 3]])
+        self.value_np = np.array([[2, 1], [0, 3], [2, 3]]).astype('int64')
 
         self.logits_shape = [3, 5]
         self.dist_shape = [3]
@@ -945,7 +945,7 @@ class CategoricalTest7(CategoricalTest):
         # value used in probs and log_prob method has the same number of distribuions with input
         self.logits_np = np.random.rand(3, 2, 5).astype('float32')
         self.other_logits_np = np.random.rand(3, 2, 5).astype('float32')
-        self.value_np = np.array([2, 1, 3])
+        self.value_np = np.array([2, 1, 3]).astype('int64')
 
         self.logits_shape = [3, 2, 5]
         self.dist_shape = [3, 2]
