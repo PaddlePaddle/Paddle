@@ -389,7 +389,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     auto &in_y = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Y"), "Input",
                                  "Y", "FusedElemwiseActivation");
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
                           "The output(Out) should not be empty"));
     auto output = ctx.Output<framework::Tensor>("Out");
@@ -418,9 +418,8 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_y = ctx.Input<framework::Tensor>("Y");
-    PADDLE_ENFORCE_NE(in_y, nullptr,
-                      platform::errors::InvalidArgument(
-                      "Input(Y) should not be nullptr.");
+    PADDLE_ENFORCE_NE(in_y, nullptr, platform::errors::InvalidArgument(
+                                         "Input(Y) should not be nullptr."));
     auto in_out = ctx.Input<framework::Tensor>("Out");
     PADDLE_ENFORCE_NE(in_out, nullptr,
                       platform::errors::InvalidArgument(
