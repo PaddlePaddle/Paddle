@@ -17,17 +17,35 @@
 from ...fluid.initializer import Bilinear  #DEFINE_ALIAS
 from ...fluid.initializer import Constant  #DEFINE_ALIAS
 from ...fluid.initializer import MSRA  #DEFINE_ALIAS
-from ...fluid.initializer import Normal  #DEFINE_ALIAS
-from ...fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
-from ...fluid.initializer import Uniform  #DEFINE_ALIAS
+# from ...fluid.initializer import Normal  #DEFINE_ALIAS
+# from ...fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
+# from ...fluid.initializer import Uniform  #DEFINE_ALIAS
 from ...fluid.initializer import Xavier  #DEFINE_ALIAS
 
 __all__ = [
     'Bilinear',
     'Constant',
     'MSRA',
-    'Normal',
-    'TruncatedNormal',
-    'Uniform',
+    # 'Normal',
+    # 'TruncatedNormal',
+    # 'Uniform',
     'Xavier',
 ]
+
+from . import xavier
+from .xavier import *
+
+from . import assign
+from .assign import *
+
+from . import normal
+from .normal import *
+
+from . import uniform
+from .uniform import *
+
+# __all__ = []
+__all__ += xavier.__all__
+__all__ += assign.__all__
+__all__ += normal.__all__
+__all__ += uniform.__all__
