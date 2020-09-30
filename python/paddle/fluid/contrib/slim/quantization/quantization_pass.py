@@ -758,6 +758,7 @@ class QuantizationTransformPass(object):
             attrs={
                 'bit_length': quant_bits,
                 'quant_axis': quant_axis,
+                'is_test': self._is_test,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward
             },
             inputs={'X': var_node},
