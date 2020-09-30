@@ -13546,15 +13546,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
     :api_attr: Static Graph
 
-    This OP is used to register customized Python OP to Paddle Fluid. The design
-    principe of py_func is that LodTensor and numpy array can be converted to each
+    This OP is used to register customized Python OP to Paddle. The design
+    principe of py_func is that Tensor and numpy array can be converted to each
     other easily. So you can use Python and numpy API to register a python OP.
 
     The forward  function of the registered OP is ``func`` and the backward function
     of that is  ``backward_func``. Paddle will call ``func`` at forward runtime and
     call ``backward_func`` at backward runtime(if ``backward_func`` is not  None).
-    ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is
-    the output of ``func``, whose type can be either LoDTensor or numpy array.
+    ``x`` is the input of ``func``, whose type must be Tensor; ``out`` is
+    the output of ``func``, whose type can be either Tensor or numpy array.
 
     The input of the backward function ``backward_func`` is ``x``, ``out`` and
     the gradient of ``out``. If some variables of ``out`` have no gradient, the
@@ -13572,14 +13572,14 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this
             function and the forward input ``x``. In ``func`` , it's suggested that we
-            actively convert LoDTensor into a numpy array, so that we can use Python and
+            actively convert Tensor into a numpy array, so that we can use Python and
             numpy API arbitrarily. If not, some operations of numpy may not be compatible.
         x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``.
-            It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or
+            It can be Variable|tuple(Variale)|list[Variale], where Variable is Tensor or
             Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
             or list[Variale].
         out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``,
-            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
+            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either Tensor
             or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``,
             you must create ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP.
@@ -13600,16 +13600,18 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         .. code-block:: python
 
             # example 1:
-            import paddle.fluid as fluid
+            import paddle
             import six
 
-            # Creates a forward function, LodTensor can be input directly without
+            paddle.enable_static()
+
+            # Creates a forward function, Tensor can be input directly without
             # being converted into numpy array.
             def tanh(x):
                 return np.tanh(x)
 
             # Skip x in backward function and return the gradient of x
-            # LodTensor must be actively converted to numpy array, otherwise,
+            # Tensor must be actively converted to numpy array, otherwise,
             # operations such as +/- can't be used.
             def tanh_grad(y, dy):
                 return np.array(dy) * (1 - np.square(np.array(y)))
@@ -13619,36 +13621,38 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 print(x)
 
             def create_tmp_var(name, dtype, shape):
-                return fluid.default_main_program().current_block().create_var(
+                return paddle.static.default_main_program().current_block().create_var(
                     name=name, dtype=dtype, shape=shape)
 
             def simple_net(img, label):
                 hidden = img
                 for idx in six.moves.range(4):
-                    hidden = fluid.layers.fc(hidden, size=200)
+                    hidden = paddle.static.nn.fc(hidden, size=200)
                     new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
                         dtype=hidden.dtype, shape=hidden.shape)
 
                     # User-defined forward and backward
-                    hidden = fluid.layers.py_func(func=tanh, x=hidden,
+                    hidden = paddle.static.nn.py_func(func=tanh, x=hidden,
                         out=new_hidden, backward_func=tanh_grad,
                         skip_vars_in_backward_input=hidden)
 
-                    # User-defined debug functions that print out the input LodTensor
-                    fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+                    # User-defined debug functions that print out the input Tensor
+                    paddle.static.nn.py_func(func=debug_func, x=hidden, out=None)
 
-                prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-                loss = fluid.layers.cross_entropy(input=prediction, label=label)
-                return fluid.layers.mean(loss)
+                prediction = paddle.static.nn.fc(hidden, size=10, act='softmax')
+                loss = paddle.static.nn.cross_entropy(input=prediction, label=label)
+                return paddle.mean(loss)
 
             # example 2:
-            # This example shows how to turn LoDTensor into numpy array and
+            # This example shows how to turn Tensor into numpy array and
             # use numpy API to register an Python OP
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
+            paddle.enable_static()
+
             def element_wise_add(x, y):
-                # LodTensor must be actively converted to numpy array, otherwise,
+                # Tensor must be actively converted to numpy array, otherwise,
                 # numpy.shape can't be used.
                 x = np.array(x)
                 y = np.array(y)
@@ -13664,24 +13668,24 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 return result
 
             def create_tmp_var(name, dtype, shape):
-                return fluid.default_main_program().current_block().create_var(
+                return paddle.static.default_main_program().current_block().create_var(
                             name=name, dtype=dtype, shape=shape)
 
             def py_func_demo():
-                start_program = fluid.default_startup_program()
-                main_program = fluid.default_main_program()
+                start_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
 
                 # Input of the forward function
-                x = fluid.data(name='x', shape=[2,3], dtype='int32')
-                y = fluid.data(name='y', shape=[2,3], dtype='int32')
+                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
+                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
 
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
 
                 # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
-                fluid.layers.py_func(func=element_wise_add, x=[x,y], out=output)
+                paddle.static.nn.py_func(func=element_wise_add, x=[x,y], out=output)
 
-                exe=fluid.Executor(fluid.CPUPlace())
+                exe=paddle.static.Executor(paddle.CPUPlace())
                 exe.run(start_program)
 
                 # Feed numpy array to main_program
