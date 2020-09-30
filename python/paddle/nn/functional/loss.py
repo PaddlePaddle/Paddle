@@ -376,17 +376,20 @@ def hsigmoid_loss(input,
        to the same batch of inputs.
 
     Parameters:
-        input (Variable): A tensor with the shape [N, D], where N is the size of mini-batch,
-            and D is the feature size. Its data type supports float32 and float64.
-        label (Variable): A tensor contains the labels of training data. Its shape is [N, 1]
+        input (Tensor): A tensor with the shape [N, D], where N is the size of mini-batch,
+            and D is the feature size. Its data type supports float32 or float64.
+        label (Tensor): A tensor contains the labels of training data. Its shape is [N, 1]
             and data type is int64.
-        weight (Variable): A tensor with shape (num_classes - 1, D) if not using custom tree(path_code and path_table is None), or (num_classes, D) if using custom tree.
-        bias (Variable): A tensor with shape (num_classes - 1, 1) if not using custom tree(path_code and path_table is None), or (num_classes, 1) if using custom tree.
-        num_classes (int): The number of classes or the size of word dict, must be greater than 2.
+         num_classes (int): The number of classes or the size of word dict, must be greater than 2.
             If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
             should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
             :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
             classes using by the binary classifier.
+        weight (Tensor): A tensor with shape (num_classes - 1, D) if not using custom tree(path_code and path_table is None),
+            or (num_classes, D) if using custom tree.
+        bias (Tensor, optional): A tensor with shape (num_classes - 1, 1) if not using custom tree(path_code and path_table is None),
+            or (num_classes, 1) if using custom tree.
+       
         path_table (Variable, optional): A tensor that stores each batch of samples' path from leaf to root
             node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
             path_table[i] is a np.array like structure and each element in this array is the indexes in parent

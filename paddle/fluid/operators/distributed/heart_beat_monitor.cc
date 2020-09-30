@@ -76,11 +76,11 @@ void HeartBeatMonitor::LostWorkerMonitor() {
               << timestamp - worker.timestamp;
 
       if (timestamp - worker.timestamp >= FLAGS_worker_update_interval_secs) {
-        PADDLE_THROW(
+        PADDLE_THROW(platform::errors::ExecutionTimeout(
             "the latest update of worker %d is %d secs ago, we doubt the "
             "the worker is not alive and this may have a bad effect on the "
             "fitting result, please check",
-            worker.id, FLAGS_worker_update_interval_secs);
+            worker.id, FLAGS_worker_update_interval_secs));
       }
     }
 
