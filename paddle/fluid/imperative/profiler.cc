@@ -19,8 +19,7 @@
 #endif
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <mutex>   // NOLINT
-#include <thread>  // NOLINT
+#include <mutex>  // NOLINT
 
 DEFINE_string(
     tracer_profile_fname, "xxgperf",

@@ -19,8 +19,15 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

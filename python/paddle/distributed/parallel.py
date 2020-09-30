@@ -15,6 +15,9 @@
 import os
 import six
 import warnings
+from multiprocessing import Process, Manager
+import time
+import sys
 
 from paddle import compat as cpt
 
@@ -23,19 +26,30 @@ from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 __all__ = ["init_parallel_env"]
 
 ParallelStrategy = core.ParallelStrategy
 
 
-def init_parallel_env(backend='nccl'):
-    """
-    Initialize parallel training environments in dynamic mode.
+def _start_kv_server(port, http_server_d):
+    from paddle.distributed.fleet.utils.http_server import KVServer
+    http_server = KVServer(int(port))
+    http_server.start()
+    wait_seconds = 5
+    while http_server_d.get("running", False):
+        time.sleep(wait_seconds)
+    http_server.stop()
 
-    Args:
-        backend(str, optional): The backend to communication between multiple devices.
-            Now only support ``nccl`` . Default value is ``nccl`` .
+
+def init_parallel_env():
+    """
+    Initialize parallel training environment in dynamic graph mode.
+
+    .. note::
+        Now only supports initializing the GPU parallel training 
+        environment and using NCCL for communication.
 
     Returns:
         None
@@ -89,14 +103,12 @@ def init_parallel_env(backend='nccl'):
                 dist.spawn(train)
     """
 
-    # 1. input check
-    if not isinstance(backend, six.string_types):
-        raise TypeError("input `backend` type error, expected type is str, "
-                        "but received type is %s." % type(backend))
-    if cpt.to_text(backend) != 'nccl':
-        raise ValueError(
-            "backend `%s` is not supported, now only supports `nccl` backend." %
-            backend)
+    # 1. gpu check
+    if not core.is_compiled_with_cuda():
+        raise NotImplementedError(
+            "Cannot initialize parallel environment in CPU-only version, now only "
+            "supports initializing the GPU parallel environment. Please recompile "
+            "or reinstall paddle with GPU support.")
 
     # 2. check env
     def _check_var_exists(var_name):
@@ -112,30 +124,60 @@ def init_parallel_env(backend='nccl'):
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
-    # 3. init ParallelStrategy
-    strategy = ParallelStrategy()
-    if cpt.to_text(backend) == 'nccl':
-        if parallel_helper._is_parallel_ctx_initialized():
-            warnings.warn("The parallel environment has been initialized.")
-        strategy.nranks = ParallelEnv().world_size
-        strategy.local_rank = ParallelEnv().rank
-        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-        strategy.current_endpoint = ParallelEnv().current_endpoint
-        if strategy.nranks < 2:
-            return
-        # NOTE(chenweihang): [ why config global place here? ]
-        # the dygraph mode will be set to default mode, 
-        # users will not call `dygraph.guard` or `enable_dygraph`
-        # directly, if they want to switch default place,
-        # they need to call a function to change default place,
-        # here just set correctly place to users
-        place = core.CUDAPlace(ParallelEnv().device_id)
-        _set_expected_place(place)
+    if ParallelEnv().world_size < 2:
+        return
 
-        # init nccl context
-        parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
-        parallel_helper._init_parallel_ctx()
+    # 3: init gloo context
+    ep_rank_0 = ParallelEnv().trainer_endpoints[0].split(":")
+    ep_rank = ParallelEnv().trainer_endpoints[ParallelEnv().rank].split(":")
+    manager = Manager()
+    # glboal dict to store status
+    http_server_d = manager.dict()
+    http_server_d["running"] = False
+    if ParallelEnv().rank == 0:
+        http_server = Process(
+            target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
+        http_server.daemon = True
+        http_server_d["running"] = True
+        http_server.start()
+    wait_server_ready([ParallelEnv().trainer_endpoints[0]])
+
+    gloo_strategy = core.GlooParallelStrategy()
+    gloo_strategy.rank = ParallelEnv().rank
+    gloo_strategy.rank_num = ParallelEnv().world_size
+    gloo_strategy.ip_address = ep_rank_0[0]
+    gloo_strategy.ip_port = int(ep_rank_0[1])
+    default_init_timeout_seconds = 3600
+    default_run_timeout_seconds = 9999999
+    gloo_strategy.init_seconds = default_init_timeout_seconds
+    gloo_strategy.run_seconds = default_run_timeout_seconds
+    gloo = core.GlooParallelContext(gloo_strategy)
+    gloo.init()
+    if ParallelEnv().rank == 0:
+        http_server_d["running"] = False
+        http_server.join()
+
+    # 4. init NCCL ParallelStrategy
+    strategy = ParallelStrategy()
+    if parallel_helper._is_parallel_ctx_initialized():
+        warnings.warn("The parallel environment has been initialized.")
+    strategy.nranks = ParallelEnv().world_size
+    strategy.local_rank = ParallelEnv().rank
+    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+    strategy.current_endpoint = ParallelEnv().current_endpoint
+
+    # NOTE(chenweihang): [ why config global place here? ]
+    # the dygraph mode will be set to default mode, 
+    # users will not call `dygraph.guard` or `enable_dygraph`
+    # directly, if they want to switch default place,
+    # they need to call a function to change default place,
+    # here just set correctly place to users
+    place = core.CUDAPlace(ParallelEnv().device_id)
+    _set_expected_place(place)
+
+    # init nccl context
+    parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
+    parallel_helper._init_parallel_ctx()
 
 
 def get_rank():
@@ -163,7 +205,7 @@ def get_rank():
 
 def get_world_size():
     """
-    The number of trainers (number of processes participating in current job).
+    Returns the number of trainers (number of processes participating in current job).
 
     Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 
     The default value is 1.

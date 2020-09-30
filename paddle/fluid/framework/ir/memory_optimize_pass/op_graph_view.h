@@ -18,7 +18,16 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
+
+namespace paddle {
+namespace framework {
+namespace details {
+class OpHandleBase;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

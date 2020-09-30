@@ -39,6 +39,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpInfo;
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
@@ -105,8 +114,8 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
-class OperatorBase;
 class ExecutionContext;
+class OperatorBase;
 
 class RuntimeContext {
  public:
@@ -156,6 +165,14 @@ class OperatorBase {
         attrs_.find(name), attrs_.end(),
         platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
     return BOOST_GET_CONST(T, attrs_.at(name));
+  }
+  void SetAttr(const std::string& name, const Attribute& v) {
+    PADDLE_ENFORCE_EQ(
+        HasAttr(name), true,
+        platform::errors::NotFound(
+            "The attribute %s is not found in operator %s", name, Type()));
+
+    attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
 

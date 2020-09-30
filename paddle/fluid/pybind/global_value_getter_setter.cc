@@ -31,6 +31,8 @@
 
 // data processing
 DECLARE_bool(use_mkldnn);
+DECLARE_string(tracer_mkldnn_ops_on);
+DECLARE_string(tracer_mkldnn_ops_off);
 // debug
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(cpu_deterministic);
@@ -62,6 +64,7 @@ DECLARE_bool(use_system_allocator);
 // others
 DECLARE_bool(benchmark);
 DECLARE_int32(inner_op_parallelism);
+DECLARE_int32(max_inplace_grad_add);
 DECLARE_string(tracer_profile_fname);
 #ifdef PADDLE_WITH_CUDA
 // cudnn
@@ -334,8 +337,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
   } while (0)
 
 static void RegisterGlobalVarGetterSetter() {
-  REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_use_mkldnn,
-                              FLAGS_free_idle_chunk,
+  REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_free_idle_chunk,
                               FLAGS_free_when_no_cache_hit);
 
   REGISTER_PUBLIC_GLOBAL_VAR(
@@ -349,7 +351,8 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_init_allocated_mem, FLAGS_initial_cpu_memory_in_mb,
       FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
       FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
-      FLAGS_paddle_num_threads);
+      FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
+      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
 
 #ifdef PADDLE_WITH_CUDA
   REGISTER_PUBLIC_GLOBAL_VAR(

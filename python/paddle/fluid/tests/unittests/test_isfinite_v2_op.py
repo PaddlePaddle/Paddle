@@ -41,7 +41,7 @@ def run_dygraph(x_np, op_str, use_gpu=True):
     if use_gpu and fluid.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
-    x = paddle.to_variable(x_np)
+    x = paddle.to_tensor(x_np)
     dygraph_result = getattr(paddle.tensor, op_str)(x)
     return dygraph_result
 

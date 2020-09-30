@@ -19,8 +19,10 @@ import os
 import math
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.base.util_factory import fleet_util
 from paddle.distributed.fleet import fleet
+import paddle
+
+paddle.enable_static()
 
 
 class TestDistFleetHeterProgram(unittest.TestCase):

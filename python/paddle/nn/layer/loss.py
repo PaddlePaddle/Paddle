@@ -627,10 +627,13 @@ class KLDivLoss(fluid.dygraph.Layer):
     $$l(x, y) = y * (\log(y) - x)$$
 
     Parameters:
-        reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            Default is ``'mean'``.
+        reduction (Tensor): Indicate how to average the loss,
+             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+             If `reduction` is ``'mean'``, the reduced mean loss is returned;
+             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+             if `reduction` is ``'sum'``, the reduced sum loss is returned;
+             if `reduction` is ``'none'``, no reduction will be apllied.
+             Default is ``'mean'``.
 
     Shape:
 
@@ -654,11 +657,11 @@ class KLDivLoss(fluid.dygraph.Layer):
             x = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [N]
+            # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
             pred_loss = kldiv_criterion(paddle.to_tensor(x),
                                         paddle.to_tensor(target))
-            # shape=[5]
+            # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
@@ -684,7 +687,7 @@ class KLDivLoss(fluid.dygraph.Layer):
         self.reduction = reduction
 
     def forward(self, input, label):
-        out = paddle.nn.functional.kl_div(input, label, self.reduction)
+        out = F.kl_div(input, label, self.reduction)
         return out
 
 
@@ -770,7 +773,7 @@ class CTCLoss(fluid.dygraph.Layer):
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
 
     Shape:
-        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type must be float32.
+        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.

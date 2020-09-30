@@ -12,28 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <iomanip>
 #include <limits>
-#include <map>
 #include <mutex>  // NOLINT
 #include <random>
-#include <stack>
 #include <string>
-#include <vector>
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#endif  // PADDLE_WITH_CUDA
 
-#include "glog/logging.h"
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
-#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 

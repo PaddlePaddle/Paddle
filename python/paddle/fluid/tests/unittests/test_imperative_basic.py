@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
+from paddle.fluid.layer_helper import LayerHelper
 from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
@@ -210,7 +211,7 @@ class TestImperative(unittest.TestCase):
         paddle.disable_static()
         self.assertTrue(paddle.in_dynamic_mode())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        var_inp = paddle.to_variable(np_inp)
+        var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out1 = out.numpy()
@@ -220,7 +221,7 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(paddle.in_dynamic_mode())
         paddle.disable_static()
         self.assertTrue(paddle.in_dynamic_mode())
-        var_inp = paddle.to_variable(np_inp)
+        var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out2 = out.numpy()
@@ -635,6 +636,31 @@ class TestDygraphUtils(unittest.TestCase):
             res1 = func(a, act="sigmoid", use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph_use_mkldnn(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
+        helper = LayerHelper(
+            fluid.unique_name.generate("test"), act="relu", use_mkldnn=True)
+        func = helper.append_activation
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a)
+            res2 = fluid.layers.relu(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
+        helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
+        func = helper.append_activation
+        with fluid.dygraph.guard(fluid.core.CPUPlace()):
+            a = fluid.dygraph.to_variable(a_np)
+            fluid.set_flags({'FLAGS_use_mkldnn': True})
+            try:
+                res1 = func(a)
+            finally:
+                fluid.set_flags({'FLAGS_use_mkldnn': False})
+            res2 = fluid.layers.relu(a)
+        self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():

@@ -20,7 +20,6 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-from ...fluid.layers import label_smooth  #DEFINE_ALIAS
 from ...fluid import one_hot  #DEFINE_ALIAS
 from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
@@ -80,6 +79,8 @@ def interpolate(x,
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    Where in_w is width of the input tensor, in_h is the height of the input tensor,
+    in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -88,6 +89,7 @@ def interpolate(x,
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
+        'area': Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities 
     to determine the value of an unknown quantity between the two known quantities. 
@@ -113,6 +115,12 @@ def interpolate(x,
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
+
+    Area interpolation is to perform area interpolation
+    in both the 3rd dimension(in height direction) , the 4th dimension(in width
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to 
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or 
+    `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
 
@@ -207,11 +215,11 @@ def interpolate(x,
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
+        scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+        mode (str): The resample method. It supports 'linear', 'area', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
@@ -235,7 +243,7 @@ def interpolate(x,
     Raises:
         TypeError: size should be a list or tuple or Tensor.
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
-                    'trilinear', 'bicubic', or 'nearest' currently.
+                    'trilinear', 'bicubic', 'area' or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
         ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
@@ -283,10 +291,11 @@ def interpolate(x,
         'TRILINEAR',
         'NEAREST',
         'BICUBIC',
+        'AREA',
     ]
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'linaer', 'bilinear', 'trilinear', "
+            "The 'resample' of image_resize can only be 'area', 'linear', 'bilinear', 'trilinear', "
             " 'bicubic' or 'nearest' currently.")
 
     if resample in ['LINEAR'] and len(x.shape) != 3:
@@ -310,8 +319,17 @@ def interpolate(x,
         raise ValueError(
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
+
+    if resample == 'AREA' and len(x.shape) == 3:
+        return paddle.nn.functional.adaptive_avg_pool1d(x, size)
+
+    if resample == 'AREA' and len(x.shape) == 4:
+        return paddle.nn.functional.adaptive_avg_pool2d(x, size)
+    if resample == 'AREA' and len(x.shape) == 5:
+        return paddle.nn.functional.adaptive_avg_pool3d(x, size)
+
     helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
@@ -349,14 +367,15 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
+    if out_shape is not None and scale is not None:
+        raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
         if isinstance(out_shape, Variable):
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
             if not (_is_list_or_turple_(out_shape)):
-                raise TypeError(
-                    "out_shape should be a list or tuple or Variable.")
+                raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
             contain_var = False
             for dim_idx, dim_size in enumerate(out_shape):
@@ -388,7 +407,7 @@ def interpolate(x,
             if len(x.shape) == 3:
                 if len(out_shape) != 1:
                     raise ValueError(
-                        "out_shape length should be 2 for input 3-D tensor")
+                        "size length should be 2 for input 3-D tensor")
                 if contain_var:
                     attrs['out_w'] = size_list[0]
                 else:
@@ -396,7 +415,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[0]
             if len(x.shape) == 4:
                 if len(out_shape) != 2:
-                    raise ValueError("out_shape length should be 2 for "
+                    raise ValueError("size length should be 2 for "
                                      "input 4-D tensor.")
                 if contain_var:
                     attrs['out_h'] = size_list[0]
@@ -407,7 +426,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[1]
             if len(x.shape) == 5:
                 if len(out_shape) != 3:
-                    raise ValueError("out_shape length should be 3 for "
+                    raise ValueError("size length should be 3 for "
                                      "input 5-D tensor.")
                 if contain_var:
                     attrs['out_d'] = size_list[0]
@@ -430,7 +449,7 @@ def interpolate(x,
             for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale_list))
-        elif isinstance(scale, list):
+        elif isinstance(scale, list) or isinstance(scale, tuple):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError("scale_shape length should be {} for "
                                  "input {}-D tensor.".format(
@@ -441,7 +460,8 @@ def interpolate(x,
             attrs['scale'] = list(map(float, scale))
         else:
             raise TypeError(
-                "Attr(scale)'s type should be float, int, list or Tensor.")
+                "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
+            )
 
     if in_dygraph_mode():
         attr_list = []
@@ -480,9 +500,12 @@ def upsample(x,
              name=None):
     """
     This op resizes a batch of images.
+
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    Where in_w is width of the input tensor, in_h is the height of the input tensor,
+    in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -507,12 +530,21 @@ def upsample(x,
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
+
     Trilinear interpolation is an extension of linear interpolation for
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
+
     The linear interpolation is performed on three directions.
     align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
+
+    Area interpolation is to perform area interpolation
+    in both the 3rd dimension(in height direction) , the 4th dimension(in width
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or
+    `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
+
     Example:
     .. code-block:: text
         For scale_factor:
@@ -605,9 +637,10 @@ def upsample(x,
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+        scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if 
+             it is either a list or a tuple or a Tensor.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -910,12 +943,12 @@ def dropout(x,
             #get mask shape
             input_shape = x.shape
             drop_axes = [axis] if isinstance(axis, int) else axis
-            if max(drop_axes) > len(input_shape) - 1:
-                raise ValueError("axis value should less than dimensions of x:{}, but get drop_axes value:{} " \
+            if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
+                raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
                                  .format(len(input_shape), max(drop_axes)))
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
-                    "length of axis should not greater than dimensions of x:{}, but get length of drop axes: {}".
+                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
             for i in drop_axes:
@@ -1091,6 +1124,8 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
                                  'alpha_dropout')
 
     if training:
+        if p == 1:
+            return layers.scale(x, scale=0.)
         #get transformation params
         alpha = 1.6732632423543772848170429916717
         scale = 1.0507009873554804934193349852946
@@ -1446,3 +1481,83 @@ def linear(x, weight, bias=None, name=None):
         else:
             res = tmp
         return res
+
+
+def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
+    """
+    Label smoothing is a mechanism to regularize the classifier layer and is called
+    label-smoothing regularization (LSR).
+
+    Label smoothing is proposed to encourage the model to be less confident,
+    since optimizing the log-likelihood of the correct label directly may
+    cause overfitting and reduce the ability of the model to adapt. Label
+    smoothing replaces the ground-truth label :math:`y` with the weighted sum
+    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
+    i.e.
+
+    .. math::
+
+        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
+
+    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
+    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
+    uniform distribution is used for :math:`\mu`.
+
+    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
+
+    Parameters:
+        label(Tensor): The input variable containing the label data. The
+                        label data should use one-hot representation. It's
+                        a multidimensional tensor with a shape of
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+        prior_dist(Tensor, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is
+                        0.1.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor containing the smoothed labels.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x_data = np.array([[[0, 1, 0],
+                                [ 1,  0, 1]]]).astype("float32")
+            print(x_data.shape)
+            paddle.disable_static()
+            x = paddle.to_tensor(x_data, stop_gradient=False)
+            output = paddle.nn.functional.label_smooth(x)
+            print(output.numpy())
+            
+            #[[[0.03333334 0.93333334 0.03333334]
+            #  [0.93333334 0.03333334 0.93333334]]]
+    """
+    if epsilon > 1. or epsilon < 0.:
+        raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        return core.ops.label_smooth(label, prior_dist, 'epsilon',
+                                     float(epsilon))
+
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'label_smooth')
+
+    helper = LayerHelper("label_smooth", **locals())
+    label.stop_gradient = True
+    smooth_label = helper.create_variable_for_type_inference(label.dtype)
+    helper.append_op(
+        type="label_smooth",
+        inputs={"X": label,
+                "PriorDist": prior_dist} if prior_dist else {"X": label},
+        outputs={"Out": smooth_label},
+        attrs={"epsilon": float(epsilon)})
+    return smooth_label

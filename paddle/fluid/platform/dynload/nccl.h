@@ -14,8 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include <nccl.h>
-
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -62,6 +62,13 @@ NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #if NCCL_VERSION_CODE >= 2212
 #define NCCL_RAND_ROUTINE_EACH_AFTER_2212(__macro) __macro(ncclBroadcast);
 NCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+#if NCCL_VERSION_CODE >= 2703
+#define NCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
+  __macro(ncclSend);                               \
+  __macro(ncclRecv);
+NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload

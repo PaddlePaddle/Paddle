@@ -100,7 +100,7 @@ def add_cases(suite):
         GridSampleTestCase(
             methodName='runTest',
             mode='bilinear',
-            padding_mode='reflect',
+            padding_mode='reflection',
             align_corners=True))
     suite.addTest(
         GridSampleTestCase(
@@ -125,6 +125,16 @@ def load_tests(loader, standard_tests, pattern):
     add_cases(suite)
     add_error_cases(suite)
     return suite
+
+
+class TestGridSampleAPI(unittest.TestCase):
+    def test_errors(self):
+        with self.assertRaises(ValueError):
+            x = paddle.randn([1, 1, 3, 3])
+            F.grid_sample(x, 1.0)
+        with self.assertRaises(ValueError):
+            x = paddle.randn([1, 1, 3, 3])
+            F.grid_sample(1.0, x)
 
 
 if __name__ == '__main__':

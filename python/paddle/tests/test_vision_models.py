@@ -36,7 +36,7 @@ class TestVisonModels(unittest.TestCase):
         model.test_batch(x)
 
     def test_mobilenetv2_pretrained(self):
-        self.models_infer('mobilenet_v2', pretrained=True)
+        self.models_infer('mobilenet_v2', pretrained=False)
 
     def test_mobilenetv1(self):
         self.models_infer('mobilenet_v1')

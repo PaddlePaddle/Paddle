@@ -15,6 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -100,7 +109,9 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
                            nv_ksize, weight, bias);
-  PADDLE_ENFORCE(layer != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(layer,
+                          platform::errors::Fatal("TensorRT create conv2d"
+                                                  " layer error."));
   layer->setStride(nv_strides);
   layer->setPadding(nv_paddings);
   layer->setNbGroups(groups);
