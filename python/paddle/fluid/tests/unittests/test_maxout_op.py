@@ -111,6 +111,10 @@ class TestMaxoutAPI(unittest.TestCase):
         out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
         for r in [out1, out2]:
             self.assertTrue(np.allclose(out_ref, r.numpy()))
+
+        out3 = F.maxout(x, self.groups, -1)
+        out3_ref = maxout_forward_naive(self.x_np, self.groups, -1)
+        self.assertTrue(np.allclose(out3_ref, out3.numpy()))
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -127,16 +131,12 @@ class TestMaxoutAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.maxout, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.data(
+                name='x_int32', shape=[2, 4, 6, 8], dtype='int32')
             self.assertRaises(TypeError, F.maxout, x_int32)
 
-        with fluid.program_guard(fluid.Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.maxout, 1, 2)
-            # The input dtype must be float32, float64.
-            x_int32 = fluid.data(
-                name='x_int32', shape=[2, 4, 3, 5], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.maxout, x_int32, 2)
+            x_float32 = paddle.data(name='x_float32', shape=[2, 4, 6, 8])
+            self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
 
 if __name__ == '__main__':

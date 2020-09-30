@@ -12556,6 +12556,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.maxout")
 @templatedoc()
 def maxout(x, groups, name=None, axis=1):
     """
@@ -12589,25 +12590,7 @@ def maxout(x, groups, name=None, axis=1):
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
-
-    helper = LayerHelper("maxout", **locals())
-    if axis not in [1, -1, 3]:
-        raise ValueError(
-            "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
-            "Attr(axis): %s." % str(axis))
-    if axis == -1:
-        axis = 3
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="maxout",
-        inputs={"X": x},
-        attrs={"groups": groups,
-               "axis": axis},
-        outputs={"Out": out})
-    return out
+    return paddle.nn.functional.maxout(**locals())
 
 
 def space_to_depth(x, blocksize, name=None):

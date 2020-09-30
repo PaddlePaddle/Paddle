@@ -746,6 +746,13 @@ def maxout(x, groups, axis=1, name=None):
         return core.ops.maxout(x, 'groups', groups, 'axis', axis)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+    if axis not in [1, -1, 3]:
+        raise ValueError(
+            "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
+            "Attr(axis): %s." % str(axis))
+    if axis == -1:
+        axis = 3
+
     helper = LayerHelper('maxout', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
