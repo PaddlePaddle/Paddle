@@ -103,9 +103,9 @@ def create_parameter(shape,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            W = layers.create_parameter(shape=[784, 200], dtype='float32')
+            import paddle
+            paddle.enable_static()
+            W = paddle.static.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple, numpy.ndarray), 'create_parameter')
     for item in shape:
@@ -161,9 +161,9 @@ def create_global_var(shape,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+            import paddle
+            paddle.enable_static()
+            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                            persistable=True, force_cpu=True, name='new_var')
     """
     check_type(shape, 'shape', (list, tuple, numpy.ndarray),
