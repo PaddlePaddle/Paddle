@@ -25,7 +25,6 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
-from .fluid.layer_helper import LayerHelper
 from .fluid import core
 from .fluid.framework import in_dygraph_mode
 from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
