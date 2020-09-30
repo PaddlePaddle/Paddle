@@ -205,5 +205,5 @@ class TestWithInput1x1Filter1x1(TestConv2dBf16Op):
 
 
 if __name__ == '__main__':
-    if core.is_bfloat16():
+    if core.supports_bfloat16():
         unittest.main()
