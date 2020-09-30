@@ -1050,7 +1050,7 @@ class DistributionTestError(unittest.TestCase):
             paddle.disable_static()
             logits = paddle.rand([3, 5])
             cat = Categorical(logits)
-            value = paddle.to_tensor([[2, 1, 3], [3, 2, 1]])
+            value = paddle.to_tensor([[2, 1, 3], [3, 2, 1]], dtype='int64')
             cat.log_prob(value)
 
         self.assertRaises(ValueError, test_shape_not_match_error)
