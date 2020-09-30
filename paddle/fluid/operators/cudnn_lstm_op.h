@@ -54,6 +54,30 @@ struct LSTMCell : Cell<T> {
 template <typename T>
 struct Layer {
   virtual ~Layer() {}
+  Tensor preprocess(const framework::ExecutionContext& context,
+                    const Tensor* input, const TensorList& vec,
+                    const int& hidden_size, const int& gate_num,
+                    const int& layer_idx) {
+    const TensorList& parameter = vec[layer_idx];
+    // crate the temp input for the X * W_ih^T + Bias_ih
+    Tensor cache_input;
+    cache_input.Resize(
+        framework::make_ddim{input->dims[0], input->dims[1], hidden_size});
+    cache_input.mutable_data<T>(ctx.GetPlace());
+    const auto& weight = parameter[0];
+    const auto& bias = parameter[1];
+    auto blas = math::GetBlas<DeviceContext, T>(device_ctx);
+    auto mat_dim_a = math::CreateMatrixDescriptor(
+        RowMatrixFromVector(cache.dims()), 0, false);
+    auto mat_dim_b =
+        math::CreateMatrixDescriptor(ColumnMatrixFromVector(y.dims()), 0, true);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    blas.MatMul(*input, mat_dim_a, weight, mat_dim_b, static_cast<T>(1.0),
+                &cache_input, T(0));
+
+    return cache_input;
+  }
   virtual void operator()(Tensor* input) const = 0;
 };
 
@@ -64,7 +88,9 @@ struct SingleLayer {
                   const Tensor* input, const TensorList& vec,
                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
                   Tensor* last_c, Tensor* output, const int& layer_idx,
-                  const int& init_offset) {
+                  const int& gate_num) {
+    // first step, we could calcalute the W_ih * input + Bias_ih to more faster
+    const int& hidden_size = init_h->dims()[2];
     const int& time_step = input->dims()[0];
     TensorList output_tensors;
     output_tensors.reserve(time_step);
@@ -87,7 +113,7 @@ struct BidirLayer {
                   const Tensor* input, const TensorList& vec,
                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
                   Tensor* last_c, Tensor* output, const int& layer_idx,
-                  const int& init_offset) {}
+                  const int& gate_num) {}
   Cell<T> cell_;
 };
 
@@ -251,7 +277,7 @@ void CacluateLSTMLayer(const framework::ExecutionContext& ctx,
   };
 
   CellType cell;
-  const int& init_offset = init_h->numel() / num_layers;
+  // const int& init_offset = init_h->numel() / num_layers;
   const std::vector<TensorList>& parameter_lists = parameter_split<T>(
       weight, gate_num, num_layers, input_size, hidden_size, is_bidirec);
   Tensor* input_holder;
@@ -278,10 +304,10 @@ void CacluateLSTMLayer(const framework::ExecutionContext& ctx,
       BidirLayerT<T> layer(cell);
       if (i == 0) {
         layer(ctx, input, parameter_lists[i], init_h, init_c, last_h, last_c,
-              output_holder, i, init_offset);
+              output_holder, i, gate_num);
       } else {
         layer(ctx, input_holder, parameter_lists[i], init_h, init_c, last_h,
-              last_c, output_holder, i, init_offset);
+              last_c, output_holder, i, gate_num);
       }
     }
   }
