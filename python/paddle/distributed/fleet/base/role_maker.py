@@ -18,6 +18,7 @@ import numpy as np
 import warnings
 from multiprocessing import Process, Manager
 
+import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
@@ -869,7 +870,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            self._gloo_init()
+            if not paddle.fluid.framework.in_dygraph_mode():
+                self._gloo_init()
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
