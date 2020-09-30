@@ -59,7 +59,8 @@ class SequenceConvOp : public framework::OperatorWithKernel {
             filter_dims[0], context_length * in_dims[1]));
 
     if (ctx->Attrs().Get<bool>("paddingTrainable")) {
-      OP_INOUT_CHECK(ctx->HasInput("PaddingData"), "Input", "PaddingData", "sequence_conv");
+      OP_INOUT_CHECK(ctx->HasInput("PaddingData"), "Input", "PaddingData",
+                     "sequence_conv");
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);

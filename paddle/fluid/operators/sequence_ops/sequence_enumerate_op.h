@@ -47,11 +47,13 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
         in_dims.size(), 2UL,
         platform::errors::InvalidArgument(
             "Input(X) of SequenceEnumerate operator's rank should be 2."
-            "Received %d instead.", in_dims.size()));
+            "Received %d instead.",
+            in_dims.size()));
     PADDLE_ENFORCE_EQ(in_dims[1], 1,
                       platform::errors::InvalidArgument(
                           "Input(X) of SequenceEnumerate operator's 2nd "
-                          "dimension should be 1. Received %d instead.", in_dims[1]));
+                          "dimension should be 1. Received %d instead.",
+                          in_dims[1]));
 
     // Generate enumerate sequence set
     auto in_data = in->data<T>();
