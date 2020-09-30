@@ -85,15 +85,19 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
-      PADDLE_ENFORCE_EQ(seq_num, emission_dims[0],
-                        platform::errors::InvalidArgument(
-                            "the size of Input(length) must be equal to "
-                            "emission_dims[0]."));
+      PADDLE_ENFORCE_EQ(
+          seq_num, emission_dims[0],
+          platform::errors::InvalidArgument(
+              "the size of Input(length) must be equal to "
+              "emission_dims[0]. But input_size = %d, emission_dims[0] = %d.",
+              seq_num, emission_dims[0]));
       auto label_dims = label->dims();
-      PADDLE_ENFORCE_EQ(seq_num, label_dims[0],
-                        platform::errors::InvalidArgument(
-                            "the size of Input(length) must be equal to "
-                            "label_dims[0]."));
+      PADDLE_ENFORCE_EQ(
+          seq_num, label_dims[0],
+          platform::errors::InvalidArgument(
+              "the size of Input(length) must be equal to "
+              "label_dims[0]. But input_size = %d, label_dims[0] = %d.",
+              seq_num, label_dims[0]));
 
       batch_size = emission_dims[0] * emission_dims[1];
       tag_num = emission_dims[2];
