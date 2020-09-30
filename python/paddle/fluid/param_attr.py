@@ -87,6 +87,10 @@ class ParamAttr(object):
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+        check_type(initializer, "initializer", (Initializer, type(None)),
+                   "ParamAttr")
+        check_type(regularizer, "regularizer",
+                   (WeightDecayRegularizer, type(None)), "ParamAttr")
 
         self.name = name
         if self.name == "":
@@ -222,23 +226,25 @@ class WeightNormParamAttr(ParamAttr):
         
 
     Args:
-        dim(int): Dimension over which to compute the norm. Dim is a non-negative
+        dim(int, optional): Dimension over which to compute the norm. Dim is a non-negative
             number which is less than the rank of weight Tensor. For Example, dim can
             be chosen from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
             and rank is 4. Default None, meaning that all elements will be normalized.
         name(str, optional): The parameter's name. Default None, meaning that the name would
             be created automatically. Please refer to :ref:`api_guide_Name` for more details.
-        initializer(Initializer): The method to initialize this parameter, such as
-            ``initializer = fluid.initializer.ConstantInitializer(1.0)``. Default None,
+        initializer(Initializer, optional): The method to initialize this parameter, such as
+            ``initializer = paddle.nn.initializer.Constant(1.0)``. Default None,
             meaning that the weight parameter is initialized by Xavier initializer, and
             the bias parameter is initialized by 0.
-        learning_rate(float32): The parameter's learning rate when
+        learning_rate(float32, optional): The parameter's learning rate when
             optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
-        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
-            :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If regularizer 
-            is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), that regularizer 
-            setting in optimizer will be ignored. Default None, meaning there is no regularization.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are
+            two method: :ref:`api_paddle_fluid_regularizer_L1Decay` ,
+            :ref:`api_paddle_fluid_regularizer_L2DecayRegularizer`.
+            If regularizer isralso set in ``optimizer``
+            (such as :ref:`api_paddle_optimizer_SGD` ), that regularizer setting in
+            optimizer will be ignored. Default None, meaning there is no regularization.
         trainable(bool, optional): Whether this parameter is trainable. Default True.
         do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
@@ -246,18 +252,22 @@ class WeightNormParamAttr(ParamAttr):
     Examples:
         .. code-block:: python
             
-            import paddle.fluid as fluid
-            data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=data,
-                                 size=1000,
-                                 param_attr=fluid.WeightNormParamAttr(
-                                          dim=None,
-                                          name='weight_norm_param',
-                                          initializer=fluid.initializer.ConstantInitializer(1.0),
-                                          learning_rate=1.0,
-                                          regularizer=fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1),
-                                          trainable=True,
-                                          do_model_average=False))
+            import paddle
+
+            paddle.enable_static()
+
+            data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
+
+            fc = paddle.static.nn.fc(input=data,
+                                     size=1000,
+                                     param_attr=paddle.static.WeightNormParamAttr(
+                                                dim=None,
+                                                name='weight_norm_param',
+                                                initializer=paddle.nn.initializer.Constant(1.0),
+                                                learning_rate=1.0,
+                                                regularizer=paddle.regularizer.L2Decay(0.1),
+                                                trainable=True,
+                                                do_model_average=False))
 
     """
     # List to record the parameters reparameterized by weight normalization.

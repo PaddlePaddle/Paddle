@@ -17,6 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+}  // namespace framework
+}  // namespace paddle
+
 // This file almostly contains all the infershape functions that are used in
 // operators.
 

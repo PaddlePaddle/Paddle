@@ -563,6 +563,33 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
+      .def("__setitem__",
+           [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
+              py::object &value_obj) {
+             auto self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto self_numpy = TensorToPyArray(*self_tensor);
+
+             if (py::isinstance<py::array>(value_obj) ||
+                 py::isinstance<py::int_>(value_obj) ||
+                 py::isinstance<py::float_>(value_obj)) {
+               auto value_numpy = value_obj;
+               self_numpy[_index] = value_numpy;
+               SetTensorFromPyArray(self_tensor, self_numpy,
+                                    self_tensor->place(), true);
+
+             } else {
+               auto value =
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               auto value_tensor =
+                   value->MutableVar()->GetMutable<framework::LoDTensor>();
+               auto value_numpy = TensorToPyArray(*value_tensor);
+
+               self_numpy[_index] = value_numpy;
+               SetTensorFromPyArray(self_tensor, self_numpy,
+                                    self_tensor->place(), true);
+             }
+           })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
@@ -649,61 +676,47 @@ void BindImperative(py::module *m_ptr) {
              return self.NewVarBase(tensor.place(), false);
            },
            py::return_value_policy::copy, R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
 
-        Returns a new Variable, detached from the current graph.
+        Returns a new Tensor, detached from the current graph.
 
-        Returns:
-             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
-
+        Returns: The detached Tensor.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
-
+                linear = Linear(32, 64)
+                data = paddle.uniform(shape=[30, 10, 32], -1, 1)
+                x = linear(data)
+                y = x.detach()
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
-        **Notes**:
-        **1. This API is ONLY available in Dygraph mode**
+        Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
-        **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
-
-        Clear  (set to ``0`` ) the Gradient of Current Variable
+        The Gradient of current Tensor will be set to ``0`` .
 
         Returns:  None
 
         Examples:
              .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                         tmp = fluid.dygraph.base.to_variable(x)
-                         tmp.stop_gradient=False
-                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    loss2.backward()
-                    print(loss2.gradient())
-                    loss2.clear_gradient()
-                    print("After clear {}".format(loss2.gradient()))
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.ones([2, 2])
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs2)
+                loss = paddle.reduce_sum(ret)
+                loss.backward()
+                print("Before clear_gradient {}".format(loss.grad))
+                loss.clear_gradient()
+                print("After clear_gradient {}".format(loss.grad))
       )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self, const imperative::Tracer &tracer,
@@ -811,7 +824,8 @@ void BindImperative(py::module *m_ptr) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
             } else {
-              VLOG(2) << "It is meaningless to get shape of variable type "
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
                       << GetTypeName(self);
               return std::vector<int>();
             }

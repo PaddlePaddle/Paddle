@@ -1355,7 +1355,7 @@ class Executor(object):
         if not program._fleet_opt is None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
-            if program._fleet_opt("trainer", "") == "HeterXpuTrainer":
+            if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
                 is_heter = 1
         if scope is None:
             scope = global_scope()

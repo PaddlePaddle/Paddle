@@ -13,17 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
-import gast
+
 import collections
-import logging
+import gast
 import inspect
 import six
 import textwrap
 import threading
-import warnings
 import weakref
 
-import gast
 from paddle.fluid import framework
 from paddle.fluid import in_dygraph_mode
 from paddle.fluid.dygraph import layers
@@ -207,7 +205,7 @@ def unwrap_decorators(func):
     decorators = []
     cur = func
     while True:
-        if isinstance(cur, StaticLayer):
+        if isinstance(cur, StaticFunction):
             decorators.append(cur)
             # Note: if `cur` is a method, keep it as bound method of class.
             instance = cur._class_instance
@@ -220,7 +218,7 @@ def unwrap_decorators(func):
     return decorators, cur
 
 
-class StaticLayer(object):
+class StaticFunction(object):
     """
     Wrapper class to Manage program conversion of decorated function.
 
@@ -228,7 +226,7 @@ class StaticLayer(object):
 
     def __init__(self, function, input_spec=None):
         """
-        Initializes a `StaticLayer`.
+        Initializes a `StaticFunction`.
 
         Args:
             function(callable): A function or method that will be converted into static program.
@@ -270,12 +268,12 @@ class StaticLayer(object):
         
         In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
-        to parse the class instance correctly instead of the `StaticLayer` instance.
+        to parse the class instance correctly instead of the `StaticFunction` instance.
         """
         if instance not in self._descriptor_cache:
             if instance is None:
                 return self
-            # Note(Aurelius84): To construct new instance of StaticLayer when we
+            # Note(Aurelius84): To construct new instance of StaticFunction when we
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
             new_static_layer._class_instance = instance
@@ -372,6 +370,7 @@ class StaticLayer(object):
         Returns:
             Traced ConcreteProgram and executable translated Layer.
         """
+
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
@@ -451,7 +450,7 @@ class StaticLayer(object):
                     format(self._function_spec))
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
-            logging.warning(
+            logging_utils.warn(
                 "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".
                 format(self._function_spec, cached_program_len))
 
@@ -524,6 +523,19 @@ def _switch_declarative_mode_guard_(is_declarative=True):
     _in_declarative_mode_ = original_val
 
 
+def _verify_init_in_dynamic_mode(class_instance):
+    """
+    Verifies the instance is initialized in dynamic mode.
+    """
+    if isinstance(class_instance, layers.Layer):
+        if not class_instance._init_in_dynamic_mode:
+            raise RuntimeError(
+                " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before "
+                "initializing your Layer class `{}` . Because parameters of Layer class should be initialized firstly "
+                "in dynamic mode while applying transformation.".format(
+                    class_instance))
+
+
 class ConcreteProgram(object):
 
     __slots__ = [
@@ -556,6 +568,9 @@ class ConcreteProgram(object):
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
             input_spec(list[InputSpec]): 
         """
+        # verify the instance is initialized in imperative mode.
+        _verify_init_in_dynamic_mode(class_instance)
+
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function
         static_func = convert_to_static(dygraph_function)
@@ -632,7 +647,7 @@ class ProgramCache(object):
             # Note: raise warnings if number of traced program is more than `max_tracing_count`
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
-                logging.warning(
+                logging_utils.warn(
                     "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
                     "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
                     format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
@@ -804,8 +819,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
+
         if not self.enable_to_static:
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."
@@ -879,8 +895,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
+
         if not self.enable_to_static:
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
                 "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
             )
@@ -933,8 +950,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
+
         if not self.enable_to_static:
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."
