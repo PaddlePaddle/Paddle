@@ -19,6 +19,7 @@ import warnings
 from multiprocessing import Process, Manager
 
 import paddle.fluid as fluid
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 
 class Role:
@@ -77,9 +78,10 @@ class Gloo(object):
         self._worker_num = worker_num
         self._server_num = server_num
         self._need_init_all = need_init_all
-        self._iface = self.__get_default_iface()
+        self._iface = ""
         self._prefix = kwargs.get("store.prefix", "")
 
+        http_server = None
         if self._rendezvous == Gloo.RENDEZVOUS.HDFS:
             dfs_name = kwargs.get("dfs.name", "")
             dfs_ugi = kwargs.get("dfs.ugi", "")
@@ -99,15 +101,18 @@ class Gloo(object):
         elif self._rendezvous == Gloo.RENDEZVOUS.HTTP:
             ip = kwargs.get("http.host", "")
             port = kwargs.get("http.port", "")
+            start_http_server = kwargs.get("start_http_server", False)
+            http_server_d = kwargs.get("http_server_d")
 
             if not ip or not port:
                 raise ValueError(self._err_type)
-            self._init_http(ip, port, self._prefix)
-
+            http_server = self._init_http(ip, port, self._prefix,
+                                          start_http_server, http_server_d)
         else:
             raise ValueError(self._err_type)
 
         self._is_initialized = True
+        self._http_server = http_server
 
     def _init_fs(self, fs_path, prefix):
         def init(rank, nodes, role):
@@ -163,32 +168,32 @@ class Gloo(object):
             gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
-    def _init_http(self, ip, port, prefix):
+    def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
         def __start_kv_server(http_server_d, size_d):
             from paddle.distributed.fleet.utils.http_server import KVServer
             http_server = KVServer(port, size_d)
             http_server.start()
             wait_seconds = 5
-            while http_server_d.get("running",
-                                    False) and not http_server.shoud_stop():
+            while http_server_d.get("running", False):
                 time.sleep(wait_seconds)
             http_server.stop()
 
-        def init_kv_server():
+        def init_kv_server(http_server_d):
             size_d = {
                 "trainer": self._worker_num,
                 "pserver": self._server_num,
                 "all": self._worker_num + self._server_num
             }
 
-            _http_server_d = {"running": True}
+            http_server_d["running"] = True
             # child process for http server
             _http_server = Process(
-                target=__start_kv_server, args=(_http_server_d, size_d))
+                target=__start_kv_server, args=(http_server_d, size_d))
             _http_server.daemon = True
             # set running status to True
             # start child process
             _http_server.start()
+            return _http_server
 
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
@@ -199,12 +204,15 @@ class Gloo(object):
             gloo.set_timeout_seconds(self._init_timeout_seconds,
                                      self._run_timeout_seconds)
             gloo.set_http_store(ip, port, role)
+            ep = ":".join([ip, str(port)])
+            wait_server_ready([ep])
+            gloo.init()
             return gloo
 
         port = int(port)
 
-        if self._role == Role.SERVER and self._role_id == 0:
-            init_kv_server()
+        if start_http_server:
+            http_server = init_kv_server(http_server_d)
 
         if self._role == Role.WORKER:
             rank, nodes = self._get_rank_nodes(Role.WORKER)
@@ -219,6 +227,9 @@ class Gloo(object):
             rank, nodes = self._get_rank_nodes(Role.ALL)
             gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
+        if start_http_server:
+            http_server_d["running"] = False
+            http_server.join()
 
     def _get_rank_nodes(self, role):
         nodes = 0
@@ -254,26 +265,33 @@ class Gloo(object):
         """
         get default physical interface
         """
-        import netifaces
-        gateways = netifaces.gateways()
-        if gateways.get(netifaces.AF_INET) != None:
-            gateway = gateways[netifaces.AF_INET]
-            if len(gateway) > 0 and len(gateway[0]) > 1:
-                return gateway[0][1]
+        res = os.popen("route -A inet").read().strip().split("\n")
+
+        gateway_idx = None
+        iface_idx = None
+        for item in res:
+            item = item.split()
+            if "Gateway" in item and "Iface" in item:
+                gateway_idx = item.index("Gateway")
+                iface_idx = item.index("Iface")
+            elif gateway_idx != None and iface_idx != None:
+                gateway = None
+                if len(item) > gateway_idx:
+                    gateway = item[gateway_idx]
+                if gateway and gateway != '*' and gateway != "0.0.0.0" and len(
+                        item) > iface_idx:
+                    return item[iface_idx]
         return "lo"
 
     def __get_default_iface_from_interfaces(self):
         """
         get default physical interface
         """
-        import netifaces
-        for intf_name in netifaces.interfaces():
-            addresses = netifaces.ifaddresses(intf_name)
-            if netifaces.AF_INET in addresses:
-                ipv4_addresses = addresses[netifaces.AF_INET]
-                for ipv4_address in ipv4_addresses:
-                    if 'broadcast' in ipv4_address:
-                        return intf_name
+        res = os.popen("ip -f inet addr | awk NR%3==1").read().strip().split(
+            "\n")
+        for item in res:
+            if "BROADCAST" in item:
+                return item.split(":")[1].strip()
         return "lo"
 
     def barrier(self, comm_world):
@@ -529,8 +547,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._kwargs = kwargs
         self._role_is_generated = False
 
-        self._server_endpoints = None
-        self._worker_endpoints = None
+        self._server_endpoints = []
+        self._worker_endpoints = []
 
         self._gloo = Gloo()  # gloo instance
 
@@ -793,12 +811,25 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 "store.prefix": prefix,
             }
         elif rendezvous_type == Gloo.RENDEZVOUS.HTTP:
-            ip = os.getenv("PADDLE_GLOO_HTTP_HOST", "")
-            port = os.getenv("PADDLE_GLOO_HTTP_PORT", "")
+            start_http_server = False
+            manager = Manager()
+            http_server_d = manager.dict()
+            http_server_d["running"] = False
+            if self._is_collective:
+                ep_rank_0 = self._worker_endpoints[0]
+                if self._is_first_worker():
+                    start_http_server = True
+            else:
+                ep_rank_0 = self._server_endpoints[0]
+                if self._server_index() == 0:
+                    start_http_server = True
+            ip, port = ep_rank_0.split(':')
             kwargs = {
                 "http.host": ip,
                 "http.port": port,
                 "store.prefix": prefix,
+                'start_http_server': start_http_server,
+                'http_server_d': http_server_d,
             }
         else:
             dfs_path = os.getenv("PADDLE_GLOO_FS_PATH", "")
@@ -824,6 +855,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             server_num=self._server_num(),
             need_init_all=need_init_all,
             kwargs=kwargs)
+
+        if rendezvous_type == Gloo.RENDEZVOUS.HTTP:
+            http_server_d['running'] = False
 
     def _generate_role(self):
         """
