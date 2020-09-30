@@ -11090,7 +11090,9 @@ def strided_slice(input, axes, starts, ends, strides):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
+            paddle.enable_static()
             input = fluid.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
