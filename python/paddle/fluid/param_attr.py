@@ -61,15 +61,15 @@ class ParamAttr(object):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
-            w_param_attrs = fluid.ParamAttr(name="fc_weight",
-                                            learning_rate=0.5,
-                                            regularizer=fluid.regularizer.L2Decay(1.0),
-                                            trainable=True)
-            print(w_param_attrs.name) # "fc_weight"
-            x = fluid.data(name='X', shape=[None, 1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=10, param_attr=w_param_attrs)
+            weight_attr = paddle.ParamAttr(name="weight",
+                                           learning_rate=0.5,
+                                           regularizer=paddle.regularizer.L2Decay(1.0),
+                                           trainable=True)
+            print(weight_attr.name) # "weight"
+            paddle.nn.Linear(3, 4, weight_attr=weight_attr)
     """
 
     def __init__(self,
@@ -87,6 +87,10 @@ class ParamAttr(object):
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+        check_type(initializer, "initializer", (Initializer, type(None)),
+                   "ParamAttr")
+        check_type(regularizer, "regularizer",
+                   (WeightDecayRegularizer, type(None)), "ParamAttr")
 
         self.name = name
         if self.name == "":

@@ -201,6 +201,7 @@ from .tensor.math import isfinite  #DEFINE_ALIAS
 from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
+from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
@@ -271,6 +272,7 @@ from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 
 from . import jit
 from . import static
+from . import amp
 
 # high-level api
 from .hapi import Model
