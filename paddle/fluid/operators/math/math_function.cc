@@ -161,14 +161,18 @@ struct TensorSetConstantXPU {
   framework::Tensor* tensor_;
   float value_;
 };
+#endif
 
 template <>
 void set_constant_with_place<platform::XPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
+#ifdef PADDLE_WITH_XPU
   framework::VisitDataType(tensor->type(), TensorSetConstantXPU(tensor, value));
-}
+#else
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
 #endif
+}
 
 template <>
 void set_constant_with_place<platform::CPUPlace>(
