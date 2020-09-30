@@ -927,7 +927,7 @@ class Categorical(Distribution):
         return nn.reshape(select_prob, value_shape, name=name)
 
     def log_prob(self, value):
-        """Log probabilities of the given category.
+        """Log probabilities of the given category. Refer to ``probs`` method.
 
         Args:
           value (Tensor): The input tensor represents the selected category index.
