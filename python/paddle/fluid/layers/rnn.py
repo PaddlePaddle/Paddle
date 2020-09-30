@@ -17,6 +17,7 @@ from __future__ import print_function
 import sys
 from functools import partial, reduce
 
+import paddle
 from . import nn
 from . import tensor
 from . import control_flow
@@ -887,8 +888,6 @@ class BeamSearchDecoder(Decoder):
             from paddle.text import BeamSearchDecoder, dynamic_decode
             from paddle.nn import GRUCell
             from paddle.nn import functional as F
-            paddle.set_default_dtype("float64")
-            print(paddle.get_default_dtype())
             weight = paddle.to_tensor(
                 np.array(np.random.rand(100, 32), dtype=paddle.get_default_dtype()))
             weight_linear = paddle.to_tensor(
@@ -916,16 +915,16 @@ class BeamSearchDecoder(Decoder):
         Constructor of BeamSearchDecoder.
 
         Parameters:
-            cell(RNNCellBase): An instance of `RNNCell` or object with the same interface.
+            cell(RNNCellBase): An instance of `RNNCellBase` or object with the same interface.
             start_token(int): The start token id.
             end_token(int): The end token id.
             beam_size(int): The beam width used in beam search.
             embedding_fn(optional): A callable to apply to selected candidate ids. 
                 Mostly it is an embedding layer to transform ids to embeddings,
                 and the returned value acts as the `input` argument for `cell.call`.
-                **Note that fluid.embedding should be used here rather than
-                fluid.layers.embedding, since shape of ids is [batch_size, beam_size].
-                when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
+                **Note that paddle.nn.functional.embedding should be used here rather than
+                paddle.nn.Embedding, since shape of ids is [batch_size, beam_size].
+                when using paddle.nn.Embedding, must unsqueeze in embedding_fn.**
                 If not provided, the id to embedding transformation must be built into
                 `cell.call`. Default None.
             output_fn(optional): A callable to apply to the cell's output prior to
@@ -1154,6 +1153,8 @@ class BeamSearchDecoder(Decoder):
                 np.array(
                     [[0.] + [-self.kinf] * (self.beam_size - 1)],
                     dtype="float32")), [self.batch_size, 1])
+        if paddle.get_default_dtype() == "float64":
+            log_probs = tensor.cast(log_probs, "float64")
         # TODO: remove the restriction of force_cpu
         init_finished = tensor.fill_constant_batch_size_like(
             input=state,
@@ -1201,7 +1202,11 @@ class BeamSearchDecoder(Decoder):
             shape=[1], dtype="int64", value=self.vocab_size)
         noend_array = [-self.kinf] * self.vocab_size
         noend_array[self.end_token] = 0
+
         self.noend_mask_tensor = tensor.assign(np.array(noend_array, "float32"))
+        if paddle.get_default_dtype() == "float64":
+            self.noend_mask_tensor = tensor.cast(self.noend_mask_tensor,
+                                                 "float64")
 
         step_log_probs = nn.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
@@ -1636,8 +1641,6 @@ def dynamic_decode(decoder,
             from paddle.text import BeamSearchDecoder, dynamic_decode
             from paddle.nn import GRUCell
             from paddle.nn import functional as F
-            paddle.set_default_dtype("float64")
-            print(paddle.get_default_dtype())
             weight = paddle.to_tensor(
                 np.array(np.random.rand(100, 32), dtype=paddle.get_default_dtype()))
             weight_linear = paddle.to_tensor(
