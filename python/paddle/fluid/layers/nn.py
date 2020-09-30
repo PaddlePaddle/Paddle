@@ -12421,6 +12421,9 @@ def clip_by_norm(x, max_norm, name=None):
             reward = paddle.nn.clip_by_norm(x=input, max_norm=1.0)
     """
 
+    if in_dygraph_mode():
+        return core.ops.clip_by_norm(x, 'max_norm', max_norm)
+
     helper = LayerHelper("clip_by_norm", **locals())
     check_variable_and_dtype(x, 'X', ['float32'], 'clip_by_norm')
     check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
