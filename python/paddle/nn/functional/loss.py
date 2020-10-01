@@ -1223,7 +1223,7 @@ def sigmoid_focal_loss(logit,
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
-            "The value of 'reduction' in binary_cross_entropy_with_logits "
+            "The value of 'reduction' in sigmoid_focal_loss "
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
 
@@ -1234,8 +1234,9 @@ def sigmoid_focal_loss(logit,
         normalizer_shape = list(normalizer.shape)
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
-            raise ValueError('Expected one dimensions of normalizer (got {})'.
-                             format(normalizer_dims))
+            raise ValueError(
+                "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".
+                format(normalizer_dims))
 
     if in_dygraph_mode():
         one = _varbase_creator(dtype=logit.dtype)
