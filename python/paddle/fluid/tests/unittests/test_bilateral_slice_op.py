@@ -185,7 +185,7 @@ class TestBilateralSliceApi(TestBilateralSliceOp):
         guide = paddle.fluid.data(
             name='guide', shape=[None, 25, 15], dtype='float32')
         grid = paddle.fluid.data(
-            name='grid', shape=[None, 12, 8, 5, 3], dtype='float32')
+            name='grid', shape=[None, None, 8, 5, 3], dtype='float32')
         paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid,
                                                     self.has_offset)
 

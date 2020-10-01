@@ -1541,7 +1541,9 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
-
+    if paddle.fluid.in_dygraph_mode():
+        attrs = ('has_offset', has_offset)
+        return getattr(core.ops, "bilateral_slice")(x, guide, grid, *attrs)
     helper.append_op(
         type='bilateral_slice',
         inputs=inputs,
