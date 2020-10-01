@@ -102,7 +102,6 @@ class TestConv2dBf16Op(TestConv2dOp):
             'force_fp32_output': self.force_fp32_output,
             'fuse_residual_connection': self.fuse_residual
         }
-        print("working.........")
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
