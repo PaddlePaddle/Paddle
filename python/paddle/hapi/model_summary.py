@@ -155,6 +155,7 @@ def summary(net, input_size, dtypes=None):
     return params_info
 
 
+@paddle.no_grad()
 def summary_string(model, input_size, dtypes=None):
     def _all_is_numper(items):
         for item in items:
