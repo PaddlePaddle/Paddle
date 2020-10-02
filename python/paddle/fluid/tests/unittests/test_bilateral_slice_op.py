@@ -180,11 +180,11 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
     def test_dygraph(self):
         place = paddle.fluid.CUDAPlace(0)
         with paddle.fluid.dygraph.guard(place):
-            x = paddle.rand([3, 1, 50, 30])
-            guide = paddle.rand([3, 50, 30])
-            grid = paddle.rand([3, 2, 2, 5, 3])
+            x1 = paddle.rand([3, 1, 50, 30])
+            guide1 = paddle.rand([3, 50, 30])
+            grid1 = paddle.rand([3, 2, 2, 5, 3])
 
-            paddle.fluid.contrib.bilateral_slice(x, guide, grid, False)
+            paddle.fluid.contrib.bilateral_slice(x1, guide1, grid1, False)
 
 
 class TestBilateralSliceApi(TestBilateralSliceOp):
