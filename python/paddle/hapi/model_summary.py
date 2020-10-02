@@ -106,6 +106,12 @@ def summary(net, input_size, dtypes=None):
         warnings.warn(
             "Your model was created in static mode, this may not get correct summary information!"
         )
+        in_train_mode = False
+    else:
+        in_train_mode = net.training
+
+    if in_train_mode:
+        net.eval()
 
     def _is_shape(shape):
         for item in shape:
@@ -142,6 +148,9 @@ def summary(net, input_size, dtypes=None):
     _input_size = _check_input(_input_size)
     result, params_info = summary_string(net, _input_size, dtypes)
     print(result)
+
+    if in_train_mode:
+        net.train()
 
     return params_info
 
