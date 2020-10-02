@@ -177,6 +177,15 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
         self.has_offset = True
         self.data_type = 'float32'
 
+    def test_dygraph(self):
+        place = paddle.fluid.CUDAPlace(0)
+        with paddle.fluid.dygraph.guard(place):
+            x = paddle.rand([3, 1, 50, 30])
+            guide = paddle.rand([3, 50, 30])
+            grid = paddle.rand([3, 2, 2, 5, 3])
+
+            paddle.fluid.contrib.bilateral_slice(x, guide, grid, False)
+
 
 class TestBilateralSliceApi(TestBilateralSliceOp):
     def test_api(self):
