@@ -177,17 +177,8 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
         self.has_offset = True
         self.data_type = 'float32'
 
-    def test_dygraph(self):
-        place = paddle.fluid.CUDAPlace(0)
-        with paddle.fluid.dygraph.guard(place):
-            x1 = paddle.rand([3, 1, 50, 30])
-            guide1 = paddle.rand([3, 50, 30])
-            grid1 = paddle.rand([3, 2, 2, 5, 3])
 
-            paddle.fluid.contrib.bilateral_slice(x1, guide1, grid1, False)
-
-
-class TestBilateralSliceApi(TestBilateralSliceOp):
+class TestBilateralSliceApi(unittest.TestCase):
     def test_api(self):
         x = paddle.fluid.data(
             name='x', shape=[None, 3, 25, 15], dtype='float32')
@@ -195,8 +186,17 @@ class TestBilateralSliceApi(TestBilateralSliceOp):
             name='guide', shape=[None, 25, 15], dtype='float32')
         grid = paddle.fluid.data(
             name='grid', shape=[None, None, 8, 5, 3], dtype='float32')
-        paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid,
-                                                    self.has_offset)
+        paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid, False)
+
+        if not paddle.fluid.is_compiled_with_cuda():
+            return
+
+        with paddle.fluid.dygraph.guard():
+            x1 = paddle.rand([3, 1, 50, 30])
+            guide1 = paddle.rand([3, 50, 30])
+            grid1 = paddle.rand([3, 2, 2, 5, 3])
+
+            paddle.fluid.contrib.bilateral_slice(x1, guide1, grid1, False)
 
 
 if __name__ == "__main__":
