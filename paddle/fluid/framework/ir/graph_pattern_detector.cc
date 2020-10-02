@@ -1188,6 +1188,28 @@ PDNode *patterns::BatchNormActGrad::operator()(
   return bn_grad;
 }
 
+PDNode *patterns::BatchNormActOneDNN::operator()(PDNode *bn_x,
+                                                 const std::string &act_type) {
+  auto *bn = pattern->NewNode(batch_norm_repr())
+                 ->assert_is_op("batch_norm")
+                 ->assert_is_not_op_input("MomentumTensor")
+                 ->assert_op_attr<bool>("use_mkldnn", true);
+  auto *bn_out = pattern->NewNode(bn_out_repr())
+                     ->assert_is_op_output("batch_norm", "Y")
+                     ->AsIntermediate()
+                     ->assert_is_op_input(act_type);
+  auto *act =
+      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
+  auto *act_out = pattern->NewNode(act_out_repr())
+                      ->assert_is_op_output(act_type, "Out")
+                      ->AsOutput();
+
+  bn->LinksFrom({bn_x}).LinksTo({bn_out});
+  act->LinksFrom({bn_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
 PDNode *patterns::ElewiseAddAct::operator()(
     paddle::framework::ir::PDNode *ele_x_var,
     std::unordered_set<std::string> act_types) {
