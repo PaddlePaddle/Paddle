@@ -801,6 +801,16 @@ def kl_div(input, label, reduction='mean', name=None):
             # shape=[5, 20]
 
     """
+    # ugly type promotion
+    if fluid.data_feeder.convert_dtype(
+            input.dtype) == 'float32' and fluid.data_feeder.convert_dtype(
+                label.dtype) == 'float64':
+        input = fluid.layers.cast(input, 'float64')
+    elif fluid.data_feeder.convert_dtype(
+            input.dtype) == 'float64' and fluid.data_feeder.convert_dtype(
+                label.dtype) == 'float32':
+        label = fluid.layers.cast(label, 'float64')
+
     if paddle.in_dynamic_mode():
         out = core.ops.kldiv_loss(input, label, 'reduction', reduction)
         return out
