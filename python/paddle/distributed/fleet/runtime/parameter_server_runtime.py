@@ -23,6 +23,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 
 from .runtime_base import RuntimeBase
+from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerRuntime(RuntimeBase):
@@ -160,6 +161,17 @@ class ParameterServerRuntime(RuntimeBase):
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
+
+        dist_strategy = self.context["valid_strategy"]
+        launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
+        if launch_barrier:
+            # for trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+            # for ps-heter mode, wait heter worker ready
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            ):
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         lrs = _has_global_step(_get_lr_ops(self.origin_main_program))
 

@@ -111,7 +111,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.assertTrue(np.allclose(res[0], out_ref))
 
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x)
+        x = paddle.to_tensor(self.x)
         out = paddle.logsumexp(x, axis, keepdim)
         self.assertTrue(np.allclose(out.numpy(), out_ref))
         paddle.enable_static()
@@ -126,7 +126,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 
     def test_alias(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x)
+        x = paddle.to_tensor(self.x)
         out1 = paddle.logsumexp(x)
         out2 = paddle.tensor.logsumexp(x)
         out3 = paddle.tensor.math.logsumexp(x)

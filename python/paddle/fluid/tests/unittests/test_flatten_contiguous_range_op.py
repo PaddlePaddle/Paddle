@@ -195,7 +195,7 @@ class TestFlattenPython(unittest.TestCase):
 
         def test_Negative():
             paddle.disable_static()
-            img = paddle.to_variable(x)
+            img = paddle.to_tensor(x)
             out = paddle.flatten(img, start_axis=-2, stop_axis=-1)
             return out.numpy().shape
 

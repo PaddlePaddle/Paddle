@@ -137,12 +137,12 @@ USE_CUDA_ATOMIC(Max, unsigned int);
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 350
 USE_CUDA_ATOMIC(Max, unsigned long long int);  // NOLINT
 #else
-CUDA_ATOMIC_WRAPPER(Max, unsigned long long int) {
+CUDA_ATOMIC_WRAPPER(Max, unsigned long long int) {  // NOLINT
   if (*address >= val) {
     return;
   }
 
-  unsigned long long int old = *address, assumed;
+  unsigned long long int old = *address, assumed;  // NOLINT
 
   do {
     assumed = old;
@@ -169,7 +169,7 @@ CUDA_ATOMIC_WRAPPER(Max, float) {
     return;
   }
 
-  int *const address_as_i = (int *)address;
+  int *const address_as_i = reinterpret_cast<int *>(address);
   int old = *address_as_i, assumed;
 
   do {
@@ -187,9 +187,9 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
     return;
   }
 
-  unsigned long long int *const address_as_ull =
-      (unsigned long long int *)address;
-  unsigned long long int old = *address_as_ull, assumed;
+  unsigned long long int *const address_as_ull =            // NOLINT
+      reinterpret_cast<unsigned long long int *>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;    // NOLINT
 
   do {
     assumed = old;
@@ -209,12 +209,12 @@ USE_CUDA_ATOMIC(Min, unsigned int);
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 350
 USE_CUDA_ATOMIC(Min, unsigned long long int);  // NOLINT
 #else
-CUDA_ATOMIC_WRAPPER(Min, unsigned long long int) {
+CUDA_ATOMIC_WRAPPER(Min, unsigned long long int) {  // NOLINT
   if (*address <= val) {
     return;
   }
 
-  unsigned long long int old = *address, assumed;
+  unsigned long long int old = *address, assumed;  // NOLINT
 
   do {
     assumed = old;
@@ -241,7 +241,7 @@ CUDA_ATOMIC_WRAPPER(Min, float) {
     return;
   }
 
-  int *const address_as_i = (int *)address;
+  int *const address_as_i = reinterpret_cast<int *>(address);
   int old = *address_as_i, assumed;
 
   do {
@@ -259,9 +259,9 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
     return;
   }
 
-  unsigned long long int *const address_as_ull =
-      (unsigned long long int *)address;
-  unsigned long long int old = *address_as_ull, assumed;
+  unsigned long long int *const address_as_ull =            // NOLINT
+      reinterpret_cast<unsigned long long int *>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;    // NOLINT
 
   do {
     assumed = old;

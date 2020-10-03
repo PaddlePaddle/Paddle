@@ -139,6 +139,7 @@ def _append_loaded_suffix_to_var(program_desc):
         var_desc.set_name(new_name)
         for block_idx in six.moves.range(program_desc.num_blocks()):
             block = program_desc.block(block_idx)
+            block._rename_var(cpt.to_bytes(old_name), cpt.to_bytes(new_name))
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)

@@ -204,7 +204,7 @@ def launch_collective(args):
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = "1"
-    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
     procs = start_local_trainers(

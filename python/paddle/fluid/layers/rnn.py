@@ -531,6 +531,10 @@ def _rnn_dynamic_graph(cell,
     flat_inputs = flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
 
+    if initial_states is None:
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+
     if not time_major:
         inputs = map_structure(_transpose_batch_time, inputs)
 
@@ -619,7 +623,7 @@ def _rnn_static_graph(cell,
         inputs = map_structure(rnn.step_input, inputs)
         states = map_structure(rnn.memory, initial_states)
         copy_states = map_structure(lambda x: x, states)
-        outputs, new_states = cell.call(inputs, copy_states, **kwargs)
+        outputs, new_states = cell(inputs, copy_states, **kwargs)
         assert_same_structure(states, new_states)
         if sequence_length:
             step_mask = rnn.step_input(mask)
