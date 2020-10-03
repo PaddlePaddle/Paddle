@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/unique_op.h"
 
 namespace paddle {
@@ -218,10 +219,8 @@ struct Layer {
         {input->dims()[0], input->dims()[1], hidden_size}));
     cache_input.mutable_data<T>(context.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(cache_input.dims()), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(
-        ColumnMatrixFromVector(weight.dims()), 0, true);
+    auto mat_dim_a = math::CreateMatrixDescriptor(cache_input.dims(), 0, false);
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight.dims(), 0, true);
     // convert the batch matmul to matmul, this operator could be speed faster
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
@@ -244,7 +243,7 @@ struct Layer {
                           const Tensor* input, const TensorList& vec,
                           const Tensor* init_h, const Tensor* init_c,
                           Tensor* last_h, Tensor* last_c, Tensor* output,
-                          const int& layer_idx, const int& gate_num) const = 0;
+                          const int& layer_idx, const int& gate_num) {}
 };
 
 template <typename T>
@@ -258,11 +257,12 @@ struct SingleLayer : Layer<T> {
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     // first step, we could calcalute the W_ih * input + Bias_ih to more faster
-    const int& hidden_size = init_h->dims()[2];
+    // const int& hidden_size = init_h->dims()[2];
     const int& time_step = input->dims()[0];
     // vec[0] is parameter of w_hi, vec[2] is bias of b_hi
-    const Tensor& input_w = preprocess<T>(context, input, vec[0], vec[2]);
+    const Tensor& input_w = this->preprocess(context, input, vec[0], vec[2]);
     auto input_tensors = Unbind(input_w);
+
     for (int i = 0; i < time_step; i++) {
       cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3], init_h, init_c,
             last_h, last_c, output);
@@ -288,14 +288,15 @@ struct BidirLayer : Layer<T> {
     // first step, calculate the fw_ih * input + fb_ih to more faster
     const int& time_step = input->dims()[0];
     const Tensor& forward_input_w =
-        preprocess<T>(context, input, vec[0], vec[2]);
+        this->preprocess(context, input, vec[0], vec[2]);
     auto input_tensors = Unbind(forward_input_w);
     for (int i = 0; i < time_step; i++) {
       cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3], init_h, init_c,
             last_h, last_c, output);
     }
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
-    const Tensor& backward_input_w = preprocess(context, input, vec[4], vec[6]);
+    const Tensor& backward_input_w =
+        this->preprocess(context, input, vec[4], vec[6]);
     auto backward_input_tensors = Unbind(backward_input_w);
     std::reverse(backward_input_tensors.begin(), backward_input_tensors.end());
     for (int i = 0; i < time_step; i++) {
