@@ -1543,7 +1543,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
     if paddle.fluid.in_dygraph_mode():
         attrs = ('has_offset', has_offset)
-        return getattr(core.ops, "bilateral_slice")(x, guide, grid, *attrs)
+        return getattr(core.ops, "bilateral_slice")(x, grid, guide, *attrs)
     helper.append_op(
         type='bilateral_slice',
         inputs=inputs,
