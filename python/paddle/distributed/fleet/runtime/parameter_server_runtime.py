@@ -475,13 +475,13 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
         dense_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=1)
+            recv_type=1, use_origin_program=True)
 
         sparse_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=2)
+            recv_type=2, use_origin_program=True)
 
         distributed_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=3)
+            recv_type=3, use_origin_program=True)
 
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
@@ -533,7 +533,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
 
         if main_program is None:
-            main_program = fluid.default_main_program()
+            main_program = self.compiled_strategy.get_origin_ps_main_program()
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
