@@ -1162,13 +1162,13 @@ def sigmoid_focal_loss(logit,
     .. math::
            Out = -Labels * alpha * {(1 - \\sigma(Logit))}^{gamma}\\log(\\sigma(Logit)) - (1 - Labels) * (1 - alpha) * {\\sigma(Logit)}^{gamma}\\log(1 - \\sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. 
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\exp(-Logit)}`. 
 
     Then, if :attr:`normalizer` is not None, this operator divides the
     normalizer tensor on the loss `Out`:
 
     .. math::
-           Out = Out / normalizer
+           Out = \\frac{Out}{normalizer}
 
     Finally, this operator applies reduce operation on the loss.
     If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
@@ -1202,8 +1202,7 @@ def sigmoid_focal_loss(logit,
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``logit`` , else the shape of output is scalar.
+        Tensor, if :attr:`reduction` is ``'mean'`` or ``'sum'``, the out shape is :math:`[1]`, otherwise the shape is the same as ``logit``. The same dtype as ``logit`` tensor.
 
     Examples:
 
@@ -1216,9 +1215,9 @@ def sigmoid_focal_loss(logit,
             label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
             one = paddle.to_tensor([1.], dtype='float32')
             fg_label = paddle.greater_equal(label, one)
-            fg_num = paddle.reduce_sum(paddle.cast(fg_label, dtype='int32'))
+            fg_num = paddle.reduce_sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
-            print(output.numpy())  # [0.45618808]
+            print(output.numpy())  # [0.65782464]
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1252,20 +1251,18 @@ def sigmoid_focal_loss(logit,
                 core.ops.elementwise_sub(one, pred),
                 core.ops.elementwise_sub(one, label)))
 
-        if alpha is not None:
-            alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
-            alpha_t = core.ops.elementwise_add(
-                core.ops.elementwise_mul(alpha, label),
-                core.ops.elementwise_mul(
-                    core.ops.elementwise_sub(one, alpha),
-                    core.ops.elementwise_sub(one, label)))
-            loss = core.ops.elementwise_mul(alpha_t, loss)
+        alpha = fluid.dygraph.base.to_variable([alpha], dtype=loss.dtype)
+        alpha_t = core.ops.elementwise_add(
+            core.ops.elementwise_mul(alpha, label),
+            core.ops.elementwise_mul(
+                core.ops.elementwise_sub(one, alpha),
+                core.ops.elementwise_sub(one, label)))
+        loss = core.ops.elementwise_mul(alpha_t, loss)
 
-        if gamma is not None:
-            gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
-            gamma_t = core.ops.elementwise_pow(
-                core.ops.elementwise_sub(one, p_t), gamma)
-            loss = core.ops.elementwise_mul(gamma_t, loss)
+        gamma = fluid.dygraph.base.to_variable([gamma], dtype=loss.dtype)
+        gamma_t = core.ops.elementwise_pow(
+            core.ops.elementwise_sub(one, p_t), gamma)
+        loss = core.ops.elementwise_mul(gamma_t, loss)
 
         if normalizer is not None:
             loss = core.ops.elementwise_div(loss, normalizer)
