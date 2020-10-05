@@ -30,7 +30,9 @@ __all__ = [
     'Softplus',
     'Softshrink',
     'Softsign',
+    'Swish',
     'Tanhshrink',
+    'ThresholdedReLU',
     'LogSigmoid',
     'LogSoftmax',
     'HSigmoid',
@@ -802,6 +804,43 @@ class Softsign(layers.Layer):
         return F.softsign(x, self._name)
 
 
+class Swish(layers.Layer):
+    """
+    Swish Activation.
+
+    .. math::
+
+        Swish(x) = \\frac{x}{1 + e^{-x}}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            m = paddle.nn.Swish()
+            out = m(x) # [0., 0., 1.]
+    """
+
+    def __init__(self, name=None):
+        super(Swish, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.swish(x, self._name)
+
+
 class Tanhshrink(layers.Layer):
     """
     Tanhshrink Activation
@@ -837,6 +876,48 @@ class Tanhshrink(layers.Layer):
 
     def forward(self, x):
         return F.tanhshrink(x, self._name)
+
+
+class ThresholdedReLU(layers.Layer):
+    """
+    Thresholded ReLU Activation
+
+    .. math::
+
+        ThresholdedReLU(x) = \\begin{cases}
+                               x, \\text{if } x > threshold \\\\
+                               0, \\text{otherwise}
+                              \\end{cases}
+
+    Parameters:
+        threshold (float, optional): The value of threshold for ThresholdedReLU. Default is 1.0
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([2, 0, 1]))
+            m = paddle.nn.ThresholdedReLU()
+            out = m(x) # [2., 0., 0.]
+    """
+
+    def __init__(self, threshold=1.0, name=None):
+        super(ThresholdedReLU, self).__init__()
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return F.thresholded_relu(x, self._threshold, self._name)
 
 
 class LogSigmoid(layers.Layer):

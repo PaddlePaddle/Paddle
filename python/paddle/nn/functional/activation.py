@@ -19,9 +19,7 @@ from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 
 __all__ = [
@@ -994,6 +992,49 @@ def softsign(x, name=None):
     return out
 
 
+def swish(x, name=None):
+    """
+    swish activation.
+
+    .. math::
+
+        swish(x) = \\frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            out = F.swish(x) # [0., 0., 1.]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.swish(x, 'slop', 1.0)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
+    helper = LayerHelper('swish', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': 1.0})
+    return out
+
+
 def tanhshrink(x, name=None):
     """
     tanhshrink activation
@@ -1030,6 +1071,54 @@ def tanhshrink(x, name=None):
     helper = LayerHelper('tanh_shrink', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh_shrink', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def thresholded_relu(x, threshold=1.0, name=None):
+    """
+    thresholded relu activation.
+
+    .. math::
+
+        thresholded_relu(x) = \\begin{cases}
+                               x, \\text{if } x > threshold \\\\
+                               0, \\text{otherwise}
+                              \\end{cases}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold for thresholded_relu. Default is 1.0
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([2, 0, 1]).astype('float32'))
+            out = F.thresholded_relu(x) # [2., 0., 0.]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.thresholded_relu(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'thresholded_relu')
+    helper = LayerHelper('thresholded_relu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='thresholded_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
     return out
 
 
