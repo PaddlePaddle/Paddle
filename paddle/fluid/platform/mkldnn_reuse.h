@@ -898,15 +898,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
 
     auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
-    const bool adaptive = ctx.Attr<bool>("adaptive");
-    if (adaptive) {
-      ksize[0] = static_cast<int>(
-          ceil(static_cast<double>(src_tz[src_tz.size() - 2] / ksize[0])));
-      ksize[1] = static_cast<int>(
-          ceil(static_cast<double>(src_tz[src_tz.size() - 1] / ksize[1])));
-      strides[0] = ksize[0];
-      strides[1] = ksize[1];
-    }
 
     this->AcquireBackwardPrimitiveDescriptor(
         pooling_type == "max"

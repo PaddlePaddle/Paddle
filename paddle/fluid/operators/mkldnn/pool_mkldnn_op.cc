@@ -126,6 +126,19 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     UpdatePadding(&paddings, global_pooling, 0, padding_algorithm, data_dims,
                   strides, ksize);
 
+
+    const bool adaptive = ctx.Attr<bool>("adaptive");
+
+    const auto src_tz = paddle::framework::vectorize(in_x->dims());
+    if (adaptive) {
+      ksize[0] = static_cast<int>(
+          ceil(static_cast<double>(src_tz[src_tz.size() - 2] / ksize[0])));
+      ksize[1] = static_cast<int>(
+          ceil(static_cast<double>(src_tz[src_tz.size() - 1] / ksize[1])));
+      strides[0] = ksize[0];
+      strides[1] = ksize[1];
+    }
+
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
