@@ -111,36 +111,6 @@ class ParameterServerRuntime(RuntimeBase):
                         'node_num': self.role_maker._server_num(),
                         'shape': each_var.shape
                     })
-            else:
-                blocks = []
-                block_paths = os.listdir(var_path)
-
-                for block in block_paths:
-                    if block.startswith(new_var.name):
-                        blocks.append(block)
-
-                slices = []
-                for block in blocks:
-                    slice = load_block.create_var(
-                        name=block,
-                        type=new_var.type,
-                        shape=new_var.shape,
-                        dtype=new_var.dtype,
-                        persistable=False)
-                    slices.append(slice)
-
-                    file_path = os.path.join(var_path, block, "Param")
-                    load_block.append_op(
-                        type='load',
-                        inputs={},
-                        outputs={'Out': [slice]},
-                        attrs={'file_path': file_path})
-
-                load_block.append_op(
-                    type='lookup_sparse_table_merge',
-                    inputs={'X': slices},
-                    outputs={'Out': new_var},
-                    attrs={})
             check_vars.append(each_var)
 
         executor.run(load_prog)
