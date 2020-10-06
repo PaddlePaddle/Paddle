@@ -533,8 +533,6 @@ class ReLU6(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
             m = paddle.nn.ReLU6()
             out = m(x) # [0, 0.3, 6]
@@ -575,8 +573,6 @@ class SELU(layers.Layer):
 
             import paddle
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             m = paddle.nn.SELU()
@@ -707,8 +703,6 @@ class Softplus(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             m = paddle.nn.Softplus()
             out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
@@ -751,8 +745,6 @@ class Softshrink(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
             m = paddle.nn.Softshrink()
             out = m(x) # [-0.4, 0, 0, 0.3]
@@ -789,8 +781,6 @@ class Softsign(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             m = paddle.nn.Softsign()
             out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
@@ -826,9 +816,7 @@ class Swish(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            x = paddle.to_tensor(np.array([-2., 0., 1.]))
             m = paddle.nn.Swish()
             out = m(x) # [-0.238406, 0., 0.731059]
     """
@@ -862,8 +850,6 @@ class Tanhshrink(layers.Layer):
 
             import paddle
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             m = paddle.nn.Tanhshrink()
@@ -904,9 +890,7 @@ class ThresholdedReLU(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([2, 0, 1]))
+            x = paddle.to_tensor(np.array([2., 0., 1.]))
             m = paddle.nn.ThresholdedReLU()
             out = m(x) # [2., 0., 0.]
     """

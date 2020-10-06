@@ -612,8 +612,6 @@ def relu6(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
             out = F.relu6(x) # [0, 0.3, 6]
     """
@@ -663,8 +661,6 @@ def selu(x,
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
@@ -879,8 +875,6 @@ def softplus(x, beta=1, threshold=20, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
@@ -928,8 +922,6 @@ def softshrink(x, threshold=0.5, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
             out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
     """
@@ -976,8 +968,6 @@ def softsign(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
@@ -1015,9 +1005,7 @@ def swish(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            x = paddle.to_tensor(np.array([-2., 0., 1.]))
             out = F.swish(x) # [-0.238406, 0., 0.731059]
     """
 
@@ -1057,8 +1045,6 @@ def tanhshrink(x, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
@@ -1101,9 +1087,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([2, 0, 1]).astype('float32'))
+            x = paddle.to_tensor(np.array([2., 0., 1.]))
             out = F.thresholded_relu(x) # [2., 0., 0.]
     """
 
