@@ -126,11 +126,11 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     UpdatePadding(&paddings, global_pooling, 0, padding_algorithm, data_dims,
                   strides, ksize);
 
-    PoolingMKLDNNHandler::ComputeAdaptivePoolParameters(
+    platform::PoolingMKLDNNHandler::ComputeAdaptivePoolParameters(
         ctx, paddle::framework::vectorize(in_x->dims()), ksize, strides);
 
-        auto& dev_ctx =
-            ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
 
     std::vector<mkldnn::primitive> pipeline;
 
