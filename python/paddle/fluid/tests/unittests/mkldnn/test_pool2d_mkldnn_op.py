@@ -79,6 +79,7 @@ class TestAvgPoolAdaptive(TestPool2D_Op):
     def init_data_type(self):
         self.dtype = np.float32
 
+
 class TestAvgPoolAdaptive2(TestAvgPoolAdaptive):
     def init_test_case(self):
         self.ksize = [2, 2]

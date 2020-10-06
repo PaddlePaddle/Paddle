@@ -835,7 +835,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       const auto fmt = input->format();
 
       const auto exclude_padding = ctx.Attr<bool>("exclusive");
-      const bool adaptive = ctx.Attr<bool>("adaptive");
 
       const auto src_md = mkldnn::memory::desc(src_tz, dt, fmt);
       /* create memory descriptor for pooling without specified format
@@ -855,14 +854,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
                           mkldnn_paddings[1]);
       }
 
-      if (adaptive) {
-        ksize[0] = static_cast<int>(
-            ceil(static_cast<double>(src_tz[src_tz.size() - 2] / ksize[0])));
-        ksize[1] = static_cast<int>(
-            ceil(static_cast<double>(src_tz[src_tz.size() - 1] / ksize[1])));
-        strides[0] = ksize[0];
-        strides[1] = ksize[1];
-      }
+      ComputeAdaptivePoolParameters(ctx, src_tz, ksize, strides);
 
       this->AcquireForwardPrimitiveDescriptor(
           is_test ? mkldnn::prop_kind::forward_inference
@@ -898,7 +890,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
 
     auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
-
     this->AcquireBackwardPrimitiveDescriptor(
         pooling_type == "max"
             ? mkldnn::algorithm::pooling_max
@@ -929,6 +920,20 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       }
     }
     return mem_p;
+  }
+
+  static void ComputeAdaptivePoolParameters(
+      const paddle::framework::ExecutionContext& ctx,
+      const std::vector<int64_t>& src_tz, std::vector<int64_t>& ksize,
+      std::vector<int64_t>& strides) {
+    if (ctx.Attr<bool>("adaptive")) {
+      ksize[0] = static_cast<int>(
+          ceil(static_cast<double>(src_tz[src_tz.size() - 2] / ksize[0])));
+      ksize[1] = static_cast<int>(
+          ceil(static_cast<double>(src_tz[src_tz.size() - 1] / ksize[1])));
+      strides[0] = ksize[0];
+      strides[1] = ksize[1];
+    }
   }
 
  private:
