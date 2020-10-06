@@ -1080,10 +1080,10 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
     .. math::
 
-        thresholded_relu(x) = \\begin{cases}
-                               x, \\text{if } x > threshold \\\\
-                               0, \\text{otherwise}
-                              \\end{cases}
+        thresholded\\_relu(x) = \\begin{cases}
+                                 x, \\text{if } x > threshold \\\\
+                                 0, \\text{otherwise}
+                                \\end{cases}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
