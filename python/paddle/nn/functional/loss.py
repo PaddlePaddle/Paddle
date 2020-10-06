@@ -1210,7 +1210,6 @@ def sigmoid_focal_loss(logit,
 
             import paddle
 
-            paddle.disable_static()
             logit = paddle.to_tensor([[0.97, 0.91, 0.03], [0.55, 0.43, 0.71]], dtype='float32')
             label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
             one = paddle.to_tensor([1.], dtype='float32')
