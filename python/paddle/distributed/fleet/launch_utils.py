@@ -683,8 +683,26 @@ class ParameterServerLauncher(object):
                     ["127.0.0.1:" + str(x) for x in ports])
         else:
             assert args.workers != "", "The setting of Parameter-Server must has worker_num or workers."
-            self.worker_endpoints = args.workers
-            self.worker_num = len(self.worker_endpoints.split(","))
+            worker_endpoints_ips = [
+                x.strip().split(":")[0] for x in args.workers.split(",")
+            ]
+            self.worker_num = len(worker_endpoints_ips)
+            worker_endpoints_len = [
+                len(x.strip().split(":")) for x in args.workers.split(",")
+            ]
+            
+            if 1 in worker_endpoints_len:
+                # if no port value in worker_endpoints, will set default port values.
+                start_port = 6170
+                worker_endpoints_port = range(start_port + self.server_num,
+                                            start_port + self.server_num + self.worker_num, 1)
+                # create endpoints str
+                worker_endpoints = []
+                for i in range(self.worker_num):
+                    worker_endpoints.append( ":".join((worker_endpoints_ips[i],str(worker_endpoints_port[i]))))
+                self.worker_endpoints = ",".join(worker_endpoints)
+            else:
+                self.worker_endpoints = args.workers
 
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:
