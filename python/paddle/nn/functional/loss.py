@@ -1145,7 +1145,7 @@ def cross_entropy(input,
 
 def sigmoid_focal_loss(logit,
                        label,
-                       normalizer,
+                       normalizer=None,
                        alpha=0.25,
                        gamma=2.0,
                        reduction='sum',
@@ -1178,19 +1178,19 @@ def sigmoid_focal_loss(logit,
     Note that the target ``label`` is 0 for the negative class and is 1 for the positive class.
 
     Args:
-        logit (Tensor): The input prediction tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``logit``
-            is usually the output of a convolution layer. Available dtype is float32, float64.
-        label (Tensor): The target label tensor. 2-D tensor with the same shape as
+        logit (Tensor): The input logit tensor. The shape is [N, *], where N is batch_size,
+            `*` means any number of additional dimensions. The ``logit`` is usually the
+            output of a convolution layer. Available dtype is float32, float64.
+        label (Tensor): The target label tensor with the same shape as
             ``logit``. The target label whose value should be numbers between 0 and 1.
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
             a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
             For object detection task, it is the the number of positive samples.
-            If set to None, the focal loss will not be normalized.
-        alpha(int|float): Hyper-parameter to balance the positive and negative example,
+            If set to None, the focal loss will not be normalized. Default is None.
+        alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25. 
-        gamma(int|float): Hyper-parameter to modulate the easy and hard examples.
+        gamma(int|float, optional): Hyper-parameter to modulate the easy and hard examples.
             Default value is set to 2.0.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
