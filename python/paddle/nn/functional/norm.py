@@ -464,9 +464,8 @@ def local_response_norm(x,
         check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
-            "Attr(data_format) of Op(local_response_norm) got wrong value: received "
-            + data_format +
-            " but only 'NCL'/'NLC'/'NCHW'/'NHWC'/'NCDHW'/'NDHWC' supported.")
+            "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], " \
+            "but got {}".format(data_format))
 
     sizes = x.shape
     dim = len(sizes)
@@ -477,43 +476,35 @@ def local_response_norm(x,
 
     channel_last = True if data_format[-1] == "C" else False
 
-    div = fluid.layers.unsqueeze(paddle.multiply(x, x), axes=[1])
-    if channel_last:
-        if dim == 3:
-            div = fluid.layers.pad(
-                div, paddings=[0, 0, 0, 0, 0, 0, size // 2, (size - 1) // 2])
-            div = fluid.layers.pool2d(
-                div, pool_size=(1, size), pool_type='avg', pool_stride=1)
-            div = fluid.layers.squeeze(div, axes=[1])
-        else:
-            div = fluid.layers.reshape(
-                div, shape=[sizes[0], 1, sizes[1], -1, sizes[-1]])
-            div = fluid.layers.pad(
-                div,
-                paddings=[0, 0, 0, 0, 0, 0, 0, 0, size // 2, (size - 1) // 2])
-            div = fluid.layers.pool3d(
-                div, pool_size=(1, 1, size), pool_type='avg', pool_stride=1)
-            div = fluid.layers.squeeze(div, axes=[1])
-            div = fluid.layers.reshape(div, sizes)
+    div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
+    if not channel_last:
+        pad4d_shape = [0, 0, size // 2, (size - 1) // 2]
+        pool2d_shape = (size, 1)
+        reshape_shape = [sizes[0], 1, sizes[1], sizes[2], -1]
+        pad5d_shape = [0, 0, 0, 0, size // 2, (size - 1) // 2]
+        pool3d_shape = (size, 1, 1)
     else:
-        if dim == 3:
-            div = fluid.layers.pad(
-                div, paddings=[0, 0, 0, 0, size // 2, (size - 1) // 2, 0, 0])
-            div = fluid.layers.pool2d(
-                div, pool_size=(size, 1), pool_type='avg', pool_stride=1)
-            div = fluid.layers.squeeze(div, axes=[1])
-        else:
-            div = fluid.layers.reshape(
-                div, shape=[sizes[0], 1, sizes[1], sizes[2], -1])
-            div = fluid.layers.pad(
-                div,
-                paddings=[0, 0, 0, 0, size // 2, (size - 1) // 2, 0, 0, 0, 0])
-            div = fluid.layers.pool3d(
-                div, pool_size=(size, 1, 1), pool_type='avg', pool_stride=1)
-            div = fluid.layers.squeeze(div, axes=[1])
-            div = fluid.layers.reshape(div, sizes)
+        pad4d_shape = [size // 2, (size - 1) // 2, 0, 0]
+        pool2d_shape = (1, size)
+        reshape_shape = [sizes[0], 1, sizes[1], -1, sizes[-1]]
+        pad5d_shape = [size // 2, (size - 1) // 2, 0, 0, 0, 0]
+        pool3d_shape = (1, 1, size)
 
-    div = fluid.layers.scale(div, scale=alpha, bias=k)
-    div = fluid.layers.pow(div, factor=beta)
-    res = fluid.layers.elementwise_div(x, div, name=name)
+    if dim == 3:
+        div = paddle.nn.functional.pad(div, pad=pad4d_shape)
+        div = paddle.nn.functional.avg_pool2d(
+            div, kernel_size=pool2d_shape, stride=1)
+        div = paddle.squeeze(div, axis=1)
+    else:
+        div = paddle.reshape(div, shape=reshape_shape)
+        div = paddle.nn.functional.pad(div,
+                                       pad=pad5d_shape,
+                                       data_format='NCDHW')
+        div = paddle.nn.functional.avg_pool3d(
+            div, kernel_size=pool3d_shape, stride=1)
+        div = paddle.reshape(paddle.squeeze(div, axis=1), sizes)
+
+    div = paddle.scale(div, scale=alpha, bias=k)
+    div = paddle.pow(div, beta)
+    res = paddle.divide(x, div, name=name)
     return res

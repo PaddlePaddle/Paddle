@@ -334,19 +334,8 @@ class TestLocalResponseNormCAPI():
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input_np = np.random.random([3, 3, 40, 40]).astype("float32")
-                result_np = input_np
-                input = fluid.dygraph.to_variable(input_np)
-                m = paddle.nn.AlphaDropout(p=0.)
-                m.eval()
-                result = m(input)
-                self.assertTrue(np.allclose(result.numpy(), result_np))
-
-                in_np1 = np.random.random([3, 3, 40, 40]).astype("float32")
-                in_np2 = np.transpose(in_np1, (0, 2, 3, 1))
-
-                in1 = paddle.to_tensor(in_np1)
-                in2 = paddle.to_tensor(in_np2)
+                in1 = paddle.rand(shape=(3, 3, 40, 40), dtype="float32")
+                in2 = paddle.transpose(x, [0, 2, 3, 1])
 
                 m = paddle.nn.LocalResponseNorm(size=5)
 

@@ -1165,19 +1165,7 @@ class LocalResponseNorm(layers.Layer):
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 
-        The formula is as follows:
-
-        .. math::
-
-            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
-
-        In the above equation:
-
-        - :math:`size` : The number of channels to sum over.
-        - :math:`k` : The offset (avoid being divided by 0).
-        - :math:`\\alpha` : The scaling parameter.
-        - :math:`\\beta` : The exponent parameter.
-
+        See more details in :ref:`api_paddle_nn_functional_local_response_norm` .
 
         Parameters:
             size (int): The number of channels to sum over.
