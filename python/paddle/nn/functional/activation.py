@@ -1018,7 +1018,7 @@ def swish(x, name=None):
             paddle.disable_static()
 
             x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-            out = F.swish(x) # [0., 0., 1.]
+            out = F.swish(x) # [-0.238406, 0., 0.731059]
     """
 
     if in_dygraph_mode():

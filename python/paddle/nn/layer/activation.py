@@ -830,7 +830,7 @@ class Swish(layers.Layer):
 
             x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
             m = paddle.nn.Swish()
-            out = m(x) # [0., 0., 1.]
+            out = m(x) # [-0.238406, 0., 0.731059]
     """
 
     def __init__(self, name=None):
