@@ -25,7 +25,7 @@ import warnings
 from .. import core
 from .base import guard
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 
 __all__ = [
     'save_dygraph',
@@ -34,10 +34,7 @@ __all__ = [
 
 
 def _parse_load_config(configs):
-    supported_configs = [
-        'model_filename', 'params_filename', 'separate_params',
-        'keep_name_table'
-    ]
+    supported_configs = ['model_filename', 'params_filename', 'keep_name_table']
 
     # input check
     for key in configs:
@@ -50,7 +47,6 @@ def _parse_load_config(configs):
     inner_config = _SaveLoadConfig()
     inner_config.model_filename = configs.get('model_filename', None)
     inner_config.params_filename = configs.get('params_filename', None)
-    inner_config.separate_params = configs.get('separate_params', None)
     inner_config.keep_name_table = configs.get('keep_name_table', None)
 
     return inner_config
@@ -124,6 +120,8 @@ def save_dygraph(state_dict, model_path):
         pickle.dump(model_dict, f, protocol=2)
 
 
+# NOTE(chenweihang): load_dygraph will deprecated in future, we don't 
+# support new loading features for it
 # TODO(qingqing01): remove dygraph_only to support loading static model.
 # maybe need to unify the loading interface after 2.0 API is ready.
 # @dygraph_only
@@ -142,20 +140,13 @@ def load_dygraph(model_path, **configs):
     Args:
         model_path(str) : The file prefix store the state_dict. 
             (The path should Not contain suffix '.pdparams') 
-        configs (dict, optional): other save configuration options for compatibility. We do not 
+        **configs (dict, optional): other save configuration options for compatibility. We do not 
             recommend using these configurations, if not necessary, DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (string): The filename to load the translated program of target Layer.
-            Default filename is :code:`__model__` . 
-            (2) params_filename (string): The filename to load all persistable variables in target Layer. 
-            Default file name is :code:`__variables__` .
-            (3) separate_params (bool): Configure whether to load the Layer parameters from separete files.
-            If True, each parameter will be loaded from a file separately, the file name is the parameter name,
-            and the params_filename configuration will not take effect. Default False.
-            (4) keep_name_table (bool): Configures whether keep ``structured_name -> parameter_name`` dict in 
-            loaded state dict. This dict is the debugging information saved when call ``paddle.fluid.save_dygraph`` . 
-            It is generally only used for debugging and does not affect the actual training or inference. 
-            By default, it will not be retained in ``paddle.fluid.load_dygraph`` result. Default: False.
+            (1) model_filename (string): The inference model file name of the paddle 1.x ``save_inference_model`` 
+            save format. Default file name is :code:`__model__` . 
+            (2) params_filename (string): The persistable variables file name of the paddle 1.x ``save_inference_model`` 
+            save format. No default file name, save variables separately by default.
 
     Returns:
         state_dict(dict) : the dict store the state_dict
@@ -245,7 +236,6 @@ def load_dygraph(model_path, **configs):
                 persistable_var_dict = _construct_params_and_buffers(
                     model_prefix,
                     programs,
-                    config.separate_params,
                     config.params_filename,
                     append_suffix=False)
 
@@ -254,9 +244,9 @@ def load_dygraph(model_path, **configs):
                 for var_name in persistable_var_dict:
                     para_dict[var_name] = persistable_var_dict[var_name].numpy()
 
-                # if __variables.info__ exists, we can recover structured_name
-                var_info_path = os.path.join(model_prefix,
-                                             EXTRA_VAR_INFO_FILENAME)
+                # if *.info exists, we can recover structured_name
+                var_info_filename = str(config.params_filename) + ".info"
+                var_info_path = os.path.join(model_prefix, var_info_filename)
                 if os.path.exists(var_info_path):
                     with open(var_info_path, 'rb') as f:
                         extra_var_info = pickle.load(f)

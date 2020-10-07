@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_stat
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
-from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
+from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Block, ParamBase, Program, Variable
@@ -299,26 +299,6 @@ class _SaveLoadConfig(object):
             raise ValueError("The config `params_filename` is empty string.")
         self._params_filename = filename
 
-    # NOTE: [why not use params_filename=None control params saved separately]
-    # The new save interface does not recommend parameters to be saved separately. 
-    # Here, the concept should be separated as clearly as possible. 
-    # Setting params_filename=None only means that the saved file name is set 
-    # and without any other meaning. New separate_params control for file saved
-    # separately can makes the concept clearer.
-    @property
-    def separate_params(self):
-        return self._separate_params
-
-    @separate_params.setter
-    def separate_params(self, value):
-        if value is None:
-            return None
-        if not isinstance(value, bool):
-            raise TypeError(
-                "The config `separate_params` should be bool value, but received input's type is %s."
-                % type(value))
-        self._separate_params = value
-
     @property
     def keep_name_table(self):
         return self._keep_name_table
@@ -335,9 +315,7 @@ class _SaveLoadConfig(object):
 
 
 def _parse_save_configs(configs):
-    supported_configs = [
-        'output_spec', 'model_filename', 'params_filename', 'separate_params'
-    ]
+    supported_configs = ['output_spec']
 
     # input check
     for key in configs:
@@ -349,15 +327,12 @@ def _parse_save_configs(configs):
     # construct inner config
     inner_config = _SaveLoadConfig()
     inner_config.output_spec = configs.get('output_spec', None)
-    inner_config.model_filename = configs.get('model_filename', None)
-    inner_config.params_filename = configs.get('params_filename', None)
-    inner_config.separate_params = configs.get('separate_params', None)
 
     return inner_config
 
 
 def _parse_load_config(configs):
-    supported_configs = ['model_filename', 'params_filename', 'separate_params']
+    supported_configs = ['model_filename', 'params_filename']
 
     # input check
     for key in configs:
@@ -370,7 +345,6 @@ def _parse_load_config(configs):
     inner_config = _SaveLoadConfig()
     inner_config.model_filename = configs.get('model_filename', None)
     inner_config.params_filename = configs.get('params_filename', None)
-    inner_config.separate_params = configs.get('separate_params', None)
 
     return inner_config
 
@@ -442,46 +416,86 @@ def _get_output_vars(outputs, output_spec):
     return result_list
 
 
+# NOTE(chenweihang): [ Handling of use cases of API paddle.jit.load ]
+# `paddle.jit.load` may be used to load saved results of:
+# 1. Expected cases:
+#   - paddle.jit.save
+#   - paddle.static.save_inference_model
+#   - paddle.fluid.io.save_inference_model
+# 2. Error cases:
+#   - paddle.save: no .pdmodel for prefix
+#   - paddle.static.save: no .pdiparams but .pdparams exists
+#   - paddle.fluid.io.save_params/save_persistables: 
+def _build_load_path_and_config(path, config):
+    # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
+    # raise error, avoid confusing behavior
+    prefix_format_path = path + INFER_MODEL_SUFFIX
+    prefix_format_exist = os.path.exists(prefix_format_path)
+    directory_format_exist = os.path.isdir(path)
+    if prefix_format_exist and directory_format_exist:
+        raise ValueError(
+            "The %s.pdmodel and %s directory exist at the same time, "
+            "don't know which one to load, please make sure that the specified target "
+            "of ``path`` is unique." % (path, path))
+    elif not prefix_format_exist and not directory_format_exist:
+        raise ValueError("The ``path`` (%s) to load model not exists." % path)
+    else:
+        if prefix_format_exist:
+            file_prefix = os.path.basename(path)
+            model_path = os.path.dirname(path)
+            if config.model_filename is not None:
+                warnings.warn(
+                    "When loading the result saved with the "
+                    "specified file prefix, the ``model_filename`` config does "
+                    "not take effect.")
+            config.model_filename = file_prefix + INFER_MODEL_SUFFIX
+            if config.params_filename is not None:
+                warnings.warn(
+                    "When loading the result saved with the "
+                    "specified file prefix, the ``params_filename`` config does "
+                    "not take effect.")
+            config.params_filename = file_prefix + INFER_PARAMS_SUFFIX
+        else:
+            # Compatible with the old save_inference_model format
+            model_path = path
+
+    return model_path, config
+
+
 @switch_to_static_graph
-def save(layer, model_path, input_spec=None, **configs):
+def save(layer, path, input_spec=None, **configs):
     """
-    Saves input declarative Layer as :ref:`api_imperative_TranslatedLayer` 
+    Saves input declarative Layer as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
 
     It will save the translated program and all related persistable 
-    variables of input declarative Layer to given ``model_path``.
+    variables of input declarative Layer to given ``path``.
     
-    The default saved translated program file name is ``__model__``,
-    and the default saved persistable variables file name is ``__variables__``,
-    and it also saved some additional variable description information to file 
-    ``__variables.info__``, these additional information is used in fine-tuning.
+    ``path`` is the prefix of saved object, and the saved translated program file 
+    suffix is ``.pdmodel``, the saved persistable variables file suffix is ``.pdiparams``,
+    and here also saved some additional variable description information to a file,  
+    its suffix is ``.pdiparams.info``, these additional information is used in fine-tuning.
 
     The saved model can be loaded by follow APIs:
-      - :ref:`api_imperative_jit_load`
-      - :ref:`api_fluid_io_load_inference_model` (need pass ``params_filename='__variables__'``)
+      - ``paddle.jit.load`` 
+      - ``paddle.static.load_inference_model`` 
       - Other C++ inference APIs
 
     Args:
         layer (Layer): the Layer to be saved. The Layer should be decorated by `@declarative`.
-        model_path (str): the directory to save the model.
+        path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
         input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model. 
             It is the example inputs that will be passed to saved TranslatedLayer's forward
             function. If None, all input variables of the original Layer's forward function
             would be the inputs of the saved model. Default None.
-        configs (dict, optional): other save configuration options for compatibility. We do not 
-            recommend using these configurations, if not necessary, DO NOT use them. Default None.
+        **configs (dict, optional): other save configuration options for compatibility. We do not 
+            recommend using these configurations, they may be removed in the future. If not necessary, 
+            DO NOT use them. Default None.
             The following options are currently supported:
             (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
             By default, all return variables of original Layer's forward function are kept as the 
             output of the saved model. If the provided ``output_spec`` list is not all output variables, 
             the saved model will be pruned according to the given ``output_spec`` list. 
-            (2) model_filename (string): The name of file to save the translated program of target Layer.
-            Default filename is :code:`__model__` . 
-            (3) params_filename (string): The name of file to save all persistable variables in target Layer. 
-            Default file name is :code:`__variables__` .
-            (4) separate_params (bool): Configure whether to save the Layer parameters as separete files.
-            If True, each parameter will be saved to a file separately, the file name is the parameter name,
-            and the params_filename configuration will not take effect. Default False.
 
     Returns:
         None
@@ -562,7 +576,7 @@ def save(layer, model_path, input_spec=None, **configs):
             paddle.jit.save(layer, model_path)
     """
 
-    # 1. input check
+    # 1. input build & check
     prog_translator = ProgramTranslator()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
@@ -573,7 +587,17 @@ def save(layer, model_path, input_spec=None, **configs):
             "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
-    configs = _parse_save_configs(configs)
+    # path check
+    file_prefix = os.path.basename(path)
+    if file_prefix == "":
+        raise ValueError(
+            "The input path MUST be format of dirname/file_prefix "
+            "[dirname\\file_prefix in Windows system], but received "
+            "file_prefix is empty string.")
+
+    dirname = os.path.dirname(path)
+    if dirname and not os.path.exists(dirname):
+        os.makedirs(dirname)
 
     # avoid change user given input_spec
     inner_input_spec = None
@@ -593,6 +617,9 @@ def save(layer, model_path, input_spec=None, **configs):
                 raise TypeError(
                     "The element in input_spec list should be 'Variable' or `paddle.static.InputSpec`, but received element's type is %s."
                     % type(var))
+
+    # parse configs
+    configs = _parse_save_configs(configs)
 
     # 2. get program from Layer
     # TODO(chenweihang): add support for other method, not only forward
@@ -655,9 +682,12 @@ def save(layer, model_path, input_spec=None, **configs):
     # 5. save inference model
     from paddle.fluid.io import save_inference_model
 
-    # VARIABLE_FILENAME keep nameing style consistent with '__model__'
-    if configs.params_filename is None:
-        configs.params_filename = VARIABLE_FILENAME
+    # construct new save_inference_model arguments
+    model_path = dirname
+    # NOTE(chenweihang): because prefix contains model and params filename,
+    # so we don't support set model_filename & params_filename 
+    model_filename = file_prefix + INFER_MODEL_SUFFIX
+    params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
     with scope_guard(scope):
         save_inference_model(
@@ -666,9 +696,8 @@ def save(layer, model_path, input_spec=None, **configs):
             target_vars=output_vars,
             executor=Executor(_current_expected_place()),
             main_program=concrete_program.main_program.clone(),
-            model_filename=configs.model_filename,
-            params_filename=None
-            if configs.separate_params else configs.params_filename,
+            model_filename=model_filename,
+            params_filename=params_filename,
             export_for_deployment=configs._export_for_deployment,
             program_only=configs._program_only)
 
@@ -686,22 +715,22 @@ def save(layer, model_path, input_spec=None, **configs):
         # Due to compatibility issues, we cannot change the original storage structure, 
         # but we can save these information in `jit.save` without changing the original 
         # storage to improve user experience. So we save extra information into
-        # file `__variables.info__`
-        extra_var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
+        # file `***.pdiparams.info`
+        extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
         with open(extra_var_info_path, 'wb') as f:
             pickle.dump(extra_var_info, f, protocol=2)
 
 
 @dygraph_only
-def load(model_path, **configs):
+def load(path, **configs):
     """
     :api_attr: imperative
 
-    Load model saved by :ref:`api_imperative_jit_save` or :ref:`api_fluid_io_save_inference_model`
-    as :ref:`api_imperative_TranslatedLayer`, then performing inference or fine-tune training.
+    Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model``
+    as ``paddle.jit.TranslatedLayer``, then performing inference or fine-tune training.
 
     .. note::
-        For some historical reasons, if you load model saved by :ref:`api_fluid_io_save_inference_model`,
+        If you load model saved by ``paddle.static.save_inference_model`` ,
         there will be the following limitations when using it in fine-tuning:
         1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
         2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
@@ -709,17 +738,16 @@ def load(model_path, **configs):
         4. The parameter's ``trainable`` information is lost and can not be recovered.
 
     Args:
-        model_path (str): The directory path where the model is saved.
-        configs (dict, optional): other save configuration options for compatibility. We do not 
-            recommend using these configurations, if not necessary, DO NOT use them. Default None.
+        path (str): The path prefix to load model. The format is ``dirname/file_prefix`` or ``file_prefix``.
+        **configs (dict, optional): other load configuration options for compatibility. We do not 
+            recommend using these configurations, they may be removed in the future. If not necessary, 
+            DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (string): The filename to load the translated program of target Layer.
-            Default filename is :code:`__model__` . 
-            (2) params_filename (string): The filename to load all persistable variables in target Layer. 
-            Default file name is :code:`__variables__` .
-            (3) separate_params (bool): Configure whether to load the Layer parameters from separete files.
-            If True, each parameter will be loaded from a file separately, the file name is the parameter name,
-            and the params_filename configuration will not take effect. Default False.
+            (1) model_filename (string): The inference model file name of the paddle 1.x 
+            ``save_inference_model`` save format. Default file name is :code:`__model__` . 
+            (2) params_filename (string): The persistable variables file name of the paddle 1.x 
+            ``save_inference_model`` save format. No default file name, save variables separately 
+            by default.
 
 
     Returns:
@@ -915,7 +943,10 @@ def load(model_path, **configs):
                     print("Epoch {} batch {}: loss = {}".format(
                         epoch_id, batch_id, np.mean(loss.numpy())))
     """
+    # 1. construct correct config
     config = _parse_load_config(configs)
+    model_path, config = _build_load_path_and_config(path, config)
+
     return TranslatedLayer._construct(model_path, config)
 
 
