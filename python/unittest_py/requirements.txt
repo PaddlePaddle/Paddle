@@ -2,5 +2,5 @@ PyGithub
 coverage
 pycrypto
 mock
-visualdl ; python_version>="3.5"
 opencv-python<=4.2.0.32
+visualdl ; python_version>="3.5"
