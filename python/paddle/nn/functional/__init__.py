@@ -62,7 +62,7 @@ from .common import dropout3d  #DEFINE_ALIAS
 from .common import alpha_dropout  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
 # from .common import fc  #DEFINE_ALIAS
-from .common import label_smooth  #DEFINE_ALIAS
+from .common import label_smooth
 from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
 from .common import pad_constant_like  #DEFINE_ALIAS
@@ -164,7 +164,6 @@ from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS
-from .norm import l2_normalize  #DEFINE_ALIAS
 from .norm import batch_norm  #DEFINE_ALIAS
 from .norm import instance_norm  #DEFINE_ALIAS
 from .norm import layer_norm  #DEFINE_ALIAS
@@ -174,16 +173,12 @@ from .norm import normalize  #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import avg_pool1d  #DEFINE_ALIAS
-from .pooling import adaptive_pool2d  #DEFINE_ALIAS
-from .pooling import adaptive_pool3d  #DEFINE_ALIAS
 from .pooling import avg_pool2d  #DEFINE_ALIAS
 from .pooling import avg_pool3d  #DEFINE_ALIAS
 from .pooling import max_pool1d  #DEFINE_ALIAS
 from .pooling import max_pool2d  #DEFINE_ALIAS
 from .pooling import max_pool3d  #DEFINE_ALIAS
 
-from .pooling import adaptive_pool2d  #DEFINE_ALIAS
-from .pooling import adaptive_pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_max_pool1d  #DEFINE_ALIAS
 from .pooling import adaptive_max_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_max_pool3d  #DEFINE_ALIAS

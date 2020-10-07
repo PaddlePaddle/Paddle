@@ -31,18 +31,15 @@ __all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
-# from .clip import ErrorClipByValue        #DEFINE_ALIAS
 from .clip import GradientClipByGlobalNorm  #DEFINE_ALIAS
 from .clip import GradientClipByNorm  #DEFINE_ALIAS
 from .clip import GradientClipByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
 from .clip import clip_by_norm  #DEFINE_ALIAS
-from .control_flow import case  #DEFINE_ALIAS
 from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-from .control_flow import switch_case  #DEFINE_ALIAS
 from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
 # from .decode import BeamSearchDecoder        #DEFINE_ALIAS

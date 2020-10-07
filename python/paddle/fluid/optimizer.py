@@ -19,8 +19,10 @@ import six
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from . import framework
 from . import layers
@@ -40,7 +42,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
-import paddle
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -771,8 +772,14 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
+
+            if paddle.distributed.get_world_size() > 1:
+                apply_collective_grads(parameter_list)
+
             params_grads = []
-            for param in self._parameter_list:
+            for param in parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -939,6 +946,7 @@ class Optimizer(object):
 
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -4876,29 +4884,35 @@ class LookaheadOptimizer(object):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            import numpy.random as random
 
-	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
-	    loss = fluid.layers.cross_entropy(input=y, label=label)
-	    loss = fluid.layers.mean(x=loss)
-	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
-	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
-                                            alpha=0.5,
-                                            k=5)
-	    optimizer.minimize(loss)
-	    main_program = fluid.default_main_program()
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            paddle.enable_static()
+        
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            y = fluid.layers.fc(input=[x], size=2, act="softmax")
+            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                                alpha=0.5,
+                                                k=5)
+            optimizer.minimize(loss)
+            main_program = fluid.default_main_program()
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
 
-	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
-
-	    step = 0
-            while(step < 10):
-                step += 1
-		exe.run(fluid.default_main_program(),
-            	feed=feeder.feed(batch_data))
+            def train_reader(limit=5):
+                for i in range(limit):
+                    yield random.random([2]).astype('float32'), random.random([1]).astype('int64')
+            
+            feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+            reader = paddle.batch(paddle.reader.shuffle(train_reader, buf_size=50000),batch_size=1)
+            
+            for batch_data in reader():
+                exe.run(fluid.default_main_program(),
+                feed=feeder.feed(batch_data))
 
     """
 
