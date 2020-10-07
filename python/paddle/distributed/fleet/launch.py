@@ -270,7 +270,7 @@ def which_distributed_mode(args):
 
     if len(has_ps_args) > 1 and len(has_collective_args) > 1:
         raise ValueError(
-            "Only one mode(Collective or Parameter-Server ) can be selected at the same time, but more than one configuration was received."
+            "Only one mode(Collective or Parameter-Server) can be selected at the same time, but more than one configuration was received."
         )
 
     if fluid.core.is_compiled_with_cuda():

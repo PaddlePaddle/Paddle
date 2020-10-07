@@ -31,7 +31,7 @@ function test_launch_ps(){
 function test_launch_ps_heter(){
     fleetrun --server_num=2 --worker_num=2 --heter_worker_num=2 fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
-        echo "test pserver launch succeed"
+        echo "test heter pserver launch succeed"
     else
         echo "test pserver launch failed"
         exit -1

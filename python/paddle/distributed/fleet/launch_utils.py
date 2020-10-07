@@ -690,16 +690,18 @@ class ParameterServerLauncher(object):
             worker_endpoints_len = [
                 len(x.strip().split(":")) for x in args.workers.split(",")
             ]
-            
+
             if 1 in worker_endpoints_len:
                 # if no port value in worker_endpoints, will set default port values.
                 start_port = 6170
-                worker_endpoints_port = range(start_port + self.server_num,
-                                            start_port + self.server_num + self.worker_num, 1)
+                worker_endpoints_port = range(
+                    start_port + self.server_num,
+                    start_port + self.server_num + self.worker_num, 1)
                 # create endpoints str
                 worker_endpoints = []
                 for i in range(self.worker_num):
-                    worker_endpoints.append( ":".join((worker_endpoints_ips[i],str(worker_endpoints_port[i]))))
+                    worker_endpoints.append(":".join((worker_endpoints_ips[
+                        i], str(worker_endpoints_port[i]))))
                 self.worker_endpoints = ",".join(worker_endpoints)
             else:
                 self.worker_endpoints = args.workers
@@ -833,7 +835,7 @@ class ParameterServerLauncher(object):
                 if len(self.log_fns["worker"]) > 0:
                     self.log_fns["worker"][i].close()
             logger.info(
-                "all workers exit, going to finish parameter server and heter_worker"
+                "all workers exit, going to finish parameter server and heter_worker."
             )
             if len(self.procs["heter_worker"]) > 0:
                 for i, proc in enumerate(self.procs["heter_worker"]):
