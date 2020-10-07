@@ -139,7 +139,7 @@ RUN curl -s -q https://glide.sh/get | sh
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
 COPY tools/dockerfile/build_scripts /build_scripts
-RUN sed 's#URL="http://nccl2-deb.gz.bcebos.com/$DEB"#URL="http://nccl2-deb.gz.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"#g'
+RUN sed 's#URL="http://nccl2-deb.gz.bcebos.com/$DEB"#URL="http://nccl2-deb.gz.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"#g' && \
     bash /build_scripts/install_nccl2.sh && \
     rm -rf /build_scripts 
 
