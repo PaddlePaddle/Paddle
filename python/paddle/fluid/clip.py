@@ -26,14 +26,8 @@ from . import name_scope
 from .dygraph import base as imperative_base
 
 __all__ = [
-    'set_gradient_clip',
-    'ErrorClipByValue',
-    'ClipGradByValue',
-    'ClipGradByNorm',
-    'ClipGradByGlobalNorm',
-    'GradientClipByValue',
-    'GradientClipByNorm',
-    'GradientClipByGlobalNorm',
+    'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
+    'ClipGradByNorm', 'ClipGradByGlobalNorm'
 ]
 
 
