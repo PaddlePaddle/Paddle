@@ -184,8 +184,8 @@ class ClipGradByValue(ClipGradBase):
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(10, 10, 
-                                      param_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10, 
+                                      weight_attr=paddle.ParamAttr(need_clip=True), 
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -293,8 +293,8 @@ class ClipGradByNorm(ClipGradBase):
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(10, 10, 
-                                      param_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10, 
+                                      weight_attr=paddle.ParamAttr(need_clip=True), 
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -395,8 +395,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(10, 10, 
-                                      param_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10, 
+                                      weight_attr=paddle.ParamAttr(need_clip=True), 
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
