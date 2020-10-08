@@ -238,8 +238,8 @@ def launch_ps(args, distribute_mode):
         return
     elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
         cloud_ps_heter_env_set(args)
-        args.trainers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        args.workers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
+        args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
         args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
 
     ps_launcher = ParameterServerLauncher(args, distribute_mode)

@@ -25,6 +25,7 @@ import tempfile
 import shutil
 from contextlib import closing
 import socket
+import warnings
 
 import paddle
 import paddle.fluid as fluid
@@ -600,6 +601,7 @@ def cloud_ps_heter_env_set(args):
     assert paddle_pserver_endpoints != None
     environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
 
+    # hard code for paddlecloud custom-framework
     avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
     assert len(
         avilable_ports
@@ -616,6 +618,12 @@ def cloud_ps_heter_env_set(args):
     environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
     environs["PADDLE_TRAINER_ENDPOINTS"] = get_custom_endpoints(
         paddle_pserver_endpoints, 1)
+    heter_worker_num = len(paddle_trainer_endpoints.split(","))
+    if (args.heter_worker_num != None) and (
+            heter_worker_num != args.heter_worker_num):
+        warnings.warn(
+            "Your fleetrun setting: heter_worker_num is {}, but we find {} device can be used, this setting has been changed.".
+            format(args.heter_worker_num, heter_worker_num))
 
     for k, v in environs.items():
         os.environ[k] = str(v)
