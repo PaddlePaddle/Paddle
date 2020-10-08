@@ -210,23 +210,20 @@ class ParameterServerRuntime(RuntimeBase):
             warnings.warn("communicator has been initialized, skip")
 
     def _get_executor(self):
+        executor = fluid.Executor(fluid.CPUPlace())
         if self.role_maker._is_heter_worker():
-            dist_strategy = self.context["valid_strategy"]
-            heter_worker_device = dist_strategy.a_sync_configs[
+            heter_worker_device = self.context["valid_strategy"].a_sync_configs[
                 "heter_worker_device"].upper()
             if heter_worker_device == "GPU":
-                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-                executor = Executor(fluid.CUDAPlace(gpu_id))
+                executor = Executor(
+                    fluid.CUDAPlace(
+                        int(os.getenv("FLAGS_selected_gpus", "0"))))
             elif heter_worker_device == "XPU":
-                xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-                executor = Executor(fluid.XPUPlace(xpu_id))
-            elif heter_worker_device == "CPU":
-                executor = fluid.Executor(fluid.CPUPlace())
-            else:
+                executor = Executor(
+                    fluid.XPUPlace(int(os.getenv("FLAGS_selected_xpus", "0"))))
+            elif heter_worker_device != "CPU":
                 raise ValueError("Heter Worker Not Support Device {}".format(
                     heter_worker_device))
-        else:
-            executor = fluid.Executor(fluid.CPUPlace())
         return executor
 
     def _init_server(self, *args, **kwargs):
@@ -242,8 +239,6 @@ class ParameterServerRuntime(RuntimeBase):
 
         if self.role_maker._is_heter_worker():
             self._init_worker()
-
-        if self.role_maker._is_heter_worker():
             return
 
         if not model_dirname:
