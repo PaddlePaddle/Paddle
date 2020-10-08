@@ -153,6 +153,34 @@ class TestMulDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestMatmulDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 4]
+        y_shape = [2, 4, 5]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        y = layers.data('y', y_shape, False, dtype)
+        y.persistable = True
+        out = layers.matmul(x, y)
+
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestReshapeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
