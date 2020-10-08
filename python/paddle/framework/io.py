@@ -332,6 +332,8 @@ def load(path, **configs):
             load_opt_state_dict = paddle.load("adam.pdopt")
     '''
     load_result = None
+    config = _parse_load_config(configs)
+
     if os.path.isfile(path):
         # we think path is file means this file is created by paddle.save
         with open(path, 'rb') as f:
@@ -342,9 +344,7 @@ def load(path, **configs):
             del load_result["StructuredToParameterName@@"]
     else:
         # file prefix and directory are compatible cases
-        config = _parse_load_config(configs)
         model_path, config = _build_load_path_and_config(path, config)
-
         # check whether model file exists
         if config.model_filename is None:
             model_filename = '__model__'
