@@ -624,6 +624,7 @@ def cloud_ps_heter_env_set(args):
         warnings.warn(
             "Your fleetrun setting: heter_worker_num is {}, but we find {} device can be used, this setting has been changed.".
             format(args.heter_worker_num, heter_worker_num))
+        args.heter_worker_num = heter_worker_num
 
     for k, v in environs.items():
         os.environ[k] = str(v)
