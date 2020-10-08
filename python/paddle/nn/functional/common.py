@@ -1405,22 +1405,23 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
 def linear(x, weight, bias=None, name=None):
     """
+
     Fully-connected linear transformation operator. For each input :math:`X` ,
     the equation is:
 
     .. math::
 
-        Out = X * W + b
+        Out = XW + b
 
     where :math:`W` is the weight and :math:`b` is the bias.
 
-    If the weight is a 2-D tensor of shape [in_features, out_features],
-    input should be a multi-dimensional tensor of shape [N, *, in_features], 
-    where N is batch size and `*` means any number of additional dimensions.
-    The linear operator multiplies input tensor with weight and produces an
-    output tensor of shape [N, *, out_features], 
+    If the weight is a 2-D tensor of shape :math:`[in\_features, out\_features]` ,
+    input should be a multi-dimensional tensor of shape :math:`[N, *, in\_features]` , 
+    where :math:`N` is batch size and :math:`*` means any number of additional
+    dimensions. The linear operator multiplies input tensor with weight and produces an
+    output tensor of shape :math:`[N, *, out\_features]` , 
     If :math:`bias` is not None, the bias should be a 1-D tensor of shape
-    [out_features] and will be added to the output.
+    :math:`[out\_features]` and will be added to the output.
 
     Parameters:
         x (Tensor): Input tensor. The data type should be float16, float32 or float64.
@@ -1431,8 +1432,8 @@ def linear(x, weight, bias=None, name=None):
                               For detailed information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        A multi-dimentional tensor of the shape [N, *, out_features] and with
-        the same data type of :math:`x` .
+        A multi-dimentional tensor of the shape :math:`[N, *, out\_features]` and with
+        the same data type of input :math:`x` .
 
     Examples:
         .. code-block:: python
