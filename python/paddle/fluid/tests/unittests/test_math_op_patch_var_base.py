@@ -341,10 +341,12 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.array_equal(x.rank().numpy(), paddle.rank(x).numpy()))
         self.assertTrue(
             np.array_equal(x[0].t().numpy(), paddle.t(x[0]).numpy()))
-        m = paddle.to_tensor(np.random.uniform(1, 2, [3, 3]), 'float32')
-        m = m.matmul(m.t())
+        d = paddle.to_tensor([[1.2285208, 1.3491015, 1.4899898],
+                              [1.30058, 1.0688717, 1.4928783],
+                              [1.0958099, 1.3724753, 1.8926544]])
+        d = d.matmul(d.t())
         self.assertTrue(
-            np.array_equal(m.cholesky().numpy(), paddle.cholesky(m).numpy()))
+            np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy()))
 
         self.assertTrue(
             np.array_equal(x.is_empty().numpy(), paddle.is_empty(x).numpy()))
