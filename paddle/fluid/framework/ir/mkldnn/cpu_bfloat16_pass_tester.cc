@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -26,7 +27,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           const std::string& mkldnn_data_type = "float32",
+           const int mkldnn_data_type = FP32,
            const bool force_fp32_output = false) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
@@ -79,16 +80,15 @@ ProgramDesc BuildProgramDesc(bool use_mkldnn) {
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout1", {"z"}, {"a"}, use_mkldnn, "float32");
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "pool2d", "Pool1", {"b"}, {"c"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "conv2d", "Conv1", {"c"}, {"d"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "dropout", "Dropout2", {"d"}, {"e"}, use_mkldnn, "float32");
-  SetOp(&prog, "transpose2", "Transpose1", {"e"}, {"f"}, use_mkldnn,
-        "bfloat16");
-  SetOp(&prog, "reshape2", "Reshape1", {"f"}, {"g"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "concat", "Concat1", {"g"}, {"h"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "dropout", "Dropout3", {"h"}, {"i"}, use_mkldnn, "float32");
+  SetOp(&prog, "dropout", "Dropout1", {"z"}, {"a"}, use_mkldnn, FP32);
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, BF16);
+  SetOp(&prog, "pool2d", "Pool1", {"b"}, {"c"}, use_mkldnn, BF16);
+  SetOp(&prog, "conv2d", "Conv1", {"c"}, {"d"}, use_mkldnn, BF16);
+  SetOp(&prog, "dropout", "Dropout2", {"d"}, {"e"}, use_mkldnn, FP32);
+  SetOp(&prog, "transpose2", "Transpose1", {"e"}, {"f"}, use_mkldnn, BF16);
+  SetOp(&prog, "reshape2", "Reshape1", {"f"}, {"g"}, use_mkldnn, BF16);
+  SetOp(&prog, "concat", "Concat1", {"g"}, {"h"}, use_mkldnn, BF16);
+  SetOp(&prog, "dropout", "Dropout3", {"h"}, {"i"}, use_mkldnn, FP32);
 
   return prog;
 }

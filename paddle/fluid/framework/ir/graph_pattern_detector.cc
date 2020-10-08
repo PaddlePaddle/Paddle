@@ -2114,22 +2114,22 @@ PDNode *patterns::Bfloat16Placement::operator()(
 PDNode *patterns::OrphanedBfloat16::operator()() {
   auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
   prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "float32";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") ==
+           proto::VarType::FP32;
   });
   auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
 
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") ==
+           proto::VarType::BF16;
   });
   auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
   next_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "float32";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") ==
+           proto::VarType::FP32;
   });
 
   prev_op->LinksTo({prev_out});
@@ -2141,15 +2141,15 @@ PDNode *patterns::OrphanedBfloat16::operator()() {
 PDNode *patterns::LastBfloat16Ops::operator()() {
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") ==
+           proto::VarType::BF16;
   });
   auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
   next_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
-           "bfloat16";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") !=
+           proto::VarType::BF16;
   });
 
   op->LinksTo({op_out});
@@ -2160,15 +2160,15 @@ PDNode *patterns::LastBfloat16Ops::operator()() {
 PDNode *patterns::FirstBfloat16Ops::operator()() {
   auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
   prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
-           "bfloat16";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") !=
+           proto::VarType::BF16;
   });
   auto *op_in = pattern->NewNode(op_in_repr())->AsOutput();
 
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
+    return node->Op()->GetAttrIfExists<int>("mkldnn_data_type") ==
+           proto::VarType::BF16;
   });
 
   prev_op->LinksTo({op_in});

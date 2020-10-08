@@ -263,7 +263,7 @@ class OpTest(unittest.TestCase):
     def is_bfloat16_op(self):
         return self.dtype == np.uint16 or (
             hasattr(self, 'mkldnn_data_type') and
-            getattr(self, 'mkldnn_data_type') is "bfloat16")
+            getattr(self, 'mkldnn_data_type') is core.VarDesc.VarType.BF16)
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):

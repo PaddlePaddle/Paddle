@@ -225,11 +225,12 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+    AddAttr<int>("mkldnn_data_type",
+                 "(int, default: FP32). Data type of mkldnn kernel")
+        .SetDefault(framework::proto::VarType::FP32)
+        .InEnum({framework::proto::VarType::FP32,
+                 framework::proto::VarType::BF16,
+                 framework::proto::VarType::INT8});
     AddComment(R"DOC(
 Prior box operator
 Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.

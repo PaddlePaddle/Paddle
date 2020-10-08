@@ -46,7 +46,7 @@ void CPUBfloat16PlacementPass::SetMkldnnDataType(
     if ((op->Op()->HasAttr("mkldnn_data_type") ||
          op->Op()->HasProtoAttr("mkldnn_data_type")) &&
         !platform::HasOpINT8DataType(op->Op())) {
-      op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));
+      op->Op()->SetAttr("mkldnn_data_type", BF16);
       (*bfloat16_operators)++;
     }
   };
@@ -65,7 +65,7 @@ void CPUBfloat16PlacementPass::RemoveOrhanedOperators(
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, orphaned_bfloat16_pattern);
 
-    op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
+    op->Op()->SetAttr("mkldnn_data_type", FP32);
     bfloat16_operators--;
   };
   gpd(graph, handler);

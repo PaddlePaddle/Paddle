@@ -24,7 +24,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           const std::string& mkldnn_data_type = "float32") {
+           const int mkldnn_data_type = FP32) {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);

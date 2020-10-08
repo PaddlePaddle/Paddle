@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -26,7 +27,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           const std::string& mkldnn_data_type = "float32") {
+           const int mkldnn_data_type = FP32) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -152,8 +153,7 @@ static const std::initializer_list<std::string> variable_names{
 // d->Dropout1->g and (g, w5, b3)->Fc1->h and (h,w3,b1,i)->Conv3->j
 //
 // (d,w4, b2)->Conv4->i
-ProgramDesc BuildProgramDesc(bool use_mkldnn,
-                             const std::string& mkldnn_data_type) {
+ProgramDesc BuildProgramDesc(bool use_mkldnn, const int mkldnn_data_type) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     auto* var = prog.MutableBlock(0)->Var(v);
@@ -226,7 +226,7 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
 
 TEST(CpuQuantizePass, quantize) {
   bool use_mkldnn = true;
-  std::string mkldnn_data_type = "int8";
+  int mkldnn_data_type = INT8;
   // (a->QUANT1->IN1,w1)->Conv1->OUT1->DEQUANT1->c and
   // c->QUANT2->IN2->Pool1->OUT2->DEQUANT2->d
   //
@@ -245,7 +245,7 @@ TEST(CpuQuantizePass, quantize) {
 
 TEST(CpuQuantizePass, do_not_quantize) {
   bool use_mkldnn = true;
-  std::string mkldnn_data_type = "float32";
+  int mkldnn_data_type = FP32;
   int added_nodes = 0;
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type), 4, 2, 0, 0,
            added_nodes, 1.0f);
@@ -261,10 +261,10 @@ static const std::initializer_list<std::string> variable_names_concat = {
 ProgramDesc BuildProgramDescConcat() {
   ProgramDesc prog;
 
-  SetOp(&prog, "pool2d", "Pool1", {"a1"}, {"b1"}, true, "float32");
-  SetOp(&prog, "pool2d", "Pool2", {"a2"}, {"b2"}, true, "float32");
-  SetOp(&prog, "concat", "Concat", {"b1", "b2"}, {"c"}, true, "int8");
-  SetOp(&prog, "pool2d", "Pool3", {"c"}, {"d"}, true, "float32");
+  SetOp(&prog, "pool2d", "Pool1", {"a1"}, {"b1"}, true, FP32);
+  SetOp(&prog, "pool2d", "Pool2", {"a2"}, {"b2"}, true, FP32);
+  SetOp(&prog, "concat", "Concat", {"b1", "b2"}, {"c"}, true, INT8);
+  SetOp(&prog, "pool2d", "Pool3", {"c"}, {"d"}, true, FP32);
 
   return prog;
 }
@@ -332,11 +332,11 @@ ProgramDesc BuildProgramDescTranspose() {
     }
   }
 
-  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, "int8");
-  SetOp(&prog, "transpose2", "Transpose1", {"b"}, {"c"}, true, "int8");
-  SetOp(&prog, "conv2d", "Conv1", {"c", "w2"}, {"d"}, true, "int8");
-  SetOp(&prog, "transpose2", "Transpose2", {"d"}, {"e"}, true, "int8");
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, INT8);
+  SetOp(&prog, "transpose2", "Transpose1", {"b"}, {"c"}, true, INT8);
+  SetOp(&prog, "conv2d", "Conv1", {"c", "w2"}, {"d"}, true, INT8);
+  SetOp(&prog, "transpose2", "Transpose2", {"d"}, {"e"}, true, INT8);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, FP32);
 
   return prog;
 }
@@ -413,7 +413,7 @@ ProgramDesc BuildProgramDescFusionGru() {
   }
 
   SetOp(&prog, "fusion_gru", "Fusion_gru", {"x", "wx", "wh", "b"}, {"h"}, true,
-        "int8");
+        INT8);
 
   return prog;
 }
@@ -482,8 +482,8 @@ ProgramDesc BuildProgramDescReshape() {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
-  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, "int8");
-  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, "float32");
+  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, INT8);
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, FP32);
 
   return prog;
 }
@@ -497,9 +497,9 @@ ProgramDesc BuildProgramDescReshapeBetweenNonQuantizedOp() {
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "transpose2", "Transpose2", {"a"}, {"b"}, true, "float32");
-  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, "int8");
-  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, "float32");
+  SetOp(&prog, "transpose2", "Transpose2", {"a"}, {"b"}, true, FP32);
+  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, INT8);
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, FP32);
 
   return prog;
 }
@@ -587,8 +587,8 @@ ProgramDesc BuildProgramDescMatmul() {
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, INT8);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, FP32);
 
   return prog;
 }
@@ -600,8 +600,8 @@ ProgramDesc BuildProgramDescMatmulNotQuantized() {
   }
   SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, false);
   SetOp(&prog, "dequantize", "Dequantize", {"c"}, {"d"}, true);
-  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, INT8);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, FP32);
 
   return prog;
 }
@@ -671,9 +671,8 @@ ProgramDesc BuildProgramDescElementwiseAdd() {
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "elementwise_add", "ElementwiseAdd", {"b", "d"}, {"e"}, true,
-        "int8");
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+  SetOp(&prog, "elementwise_add", "ElementwiseAdd", {"b", "d"}, {"e"}, true, INT8);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, FP32);
 
   return prog;
 }

@@ -27,6 +27,10 @@ namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
 #endif
+
+constexpr int FP32 = framework::proto::VarType::FP32;
+constexpr int BF16 = framework::proto::VarType::BF16;
+constexpr int INT8 = framework::proto::VarType::INT8;
 namespace platform {
 
 using MKLDNNStream = mkldnn::stream;
@@ -465,16 +469,16 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
 }
 
 inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
-  return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
+  return (op->GetAttrIfExists<int>("mkldnn_data_type") == INT8 ||
           op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
 inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
-  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
+  return op->GetAttrIfExists<int>("mkldnn_data_type") == BF16;
 }
 
 inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
-  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+  return op->GetAttrIfExists<int>("mkldnn_data_type") == FP32;
 }
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 

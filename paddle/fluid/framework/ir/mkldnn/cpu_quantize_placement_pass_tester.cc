@@ -24,7 +24,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           const std::string& mkldnn_data_type = "float32") {
+           const int mkldnn_data_type = FP32) {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
@@ -50,12 +50,12 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 
 // operator                      mkldnn_data_type
 // ---------------------------------------
-// (a,b)->concat->c              none
-// (c,weights,bias)->conv->f     false
-// f->relu->g                    none
-// g->pool->h                    false
-// (h,weights2,bias2)->conv->k   false
-// k->pool->l                    false
+// (a,b)->concat->c              FP32
+// (c,weights,bias)->conv->f     FP32
+// f->relu->g                    FP32
+// g->pool->h                    FP32
+// (h,weights2,bias2)->conv->k   FP32
+// k->pool->l                    FP32
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
 
@@ -69,12 +69,12 @@ ProgramDesc BuildProgramDesc() {
     }
   }
 
-  SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"}, "float32");
-  SetOp(&prog, "conv2d", "conv1", {"c", "weights", "bias"}, {"f"}, "float32");
-  SetOp(&prog, "relu", "relu1", {"f"}, {"g"}, "float32");
-  SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"}, "float32");
-  SetOp(&prog, "conv2d", "conv2", {"h", "weights2", "bias2"}, {"k"}, "float32");
-  SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"}, "float32");
+  SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"});
+  SetOp(&prog, "conv2d", "conv1", {"c", "weights", "bias"}, {"f"});
+  SetOp(&prog, "relu", "relu1", {"f"}, {"g"});
+  SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"});
+  SetOp(&prog, "conv2d", "conv2", {"h", "weights2", "bias2"}, {"k"});
+  SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"});
 
   return prog;
 }
