@@ -69,8 +69,8 @@ class RMSProp(Optimizer):
 
 
     Parameters:
-        learning_rate (float|_LRScheduler): The learning rate used to update ``Parameter``.
-            It can be a float value or a _LRScheduler.
+        learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler.
         rho(float): rho is :math: `\\rho` in equation, default is 0.95.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, default is 1e-6.

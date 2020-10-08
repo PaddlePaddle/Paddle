@@ -18,18 +18,19 @@ import warnings
 from paddle import Tensor
 
 __all__ = [
-    '_LRScheduler', 'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR',
-    'PolynomialLR', 'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR',
-    'LambdaLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
+    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
+    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
+    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
+    'CosineAnnealingDecay'
 ]
 
 
-class _LRScheduler(object):
+class LRScheduler(object):
     """
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
 
-    User can import it by ``form paddle.optimizer.lr_scheduler import _LRScheduler`` ,
+    User can import it by ``form paddle.optimizer.lr import LRScheduler`` ,
 
     then overload it for your subclass and have a custom implementation of ``get_lr()`` .
 
@@ -44,14 +45,14 @@ class _LRScheduler(object):
         instance to schedule learning rate.
 
     Examples:
-        Here is an example of a simple ``StepLR`` implementation. 
+        Here is an example of a simple ``StepDecay`` implementation. 
         
         .. code-block:: python
             
             import paddle
-            form paddle.optimizer.lr_scheduler import _LRScheduler
+            form paddle.optimizer.lr import LRScheduler
 
-            class StepLR(_LRScheduler):
+            class StepDecay(LRScheduler):
                 def __init__(self,
                             learning_rate,
                             step_size,
@@ -67,7 +68,7 @@ class _LRScheduler(object):
 
                     self.step_size = step_size
                     self.gamma = gamma
-                    super(StepLR, self).__init__(learning_rate, last_epoch, verbose)
+                    super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
 
                 def get_lr(self):
                     i = self.last_epoch // self.step_size
@@ -128,7 +129,7 @@ class _LRScheduler(object):
 
         It is a subset of ``self.__dict__`` .
         """
-        self._state_keys()
+        self.state_keys()
         state_dict = {}
         for key in self.keys:
             if key not in self.__dict__:
@@ -144,12 +145,12 @@ class _LRScheduler(object):
 
         return state_dict
 
-    # For those subclass who overload _LRScheduler, "last_epoch, last_lr" will be saved by default.
+    # For those subclass who overload LRScheduler, "last_epoch, last_lr" will be saved by default.
     # (Note): you can change it for your subclass.
-    def _state_keys(self):
+    def state_keys(self):
         """
 
-        For those subclass who overload ``_LRScheduler`` (Base Class). Acquiescently, "last_epoch, last_lr" will be saved by ``self.keys = ['last_epoch', 'last_lr']`` .
+        For those subclass who overload ``LRScheduler`` (Base Class). Acquiescently, "last_epoch, last_lr" will be saved by ``self.keys = ['last_epoch', 'last_lr']`` .
 
         ``last_epoch`` is the current epoch num, and ``last_lr`` is the current learning rate.
 
@@ -163,7 +164,7 @@ class _LRScheduler(object):
 
         Loads the schedulers state.
         """
-        self._state_keys()
+        self.state_keys()
         for key in self.keys:
             if key in state_dict:
                 self.__dict__[key] = state_dict[key]
@@ -182,7 +183,7 @@ class _LRScheduler(object):
     def get_lr(self):
         """
         
-        For those subclass who overload ``_LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
+        For those subclass who overload ``LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
 
         Otherwise, an ``NotImplementedError`` exception will be thrown.
         """
@@ -190,10 +191,10 @@ class _LRScheduler(object):
         raise NotImplementedError
 
 
-class NoamLR(_LRScheduler):
+class NoamDecay(LRScheduler):
     """
 
-    Applies Noam Lear to the initial learning rate. 
+    Applies Noam Decay to the initial learning rate. 
 
     The algorithm can be described as following.
 
@@ -212,7 +213,7 @@ class NoamLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``NoamLR`` instance to schedule learning rate.
+        ``NoamDecay`` instance to schedule learning rate.
 
     Examples:
         .. code-block:: python
@@ -222,7 +223,7 @@ class NoamLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.NoamLR(d_model=0.01, warmup_steps=100, verbose=True)
+            scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -243,7 +244,7 @@ class NoamLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.NoamLR(d_model=0.01, warmup_steps=100, verbose=True)
+                scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -270,7 +271,7 @@ class NoamLR(_LRScheduler):
                  verbose=False):
         self.d_model = d_model
         self.warmup_steps = warmup_steps
-        super(NoamLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(NoamDecay, self).__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         if self.last_epoch == 0:
@@ -281,7 +282,7 @@ class NoamLR(_LRScheduler):
         return self.base_lr * (self.d_model**-0.5) * min(a, b)
 
 
-class PiecewiseLR(_LRScheduler):
+class PiecewiseDecay(LRScheduler):
     """
 
     Piecewise learning rate scheduler.
@@ -307,7 +308,7 @@ class PiecewiseLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``PiecewiseLR`` instance to schedule learning rate.
+        ``PiecewiseDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -318,7 +319,7 @@ class PiecewiseLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -339,7 +340,7 @@ class PiecewiseLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
+                scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -360,7 +361,7 @@ class PiecewiseLR(_LRScheduler):
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
         self.boundaries = boundaries
         self.values = values
-        super(PiecewiseLR, self).__init__(
+        super(PiecewiseDecay, self).__init__(
             last_epoch=last_epoch, verbose=verbose)
 
     def get_lr(self):
@@ -371,7 +372,7 @@ class PiecewiseLR(_LRScheduler):
         return self.values[len(self.values) - 1]
 
 
-class NaturalExpLR(_LRScheduler):
+class NaturalExpDecay(LRScheduler):
     """
 
     Applies natural exponential decay to the initial learning rate.
@@ -389,7 +390,7 @@ class NaturalExpLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``NaturalExpLR`` instance to schedule learning rate.
+        ``NaturalExpDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -400,7 +401,7 @@ class NaturalExpLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.NaturalExpLR(learning_rate=0.5, gamma=0.1, verbose=True)
+            scheduler = paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -421,7 +422,7 @@ class NaturalExpLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.NaturalExpLR(learning_rate=0.5, gamma=0.1, verbose=True)
+                scheduler = paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5, gamma=0.1, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -441,13 +442,14 @@ class NaturalExpLR(_LRScheduler):
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
         self.gamma = gamma
-        super(NaturalExpLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(NaturalExpDecay, self).__init__(learning_rate, last_epoch,
+                                              verbose)
 
     def get_lr(self):
         return self.base_lr * math.exp(-1 * self.gamma * self.last_epoch)
 
 
-class InverseTimeLR(_LRScheduler):
+class InverseTimeDecay(LRScheduler):
     """
 
     Applies inverse time decay to the initial learning rate.
@@ -466,7 +468,7 @@ class InverseTimeLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``InverseTimeLR`` instance to schedule learning rate.
+        ``InverseTimeDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -477,7 +479,7 @@ class InverseTimeLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.InverseTimeLR(learning_rate=0.5, gamma=0.1, verbose=True)
+            scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -498,7 +500,7 @@ class InverseTimeLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.InverseTimeLR(learning_rate=0.5, gamma=0.1, verbose=True)
+                scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=0.5, gamma=0.1, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -519,13 +521,14 @@ class InverseTimeLR(_LRScheduler):
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
         self.gamma = gamma
-        super(InverseTimeLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(InverseTimeDecay, self).__init__(learning_rate, last_epoch,
+                                               verbose)
 
     def get_lr(self):
         return self.base_lr / (1 + self.gamma * self.last_epoch)
 
 
-class PolynomialLR(_LRScheduler):
+class PolynomialDecay(LRScheduler):
     """
 
     Applies polynomial decay to the initial learning rate.
@@ -560,7 +563,7 @@ class PolynomialLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``PolynomialLR`` instance to schedule learning rate.
+        ``PolynomialDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -571,7 +574,7 @@ class PolynomialLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.PolynomialLR(learning_rate=0.5, decay_steps=20, verbose=True)
+            scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.5, decay_steps=20, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -592,7 +595,7 @@ class PolynomialLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.PolynomialLR(learning_rate=0.5, decay_steps=20, verbose=True)
+                scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.5, decay_steps=20, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -622,7 +625,8 @@ class PolynomialLR(_LRScheduler):
         self.end_lr = end_lr
         self.power = power
         self.cycle = cycle
-        super(PolynomialLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(PolynomialDecay, self).__init__(learning_rate, last_epoch,
+                                              verbose)
 
     def get_lr(self):
         tmp_epoch_num = self.last_epoch
@@ -642,7 +646,7 @@ class PolynomialLR(_LRScheduler):
              )**self.power) + self.end_lr
 
 
-class LinearLrWarmup(_LRScheduler):
+class LinearWarmup(LRScheduler):
     """
 
     Linear learning rate warm up strategy. Update the learning rate preliminarily before the normal learning rate scheduler.
@@ -662,10 +666,10 @@ class LinearLrWarmup(_LRScheduler):
     
             lr = learning_rate
     
-    where ``learning_rate`` is float or any subclass of ``_LRScheduler`` .
+    where ``learning_rate`` is float or any subclass of ``LRScheduler`` .
 
     Args:
-        learning_rate (float|_LRScheduler): The learning rate after warm-up. It is a python float number or any subclass of ``_LRScheduler`` .
+        learning_rate (float|LRScheduler): The learning rate after warm-up. It is a python float number or any subclass of ``LRScheduler`` .
         warmup_steps (int): total steps of warm up.
         start_lr (float): Initial learning rate of warm up.
         end_lr (float): Final learning rate of warm up.
@@ -673,7 +677,7 @@ class LinearLrWarmup(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``LinearLrWarmup`` instance to schedule learning rate.
+        ``LinearWarmup`` instance to schedule learning rate.
 
     Examples:
         
@@ -684,7 +688,7 @@ class LinearLrWarmup(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.LinearLrWarmup(
+            scheduler = paddle.optimizer.LinearWarmup(
                     learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
@@ -706,7 +710,7 @@ class LinearLrWarmup(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.LinearLrWarmup(
+                scheduler = paddle.optimizer.lr.LinearWarmup(
                     learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
@@ -733,10 +737,10 @@ class LinearLrWarmup(_LRScheduler):
                  last_epoch=-1,
                  verbose=False):
         type_check = isinstance(learning_rate, float) or isinstance(
-            learning_rate, int) or isinstance(learning_rate, _LRScheduler)
+            learning_rate, int) or isinstance(learning_rate, LRScheduler)
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or _LRScheduler], the current type is {}".
+                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".
                 format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
@@ -744,21 +748,21 @@ class LinearLrWarmup(_LRScheduler):
         self.end_lr = end_lr
         assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
             end_lr, start_lr)
-        super(LinearLrWarmup, self).__init__(start_lr, last_epoch, verbose)
+        super(LinearWarmup, self).__init__(start_lr, last_epoch, verbose)
 
     def get_lr(self):
         if self.last_epoch < self.warmup_steps:
             return (self.end_lr - self.start_lr) * float(
                 self.last_epoch) / float(self.warmup_steps) + self.start_lr
         else:
-            if isinstance(self.learning_rate, _LRScheduler):
+            if isinstance(self.learning_rate, LRScheduler):
                 self.learning_rate.step()
                 return self.learning_rate()
 
             return self.learning_rate
 
 
-class ExponentialLR(_LRScheduler):
+class ExponentialDecay(LRScheduler):
     """
 
     Update learning rate by `gamma` each epoch.
@@ -777,7 +781,7 @@ class ExponentialLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``ExponentialLR`` instance to schedule learning rate.
+        ``ExponentialDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -788,7 +792,7 @@ class ExponentialLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.ExponentialLR(learning_rate=0.5, gamma=0.9, verbose=True)
+            scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.5, gamma=0.9, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -809,7 +813,7 @@ class ExponentialLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.ExponentialLR(learning_rate=0.5, gamma=0.9, verbose=True)
+                scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.5, gamma=0.9, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -829,13 +833,14 @@ class ExponentialLR(_LRScheduler):
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
         self.gamma = gamma
-        super(ExponentialLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(ExponentialDecay, self).__init__(learning_rate, last_epoch,
+                                               verbose)
 
     def get_lr(self):
         return self.base_lr * (self.gamma**self.last_epoch)
 
 
-class MultiStepLR(_LRScheduler):
+class MultiStepDecay(LRScheduler):
     """
     Update the learning rate by ``gamma`` once ``epoch`` reaches one of the milestones.
 
@@ -863,7 +868,7 @@ class MultiStepLR(_LRScheduler):
         
 
     Returns:
-        ``MultiStepLR`` instance to schedule learning rate.
+        ``MultiStepDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -874,7 +879,7 @@ class MultiStepLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.MultiStepLR(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
+            scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -895,7 +900,7 @@ class MultiStepLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.MultiStepLR(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
+                scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -934,7 +939,7 @@ class MultiStepLR(_LRScheduler):
 
         self.milestones = milestones
         self.gamma = gamma
-        super(MultiStepLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(MultiStepDecay, self).__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         for i in range(len(self.milestones)):
@@ -943,7 +948,7 @@ class MultiStepLR(_LRScheduler):
         return self.base_lr * (self.gamma**len(self.milestones))
 
 
-class StepLR(_LRScheduler):
+class StepDecay(LRScheduler):
     """
     Update the learning rate of ``optimizer`` by ``gamma`` every ``step_size`` number of epoch.
 
@@ -969,7 +974,7 @@ class StepLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``StepLR`` instance to schedule learning rate.
+        ``StepDecay`` instance to schedule learning rate.
 
 
     Examples:
@@ -981,7 +986,7 @@ class StepLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
+            scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -1002,7 +1007,7 @@ class StepLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
+                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -1035,14 +1040,14 @@ class StepLR(_LRScheduler):
 
         self.step_size = step_size
         self.gamma = gamma
-        super(StepLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         i = self.last_epoch // self.step_size
         return self.base_lr * (self.gamma**i)
 
 
-class LambdaLR(_LRScheduler):
+class LambdaDecay(LRScheduler):
     """
     Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
 
@@ -1064,7 +1069,7 @@ class LambdaLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
     
     Returns:
-        ``LambdaLR`` instance to schedule learning rate.
+        ``LambdaDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -1075,7 +1080,7 @@ class LambdaLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.LambdaLR(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
+            scheduler = paddle.optimizer.lr.LambdaDecay(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -1096,7 +1101,7 @@ class LambdaLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.LambdaLR(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
+                scheduler = paddle.optimizer.lr.LambdaDecay(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -1118,17 +1123,17 @@ class LambdaLR(_LRScheduler):
     def __init__(self, learning_rate, lr_lambda, last_epoch=-1, verbose=False):
         if not callable(lr_lambda):
             raise TypeError(
-                "The type of 'lr_lambda' in 'LambdaLR' must be 'function', but received %s."
+                "The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received %s."
                 % type(lr_lambda))
 
         self.lr_lambda = lr_lambda
-        super(LambdaLR, self).__init__(learning_rate, last_epoch, verbose)
+        super(LambdaDecay, self).__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         return self.base_lr * self.lr_lambda(self.last_epoch)
 
 
-class ReduceLROnPlateau(_LRScheduler):
+class ReduceOnPlateau(LRScheduler):
     """
     Reduce learning rate when ``metrics`` has stopped descending. Models often benefit from reducing the learning rate 
     by 2 to 10 times once model performance has no longer improvement.
@@ -1162,7 +1167,7 @@ class ReduceLROnPlateau(_LRScheduler):
 
     
     Returns:
-        ``ReduceLROnPlateau`` instance to schedule learning rate.
+        ``ReduceOnPlateau`` instance to schedule learning rate.
 
 
     Examples:
@@ -1173,7 +1178,7 @@ class ReduceLROnPlateau(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.ReduceLROnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
+            scheduler = paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -1194,7 +1199,7 @@ class ReduceLROnPlateau(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.ReduceLROnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
+                scheduler = paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -1241,7 +1246,7 @@ class ReduceLROnPlateau(_LRScheduler):
         self.threshold_mode = threshold_mode
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
-                "The type of 'learning_rate' in 'ReduceLROnPlateau' must be 'float', but received %s."
+                "The type of 'learning_rate' in 'ReduceOnPlateau' must be 'float', but received %s."
                 % type(learning_rate))
 
         self.verbose = verbose
@@ -1264,7 +1269,7 @@ class ReduceLROnPlateau(_LRScheduler):
         self._var_name = None
 
     # "cooldown_counter / best / num_bad_epochs / last_epoch / last_lr" will be stored.
-    def _state_keys(self):
+    def state_keys(self):
         self.keys = [
             'cooldown_counter', 'best', 'num_bad_epochs', 'last_epoch',
             'last_lr'
@@ -1285,7 +1290,7 @@ class ReduceLROnPlateau(_LRScheduler):
             None
         
         Examples:
-            Please refer to the example of current _LRScheduler.
+            Please refer to the example of current LRScheduler.
         """
         if epoch is None:
             self.last_epoch = self.last_epoch + 1
@@ -1337,7 +1342,7 @@ class ReduceLROnPlateau(_LRScheduler):
             return current > best + self.threshold
 
 
-class CosineAnnealingLR(_LRScheduler):
+class CosineAnnealingDecay(LRScheduler):
     """
 
     Set the learning rate using a cosine annealing schedule, where :math:`\eta_{max}` is set to 
@@ -1368,7 +1373,7 @@ class CosineAnnealingLR(_LRScheduler):
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        ``CosineAnnealingLR`` instance to schedule learning rate.
+        ``CosineAnnealingDecay`` instance to schedule learning rate.
 
     Examples:
         
@@ -1379,7 +1384,7 @@ class CosineAnnealingLR(_LRScheduler):
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
-            scheduler = paddle.optimizer.lr_scheduler.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
+            scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.5, T_max=10, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
                 for batch_id in range(2):
@@ -1400,7 +1405,7 @@ class CosineAnnealingLR(_LRScheduler):
                 y = paddle.static.data(name='y', shape=[None, 4, 5])
                 z = paddle.static.nn.fc(x, 100)
                 loss = paddle.mean(z)
-                scheduler = paddle.optimizer.lr_scheduler.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
+                scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.5, T_max=10, verbose=True)
                 sgd = paddle.optimizer.SGD(learning_rate=scheduler)
                 sgd.minimize(loss)
 
@@ -1426,16 +1431,16 @@ class CosineAnnealingLR(_LRScheduler):
                  verbose=False):
         if not isinstance(T_max, int):
             raise TypeError(
-                "The type of 'T_max' in 'CosineAnnealingLR' must be 'int', but received %s."
+                "The type of 'T_max' in 'CosineAnnealingDecay' must be 'int', but received %s."
                 % type(T_max))
         if not isinstance(eta_min, (float, int)):
             raise TypeError(
-                "The type of 'eta_min' in 'CosineAnnealingLR' must be 'float, int', but received %s."
+                "The type of 'eta_min' in 'CosineAnnealingDecay' must be 'float, int', but received %s."
                 % type(eta_min))
         self.T_max = T_max
         self.eta_min = float(eta_min)
-        super(CosineAnnealingLR, self).__init__(learning_rate, last_epoch,
-                                                verbose)
+        super(CosineAnnealingDecay, self).__init__(learning_rate, last_epoch,
+                                                   verbose)
 
     def get_lr(self):
         if self.last_epoch == 0:

@@ -33,4 +33,4 @@ from .adadelta import Adadelta
 from .sgd import SGD
 from .momentum import Momentum
 
-from . import lr_scheduler
+from . import lr_scheduler as lr

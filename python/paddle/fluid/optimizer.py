@@ -70,15 +70,15 @@ class Optimizer(object):
                  grad_clip=None,
                  name=None):
         # Because of the loop import, so place it in the function body
-        from paddle.optimizer.lr_scheduler import _LRScheduler
+        from paddle.optimizer.lr import LRScheduler
         self._parameter_list = list(
             parameter_list) if parameter_list is not None else None
         self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate,
-                              (float, LearningRateDecay, _LRScheduler)):
+                              (float, LearningRateDecay, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or _LRScheduler, got %s here"
+                    "learning rate should be float or LRScheduler, got %s here"
                     % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
@@ -94,9 +94,9 @@ class Optimizer(object):
                         break
         else:
             if not isinstance(learning_rate,
-                              (float, framework.Variable, _LRScheduler)):
+                              (float, framework.Variable, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or _LRScheduler, got %s here"
+                    "learning rate should be float or LRScheduler, got %s here"
                     % type(learning_rate))
 
         if grad_clip is not None:
@@ -147,13 +147,13 @@ class Optimizer(object):
                     state_dict = adam.state_dict()
 
         '''
-        from paddle.optimizer.lr_scheduler import _LRScheduler
+        from paddle.optimizer.lr import LRScheduler
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
-        if isinstance(self._learning_rate, _LRScheduler):
+        if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
             return state_dict
         if isinstance(self._learning_rate, LearningRateDecay):
@@ -193,7 +193,7 @@ class Optimizer(object):
                 state_dict = emb.state_dict()
                 fluid.save_dygraph(state_dict, "paddle_dy")
 
-                scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                scheduler = paddle.optimizer.lr.NoamDecay(	
                     d_model=0.01, warmup_steps=100, verbose=True)
                 adam = paddle.optimizer.Adam(
                     learning_rate=scheduler,
@@ -203,8 +203,8 @@ class Optimizer(object):
 
                 para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
-        from paddle.optimizer.lr_scheduler import _LRScheduler
-        if isinstance(self._learning_rate, _LRScheduler):
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, LearningRateDecay):
@@ -269,8 +269,8 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        from paddle.optimizer.lr_scheduler import _LRScheduler
-        if isinstance(self._learning_rate, _LRScheduler):
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
             lr_var = self._global_learning_rate()
             # only create global lr_var once
             if not isinstance(lr_var, framework.Variable):
