@@ -163,8 +163,8 @@ class ClipGradByValue(ClipGradBase):
     
     - Any values greater than max are set to ``max``.
 
-    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
-    is not None, then only part of gradients can be selected for gradient clipping.
+    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . 
+    If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
     (for example: :ref:`api_paddle_optimizer_SGD`).
@@ -254,8 +254,8 @@ class ClipGradByNorm(ClipGradBase):
     
     - If the l2 norm of :math:`X` is less than or equal to ``clip_norm`` , nothing will be done.
     
-    The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
-    is not None, then only part of gradients can be selected for gradient clipping.
+    The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` .
+    If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
     (for example: :ref:`api_paddle_optimizer_SGD`).
@@ -283,9 +283,6 @@ class ClipGradByNorm(ClipGradBase):
 
     Args:
         clip_norm(float): The maximum norm value.
-        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool`` 
-            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
-            and gradients of all parameters in the network will be clipped.
 
     Examples:
         .. code-block:: python
@@ -360,8 +357,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
     
     - If the global norm is less than or equal to ``clip_norm`` , nothing will be done.
     
-    The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
-    is not None, then only part of gradients can be selected for gradient clipping.
+    The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters in ``Program`` .
+    If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
     (for example: :ref:`api_paddle_optimizer_SGD`).
@@ -384,10 +381,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     Args:
         clip_norm (float): The maximum norm value.
-        group_name (str, optional): The group name for this clip. Default value is ``default_group``
-        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool`` 
-            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
-            and gradients of all parameters in the network will be clipped.
+        group_name (str, optional): The group name for this clip. Default value is ``default_group``.
 
     Examples:
         .. code-block:: python
