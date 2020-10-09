@@ -27,31 +27,32 @@ template <typename DeviceContext, typename T>
 class SoftmaxXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<Tensor>("X");
-    auto* Out = context.Output<Tensor>("Out");
-    const int rank = X->dims().size();
+    auto* x = context.Input<Tensor>("X");
+    auto* out = context.Output<Tensor>("Out");
+    const int rank = x->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
                       platform::errors::InvalidArgument(
                           "xpu softmax kernel only support last dimension of x "
-                          "(axis==-1 or axis==x_dims-1), but received axis: %d",
-                          axis));
+                          "(axis==-1 or axis==x_dims-1), but received axis: "
+                          "%d, x's shape: %s.",
+                          axis, x->dims()));
 
     // allocate memory on device.
-    Out->mutable_data<T>(context.GetPlace());
+    out->mutable_data<T>(context.GetPlace());
 
-    const int n = SizeToAxis(axis, X->dims());
-    const int d = SizeFromAxis(axis, X->dims());
+    const int n = SizeToAxis(axis, x->dims());
+    const int d = SizeFromAxis(axis, x->dims());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::softmax2d_forward(dev_ctx.x_context(), X->data<float>(),
-                                   Out->data<float>(), n, d, d <= 2048);
+    int r = xpu::softmax2d_forward(dev_ctx.x_context(), x->data<float>(),
+                                   out->data<float>(), n, d, d <= 2048);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+        platform::errors::External("XPU API(softmax2d_forward) return wrong "
+                                   "value[%d], please check whether "
+                                   "Baidu Kunlun Card is properly installed.",
+                                   r));
   }
 };
 
@@ -59,33 +60,28 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* Out = context.Input<Tensor>("Out");
-    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
-    const int rank = dX->dims().size();
+    auto* out = context.Input<Tensor>("Out");
+    auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
+    const int rank = dx->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-    PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
-                      platform::errors::InvalidArgument(
-                          "xpu softmax kernel only support last dimension of x "
-                          "(axis==-1 or axis==x_dims-1), but received axis: %d",
-                          axis));
 
     // allocate memory on device.
-    dX->mutable_data<T>(context.GetPlace());
+    dx->mutable_data<T>(context.GetPlace());
 
-    const int n = SizeToAxis(axis, dX->dims());
-    const int d = SizeFromAxis(axis, dX->dims());
+    const int n = SizeToAxis(axis, dx->dims());
+    const int d = SizeFromAxis(axis, dx->dims());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r =
-        xpu::softmax2d_backward(dev_ctx.x_context(), Out->data<float>(),
-                                dOut->data<float>(), dX->data<float>(), n, d);
+        xpu::softmax2d_backward(dev_ctx.x_context(), out->data<float>(),
+                                dout->data<float>(), dx->data<float>(), n, d);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+        platform::errors::External("XPU API(softmax2d_backward) return wrong "
+                                   "value[%d], please check whether "
+                                   "Baidu Kunlun Card is properly installed.",
+                                   r));
   }
 };
 

@@ -51,7 +51,7 @@ class TestXPUSoftmaxOp(OpTest):
         self.axis = -1
         self.set_attrs()
 
-        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.apply_along_axis(stable_softmax, self.axis, x)
 
         self.inputs = {'X': x}
@@ -62,11 +62,10 @@ class TestXPUSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0), atol=0.01)
+        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-4)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.XPUPlace(0), ['X'], 'Out', max_relative_error=0.01)
+        self.check_grad_with_place(paddle.XPUPlace(0), ['X'], 'Out')
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
