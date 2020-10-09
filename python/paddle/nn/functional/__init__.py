@@ -90,7 +90,7 @@ from .conv import conv_transpose3d  #DEFINE_ALIAS
 # from .extension import multiclass_nms  #DEFINE_ALIAS
 # from .extension import polygon_box_transform  #DEFINE_ALIAS
 # from .extension import random_crop  #DEFINE_ALIAS
-from .extension import row_conv  #DEFINE_ALIAS
+# from .extension import row_conv  #DEFINE_ALIAS
 # from .extension import rpn_target_assign  #DEFINE_ALIAS
 # from .extension import similarity_focus  #DEFINE_ALIAS
 # from .extension import target_assign  #DEFINE_ALIAS

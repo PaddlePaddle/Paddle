@@ -15,7 +15,6 @@
 # TODO: define the extention functions
 
 __all__ = [
-    'row_conv',
     'diag_embed'
 ]
 
