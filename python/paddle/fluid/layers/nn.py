@@ -13263,10 +13263,11 @@ def bilinear_tensor_product(x,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          layer1 = fluid.data("t1", shape=[-1, 5], dtype="float32")
-          layer2 = fluid.data("t2", shape=[-1, 4], dtype="float32")
-          tensor = fluid.layers.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+            import paddle
+            paddle.enable_static()
+            layer1 = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
+            layer2 = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
+            tensor = paddle.static.nn.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
