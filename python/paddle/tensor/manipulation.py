@@ -1469,6 +1469,7 @@ def strided_slice(x, axes, starts, ends, strides):
         TypeError: The type of ``starts`` must be list, tuple or Variable.
         TypeError: The type of ``ends`` must be list, tuple or Variable.
         TypeError: The type of ``strides`` must be list, tuple or Variable.
+
     Examples:
         .. code-block:: python
 
@@ -1488,7 +1489,6 @@ def strided_slice(x, axes, starts, ends, strides):
             minus_3 = paddle.fill_constant([1], "int32", -3)
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
-
     """
 
     return paddle.fluid.layers.strided_slice(
