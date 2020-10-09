@@ -1250,7 +1250,7 @@ def has_inf(x):
           
           import paddle
           data = paddle.randn(shape=[4, 32, 32], dtype="float32")
-          res = fluid.layers.has_inf(data)
+          res = paddle.has_inf(data)
           # [False]
 
     """
@@ -1276,7 +1276,7 @@ def has_nan(x):
     
           import paddle
           data = paddle.randn(shape=[2,3], dtype="float32")
-          res = fluid.layers.has_nan(data)
+          res = paddle.has_nan(data)
           # [False]
 
     """
