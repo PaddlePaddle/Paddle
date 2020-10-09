@@ -25,9 +25,9 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
+from .fluid.layers import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 from .fluid import core
 from .fluid.framework import in_dygraph_mode
-from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 from .tensor import arange, gather_nd, concat, multinomial
 import math
 import numpy as np

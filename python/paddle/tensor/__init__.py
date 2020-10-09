@@ -108,13 +108,13 @@ from .math import ceil  #DEFINE_ALIAS
 from .math import cos  #DEFINE_ALIAS
 from .math import cosh  #DEFINE_ALIAS
 from .math import cumsum  #DEFINE_ALIAS
-from .math import elementwise_add  #DEFINE_ALIAS
-from .math import elementwise_div  #DEFINE_ALIAS
-from .math import elementwise_floordiv  #DEFINE_ALIAS
-from .math import elementwise_mul  #DEFINE_ALIAS
-from .math import elementwise_mod  #DEFINE_ALIAS
-from .math import elementwise_pow  #DEFINE_ALIAS
-from .math import elementwise_sub  #DEFINE_ALIAS
+# from .math import elementwise_add  #DEFINE_ALIAS
+# from .math import elementwise_div  #DEFINE_ALIAS
+# from .math import elementwise_floordiv  #DEFINE_ALIAS
+# from .math import elementwise_mul  #DEFINE_ALIAS
+# from .math import elementwise_mod  #DEFINE_ALIAS
+# from .math import elementwise_pow  #DEFINE_ALIAS
+# from .math import elementwise_sub  #DEFINE_ALIAS
 from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
 from .math import increment  #DEFINE_ALIAS
@@ -122,10 +122,10 @@ from .math import log  #DEFINE_ALIAS
 from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
-from .math import reduce_max  #DEFINE_ALIAS
-from .math import reduce_min  #DEFINE_ALIAS
-from .math import reduce_prod  #DEFINE_ALIAS
-from .math import reduce_sum  #DEFINE_ALIAS
+# from .math import reduce_max  #DEFINE_ALIAS
+# from .math import reduce_min  #DEFINE_ALIAS
+# from .math import reduce_prod  #DEFINE_ALIAS
+# from .math import reduce_sum  #DEFINE_ALIAS
 from .math import round  #DEFINE_ALIAS
 from .math import rsqrt  #DEFINE_ALIAS
 from .math import scale  #DEFINE_ALIAS
@@ -138,7 +138,7 @@ from .math import stanh  #DEFINE_ALIAS
 from .math import sum  #DEFINE_ALIAS
 from .math import sums  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
-from .math import elementwise_sum  #DEFINE_ALIAS
+# from .math import elementwise_sum  #DEFINE_ALIAS
 from .math import max  #DEFINE_ALIAS
 from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
@@ -156,7 +156,7 @@ from .math import logsumexp  #DEFINE_ALIAS
 from .math import inverse  #DEFINE_ALIAS
 from .math import log1p  #DEFINE_ALIAS
 from .math import erf  #DEFINE_ALIAS
-from .math import addcmul  #DEFINE_ALIAS
+# from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
 from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
@@ -176,8 +176,8 @@ from .random import randperm  #DEFINE_ALIAS
 from .search import argmax  #DEFINE_ALIAS
 from .search import argmin  #DEFINE_ALIAS
 from .search import argsort  #DEFINE_ALIAS
-from .search import has_inf  #DEFINE_ALIAS
-from .search import has_nan  #DEFINE_ALIAS
+# from .search import has_inf  #DEFINE_ALIAS
+# from .search import has_nan  #DEFINE_ALIAS
 # from .search import masked_select        #DEFINE_ALIAS
 from .search import topk  #DEFINE_ALIAS
 from .search import where  #DEFINE_ALIAS

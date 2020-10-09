@@ -173,7 +173,7 @@ from .tensor.math import stanh  #DEFINE_ALIAS
 from .tensor.math import sum  #DEFINE_ALIAS
 from .tensor.math import sums  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
-from .tensor.math import elementwise_sum  #DEFINE_ALIAS
+# from .tensor.math import elementwise_sum  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
@@ -191,7 +191,7 @@ from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
-from .tensor.math import addcmul  #DEFINE_ALIAS
+# from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
@@ -211,8 +211,8 @@ from .tensor.random import randperm  #DEFINE_ALIAS
 from .tensor.search import argmax  #DEFINE_ALIAS
 from .tensor.search import argmin  #DEFINE_ALIAS
 from .tensor.search import argsort  #DEFINE_ALIAS
-from .tensor.search import has_inf  #DEFINE_ALIAS
-from .tensor.search import has_nan  #DEFINE_ALIAS
+# from .tensor.search import has_inf  #DEFINE_ALIAS
+# from .tensor.search import has_nan  #DEFINE_ALIAS
 from .tensor.search import masked_select  #DEFINE_ALIAS
 from .tensor.search import topk  #DEFINE_ALIAS
 from .tensor.search import where  #DEFINE_ALIAS
