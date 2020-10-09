@@ -221,7 +221,6 @@ from .tensor.search import sort  #DEFINE_ALIAS
 from .framework.random import manual_seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
 from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
-from .framework import Variable  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS
 from .framework import create_global_var  #DEFINE_ALIAS
 from .framework import create_parameter  #DEFINE_ALIAS
