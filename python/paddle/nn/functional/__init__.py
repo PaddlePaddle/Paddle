@@ -81,21 +81,21 @@ from .conv import conv2d  #DEFINE_ALIAS
 from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
 from .conv import conv_transpose3d  #DEFINE_ALIAS
-from .extension import add_position_encoding  #DEFINE_ALIAS
+# from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
-from .extension import continuous_value_model  #DEFINE_ALIAS
-from .extension import filter_by_instag  #DEFINE_ALIAS
+# from .extension import continuous_value_model  #DEFINE_ALIAS
+# from .extension import filter_by_instag  #DEFINE_ALIAS
 # from .extension import linear_chain_crf        #DEFINE_ALIAS
 # from .extension import merge_selected_rows        #DEFINE_ALIAS
-from .extension import multiclass_nms  #DEFINE_ALIAS
-from .extension import polygon_box_transform  #DEFINE_ALIAS
-from .extension import random_crop  #DEFINE_ALIAS
+# from .extension import multiclass_nms  #DEFINE_ALIAS
+# from .extension import polygon_box_transform  #DEFINE_ALIAS
+# from .extension import random_crop  #DEFINE_ALIAS
 from .extension import row_conv  #DEFINE_ALIAS
-from .extension import rpn_target_assign  #DEFINE_ALIAS
-from .extension import similarity_focus  #DEFINE_ALIAS
-from .extension import target_assign  #DEFINE_ALIAS
-from .extension import temporal_shift  #DEFINE_ALIAS
-from .extension import warpctc  #DEFINE_ALIAS
+# from .extension import rpn_target_assign  #DEFINE_ALIAS
+# from .extension import similarity_focus  #DEFINE_ALIAS
+# from .extension import target_assign  #DEFINE_ALIAS
+# from .extension import temporal_shift  #DEFINE_ALIAS
+# from .extension import warpctc  #DEFINE_ALIAS
 from .extension import diag_embed  #DEFINE_ALIAS
 # from .learning_rate import cosine_decay  #DEFINE_ALIAS
 # from .learning_rate import exponential_decay  #DEFINE_ALIAS
