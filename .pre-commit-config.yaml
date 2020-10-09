@@ -4,10 +4,6 @@ repos:
     hooks:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
--   repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.5.3
-    hooks:
-    -   id: isort
 -   repo: https://github.com/PaddlePaddle/mirrors-yapf.git
     sha: 0d79c0c469bab64f7229c9aca2b1186ef47f0e37
     hooks:
