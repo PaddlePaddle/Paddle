@@ -215,5 +215,22 @@ class TestConv2dOp_AsyPadding_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
         self.padding_algorithm = "EXPLICIT"
 
 
+class TestMKLDNNDilations(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [12, f_c, 3, 3]
+
+    def init_dilation(self):
+        self.dilations = [2, 2]
+
+    def init_group(self):
+        self.groups = 3
+
+
 if __name__ == '__main__':
     unittest.main()

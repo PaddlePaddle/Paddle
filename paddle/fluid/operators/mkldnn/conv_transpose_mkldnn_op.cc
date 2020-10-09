@@ -115,10 +115,13 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              data_dims, strides, ksize);
 
-    PADDLE_ENFORCE(
-        dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-        platform::errors::Unimplemented(
-            "dilation in convolution is not implemented yet"));
+    PADDLE_ENFORCE(dilations.size() == 2,
+                   platform::errors::Unimplemented(
+                       "convolution transpose op now only support 2 dimension "
+                       "dilated convolution"));
+
+    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                   [](int64_t i) { return i - 1; });
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -210,11 +213,12 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
-          src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_activation, fuse_alpha, fuse_beta, false, fwd_prop_kind);
+          src_md, weights_md, bias_md, dst_md, strides, dilations, paddings,
+          mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta, false,
+          fwd_prop_kind);
     } else {
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
-          src_md, weights_md, boost::none, dst_md, strides, paddings,
+          src_md, weights_md, boost::none, dst_md, strides, dilations, paddings,
           mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta, false,
           fwd_prop_kind);
     }
