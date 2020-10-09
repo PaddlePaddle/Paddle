@@ -292,10 +292,18 @@ dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
+python $(pwd)/../tools/get_quick_disable_lt.py > Output
+if %errorlevel%==0 (
+    set /p disable_ut_quickly=<Output
+    DEL Output
+    ) else (
+    set disable_ut_quickly=''
+)
+
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-ctest.exe --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+ctest.exe -E %disable_ut_quickly%  --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 goto:eof
 
 :unit_test_error
