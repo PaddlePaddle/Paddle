@@ -26,7 +26,7 @@ RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0
 RUN apt-get update && \
     apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev
+    xz-utils tk-dev libffi-dev liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev shellcheck
 
 # gcc8.2
 RUN wget -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-python-sdk-0.8.27/gcc-8.2.0.tar.xz && \
