@@ -848,6 +848,10 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
+    if x_shape[0] != y_shape[0]:
+        raise ValueError(
+            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
+            format(x_shape, y_shape))
     helper = LayerHelper('bmm', **locals())
     if in_dygraph_mode():
         return core.ops.bmm(x, y)

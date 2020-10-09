@@ -1882,9 +1882,9 @@ PDNode *patterns::MultipleQuantize::operator()() {
 PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
-                                       "fc", "matmul", "pool2d", "prior_box",
-                                       "relu", "reshape2", "transpose2"});
+      std::unordered_set<std::string>(
+          {"concat", "conv2d", "elementwise_add", "fc", "matmul", "pool2d",
+           "prior_box", "relu", "reshape2", "transpose2", "fusion_gru"});
   if (!quantize_enabled_op_types.empty()) {
     supported_op_types = quantize_enabled_op_types;
   }
@@ -2278,6 +2278,23 @@ PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
   transpose_op->LinksFrom({matmul_out}).LinksTo({transpose_out});
   reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
   return reshape_out;
+}
+
+PDNode *patterns::FusionGru::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_op("fusion_gru");
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "X");
+  auto weight_h = pattern->NewNode(weight_h_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fusion_gru", "WeightH");
+  auto weight_x = pattern->NewNode(weight_x_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fusion_gru", "WeightX");
+  auto out = pattern->NewNode(out_repr())
+                 ->AsOutput()
+                 ->assert_is_op_output("fusion_gru", "Hidden");
+  op->LinksFrom({x, weight_h, weight_x}).LinksTo({out});
+  return out;
 }
 
 }  // namespace ir
