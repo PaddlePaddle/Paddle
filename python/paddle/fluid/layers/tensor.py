@@ -1237,24 +1237,21 @@ def load_combine(out, file_path):
 
 def has_inf(x):
     """
-	:alias_main: paddle.has_inf
-	:alias: paddle.has_inf,paddle.tensor.has_inf,paddle.tensor.search.has_inf
-	:old_api: paddle.fluid.layers.has_inf
-
     Test if any of x contains an infinity number
 
     Args:
-       x (Variable): The Tensor/LoDTensor to be checked.
+       x (Tensor): The Tensor to be checked.
 
     Returns:
-       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is infinity number in x or not.
+       Tensor: The tensor storing the output, only a bool value, indicating that whether there is infinity number in x or not.
     
     Examples:
         .. code-block:: python
           
-          import paddle.fluid as fluid
-          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          import paddle
+          data = paddle.randn(shape=[4, 32, 32], dtype="float32")
           res = fluid.layers.has_inf(data)
+          # [False]
 
     """
     check_type(x, 'x', (Variable), 'has_inf')
@@ -1266,24 +1263,21 @@ def has_inf(x):
 
 def has_nan(x):
     """
-	:alias_main: paddle.has_nan
-	:alias: paddle.has_nan,paddle.tensor.has_nan,paddle.tensor.search.has_nan
-	:old_api: paddle.fluid.layers.has_nan
-
     Test if any of x contains a NAN
 
     Args:
-       x (Variable): The Tensor/LoDTensor to be checked.
+       x (Tensor): The Tensor to be checked.
 
     Returns:
-       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
+       Tensor: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
     
     Examples:
         .. code-block:: python
     
-          import paddle.fluid as fluid
-          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          import paddle
+          data = paddle.randn(shape=[2,3], dtype="float32")
           res = fluid.layers.has_nan(data)
+          # [False]
 
     """
     check_type(x, 'x', (Variable), 'has_nan')
