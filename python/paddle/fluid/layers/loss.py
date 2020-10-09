@@ -302,9 +302,6 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def square_error_cost(input, label):
     """
-    :alias_main: paddle.nn.functional.square_error_cost
-	:alias: paddle.nn.functional.square_error_cost,paddle.nn.functional.loss.square_error_cost
-	:old_api: paddle.fluid.layers.square_error_cost
 
     This op accepts input predictions and target label and returns the
     squared error cost.
@@ -316,49 +313,26 @@ def square_error_cost(input, label):
         Out = (input - label)^2
 
     Parameters:
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Tensor): Input tensor, the data type should be float32.
+        label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor variable storing the element-wise squared error \
+        The tensor storing the element-wise squared error \
                   difference between input and label.
 
-    Return type: Variable.
+    Return type: Tensor.
 
     Examples:
 
         .. code-block:: python
 
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
-	    input = fluid.data(name="input", shape=[1])
-	    label = fluid.data(name="label", shape=[1])
-	    output = fluid.layers.square_error_cost(input,label)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
- 
-	    input_data = np.array([1.5]).astype("float32")
-	    label_data = np.array([1.7]).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
- 
-	    print(output_data)
-	    # [array([0.04000002], dtype=float32)]
-	    
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
+            import paddle
+            input = paddle.to_tensor([1.1, 1.9])
+            label = paddle.to_tensor([1.0, 2.0])
+            output = paddle.nn.functional.square_error_cost(input, label)
+            print(output.numpy())
+            # [0.01, 0.01]
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		label = dg.to_variable(label_data)
-    		output = fluid.layers.square_error_cost(input, label)
-    		print(output.numpy())
-	        
-	        # [0.04000002]
     """
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
                              'square_error_cost')
@@ -1707,11 +1681,6 @@ from .control_flow import equal
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
-    :alias_main: paddle.nn.functional.npair_loss
-	:alias: paddle.nn.functional.npair_loss,paddle.nn.functional.loss.npair_loss
-	:old_api: paddle.fluid.layers.npair_loss
-
-  **Npair Loss Layer**
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
        <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
@@ -1722,29 +1691,31 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   takes the similarity matrix of anchor and positive as logits.
 
   Args:
-    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+    anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
                       the data type is float32 or float64.
-    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+    positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
                       the data type is float32 or float64.
-    labels(Variable): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
+    labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
     l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
   Returns:
-    A Variable holding Tensor representing the npair loss, the data type is the same as 
+    A Tensor representing the npair loss, the data type is the same as 
     anchor, the shape is [1].
 
   Examples:
     .. code-block:: python
 
-       import paddle.fluid as fluid
-       anchor = fluid.data(
-                     name = 'anchor', shape = [18, 6], dtype = 'float32')
-       positive = fluid.data(
-                     name = 'positive', shape = [18, 6], dtype = 'float32')
-       labels = fluid.data(
-                     name = 'labels', shape = [18], dtype = 'float32')
+        import paddle
+        
+        DATATYPE = "float32"
 
-       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+        anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        labels = paddle.rand(shape=(18,), dtype=DATATYPE)
+        
+        npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+        print(npair_loss.numpy())
+
   '''
     check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
                              'npair_loss')
@@ -1755,7 +1726,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     Beta = 0.25
     batch_size = labels.shape[0]
 
-    labels = nn.reshape(labels, shape=[batch_size, 1], inplace=True)
+    labels = nn.reshape(labels, shape=[batch_size, 1])
     labels = nn.expand(labels, expand_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
@@ -1777,9 +1748,6 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 def mse_loss(input, label):
     """
-    :alias_main: paddle.nn.functional.mse_loss
-	:alias: paddle.nn.functional.mse_loss,paddle.nn.functional.loss.mse_loss
-	:old_api: paddle.fluid.layers.mse_loss
 
     This op accepts input predications and target label and returns the mean square error.
 
@@ -1790,47 +1758,23 @@ def mse_loss(input, label):
         Out = MEAN((input - label)^2)
 
     Parameters: 
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Tensor): Input tensor, the data type should be float32.
+        label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        Variable: The tensor variable storing the mean square error difference of input and label.
+        Tensor: The tensor storing the mean square error difference of input and label.
 
-    Return type: Variable.
+    Return type: Tensor.
     
     Examples:
         .. code-block:: python
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
-	    input = fluid.data(name="input", shape=[1])
-	    label = fluid.data(name="label", shape=[1])
-	    output = fluid.layers.mse_loss(input,label)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
- 
-	    input_data = np.array([1.5]).astype("float32")
-	    label_data = np.array([1.7]).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
- 
-	    print(output_data)
-	    # [array([0.04000002], dtype=float32)]
-	    
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		label = dg.to_variable(label_data)
-    		output = fluid.layers.mse_loss(input, label)
-    		print(output.numpy())
-	        
-	        # [0.04000002]
-
+            import paddle
+            input = paddle.to_tensor([1.1, 1.9])
+            label = paddle.to_tensor([1.0, 2.0])
+            output = paddle.fluid.layers.mse_loss(input, label)
+            print(output.numpy())
+            # [0.01]
     """
     check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
     check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
