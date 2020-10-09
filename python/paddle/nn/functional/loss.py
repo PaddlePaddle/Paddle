@@ -41,6 +41,7 @@ from ...fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
+from ...fluid.layers import huber_loss
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
@@ -799,6 +800,16 @@ def kl_div(input, label, reduction='mean', name=None):
             # shape=[5, 20]
 
     """
+    # ugly type promotion
+    if fluid.data_feeder.convert_dtype(
+            input.dtype) == 'float32' and fluid.data_feeder.convert_dtype(
+                label.dtype) == 'float64':
+        input = fluid.layers.cast(input, 'float64')
+    elif fluid.data_feeder.convert_dtype(
+            input.dtype) == 'float64' and fluid.data_feeder.convert_dtype(
+                label.dtype) == 'float32':
+        label = fluid.layers.cast(label, 'float64')
+
     if paddle.in_dynamic_mode():
         out = core.ops.kldiv_loss(input, label, 'reduction', reduction)
         return out

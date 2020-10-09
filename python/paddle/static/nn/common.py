@@ -27,16 +27,17 @@ def fc(x,
        activation=None,
        name=None):
     """
+
     Fully-Connected layer can take a tensor or a list of tensor as its inputs.
     It creates a 2-D weight tensor for each input tensor, which represents its
-    weight matrix from each input unit to each output unit.
-    The fully connected layer multiplies each input tensor with its corresponding
-    weight to produce an output tensor with shape :math:`[N, *, size]` ,
-    where :math:`N` is batch size and :math:`*` means any number of additional dimensions.
-    If a list of tensor is given, the results of multiple output tensors with shape
-    :math:`[N, *, size]` will be summed up. If :attr:`bias\_attr` is not False,
-    a 1-D bias tensor will be created and added to the output.
-    Finally, if :attr:`activation` is not None, it will be applied to the output as well.
+    weight matrix from each input unit to each output unit. The fully connected
+    layer multiplies each input tensor with its corresponding weight to produce
+    an output tensor with shape :math:`[batch\_size, *, size]` , where :math:`*`
+    means any number of additional dimensions. If a list of tensor is given,
+    the results of multiple output tensors with shape :math:`[batch\_size, *, size]`
+    will be summed up. If :attr:`bias\_attr` is not False, a 1-D bias tensor will
+    be created and added to the output. Finally, if :attr:`activation` is not None,
+    it will be applied to the output as well.
 
     For a single input tensor :math:`X` , the equation is:
 
@@ -48,11 +49,11 @@ def fc(x,
 
     .. math::
 
-        Out = Act({\sum_{i=0}^{M-1}X_iW_i + b})
+        Out = Act({\sum_{i=0}^{N-1}X_iW_i + b})
 
     where:
 
-    * :math:`M`: The number of the input tensors. :math:`M` equals to :math:`len(X)` if :math:`X` is list of tensor.
+    * :math:`N`: The number of the input tensors. :math:`N` equals to :math:`len(X)` if :math:`X` is list of tensor.
     * :math:`X_i`: The i-th input tensor.
     * :math:`W_i`: The i-th weight matrix corresponding i-th input tensor.
     * :math:`b`: The bias created by this layer (if needed).
@@ -87,9 +88,8 @@ def fc(x,
         out.shape = (1, 2)
 
     Args:
-        x (Tensor|list of Tensor): A tensor with shape :math:`[N_1, N_2,..., N_k]` or
-            a list of tensor. The dimensions of the input tensor is at least 2 and the data
-            type should be float16, float32 or float64.
+        x (Tensor|list of Tensor): A tensor or a list of tensor. The number of dimensions
+            of each tensor is at least 2. The data type should be float16, float32 or float64.
         size (int): The number of output units in this layer, which also means the feature
             size of output tensor.
         num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
@@ -105,13 +105,12 @@ def fc(x,
             Default: 1.
         weight_attr (ParamAttr, optional): The attribute for the learnable weight.
             The default value is None, and the weight will be initialized to zero.
-            For detailed information, please refer to :ref:`api_paddle_fluid_param_attr_ParamAttr` .
+            For detailed information, please refer to paddle.ParamAttr.
         bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias. 
             If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
-            to :ref:`api_paddle_fluid_param_attr_ParamAttr` . The default value is None
-            and the bias will be initialized to zero.                                  
+            to paddle.ParamAttr. The default value is None and the bias will be initialized to zero. 
         activation (str, optional): Activation to be applied to the output of
             this layer, such as tanh, softmax, sigmoid, relu. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.
@@ -119,7 +118,7 @@ def fc(x,
             it. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        A multi-dimensional tensor calculated by fc layer. The data type is same with input.
+        Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
 
     Raises:
         ValueError: If dimensions of the input tensor is less than 2.
