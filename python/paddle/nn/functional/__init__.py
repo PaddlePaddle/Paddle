@@ -190,8 +190,8 @@ from .pooling import adaptive_avg_pool1d  #DEFINE_ALIAS
 from .pooling import adaptive_avg_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_avg_pool3d  #DEFINE_ALIAS
 
-from .rnn import rnn  #DEFINE_ALIAS
-from .rnn import birnn  #DEFINE_ALIAS
+# from .rnn import rnn  #DEFINE_ALIAS
+# from .rnn import birnn  #DEFINE_ALIAS
 # from .rnn import gru_unit        #DEFINE_ALIAS
 # from .rnn import lstm        #DEFINE_ALIAS
 # from .rnn import lstm_unit        #DEFINE_ALIAS
