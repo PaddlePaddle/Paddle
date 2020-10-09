@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import math
-import numpy
 import warnings
-from paddle import Tensor
+
+import numpy
+
+from paddle.framework import VarBase as Tensor
 
 __all__ = [
     'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
