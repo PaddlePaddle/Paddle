@@ -26,7 +26,6 @@ from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
-from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
@@ -1392,9 +1391,9 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             # [0.99806249 0.9817672  0.94987036]
             
     """
-    w12 = sum(elementwise_mul(x1, x2), axis=axis)
-    w1 = sum(elementwise_mul(x1, x1), axis=axis)
-    w2 = sum(elementwise_mul(x2, x2), axis=axis)
+    w12 = sum(paddle.multiply(x1, x2), axis=axis)
+    w1 = sum(paddle.multiply(x1, x1), axis=axis)
+    w2 = sum(paddle.multiply(x2, x2), axis=axis)
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim
