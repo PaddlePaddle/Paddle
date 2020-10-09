@@ -425,7 +425,8 @@ def _get_output_vars(outputs, output_spec):
 # 2. Error cases:
 #   - paddle.save: no .pdmodel for prefix
 #   - paddle.static.save: no .pdiparams but .pdparams exists
-#   - paddle.fluid.io.save_params/save_persistables: 
+#   - paddle.fluid.io.save_params/save_persistables: no __model__
+# TODO(chenweihang): polish error message in above error cases
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
     # raise error, avoid confusing behavior
