@@ -15,27 +15,28 @@
 from __future__ import print_function
 
 import collections
+from collections import defaultdict
+from collections import Iterable
 import contextlib
-import functools
-import logging
-import multiprocessing
+from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
-import subprocess
-import sys
 import traceback
-import warnings
-from collections import Iterable, defaultdict
-
-import numpy as np
 import six
 
-import paddle.version as fluid_version
-
+import numpy as np
+import subprocess
+import multiprocessing
+import sys
+import logging
 from .. import compat as cpt
-from . import core, unique_name
 from .proto import framework_pb2
-from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+
+from . import core
+from . import unique_name
+import paddle.version as fluid_version
+import warnings
+import functools
 
 __all__ = [
     'Program',
