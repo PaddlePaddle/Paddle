@@ -8860,6 +8860,9 @@ def mean_iou(input, label, num_classes):
             label = paddle.randint(low=0, high=255, shape=iou_shape, dtype='int64')
             mean_iou, out_wrong, out_correct = paddle.metric.mean_iou(predict, label, num_classes)
     """
+    if in_dygraph_mode():
+        return core.ops.mean_iou(input, label, 'num_classes', num_classes)
+
     helper = LayerHelper('mean_iou', **locals())
     check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
                              'mean_iou')

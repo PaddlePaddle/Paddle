@@ -1254,6 +1254,9 @@ def has_inf(x):
           # [False]
 
     """
+    if in_dygraph_mode():
+        return core.ops.isinf(x)
+
     check_type(x, 'x', (Variable), 'has_inf')
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1280,6 +1283,9 @@ def has_nan(x):
           # [False]
 
     """
+    if in_dygraph_mode():
+        return core.ops.isnan(x)
+
     check_type(x, 'x', (Variable), 'has_nan')
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
