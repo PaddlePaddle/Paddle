@@ -136,11 +136,11 @@ from .lod import hash  #DEFINE_ALIAS
 # from .lod import dynamic_lstmp        #DEFINE_ALIAS
 from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
-from .loss import bpr_loss  #DEFINE_ALIAS
-from .loss import center_loss  #DEFINE_ALIAS
+# from .loss import bpr_loss  #DEFINE_ALIAS
+# from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import dice_loss  #DEFINE_ALIAS
-from .loss import edit_distance  #DEFINE_ALIAS
+# from .loss import edit_distance  #DEFINE_ALIAS
 from .loss import huber_loss  #DEFINE_ALIAS
 from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kl_div  #DEFINE_ALIAS
@@ -151,16 +151,16 @@ from .loss import mse_loss  #DEFINE_ALIAS
 from .loss import nll_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS
 from .loss import npair_loss  #DEFINE_ALIAS
-from .loss import rank_loss  #DEFINE_ALIAS
-from .loss import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
+# from .loss import rank_loss  #DEFINE_ALIAS
+# from .loss import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
-from .loss import smooth_l1  #DEFINE_ALIAS
+# from .loss import smooth_l1  #DEFINE_ALIAS
 from .loss import smooth_l1_loss  #DEFINE_ALIAS
 from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
-from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
+# from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS

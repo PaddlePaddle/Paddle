@@ -23,25 +23,18 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
-from ...fluid.layers import center_loss  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
-from ...fluid.layers import rank_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
 from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid_focal_loss  #DEFINE_ALIAS
-from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
-from ...fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 
-from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import huber_loss  #DEFINE_ALIAS
-from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
@@ -50,11 +43,8 @@ from ...fluid.framework import Variable
 __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
-    'bpr_loss',
-    'center_loss',
     'cross_entropy',
     'dice_loss',
-    'edit_distance',
     'huber_loss',
     'iou_similarity',
     'kl_div',
@@ -65,16 +55,12 @@ __all__ = [
     #       'nce',
     'nll_loss',
     'npair_loss',
-    'rank_loss',
-    'sampled_softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
-    'smooth_l1',
     'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
-    'teacher_student_sigmoid_loss',
     'ctc_loss',
 ]
 
