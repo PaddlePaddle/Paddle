@@ -529,31 +529,31 @@ def sums(input, out=None):
 
 def assign(input, output=None):
     """
-	:alias_main: paddle.nn.functional.assign
-	:alias: paddle.nn.functional.assign,paddle.nn.functional.common.assign
-	:old_api: paddle.fluid.layers.assign
 
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+        input (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
             float16, float32, float64, int32 and int64.
-        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy as np
-          data = fluid.layers.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result1 = fluid.layers.create_tensor(dtype='float64')
-          fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.nn.functional.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.nn.functional.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.nn.functional.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
