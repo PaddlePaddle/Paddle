@@ -225,10 +225,9 @@ void RunPassAndAssert(Graph* graph, const std::string& from,
 }
 
 void SetBatchNormAttrs(OpDesc* bn_op, bool is_test = true,
-                       bool trainable_stats = true, bool global_stats = true) {
+                       bool trainable_stats = true) {
   bn_op->SetAttr("is_test", is_test);
   bn_op->SetAttr("trainable_statistics", trainable_stats);
-  bn_op->SetAttr("use_global_stats", global_stats);
   bn_op->SetAttr("fuse_with_relu", false);
 }
 
@@ -240,38 +239,7 @@ void SetBatchNormAttrs(OpDesc* bn_op, bool is_test = true,
 // true or false value:
 // - is_test
 // - trainable_statistics
-// - use_global_stats
 // The test case name would have only attributes with true value in its name.
-
-TEST(FuseBatchNormActOneDNNPass, IsTestTrainableStatsGlobalStats) {
-  auto prog =
-      BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"}, {"scale", "bias"});
-  auto* bn_op = CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                               {"Scale", "scale"},
-                                               {"Bias", "bias"},
-                                               {"Mean", "m"},
-                                               {"Variance", "v"}},
-                         {{"Y", "bn_y"}});
-  SetBatchNormAttrs(bn_op);
-  CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
-
-  Graph graph(prog);
-  // No fusion in this attribute configuration
-  constexpr int removed_nodes_count = 0;
-
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}});
-
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
-}
 
 TEST(FuseBatchNormActOneDNNPass, IsTestTrainableStats) {
   auto prog = BuildProgramDesc(
@@ -287,7 +255,7 @@ TEST(FuseBatchNormActOneDNNPass, IsTestTrainableStats) {
                           {"VarianceOut", "var_out"},
                           {"SavedMean", "sm"},
                           {"SavedVariance", "sv"}});
-  SetBatchNormAttrs(bn_op, true, true, false);
+  SetBatchNormAttrs(bn_op, true, true);
   CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
@@ -304,35 +272,6 @@ TEST(FuseBatchNormActOneDNNPass, IsTestTrainableStats) {
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
       EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
-}
-
-TEST(FuseBatchNormActOneDNNPass, IsTestGlobalStats) {
-  auto prog =
-      BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"}, {"scale", "bias"});
-  auto* bn_op = CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                               {"Scale", "scale"},
-                                               {"Bias", "bias"},
-                                               {"Mean", "m"},
-                                               {"Variance", "v"}},
-                         {{"Y", "bn_y"}});
-  SetBatchNormAttrs(bn_op, true, false);
-  CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
-
-  Graph graph(prog);
-  constexpr int removed_nodes_count = 1;
-
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 0}});
-
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
     }
   }
 }
@@ -346,11 +285,11 @@ TEST(FuseBatchNormActOneDNNPass, IsTest) {
                                                {"Mean", "m"},
                                                {"Variance", "v"}},
                          {{"Y", "bn_y"}});
-  SetBatchNormAttrs(bn_op, true, false, false);
+  SetBatchNormAttrs(bn_op, true, false);
   CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
-  constexpr int removed_nodes_count = 1;
+  constexpr int removed_nodes_count = 2;
 
   RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
   AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 0}});
@@ -362,36 +301,6 @@ TEST(FuseBatchNormActOneDNNPass, IsTest) {
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
-}
-
-TEST(FuseBatchNormActOneDNNPass, TrainableStatsGlobalStats) {
-  auto prog =
-      BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"}, {"scale", "bias"});
-  auto* bn_op = CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                               {"Scale", "scale"},
-                                               {"Bias", "bias"},
-                                               {"Mean", "m"},
-                                               {"Variance", "v"}},
-                         {{"Y", "bn_y"}});
-  SetBatchNormAttrs(bn_op, false);
-  CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
-
-  Graph graph(prog);
-  // No fusion in this attribute configuration
-  constexpr int removed_nodes_count = 0;
-
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}});
-
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
     }
   }
 }
@@ -410,37 +319,7 @@ TEST(FuseBatchNormActOneDNNPass, TrainableStats) {
                           {"VarianceOut", "var_out"},
                           {"SavedMean", "sm"},
                           {"SavedVariance", "sv"}});
-  SetBatchNormAttrs(bn_op, false, true, false);
-  CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
-
-  Graph graph(prog);
-  // No fusion in this attribute configuration
-  constexpr int removed_nodes_count = 0;
-
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}});
-
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
-}
-
-TEST(FuseBatchNormActOneDNNPass, GlobalStats) {
-  auto prog =
-      BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"}, {"scale", "bias"});
-  auto* bn_op = CreateOp(&prog, "batch_norm", {{"X", "x"},
-                                               {"Scale", "scale"},
-                                               {"Bias", "bias"},
-                                               {"Mean", "m"},
-                                               {"Variance", "v"}},
-                         {{"Y", "bn_y"}});
-  SetBatchNormAttrs(bn_op, false, false);
+  SetBatchNormAttrs(bn_op, false, true);
   CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
@@ -475,7 +354,7 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
                           {"VarianceOut", "var_out"},
                           {"SavedMean", "sm"},
                           {"SavedVariance", "sv"}});
-  SetBatchNormAttrs(bn_op, false, false, false);
+  SetBatchNormAttrs(bn_op, false, false);
   CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
