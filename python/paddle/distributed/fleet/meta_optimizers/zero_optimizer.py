@@ -311,9 +311,9 @@ class ZeroOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
 
     def _split_program(self, block):
-        for op_idx, op in enumerate(block.ops):
-            if int(op.attr('op_role')) == int(OpRole.Optimize):
-                last_backward_op_idx = op_idx
+        for op_idx, op in reversed(list(enumerate(block.ops))):
+            if int(op.attr('op_role')) != int(OpRole.Optimize):
+                last_backward_op_idx = op_idx + 1
                 break
         sub_prog = SubProgram(block)
         sub_prog._end_idx = last_backward_op_idx
@@ -609,9 +609,9 @@ class ZeroOptimizer(MetaOptimizerBase):
             attrs={OP_ROLE_KEY: OpRole.Forward})
         return
 
-    def _add_broadcast_allreduce_v2(self, block):
+    def _add_broadcast_allreduce(self, block):
         """
-        _add_broadcast_allreduce_v2
+        _add_broadcast_allreduce
         """
         ring_id = -1
 
@@ -657,11 +657,11 @@ class ZeroOptimizer(MetaOptimizerBase):
                         .dtype,
                         persistable=False)
 
-            # step2: remove cast ops
+            # step1: remove cast ops
             block._sync_with_cpp()
             subprog._end_idx += self._remove_cast_op(block, subprog, 0)
 
-            # step3: add Sync ops
+            # step2: add Sync ops
             comm_dep_vars = allreduce_vars + [x[0] for x in broadcast_vars]
             if len(comm_dep_vars) > 0:
                 self._insert_sync_comm_ops(
@@ -670,23 +670,24 @@ class ZeroOptimizer(MetaOptimizerBase):
                     comm_dep_vars, )
             calc_dep_vars = fill_constant_vars + [
                 k for k, v in cast_ops.items()
-            ]
+            ] + self._sub_progs[idx]._allreduce_vars
+
             if len(calc_dep_vars) > 0:
                 self._insert_sync_calc_op(block, subprog._end_idx,
                                           [calc_dep_vars[-1]])
 
-            # step4: insert `fill_constant` ops 
+            # step3: insert `fill_constant` ops 
             self._insert_fill_constant_ops(block, subprog._end_idx,
                                            fill_constant_vars)
 
-            # step5: add `cast` ops     
+            # step4: add `cast` ops     
             self._insert_cast_ops(block, subprog._end_idx, cast_ops)
 
-            # step6: add broadcast ops
+            # step5: add broadcast ops
             self._insert_broadcast_ops(block, subprog._start_idx,
                                        broadcast_vars)
 
-            # step7: add all_reduce ops
+            # step6: add all_reduce ops
             self._insert_allreduce_ops(block, subprog._start_idx,
                                        allreduce_vars)
 
@@ -847,7 +848,7 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         # step3: add broadcast and reduce ops
         print("insert broadcast and allreduce")
-        self._add_broadcast_allreduce_v2(main_block)
+        self._add_broadcast_allreduce(main_block)
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
 
@@ -864,6 +865,7 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         # check op dependecy for broadcast
         self._check_broadcast(main_block)
+        self._check_allreduce_sum(main_block)
         self._wait()
         return optimize_ops, params_grads
 
@@ -922,136 +924,55 @@ class ZeroOptimizer(MetaOptimizerBase):
                     assert (broadcast_vars[input_name]["broadcast_pos"] <
                             last_sync_comm_op_idx)
                     assert (last_sync_comm_op_idx < idx)
-        print("check done")
+        print("check broadcast done")
         return
 
-    def _add_broadcast_allreduce(self, block, sub_prog, offset):
+    def _check_allreduce_sum(self, block):
         """
-        add broadcast and allreduce
+        if a Var is allreduced, the op order should be:
+            - 0: op that generate Var
+            - 1: sync_calc
+            - 2: allreduce_sum op
+            - 3: sync_comm
+            - 4: op that use Var
         """
-        # insert reduce ops
-        inserted_op_num = 0
-        ring_id = -1
-
-        if len(sub_prog._allreduce_vars) > 0:
-            for i in range(self._nrings):
-                block._insert_op(
-                    offset + sub_prog._end_idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': sub_prog._allreduce_vars},
-                    outputs={'Out': sub_prog._allreduce_vars},
-                    attrs={'ring_id': i,
-                           OP_ROLE_KEY: OpRole.Forward})
-            inserted_op_num += self._nrings
-
-            for var in sub_prog._allreduce_vars:
-                ring_id = (ring_id + 1) % self._nrings
-                block._insert_op(
-                    offset + sub_prog._end_idx,
-                    type='c_allreduce_sum',
-                    inputs={'X': var},
-                    outputs={'Out': var},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
-                inserted_op_num += 1
-
-            block._insert_op(
-                offset + sub_prog._end_idx,
-                type='c_sync_calc_stream',
-                inputs={'X': sub_prog._allreduce_vars[-1]},
-                outputs={'Out': sub_prog._allreduce_vars[-1]},
-                attrs={OP_ROLE_KEY: OpRole.Forward})
-            inserted_op_num += 1
-
-        block._sync_with_cpp()
-        # insert broadcast ops
-        for op_idx in reversed(
-                range(offset + sub_prog._start_idx, offset +
-                      sub_prog._end_idx)):
-            op = block.ops[op_idx]
-            for input_name in op.desc.input_arg_names():
-                if input_name in sub_prog._param2broadcast and \
-                    input_name != sub_prog._param2broadcast[input_name]:
-                    op._rename_input(input_name,
-                                     sub_prog._param2broadcast[input_name])
-
-        for param_name, broadcast_name in sub_prog._param2broadcast.items():
-            if param_name != broadcast_name:
-                block.create_var(
-                    name=broadcast_name,
-                    shape=self._main_program.global_block().var(
-                        param_name).shape,
-                    dtype=self._main_program.global_block().var(param_name)
-                    .dtype,
-                    persistable=False)
-
-        comm_dep_vars = [v for k, v in sub_prog._param2broadcast.items()]
-        for i in range(self._nrings):
-            block._insert_op(
-                offset + sub_prog._start_idx,
-                type='c_sync_comm_stream',
-                inputs={'X': comm_dep_vars},
-                outputs={'Out': comm_dep_vars},
-                attrs={'ring_id': i,
-                       OP_ROLE_KEY: OpRole.Forward})
-        inserted_op_num += self._nrings
-
-        for param_name, broadcast_name in sub_prog._param2broadcast.items():
-            broadcast_var = block.var(broadcast_name)
-            root_device = self._param2device[param_name]
-            ring_id = (ring_id + 1) % self._nrings
-            block._insert_op(
-                offset + sub_prog._start_idx,
-                type='c_broadcast',
-                inputs={'X': broadcast_var.name},
-                outputs={'Out': broadcast_var.name},
-                attrs={
-                    'ring_id': ring_id,
-                    'root': root_device,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
-            inserted_op_num += 1
-
-        comm_dep_vars = [
-            v for k, v in sub_prog._param2broadcast.items() if k != v
-        ]
-        if comm_dep_vars != []:
-            block._insert_op(
-                offset + sub_prog._start_idx,
-                type='c_sync_calc_stream',
-                inputs={'X': comm_dep_vars[-1]},
-                outputs={'Out': comm_dep_vars[-1]},
-                attrs={OP_ROLE_KEY: OpRole.Forward})
-            inserted_op_num += 1
-
-        for param_name, broadcast_name in sub_prog._param2broadcast.items():
-            if param_name != broadcast_name:
-                broadcast_var = block.var(broadcast_name)
-                block._insert_op(
-                    offset + sub_prog._start_idx,
-                    type="fill_constant",
-                    outputs={"Out": broadcast_var.name},
-                    attrs={
-                        "shape": broadcast_var.shape,
-                        "dtype": broadcast_var.dtype,
-                        "value": 0.0,
-                    })
-                inserted_op_num += 1
-
-        for fp16_name, fp32_name in sub_prog._cast_ops.items():
-            block._insert_op(
-                offset + sub_prog._start_idx,
-                type="cast",
-                inputs={"X": fp32_name},
-                outputs={"Out": fp16_name},
-                attrs={
-                    "in_dtype": core.VarDesc.VarType.FP32,
-                    "out_dtype": core.VarDesc.VarType.FP16
-                })
-            inserted_op_num += 1
-
-        block._sync_with_cpp()
-        return inserted_op_num
+        var_status = {}
+        for op in block.ops:
+            if op.type == "c_allreduce_sum":
+                var_name = op.desc.input_arg_names()[0]
+                var_status[var_name] = -1
+        
+        for op in block.ops:
+            if op.type == "c_sync_calc_stream":
+                for var_name in var_status:
+                    if var_name in var_status and var_status[var_name] == 0:
+                        var_status[var_name] = 1
+            elif op.type == "c_allreduce_sum":
+                var_name = op.desc.input_arg_names()[0]
+                if var_status[var_name] == -1:
+                    raise ValueError("{} is not generated, but you are"
+                        "trying to all-reduce it".format(var_name))
+                if var_status[var_name] == 0:
+                    raise ValueError("There should be a sync_calc op "
+                        "after generate Var: {} and before the"
+                        "c_allreduce_sum op".format(var_name))
+                assert(var_status[var_name] == 1)
+                var_status[var_name] = 2
+            elif op.type == "c_sync_comm_stream":
+                for var_name in op.desc.input_arg_names():
+                    if var_name in var_status and var_status[var_name] == 2:
+                        var_status[var_name] = 3
+            else:
+                for input_name in op.desc.input_arg_names():
+                    if input_name in var_status:
+                        if var_status[input_name] != 3:
+                            raise ValueError("There should be a sync_comm op "
+                                "after allreduce the Var: {}".format(var_name))
+                for output_name in op.desc.output_arg_names():
+                    if output_name in var_status and \
+                      var_status[output_name] == -1:
+                        var_status[output_name] = 0
+        print("finish check allreduce")
 
     def _broadcast_params(self, block):
         ring_id = -1
