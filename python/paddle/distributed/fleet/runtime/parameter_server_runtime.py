@@ -237,15 +237,10 @@ class ParameterServerRuntime(RuntimeBase):
             model_dirname = None
 
         executor = self._get_executor()
-        if self.role_maker._is_heter_worker():
-            dist_strategy = self.context["valid_strategy"]
-            launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
-            if launch_barrier:
-                # for trainer wait server ready
-                wait_server_ready(self.role_maker._get_pserver_endpoints())
-            executor.run(fluid.default_startup_program())
-            self._init_worker()
-            return
+        if self.role_maker._is_heter_worker() and self.context[
+                "valid_strategy"].a_sync_configs["launch_barrier"]:
+            # for heter trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
         executor.run(fluid.default_startup_program())
 
         if self.role_maker._is_heter_worker():
