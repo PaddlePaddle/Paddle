@@ -2,3 +2,4 @@ PyGithub
 coverage
 pycrypto ; platform_system != "Windows"
 mock
+visualdl ; python_version>="3.5"

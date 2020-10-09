@@ -140,7 +140,6 @@ from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import dice_loss  #DEFINE_ALIAS
 from .loss import edit_distance  #DEFINE_ALIAS
-from .loss import huber_loss  #DEFINE_ALIAS
 from .loss import hsigmoid_loss  #DEFINE_ALIAS
 from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kl_div  #DEFINE_ALIAS

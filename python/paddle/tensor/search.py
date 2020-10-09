@@ -339,11 +339,8 @@ def index_select(x, index, axis=0, name=None):
     return out
 
 
-def nonzero(input, as_tuple=False):
+def nonzero(x, as_tuple=False):
     """
-	:alias_main: paddle.nonzero
-	:alias: paddle.nonzero,paddle.tensor.nonzero,paddle.tensor.search.nonzero
-
     Return a tensor containing the indices of all non-zero elements of the `input` 
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
     in `input`, each containing the indices (in that dimension) of all non-zero elements 
@@ -353,17 +350,17 @@ def nonzero(input, as_tuple=False):
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
 
     Args:
-        inputs (Variable): The input tensor variable.
+        x (Tensor): The input tensor variable.
         as_tuple (bool): Return type, Tensor or tuple of Tensor.
 
     Returns:
-        Variable. The data type is int64.
+        Tensor. The data type is int64.
 
     Examples:
+    
         .. code-block:: python
-            import paddle
 
-            paddle.disable_static()
+            import paddle
 
             x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
                           [0.0, 2.0, 0.0],
@@ -402,13 +399,13 @@ def nonzero(input, as_tuple=False):
             #[]                    
     """
     list_out = []
-    shape = input.shape
+    shape = x.shape
     rank = len(shape)
 
     if in_dygraph_mode():
-        outs = core.ops.where_index(input)
+        outs = core.ops.where_index(x)
     else:
-        outs = layers.where(input)
+        outs = layers.where(x)
 
     if not as_tuple:
         return outs

@@ -274,8 +274,8 @@ template <typename T>
 class NotImpleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(
-        "CPU is not support for this kernel now. Will be add in the future");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "CPU is not support for this kernel now. Will be add in the future"));
   }
 };
 
