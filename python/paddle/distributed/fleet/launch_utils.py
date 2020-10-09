@@ -595,11 +595,9 @@ def cloud_ps_heter_env_set(args):
 
     paddle_trainer_endpoints = os.getenv("TRAINER_IP_PORT_LIST", "")
     assert paddle_trainer_endpoints != None
-    environs["PADDLE_TRAINER_ENDPOINTS"] = paddle_trainer_endpoints
 
     paddle_pserver_endpoints = os.getenv("PSERVER_IP_PORT_LIST", "")
     assert paddle_pserver_endpoints != None
-    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
 
     # hard code for paddlecloud custom-framework
     avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
