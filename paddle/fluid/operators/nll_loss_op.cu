@@ -14,6 +14,7 @@ limitations under the License. */
 #include "cub/cub.cuh"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/nll_loss_op.h"
+#include "paddle/fluid/platform/cuda_enforce/cuda_enforce.cuh"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -44,6 +45,8 @@ __global__ void GPUNLLLossForward1D_no_reduce(T* out_data, const T* x_data,
       out_data[i] = 0;
       continue;
     }
+    PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
+                               "label should not be out of bounds");
     PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
                    "label should not be out of bounds.");
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
@@ -64,6 +67,8 @@ __global__ void GPUNLLLossForward1D_with_reduce(
   for (i = threadIdx.x; i < batch_size; i += NTHREADS) {
     const auto cur_label = label_data[i];
     if (cur_label != ignore_index) {
+      PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
+                                 "label should not be out of bounds");
       PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
                      "label should not be out of bounds.");
       const auto cur_weight = weight_data ? weight_data[cur_label] : (T)1;
@@ -202,6 +207,8 @@ __global__ void GPUNLLLossForward2D_no_reduce(
       out_data[index] = 0;
       continue;
     }
+    PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
+                               "label should not be out of bounds.");
     PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
                    "label should not be out of bounds.");
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
@@ -232,6 +239,8 @@ __global__ void GPUNLLLossForward2D_with_reduce(
        i < map_nelem; i += step) {
     const int64_t cur_label = label_data[toffset + i];
     if (cur_label != ignore_index) {
+      PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
+                                 "label should not be out of bounds");
       PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
                      "label should not be out of bounds.");
       const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
@@ -409,6 +418,7 @@ class NLLLossCUDAKernel : public framework::OpKernel<T> {
         }
       }
     }
+    PADDLE_ENFORCE_CHECK_CUDA_KERNEL();
   }
 };
 

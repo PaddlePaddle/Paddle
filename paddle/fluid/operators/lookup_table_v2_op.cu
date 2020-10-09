@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_v2_op.h"
+#include "paddle/fluid/platform/cuda_enforce/cuda_enforce.cuh"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -31,6 +32,10 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
+    PADDLE_ENFORCE_CUDA_KERNEL(
+        id >= 0 && id < N,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < N.");
     PADDLE_ENFORCE(
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
@@ -66,6 +71,10 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
+    PADDLE_ENFORCE_CUDA_KERNEL(
+        id >= 0 && id < N,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < N.");
     PADDLE_ENFORCE(
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
@@ -140,6 +149,7 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
           T, 256, 4, 80,
           true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
           output, table, ids_p, N, K, D, padding_idx);
+    PADDLE_ENFORCE_CHECK_CUDA_KERNEL();
   }
 };
 
@@ -234,6 +244,7 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
       LookupTableV2Grad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids_p, N, K, D);
+      PADDLE_ENFORCE_CHECK_CUDA_KERNEL();
     }
   }
 };

@@ -2,6 +2,7 @@ proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto simple_thr
 proto_library(error_codes_proto SRCS error_codes.proto)
 if(WITH_GPU)
   proto_library(cuda_error_proto SRCS cuda_error.proto)
+  add_subdirectory(cuda_enforce)
 endif(WITH_GPU)
 
 if(WITH_XPU)

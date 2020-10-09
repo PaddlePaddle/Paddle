@@ -66,7 +66,17 @@ endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
     sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
-
+if (WITH_GPU)
+    set_target_properties(nll_loss_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_target_properties(bernoulli_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_target_properties(lookup_table_v2_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    target_compile_options(nll_loss_op PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--relocatable-device-code=true  -dc>)
+    target_compile_options(bernoulli_op PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--relocatable-device-code=true -dc>)
+    target_compile_options(lookup_table_v2_op PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--relocatable-device-code=true -dc>)
+    target_link_libraries(lookup_table_v2_op   cuda_enforce)
+    target_link_libraries(bernoulli_op   cuda_enforce)
+    target_link_libraries(nll_loss_op   cuda_enforce)
+endif()
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
     if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
@@ -81,6 +91,9 @@ else()
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
+if(WITH_GPU)
+    set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cuda_enforce)
+endif()
 
 if (WITH_DGC)
     op_library(dgc_op DEPS dgc)
