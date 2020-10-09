@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import callbacks, logger, model, model_summary
+from . import logger
+from . import callbacks
+from . import model_summary
+
+from . import model
+from .model import *
 from .model_summary import summary
 
 logger.setup_logger()
