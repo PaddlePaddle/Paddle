@@ -452,8 +452,10 @@ struct BidirLayer : Layer<T> {
               forward_last_h_holder, forward_last_c_holder,
               &output_tensors[2 * i]);
       }
-      this->postprocess(context, &output_tensors[2 * i],
-                        forward_mask_tensor_list[i]);
+      if (has_sequence_length) {
+        this->postprocess(context, &output_tensors[2 * i],
+                          forward_mask_tensor_list[i]);
+      }
     }
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
     const Tensor& backward_input_w =
@@ -501,8 +503,10 @@ struct BidirLayer : Layer<T> {
               backward_last_h_holder, backward_last_c_holder,
               &output_tensors[2 * i + 1]);
       }
-      this->postprocess(context, &output_tensors[2 * i + 1],
-                        backward_mask_tensor_list[i]);
+      if (has_sequence_length) {
+        this->postprocess(context, &output_tensors[2 * i + 1],
+                          backward_mask_tensor_list[i]);
+      }
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(
