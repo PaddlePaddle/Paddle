@@ -223,7 +223,7 @@ from .framework.random import manual_seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
 from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS
-from .framework import create_global_var  #DEFINE_ALIAS
+# from .framework import create_global_var  #DEFINE_ALIAS
 from .framework import create_parameter  #DEFINE_ALIAS
 from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
@@ -231,18 +231,18 @@ from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
-from .framework import save  #DEFINE_ALIAS
-from .framework import load  #DEFINE_ALIAS
+# from .framework import save  #DEFINE_ALIAS
+# from .framework import load  #DEFINE_ALIAS
 from .framework import SaveLoadConfig  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
-from .framework import NoamDecay  #DEFINE_ALIAS
-from .framework import PiecewiseDecay  #DEFINE_ALIAS
-from .framework import NaturalExpDecay  #DEFINE_ALIAS
-from .framework import ExponentialDecay  #DEFINE_ALIAS
-from .framework import InverseTimeDecay  #DEFINE_ALIAS
-from .framework import PolynomialDecay  #DEFINE_ALIAS
-from .framework import CosineDecay  #DEFINE_ALIAS
+# from .framework import NoamDecay  #DEFINE_ALIAS
+# from .framework import PiecewiseDecay  #DEFINE_ALIAS
+# from .framework import NaturalExpDecay  #DEFINE_ALIAS
+# from .framework import ExponentialDecay  #DEFINE_ALIAS
+# from .framework import InverseTimeDecay  #DEFINE_ALIAS
+# from .framework import PolynomialDecay  #DEFINE_ALIAS
+# from .framework import CosineDecay  #DEFINE_ALIAS
 from .framework import set_default_dtype  #DEFINE_ALIAS
 from .framework import get_default_dtype  #DEFINE_ALIAS
 
