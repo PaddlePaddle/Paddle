@@ -282,9 +282,16 @@ struct Layer {
     return cache_input;
   }
 
-  void postprocess(const framework::ExecutionContext& context,
-                   const Tensor* output, const Tensor& mask_matrix) {
+  void postprocess(const framework::ExecutionContext& context, Tensor* output,
+                   const Tensor& mask_tensor) {
     // in the output, if mask flag is 0, we will retun the zero data
+    auto eigen_output =
+        framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
+    auto eigen_mask = framework::EigenMatrix<T>::From(
+        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+    eigen_output =
+        eigen_output *
+        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
   }
 
   virtual void operator()(const framework::ExecutionContext& context,
@@ -310,6 +317,9 @@ struct SingleLayer : Layer<T> {
     const int& time_step = input->dims()[0];
     // vec[0] is parameter of w_hi, vec[2] is bias of b_hi
     const Tensor& input_w = this->preprocess(context, input, vec[0], vec[2]);
+    auto input_tensors = Unbind(input_w);
+    auto output_tensors = Unbind(*output);
+    TensorList mask_tensor_list;
     // construct the mask matrix for the mask
     bool has_sequence_length = false;
     if (sequence_length != nullptr) {
@@ -319,9 +329,8 @@ struct SingleLayer : Layer<T> {
     mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
     if (has_sequence_length) {
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, false);
+      mask_tensor_list = Unbind(mask_matrix);
     }
-    auto input_tensors = Unbind(input_w);
-    auto output_tensors = Unbind(*output);
 
     // define the init_h holder for the swap
     bool has_allocate_mem = false;
@@ -352,6 +361,9 @@ struct SingleLayer : Layer<T> {
       } else {
         cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3], init_h_holder,
               init_c_holder, last_h_holder, last_c_holder, &output_tensors[i]);
+      }
+      if (has_sequence_length) {
+        this->postprocess(context, &output_tensors[i], mask_tensor_list[i]);
       }
     }
     if (time_step % 2 == 0) {
@@ -394,6 +406,7 @@ struct BidirLayer : Layer<T> {
                               output->numel() / (2 * time_step * batch_size)}));
     auto output_tensors = Unbind(*output);
 
+    // if has the sequence, build mask tensor list
     bool has_sequence_length = false;
     if (sequence_length != nullptr) {
       has_sequence_length = true;
@@ -401,9 +414,11 @@ struct BidirLayer : Layer<T> {
     Tensor forward_mask_matrix;
     forward_mask_matrix.Resize(
         framework::make_ddim({time_step, input->dims()[1]}));
+    TensorList forward_mask_tensor_list;
     if (has_sequence_length) {
       create_mask_matrix<T>(context, sequence_length, &forward_mask_matrix,
                             false);
+      forward_mask_tensor_list = Unbind(forward_mask_matrix);
     }
     bool has_forward_allocate_mem = false;
     Tensor* forward_init_h_holder = nullptr;  // = &init_h[2*layer_idx];
@@ -437,6 +452,8 @@ struct BidirLayer : Layer<T> {
               forward_last_h_holder, forward_last_c_holder,
               &output_tensors[2 * i]);
       }
+      this->postprocess(context, &output_tensors[2 * i],
+                        forward_mask_tensor_list[i]);
     }
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
     const Tensor& backward_input_w =
@@ -446,9 +463,11 @@ struct BidirLayer : Layer<T> {
     Tensor backward_mask_matrix;
     backward_mask_matrix.Resize(
         framework::make_ddim({time_step, input->dims()[1]}));
+    TensorList backward_mask_tensor_list;
     if (has_sequence_length) {
       create_mask_matrix<T>(context, sequence_length, &backward_mask_matrix,
                             true);
+      backward_mask_tensor_list = Unbind(backward_mask_matrix);
     }
     bool has_backward_allocate_mem = false;
     Tensor* backward_init_h_holder = nullptr;  // = &init_h[2*layer_idx + 1];
@@ -482,6 +501,8 @@ struct BidirLayer : Layer<T> {
               backward_last_h_holder, backward_last_c_holder,
               &output_tensors[2 * i + 1]);
       }
+      this->postprocess(context, &output_tensors[2 * i + 1],
+                        backward_mask_tensor_list[i]);
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(
