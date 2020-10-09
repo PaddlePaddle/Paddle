@@ -403,8 +403,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
     auto x = *context.Input<framework::Tensor>("X");
     auto y = *context.Input<framework::Tensor>("Y");
     auto dout = *context.Input<framework::LoDTensor>("DOut");
-    auto ddx = *context.Input<framework::LoDTensor>("DDX");
-    auto ddy = *context.Input<framework::LoDTensor>("DDY");
+    auto *ddx = context.Input<framework::LoDTensor>("DDX");
+    auto *ddy = context.Input<framework::LoDTensor>("DDY");
 
     auto *dx = context.Output<framework::LoDTensor>("DX");
     auto *dy = context.Output<framework::LoDTensor>("DY");
@@ -440,47 +440,67 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
     }
 
     bool ddout_flag = false;
-    if (dy) {
-      if (transpose_x && transpose_y) {
-        // dy = dout' * ddx'
-        CalcInputGrad(context, dout, true, true, ddx, true, false, false, dy);
-      } else if (transpose_x) {
-        // dy = ddx * dout
-        CalcInputGrad(context, ddx, false, false, dout, false, true, false, dy);
-      } else if (transpose_y) {
-        // dy = dout' * ddx
-        CalcInputGrad(context, dout, true, true, ddx, false, true, false, dy);
-      } else {
-        // dy = ddx' * dout
-        CalcInputGrad(context, ddx, true, true, dout, false, true, false, dy);
+    if (ddx) {
+      auto ddx_mat = *ddx;
+      if (ddx_mat.dims() != x.dims()) {
+        ddx_mat.Resize(x.dims());
+      }
+      if (dy) {
+        if (transpose_x && transpose_y) {
+          // dy = dout' * ddx'
+          CalcInputGrad(context, dout, true, true, ddx_mat, true, false, false,
+                        dy);
+        } else if (transpose_x) {
+          // dy = ddx * dout
+          CalcInputGrad(context, ddx_mat, false, false, dout, false, true,
+                        false, dy);
+        } else if (transpose_y) {
+          // dy = dout' * ddx
+          CalcInputGrad(context, dout, true, true, ddx_mat, false, true, false,
+                        dy);
+        } else {
+          // dy = ddx' * dout
+          CalcInputGrad(context, ddx_mat, true, true, dout, false, true, false,
+                        dy);
+        }
+      }
+
+      if (ddout) {
+        CalcInputGrad(context, ddx_mat, transpose_x, true, y, transpose_y,
+                      false, ddout_flag, ddout);
+        ddout_flag = true;
       }
     }
 
-    if (ddout) {
-      CalcInputGrad(context, ddx, transpose_x, true, y, transpose_y, false,
-                    ddout_flag, ddout);
-      ddout_flag = true;
-    }
-
-    if (dx) {
-      if (transpose_x && transpose_y) {
-        // dx = ddy' * dout'
-        CalcInputGrad(context, ddy, true, true, dout, true, false, false, dx);
-      } else if (transpose_x) {
-        // dx = ddy * dout'
-        CalcInputGrad(context, ddy, false, false, dout, true, false, false, dx);
-      } else if (transpose_y) {
-        // dx = dout * ddy
-        CalcInputGrad(context, dout, false, false, ddy, false, true, false, dx);
-      } else {
-        // dx = dout * ddy'
-        CalcInputGrad(context, dout, false, false, ddy, true, false, false, dx);
+    if (ddy) {
+      auto ddy_mat = *ddy;
+      if (ddy_mat.dims() != y.dims()) {
+        ddy_mat.Resize(y.dims());
       }
-    }
+      if (dx) {
+        if (transpose_x && transpose_y) {
+          // dx = ddy' * dout'
+          CalcInputGrad(context, ddy_mat, true, true, dout, true, false, false,
+                        dx);
+        } else if (transpose_x) {
+          // dx = ddy * dout'
+          CalcInputGrad(context, ddy_mat, false, false, dout, true, false,
+                        false, dx);
+        } else if (transpose_y) {
+          // dx = dout * ddy
+          CalcInputGrad(context, dout, false, false, ddy_mat, false, true,
+                        false, dx);
+        } else {
+          // dx = dout * ddy'
+          CalcInputGrad(context, dout, false, false, ddy_mat, true, false,
+                        false, dx);
+        }
+      }
 
-    if (ddout) {
-      CalcInputGrad(context, x, transpose_x, true, ddy, transpose_y, false,
-                    ddout_flag, ddout);
+      if (ddout) {
+        CalcInputGrad(context, x, transpose_x, true, ddy_mat, transpose_y,
+                      false, ddout_flag, ddout);
+      }
     }
 
     if (dx) {
@@ -798,15 +818,16 @@ class MatMulOpDoubleGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasInput("DOut"), "Input", "DOut", "matmul");
 
-    if (context->HasOutput("DX")) {
+    if (context->HasOutput("DX") && context->HasInput("DDY")) {
       context->ShareDim("X", "DX");
     }
 
-    if (context->HasOutput("DY")) {
+    if (context->HasOutput("DY") && context->HasInput("DDX")) {
       context->ShareDim("Y", "DY");
     }
 
-    if (context->HasOutput("DDOut")) {
+    if (context->HasOutput("DDOut") &&
+        (context->HasInput("DDY") || context->HasInput("DDX"))) {
       context->ShareDim("DOut", "DDOut");
     }
   }
@@ -826,9 +847,17 @@ class MatMulOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     retv->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    retv->SetOutput("DX", this->InputGrad("X"));
-    retv->SetOutput("DY", this->InputGrad("Y"));
+    auto ddx = this->OutputGrad(framework::GradVarName("X"));
+    auto ddy = this->OutputGrad(framework::GradVarName("Y"));
+
+    if (!ddx.empty() || !ddy.empty()) {
+      retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    }
+    retv->SetOutput(
+        "DX", ddy.empty() ? this->EmptyInputGrad() : this->InputGrad("X"));
+    retv->SetOutput(
+        "DY", ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
+
     retv->SetAttrMap(this->Attrs());
   }
 };

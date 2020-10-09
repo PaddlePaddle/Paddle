@@ -155,22 +155,24 @@ class TestMulDoubleGradCheck(unittest.TestCase):
 class TestMatmulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
-            x_shape = [2, 3, 4]
-            y_shape = [2, 4, 5]
-            eps = 0.005
-            dtype = np.float64
-
+        eps = 0.005
+        x_shapes = [[2], [2, 3], [2, 4, 3], [2, 3, 4, 5], [2, 3, 4]]
+        y_shapes = [[2], [3, 2], [2, 4, 5], [2, 3, 3, 5], [4, 3]]
+        transpose_xs = [False, True, True, False, False]
+        transpose_ys = [False, True, False, True, False]
+        dtypes = [np.float64, np.float64, np.float32, np.float32, np.float64]
+        typenames = ["float64", "float64", "float32", "float32", "float64"]
+        for i, (x_shape, y_shape, transpose_x, transpose_y, dtype, typename) \
+            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys, dtypes, typenames)):
             x = layers.create_parameter(
-                dtype="float64", shape=x_shape, name='x')
+                dtype=typename, shape=x_shape, name='x{}'.format(i))
             y = layers.create_parameter(
-                dtype="float64", shape=y_shape, name='y')
-            out = layers.matmul(x, y)
+                dtype=typename, shape=y_shape, name='y{}'.format(i))
+            out = layers.matmul(
+                x, y, transpose_x, transpose_y, name='out{}'.format(i))
 
             x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
             y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
-
             gradient_checker.double_grad_check(
                 [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
 
