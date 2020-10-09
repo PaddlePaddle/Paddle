@@ -37,9 +37,16 @@ namespace paddle {
 namespace platform {
 namespace {
 // Tracking the nested block stacks of each thread.
+#ifdef PADDLE_WITH_SW
+// sw not supported thread_local
+std::deque<int> block_id_stack;
+// Tracking the nested event stacks.
+std::deque<Event *> annotation_stack;
+#else
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
+#endif
 // stack to strore event sunch as pe and so on
 static std::deque<Event *> main_thread_annotation_stack{};
 static std::deque<std::string> main_thread_annotation_stack_name{};
@@ -289,15 +296,18 @@ class DeviceTracerImpl : public DeviceTracer {
 
   void AddAnnotation(uint32_t id, Event *event) {
 #ifdef PADDLE_WITH_SW
+    std::forward_list<std::pair<uint32_t, Event *>> *local_correlations_pairs =
+        nullptr;
+#else
     thread_local std::forward_list<std::pair<uint32_t, Event *>>
         *local_correlations_pairs = nullptr;
+#endif
     if (local_correlations_pairs == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       correlations_pairs.emplace_front();
       local_correlations_pairs = &correlations_pairs.front();
     }
     local_correlations_pairs->push_front(std::make_pair(id, event));
-#endif
   }
 
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
