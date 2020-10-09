@@ -31,10 +31,9 @@ __all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
-# from .clip import ErrorClipByValue        #DEFINE_ALIAS
-from .clip import GradientClipByGlobalNorm  #DEFINE_ALIAS
-from .clip import GradientClipByNorm  #DEFINE_ALIAS
-from .clip import GradientClipByValue  #DEFINE_ALIAS
+from .clip import ClipGradByGlobalNorm  #DEFINE_ALIAS
+from .clip import ClipGradByNorm  #DEFINE_ALIAS
+from .clip import ClipGradByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
 from .clip import clip_by_norm  #DEFINE_ALIAS
@@ -52,13 +51,13 @@ from .clip import clip_by_norm  #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
 # from .decode import gather_tree  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
-from .layer.activation import ELU
-from .layer.activation import GELU
-from .layer.activation import Tanh
-from .layer.activation import Hardshrink
-from .layer.activation import Hardtanh
-from .layer.activation import PReLU
-from .layer.activation import ReLU
+from .layer.activation import ELU  #DEFINE_ALIAS
+from .layer.activation import GELU  #DEFINE_ALIAS
+from .layer.activation import Tanh  #DEFINE_ALIAS
+from .layer.activation import Hardshrink  #DEFINE_ALIAS
+from .layer.activation import Hardtanh  #DEFINE_ALIAS
+from .layer.activation import PReLU  #DEFINE_ALIAS
+from .layer.activation import ReLU  #DEFINE_ALIAS
 from .layer.activation import ReLU6  #DEFINE_ALIAS
 from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS

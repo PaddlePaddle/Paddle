@@ -259,24 +259,24 @@ def Print(input,
     Examples:
         .. code-block:: python
            
-           import paddle.fluid as fluid
-           
-           input = fluid.layers.fill_constant(shape=[10,2], value=3, dtype='int64')
-           input = fluid.layers.Print(input, message="The content of input layer:")
-           
-           main_program = fluid.default_main_program()
-           exe = fluid.Executor(fluid.CPUPlace())
-           exe.run(main_program)
+           import paddle
 
-    Output at runtime:
-        .. code-block:: bash 
-           
-           The content of input layer:     The place is:CPUPlace
-           Tensor[fill_constant_0.tmp_0]
-               shape: [10,2,]
-               dtype: x
-               data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
-               
+           paddle.enable_static()
+        
+           x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
+           out = paddle.static.Print(x, message="The content of input layer:")
+
+           main_program = paddle.static.default_main_program()
+           exe = paddle.static.Executor(place=paddle.CPUPlace())
+           res = exe.run(main_program, fetch_list=[out])
+           # Variable: fill_constant_1.tmp_0
+           #   - message: The content of input layer:
+           #   - lod: {}
+           #   - place: CPUPlace
+           #   - shape: [2, 3]
+           #   - layout: NCHW
+           #   - dtype: long
+           #   - data: [3 3 3 3 3 3]
     '''
     check_variable_and_dtype(input, 'input',
                              ['float32', 'float64', 'int32', 'int64', 'bool'],
