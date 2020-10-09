@@ -61,7 +61,7 @@ from .tensor.attribute import shape  #DEFINE_ALIAS
 from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
-from .tensor.creation import fill_constant  #DEFINE_ALIAS
+# from .tensor.creation import fill_constant  #DEFINE_ALIAS
 # from .tensor.creation import get_tensor_from_selected_rows        #DEFINE_ALIAS
 from .tensor.creation import linspace  #DEFINE_ALIAS
 from .tensor.creation import ones  #DEFINE_ALIAS
@@ -102,8 +102,8 @@ from .tensor.logic import logical_not  #DEFINE_ALIAS
 from .tensor.logic import logical_or  #DEFINE_ALIAS
 from .tensor.logic import logical_xor  #DEFINE_ALIAS
 from .tensor.logic import not_equal  #DEFINE_ALIAS
-from .tensor.logic import reduce_all  #DEFINE_ALIAS
-from .tensor.logic import reduce_any  #DEFINE_ALIAS
+# from .tensor.logic import reduce_all  #DEFINE_ALIAS
+# from .tensor.logic import reduce_any  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
 from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
@@ -248,7 +248,7 @@ from .framework import get_default_dtype  #DEFINE_ALIAS
 
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
-from .tensor.stat import reduce_mean  #DEFINE_ALIAS
+# from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .fluid.data import data

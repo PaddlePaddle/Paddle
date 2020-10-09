@@ -25,7 +25,7 @@ from .attribute import shape  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
-from .creation import fill_constant  #DEFINE_ALIAS
+# from .creation import fill_constant  #DEFINE_ALIAS
 # from .creation import get_tensor_from_selected_rows        #DEFINE_ALIAS
 from .creation import linspace  #DEFINE_ALIAS
 from .creation import ones  #DEFINE_ALIAS
@@ -66,8 +66,8 @@ from .logic import logical_not  #DEFINE_ALIAS
 from .logic import logical_or  #DEFINE_ALIAS
 from .logic import logical_xor  #DEFINE_ALIAS
 from .logic import not_equal  #DEFINE_ALIAS
-from .logic import reduce_all  #DEFINE_ALIAS
-from .logic import reduce_any  #DEFINE_ALIAS
+# from .logic import reduce_all  #DEFINE_ALIAS
+# from .logic import reduce_any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
 from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
@@ -187,7 +187,7 @@ from .search import sort  #DEFINE_ALIAS
 from .search import index_sample  #DEFINE_ALIAS
 from .search import masked_select  #DEFINE_ALIAS
 from .stat import mean  #DEFINE_ALIAS
-from .stat import reduce_mean  #DEFINE_ALIAS
+# from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
 from .stat import numel  #DEFINE_ALIAS
