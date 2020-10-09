@@ -32,6 +32,8 @@ import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid import framework
 
+paddle.enable_static()
+
 
 class EncoderCell(layers.RNNCell):
     def __init__(self, num_layers, hidden_size, dropout_prob=0.):
@@ -670,7 +672,7 @@ class TestBeamSearch(ModuleApiTest):
                    eos_id=1,
                    beam_size=4,
                    max_step_num=20):
-        embedder = nn.Embedding(vocab_size, embed_dim)
+        embedder = paddle.fluid.dygraph.Embedding(size=[vocab_size, embed_dim])
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num
