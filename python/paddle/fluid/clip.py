@@ -157,7 +157,7 @@ class ClipGradByValue(ClipGradBase):
     
     - Any values greater than max are set to ``max``.
 
-    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . 
+    The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``. 
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
@@ -186,7 +186,7 @@ class ClipGradByValue(ClipGradBase):
             loss.backward()
 
             clip = paddle.nn.ClipGradByValue(min=-1, max=1)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
+            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.step()
     """
 
@@ -248,7 +248,7 @@ class ClipGradByNorm(ClipGradBase):
     
     - If the l2 norm of :math:`X` is less than or equal to ``clip_norm`` , nothing will be done.
     
-    The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` .
+    The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
@@ -292,7 +292,7 @@ class ClipGradByNorm(ClipGradBase):
             loss.backward()
 
             clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
+            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.step()
     """
 
@@ -351,7 +351,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     
     - If the global norm is less than or equal to ``clip_norm`` , nothing will be done.
     
-    The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters in ``Program`` .
+    The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
@@ -391,7 +391,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             loss.backward()
 
             clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters())
+            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.step()
     """
 
