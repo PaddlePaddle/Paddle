@@ -466,13 +466,13 @@ def _build_load_path_and_config(path, config):
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
     """
-    Saves input declarative Layer as ``paddle.jit.TranslatedLayer``
+    Saves input Layer as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
 
     It will save the translated program and all related persistable 
-    variables of input declarative Layer to given ``path``.
+    variables of input Layer to given ``path``.
     
-    ``path`` is the prefix of saved object, and the saved translated program file 
+    ``path`` is the prefix of saved objects, and the saved translated program file 
     suffix is ``.pdmodel``, the saved persistable variables file suffix is ``.pdiparams``,
     and here also saved some additional variable description information to a file,  
     its suffix is ``.pdiparams.info``, these additional information is used in fine-tuning.
@@ -483,7 +483,7 @@ def save(layer, path, input_spec=None, **configs):
       - Other C++ inference APIs
 
     Args:
-        layer (Layer): the Layer to be saved. The Layer should be decorated by `@declarative`.
+        layer (Layer): the Layer to be saved. The Layer should be decorated by `@paddle.jit.to_static`.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
         input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model. 
             It is the example inputs that will be passed to saved TranslatedLayer's forward
@@ -549,10 +549,6 @@ def save(layer, path, input_spec=None, **configs):
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-            # enable dygraph mode
-            place = paddle.CPUPlace()
-            paddle.disable_static(place) 
-
             # 1. train & save model.
 
             # create network
@@ -563,7 +559,6 @@ def save(layer, path, input_spec=None, **configs):
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = paddle.io.DataLoader(dataset,
-                places=place,
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
@@ -573,8 +568,8 @@ def save(layer, path, input_spec=None, **configs):
             train(layer, loader, loss_fn, adam)
 
             # save
-            model_path = "linear.example.model"
-            paddle.jit.save(layer, model_path)
+            path = "example_model/linear"
+            paddle.jit.save(layer, path)
     """
 
     # 1. input build & check
@@ -727,8 +722,9 @@ def load(path, **configs):
     """
     :api_attr: imperative
 
-    Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model``
-    as ``paddle.jit.TranslatedLayer``, then performing inference or fine-tune training.
+    Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model`` or 
+    paddle 1.x API ``paddle.fluid.io.save_inference_model`` as ``paddle.jit.TranslatedLayer``, 
+    then performing inference or fine-tune training.
 
     .. note::
         If you load model saved by ``paddle.static.save_inference_model`` ,
@@ -755,7 +751,7 @@ def load(path, **configs):
         TranslatedLayer: A Layer object can run saved translated model.
 
     Examples:
-        1. Load model saved by :ref:`api_imperative_jit_save` then performing inference and fine-tune training.
+        1. Load model saved by ``paddle.jit.save`` then performing inference and fine-tune training.
 
         .. code-block:: python
 
@@ -804,10 +800,6 @@ def load(path, **configs):
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-            # enable dygraph mode
-            place = paddle.CPUPlace()
-            paddle.disable_static(place) 
-
             # 1. train & save model.
 
             # create network
@@ -818,7 +810,6 @@ def load(path, **configs):
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = paddle.io.DataLoader(dataset,
-                places=place,
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
@@ -828,13 +819,13 @@ def load(path, **configs):
             train(layer, loader, loss_fn, adam)
 
             # save
-            model_path = "linear.example.model"
-            paddle.jit.save(layer, model_path)
+            path = "example_model/linear"
+            paddle.jit.save(layer, path)
 
             # 2. load model
 
             # load
-            loaded_layer = paddle.jit.load(model_path)
+            loaded_layer = paddle.jit.load(path)
 
             # inference
             loaded_layer.eval()
@@ -847,15 +838,17 @@ def load(path, **configs):
             train(loaded_layer, loader, loss_fn, adam)
 
 
-        2. Load model saved by :ref:`api_fluid_io_save_inference_model` then performing and fine-tune training.
+        2. Load model saved by ``paddle.fluid.io.save_inference_model`` then performing and fine-tune training.
 
         .. code-block:: python
 
             import numpy as np
             import paddle
             import paddle.fluid as fluid
+            import paddle.static as static
             import paddle.nn as nn
             import paddle.optimizer as opt
+            import paddle.nn.functional as F
 
             BATCH_SIZE = 16
             BATCH_NUM = 4
@@ -877,18 +870,18 @@ def load(path, **configs):
                 def __len__(self):
                     return self.num_samples
 
-            image = fluid.data(name='image', shape=[None, 784], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            pred = fluid.layers.fc(input=image, size=10, act='softmax')
-            loss = fluid.layers.cross_entropy(input=pred, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            image = static.data(name='image', shape=[None, 784], dtype='float32')
+            label = static.data(name='label', shape=[None, 1], dtype='int64')
+            pred = static.nn.fc(input=image, size=10, act='softmax')
+            loss = F.cross_entropy(input=pred, label=label)
+            avg_loss = paddle.mean(loss)
 
-            optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             optimizer.minimize(avg_loss)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
 
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -903,7 +896,7 @@ def load(path, **configs):
             # 1. train and save inference model
             for data in loader():
                 exe.run(
-                    fluid.default_main_program(),
+                    static.default_main_program(),
                     feed=data, 
                     fetch_list=[avg_loss])
 

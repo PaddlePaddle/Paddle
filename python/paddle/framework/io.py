@@ -272,14 +272,14 @@ def load(path, **configs):
         Now only supports load ``state_dict`` of Layer or Optimizer.
 
     .. note::
-        ``paddle.load`` supports loading Layer or Optimizer ``state_dict`` from 
+        ``paddle.load`` supports loading ``state_dict`` of Layer or Optimizer from 
         the result of other save APIs except ``paddle.load`` , but the argument 
         ``path`` format is different:
-        1. loading from ``paddle.static.save`` or ``paddle.Model.save(training=True)`` ,  
+        1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,  
         ``path`` needs to be a complete file name, such as ``model.pdparams`` or 
         ``model.pdopt`` ; 
         2. loading from ``paddle.jit.save`` or ``paddle.static.save_inference_model`` 
-        or ``paddle.Model.save(training=False)`` , ``path`` need to be a file prefix, 
+        or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix, 
         such as ``model/mnist``, and ``paddle.load`` will get information from 
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
         3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or 
