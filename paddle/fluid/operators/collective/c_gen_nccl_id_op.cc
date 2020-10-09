@@ -11,25 +11,23 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#if defined(PADDLE_WITH_NCCL)
-#include <nccl.h>
-#endif
-
-#include <stdint.h>
-#include <ostream>
 #include <string>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/nccl_helper.h"
-#endif
+#include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -63,9 +61,12 @@ class CGenNCCLIdOp : public framework::OperatorBase {
                        const platform::DeviceContext& dev_ctx) const {
     std::string var_name = Output("Out");
     auto var = scope->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::InvalidArgument("Output can not be Null"));
     auto id = var->GetMutable<ncclUniqueId>();
-    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
+    PADDLE_ENFORCE_EQ(platform::dynload::ncclGetUniqueId(id), 0,
+                      platform::errors::InvalidArgument(
+                          "ncclGetUniqueId failed with id %s", id));
 
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("other_endpoints");

@@ -13,8 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mod_op.h"
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -25,14 +42,14 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
 
   void AddInputX() override {
     AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64.");
+             "(Tensor), Tensor of any dimensions. Its dtype "
+             "should be int32, int64, float32 or float64.");
   }
 
   void AddInputY() override {
     AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64.");
+             "(Tensor), Tensor of any dimensions. Its dtype "
+             "should be int32, int64, float32 or float64.");
   }
 
   std::string GetOpFuntionality() const override {

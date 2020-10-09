@@ -36,7 +36,7 @@ remove_dropout = False
 # and Executor is different.
 remove_bn = False
 
-remove_cudnn_conv = False
+remove_cudnn_conv = True
 
 remove_dropout = True
 remove_bn = True

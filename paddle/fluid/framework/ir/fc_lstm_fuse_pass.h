@@ -27,6 +27,8 @@ namespace ir {
 // The MulLstmFusePass and MulLstmFusePass will fuse to the same FusionLstm op.
 
 // Just FC without bias
+class Graph;
+
 class FCLstmFusePass : public FusePassBase {
  public:
   virtual ~FCLstmFusePass() {}

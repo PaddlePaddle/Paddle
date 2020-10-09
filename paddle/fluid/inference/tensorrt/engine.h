@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -34,8 +35,18 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+namespace plugin {
+class PluginTensorRT;
+}  // namespace plugin
 
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
@@ -94,6 +105,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
 }  // NOLINT
 
 class TRTInt8Calibrator;
+
 /*
  * TensorRT Engine.
  *
@@ -196,8 +208,10 @@ class TensorRTEngine {
   }
 
   nvinfer1::IHostMemory* Serialize() {
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "You should build engine first and then serialize");
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "The TensorRT engine must be built first before serialization"));
     ihost_memory_.reset(infer_engine_->serialize());
     return ihost_memory_.get();
   }
@@ -222,8 +236,14 @@ class TensorRTEngine {
           engine_serialized_data.c_str(), engine_serialized_data.size(),
           &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
     }
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "build cuda engine failed when deserialize engine info.!");
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::Fatal(
+            "Building TRT cuda engine failed when deserializing engine info. "
+            "Please check:\n1. Your TRT serialization is generated and loaded "
+            "on the same GPU architecture;\n2. The Paddle Inference version of "
+            "generating serialization file and doing inference are "
+            "consistent."));
   }
 
   void SetRuntimeBatch(size_t batch_size);

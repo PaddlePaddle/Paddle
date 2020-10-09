@@ -17,9 +17,17 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+
+namespace paddle {
+namespace framework {
+class OpKernelType;
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -61,7 +69,8 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
       {DataTypeTrait<float>::DataType(), MKLDNNDataType::f32},
       {DataTypeTrait<int8_t>::DataType(), MKLDNNDataType::s8},
       {DataTypeTrait<uint8_t>::DataType(), MKLDNNDataType::u8},
-      {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32}};
+      {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32},
+      {DataTypeTrait<platform::bfloat16>::DataType(), MKLDNNDataType::bf16}};
   auto iter = dict.find(static_cast<int>(type));
   if (iter != dict.end()) return iter->second;
   return MKLDNNDataType::undef;
@@ -74,6 +83,9 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in, Tensor* out);
+
+void* GetDataFromTensor(const Tensor& tensor, MKLDNNDataType type);
+
 #endif
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);

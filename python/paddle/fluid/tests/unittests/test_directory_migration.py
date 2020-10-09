@@ -26,8 +26,8 @@ import paddle
 class TestDirectory(unittest.TestCase):
     def get_import_command(self, module):
         paths = module.split('.')
-        if len(paths) <= 1:
-            return module
+        if len(paths) == 1:
+            return 'import {}'.format(module)
         package = '.'.join(paths[:-1])
         func = paths[-1]
         cmd = 'from {} import {}'.format(package, func)
@@ -36,14 +36,14 @@ class TestDirectory(unittest.TestCase):
     def test_new_directory(self):
         new_directory = [
             'paddle.enable_static', 'paddle.disable_static',
-            'paddle.in_dynamic_mode', 'paddle.to_variable', 'paddle.grad',
+            'paddle.in_dynamic_mode', 'paddle.to_tensor', 'paddle.grad',
             'paddle.no_grad', 'paddle.save', 'paddle.load',
             'paddle.static.save', 'paddle.static.load',
-            'paddle.BackwardStrategy', 'paddle.ParallelEnv',
-            'paddle.prepare_context', 'paddle.DataParallel', 'paddle.jit',
-            'paddle.jit.TracedLayer', 'paddle.jit.to_static',
+            'paddle.distributed.ParallelEnv',
+            'paddle.distributed.prepare_context', 'paddle.DataParallel',
+            'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
             'paddle.jit.ProgramTranslator', 'paddle.jit.TranslatedLayer',
-            'paddle.jit.save', 'paddle.jit.load', 'paddle.jit.SaveLoadConfig',
+            'paddle.jit.save', 'paddle.jit.load', 'paddle.SaveLoadConfig',
             'paddle.NoamDecay', 'paddle.PiecewiseDecay',
             'paddle.NaturalExpDecay', 'paddle.ExponentialDecay',
             'paddle.InverseTimeDecay', 'paddle.PolynomialDecay',
@@ -98,7 +98,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.imperative.enable', 'paddle.imperative.guard',
             'paddle.imperative.grad', 'paddle.imperative.no_grad',
             'paddle.imperative.save', 'paddle.imperative.load',
-            'paddle.imperative.BackwardStrategy',
             'paddle.imperative.ParallelEnv',
             'paddle.imperative.prepare_context',
             'paddle.imperative.DataParalell', 'paddle.imperative.jit',

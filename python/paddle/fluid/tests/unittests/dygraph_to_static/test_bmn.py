@@ -15,11 +15,12 @@
 import math
 import numpy as np
 import unittest
-
+import paddle
+from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
 from predictor_utils import PredictorTools
@@ -242,7 +243,7 @@ class BMN(fluid.dygraph.Layer):
             param_attr=ParamAttr(name="PEM_2d4_w"),
             bias_attr=ParamAttr(name="PEM_2d4_b"))
 
-    @declarative
+    @to_static
     def forward(self, x):
         # Base Module
         x = self.b_conv1(x)
@@ -560,8 +561,8 @@ def train_bmn(args, place, to_static):
     loss_data = []
 
     with fluid.dygraph.guard(place):
-        fluid.default_main_program().random_seed = SEED
-        fluid.default_startup_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         global local_random
         local_random = np.random.RandomState(SEED)
 

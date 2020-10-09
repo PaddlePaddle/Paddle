@@ -12,11 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
 #include <string>
 
 #include "paddle/fluid/operators/beam_search_decode_op.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -105,7 +117,8 @@ void BeamSearchDecodeFunctor::apply() const {
 
 template <>
 void BeamSearchDecodeFunctor::apply<bool>() const {
-  PADDLE_THROW("beam search decode op does not support bool!");
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "beam search decode op does not support bool!"));
 }
 
 class BeamSearchDecodeOp : public framework::OperatorBase {

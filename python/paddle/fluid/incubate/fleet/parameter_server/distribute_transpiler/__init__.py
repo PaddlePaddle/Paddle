@@ -38,6 +38,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _has_global_step
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
@@ -161,9 +162,9 @@ class FleetTranspiler(Fleet):
 
         print(trainer_config)
 
-        lrs = _get_lr_ops(self._origin_main_program)
+        lrs = _has_global_step(_get_lr_ops(self._origin_main_program))
 
-        if len(lrs) > 0:
+        if lrs > 0:
             kwargs = {"need_global_step": "1"}
         else:
             kwargs = {"need_global_step": "0"}
@@ -186,24 +187,18 @@ class FleetTranspiler(Fleet):
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
 
-        for name, ctx in send_ctx.items():
-            print("name: {}, ctx: {}".format(name, ctx))
-
-        print("==== = ==== =============== ====")
-
-        for name, ctx in recv_ctx.items():
-            print("name: {}, ctx: {}".format(name, ctx))
-
         from paddle.fluid.communicator import Communicator
         self._communicator = Communicator(
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
+
         self._communicator.init_with_ctx(send_ctx, recv_ctx)
 
         if not self._communicator.is_running():
             self._communicator.start()
         else:
-            warnings.warn("communicator has been initialized, skip")
+            raise ValueError(
+                "Communicator can only be inited once, please check")
 
     def init_worker(self):
         """
@@ -474,7 +469,7 @@ class FleetTranspiler(Fleet):
         opts = public._get_optimize_ops(self._origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):
@@ -707,8 +702,8 @@ if you would like to save all variables in a
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -853,4 +848,4 @@ class ParameterServerOptimizer(DistributedOptimizer):
         fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
             self._build_trainer_programs(compiled_config) if fleet.is_worker() \
-                else self._build_pserver_programs(compiled_config)
+            else self._build_pserver_programs(compiled_config)

@@ -167,6 +167,8 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
 // more detail see: 180 page of
 // https://www.openmp.org/wp-content/uploads/OpenMP4.0.0.pdf
 #pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
+#pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
+                              omp_in)
 #endif
 
 template <typename T>
@@ -194,6 +196,21 @@ static void CheckNanInf(const T* value, const size_t numel, int print_num,
 template <>
 void CheckNanInf<paddle::platform::float16>(
     const paddle::platform::float16* value, const size_t numel, int print_num,
+    const std::string& op_type, const std::string& var_name) {
+  float sum = 0.0f;
+#pragma omp parallel for reduction(+ : sum)
+  for (size_t i = 0; i < numel; ++i) {
+    sum += static_cast<float>(value[i] - value[i]);
+  }
+
+  if (std::isnan(sum) || std::isinf(sum)) {
+    PrintNanInf(value, numel, print_num, op_type, var_name);
+  }
+}
+
+template <>
+void CheckNanInf<paddle::platform::bfloat16>(
+    const paddle::platform::bfloat16* value, const size_t numel, int print_num,
     const std::string& op_type, const std::string& var_name) {
   float sum = 0.0f;
 #pragma omp parallel for reduction(+ : sum)

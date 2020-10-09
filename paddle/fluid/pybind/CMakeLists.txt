@@ -38,7 +38,13 @@ set(PYBIND_SRCS
   imperative.cc
   ir.cc
   inference_api.cc
+  compatible.cc
   generator_py.cc)
+
+if(WITH_GLOO)
+  set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
+  set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
+endif(WITH_GLOO)
 
 if (WITH_CRYPTO)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
@@ -72,8 +78,23 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
+    file(WRITE ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat ""
+    "set build_times=1\n"
+    ":retry\n"
+    "ECHO op_function_generator run %build_times% time\n"
+    "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator ${impl_file}\n"
+    "if %ERRORLEVEL% NEQ 0 (\n"
+    "    set /a build_times=%build_times%+1\n"
+    "    if %build_times% GTR 100 (\n"
+    "        exit /b 1\n"
+    "    ) else (\n"
+    "        goto :retry\n"
+    "    )\n"
+    ")\n"
+    "exit /b 0")
+
     add_custom_command(TARGET op_function_generator POST_BUILD
-          COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator ${impl_file}
+          COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
     )
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)

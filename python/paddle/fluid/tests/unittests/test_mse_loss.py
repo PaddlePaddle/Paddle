@@ -205,8 +205,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(
-                paddle.to_variable(input_np),
-                paddle.to_variable(target_np), 'mean')
+                paddle.to_tensor(input_np), paddle.to_tensor(target_np), 'mean')
             dy_result = dy_ret.numpy()
 
             sub = input_np - target_np
@@ -240,8 +239,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(
-                paddle.to_variable(input_np),
-                paddle.to_variable(target_np), 'sum')
+                paddle.to_tensor(input_np), paddle.to_tensor(target_np), 'sum')
             dy_result = dy_ret.numpy()
 
             sub = input_np - target_np
@@ -275,8 +273,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
             paddle.disable_static()
             dy_ret = paddle.nn.functional.mse_loss(
-                paddle.to_variable(input_np),
-                paddle.to_variable(target_np), 'none')
+                paddle.to_tensor(input_np), paddle.to_tensor(target_np), 'none')
             dy_result = dy_ret.numpy()
 
             sub = input_np - target_np

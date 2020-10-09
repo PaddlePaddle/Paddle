@@ -73,6 +73,33 @@ TEST(LiteEngineOp, GetNativeLayoutType) {
   EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 
+template <typename T>
+void test_lite_tensor_data_ptr(PrecisionType precision_type) {
+  void* GetLiteTensorDataPtr(paddle::lite_api::Tensor * src,
+                             PrecisionType precision_type,
+                             TargetType target_type);
+  const int count = 4;
+  paddle::lite::Tensor lite_tensor;
+  lite_tensor.Resize({count});
+  auto* lite_tensor_data = lite_tensor.mutable_data<T>();
+  for (size_t i = 0; i < count; ++i) {
+    lite_tensor_data[i] = i;
+  }
+  paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
+  T* data = static_cast<T*>(GetLiteTensorDataPtr(
+      &lite_api_tensor, precision_type, TargetType::kHost));
+  for (size_t i = 0; i < count; ++i) {
+    CHECK_EQ(data[i], static_cast<T>(i)) << "the i-th num is not correct.";
+  }
+}
+
+TEST(LiteEngineOp, GetLiteTensorDataPtr) {
+  test_lite_tensor_data_ptr<int64_t>(PrecisionType::kInt64);
+  test_lite_tensor_data_ptr<int32_t>(PrecisionType::kInt32);
+  test_lite_tensor_data_ptr<int8_t>(PrecisionType::kInt8);
+  EXPECT_ANY_THROW(test_lite_tensor_data_ptr<double>(PrecisionType::kUnk));
+}
+
 void test_tensor_copy(const platform::DeviceContext& ctx) {
   // Create LoDTensor.
   std::vector<float> vector({1, 2, 3, 4});
@@ -83,10 +110,11 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   lod_tensor.set_lod(lod);
   // Create lite::Tensor and copy.
   paddle::lite::Tensor lite_tensor;
-  TensorCopyAsync(&lite_tensor, lod_tensor, ctx);
+  paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
+  TensorCopyAsync(&lite_api_tensor, lod_tensor, ctx);
   // Copy to LoDTensor.
   framework::LoDTensor lod_tensor_n;
-  TensorCopyAsync(&lod_tensor_n, lite_tensor, ctx);
+  TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(ctx.GetPlace())) {
     platform::GpuStreamSync(
@@ -108,10 +136,11 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   lod_tensor.set_lod(lod);
   // Create lite::Tensor and share.
   paddle::lite::Tensor lite_tensor;
-  TensorDataShare(&lite_tensor, &lod_tensor);
+  paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
+  TensorDataShare(&lite_api_tensor, &lod_tensor);
   // Copy to LoDTensor.
   framework::LoDTensor lod_tensor_n;
-  TensorCopyAsync(&lod_tensor_n, lite_tensor, ctx);
+  TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
   std::vector<float> result;
   TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);

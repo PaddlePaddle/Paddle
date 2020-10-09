@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -24,8 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class OpDesc;
 class BlockDesc;
+class OpDesc;
 class StaticGraphVarTypeInference;
 // default infer var type context
 

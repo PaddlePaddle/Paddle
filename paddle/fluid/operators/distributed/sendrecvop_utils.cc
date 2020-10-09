@@ -11,17 +11,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#ifdef PADDLE_WITH_NCCL
-#include <nccl.h>
-#endif
 #include <memory>
-#include <thread>  // NOLINT
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/platform/port.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+namespace memory {
+namespace allocation {
+class Allocation;
+}  // namespace allocation
+}  // namespace memory
+}  // namespace paddle
 
 DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
 DEFINE_int32(rpc_retry_bind_port, 3,
@@ -37,7 +40,9 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
   if (is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(is_gpu_place(tensor.place()));
+    PADDLE_ENFORCE_EQ(
+        is_gpu_place(tensor.place()), true,
+        platform::errors::PreconditionNotMet("Please run in gpu place."));
     auto& gpu_dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
@@ -50,7 +55,8 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     ctx.Wait();
     return TensorPayload(result);
 #else
-    PADDLE_THROW("This situation should not be happened");
+    PADDLE_THROW(
+        platform::errors::Unavailable("This situation should not be happened"));
 #endif
   } else {
     return TensorPayload(tensor);

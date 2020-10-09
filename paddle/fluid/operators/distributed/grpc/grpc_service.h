@@ -47,7 +47,8 @@ class SerializationTraits<
   static Status Serialize(
       const paddle::operators::distributed::GRPCVariableResponse& msg,
       grpc_byte_buffer** bp, bool* own_buffer) {
-    PADDLE_ENFORCE(false, "SerializationTraits::Serialize not implemented!");
+    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        "SerializationTraits::Serialize not implemented!"));
     return Status();
   }
   static Status Deserialize(
@@ -85,10 +86,12 @@ enum class GrpcMethod {
   kGetMonomerVariable,
   kGetMonomerBarrier,
   kRequestNotify,
+  kRequestSendAndRecv,
+  // when you add new handler, change kGrpcNumMethods at the same time!
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kRequestNotify) + 1;
+    static_cast<int>(GrpcMethod::kRequestSendAndRecv) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
@@ -108,10 +111,13 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/CheckpointNotify";
     case GrpcMethod::kRequestNotify:
       return "/sendrecv.SendRecvService/DistributeNotify";
+    case GrpcMethod::kRequestSendAndRecv:
+      return "/sendrecv.SendRecvService/SendAndRecvVariable";
   }
 
   // Shouldn't be reached.
-  PADDLE_ENFORCE(false, "Invalid id: not found valid method name");
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Invalid id: not found valid method name"));
   return nullptr;
 }
 

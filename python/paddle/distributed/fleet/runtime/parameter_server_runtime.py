@@ -23,6 +23,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 
 from .runtime_base import RuntimeBase
+from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerRuntime(RuntimeBase):
@@ -94,8 +95,8 @@ class ParameterServerRuntime(RuntimeBase):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -104,9 +105,9 @@ class ParameterServerRuntime(RuntimeBase):
     def _init_worker(self):
         def sync_strategy_envs():
             kwargs = {}
-            kwargs["pserver_endpoints"] = self.role_maker.get_pserver_endpoints(
-            )
-            kwargs["trainer_id"] = self.role_maker.worker_index()
+            kwargs[
+                "pserver_endpoints"] = self.role_maker._get_pserver_endpoints()
+            kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
         def geo_strategy_envs():
@@ -150,19 +151,31 @@ class ParameterServerRuntime(RuntimeBase):
                 return "#".join(init_attrs)
 
             kwargs = {}
-            kwargs["trainers"] = self.role_maker.worker_num()
+            kwargs["trainers"] = self.role_maker._worker_num()
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops, _has_global_step
 
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
-        lrs = _get_lr_ops(self.origin_main_program)
 
-        if len(lrs) > 0:
+        dist_strategy = self.context["valid_strategy"]
+        launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
+        if launch_barrier:
+            # for trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+            # for ps-heter mode, wait heter worker ready
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            ):
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+
+        lrs = _has_global_step(_get_lr_ops(self.origin_main_program))
+
+        if lrs:
             kwargs = {"need_global_step": "1"}
         else:
             kwargs = {"need_global_step": "0"}
@@ -196,6 +209,21 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             warnings.warn("communicator has been initialized, skip")
 
+    def _get_executor(self):
+        if self.role_maker._is_heter_worker():
+            if self.role_maker._get_heter_worker_device() == "GPU":
+                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                executor = Executor(fluid.CUDAPlace(gpu_id))
+            elif self.role_maker._get_heter_worker_device() == "XPU":
+                xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+                executor = Executor(fluid.XPUPlace(xpu_id))
+            else:
+                raise ValueError("Not Support Device {}".format(
+                    self.role_maker._get_heter_worker_device()))
+        else:
+            executor = fluid.Executor(fluid.CPUPlace())
+        return executor
+
     def _init_server(self, *args, **kwargs):
         if len(args) > 1:
             raise ValueError("init server can only accept 1 args: `dirname`")
@@ -204,8 +232,14 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             model_dirname = None
 
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.run(fluid.default_startup_program())
+
+        if self.role_maker._is_heter_worker():
+            self._init_worker()
+
+        if self.role_maker._is_heter_worker():
+            return
 
         if not model_dirname:
             return
@@ -237,12 +271,12 @@ class ParameterServerRuntime(RuntimeBase):
         # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
 
     def _run_server(self):
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.run(fluid.default_main_program())
 
     def _stop_worker(self):
         self._communicator.stop()
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.close()
 
     def _get_optimizer_status(self, op, param_name):
@@ -290,7 +324,7 @@ class ParameterServerRuntime(RuntimeBase):
         opts = _get_optimize_ops(self.origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):
@@ -316,7 +350,7 @@ class ParameterServerRuntime(RuntimeBase):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self.role_maker.worker_index(),
+                        "trainer_id": self.role_maker._worker_index(),
                         "shape": var.shape,
                         "slice_shapes":
                         [",".join([str(i) for i in var.shape])],
@@ -356,14 +390,15 @@ class ParameterServerRuntime(RuntimeBase):
             block.append_op(
                 type='recv_save',
                 attrs={
-                    "trainer_id": self.role_maker.worker_index(),
+                    "trainer_id": self.role_maker._worker_index(),
                     "shape": var.shape,
                     "slice_shapes": slice_shapes,
                     "slice_varnames": var_ctx.split_varnames(),
                     "remote_varnames": var_ctx.split_varnames(),
                     "is_sparse": True,
                     "endpoints": var_ctx.split_endpoints(),
-                    "pserver_num": len(self.role_maker.get_pserver_endpoints()),
+                    "pserver_num":
+                    len(self.role_maker._get_pserver_endpoints()),
                     "file_path": os.path.join(dirname, var.name)
                 })
 
@@ -381,7 +416,7 @@ class ParameterServerRuntime(RuntimeBase):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self.role_maker.worker_index(),
+                        "trainer_id": self.role_maker._worker_index(),
                         "shape": var.shape,
                         "slice_shapes": slice_shapes,
                         "slice_varnames": slice_varnames,
@@ -389,7 +424,7 @@ class ParameterServerRuntime(RuntimeBase):
                         "is_sparse": True,
                         "endpoints": var_ctx.split_endpoints(),
                         "pserver_num":
-                        len(self.role_maker.get_pserver_endpoints()),
+                        len(self.role_maker._get_pserver_endpoints()),
                         "file_path": os.path.join(dirname, var.name)
                     })
 
@@ -400,7 +435,7 @@ class ParameterServerRuntime(RuntimeBase):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self.role_maker.worker_index(),
+                        "trainer_id": self.role_maker._worker_index(),
                         "shape": var.shape,
                         "slice_shapes":
                         [",".join([str(i) for i in var.shape])],

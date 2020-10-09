@@ -14,12 +14,17 @@
 
 #include <map>
 #include <string>
+
 #include "paddle/fluid/framework/program_desc.h"
 
 #pragma once
 
 namespace paddle {
 namespace framework {
+
+namespace proto {
+class OpCompatibleMap;
+}  // namespace proto
 
 enum class OpCompatibleType {
   compatible = 0,       //   support previous version
