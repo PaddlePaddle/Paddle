@@ -412,7 +412,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
         # Check the loaded 8-bit weight.
         w_8bit = np.array(scope.find_var('conv2d_1.w_0.int8').get_tensor())
         self.assertEqual(w_8bit.dtype, np.int8)
-        # self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
+        self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
         if not for_ci:
             print('{}: {}'.format('w_8bit' + dev_name + activation_quant_type +
                                   '_' + weight_quant_type, np.sum(w_8bit)))
