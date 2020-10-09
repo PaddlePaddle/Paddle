@@ -1470,8 +1470,8 @@ def strided_slice(x, axes, starts, ends, strides):
         TypeError: The type of ``ends`` must be list, tuple or Variable.
         TypeError: The type of ``strides`` must be list, tuple or Variable.
     Examples:
-
         .. code-block:: python
+
             import paddle
             x = paddle.zeros(shape=[3,4,5,6], dtype="float32")
             # example 1:
