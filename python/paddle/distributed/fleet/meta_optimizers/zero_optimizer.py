@@ -311,9 +311,9 @@ class ZeroOptimizer(MetaOptimizerBase):
                            OP_ROLE_KEY: OpRole.Backward})
 
     def _split_program(self, block):
-        for op_idx, op in reversed(list(enumerate(block.ops))):
-            if int(op.attr('op_role')) != int(OpRole.Optimize):
-                last_backward_op_idx = op_idx + 1
+        for op_idx, op in enumerate(block.ops):
+            if int(op.attr('op_role')) == int(OpRole.Optimize):
+                last_backward_op_idx = op_idx
                 break
         sub_prog = SubProgram(block)
         sub_prog._end_idx = last_backward_op_idx
