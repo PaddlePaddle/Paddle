@@ -25,10 +25,10 @@ using string::PrettyLogDetail;
 
 void FuseBatchNormActOneDNNPass::ApplyImpl(Graph *graph) const {
   std::string act_type("relu");
-  graph = FuseBatchNormAct(graph, act_type);
+  FuseBatchNormAct(graph, act_type);
 }
 
-Graph *FuseBatchNormActOneDNNPass::FuseBatchNormAct(
+void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument(
@@ -68,7 +68,6 @@ Graph *FuseBatchNormActOneDNNPass::FuseBatchNormAct(
   AddStatis(found_bn_act_count);
   PrettyLogDetail("---    fused %d batch norm with relu activation",
                   found_bn_act_count);
-  return graph;
 }
 
 }  // namespace ir

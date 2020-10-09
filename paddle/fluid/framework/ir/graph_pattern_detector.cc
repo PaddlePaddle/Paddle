@@ -1193,10 +1193,11 @@ PDNode *patterns::BatchNormActOneDNN::operator()(PDNode *bn_x,
   auto *bn = pattern->NewNode(batch_norm_repr())
                  ->assert_is_op("batch_norm")
                  ->assert_is_not_op_input("MomentumTensor")
-                 ->assert_op_attr<bool>("use_mkldnn", true);
+                 ->assert_op_attr<bool>("use_mkldnn", true)
+                 ->assert_op_attr<bool>("is_test", true)
+                 ->assert_op_attr<bool>("trainable_statistics", false);
   auto *bn_out = pattern->NewNode(bn_out_repr())
                      ->assert_is_op_output("batch_norm", "Y")
-                     ->AsIntermediate()
                      ->assert_is_op_input(act_type);
   auto *act =
       pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
