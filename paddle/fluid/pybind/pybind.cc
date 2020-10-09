@@ -142,6 +142,17 @@ bool IsCompiledWithMKLDNN() {
 #endif
 }
 
+bool SupportsBfloat16() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+    return true;
+  else
+    return false;
+#endif
+}
+
 bool IsCompiledWithBrpc() {
 #ifndef PADDLE_WITH_DISTRIBUTE
   return false;
@@ -1438,13 +1449,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
-    It represents a CPU device allocated or to be allocated with Tensor or LoDTensor.
+    It represents a CPU device on which a tensor will be allocated and a model will run.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()
+          import paddle
+          cpu_place = paddle.CPUPlace()
 
         )DOC")
       .def(py::init<>())
@@ -1468,8 +1479,8 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          place = fluid.CUDAPinnedPlace()
+          import paddle
+          place = paddle.CUDAPinnedPlace()
 
         )DOC")
       .def("__init__",
@@ -1661,6 +1672,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("supports_bfloat16", SupportsBfloat16);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {

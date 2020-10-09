@@ -848,6 +848,10 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
+    if x_shape[0] != y_shape[0]:
+        raise ValueError(
+            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
+            format(x_shape, y_shape))
     helper = LayerHelper('bmm', **locals())
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
@@ -862,41 +866,23 @@ def histogram(input, bins=100, min=0, max=0):
     If min and max are both zero, the minimum and maximum values of the data are used.
 
     Args:
-        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+        input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
         bins (int): number of histogram bins
         min (int): lower end of the range (inclusive)
         max (int): upper end of the range (inclusive)
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by histogram layer. The data type is int64.
+        Tensor: data type is int64, shape is (nbins,).
 
-    Code Example 1:
+    Examples:
         .. code-block:: python
-            import paddle
-            import numpy as np
-            startup_program = paddle.static.Program()
-            train_program = paddle.static.Program()
-            with paddle.static.program_guard(train_program, startup_program):
-                inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
-                output = paddle.histogram(inputs, bins=5, min=1, max=5)
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                exe.run(startup_program)
-                img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
-                res = exe.run(train_program,
-                              feed={'input': img},
-                              fetch_list=[output])
-                print(np.array(res[0])) # [0,3,0,2,1]
 
-    Code Example 2:
-        .. code-block:: python
             import paddle
-            paddle.disable_static(paddle.CPUPlace())
+
             inputs = paddle.to_tensor([1, 2, 1])
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
-            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)

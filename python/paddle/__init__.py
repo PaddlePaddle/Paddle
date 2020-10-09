@@ -54,7 +54,7 @@ import paddle.tensor
 import paddle.text
 import paddle.vision
 
-from . import jit, static
+from . import amp, jit, static
 from .device import is_compiled_with_cuda  # DEFINE_ALIAS
 from .device import (XPUPlace, get_cudnn_version, get_device,
                      is_compiled_with_xpu, set_device)
@@ -236,6 +236,7 @@ from .tensor.math import sum  # DEFINE_ALIAS
 from .tensor.math import sums  # DEFINE_ALIAS
 from .tensor.math import tanh  # DEFINE_ALIAS
 from .tensor.math import trace  # DEFINE_ALIAS
+from .tensor.random import multinomial  # DEFINE_ALIAS
 from .tensor.random import rand  # DEFINE_ALIAS
 from .tensor.random import randint  # DEFINE_ALIAS
 from .tensor.random import randn  # DEFINE_ALIAS
