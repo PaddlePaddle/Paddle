@@ -31,7 +31,7 @@ from . import loss
 __all__ += loss.__all__
 from .activation import brelu  #DEFINE_ALIAS
 from .activation import elu  #DEFINE_ALIAS
-from .activation import erf  #DEFINE_ALIAS
+# from .activation import erf  #DEFINE_ALIAS
 from .activation import gelu  #DEFINE_ALIAS
 from .activation import hardshrink  #DEFINE_ALIAS
 from .activation import hardtanh  #DEFINE_ALIAS
@@ -46,7 +46,7 @@ from .activation import relu  #DEFINE_ALIAS
 from .activation import relu6  #DEFINE_ALIAS
 from .activation import selu  #DEFINE_ALIAS
 from .activation import sigmoid  #DEFINE_ALIAS
-from .activation import soft_relu  #DEFINE_ALIAS
+# from .activation import soft_relu  #DEFINE_ALIAS
 from .activation import softmax  #DEFINE_ALIAS
 from .activation import softplus  #DEFINE_ALIAS
 from .activation import softshrink  #DEFINE_ALIAS
