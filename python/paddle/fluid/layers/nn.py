@@ -11014,6 +11014,7 @@ def slice(input, axes, starts, ends):
     return out
 
 
+@deprecated(since='2.0.0', update_to="paddle.strided_slice")
 def strided_slice(input, axes, starts, ends, strides):
     """
     :alias_main: paddle.strided_slice
