@@ -125,7 +125,7 @@ from .extension import diag_embed  #DEFINE_ALIAS
 # from .lod import array_read        #DEFINE_ALIAS
 # from .lod import array_write        #DEFINE_ALIAS
 # from .lod import create_array        #DEFINE_ALIAS
-from .lod import hash  #DEFINE_ALIAS
+# from .lod import hash  #DEFINE_ALIAS
 # from .lod import im2sequence        #DEFINE_ALIAS
 # from .lod import lod_append        #DEFINE_ALIAS
 # from .lod import lod_reset        #DEFINE_ALIAS
