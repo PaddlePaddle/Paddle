@@ -144,12 +144,12 @@ from .tensor.math import ceil  #DEFINE_ALIAS
 from .tensor.math import cos  #DEFINE_ALIAS
 from .tensor.math import cosh  #DEFINE_ALIAS
 from .tensor.math import cumsum  #DEFINE_ALIAS
-from .tensor.math import elementwise_add  #DEFINE_ALIAS
-from .tensor.math import elementwise_div  #DEFINE_ALIAS
-from .tensor.math import elementwise_floordiv  #DEFINE_ALIAS
-from .tensor.math import elementwise_mod  #DEFINE_ALIAS
-from .tensor.math import elementwise_pow  #DEFINE_ALIAS
-from .tensor.math import elementwise_sub  #DEFINE_ALIAS
+# from .tensor.math import elementwise_add  #DEFINE_ALIAS
+# from .tensor.math import elementwise_div  #DEFINE_ALIAS
+# from .tensor.math import elementwise_floordiv  #DEFINE_ALIAS
+# from .tensor.math import elementwise_mod  #DEFINE_ALIAS
+# from .tensor.math import elementwise_pow  #DEFINE_ALIAS
+# from .tensor.math import elementwise_sub  #DEFINE_ALIAS
 from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
@@ -157,10 +157,10 @@ from .tensor.math import log  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
-from .tensor.math import reduce_max  #DEFINE_ALIAS
-from .tensor.math import reduce_min  #DEFINE_ALIAS
-from .tensor.math import reduce_prod  #DEFINE_ALIAS
-from .tensor.math import reduce_sum  #DEFINE_ALIAS
+# from .tensor.math import reduce_max  #DEFINE_ALIAS
+# from .tensor.math import reduce_min  #DEFINE_ALIAS
+# from .tensor.math import reduce_prod  #DEFINE_ALIAS
+# from .tensor.math import reduce_sum  #DEFINE_ALIAS
 from .tensor.math import round  #DEFINE_ALIAS
 from .tensor.math import rsqrt  #DEFINE_ALIAS
 from .tensor.math import scale  #DEFINE_ALIAS

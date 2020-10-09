@@ -35,21 +35,21 @@ from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
 from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_max    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_min    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
 from ..fluid.layers import round    #DEFINE_ALIAS
 from ..fluid.layers import rsqrt    #DEFINE_ALIAS
 from ..fluid.layers import scale    #DEFINE_ALIAS
@@ -75,12 +75,6 @@ __all__ = [
         'cos',
         'cosh',
         'cumsum',
-        'elementwise_add',
-        'elementwise_div',
-        'elementwise_floordiv',
-        'elementwise_mod',
-        'elementwise_pow',
-        'elementwise_sub',
         'exp',
         'floor',
         'increment',
@@ -91,10 +85,6 @@ __all__ = [
         'pow',
         'prod',
         'reciprocal',
-        'reduce_max',
-        'reduce_min',
-        'reduce_prod',
-        'reduce_sum',
         'round',
         'rsqrt',
         'scale',
