@@ -272,6 +272,7 @@ from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 
 from . import jit
 from . import static
+from . import amp
 
 # high-level api
 from .hapi import Model
