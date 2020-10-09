@@ -60,13 +60,12 @@ class Linear(layers.Layer):
     where :math:`W` is the weight and :math:`b` is the bias.
 
     Linear layer takes only one multi-dimensional tensor as input with the
-    shape :math:`[N, *, in\_features]` , where :math:`N` is batch size and
-    :math:`*` means any number of additional dimensions. It multiplies
-    input tensor with the weight (a 2-D tensor of shape
-    :math:`[in\_features, out\_features]` ) and produces an output tensor of
-    shape :math:`[N, *, out\_features]` . If :math:`bias\_attr` is not False,
-    the bias (a 1-D tensor of shape :math:`[out\_features]` ) will be created
-    and added to the output.
+    shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
+    number of additional dimensions. It multiplies input tensor with the weight
+    (a 2-D tensor of shape :math:`[in\_features, out\_features]` ) and produces
+    an output tensor of shape :math:`[batch\_size, *, out\_features]` .
+    If :math:`bias\_attr` is not False, the bias (a 1-D tensor of
+    shape :math:`[out\_features]` ) will be created and added to the output.
 
     Parameters:
         in_features (int): The number of input units.
@@ -74,22 +73,24 @@ class Linear(layers.Layer):
         weight_attr (ParamAttr, optional): The attribute for the learnable
             weight of this layer. The default value is None and the weight will be
             initialized to zero. For detailed information, please refer to
-            :ref:`api_paddle_fluid_param_attr_ParamAttr` .
+            paddle.ParamAttr.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
-            to :ref:`api_paddle_fluid_param_attr_ParamAttr` . The default value is None
-            and the bias will be initialized to zero.
+            to paddle.ParamAttr. The default value is None and the bias will be
+            initialized to zero.
         name (str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
 
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
-        bias (Parameter): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weight of this layer.
 
-    Returns:
-        A multi-dimentional tensor of the shape :math:`[N, *, out\_features]` .
+        **bias** (Parameter): the learnable bias of this layer.
+
+    Shape:
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` .
 
     Examples:
         .. code-block:: python

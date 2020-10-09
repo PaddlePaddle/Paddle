@@ -1416,10 +1416,10 @@ def linear(x, weight, bias=None, name=None):
     where :math:`W` is the weight and :math:`b` is the bias.
 
     If the weight is a 2-D tensor of shape :math:`[in\_features, out\_features]` ,
-    input should be a multi-dimensional tensor of shape :math:`[N, *, in\_features]` , 
-    where :math:`N` is batch size and :math:`*` means any number of additional
-    dimensions. The linear operator multiplies input tensor with weight and produces an
-    output tensor of shape :math:`[N, *, out\_features]` , 
+    input should be a multi-dimensional tensor of shape
+    :math:`[batch\_size, *, in\_features]` , where :math:`*` means any number of
+    additional dimensions. The linear operator multiplies input tensor with
+    weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` , 
     If :math:`bias` is not None, the bias should be a 1-D tensor of shape
     :math:`[out\_features]` and will be added to the output.
 
@@ -1432,8 +1432,8 @@ def linear(x, weight, bias=None, name=None):
                               For detailed information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        A multi-dimentional tensor of the shape :math:`[N, *, out\_features]` and with
-        the same data type of input :math:`x` .
+        Tensor, the shape is :math:`[batch\_size, *, out\_features]` and the
+        data type is the same with input :math:`x` .
 
     Examples:
         .. code-block:: python
