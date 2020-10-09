@@ -15,7 +15,9 @@ function make_ubuntu_dockerfile(){
       RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \
       RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \
       ENV PATH=/usr/local/gcc-8.2/bin:$PATH #g' ${dockerfile_name}
-
+  sed -i 's#bash /build_scripts/install_nccl2.sh#wget --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb && \
+      dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb && \
+      apt-get install -y libnccl2=2.7.8-1+cuda10.1 libnccl-dev=2.7.8-1+cuda10.1 --allow-change-held-packages #g' ${dockerfile_name}
 }
 
 
