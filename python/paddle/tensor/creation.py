@@ -24,18 +24,15 @@ from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
-from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
-from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
     'to_tensor',
     'diag',
-    'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
     'ones',

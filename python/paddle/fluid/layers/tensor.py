@@ -627,8 +627,6 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
-	:alias_main: paddle.fill_constant
-	:alias: paddle.tensor.fill_constant, paddle.tensor.creation.fill_constant
 
     This OP creates a Tensor with specified `shape` and `dtype`, and
     initializes it with a constant specified by `value`.
