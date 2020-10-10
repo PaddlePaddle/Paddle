@@ -64,7 +64,7 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
           }
         }
         PADDLE_ENFORCE(
-            xpu_malloc(<void**> & mask_data_table,
+            xpu_malloc(reinterpret_cast<void**>(&mask_data_table),
                        max_data_size * sizeof(float)) == xpu::Error_t::SUCCESS,
             "XPU no enough memory");
         memory::Copy(boost::get<platform::XPUPlace>(context.GetPlace()),
