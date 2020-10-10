@@ -27,7 +27,7 @@ class Constant(ConstantInitializer):
     Examples:
         .. code-block:: python
 
-    	    import paddle
+            import paddle
             import paddle.nn as nn
 
             data = paddle.rand([30, 10, 2], dtype='float32')
