@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle
 paddle.enable_static()
 
+
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
     def setUp(self):

@@ -303,8 +303,8 @@ class Squeeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
     grad_op->SetOutput("XShape", this->Input("XShape"));
     grad_op->SetAttrMap(this->Attrs());
-  } 
-}; 
+  }
+};
 
 DECLARE_INPLACE_OP_INFERER(SqueezeInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(SqueezeGradInplaceInferer,

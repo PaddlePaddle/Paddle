@@ -25,6 +25,7 @@ import gradient_checker
 from decorator_helper import prog_scope
 paddle.enable_static()
 
+
 class TestMulGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -247,6 +248,7 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
         for p in places:
             self.func(p)
 
+
 class TestSqueezeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -257,9 +259,9 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
-        out  = paddle.squeeze(x, axes)
+        out = paddle.squeeze(x, axes)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
- 
+
         gradient_checker.double_grad_check(
             [x], out, x_init=x_arr, place=place, eps=eps)
 
@@ -278,7 +280,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         axes = [1, 2]
         eps = 0.005
         dtype = np.float64
-    
+
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
         out = paddle.unsqueeze(x, axes)
@@ -286,13 +288,14 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x], out, x_init=x_arr, place=place, eps=eps)
-        
+
     def test_grad(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for p in places:
-            self.func(p) 
+            self.func(p)
+
 
 if __name__ == "__main__":
     unittest.main()

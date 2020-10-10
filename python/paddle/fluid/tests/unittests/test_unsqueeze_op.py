@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 from op_test import OpTest
 paddle.enable_static()
 
+
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
     def setUp(self):
