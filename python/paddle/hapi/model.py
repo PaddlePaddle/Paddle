@@ -638,19 +638,14 @@ class DynamicGraphAdapter(object):
 
         if self._nranks > 1:
             outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
-            final_loss = self.ddp_model.scale_loss(final_loss)
-            final_loss.backward()
-            self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
                 * [to_variable(x) for x in inputs])
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
-            final_loss.backward()
+
+        losses = self.model._loss(*(to_list(outputs) + labels))
+        losses = to_list(losses)
+        final_loss = fluid.layers.sum(losses)
+        final_loss.backward()
 
         self.model._optimizer.minimize(final_loss)
         self.model.network.clear_gradients()
