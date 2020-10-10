@@ -97,3 +97,8 @@ endif()
 add_library(eigen3 INTERFACE)
 
 add_dependencies(eigen3 extern_eigen3)
+
+# sw not support thread_local semantic
+if(WITH_SW)
+  add_definitions(-DEIGEN_AVOID_THREAD_LOCAL)
+endif()
