@@ -14,7 +14,6 @@
 
 # TODO: define the initializers to create a Parameter in neural network
 from ...fluid.initializer import Bilinear  #DEFINE_ALIAS
-from ...fluid.initializer import MSRA  #DEFINE_ALIAS
 from ...fluid.initializer import Normal  #DEFINE_ALIAS
 from ...fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
 from ...fluid.initializer import Uniform  #DEFINE_ALIAS
