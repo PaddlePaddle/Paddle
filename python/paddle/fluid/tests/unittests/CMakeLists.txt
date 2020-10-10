@@ -547,6 +547,10 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 
+if (WITH_XPU)
+    add_subdirectory(xpu)
+endif()
+
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()

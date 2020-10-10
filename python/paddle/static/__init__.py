@@ -23,6 +23,7 @@ __all__ = [
 ]
 
 from . import nn
+from ..fluid import Scope  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS
 from ..fluid.executor import Executor  #DEFINE_ALIAS
@@ -50,3 +51,5 @@ from ..fluid.io import save_inference_model  #DEFINE_ALIAS
 from ..fluid.io import load_inference_model  #DEFINE_ALIAS
 from ..fluid.io import load_program_state  #DEFINE_ALIAS
 from ..fluid.io import set_program_state  #DEFINE_ALIAS
+from ..fluid.layers import create_parameter  #DEFINE_ALIAS
+from ..fluid.layers import create_global_var  #DEFINE_ALIAS

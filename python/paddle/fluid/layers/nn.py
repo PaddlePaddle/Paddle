@@ -7061,10 +7061,10 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
 
 
     Parameters:
-        input (Variable): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_D]`, where :math:`N_1` is
+        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_D]`, where :math:`N_1` is
                           the batch_size, :math:`N_D` is 1. It is usually the output predictions of sigmoid activation.
                           The data type can be float32 or float64.
-        label (Variable): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`.
+        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`.
                           where :math:`N_1` is the batch_size, :math:`N_D` is 1. The data type can be float32 or float64.
         epsilon (float): The epsilon will be added to the numerator and denominator.
                          If both input and label are empty, it makes sure dice is 1.
@@ -7074,18 +7074,19 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The dice loss with shape [1], data type is the same as `input` .
-    Return Type:
-        Varaible
+        Tensor, which shape is [1], data type is the same as `input` .
 
     Example:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='data', shape = [3, 224, 224, 1], dtype='float32')
-            label = fluid.data(name='label', shape=[3, 224, 224, 1], dtype='float32')
-            predictions = fluid.layers.sigmoid(x)
-            loss = fluid.layers.dice_loss(input=predictions, label=label)
+            import paddle
+            import paddle.nn.functional as F
+
+            paddle.disable_static()
+            x = paddle.randn((3,224,224,2))
+            label = paddle.randint(high=2, shape=(3,224,224,1))
+            predictions = F.softmax(x)
+            loss = F.dice_loss(input=predictions, label=label)
     """
     label = one_hot(label, depth=input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
@@ -12414,11 +12415,16 @@ def clip_by_norm(x, max_norm, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            input = fluid.data(
-                name='data', shape=[None, 1], dtype='float32')
-            reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            input = paddle.to_tensor(data=np.array([[0.1, 0.2], [0.3, 0.4]]), dtype="float32")
+            reward = paddle.nn.clip_by_norm(x=input, max_norm=1.0)
     """
+
+    if in_dygraph_mode():
+        return core.ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
     check_variable_and_dtype(x, 'X', ['float32'], 'clip_by_norm')
@@ -13098,10 +13104,10 @@ def log_loss(input, label, epsilon=1e-4, name=None):
               - (1 - label) * \\log{(1 - input + \\epsilon)}
 
     Args:
-        input (Variable|list):  A 2-D tensor with shape [N x 1], where N is the
+        input (Tensor|list):  A 2-D tensor with shape [N x 1], where N is the
                                 batch size. This input is a probability computed
                                 by the previous operator. Data type float32.
-        label (Variable|list):  The ground truth which is a 2-D tensor with
+        label (Tensor|list):  The ground truth which is a 2-D tensor with
                                 shape [N x 1], where N is the batch size.
                                 Data type float32.
         epsilon (float, optional): A small number for numerical stability. Default 1e-4.
@@ -13109,15 +13115,18 @@ def log_loss(input, label, epsilon=1e-4, name=None):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Variable: A 2-D tensor with shape [N x 1], the negative log loss.
+        Tensor, which shape is [N x 1], data type is float32.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
-          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
-          cost = fluid.layers.log_loss(input=prob, label=label)
+          import paddle
+          import paddle.nn.functional as F
+
+          paddle.disable_static()
+          label = paddle.randn((10,1))
+          prob = paddle.randn((10,1))
+          cost = F.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
@@ -13178,12 +13187,10 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
           import paddle.nn.functional as F
 
-          tensor = np.random.randn(16, 32, 64) 
-          tensor = paddle.to_tensor(tensor)
+          tensor = paddle.randn([16, 32, 64])
           position_tensor = F.add_position_encoding(
                 input=tensor, alpha=1.0, beta=1.0)
 
@@ -13254,10 +13261,11 @@ def bilinear_tensor_product(x,
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          layer1 = fluid.data("t1", shape=[-1, 5], dtype="float32")
-          layer2 = fluid.data("t2", shape=[-1, 4], dtype="float32")
-          tensor = fluid.layers.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
+            import paddle
+            paddle.enable_static()
+            layer1 = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
+            layer2 = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
+            tensor = paddle.static.nn.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
@@ -13417,7 +13425,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     ${comment}
 
     Args:
-        x(Variable): ${x_comment}
+        x(Tensor): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
         name(str, optional): For detailed information, please refer
@@ -13425,7 +13433,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
                              None by default.
 
     Returns:
-        out(Variable): The temporal shifting result is a tensor variable with the
+        out(Tensor): The temporal shifting result is a tensor with the
         same shape and same data type as the input.
 
     Raises:
@@ -13434,9 +13442,11 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
-            out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.randn([6, 4, 2, 2])
+            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
@@ -13447,6 +13457,10 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
 
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
+
+    if in_dygraph_mode():
+        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                       shift_ratio)
 
     helper.append_op(
         type="temporal_shift",
@@ -13536,15 +13550,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
     :api_attr: Static Graph
 
-    This OP is used to register customized Python OP to Paddle Fluid. The design
-    principe of py_func is that LodTensor and numpy array can be converted to each
+    This OP is used to register customized Python OP to Paddle. The design
+    principe of py_func is that Tensor and numpy array can be converted to each
     other easily. So you can use Python and numpy API to register a python OP.
 
     The forward  function of the registered OP is ``func`` and the backward function
     of that is  ``backward_func``. Paddle will call ``func`` at forward runtime and
     call ``backward_func`` at backward runtime(if ``backward_func`` is not  None).
-    ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is
-    the output of ``func``, whose type can be either LoDTensor or numpy array.
+    ``x`` is the input of ``func``, whose type must be Tensor; ``out`` is
+    the output of ``func``, whose type can be either Tensor or numpy array.
 
     The input of the backward function ``backward_func`` is ``x``, ``out`` and
     the gradient of ``out``. If some variables of ``out`` have no gradient, the
@@ -13562,14 +13576,14 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this
             function and the forward input ``x``. In ``func`` , it's suggested that we
-            actively convert LoDTensor into a numpy array, so that we can use Python and
+            actively convert Tensor into a numpy array, so that we can use Python and
             numpy API arbitrarily. If not, some operations of numpy may not be compatible.
         x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``.
-            It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or
+            It can be Variable|tuple(Variale)|list[Variale], where Variable is Tensor or
             Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
             or list[Variale].
         out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``,
-            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
+            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either Tensor
             or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``,
             you must create ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP.
@@ -13590,16 +13604,18 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         .. code-block:: python
 
             # example 1:
-            import paddle.fluid as fluid
+            import paddle
             import six
 
-            # Creates a forward function, LodTensor can be input directly without
+            paddle.enable_static()
+
+            # Creates a forward function, Tensor can be input directly without
             # being converted into numpy array.
             def tanh(x):
                 return np.tanh(x)
 
             # Skip x in backward function and return the gradient of x
-            # LodTensor must be actively converted to numpy array, otherwise,
+            # Tensor must be actively converted to numpy array, otherwise,
             # operations such as +/- can't be used.
             def tanh_grad(y, dy):
                 return np.array(dy) * (1 - np.square(np.array(y)))
@@ -13609,36 +13625,38 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 print(x)
 
             def create_tmp_var(name, dtype, shape):
-                return fluid.default_main_program().current_block().create_var(
+                return paddle.static.default_main_program().current_block().create_var(
                     name=name, dtype=dtype, shape=shape)
 
             def simple_net(img, label):
                 hidden = img
                 for idx in six.moves.range(4):
-                    hidden = fluid.layers.fc(hidden, size=200)
+                    hidden = paddle.static.nn.fc(hidden, size=200)
                     new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
                         dtype=hidden.dtype, shape=hidden.shape)
 
                     # User-defined forward and backward
-                    hidden = fluid.layers.py_func(func=tanh, x=hidden,
+                    hidden = paddle.static.nn.py_func(func=tanh, x=hidden,
                         out=new_hidden, backward_func=tanh_grad,
                         skip_vars_in_backward_input=hidden)
 
-                    # User-defined debug functions that print out the input LodTensor
-                    fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+                    # User-defined debug functions that print out the input Tensor
+                    paddle.static.nn.py_func(func=debug_func, x=hidden, out=None)
 
-                prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-                loss = fluid.layers.cross_entropy(input=prediction, label=label)
-                return fluid.layers.mean(loss)
+                prediction = paddle.static.nn.fc(hidden, size=10, act='softmax')
+                loss = paddle.static.nn.cross_entropy(input=prediction, label=label)
+                return paddle.mean(loss)
 
             # example 2:
-            # This example shows how to turn LoDTensor into numpy array and
+            # This example shows how to turn Tensor into numpy array and
             # use numpy API to register an Python OP
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
+            paddle.enable_static()
+
             def element_wise_add(x, y):
-                # LodTensor must be actively converted to numpy array, otherwise,
+                # Tensor must be actively converted to numpy array, otherwise,
                 # numpy.shape can't be used.
                 x = np.array(x)
                 y = np.array(y)
@@ -13654,24 +13672,24 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 return result
 
             def create_tmp_var(name, dtype, shape):
-                return fluid.default_main_program().current_block().create_var(
+                return paddle.static.default_main_program().current_block().create_var(
                             name=name, dtype=dtype, shape=shape)
 
             def py_func_demo():
-                start_program = fluid.default_startup_program()
-                main_program = fluid.default_main_program()
+                start_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
 
                 # Input of the forward function
-                x = fluid.data(name='x', shape=[2,3], dtype='int32')
-                y = fluid.data(name='y', shape=[2,3], dtype='int32')
+                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
+                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
 
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
 
                 # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
-                fluid.layers.py_func(func=element_wise_add, x=[x,y], out=output)
+                paddle.static.nn.py_func(func=element_wise_add, x=[x,y], out=output)
 
-                exe=fluid.Executor(fluid.CPUPlace())
+                exe=paddle.static.Executor(paddle.CPUPlace())
                 exe.run(start_program)
 
                 # Feed numpy array to main_program
