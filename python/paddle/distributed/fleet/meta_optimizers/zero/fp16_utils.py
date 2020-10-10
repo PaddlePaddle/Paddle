@@ -95,6 +95,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype
                         })
+                    if in_var.stop_gradient == True:
+                        out_var.stop_gradient = True
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
