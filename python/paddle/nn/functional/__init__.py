@@ -63,10 +63,10 @@ from .common import alpha_dropout  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
 # from .common import fc  #DEFINE_ALIAS
 from .common import label_smooth
-from .common import one_hot  #DEFINE_ALIAS
+# from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
-from .common import pad_constant_like  #DEFINE_ALIAS
-from .common import pad2d  #DEFINE_ALIAS
+# from .common import pad_constant_like  #DEFINE_ALIAS
+# from .common import pad2d  #DEFINE_ALIAS
 from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
