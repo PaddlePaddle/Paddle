@@ -240,9 +240,9 @@ struct Cell {
   virtual ~Cell() {}
   virtual void operator()(const platform::CPUDeviceContext* device_ctx,
                           Tensor* input, const Tensor* weight_hh,
-                          const Tensor* bias_hh, const Tensor* init_h,
-                          const Tensor* init_c, Tensor* last_h, Tensor* last_c,
-                          Tensor* output, const Tensor& mask_tensor) {
+                          const Tensor* init_h, const Tensor* init_c,
+                          Tensor* last_h, Tensor* last_c, Tensor* output,
+                          const Tensor& mask_tensor) {
     VLOG(2) << "Calling Base Cell !!!!!";
   }
 };
@@ -250,23 +250,29 @@ struct Cell {
 template <typename T>
 struct LSTMCell : Cell<T> {
   void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
-                  const Tensor* weight_hh, const Tensor* bias_hh,
-                  const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                  Tensor* last_c, Tensor* output, const Tensor& mask_tensor) {
+                  const Tensor* weight_hh, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* output, const Tensor& mask_tensor) {
     VLOG(2) << "Calling LSTM Cell !!!!!";
     VLOG(2) << "input shape: " << input->dims();
     VLOG(2) << "w_hh shape: " << weight_hh->dims();
-    VLOG(2) << "b_hh shape: " << bias_hh->dims();
     VLOG(2) << "init_h shape: " << init_h->dims();
     VLOG(2) << "init_c shape: " << init_c->dims();
     VLOG(2) << "last_h shape: " << last_h->dims();
     VLOG(2) << "last_c shape: " << last_c->dims();
     VLOG(2) << "output shape: " << output->dims();
+    Print3DTensor<T>(input, "Cell Input");
+    Print3DTensor<T>(init_h, "init_h");
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    // convert the batch matmul to matmul, this operator could be speed faster
+    blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
+                input, T(1.0));
 
-    math::FCFunctor<platform::CPUDeviceContext, T> fc;
-    fc(*device_ctx, init_h->dims()[0], weight_hh->dims()[1],
-       weight_hh->dims()[0], init_h->data<T>(), weight_hh->data<T>(),
-       input->data<T>(), bias_hh->data<T>());
+    Print3DTensor<T>(input, "Cell Input after");
 
     math::LstmMetaValue<T> lstm_value;
     lstm_value.check_ig = nullptr;
@@ -431,11 +437,11 @@ struct SingleLayer : Layer<T> {
         SwapPoniter(init_c_holder, last_c_holder);
       }
       if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3], &init_h[layer_idx],
+        cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[layer_idx],
               &init_c[layer_idx], &last_h[layer_idx], &last_c[layer_idx],
               &output_tensors[i], mask_tensor_list[i]);
       } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3], init_h_holder,
+        cell_(&dev_ctx, &input_tensors[i], &vec[1], init_h_holder,
               init_c_holder, last_h_holder, last_c_holder, &output_tensors[i],
               mask_tensor_list[i]);
       }
@@ -516,15 +522,15 @@ struct BidirLayer : Layer<T> {
         SwapPoniter(forward_init_c_holder, forward_last_c_holder);
       }
       if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3],
-              &init_h[2 * layer_idx], &init_c[2 * layer_idx],
-              &last_h[2 * layer_idx], &last_c[2 * layer_idx],
-              &output_tensors[2 * i], forward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[2 * layer_idx],
+              &init_c[2 * layer_idx], &last_h[2 * layer_idx],
+              &last_c[2 * layer_idx], &output_tensors[2 * i],
+              forward_mask_tensor_list[i]);
       } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1], &vec[3],
-              forward_init_h_holder, forward_init_c_holder,
-              forward_last_h_holder, forward_last_c_holder,
-              &output_tensors[2 * i], forward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &input_tensors[i], &vec[1], forward_init_h_holder,
+              forward_init_c_holder, forward_last_h_holder,
+              forward_last_c_holder, &output_tensors[2 * i],
+              forward_mask_tensor_list[i]);
       }
       if (has_sequence_length) {
         this->postprocess(context, &output_tensors[2 * i],
@@ -567,15 +573,15 @@ struct BidirLayer : Layer<T> {
         SwapPoniter(backward_init_c_holder, backward_last_c_holder);
       }
       if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[5], &vec[7],
-              &init_h[2 * layer_idx + 1], &init_c[2 * layer_idx + 1],
-              &last_h[2 * layer_idx + 1], &last_c[2 * layer_idx + 1],
-              &output_tensors[2 * i + 1], backward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &input_tensors[i], &vec[5], &init_h[2 * layer_idx + 1],
+              &init_c[2 * layer_idx + 1], &last_h[2 * layer_idx + 1],
+              &last_c[2 * layer_idx + 1], &output_tensors[2 * i + 1],
+              backward_mask_tensor_list[i]);
       } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[5], &vec[7],
-              backward_init_h_holder, backward_init_c_holder,
-              backward_last_h_holder, backward_last_c_holder,
-              &output_tensors[2 * i + 1], backward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &input_tensors[i], &vec[5], backward_init_h_holder,
+              backward_init_c_holder, backward_last_h_holder,
+              backward_last_c_holder, &output_tensors[2 * i + 1],
+              backward_mask_tensor_list[i]);
       }
       if (has_sequence_length) {
         this->postprocess(context, &output_tensors[2 * i + 1],
