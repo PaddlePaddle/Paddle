@@ -901,7 +901,5 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad_grad,
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                paddle::platform::float16>);
+    ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
