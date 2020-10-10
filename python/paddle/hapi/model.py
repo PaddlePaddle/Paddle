@@ -1704,7 +1704,7 @@ class Model(object):
                 layer = self.network
                 if self._input_shapes is None:  # No provided or inferred
                     raise RuntimeError(
-                        "Saving inference model needs 'inputs' or running before saving. Please specify 'inputs' in Model initialization or input training zqqdata and perform a training for shape derivation."
+                        "Saving inference model needs 'inputs' or running before saving. Please specify 'inputs' in Model initialization or input training data and perform a training for shape derivation."
                     )
                 if self._is_shape_inferred:
                     warnings.warn(
