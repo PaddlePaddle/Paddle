@@ -215,7 +215,8 @@ class DataLoader(object):
             None.
 
     Returns:
-        DataLoader: an iterable object for data iterating
+        DataLoader: an iterable object for data iterating, each elemnet of
+                    the generated data is a Tensor.
 
     Examples:
         
