@@ -88,7 +88,6 @@ class Adam(Optimizer):
 
             import paddle
 
-            paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand([10,10], dtype="float32")
             out = linear(inp)
@@ -104,7 +103,6 @@ class Adam(Optimizer):
             # Adam with beta1/beta2 as Tensor and weight_decay as float
             import paddle
 
-            paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand([10,10], dtype="float32")
             out = linear(inp)
@@ -262,7 +260,7 @@ class Adam(Optimizer):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
+                
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.

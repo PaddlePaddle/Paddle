@@ -1462,7 +1462,7 @@ def gather_nd(x, index, name=None):
     return paddle.fluid.layers.gather_nd(input=x, index=index, name=name)
 
 
-def strided_slice(x, axes, starts, ends, strides):
+def strided_slice(x, axes, starts, ends, strides, name):
     """
     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
     https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
@@ -1517,14 +1517,11 @@ def strided_slice(x, axes, starts, ends, strides):
                 it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .                                                                                     It represents ending indices of corresponding axis in ``axes``.
         strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .                                                                                  It represents slice step of corresponding axis in ``axes``.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``x``. The data type is same as ``x``.
-
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Variable.
-        TypeError: The type of ``ends`` must be list, tuple or Variable.
-        TypeError: The type of ``strides`` must be list, tuple or Variable.
 
     Examples:
         .. code-block:: python

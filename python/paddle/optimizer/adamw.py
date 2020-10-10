@@ -81,7 +81,6 @@ class AdamW(Adam):
         .. code-block:: python
             import paddle
 
-            paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand([10,10], dtype="float32")
             out = linear(inp)
