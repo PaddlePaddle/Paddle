@@ -231,7 +231,7 @@ struct LSTMCell : Cell<T> {
 
     auto gate_act = math::detail::GetActivationType("sigmoid");
     auto cell_act = math::detail::GetActivationType("tanh");
-    auto cand_act = math::detail::GetActivationType("tanh ");
+    auto cand_act = math::detail::GetActivationType("tanh");
 
     size_t frame_size = init_h->dims()[1];
     size_t batch_size = init_h->dims()[0];
@@ -323,9 +323,9 @@ struct Layer {
                           const int& layer_idx, const int& gate_num) {}
 };
 
-template <typename T>
+template <typename T, typename CellType>
 struct SingleLayer : Layer<T> {
-  explicit SingleLayer(Cell<T>& cell) : cell_(cell) {}
+  explicit SingleLayer(CellType& cell) : cell_(cell) {}
   void operator()(const framework::ExecutionContext& context,
                   const Tensor* input, const TensorList& vec,
                   const TensorList& init_h, const TensorList& init_c,
@@ -399,16 +399,16 @@ struct SingleLayer : Layer<T> {
       framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
                             &last_h[layer_idx]);
     }
-    set_constant(dev_ctx, output, static_cast<T>(5.0));
+    // set_constant(dev_ctx, output, static_cast<T>(5.0));
   }
 
   // Cell for the rnn module
-  Cell<T> cell_;
+  CellType cell_;
 };
 
-template <typename T>
+template <typename T, typename CellType>
 struct BidirLayer : Layer<T> {
-  explicit BidirLayer(Cell<T>& cell) : cell_(cell) {}
+  explicit BidirLayer(CellType& cell) : cell_(cell) {}
   void operator()(const framework::ExecutionContext& context,
                   const Tensor* input, const TensorList& vec,
                   const TensorList& init_h, const TensorList& init_c,
@@ -552,11 +552,11 @@ struct BidirLayer : Layer<T> {
     }
   }
 
-  Cell<T> cell_;
+  CellType cell_;
 };
 
-template <typename CellType, template <typename> class SingleLayerT,
-          template <typename> class BidirLayerT, typename T>
+template <typename CellType, template <typename, typename> class SingleLayerT,
+          template <typename, typename> class BidirLayerT, typename T>
 void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const Tensor* weight, const Tensor* init_h, const Tensor* init_c,
              const Tensor* sequence_length, Tensor* last_h, Tensor* last_c,
@@ -611,7 +611,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       }
     }
     if (is_bidirec) {
-      BidirLayerT<T> layer(cell);
+      BidirLayerT<T, CellType> layer(cell);
       if (i == 0) {
         layer(ctx, input, parameter_lists[i], init_h_unbind, init_c_unbind,
               sequence_length, last_h_unbind, last_c_unbind, output_holder, i,
@@ -622,7 +622,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
               output_holder, i, gate_num);
       }
     } else {
-      SingleLayerT<T> layer(cell);
+      SingleLayerT<T, CellType> layer(cell);
       if (i == 0) {
         layer(ctx, input, parameter_lists[i], init_h_unbind, init_c_unbind,
               sequence_length, last_h_unbind, last_c_unbind, output_holder, i,
