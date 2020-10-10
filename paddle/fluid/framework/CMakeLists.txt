@@ -123,7 +123,9 @@ cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 
-cc_library(op_version_registry SRCS op_version_registry.cc DEPS framework_proto boost)
+cc_library(op_version_proto SRCS op_version_proto.cc DEPS framework_proto boost)
+
+cc_library(op_version_registry SRCS op_version_registry.cc DEPS op_version_proto framework_proto boost)
 cc_test(op_version_registry_test SRCS op_version_registry_test.cc DEPS op_version_registry)
 
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)

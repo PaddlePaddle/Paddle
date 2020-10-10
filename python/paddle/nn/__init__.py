@@ -55,6 +55,7 @@ from .layer.activation import ELU  #DEFINE_ALIAS
 from .layer.activation import GELU  #DEFINE_ALIAS
 from .layer.activation import Tanh  #DEFINE_ALIAS
 from .layer.activation import Hardshrink  #DEFINE_ALIAS
+from .layer.activation import Hardswish  #DEFINE_ALIAS
 from .layer.activation import Hardtanh  #DEFINE_ALIAS
 from .layer.activation import PReLU  #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
@@ -62,6 +63,7 @@ from .layer.activation import ReLU6  #DEFINE_ALIAS
 from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
+from .layer.activation import Hardsigmoid  #DEFINE_ALIAS
 from .layer.activation import LogSigmoid
 from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
@@ -70,6 +72,7 @@ from .layer.activation import Softsign  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
+from .layer.activation import Maxout  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
@@ -148,10 +151,17 @@ from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
-from .layer.rnn import *
-# from .layer.rnn import RNNCell        #DEFINE_ALIAS
-# from .layer.rnn import GRUCell        #DEFINE_ALIAS
-# from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+
+from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
+from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS
+from .layer.rnn import LSTMCell  #DEFINE_ALIAS
+from .layer.rnn import GRUCell  #DEFINE_ALIAS
+from .layer.rnn import RNN  #DEFINE_ALIAS
+from .layer.rnn import BiRNN  #DEFINE_ALIAS
+from .layer.rnn import SimpleRNN  #DEFINE_ALIAS
+from .layer.rnn import LSTM  #DEFINE_ALIAS
+from .layer.rnn import GRU  #DEFINE_ALIAS
+
 from .layer.transformer import MultiHeadAttention
 from .layer.transformer import TransformerEncoderLayer
 from .layer.transformer import TransformerEncoder
