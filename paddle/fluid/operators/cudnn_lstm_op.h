@@ -329,14 +329,22 @@ struct Layer {
 
     auto eigen_in = framework::EigenMatrix<T>::Reshape(
         cache_input, cache_input.dims().size() - 1);
-    auto eigen_bias_ih = framework::EigenVector<T>::Flatten(bias_ih);
-    auto eigen_bias_hh = framework::EigenVector<T>::Flatten(bias_hh);
+    auto eigen_bias_ih = framework::EigenMatrix<T>::From(
+        bias_ih, framework::make_ddim({1, bias_ih.dims()[0]}));
+    auto eigen_bias_hh = framework::EigenMatrix<T>::From(
+        bias_hh, framework::make_ddim({1, bias_hh.dims()[0]}));
+    // auto eigen_bias_ih = framework::EigenVector<T>::Flatten(bias_ih);
+    // auto eigen_bias_hh = framework::EigenVector<T>::Flatten(bias_hh);
     // use the eigen faster the add
     const int& row_num =
         framework::product(cache_input.dims()) / cache_input.dims()[2];
-    for (int64_t i = 0; i < row_num; ++i) {
-      eigen_in.chip(i, 0) = eigen_in.chip(i, 0) + eigen_bias_ih + eigen_bias_hh;
-    }
+    // for (int64_t i = 0; i < row_num; ++i) {
+    //  eigen_in.chip(i, 0) = eigen_in.chip(i, 0) + eigen_bias_ih +
+    //  eigen_bias_hh;
+    //}
+    eigen_in = eigen_in +
+               eigen_bias_ih.broadcast(Eigen::DSizes<int, 2>(row_num, 1)) +
+               eigen_bias_hh.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     Print3DTensor<T>(input, "preprocess_input");
     Print2DTensor<T>(&weight, "preprocess_weight");
     Print3DTensor<T>(&cache_input, "preprocess_output");
