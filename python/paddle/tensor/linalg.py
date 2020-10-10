@@ -929,6 +929,9 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
             paddle.enable_static()
     """
+    assert x is not None, 'x should not be None'
+    assert vec is not None, 'vec should not be None'
+
     if in_dygraph_mode():
         out = core.ops.mv(x, vec)
         return out
