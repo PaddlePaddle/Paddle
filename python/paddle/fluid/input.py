@@ -220,7 +220,7 @@ def embedding(input,
     Returns:
         Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
 
-    Examples:
+    Static Examples:
         .. code-block:: python
 
             import paddle
@@ -243,6 +243,33 @@ def embedding(input,
             x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
             
             out, weight = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output, embedding.weight])
+
+
+    Dygraph Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
+            y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
+            
+            x = paddle.to_tensor(x_data, stop_gradient=False)
+            y = paddle.to_tensor(y_data, stop_gradient=False)
+            
+            embedding = paddle.nn.Embedding(10, 3, sparse=True)
+            
+            w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
+            
+            embedding.weight.set_value(w0)
+            
+            adam = paddle.optimizer.Adam(
+                parameters=[embedding.weight], learning_rate=0.01)
+            adam.clear_grad()
+            
+            out = embedding(x)
+            out.backward()
+            adam.step()
 
     """
 
