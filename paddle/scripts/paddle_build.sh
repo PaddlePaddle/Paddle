@@ -900,6 +900,7 @@ function get_quickly_disable_ut() {
     else
         disable_ut_quickly=''
     fi
+    echo $disable_ut_quickly
 
 function card_test() {
     set -m
