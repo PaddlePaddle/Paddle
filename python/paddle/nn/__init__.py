@@ -44,8 +44,8 @@ from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
 # from .decode import BeamSearchDecoder        #DEFINE_ALIAS
 # from .decode import Decoder        #DEFINE_ALIAS
-from .decode import beam_search  #DEFINE_ALIAS
-from .decode import beam_search_decode  #DEFINE_ALIAS
+# from .decode import beam_search  #DEFINE_ALIAS
+# from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import crf_decoding        #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
@@ -148,10 +148,17 @@ from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
-from .layer.rnn import *
-# from .layer.rnn import RNNCell        #DEFINE_ALIAS
-# from .layer.rnn import GRUCell        #DEFINE_ALIAS
-# from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+
+from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
+from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS
+from .layer.rnn import LSTMCell  #DEFINE_ALIAS
+from .layer.rnn import GRUCell  #DEFINE_ALIAS
+from .layer.rnn import RNN  #DEFINE_ALIAS
+from .layer.rnn import BiRNN  #DEFINE_ALIAS
+from .layer.rnn import SimpleRNN  #DEFINE_ALIAS
+from .layer.rnn import LSTM  #DEFINE_ALIAS
+from .layer.rnn import GRU  #DEFINE_ALIAS
+
 from .layer.transformer import MultiHeadAttention
 from .layer.transformer import TransformerEncoderLayer
 from .layer.transformer import TransformerEncoder
