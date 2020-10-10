@@ -343,10 +343,10 @@ struct SingleLayer : Layer<T> {
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
         if (!has_allocate_mem) {
-          init_h_temp.Resize(init_h_holder->dims());
+          init_h_temp.Resize(init_h[layer_idx].dims());
           init_h_temp.mutable_data<T>(context.GetPlace());
           init_h_holder = &init_h_temp;
-          init_c_temp.Resize(init_c_holder->dims());
+          init_c_temp.Resize(init_c[layer_idx].dims());
           init_c_temp.mutable_data<T>(context.GetPlace());
           init_c_holder = &init_c_temp;
           has_allocate_mem = true;
@@ -430,10 +430,10 @@ struct BidirLayer : Layer<T> {
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
         if (!has_forward_allocate_mem) {
-          forward_init_h_temp.Resize(forward_init_h_holder->dims());
+          forward_init_h_temp.Resize(init_h[2 * layer_idx].dims());
           forward_init_h_temp.mutable_data<T>(context.GetPlace());
           forward_init_h_holder = &forward_init_h_temp;
-          forward_init_c_temp.Resize(forward_init_c_holder->dims());
+          forward_init_c_temp.Resize(init_c[2 * layer_idx].dims());
           forward_init_c_temp.mutable_data<T>(context.GetPlace());
           forward_init_c_holder = &forward_init_c_temp;
           has_forward_allocate_mem = true;
@@ -481,10 +481,10 @@ struct BidirLayer : Layer<T> {
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
         if (!has_backward_allocate_mem) {
-          backward_init_h_temp.Resize(backward_init_h_holder->dims());
+          backward_init_h_temp.Resize(init_h[2 * layer_idx + 1].dims());
           backward_init_h_temp.mutable_data<T>(context.GetPlace());
           backward_init_h_holder = &backward_init_h_temp;
-          backward_init_c_temp.Resize(backward_init_c_holder->dims());
+          backward_init_c_temp.Resize(init_c[2 * layer_idx + 1].dims());
           backward_init_c_temp.mutable_data<T>(context.GetPlace());
           backward_init_c_holder = &backward_init_c_temp;
           has_backward_allocate_mem = true;
