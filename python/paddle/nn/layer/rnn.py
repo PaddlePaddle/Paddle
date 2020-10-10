@@ -288,7 +288,7 @@ class SimpleRNNCell(RNNCellBase):
             `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -429,7 +429,7 @@ class LSTMCell(RNNCellBase):
             `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -582,7 +582,7 @@ class GRUCell(RNNCellBase):
             `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -778,12 +778,6 @@ class RNN(Layer):
                 initial_states=None,
                 sequence_length=None,
                 **kwargs):
-        if initial_states is None:
-            initial_states = self.cell.get_initial_states(
-                batch_ref=inputs,
-                dtype=inputs.dtype,
-                batch_dim_idx=self.batch_index)
-
         final_outputs, final_states = F.rnn(self.cell,
                                             inputs,
                                             initial_states=initial_states,
@@ -880,8 +874,6 @@ class BiRNN(Layer):
         if isinstance(initial_states, (list, tuple)):
             assert len(initial_states) == 2, \
                 "length of initial_states should be 2 when it is a list/tuple"
-        else:
-            initial_states = [initial_states, initial_states]
 
         outputs, final_states = F.birnn(self.cell_fw, self.cell_bw, inputs,
                                         initial_states, sequence_length,
@@ -968,7 +960,7 @@ class SimpleRNN(RNNMixin):
             `weight_hh` of each cell. Defaults to None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih` of each cells. Defaults to None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Defaults to None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1111,7 +1103,7 @@ class LSTM(RNNMixin):
             `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih` of each cells. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1247,7 +1239,7 @@ class GRU(RNNMixin):
             `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih` of each cells. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
