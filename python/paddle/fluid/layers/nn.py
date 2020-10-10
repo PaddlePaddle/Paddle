@@ -9592,10 +9592,6 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 @templatedoc()
 def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
     """
-    :alias_main: paddle.nn.functional.hard_sigmoid
-	:alias: paddle.nn.functional.hard_sigmoid,paddle.nn.functional.activation.hard_sigmoid
-	:old_api: paddle.fluid.layers.hard_sigmoid
-
     ${comment}
     Parameters:
         x (${x_type}): ${x_comment}
@@ -9613,9 +9609,15 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
             data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
+    if in_dygraph_mode():
+        return core.ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_sigmoid')
 
@@ -9802,10 +9804,6 @@ def prelu(x, mode, param_attr=None, name=None):
 @templatedoc()
 def brelu(x, t_min=0.0, t_max=24.0, name=None):
     """
-    :alias_main: paddle.nn.functional.brelu
-	:alias: paddle.nn.functional.brelu,paddle.nn.functional.activation.brelu
-	:old_api: paddle.fluid.layers.brelu
-
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
@@ -9821,7 +9819,9 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
     .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             import numpy as np
+            paddle.enable_static()
 
             input_brelu = np.array([[-1,6],[1,15.6]])
             with fluid.dygraph.guard():
@@ -9831,6 +9831,9 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[[ 1.  6.]
                 #[ 1. 10.]]
     """
+    if in_dygraph_mode():
+        return core.ops.brelu(x, 't_min', t_min, 't_max', t_max)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
 
     helper = LayerHelper('brelu', **locals())
@@ -12564,13 +12567,10 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.maxout")
 @templatedoc()
 def maxout(x, groups, name=None, axis=1):
     """
-    :alias_main: paddle.nn.functional.maxout
-	:alias: paddle.nn.functional.maxout,paddle.nn.functional.activation.maxout
-	:old_api: paddle.fluid.layers.maxout
-
     ${comment}
 
     Args:
@@ -12592,31 +12592,16 @@ def maxout(x, groups, name=None, axis=1):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
             input = fluid.data(
                 name='data',
                 shape=[None, 256, 32, 32],
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
-
-    helper = LayerHelper("maxout", **locals())
-    if axis not in [1, -1, 3]:
-        raise ValueError(
-            "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
-            "Attr(axis): %s." % str(axis))
-    if axis == -1:
-        axis = 3
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="maxout",
-        inputs={"X": x},
-        attrs={"groups": groups,
-               "axis": axis},
-        outputs={"Out": out})
-    return out
+    return paddle.nn.functional.maxout(**locals())
 
 
 def space_to_depth(x, blocksize, name=None):
@@ -14877,10 +14862,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 @templatedoc()
 def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     """
-    :alias_main: paddle.nn.functional.hard_swish
-	:alias: paddle.nn.functional.hard_swish,paddle.nn.functional.activation.hard_swish
-	:old_api: paddle.fluid.layers.hard_swish
-
     This operator implements the hard_swish activation function.
     Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
     For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
@@ -14911,7 +14892,9 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
         import numpy as np
+        paddle.enable_static()
 
         DATATYPE='float32'
 
@@ -14926,6 +14909,10 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
+    if in_dygraph_mode():
+        return core.ops.hard_swish(x, 'threshold', threshold, 'scale', scale,
+                                   'offset', offset)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_swish')
 
