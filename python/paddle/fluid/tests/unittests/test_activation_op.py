@@ -1251,7 +1251,34 @@ class TestBRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestBReluOpError(unittest.TestCase):
+class TestBreluAPI(unittest.TestCase):
+    # test paddle.fluid.layers.brelu
+    def setUp(self):
+        np.random.seed(1024)
+        self.t_min = 0.
+        self.t_max = 24.
+        self.x_np = np.random.uniform(-1, 30, [10, 12]).astype('float32')
+        self.out_ref = np.copy(self.x_np)
+        self.out_ref[self.out_ref < self.t_min] = self.t_min
+        self.out_ref[self.out_ref > self.t_max] = self.t_max
+        self.out_ref = self.out_ref.astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_fluid_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', [10, 12])
+            out = paddle.fluid.layers.brelu(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            self.assertTrue(np.allclose(self.out_ref, res[0]))
+
+            paddle.disable_static(self.place)
+            x = paddle.to_tensor(self.x_np)
+            out = paddle.fluid.layers.brelu(x)
+            self.assertTrue(np.allclose(self.out_ref, out.numpy()))
+            paddle.enable_static()
+
     def test_errors(self):
         with program_guard(Program()):
             # The input type must be Variable.
@@ -1416,6 +1443,12 @@ class TestHardswishAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardswish(self.x_np)
         self.assertTrue(np.allclose(out_ref, res[0]))
+
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.fluid.layers.hard_swish(x)
+        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        paddle.enable_static()
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -2063,6 +2096,12 @@ class TestHardsigmoidAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardsigmoid(self.x_np, 0.2, 0.5)
         self.assertTrue(np.allclose(out_ref, res[0]))
+
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.fluid.layers.hard_sigmoid(x)
+        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        paddle.enable_static()
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

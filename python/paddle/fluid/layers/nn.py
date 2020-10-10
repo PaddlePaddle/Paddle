@@ -9615,6 +9615,9 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
             data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
+    if in_dygraph_mode():
+        return core.ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_sigmoid')
 
@@ -9828,6 +9831,9 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[[ 1.  6.]
                 #[ 1. 10.]]
     """
+    if in_dygraph_mode():
+        return core.ops.brelu(x, 't_min', t_min, 't_max', t_max)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
 
     helper = LayerHelper('brelu', **locals())
@@ -14905,6 +14911,10 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
+    if in_dygraph_mode():
+        return core.ops.hard_swish(x, 'threshold', threshold, 'scale', scale,
+                                   'offset', offset)
+
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hard_swish')
 

@@ -126,6 +126,12 @@ class TestMaxoutAPI(unittest.TestCase):
         out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
         self.assertTrue(np.allclose(out_ref, res[0]))
 
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.fluid.layers.maxout(x, groups=self.groups, axis=self.axis)
+        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        paddle.enable_static()
+
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
