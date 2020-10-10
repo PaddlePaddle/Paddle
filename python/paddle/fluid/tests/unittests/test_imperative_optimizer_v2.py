@@ -409,14 +409,14 @@ class TestImperativeOptimizerMultiStepDecay(TestImperativeOptimizerBase):
 class TestImperativeOptimizerStepLR(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.StepLR(
+            learning_rate=paddle.optimizer.lr.StepDecay(
                 learning_rate=0.5, step_size=5, gamma=0.8),
             parameters=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = paddle.optimizer.SGD(
-            learning_rate=paddle.optimizer.lr.StepLR(
+            learning_rate=paddle.optimizer.lr.StepDecay(
                 learning_rate=0.5, step_size=5, gamma=0.8))
         return optimizer
 

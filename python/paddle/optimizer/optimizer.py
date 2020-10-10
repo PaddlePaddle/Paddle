@@ -41,7 +41,7 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
-from .lr_scheduler import LRScheduler
+from .lr import LRScheduler
 
 __all__ = ['Optimizer']
 
@@ -199,19 +199,21 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
+
                 emb = paddle.nn.Embedding(10, 10)
 
-                state_dict = emb.state_dict()
-                paddle.framework.save(state_dict, "paddle_dy")
+                layer_state_dict = emb.state_dict()
+                paddle.save(layer_state_dict, "emb.pdparams")
 
-                adam = paddle.optimizer.Adam(learning_rate=paddle.optimizer.NoamDecay( 100, 10000), 
-                                            parameters=emb.parameters())
-                state_dict = adam.state_dict()
-                paddle.framework.save(state_dict, "paddle_dy")
+                scheduler = paddle.optimizer.lr.NoamDecay(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
+                opt_state_dict = adam.state_dict()
+                paddle.save(opt_state_dict, "adam.pdopt")
 
-                para_state_dict, opti_state_dict = paddle.framework.load( "paddle_dy")
-
+                opti_state_dict = paddle.load("adam.pdopt")
                 adam.set_state_dict(opti_state_dict)
 
         '''
@@ -387,7 +389,7 @@ class Optimizer(object):
                 
                 bd = [2, 4, 6, 8]
                 value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                scheduler = paddle.optimizer.PiecewiseDecay(bd, value, 0)
+                scheduler = paddle.optimizer.lr.PiecewiseDecay(bd, value, 0)
                 adam = paddle.optimizer.Adam(scheduler,
                                        parameters=linear.parameters())
 

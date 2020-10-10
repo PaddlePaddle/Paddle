@@ -60,18 +60,18 @@ class TestReduceOnPlateauDecay(object):
     def test_ReduceLR(self):
         # the decay rate must be less than 1.0
         with self.assertRaises(ValueError):
-            paddle.optimizer.ReduceOnPlateau(learning_rate=1.0, factor=2.0)
+            paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, factor=2.0)
         # the mode must be "min" or "max"
         with self.assertRaises(ValueError):
-            paddle.optimizer.ReduceOnPlateau(learning_rate=1.0, mode="test")
+            paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, mode="test")
         # the threshold_mode must be "rel" or "abs"
         with self.assertRaises(ValueError):
-            paddle.optimizer.ReduceOnPlateau(
+            paddle.optimizer.lr.ReduceOnPlateau(
                 learning_rate=1.0, threshold_mode="test")
         with self.assertRaises(TypeError):
-            paddle.optimizer.ReduceOnPlateau(learning_rate="test")
+            paddle.optimizer.lr.ReduceOnPlateau(learning_rate="test")
         with self.assertRaises(TypeError):
-            paddle.optimizer.ReduceOnPlateau(learning_rate=0.5).step("test")
+            paddle.optimizer.lr.ReduceOnPlateau(learning_rate=0.5).step("test")
 
         places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -114,7 +114,7 @@ class TestReduceOnPlateauDecay(object):
                 [1], 1, 'float32', persistable=True)
             paddle.increment(x)
             loss = paddle.sin(x)
-            scheduler = paddle.optimizer.ReduceOnPlateau(**kwargs)
+            scheduler = paddle.optimizer.lr.ReduceOnPlateau(**kwargs)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
@@ -158,7 +158,7 @@ class TestReduceOnPlateauDecay(object):
         var_list = [best, current_lr, cooldown_counter, num_bad_epochs]
 
         linear = paddle.nn.Linear(10, 10)
-        scheduler = paddle.optimizer.ReduceOnPlateau(**kwargs)
+        scheduler = paddle.optimizer.lr.ReduceOnPlateau(**kwargs)
         adam = paddle.optimizer.Adam(
             learning_rate=scheduler, parameters=linear.parameters())
 
@@ -180,7 +180,7 @@ class TestReduceOnPlateauDecay(object):
                 loss, var_list)
             self.assertEqual(current_lr, expected_lr)
         state_dict = adam.state_dict()
-        scheduler1 = paddle.optimizer.ReduceOnPlateau(**kwargs)
+        scheduler1 = paddle.optimizer.lr.ReduceOnPlateau(**kwargs)
         adam1 = paddle.optimizer.Adam(
             learning_rate=scheduler1, parameters=linear.parameters())
         adam1.set_state_dict(state_dict)
