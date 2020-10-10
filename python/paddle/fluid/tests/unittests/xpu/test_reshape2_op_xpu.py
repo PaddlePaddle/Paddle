@@ -24,8 +24,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
-paddle.enable_static()
-
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
 class TestReshapeOp(OpTest):

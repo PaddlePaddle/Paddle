@@ -23,8 +23,6 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
-paddle.enable_static()
-
 class TestShapeOp(OpTest):
     def setUp(self):
         self.op_type = "shape"
