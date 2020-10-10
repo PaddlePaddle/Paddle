@@ -79,15 +79,16 @@ class TestAccuracyOpError(unittest.TestCase):
 
 
 class TestAccuracyAPI(unittest.TestCase):
-    with fluid.dygraph.guard():
-        predictions = paddle.to_tensor(
-            [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
-            dtype='float32')
-        label = paddle.to_tensor([[2], [0]], dtype="int64")
-        result = paddle.metric.accuracy(input=predictions, label=label, k=1)
-        expect_value = np.array([0.5], dtype='float32')
+    def test_api(self):
+        with fluid.dygraph.guard():
+            predictions = paddle.to_tensor(
+                [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+                dtype='float32')
+            label = paddle.to_tensor([[2], [0]], dtype="int64")
+            result = paddle.metric.accuracy(input=predictions, label=label, k=1)
+            expect_value = np.array([0.5], dtype='float32')
 
-        self.assertEqual((result.numpy() == expect_value).all(), True)
+            self.assertEqual((result.numpy() == expect_value).all(), True)
 
 
 if __name__ == '__main__':

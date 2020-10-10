@@ -766,9 +766,7 @@ def add_n(inputs, name=None):
             output = paddle.add_n([input0, input1])
     """
     if in_dygraph_mode():
-        out = _varbase_creator(dtype=input.dtype)
-        core.ops.sum(inputs, out, 'use_mkldnn', False)
-        return out
+        return core.ops.sum(inputs, 'use_mkldnn', False)
 
     helper = LayerHelper('add_n', **locals())
     check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
@@ -1918,23 +1916,19 @@ def increment(x, value=1.0, name=None):
             import paddle
 
             data = paddle.zeros(shape=[1], dtype='float32')
-            counter = paddle.tensor.math.increment(data)
+            counter = paddle.increment(data)
             # [1.]
 
     """
     if in_dygraph_mode():
-        return core.ops.increment(x, value)
+        return core.ops.increment(x, 'step', value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'increment')
     helper = LayerHelper("increment", **locals())
-    if not in_place:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = x
     helper.append_op(
         type='increment',
         inputs={'X': [x]},
-        outputs={'Out': [out]},
+        outputs={'Out': [x]},
         attrs={'step': float(value)})
-    return out
+    return x

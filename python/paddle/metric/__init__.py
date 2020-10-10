@@ -15,8 +15,11 @@
 from .metrics import *
 from . import metrics
 
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 from ..fluid.layers.metric_op import auc
-from ..fluid.layers.nn import chunk_eval, mean_iou
+from ..fluid.layers.nn import chunk_eval, mean_iou, topk
 
 __all__ = metrics.__all__ + [
     'accuracy',
@@ -64,7 +67,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
         if total is None:
             total = _varbase_creator(dtype="int32")
 
-        topk_out, topk_indices = nn.topk(input, k=k)
+        topk_out, topk_indices = topk(input, k=k)
         _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
                                        total)
         return _acc
@@ -72,7 +75,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'accuracy')
-    topk_out, topk_indices = nn.topk(input, k=k)
+    topk_out, topk_indices = topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
         correct = helper.create_variable_for_type_inference(dtype="int32")

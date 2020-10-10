@@ -25,20 +25,18 @@ class TestIncrement(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.layers.fill_constant(
-                shape=[2, 3], dtype='int64', value=5)
-            expected_result = np.empty((2, 3))
-            expected_result.fill(8)
+                shape=[1], dtype='int64', value=5)
+            expected_result = np.array([8], dtype='int64')
 
-            output = paddle.increment(input, value=3)
+            output = paddle.tensor.math.increment(input, value=3)
             exe = fluid.Executor(fluid.CPUPlace())
             result = exe.run(fetch_list=[output])
             self.assertEqual((result == expected_result).all(), True)
 
         with fluid.dygraph.guard():
-            input0 = paddle.ones(shape=[2, 3], dtype='float32')
-            expected_result = np.empty((2, 3))
-            expected_result.fill(2)
-            output = paddle.increment(input, value=1)
+            input = paddle.ones(shape=[1], dtype='int64')
+            expected_result = np.array([2], dtype='int64')
+            output = paddle.tensor.math.increment(input, value=1)
             self.assertEqual((output.numpy() == expected_result).all(), True)
 
 
