@@ -19,21 +19,24 @@ import ssl
 def download_file():
     """Get disabled unit tests"""
     ssl._create_default_https_context = ssl._create_unverified_context
-    url="https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+    url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
     f = requests.get(url)
     data = f.text
-    status_code=f.status_code
-    if len(data.strip()) == 0 or status_code != 200 :
+    status_code = f.status_code
+    if len(data.strip()) == 0 or status_code != 200:
         sys.exit(1)
     else:
         lt = data.strip().split('\n')
-        lt = '^' + '$|^'.join(lt) + '$'
+        if sys.platform == "win32":
+            lt = '^^' + '$|^^'.join(lt) + '$'
+        else:
+            lt = '^' + '$|^'.join(lt) + '$'
         print(lt)
         sys.exit(0)
 
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     try:
         download_file()
     except Exception as e:
