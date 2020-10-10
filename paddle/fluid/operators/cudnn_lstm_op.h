@@ -69,7 +69,7 @@ void Print3DTensor(const Tensor* a, std::string name) {
   VLOG(0) << "----------------------------";
 }
 
-void SwapPoniter(Tensor* a, Tensor* b) {
+void SwapPoniter(Tensor*& a, Tensor*& b) {
   Tensor* c;
   c = a;
   a = b;
@@ -298,6 +298,8 @@ struct LSTMCell : Cell<T> {
     math::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
         *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
         cell_act, cand_act);
+    framework::TensorCopy(*output, device_ctx->GetPlace(), *device_ctx, last_h);
+    Print3DTensor<T>(last_h, "last_h");
     // auto eigen_output =
     //    framework::EigenMatrix<T>::Reshape(*output, output->dims().size() -
     //    1);
@@ -453,7 +455,7 @@ struct SingleLayer : Layer<T> {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
                             &last_h[layer_idx]);
       framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
-                            &last_h[layer_idx]);
+                            &last_c[layer_idx]);
     }
     // set_constant(dev_ctx, output, static_cast<T>(5.0));
   }
