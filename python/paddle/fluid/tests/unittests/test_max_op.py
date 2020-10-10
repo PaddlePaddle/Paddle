@@ -80,7 +80,7 @@ class ApiMaxTest(unittest.TestCase):
     def test_imperative_api(self):
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
-        x = paddle.to_variable(np_x)
+        x = paddle.to_tensor(np_x)
         z = paddle.max(x, axis=0)
         np_z = z.numpy()
         z_expected = np.array(np.max(np_x, axis=0))

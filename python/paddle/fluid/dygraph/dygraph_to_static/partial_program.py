@@ -14,20 +14,16 @@
 
 from __future__ import print_function
 import numpy as np
-import logging
 import six
 
-from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 import paddle.compat as cpt
-
-_logger = log_helper.get_logger(
-    __name__, logging.WARNING, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class NestSequence(object):
@@ -72,7 +68,7 @@ class NestSequence(object):
                 if not isinstance(var, (framework.Variable, core.VarBase)):
                     warning_types.add(type(var))
             if warning_types:
-                _logger.warning(
+                logging_utils.warn(
                     "Output of traced function contains non-tensor type values: {}. "
                     "Currently, We don't support to update them while training and will return "
                     "what we first saw. Please try to return them as tensor.".

@@ -17,6 +17,9 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
+import paddle
+from paddle.fluid.dygraph.parallel import apply_collective_grads
+
 __all__ = ["Adam"]
 
 
@@ -276,20 +279,21 @@ class Adam(Optimizer):
                 adam.step()
                 adam.clear_grad()
         """
-        parameter_list = self._parameter_list
+        if paddle.distributed.get_world_size() > 1:
+            apply_collective_grads(self._parameter_list)
+
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:
             if not param.trainable:
                 continue
-            if hasattr(
-                    param, "_is_sparse"
-            ) and param._is_sparse and self.regularization is not None:
-                raise RuntimeError(
-                    "Adam don't support weight_decay with sparse parameters, please set it to None."
-                )
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()
+                if hasattr(grad_var, "_is_sparse") and grad_var._is_sparse(
+                ) and self.regularization is not None:
+                    raise RuntimeError(
+                        "Adam don't support weight_decay with sparse parameters, please set it to None."
+                    )
                 params_grads.append((param, grad_var))
 
         optimize_ops = self._apply_optimize(

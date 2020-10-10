@@ -19,6 +19,8 @@ import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 
+paddle.enable_static()
+
 
 class TestFleetLambMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -141,7 +143,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         ops = [op.type for op in avg_cost.block.ops]
         self.assertIn('lamb', ops)
         self.assertIn('cast', ops)
-        self.assertIn('isfinite', ops)
+        self.assertIn('check_finite_and_unscale', ops)
 
 
 if __name__ == "__main__":

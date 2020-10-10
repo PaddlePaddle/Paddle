@@ -19,6 +19,9 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle
+
+paddle.enable_static()
 
 # For Net
 base_lr = 0.2
@@ -165,12 +168,13 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
 
-        optimizer = fluid.optimizer.SGD(
+        optimizer = fluid.optimizer.Adagrad(
             learning_rate=fluid.layers.exponential_decay(
                 learning_rate=base_lr,
                 decay_steps=500,
                 decay_rate=0.969,
                 staircase=True))
+
         strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)

@@ -99,5 +99,17 @@ class TestApiStaticDataError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_type)
 
 
+class TestApiErrorWithDynamicMode(unittest.TestCase):
+    def test_error(self):
+        with program_guard(Program(), Program()):
+            paddle.disable_static()
+            self.assertRaises(AssertionError, fluid.data, 'a', [2, 25])
+            self.assertRaises(
+                AssertionError, fluid.layers.data, 'b', shape=[2, 25])
+            self.assertRaises(
+                AssertionError, paddle.static.data, 'c', shape=[2, 25])
+            paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

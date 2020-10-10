@@ -19,6 +19,7 @@
 #include <tuple>
 #include <typeindex>
 #include <vector>
+
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -43,12 +44,12 @@ class NCCLCommunicator;
 }  // namespace platform
 
 namespace framework {
-class Tensor;
-class LoDTensor;
-class SelectedRows;
 class LoDRankTable;
+class LoDTensor;
 class ReaderHolder;
 class Scope;
+class SelectedRows;
+class Tensor;
 }  // namespace framework
 
 namespace operators {

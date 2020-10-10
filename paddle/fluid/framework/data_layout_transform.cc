@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -203,7 +203,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   // As MKL-DNN description was in NCHW and paddle is expecting NHWC
   platform::MatchShapeToLayout(out, in_layout, out_layout);
 
-  out->set_layout(out_layout);
+  out->set_layout(DataLayout::kNCHW);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(MKLDNNMemoryFormat::undef);
 }

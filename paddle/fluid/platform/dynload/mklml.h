@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <mkl.h>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
