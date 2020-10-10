@@ -1462,7 +1462,7 @@ def gather_nd(x, index, name=None):
     return paddle.fluid.layers.gather_nd(input=x, index=index, name=name)
 
 
-def strided_slice(x, axes, starts, ends, strides, name):
+def strided_slice(x, axes, starts, ends, strides, name=None):
     """
     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
     https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
