@@ -1437,7 +1437,9 @@ class Model(object):
                 cbks.on_end('eval', eval_logs)
 
             # step learning rate scheduler on each epcoh end
-            self._optimizer._learning_rate.step()
+            if isinstance(self._optimizer._learning_rate, 
+                            paddle.optimizer._LRScheduler):
+                self._optimizer._learning_rate.step()
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
