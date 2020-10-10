@@ -23,6 +23,7 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
+paddle.enable_static()
 
 class TestShapeOp(OpTest):
     def setUp(self):
@@ -37,7 +38,9 @@ class TestShapeOp(OpTest):
         self.shape = [2, 3]
 
     def test_check_output(self):
-        self.check_output()
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
 
 
 class case1(TestShapeOp):
@@ -90,3 +93,4 @@ class TestShapeWithSelectedRows(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
