@@ -261,7 +261,8 @@ struct LSTMCell : Cell<T> {
     VLOG(2) << "last_h shape: " << last_h->dims();
     VLOG(2) << "last_c shape: " << last_c->dims();
     VLOG(2) << "output shape: " << output->dims();
-
+    Print3DTensor<T>(input, "Cell Input");
+    Print3DTensor<T>(init_h, "init_h");
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
     auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
@@ -269,11 +270,9 @@ struct LSTMCell : Cell<T> {
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
     blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
-                input, T(0));
-    // math::FCFunctor<platform::CPUDeviceContext, T> fc;
-    // fc(*device_ctx, init_h->dims()[1], weight_hh->dims()[1],
-    //   weight_hh->dims()[0], init_h->data<T>(), weight_hh->data<T>(),
-    //   input->data<T>(), bias_hh->data<T>());
+                input, T(1.0));
+
+    Print3DTensor<T>(input, "Cell Input after");
 
     math::LstmMetaValue<T> lstm_value;
     lstm_value.check_ig = nullptr;
