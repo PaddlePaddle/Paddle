@@ -37,6 +37,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 // A wrapper class for pslib.h, this class follows Singleton pattern
 // i.e. only initialized once in the current process
@@ -154,6 +160,14 @@ class FleetWrapper {
       float scale_datanorm, int batch_size,
       const paddle::platform::Place& place, cudaStream_t stream,
       cudaEvent_t event);
+#endif
+#ifdef PADDLE_WITH_XPU
+  void PushDenseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      float scale_datanorm, int batch_size,
+      const paddle::platform::Place& place);
 #endif
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,

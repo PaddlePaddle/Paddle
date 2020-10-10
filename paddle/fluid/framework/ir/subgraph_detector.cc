@@ -13,17 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
+class Node;
 
 std::pair<std::vector<Node *>, std::vector<Node *>>
 ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT

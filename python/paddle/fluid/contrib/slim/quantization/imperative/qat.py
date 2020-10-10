@@ -16,16 +16,33 @@ import logging
 import numpy as np
 import sys
 import paddle
-from paddle.fluid import dygraph, core
-from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose, PRelu
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
+from paddle.fluid import dygraph, core, framework
+from paddle.fluid.executor import Executor
+from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
+from paddle.fluid.io import load_inference_model, save_inference_model
+from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
-__all__ = ['ImperativeQuantAware', 'ImperativeOutScale']
+__all__ = ['ImperativeQuantAware', 'ImperativeCalcOutScale']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+_op_real_in_out_name = {
+    "conv2d": [["Input", "Filter"], ["Output"]],
+    "conv2d_transpose": [["Input", "Filter"], ["Output"]],
+    "pool2d": [["X"], ["Out"]],
+    "elementwise_add": [["X", "Y"], ["Out"]],
+    "softmax": [["X"], ["Out"]],
+    "relu": [["X"], ["Out"]],
+    "relu6": [["X"], ["Out"]],
+    "leaky_relu": [["X"], ["Out"]],
+    "prelu": [["X"], ["Out"]],
+    "tanh": [["X"], ["Out"]],
+    "batch_norm": [["X"], ["Y"]],
+    "sigmoid": [["X"], ["Out"]],
+}
 
 
 class ImperativeQuantAware(object):
@@ -67,6 +84,7 @@ class ImperativeQuantAware(object):
         Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.fluid.contrib.slim.quantization \
                 import ImperativeQuantAware
             from paddle.vision.models \
@@ -86,20 +104,24 @@ class ImperativeQuantAware(object):
             # ...
             
             # Save quant model for the inference.
-            imperative_qat.save_quantized_model(
-                dirname="./resnet50_qat",
-                model=model,
-                input_shape=[(3, 224, 224)],
-                input_dtype=['float32'],
-                feed=[0],
-                fetch=[0])
+            paddle.jit.save(
+                layer=model,
+                model_path="./resnet50_qat",
+                input_spec=[
+                    paddle.static.InputSpec(
+                    shape=[None, 3, 224, 224], dtype='float32')])
         """
         super(ImperativeQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
 
-        quant_type = {'abs_max', 'moving_average_abs_max'}
+        quant_type = {
+            'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
+        }
+
+        assert activation_quantize_type != 'channel_wise_abs_max', \
+            "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be "
@@ -108,8 +130,8 @@ class ImperativeQuantAware(object):
         if weight_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be "
-                "'abs_max' or 'moving_average_abs_max' now." %
-                (str(weight_quantize_type)))
+                "'abs_max' or 'moving_average_abs_max' or 'channel_wise_abs_max' now."
+                % (str(weight_quantize_type)))
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
 
@@ -147,75 +169,6 @@ class ImperativeQuantAware(object):
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
 
-    def save_quantized_model(self,
-                             dirname,
-                             model,
-                             input_shape,
-                             input_dtype,
-                             feed,
-                             fetch,
-                             append_batch_size=True):
-        """
-        Save the quantized model for the inference.
-
-        Args:
-            dirname (str): the directory to save the quantized model.
-            model(fluid.dygraph.Layer): the quantized model to be saved.
-            input_shape(list[tuple(int)]): The shape value for each input,
-                e.g. [(3, 224, 224)].
-            input_dtype(list[str]): The dtype value for each input,
-                e.g. ['float32'].
-            feed(list[int]): the indices of the input variables of the
-                imperative functions which will be saved as input variables in
-                inference model.
-            fetch(list[int]): the indices of the returned variable of the
-                imperative functions which will be saved as output variables in
-                inference model.
-            append_batch_size(bool, optional):
-                If true, it prepends an extra axis to the input_shape, meanwhile,
-                the input_shape shouldn't contain the batch size dimension.
-                Otherwise, it just uses the input_shape. Default True.
-        Returns:
-            None
-        """
-        assert isinstance(
-            input_shape, list), "The parameter `input_shape` shoubld be a list."
-        assert isinstance(
-            input_dtype, list), "The parameter `input_dtype` shoubld be a list."
-        assert isinstance(feed, list), "The parameter `feed` shoubld be a list."
-        assert isinstance(fetch,
-                          list), "The parameter `fetch` shoubld be a list."
-        assert len(input_shape) == len(
-            input_dtype
-        ), "The length of input_shape should be equal to  input_dtype's."
-        assert len(input_dtype) == len(
-            feed), "The length of input_shape should be equal to  feed's."
-
-        with dygraph.guard():
-            model.eval()
-            input_vars = []
-            for i, (shape, dtype) in enumerate(zip(input_shape, input_dtype)):
-                if append_batch_size:
-                    shape = [None] + list(shape)
-                # Note(Aurelius84): need a elegant way to name this.
-                in_spec = paddle.static.InputSpec(shape, dtype, 'feed_%d' % i)
-                input_vars.append(in_spec)
-            # use `declarative` to convert dygraph into static program
-            model.forward = dygraph.jit.declarative(
-                model.forward, input_spec=input_vars)
-            outputs = model.forward.concrete_program.outputs
-        input_spec = [input_vars[i] for i in feed]
-        configs = dygraph.jit.SaveLoadConfig()
-        configs.separate_params = True
-        if not isinstance(outputs, (tuple, list)):
-            outputs = [outputs]
-        configs.output_spec = [outputs[i] for i in fetch]
-        dygraph.jit.save(
-            layer=model,
-            model_path=dirname,
-            input_spec=input_spec,
-            configs=configs)
-
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
         quantized_counterpart = tuple('Quantized' + k
@@ -238,47 +191,50 @@ class ImperativeQuantAware(object):
         return quantized_layer
 
 
-class ImperativeOutScale(object):
+class ImperativeCalcOutScale(object):
     def __init__(self,
                  moving_rate=0.9,
-                 out_scale_layer_type=[
-                     'Conv2D', 'Pool2D', 'ReLU', 'BatchNorm', 'PRelu',
-                     'Sigmoid', 'LeakyReLU', 'ReLU6', 'Tanh', 'Softmax',
-                     'Conv2DTranspose'
+                 target_layer_types=[
+                     'BatchNorm', 'Conv2D', 'Conv2DTranspose', 'LeakyReLU',
+                     'Linear', 'PReLU', 'Pool2D', 'ReLU', 'ReLU6', 'Sigmoid',
+                     'Softmax', 'Tanh'
                  ]):
         """
         Add the logic of calculating and setting output quantization scales of some layers.
         These output quantization scales may be used by tensorRT or some other inference engines.
 
         Args:
-            moving_rate(float): the parameter for 'moving_average_abs_max_scale' quantization.
-            quantizable_op_type(list[str]): List the type of layers that will be got out_scale. 
-                Default is ['Conv2D', 'ReLU', 'PReLU', 'LeakyReLU', 'Sigmoid', 'BatchNorm', 'ReLU6', 'Tanh', 'Softmax', 'Conv2DTranspose']
+            moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
+            quantizable_op_type(list[str]): List the type of layers that will be calculated out_scale. 
+                Default is ['Conv2D', 'ReLU', 'PReLU', 'LeakyReLU', 'Linear', 'Sigmoid', 'BatchNorm', 'ReLU6', 'Tanh', 'Softmax', 'Conv2DTranspose']
         """
-        super(ImperativeOutScale, self).__init__()
+        super(ImperativeCalcOutScale, self).__init__()
         self._moving_rate = moving_rate
         self._out_scale_layers_map = {
+            'BatchNorm': BatchNorm,
             'Conv2D': Conv2D,
+            'Conv2DTranspose': Conv2DTranspose,
+            'LeakyReLU': LeakyReLU,
+            'Linear': Linear,
+            'PReLU': PReLU,
             'Pool2D': Pool2D,
             'ReLU': ReLU,
-            'LeakyReLU': LeakyReLU,
-            'Sigmoid': Sigmoid,
-            'PRelu': PRelu,
-            'BatchNorm': BatchNorm,
             'ReLU6': ReLU6,
-            'Tanh': Tanh,
+            'Sigmoid': Sigmoid,
             'Softmax': Softmax,
-            'Conv2DTranspose': Conv2DTranspose
+            'Tanh': Tanh
         }
         self._out_scale_layer_type = tuple(
             self._out_scale_layers_map[layer]
             if layer in self._out_scale_layers_map else layer
-            for layer in out_scale_layer_type)
+            for layer in target_layer_types)
         for layer in self._out_scale_layer_type:
             assert not isinstance(
                 layer, str), "{} is unspported to be out_scaled.".format(layer)
+        self._register_hook_handle_list = []
+        self._out_scale_dict = {}
 
-    def get_out_scale(self, model):
+    def calc_out_scale(self, model):
         """
         Insert the `moving_average_abs_max_scale` op to calculate output scale of Specific layers in model.
 
@@ -288,10 +244,8 @@ class ImperativeOutScale(object):
         Returns:
             None
         """
-        self._register_hook_handle_list = []
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
-        self._out_scale_dict = {}
         for _, layer in model.named_sublayers():
             if not isinstance(layer, self._out_scale_layer_type):
                 continue
@@ -299,39 +253,112 @@ class ImperativeOutScale(object):
                 self._forward_post_hook)
             self._register_hook_handle_list.append(forward_post_hook_handle)
 
-    def set_out_scale(self, model):
+    def _get_op_output_names(self, op):
+        assert isinstance(
+            op, framework.Operator), "The input op should be Operator."
+        var_names = []
+        name_list = _op_real_in_out_name[op.type][1]
+        for name in name_list:
+            var_name = op.output(name)
+            if isinstance(var_name, list):
+                var_names.extend(var_name)
+            else:
+                var_names.append(var_name)
+        return var_names
+
+    def save_quantized_model(self,
+                             model,
+                             model_path,
+                             input_spec=None,
+                             config=None):
         """
-        Set the output quantization scale to the corresponding Layer of model.
+        Save the quantized model for the inference.
 
         Args:
             model(fluid.dygraph.Layer): The output scale would be added to the model.
+            model_path (str): the directory to save the model.
+            input_spec (list[Variable], optional): Describes the input of the saved model. 
+                It is the example inputs that will be passed to saved TranslatedLayer's forward
+                function. If None, all input variables of the original Layer's forward function
+                would be the inputs of the saved model. Default None.
+            config (SaveLoadConfig, optional): :ref:`api_imperative_jit_saveLoadConfig` object
+                that specifies additional configuration options. Default None.
 
         Returns:
             None
         """
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
-        for _, layer in model.named_sublayers():
-            if not isinstance(layer, self._out_scale_layer_type):
+        with dygraph.guard():
+            model.eval()
+            for handle in self._register_hook_handle_list:
+                handle.remove()
+            for key in self._out_scale_dict:
+                self._out_scale_dict[key] = float(self._out_scale_dict[key]
+                                                  .numpy())
+
+        paddle.jit.save(
+            layer=model,
+            model_path=model_path,
+            input_spec=input_spec,
+            config=config)
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = Executor(place)
+
+        [inference_program, feed_target_names, fetch_targets] = (
+            load_inference_model(
+                dirname=model_path,
+                executor=exe,
+                model_filename="__model__",
+                params_filename="__variables__"))
+
+        global_block = inference_program.global_block()
+        all_ops = global_block.ops
+        layer_var_dict = {}
+        for op in all_ops:
+            if op.type in _op_real_in_out_name:
+                output_var_names = self._get_op_output_names(op)
+                for output_var_name in output_var_names:
+                    output_var_tensor = global_block.var(output_var_name)
+                    if output_var_tensor.dtype not in [
+                            core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32
+                    ]:
+                        continue
+                    dynamic_layer_name, var_name = output_var_name.split(".")
+                    if dynamic_layer_name in layer_var_dict:
+                        if layer_var_dict[dynamic_layer_name][0] < var_name:
+                            layer_var_dict[dynamic_layer_name] = [var_name, op]
+                    else:
+                        layer_var_dict[dynamic_layer_name] = [var_name, op]
+        for (k, v) in layer_var_dict.items():
+            if 'prelu' in k:
+                k = k.replace('prelu', 'p_re_lu')
+            if 'relu' in k:
+                k = k.replace('relu', 're_lu')
+            if k not in self._out_scale_dict:
                 continue
-            scale_out_list = self._out_scale_dict[layer.full_name()]
-            for scale_var in scale_out_list:
-                layer.__setattr__('out_threshold', scale_var)
-        for handle in self._register_hook_handle_list:
-            handle.remove()
+            v[1]._set_attr('out_threshold', self._out_scale_dict[k])
+
+        save_inference_model(
+            dirname=model_path,
+            feeded_var_names=feed_target_names,
+            target_vars=fetch_targets,
+            executor=exe,
+            main_program=inference_program.clone(),
+            model_filename='__model__',
+            params_filename='__variables__')
 
     def _forward_post_hook(self, layer, input, output):
-        if not isinstance(output, list):
-            output = [output]
-        scale_out_list = []
-        for var in output:
-            if var.dtype not in [
-                    core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
-            ]:
-                continue
-            if not hasattr(layer, "_out_scale"):
-                layer._out_scale = quant_nn.MovingAverageAbsMaxScale(
-                    var.name, self._moving_rate, var.dtype)
-            scale_out = layer._out_scale(var)
-            scale_out_list.append(float(scale_out.numpy()))
-        self._out_scale_dict[layer.full_name()] = scale_out_list
+        if output.dtype not in [
+                core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
+        ]:
+            return
+        if not hasattr(layer, "_out_scale"):
+            layer._out_scale = quant_nn.MovingAverageAbsMaxScale(
+                output.name, self._moving_rate, output.dtype)
+        scale_out = layer._out_scale(output)
+        self._out_scale_dict[layer.full_name()] = scale_out

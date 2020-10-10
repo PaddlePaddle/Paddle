@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
-#include <algorithm>  // for max
+#include <algorithm>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 #define MAX_NUM_FC 10
 
@@ -172,6 +174,11 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
       fc_input_var_0 = pattern->NewNode(
           [=](Node* x) {
             if (x->outputs.size() <= 0 || x->inputs.size() <= 0U) {
+              return false;
+            }
+            if (x->IsVar() && x->Var() && x->Var()->GetShape().size() > 2) {
+              VLOG(3) << "repeated fc relu only supports input dims = 2, so it "
+                         "is not applied.";
               return false;
             }
             int fc_idx = FindFCIdx(x);
@@ -384,3 +391,8 @@ void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(repeated_fc_relu_fuse_pass,
               paddle::framework::ir::RepeatedFCReluFusePass);
+REGISTER_PASS_CAPABILITY(repeated_fc_relu_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fc", 0)
+            .EQ("relu", 0));

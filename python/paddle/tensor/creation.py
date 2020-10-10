@@ -49,6 +49,7 @@ __all__ = [
     'full',
     'full_like',
     'empty',
+    'empty_like',
     'triu',
     'tril',
     'meshgrid'
@@ -806,55 +807,30 @@ def meshgrid(*args, **kwargs):
     vector, and creates N-dimensional grids.
     
     Args:
-        *args(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
+        *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         **kwargs (optional): Currently, we only accept name in **kwargs 
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
-         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
+         Tensor: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
 
     Examples:
       .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
-          import numpy as np
 
-          x = fluid.data(name='x', shape=[100], dtype='int32')
-          y = fluid.data(name='y', shape=[200], dtype='int32')
+          x = paddle.randint(low=0, high=100, shape=[100])
+          y = paddle.randint(low=0, high=100, shape=[200])
 
-          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+          grid_x, grid_y = paddle.meshgrid(x, y)
 
-          exe = fluid.Executor(place=fluid.CPUPlace())
-          grid_x, grid_y = paddle.tensor.meshgrid(x, y)
-          res_1, res_2 = exe.run(fluid.default_main_program(),
-                                 feed={'x': input_1,
-                                       'y': input_2},
-                                 fetch_list=[grid_x, grid_y])
-     
+          print(grid_x.shape)
+          print(grid_y.shape)
+
           #the shape of res_1 is (100, 200)
           #the shape of res_2 is (100, 200)
-
-      .. code-block:: python
-
-          #example 2: in dygraph mode
-
-          import paddle
-          import numpy as np
-          
-          paddle.disable_static()
-
-          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.to_tensor(input_3)
-          tensor_4 = paddle.to_tensor(input_4)
-          grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
-
-          #the shape of grid_x is (100, 200)
-          #the shape of grid_y is (100, 200)
 
     """
 
@@ -1060,6 +1036,73 @@ def empty(shape, dtype=None, name=None):
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='empty',
+        inputs=inputs,
+        outputs={'Out': [out]},
+        attrs=attrs,
+        stop_gradient=True)
+    out.stop_gradient = True
+    return out
+
+
+def empty_like(x, dtype=None, name=None):
+    """
+    This Op returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
+    If the ``dtype`` is None, the data type of Tensor is same with ``x``.
+    
+    Args:
+        x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        dtype(np.dtype|str, optional): The data type of output. The data type can be one
+            of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
+            data type is the same as input.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()   # Now we are in imperative mode
+          paddle.set_device("cpu")  # and use cpu device
+
+          x = paddle.randn([2, 3], 'float32')
+          output = paddle.empty_like(x)
+          #[[1.8491974e+20 1.8037303e+28 1.7443726e+28]     # uninitialized
+          # [4.9640171e+28 3.0186127e+32 5.6715899e-11]]    # uninitialized
+    """
+
+    if dtype is None:
+        dtype = x.dtype
+    dtype = convert_dtype(dtype)
+
+    if in_dygraph_mode():
+        out = core.ops.empty('shape', x.shape, 'dtype',
+                             convert_np_dtype_to_dtype_(dtype))
+        out.stop_gradient = True
+        return out
+
+    helper = LayerHelper("empty_like", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'empty_like')
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'empty_like')
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    inputs = {}
+    attrs = {}
+    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+    shape = paddle.shape(x)
+    utils.get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like')
+
     helper.append_op(
         type='empty',
         inputs=inputs,

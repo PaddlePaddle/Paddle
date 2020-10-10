@@ -13,11 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+
 #include <string>
 #include <unordered_set>
 #include <utility>
-#include <vector>
+
 #include "paddle/fluid/operators/controlflow/op_variant.h"
+
+namespace paddle {
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

@@ -16,6 +16,9 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
+import paddle
+
+paddle.enable_static()
 
 
 def corr(x_1,

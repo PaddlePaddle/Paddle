@@ -25,12 +25,14 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import ImperativeOutScale, ImperativeQuantAware
+from paddle.fluid.contrib.slim.quantization import ImperativeCalcOutScale
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, PReLU
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D, PRelu
+from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 from paddle.fluid.log_helper import get_logger
+
+paddle.enable_static()
 
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
@@ -72,9 +74,9 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
         param_attr=conv2d_w2_attr,
         bias_attr=conv2d_b2_attr)
     batch_norm2 = layers.batch_norm(conv2)
-    prelu1 = layers.prelu(batch_norm2, mode='all')
+    relu6_1 = layers.relu6(batch_norm2)
     pool2 = fluid.layers.pool2d(
-        prelu1, pool_size=2, pool_type='max', pool_stride=2)
+        relu6_1, pool_size=2, pool_type='max', pool_stride=2)
 
     fc1 = fluid.layers.fc(input=pool2,
                           size=120,
@@ -91,7 +93,6 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
                           act=classifier_activation,
                           param_attr=fc_w3_attr,
                           bias_attr=fc_b3_attr)
-
     return fc3
 
 
@@ -130,7 +131,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 param_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
             BatchNorm(16),
-            PRelu('all'),
+            ReLU6(),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2))
 
@@ -149,8 +150,8 @@ class ImperativeLenet(fluid.dygraph.Layer):
             Sigmoid(),
             Linear(
                 input_dim=84,
-                output_dim=num_classes,
                 act=classifier_activation,
+                output_dim=num_classes,
                 param_attr=fc_w3_attr,
                 bias_attr=fc_b3_attr))
 
@@ -163,6 +164,104 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 
 class TestImperativeOutSclae(unittest.TestCase):
+    def test_calc_out_scale_save(self):
+        imperative_out_scale = ImperativeCalcOutScale()
+
+        with fluid.dygraph.guard():
+            lenet = ImperativeLenet()
+            adam = AdamOptimizer(
+                learning_rate=0.001, parameter_list=lenet.parameters())
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
+            test_reader = paddle.batch(
+                paddle.dataset.mnist.test(), batch_size=32)
+            imperative_out_scale.calc_out_scale(lenet)
+            epoch_num = 1
+            for epoch in range(epoch_num):
+                lenet.train()
+                for batch_id, data in enumerate(train_reader()):
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
+
+                    img = fluid.dygraph.to_variable(x_data)
+                    label = fluid.dygraph.to_variable(y_data)
+                    out = lenet(img)
+                    acc = fluid.layers.accuracy(out, label)
+                    loss = fluid.layers.cross_entropy(out, label)
+                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss.backward()
+                    adam.minimize(avg_loss)
+                    lenet.clear_gradients()
+                    if batch_id % 100 == 0:
+                        _logger.info(
+                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".
+                            format(epoch, batch_id,
+                                   avg_loss.numpy(), acc.numpy()))
+                lenet.eval()
+                for batch_id, data in enumerate(test_reader()):
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
+
+                    img = fluid.dygraph.to_variable(x_data)
+                    label = fluid.dygraph.to_variable(y_data)
+
+                    out = lenet(img)
+                    acc_top1 = fluid.layers.accuracy(
+                        input=out, label=label, k=1)
+                    acc_top5 = fluid.layers.accuracy(
+                        input=out, label=label, k=5)
+
+                    if batch_id % 100 == 0:
+                        _logger.info(
+                            "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".
+                            format(epoch, batch_id,
+                                   acc_top1.numpy(), acc_top5.numpy()))
+
+            # save weights
+            model_dict = lenet.state_dict()
+            fluid.save_dygraph(model_dict, "save_temp")
+
+            # test the correctness of `save_quantized_model`
+            data = next(test_reader())
+            test_data = np.array([x[0].reshape(1, 28, 28)
+                                  for x in data]).astype('float32')
+            test_img = fluid.dygraph.to_variable(test_data)
+            lenet.eval()
+            before_save = lenet(test_img)
+
+        # save inference quantized model
+        path = "./mnist_infer_model"
+        imperative_out_scale.save_quantized_model(
+            model=lenet,
+            model_path=path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        [inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname=path,
+                executor=exe,
+                model_filename="__model__",
+                params_filename="__variables__"))
+        after_save, = exe.run(inference_program,
+                              feed={feed_target_names[0]: test_data},
+                              fetch_list=fetch_targets)
+
+        self.assertTrue(
+            np.allclose(after_save, before_save.numpy()),
+            msg='Failed to save the inference quantized model.')
+
     def test_out_scale_acc(self):
         def _build_static_lenet(main, startup, is_test=False, seed=1000):
             with fluid.unique_name.guard():
@@ -194,7 +293,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        imperative_out_scale = ImperativeOutScale()
+        imperative_out_scale = ImperativeCalcOutScale()
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -214,8 +313,7 @@ class TestImperativeOutSclae(unittest.TestCase):
                 fixed_state[name] = value
                 param_init_map[param.name] = value
             lenet.set_dict(fixed_state)
-
-            imperative_out_scale.get_out_scale(lenet)
+            imperative_out_scale.calc_out_scale(lenet)
             adam = AdamOptimizer(
                 learning_rate=lr, parameter_list=lenet.parameters())
             dynamic_loss_rec = []
@@ -240,24 +338,16 @@ class TestImperativeOutSclae(unittest.TestCase):
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
             lenet.eval()
-            imperative_out_scale.set_out_scale(lenet)
-            op_object_list = (Conv2D, ReLU, PRelu, LeakyReLU, Sigmoid, Pool2D,
+            op_object_list = (Conv2D, ReLU, ReLU6, LeakyReLU, Sigmoid, Pool2D,
                               BatchNorm)
-            out_scale_num = 0
-            for name, layer in lenet.named_sublayers():
-                if hasattr(layer, 'out_threshold'):
-                    dynamic_out_scale_list.append(
-                        layer.__getattr__('out_threshold'))
-
-        paddle.jit.save(
-            layer=lenet,
-            model_path="./dynamic_outscale",
+        imperative_out_scale.save_quantized_model(
+            model=lenet,
+            model_path='./dynamic_out_scale',
             input_spec=[
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')
             ])
 
-        # static graph train
         _logger.info(
             "--------------------------static graph qat--------------------------"
         )
@@ -305,27 +395,23 @@ class TestImperativeOutSclae(unittest.TestCase):
                 static_loss_rec.append(loss_v[0])
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', loss_v))
-
         scale_inference_pass = OutScaleForInferencePass(scope=scope)
         scale_inference_pass.apply(infer_graph)
 
         out_scale_op_list = [
-            "batch_norm", "conv2d", "leaky_relu", "pool2d", "prelu", "relu",
-            "sigmoid", "tanh", "relu6", "softmax", "conv2d_transpose"
+            "batch_norm", "conv2d", "leaky_relu", "pool2d", "relu6", "relu",
+            "sigmoid", "tanh", "relu6", "softmax", "conv2d_transpose",
+            "elementwise_add"
         ]
         op_nodes = infer_graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in out_scale_op_list:
                 static_out_scale_list.append(op_node.op().attr("out_threshold"))
 
-        self.assertTrue(
-            dynamic_out_scale_list.sort() == static_out_scale_list.sort())
-
         save_program = infer_graph.to_program()
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model("./static_outscale",
-                                          [infer_img.name], [infer_pre], exe,
-                                          save_program)
+            fluid.io.save_inference_model("./static_mnist", [infer_img.name],
+                                          [infer_pre], exe, save_program)
         rtol = 1e-05
         atol = 1e-08
         for i, (loss_d,
@@ -345,6 +431,24 @@ class TestImperativeOutSclae(unittest.TestCase):
                 atol=atol,
                 equal_nan=True),
             msg='Failed to do the imperative qat.')
+        # load dynamic model
+        [inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname='./dynamic_out_scale',
+                executor=exe,
+                model_filename="__model__",
+                params_filename="__variables__"))
+
+        global_block = inference_program.global_block()
+        for op in global_block.ops:
+            if op.has_attr('out_threshold'):
+                dynamic_out_scale_list.append(op.attr('out_threshold'))
+
+        check_list = [
+            False for item in dynamic_out_scale_list
+            if item not in static_out_scale_list
+        ]
+        self.assertTrue(len(check_list) == 0)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+
 #include "paddle/fluid/string/printf.h"
 
 DECLARE_bool(color);

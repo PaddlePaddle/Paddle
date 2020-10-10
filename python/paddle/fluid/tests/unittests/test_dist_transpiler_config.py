@@ -15,6 +15,9 @@
 import unittest
 import paddle.fluid as fluid
 import gc
+import paddle
+
+paddle.enable_static()
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 

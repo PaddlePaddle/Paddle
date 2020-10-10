@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -102,3 +104,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(conv_elementwise_add_act_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddActFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("relu", 0)
+            .EQ("identity", 0));

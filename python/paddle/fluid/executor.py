@@ -94,12 +94,13 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy
+            paddle.enable_static()
 
-            new_scope = fluid.Scope()
-            with fluid.scope_guard(new_scope):
-                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            new_scope = paddle.static.Scope()
+            with paddle.static.scope_guard(new_scope):
+                 paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
             numpy.array(new_scope.find_var("data").get_tensor())
     """
 
@@ -1355,7 +1356,7 @@ class Executor(object):
         if not program._fleet_opt is None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
-            if program._fleet_opt("trainer", "") == "HeterXpuTrainer":
+            if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
                 is_heter = 1
         if scope is None:
             scope = global_scope()
