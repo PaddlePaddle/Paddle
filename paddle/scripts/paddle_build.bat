@@ -293,6 +293,7 @@ dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
+pip install urllib2
 python %work_dir%\tools\get_quick_disable_lt.py > Output
 if %errorlevel%==0 (
     set /p disable_ut_quickly=<Output
