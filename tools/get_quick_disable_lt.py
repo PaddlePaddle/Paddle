@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import sys
-import urllib2
-
+import requests
+import ssl
 
 def download_file():
     """Get disabled unit tests"""
+    ssl._create_default_https_context = ssl._create_unverified_context
     url="https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
-    f = urllib2.urlopen(url)
-    data = f.read()
-    if len(data.strip()) == 0:
+    f = requests.get(url)
+    data = f.text
+    status_code=f.status_code
+    if len(data.strip()) == 0 or status_code != 200 :
         sys.exit(1)
     else:
         lt = data.strip().split('\n')
-        lt = '^' + '$^'.join(lt) + '$'
+        lt = '^' + '$|^'.join(lt) + '$'
         print(lt)
         sys.exit(0)
 
