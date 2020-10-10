@@ -40,9 +40,9 @@ namespace {
 #ifdef PADDLE_WITH_SW
 // sw not supported thread_local
 std::deque<int> block_id_stack;
-// Tracking the nested event stacks.
 std::deque<Event *> annotation_stack;
 #else
+// Tracking the nested event stacks.
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
@@ -316,7 +316,11 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
+#ifdef PADDLE_WITH_SW
     std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
+#else
+    thread_local std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
+#endif
     if (local_cpu_records_ == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       cpu_records_.emplace_front();
@@ -347,7 +351,12 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
     }
+#ifdef PADDLE_WITH_SW
     std::forward_list<MemInfoRecord> *local_mem_info_record = nullptr;
+#else
+    thread_local std::forward_list<MemInfoRecord> *local_mem_info_record =
+        nullptr;
+#endif
     if (local_mem_info_record == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       mem_info_record_.emplace_front();
@@ -364,7 +373,12 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
+#ifdef PADDLE_WITH_SW
     std::forward_list<ActiveKindRecord> *local_active_kind_records = nullptr;
+#else
+    thread_local std::forward_list<ActiveKindRecord>
+        *local_active_kind_records = nullptr;
+#endif
     if (local_active_kind_records == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       active_kind_records_.emplace_front();

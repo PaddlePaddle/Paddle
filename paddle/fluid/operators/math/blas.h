@@ -32,7 +32,7 @@ class Tensor;
 #include <libxsmm.h>
 #endif
 
-#if defined(PADDLE_USE_OPENBLAS) || defined(PADDLE_WITH_SW)
+#if defined(PADDLE_USE_OPENBLAS) || defined(PADDLE_USE_REFERENCE_CBLAS)
 #include <cblas.h>
 #endif
 

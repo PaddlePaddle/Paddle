@@ -29,6 +29,7 @@ namespace platform {
 
 void SetNumThreads(int num_threads) {
 #ifdef PADDLE_WITH_SW
+  // sw use cblas, which not support multi thread.
   return;
 #endif
 #ifdef PADDLE_USE_OPENBLAS
