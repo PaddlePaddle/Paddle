@@ -301,7 +301,7 @@ function(cc_library TARGET_NAME)
           target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
         else(WIN32)
           #target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-          target_link_options(${TARGET_NAME} PRIVATE "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+          target_link_options(${TARGET_NAME} PUBLIC "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
         endif(WIN32)
       endif()
       # remove link to python, see notes at:
