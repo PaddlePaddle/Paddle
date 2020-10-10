@@ -261,7 +261,7 @@ struct Layer {
         {input->dims()[0], input->dims()[1], hidden_size}));
     cache_input.mutable_data<T>(context.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(cache_input.dims(), 0, false);
+    auto mat_dim_a = math::CreateMatrixDescriptor(input->dims(), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(weight.dims(), 0, true);
     // convert the batch matmul to matmul, this operator could be speed faster
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
@@ -338,8 +338,8 @@ struct SingleLayer : Layer<T> {
     Tensor* init_c_holder = nullptr;  // = &init_c[layer_idx];
     Tensor init_h_temp;
     Tensor init_c_temp;
-    Tensor* last_h_holder = nullptr;  // = &last_h[layer_idx];
-    Tensor* last_c_holder = nullptr;  //= &last_c[layer_idx];
+    Tensor* last_h_holder = &last_h[layer_idx];
+    Tensor* last_c_holder = &last_c[layer_idx];
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
         if (!has_allocate_mem) {
@@ -425,8 +425,8 @@ struct BidirLayer : Layer<T> {
     Tensor* forward_init_c_holder = nullptr;  // = &init_c[2*layer_idx];
     Tensor forward_init_h_temp;
     Tensor forward_init_c_temp;
-    Tensor* forward_last_h_holder = nullptr;  // = &last_h[2*layer_idx];
-    Tensor* forward_last_c_holder = nullptr;  //= &last_c[2*layer_idx];
+    Tensor* forward_last_h_holder = &last_h[2 * layer_idx];
+    Tensor* forward_last_c_holder = &last_c[2 * layer_idx];
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
         if (!has_forward_allocate_mem) {
@@ -476,8 +476,8 @@ struct BidirLayer : Layer<T> {
     Tensor* backward_init_c_holder = nullptr;  // = &init_c[2*layer_idx + 1];
     Tensor backward_init_h_temp;
     Tensor backward_init_c_temp;
-    Tensor* backward_last_h_holder = nullptr;  //= &last_h[2*layer_idx + 1];
-    Tensor* backward_last_c_holder = nullptr;  // = &last_c[2*layer_idx + 1];
+    Tensor* backward_last_h_holder = &last_h[2 * layer_idx + 1];
+    Tensor* backward_last_c_holder = &last_c[2 * layer_idx + 1];
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
         if (!has_backward_allocate_mem) {
