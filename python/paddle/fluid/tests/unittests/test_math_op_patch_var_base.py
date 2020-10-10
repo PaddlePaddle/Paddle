@@ -514,7 +514,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.scale))
         self.assertTrue(inspect.ismethod(a.stanh))
         self.assertTrue(inspect.ismethod(a.sums))
-        self.assertTrue(inspect.ismethod(a.elementwise_sum))
+        self.assertTrue(inspect.ismethod(a.add_n))
         self.assertTrue(inspect.ismethod(a.max))
         self.assertTrue(inspect.ismethod(a.maximum))
         self.assertTrue(inspect.ismethod(a.min))
