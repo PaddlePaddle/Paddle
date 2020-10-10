@@ -989,7 +989,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
-       logsumexp(x) = \log\sum exp(x)
+       logsumexp(x) = \\log\\sum exp(x)
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1019,8 +1019,6 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     .. code-block:: python
 
         import paddle
-
-        paddle.disable_static()
 
         x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
         out1 = paddle.logsumexp(x) # [3.4691226]
