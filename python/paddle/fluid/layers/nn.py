@@ -10854,7 +10854,7 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    return paddle.elementwise_sum(x)
+    return paddle.tensor.math.elementwise_sum(x)
 
 
 @templatedoc()
@@ -11658,9 +11658,6 @@ Examples:
 
 def elementwise_sub(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_sub
-	:alias: paddle.elementwise_sub,paddle.tensor.elementwise_sub,paddle.tensor.math.elementwise_sub
-	:old_api: paddle.fluid.layers.elementwise_sub
 
 Examples:
 

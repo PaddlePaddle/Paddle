@@ -499,7 +499,7 @@ class TestAdamOpV2(unittest.TestCase):
         cur_lr = adam.get_lr()
         assert (lr == cur_lr)
         with self.assertRaises(TypeError):
-            lr_var = paddle.create_global_var(
+            lr_var = paddle.fluid.layers.create_global_var(
                 shape=[1], value=lr, dtype='float32')
             adam.set_lr(lr_var)
 

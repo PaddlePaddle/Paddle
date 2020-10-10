@@ -180,7 +180,7 @@ class ElementwiseSubLayer(object):
         """
         operation
         """
-        sub = paddle.elementwise_sub(x, y)
+        sub = paddle.fluid.layers.elementwise_sub(x, y)
         return sub
 
 
@@ -202,7 +202,7 @@ class ConstantLayer(object):
         shape = list(shape)
         input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
-        constant = paddle.fill_constant(shape, dtype, value)
+        constant = paddle.fluid.layers.fill_constant(shape, dtype, value)
         return constant
 
 

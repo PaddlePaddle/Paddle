@@ -480,7 +480,7 @@ def grad(outputs,
             paddle.disable_static()
 
             def test_dygraph_grad(grad_outputs=None):
-                x = paddle.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x = paddle.fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -503,7 +503,7 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            grad_value = paddle.fill_constant(shape=[1], value=4.0, dtype='float32')
+            grad_value = paddle.fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
 
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
@@ -515,7 +515,7 @@ def grad(outputs,
             print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            grad_y1 = paddle.fill_constant(shape=[1], value=3.0, dtype='float32')
+            grad_y1 = paddle.fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 

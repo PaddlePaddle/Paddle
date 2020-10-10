@@ -173,7 +173,7 @@ def pow(x, y, name=None):
             print(res.numpy()) # [1 4 9]
             
             # example 2: y is a Tensor
-            y = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+            y = paddle.fluid.layers.fill_constant(shape=[1], value=2, dtype='float32')
             res = paddle.pow(x, y)
             print(res.numpy()) # [1 4 9]
 
@@ -760,7 +760,7 @@ def elementwise_sum(inputs, name=None):
 
             input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
             input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
-            sum = paddle.elementwise_sum([input0, input1])
+            sum = paddle.tensor.math.elementwise_sum([input0, input1])
 
             # You can print out 'sum' via executor.
             out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
@@ -1329,8 +1329,6 @@ def log1p(x, name=None):
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
-	:alias_main: paddle.addcmul
-	:alias: paddle.addcmul,paddle.tensor.addcmul,paddle.tensor.math.addcmul
 
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
@@ -1354,7 +1352,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
           input = fluid.data(name='input', dtype='float32', shape=[3, 4])
           tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
           tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
-          data = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+          data = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=1.0)
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')

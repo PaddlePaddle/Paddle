@@ -234,7 +234,7 @@ class API_Test_Elementwise_Sum(unittest.TestCase):
                 shape=[2, 3], dtype='int64', value=3)
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
-            sum_value = paddle.elementwise_sum([input0, input1])
+            sum_value = paddle.tensor.math.elementwise_sum([input0, input1])
             exe = fluid.Executor(fluid.CPUPlace())
             result = exe.run(fetch_list=[sum_value])
 

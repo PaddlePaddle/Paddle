@@ -87,7 +87,7 @@ def create_static_variable_gast_node(name):
 
 
 def create_fill_constant_node(name, value):
-    func_code = "{} = paddle.fill_constant(shape=[1], ".format(name)
+    func_code = "{} = paddle.fluid.layers.fill_constant(shape=[1], ".format(name)
     if isinstance(value, bool):
         func_code += "dtype='bool', value={})".format(value)
         return gast.parse(func_code).body[0]
