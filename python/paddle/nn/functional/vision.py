@@ -34,7 +34,6 @@ import numpy as np
 # from ...fluid.layers import generate_mask_labels  #DEFINE_ALIAS
 # from ...fluid.layers import generate_proposal_labels  #DEFINE_ALIAS
 # from ...fluid.layers import generate_proposals  #DEFINE_ALIAS
-# from ...fluid.layers import grid_sampler  #DEFINE_ALIAS
 # from ...fluid.layers import image_resize  #DEFINE_ALIAS
 # from ...fluid.layers import prior_box  #DEFINE_ALIAS
 # from ...fluid.layers import prroi_pool  #DEFINE_ALIAS
@@ -57,6 +56,8 @@ import numpy as np
 
 __all__ = [
     'affine_grid',
+    'grid_sample',
+    'pixel_shuffle'
 ]
 
 

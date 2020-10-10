@@ -205,7 +205,7 @@ from .vision import affine_grid  #DEFINE_ALIAS
 # from .vision import generate_mask_labels  #DEFINE_ALIAS
 # from .vision import generate_proposal_labels  #DEFINE_ALIAS
 # from .vision import generate_proposals  #DEFINE_ALIAS
-# from .vision import grid_sample  #DEFINE_ALIAS
+from .vision import grid_sample  #DEFINE_ALIAS
 # from .vision import image_resize  #DEFINE_ALIAS
 # from .vision import image_resize_short  #DEFINE_ALIAS
 # from .vision import multi_box_head  #DEFINE_ALIAS
