@@ -35,7 +35,7 @@ def fc(x,
     an output tensor with shape :math:`[batch\_size, *, size]` , where :math:`*`
     means any number of additional dimensions. If a list of tensor is given,
     the results of multiple output tensors with shape :math:`[batch\_size, *, size]`
-    will be summed up. If :attr:`bias\_attr` is not False, a 1-D bias tensor will
+    will be summed up. If :attr:`bias_attr` is not False, a 1-D bias tensor will
     be created and added to the output. Finally, if :attr:`activation` is not None,
     it will be applied to the output as well.
 
@@ -95,22 +95,23 @@ def fc(x,
         num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multi-dimensional tensor will first be flattened
             into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
-            tensor is flattened: the first :attr:`num_flatten_dims` (inclusive, index starts from 1)
+            tensor is flattened: the first :math:`num\_flatten\_dims` (inclusive, index starts from 1)
             dimensions will be flatten to form the first dimension of the final matrix (height of
             the matrix), and the rest :math:`rank(x) - num\_flatten\_dims` dimensions are
             flattened to form the second dimension of the final matrix (width of the matrix).
-            For example, assuming that :math:`x` is a 5-dimensional tensor with a shape
+            For example, assuming that :attr:`x` is a 5-dimensional tensor with a shape
             :math:`[2, 3, 4, 5, 6]` , and :attr:`num_flatten_dims` = 3.
             Then, the flattened matrix will have a shape :math:`[2 * 3 * 4, 5 * 6] = [24, 30]` .
             Default: 1.
         weight_attr (ParamAttr, optional): The attribute for the learnable weight.
             The default value is None, and the weight will be initialized to zero.
-            For detailed information, please refer to paddle.ParamAttr.
+            For detailed information, please refer to :attr:`paddle.ParamAttr`.
         bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias. 
             If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
-            to paddle.ParamAttr. The default value is None and the bias will be initialized to zero. 
+            to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
+            initialized to zero. 
         activation (str, optional): Activation to be applied to the output of
             this layer, such as tanh, softmax, sigmoid, relu. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.
@@ -137,10 +138,8 @@ def fc(x,
               x=x,
               size=1,
               num_flatten_dims=2,
-              weight_attr=paddle.ParamAttr(
-                  initializer=paddle.nn.initializer.Constant(value=0.5)),
-              bias_attr=paddle.ParamAttr(
-                  initializer=paddle.nn.initializer.Constant(value=1.0)))
+              weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+              bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
           # out: [[[1.15]
           #        [1.35]]]
 
@@ -153,10 +152,8 @@ def fc(x,
           out = paddle.static.nn.fc(
               x=[x0, x1],
               size=2,
-              weight_attr=paddle.ParamAttr(
-                  initializer=paddle.nn.initializer.Constant(value=0.5)),
-              bias_attr=paddle.ParamAttr(
-                  initializer=paddle.nn.initializer.Constant(value=1.0)))
+              weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+              bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
           # out: [[1.8 1.8]]
     """
     return paddle.fluid.layers.fc(input=x,
