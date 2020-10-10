@@ -24,13 +24,16 @@ class PrintOptions(object):
     precision = 4
     threshold = 100
     edgeitems = 3
-    linewidth = 75
+    sci_mode = False
 
 
 DEFAULT_PRINT_OPTIONS = PrintOptions()
 
 
-def set_printoptions(precision=None, threshold=None, edgeitems=None):
+def set_printoptions(precision=None,
+                     threshold=None,
+                     edgeitems=None,
+                     sci_mode=None):
     """Set the printing options for Tensor.
     NOTE: The function is similar with numpy.set_printoptions()
 
@@ -38,6 +41,7 @@ def set_printoptions(precision=None, threshold=None, edgeitems=None):
         precision (int, optional): Number of digits of the floating number, default 6.
         threshold (int, optional): Total number of elements printed, default 1000.
         edgeitems (int, optional): Number of elements in summary at the begining and end of each dimension, defalt 3.
+        sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
     """
     kwargs = {}
 
@@ -53,7 +57,10 @@ def set_printoptions(precision=None, threshold=None, edgeitems=None):
         check_type(edgeitems, 'edgeitems', (int), 'set_printoptions')
         DEFAULT_PRINT_OPTIONS.edgeitems = edgeitems
         kwargs['edgeitems'] = edgeitems
-
+    if sci_mode is not None:
+        check_type(sci_mode, 'sci_mode', (bool), 'set_printoptions')
+        DEFAULT_PRINT_OPTIONS.sci_mode = sci_mode
+        kwargs['sci_mode'] = sci_mode
     core.set_printoptions(**kwargs)
 
 
@@ -79,10 +86,14 @@ def _to_sumary(var):
 
 def _format_item(np_var):
     if np_var.dtype == np.float32 or np_var.dtype == np.float64 or np_var.dtype == np.float16:
-        if np.ceil(np_var) == np_var:
+        if DEFAULT_PRINT_OPTIONS.sci_mode:
+            return '{{:.{}e}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
+                np_var)
+        elif np.ceil(np_var) == np_var:
             return '{:.0f}.'.format(np_var)
-        return '{{:.{}f}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
-            np_var)
+        else:
+            return '{{:.{}f}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
+                np_var)
     else:
         return '{}'.format(var)
 

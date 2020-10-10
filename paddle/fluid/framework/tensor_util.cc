@@ -941,9 +941,9 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
 }
 
 template <typename T>
-std::string to_sumary(const framework::Tensor& tensor) {
+std::string format_tensor(const framework::Tensor& tensor) {
   // TODO(zhiqiu): use the print option to format tensor.
-  return "";
+  return "NOT IMPLEMENTED";
 }
 
 template <typename T>
