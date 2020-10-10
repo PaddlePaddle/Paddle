@@ -34,9 +34,10 @@ def check_cast_op(op):
 
 
 class TestConstantInitializer(unittest.TestCase):
-    def test_constant_initializer_default_value_static(self, dtype="float32"):
-        """Test the constant initializer with default value in static graph
-        """
+    def static_test_constant_initializer_common(self,
+                                                init_inst,
+                                                dtype="float32",
+                                                value_target=0.0):
         paddle.enable_static()
         program = framework.Program()
         block = program.global_block()
@@ -46,53 +47,51 @@ class TestConstantInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.Constant())
+                initializer=init_inst)
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
-        self.assertAlmostEqual(init_op.attr('value'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('value'), value_target, delta=DELTA)
         paddle.disable_static()
+        return block
+
+    def test_constant_initializer_default_value_static(self, dtype="float32"):
+        """Test the constant initializer with default value in static graph
+        """
+        block = self.static_test_constant_initializer_common(
+            init_inst=initializer.Constant(), dtype=dtype, value_target=0.0)
         return block
 
     def test_constant_initializer_default_value_dygraph(self, dtype="float32"):
         """Test constant initializer with supplied value in dygraph
         """
-        linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant())
-        mat_target = np.ones((2, 4), dtype=dtype) * 0.0
-        mat_linear = linear.weight.numpy()
-        mismatch = np.sum((mat_target - mat_linear) * (mat_target - mat_linear))
-        self.assertAlmostEqual(mismatch, 0.0, delta=DELTA)
+        with fluid.dygraph.guard():
+            linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant())
+            mat_target = np.ones((2, 4), dtype=dtype) * 0.0
+            mat_linear = linear.weight.numpy()
+            mismatch = np.sum(
+                (mat_target - mat_linear) * (mat_target - mat_linear))
+            self.assertAlmostEqual(mismatch, 0.0, delta=DELTA)
 
     def test_constant_initializer_static(self, dtype="float32"):
         """Test constant initializer with supplied value in static graph
         """
-        paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Constant(2.3))
-        num_ops = 2 if dtype == "float16" else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'fill_constant')
-        self.assertAlmostEqual(init_op.attr('value'), 2.3, delta=DELTA)
-        paddle.disable_static()
+        block = self.static_test_constant_initializer_common(
+            init_inst=initializer.Constant(2.3), dtype=dtype, value_target=2.3)
         return block
 
     def test_constant_initializer_dygraph(self, dtype="float32"):
         """Test constant initializer with supplied value in dygraph
         """
-        linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant(value=2.0))
-        mat_target = np.ones((2, 4), dtype=dtype) * 2.0
-        mat_linear = linear.weight.numpy()
-        mismatch = np.sum((mat_target - mat_linear) * (mat_target - mat_linear))
-        self.assertAlmostEqual(mismatch, 0.0, delta=DELTA)
+        with fluid.dygraph.guard():
+            linear = nn.Linear(
+                2, 4, weight_attr=nn.initializer.Constant(value=2.0))
+            mat_target = np.ones((2, 4), dtype=dtype) * 2.0
+            mat_linear = linear.weight.numpy()
+            mismatch = np.sum(
+                (mat_target - mat_linear) * (mat_target - mat_linear))
+            self.assertAlmostEqual(mismatch, 0.0, delta=DELTA)
 
     def test_constant_initializer_fp16(self):
         """Test constant initializer with float16
