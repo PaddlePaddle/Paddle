@@ -1359,6 +1359,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
         out(Tensor): The output result. A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
+        
             import paddle
             input = paddle.ones([2,2])
             tensor1 = paddle.ones([2,2])
