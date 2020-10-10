@@ -2,3 +2,4 @@ PyGithub
 coverage
 pycrypto ; platform_system != "Windows"
 mock
+opencv-python<=4.2.0.32
