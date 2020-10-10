@@ -212,13 +212,20 @@ struct Cell {
 
 template <typename T>
 struct LSTMCell : Cell<T> {
-  void name() { VLOG(2) << "Init LSTMCell"; }
-
   void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
                   const Tensor* weight_hh, const Tensor* bias_hh,
                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
                   Tensor* last_c, Tensor* output, const Tensor& mask_tensor) {
     VLOG(2) << "Calling LSTM Cell !!!!!";
+    VLOG(2) << "input shape: " << input->dims();
+    VLOG(2) << "w_hh shape: " << weight_hh->dims();
+    VLOG(2) << "b_hh shape: " << bias_hh->dims();
+    VLOG(2) << "init_h shape: " << init_h->dims();
+    VLOG(2) << "init_c shape: " << init_c->dims();
+    VLOG(2) << "last_h shape: " << last_h->dims();
+    VLOG(2) << "last_c shape: " << last_c->dims();
+    VLOG(2) << "output shape: " << output->dims();
+
     math::FCFunctor<platform::CPUDeviceContext, T> fc;
     fc(*device_ctx, init_h->dims()[0], weight_hh->dims()[1],
        weight_hh->dims()[0], init_h->data<T>(), weight_hh->data<T>(),
@@ -233,8 +240,8 @@ struct LSTMCell : Cell<T> {
     auto cell_act = math::detail::GetActivationType("tanh");
     auto cand_act = math::detail::GetActivationType("tanh");
 
-    size_t frame_size = init_h->dims()[1];
-    size_t batch_size = init_h->dims()[0];
+    size_t frame_size = init_h->dims()[2];
+    size_t batch_size = init_h->dims()[1];
 
     Tensor cell_pre_act;
     cell_pre_act.mutable_data<T>(init_h->dims(), device_ctx->GetPlace());
@@ -248,14 +255,15 @@ struct LSTMCell : Cell<T> {
     math::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
         *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
         cell_act, cand_act);
-    auto eigen_output =
-        framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
-    auto eigen_mask = framework::EigenMatrix<T>::From(
-        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    // eigen_output.device(device_ctx->eigen_device()) =
-    eigen_output =
-        eigen_output *
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+    // auto eigen_output =
+    //    framework::EigenMatrix<T>::Reshape(*output, output->dims().size() -
+    //    1);
+    // auto eigen_mask = framework::EigenMatrix<T>::From(
+    //    mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+    //// eigen_output.device(device_ctx->eigen_device()) =
+    // eigen_output =
+    //    eigen_output *
+    //    eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
   }
 };
 
@@ -340,7 +348,7 @@ struct SingleLayer : Layer<T> {
     const Tensor& input_w = this->preprocess(context, input, vec[0], vec[2]);
     VLOG(2) << "output shape: " << output->dims();
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
-    set_constant(dev_ctx, output, static_cast<T>(5.0));
+    set_constant(dev_ctx, output, static_cast<T>(13.0));
 
     auto input_tensors = Unbind(input_w);
     auto output_tensors = Unbind(*output);
@@ -389,9 +397,9 @@ struct SingleLayer : Layer<T> {
               init_c_holder, last_h_holder, last_c_holder, &output_tensors[i],
               mask_tensor_list[i]);
       }
-      if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[i], mask_tensor_list[i]);
-      }
+      // if (has_sequence_length) {
+      //  this->postprocess(context, &output_tensors[i], mask_tensor_list[i]);
+      //}
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
