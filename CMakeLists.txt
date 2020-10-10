@@ -110,6 +110,7 @@ option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
+option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
