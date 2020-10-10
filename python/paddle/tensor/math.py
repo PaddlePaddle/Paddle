@@ -999,7 +999,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
-       logsumexp(x) = \log\sum exp(x)
+       logsumexp(x) = \\log\\sum exp(x)
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1029,8 +1029,6 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     .. code-block:: python
 
         import paddle
-
-        paddle.disable_static()
 
         x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
         out1 = paddle.logsumexp(x) # [3.4691226]
@@ -1624,39 +1622,37 @@ ${comment}
 
 def cumsum(x, axis=None, dtype=None, name=None):
     """
-    The cumulative sum of the elements along a given axis. The first element of the result is the same of the first element of the input. 
+    The cumulative sum of the elements along a given axis. 
+    
+    **Note**:
+    The first element of the result is the same of the first element of the input. 
 
     Args:
-        x (Tensor): Input of cumsum operator, the Tensor needed to be cumsumed. 
+        x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
         dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the result of cumsum operator, output of cumsum operator. 
+        Tensor, the result of cumsum operator. 
 
     Examples:
         .. code-block:: python
             
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
-            data_np = np.arange(12).reshape(3, 4)
-            data = paddle.to_tensor(data_np)
+            
+            data = paddle.arange(12)
+            data = paddle.reshape(data, (3, 4))
 
             y = paddle.cumsum(data)
-            print(y.numpy())
             # [ 0  1  3  6 10 15 21 28 36 45 55 66]
 
             y = paddle.cumsum(data, axis=0)
-            print(y.numpy())
             # [[ 0  1  2  3]
             #  [ 4  6  8 10]
             #  [12 15 18 21]]
             
             y = paddle.cumsum(data, axis=-1)
-            print(y.numpy())
             # [[ 0  1  3  6]
             #  [ 4  9 15 22]
             #  [ 8 17 27 38]]
