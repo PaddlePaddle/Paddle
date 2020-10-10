@@ -1346,10 +1346,9 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     then multiply the result by value, and add it to input. The shape of input,
     tensor1, tensor2 should be broadcastable.
     The equation is:
-    ..  math::
+    .. math::
     
          out = input + value * tensor1 * tensor2
-
     Args:
         input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
         tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
