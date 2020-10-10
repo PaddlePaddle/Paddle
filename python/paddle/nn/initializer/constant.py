@@ -47,5 +47,3 @@ class Constant(ConstantInitializer):
         if value is None:
             raise ValueError("value must not be none.")
         super(Constant, self).__init__(value=value, force_cpu=False)
-        self._value = value
-        self._force_cpu = False
