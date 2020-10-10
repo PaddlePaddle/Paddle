@@ -291,8 +291,8 @@ def _current_expected_place():
             if device_count > 0:
                 _global_expected_place_ = core.CUDAPlace(0)
             else:
-                logging.warning(
-                    "You are using GPU version Paddle, But Your CUDA Device is not set properly. CPU device will be used by default."
+                warnings.warn(
+                    "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
         else:
