@@ -101,7 +101,7 @@ def fc(x,
             flattened to form the second dimension of the final matrix (width of the matrix).
             For example, assuming that :math:`x` is a 5-dimensional tensor with a shape
             :math:`[2, 3, 4, 5, 6]` , and :attr:`num_flatten_dims` = 3.
-            Then, the flattened matrix will have a shape :math:`[2 x 3 x 4, 5 x 6] = [24, 30]` .
+            Then, the flattened matrix will have a shape :math:`[2 * 3 * 4, 5 * 6] = [24, 30]` .
             Default: 1.
         weight_attr (ParamAttr, optional): The attribute for the learnable weight.
             The default value is None, and the weight will be initialized to zero.
