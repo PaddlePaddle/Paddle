@@ -105,18 +105,15 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
         scale_size_(scale_size),
         hidden_size_(hidden_size),
         eps_(eps),
-        with_fp16_(with_fp16),
         own_host_buff_(false) {
-    if (with_fp16) {
-#ifdef SUPPORTS_CUDA_FP16
+    with_fp16_ = with_fp16;
+    if (with_fp16_) {
+      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported data type, current GPU doesn't support half."));
-#endif  // SUPPORTS_CUDA_FP16
     } else {
+      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
@@ -160,14 +157,9 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 
     if (with_fp16_) {
-#ifdef SUPPORTS_CUDA_FP16
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported data type, current GPU doesn't support half."));
-#endif  // SUPPORTS_CUDA_FP16
     } else {
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
@@ -283,7 +275,6 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   int hidden_size_;
   float eps_;
 
-  bool with_fp16_;
   bool own_host_buff_{false};
   EmbEltwiseLayernormPluginDynamicImplBase* impl_{nullptr};
 };

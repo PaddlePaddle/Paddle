@@ -109,7 +109,6 @@ inline void TransposeQKV(const int batch, const int seq_len,
   }
 }
 
-#ifdef SUPPORTS_CUDA_FP16
 inline void TransposeQKV(const int batch, const int seq_len,
                          const int head_size, const int head_num,
                          const half *input, half *output, cudaStream_t stream) {
@@ -148,7 +147,6 @@ inline void TransposeQKV(const int batch, const int seq_len,
                                                          output);
   }
 }
-#endif
 
 int QkvToContextPluginDynamic::initialize() { return 0; }
 
@@ -195,19 +193,14 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    if (ban_fp16_) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-    } else {
+    if (with_fp16_) {
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
 
@@ -247,6 +240,7 @@ int QkvToContextPluginDynamic::enqueue(
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
     auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
         platform::CUDAPlace(device_id));
     auto *qkptr = multihead_temp_data;
@@ -275,7 +269,7 @@ int QkvToContextPluginDynamic::enqueue(
                                                  head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
             platform::CUDAPlace(device_id));
@@ -303,10 +297,6 @@ int QkvToContextPluginDynamic::enqueue(
     half *output = static_cast<half *>(outputs[0]);
     transpose<half><<<grid, block, 0, stream>>>(tptr, output, batch, seq_len,
                                                 head_number_, head_size_);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The QKV TRT Plugin's input type should be float or half."));

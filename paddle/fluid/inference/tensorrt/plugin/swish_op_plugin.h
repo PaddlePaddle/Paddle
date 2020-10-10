@@ -45,7 +45,9 @@ class SwishPlugin : public PluginTensorRT {
   }
 
  public:
-  explicit SwishPlugin(const float beta) : beta_(beta) {}
+  explicit SwishPlugin(const float beta, const bool with_fp16) : beta_(beta) {
+    with_fp16_ = with_fp16;
+  }
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -56,7 +58,9 @@ class SwishPlugin : public PluginTensorRT {
   ~SwishPlugin() {}
   int initialize() override;
 
-  SwishPlugin* clone() const override { return new SwishPlugin(beta_); }
+  SwishPlugin* clone() const override {
+    return new SwishPlugin(beta_, with_fp16_);
+  }
 
   const char* getPluginType() const override { return "swish_plugin"; }
   int getNbOutputs() const override { return 1; }
@@ -69,10 +73,15 @@ class SwishPlugin : public PluginTensorRT {
 #if IS_TRT_VERSION_GE(6000)
 class SwishPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit SwishPluginDynamic(const float beta) : beta_(beta) {}
-  SwishPluginDynamic(void const* serialData, size_t serialLength) {}
+  explicit SwishPluginDynamic(const float beta, const bool with_fp16)
+      : beta_(beta) {
+    with_fp16_ = with_fp16;
+  }
+  SwishPluginDynamic(void const* serialData, size_t serialLength) {
+    DeserializeValue(&serialData, &serialLength, &with_fp16_);
+  }
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new SwishPluginDynamic(beta_);
+    return new SwishPluginDynamic(beta_, with_fp16_);
   }
 
   const char* getPluginType() const override { return "swish_plugin"; }

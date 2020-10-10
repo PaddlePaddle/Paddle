@@ -66,19 +66,14 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    if (ban_fp16_) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-    } else {
+    if (with_fp16_) {
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
 
@@ -114,6 +109,7 @@ int SkipLayerNormPluginDynamic::enqueue(
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp32";
     const float *input1 = static_cast<const float *>(inputs[0]);
     const float *input2 = static_cast<const float *>(inputs[1]);
     float *output = static_cast<float *>(outputs[0]);
@@ -121,17 +117,13 @@ int SkipLayerNormPluginDynamic::enqueue(
     skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
                          output, eps_, stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp16";
     const half *input1 = static_cast<const half *>(inputs[0]);
     const half *input2 = static_cast<const half *>(inputs[1]);
     half *output = static_cast<half *>(outputs[0]);
     operators::math::SkipLayerNormFunctor<half> skip_layer_norm_func;
     skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
                          output, static_cast<half>(eps_), stream);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The SkipLayerNorm TRT Plugin's input type should be float or half."));

@@ -78,9 +78,10 @@ class SliceOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
+          new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
       layer = engine_->AddPluginV2(&input, 1, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
@@ -88,9 +89,10 @@ class SliceOpConverter : public OpConverter {
           "your TRT version is no less than 6.0"));
 #endif
     } else {
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SlicePlugin* plugin =
-          new plugin::SlicePlugin(starts, ends, axes, ban_fp16);
+          new plugin::SlicePlugin(starts, ends, axes, with_fp16);
       layer = engine_->AddPlugin(&input, 1, plugin);
     }
 

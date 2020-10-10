@@ -27,8 +27,10 @@ namespace plugin {
 class SplitPlugin : public PluginTensorRT {
  public:
   SplitPlugin() {}
-  SplitPlugin(int axis, std::vector<int> const& output_lengths)
-      : axis_(axis), same_shape_(true), output_length_(output_lengths) {}
+  SplitPlugin(int axis, std::vector<int> const& output_lengths, bool with_fp16)
+      : axis_(axis), same_shape_(true), output_length_(output_lengths) {
+    with_fp16_ = with_fp16;
+  }
 
   SplitPlugin(void const* serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
@@ -37,7 +39,7 @@ class SplitPlugin : public PluginTensorRT {
   }
 
   SplitPlugin* clone() const override {
-    return new SplitPlugin(axis_, output_length_);
+    return new SplitPlugin(axis_, output_length_, with_fp16_);
   }
 
   const char* getPluginType() const override { return "split_plugin"; }
@@ -77,13 +79,18 @@ class SplitPlugin : public PluginTensorRT {
 #if IS_TRT_VERSION_GE(6000)
 class SplitPluginDynamic : public DynamicPluginTensorRT {
  public:
-  SplitPluginDynamic(int axis, std::vector<int> const& output_lengths)
-      : axis_(axis), output_length_(output_lengths) {}
+  SplitPluginDynamic(int axis, std::vector<int> const& output_lengths,
+                     bool with_fp16)
+      : axis_(axis), output_length_(output_lengths) {
+    with_fp16_ = with_fp16;
+  }
 
-  SplitPluginDynamic(void const* serial_data, size_t serial_length) {}
+  SplitPluginDynamic(void const* serial_data, size_t serial_length) {
+    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+  }
 
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new SplitPluginDynamic(axis_, output_length_);
+    return new SplitPluginDynamic(axis_, output_length_, with_fp16_);
   }
 
   const char* getPluginType() const override { return "split_plugin"; }

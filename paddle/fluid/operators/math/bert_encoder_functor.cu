@@ -160,9 +160,7 @@ void EmbEltwiseLayerNormFunctor<T>::operator()(
 
 template class EmbEltwiseLayerNormFunctor<float>;
 
-#ifdef SUPPORTS_CUDA_FP16
 template class EmbEltwiseLayerNormFunctor<half>;
-#endif
 
 template <typename T>
 __global__ void SoftmaxKernelWithEltadd(T *qk_buf_, const T *bias_qk_,
@@ -241,21 +239,17 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
                                        seq_len));
   if (seq_len % 2 == 0) {
     block = (seq_len <= 64) ? 32 : ((seq_len + 63) / 64) * 32;
-#ifdef SUPPORTS_CUDA_FP16
     if (std::is_same<T, float>::value) {
-#endif
       SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
           reinterpret_cast<float2 *>(qk_buf_),
           reinterpret_cast<const float2 *>(bias_qk), batch_size, head_num,
           seq_len / 2, FINAL_MASK);
-#ifdef SUPPORTS_CUDA_FP16
     } else {
       SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
           reinterpret_cast<__half2 *>(qk_buf_),
           reinterpret_cast<const __half2 *>(bias_qk), batch_size, head_num,
           seq_len / 2, FINAL_MASK);
     }
-#endif
   } else {
     block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
     SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
@@ -308,9 +302,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(
 
 template class MultiHeadGPUComputeFunctor<float>;
 
-#ifdef SUPPORTS_CUDA_FP16
 template class MultiHeadGPUComputeFunctor<half>;
-#endif
 
 template <typename T, unsigned TPB>
 __global__ void SkipLayerNormSmallKernel(int num, int hidden, const T *input1,
@@ -395,9 +387,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
   } else {
     const int threads = 256;
     if (hidden % 2 == 0) {
-#ifdef SUPPORTS_CUDA_FP16
       if (std::is_same<T, float>::value) {
-#endif
         SkipLayerNormKernel2<float, float2,
                              threads><<<block, threads, 0, stream>>>(
             num, hidden / 2, reinterpret_cast<const float2 *>(input1),
@@ -405,7 +395,6 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
             reinterpret_cast<float2 *>(output),
             reinterpret_cast<const float2 *>(scale),
             reinterpret_cast<const float2 *>(bias), eps);
-#ifdef SUPPORTS_CUDA_FP16
       } else if (std::is_same<T, __half>::value) {
         SkipLayerNormKernel2<__half, __half2,
                              threads><<<block, threads, 0, stream>>>(
@@ -418,7 +407,6 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
         assert(false);
         // should not be here
       }
-#endif
     } else {
       SkipLayerNormKernel<T, threads><<<block, threads, 0, stream>>>(
           num, hidden, input1, input2, output, scale, bias, eps);
@@ -428,9 +416,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
 
 template class SkipLayerNormFunctor<float>;
 
-#ifdef SUPPORTS_CUDA_FP16
 template class SkipLayerNormFunctor<half>;
-#endif
 
 }  // namespace math
 }  // namespace operators

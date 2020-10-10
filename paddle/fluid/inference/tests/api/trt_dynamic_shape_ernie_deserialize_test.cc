@@ -159,11 +159,11 @@ TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
   trt_ernie(false, result);
 }
-#ifdef SUPPORTS_CUDA_FP16
+
 TEST(AnalysisPredictor, fp16) {
   std::vector<float> result = {0.59923654, 0.21923761, 0.18152587};
   trt_ernie(true, result);
 }
-#endif  // SUPPORTS_CUDA_FP16
+
 }  // namespace inference
 }  // namespace paddle

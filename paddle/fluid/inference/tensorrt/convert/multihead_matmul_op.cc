@@ -90,10 +90,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
     plugin_inputs.push_back(input_bias_qk);
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::DynamicPluginTensorRT* plugin =
           new plugin::QkvToContextPluginDynamic(hidden, head_number, head_size,
-                                                scale, ban_fp16);
+                                                scale, with_fp16);
       layer = engine_->AddPluginV2(plugin_inputs.data(), 2, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(

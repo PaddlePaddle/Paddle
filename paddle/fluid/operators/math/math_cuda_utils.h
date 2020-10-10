@@ -47,12 +47,10 @@ __device__ __forceinline__ float FromFloat<float>(float a) {
   return a;
 }
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ half FromFloat<half>(float a) {
   return __float2half(a);
 }
-#endif
 
 // to_float
 template <>
@@ -75,7 +73,6 @@ __inline__ __device__ float2 operator+(const float2 &a, const float2 &b) {
   return make_float2(a.x + b.x, a.y + b.y);
 }
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ float ToFloat<half>(half a) {
   return __half2float(a);
@@ -91,14 +88,12 @@ __device__ __forceinline__ __half2 FloatsToPair<__half2>(const float a,
                                                          const float b) {
   return __floats2half2_rn(a, b);
 }
-#endif
 
 template <>
 __device__ __forceinline__ float exp_func<float>(float a) {
   return expf(a);
 }
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ half exp_func<half>(half a) {
 #if __CUDA_ARCH__ >= 600
@@ -107,7 +102,6 @@ __device__ __forceinline__ half exp_func<half>(half a) {
   return FromFloat<half>(expf(ToFloat<half>(a)));
 #endif
 }
-#endif
 
 template <>
 struct KeyValuePair<float> {
@@ -129,7 +123,6 @@ struct KeyValuePair<float> {
   }
 };
 
-#ifdef SUPPORTS_CUDA_FP16
 template <>
 struct KeyValuePair<half> {
   __device__ __forceinline__ KeyValuePair() {}
@@ -148,7 +141,6 @@ struct KeyValuePair<half> {
     return KeyValuePair(res.x, res.y);
   }
 };
-#endif
 
 #define FINAL_MASK 0xffffffff
 #define HALF_WARP 16

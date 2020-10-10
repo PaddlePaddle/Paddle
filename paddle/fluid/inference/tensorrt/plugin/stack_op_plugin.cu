@@ -24,19 +24,22 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
-StackPluginDynamic::StackPluginDynamic(int axis, int num_stack)
-    : axis_(axis), num_stack_(num_stack) {}
+StackPluginDynamic::StackPluginDynamic(int axis, int num_stack, bool with_fp16)
+    : axis_(axis), num_stack_(num_stack) {
+  with_fp16_ = with_fp16;
+}
 
 StackPluginDynamic::StackPluginDynamic(void const* serial_data,
                                        size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &axis_);
   DeserializeValue(&serial_data, &serial_length, &num_stack_);
+  DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 }
 
 StackPluginDynamic::~StackPluginDynamic() {}
 
 nvinfer1::IPluginV2DynamicExt* StackPluginDynamic::clone() const {
-  return new StackPluginDynamic(axis_, num_stack_);
+  return new StackPluginDynamic(axis_, num_stack_, with_fp16_);
 }
 
 const char* StackPluginDynamic::getPluginType() const { return "stack_plugin"; }
@@ -49,12 +52,14 @@ size_t StackPluginDynamic::getSerializationSize() const {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(axis_);
   serialize_size += SerializedSize(num_stack_);
+  serialize_size += SerializedSize(with_fp16_);
   return serialize_size;
 }
 
 void StackPluginDynamic::serialize(void* buffer) const {
   SerializeValue(&buffer, axis_);
   SerializeValue(&buffer, num_stack_);
+  SerializeValue(&buffer, with_fp16_);
 }
 
 nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
@@ -99,14 +104,14 @@ bool StackPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
+    if (with_fp16_) {
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
   }
   const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
   // output
@@ -170,20 +175,17 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   auto infer_type = input_desc[0].type;
 
   if (infer_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Stack-->fp32";
     float* output = static_cast<float*>(outputs[0]);
     StackKernel<float><<<num_blocks, num_threads, 0, stream>>>(
         reinterpret_cast<const float* const*>(workspace), output, num_stacks,
         base_unit);
   } else if (infer_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+    VLOG(1) << "TRT Plugin DataType selected. Stack-->fp16";
     __half* output = static_cast<__half*>(outputs[0]);
     StackKernel<__half><<<num_blocks, num_threads, 0, stream>>>(
         reinterpret_cast<const __half* const*>(workspace), output, num_stacks,
         base_unit);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
-#endif
   } else {
     PADDLE_THROW(
         platform::errors::Fatal("The Stack TRT Plugin's input type only "
@@ -209,6 +211,7 @@ nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) {
   int axis = -1;
   int num_stack = -1;
+  bool with_fp16 = false;
 
   for (int i = 0; i < fc->nbFields; ++i) {
     const std::string name(fc->fields[i].name);
@@ -216,13 +219,15 @@ nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
       axis = static_cast<const int*>(fc->fields[i].data)[0];
     } else if (name == "num_stack") {
       num_stack = static_cast<const int*>(fc->fields[i].data)[0];
+    } else if (name == "with_fp16") {
+      with_fp16 = static_cast<const bool*>(fc->fields[i].data)[0];
     } else {
       PADDLE_THROW(platform::errors::Fatal("Meet an unknown plugin field '" +
                                            name +
                                            "' when creating stack op plugin."));
     }
   }
-  return new StackPluginDynamic(axis, num_stack);
+  return new StackPluginDynamic(axis, num_stack, with_fp16);
 }
 
 nvinfer1::IPluginV2* StackPluginDynamicCreator::deserializePlugin(

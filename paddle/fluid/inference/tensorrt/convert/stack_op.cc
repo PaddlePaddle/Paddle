@@ -46,8 +46,10 @@ class StackOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::StackPluginDynamic* plugin =
-          new plugin::StackPluginDynamic(axis, input_num);
+          new plugin::StackPluginDynamic(axis, input_num, with_fp16);
       layer = engine_->AddPluginV2(inputs, input_num, plugin);
       assert(layer != nullptr);
 #else
