@@ -17,7 +17,7 @@ import numpy as np
 from paddle.fluid.layers import core
 from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
-__all__ = ['set_printoptions', ]
+__all__ = ['set_printoptions']
 
 
 class PrintOptions(object):
@@ -77,9 +77,12 @@ def _to_sumary(var):
             return paddle.stack([_to_sumary(x) for x in var])
 
 
-def _format_item(var):
-    if var.dtype == np.float32 or var.dtype == np.float64:
-        return '{{:.{}f}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(var)
+def _format_item(np_var):
+    if np_var.dtype == np.float32 or np_var.dtype == np.float64 or np_var.dtype == np.float16:
+        if np.ceil(np_var) == np_var:
+            return '{:.0f}.'.format(np_var)
+        return '{{:.{}f}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
+            np_var)
     else:
         return '{}'.format(var)
 
@@ -118,6 +121,11 @@ def _format_tensor(var, sumary, indent=0):
 
 
 def to_string(var):
+    _template = "  - place: {place}\n  - shape: {shape}\n  - layout: {layout}\n  - dtype: {dtype}\n  - data: {data}"
+
+    tensor = var.value().get_tensor()
+    if not tensor._is_initialized():
+        return "Not initialized"
 
     if len(var.shape) == 0:
         size = 0
@@ -130,4 +138,11 @@ def to_string(var):
     if size > DEFAULT_PRINT_OPTIONS.threshold:
         sumary = True
 
-    return _format_tensor(var, sumary)
+    data = _format_tensor(var, sumary, indent=10)
+
+    return _template.format(
+        place=var._place_str,
+        shape=var.shape,
+        layout=tensor._layout(),
+        dtype=convert_dtype(var.dtype),
+        data=data)

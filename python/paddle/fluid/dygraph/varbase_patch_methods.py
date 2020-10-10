@@ -239,9 +239,11 @@ def monkey_patch_varbase():
                 #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
                 paddle.enable_static()
         """
+        _template = 'Tensor: {name}\n{data}'
+        from paddle.tensor.to_string import to_string
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
-            return 'Tensor: %s\n%s' % (self.name, str(tensor))
+            return _template.format(name=self.name, data=to_string(self))
         else:
             return 'Tensor: %s, not initialized' % (self.name)
 
