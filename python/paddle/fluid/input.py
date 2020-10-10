@@ -223,25 +223,27 @@ def embedding(input,
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
+            import numpy as np
+            paddle.enable_static()
+            
+            x = paddle.static.data(name="x", shape = [2, 4], dtype=np.int64)
+            embedding = paddle.nn.Embedding(10, 3,
+                        weight_attr=paddle.nn.initializer.Constant(value=1.0))
+            adam = paddle.optimizer.SGD(parameters=[embedding.weight], learning_rate=0.01)
+            output = embedding(x)
+            output=paddle.mean(output)
+            
+            adam.minimize(output)
+            
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            
+            x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
+            
+            out, weight = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output, embedding.weight])
 
-          paddle.enable_static()
-
-          data = paddle.static.data(name='x', shape=[None, 10], dtype='int64')
-
-          # example 1
-          emb = paddle.nn.Embedding(10, 3, sparse=True)
-          out = emb(data)
-
-          # example 2: load custom or pre-trained word vectors
-          weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
-          w_param_attrs = fluid.ParamAttr(
-              name="emb_weight",
-              learning_rate=0.5,
-              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
-              trainable=True)
-          emb_2 = fluid.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')   
     """
 
     helper = LayerHelper('embedding', **locals())
