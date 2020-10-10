@@ -17,18 +17,25 @@ limitations under the License. */
 #endif
 #include <limits>
 #include <memory>
-#include <thread>  // NOLINT
-
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/distributed/grpc/grpc_bytebuffer_stream.h"
+#include "grpcpp/impl/codegen/byte_buffer.h"
+#include "grpcpp/impl/codegen/slice.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -73,10 +80,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     request.set_type(::sendrecv::NCCL_ID);
 #endif
   } else {
-    PADDLE_THROW("Serialize does not support type: %s",
-                 typeid(var->Type()).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Serialize does not support type: %s", typeid(var->Type()).name()));
   }
-
   std::string header;
   request.AppendToString(&header);
   auto buffer = std::unique_ptr<char[]>(new char[1024]);
@@ -100,8 +106,11 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     return;
   }
 #endif
-  PADDLE_ENFORCE_NOT_NULL(payload);
-
+  PADDLE_ENFORCE_NOT_NULL(
+      payload,
+      platform::errors::InvalidArgument(
+          "Not support type: %s, need to be LOD_TENSOR or SELECTED_ROWS",
+          var->Type()));
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
@@ -123,7 +132,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     auto* slr = var->GetMutable<framework::SelectedRows>();
     ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
 
-    PADDLE_ENFORCE(VectorElemName(slr->rows()) == typeid(int64_t).name());
+    PADDLE_ENFORCE_EQ(VectorElemName(slr->rows()), typeid(int64_t).name(),
+                      platform::errors::InvalidArgument(
+                          "Got wrong type %s, expect type: int64_t",
+                          VectorElemName(slr->rows())));
     size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
 
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
@@ -140,7 +152,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         ::grpc::Slice::STEAL_REF);
     num_slices = 4;
   }
-
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
 }
@@ -151,8 +162,23 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial");
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
-  PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(msg), 0,
+      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
   *var = resp.GetVar();
+  *trainer_id = resp.GetTrainerId();
+}
+
+void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope* scope,
+                                   framework::Variable** var, int* trainer_id) {
+  platform::RecordRPCEvent record_event("deserial");
+  operators::distributed::GRPCVariableResponse resp(scope, &ctx);
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(msg), 0,
+      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
+  *var = resp.GetRecvVar();
   *trainer_id = resp.GetTrainerId();
 }
 

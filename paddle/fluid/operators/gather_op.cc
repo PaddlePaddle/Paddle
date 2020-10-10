@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
-
+#include "paddle/fluid/framework/op_version_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -37,8 +37,21 @@ class GatherOp : public framework::OperatorWithKernel {
                           "Output(Out) of GatherOp should not be null."));
 
     auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE(index_dims.size() == 1 ||
-                   (index_dims.size() == 2 && index_dims[1] == 1));
+
+    if (index_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The last dim of index should be 1 when it is 2D, but we get %d",
+              index_dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          index_dims.size(), 1,
+          platform::errors::InvalidArgument(
+              "The index should be 1D, when it is not 2D, but we get %d",
+              index_dims.size()));
+    }
+
     int batch_size = ctx->GetInputDim("Index")[0];
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
@@ -78,6 +91,9 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
+    AddInput("Axis",
+             "The Tensor which contains the axis that we do gather operation.")
+        .AsDispensable();
     AddOutput("Out", "The output of gather op");
     AddAttr<bool>(
         "overwrite",
@@ -120,6 +136,8 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("gather_grad");
     op->SetInput("Index", this->Input("Index"));
+    op->SetInput("Axis", this->Input("Axis"));
+
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -147,3 +165,7 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<int>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);
+REGISTER_OP_VERSION(gather)
+    .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "axis", "Specify the axis of gather operation.", {}));

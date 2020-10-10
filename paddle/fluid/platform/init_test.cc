@@ -15,12 +15,13 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/xpu_info.h"
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU)
   InitDevices(true);
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U);
@@ -36,6 +37,18 @@ TEST(InitDevices, CUDA) {
   InitDevices(true);
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 2U + static_cast<unsigned>(count));
+#endif
+}
+
+TEST(InitDevices, XPU) {
+  using paddle::framework::InitDevices;
+  using paddle::platform::DeviceContextPool;
+
+#ifdef PADDLE_WITH_XPU
+  int count = paddle::platform::GetXPUDeviceCount();
+  InitDevices(true);
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
 #endif
 }
 

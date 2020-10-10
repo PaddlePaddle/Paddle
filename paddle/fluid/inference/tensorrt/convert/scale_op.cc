@@ -15,6 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -58,6 +67,24 @@ class ScaleOpConverter : public OpConverter {
     TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
                                          0};
     nvinfer1::ILayer* layer = nullptr;
+
+    auto input_dim = input->getDimensions();
+    PADDLE_ENFORCE_GE(input_dim.nbDims, 3,
+                      platform::errors::Fatal(
+                          "Paddle-TRT scale mode only support dimension >= 3"));
+
+    nvinfer1::IShuffleLayer* expand_layer = nullptr;
+    nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
+
+    if (input_dim.nbDims == 3) {
+      // TensorRT scale layer is not supporting input dims < 4 when using
+      // explicit batch
+      expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      nvinfer1::Dims4 target_shape(0, 0, 0, 1);  // expand 1 dims
+      expand_layer->setReshapeDimensions(target_shape);
+      input = expand_layer->getOutput(0);
+    }
+
     if (bias_after_scale) {
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Scale, *input, nvinfer1::ScaleMode::kUNIFORM,
@@ -73,6 +100,18 @@ class ScaleOpConverter : public OpConverter {
           power_weights.get(), scale_weights.get(), power_weights.get());
     }
 
+    PADDLE_ENFORCE_EQ(layer != nullptr, true,
+                      platform::errors::Fatal("Create scale layer failed."));
+
+    if (input_dim.nbDims == 3) {
+      // TensorRT scale layer is not supporting input dims < 4 when using
+      // explicit batch
+      squeeze_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
+      nvinfer1::Dims3 target_shape(0, 0, 0);  // expand 1 dims
+      squeeze_layer->setReshapeDimensions(target_shape);
+      layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
+    }
     RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
   }
 };

@@ -102,8 +102,23 @@ class TestExpandAsOpRank4(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+# Test dygraph API
+class TestExpandAsDygraphAPI(unittest.TestCase):
+    def test_api(self):
+        import paddle
+        paddle.disable_static()
+        np_data_x = np.array([1, 2, 3]).astype('int32')
+        np_data_y = np.array([1, 2, 3, 1, 2, 3]).astype('int32')
+        data_x = paddle.to_tensor(np_data_x)
+        data_y = paddle.to_tensor(np_data_y)
+        out = fluid.layers.expand_as(data_x, data_y)
+        np_out = out.numpy()
+        assert np.array_equal(np_out, np.tile(np_data_x, (2)))
+        paddle.enable_static()
+
+
 # Test python API
-class TestExpandAPI(unittest.TestCase):
+class TestExpandAsAPI(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([48, 14]).astype("float32")

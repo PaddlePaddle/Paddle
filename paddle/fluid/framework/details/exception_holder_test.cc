@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/exception_holder.h"
-#include <memory>
-#include <unordered_map>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 

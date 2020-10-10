@@ -36,8 +36,8 @@ class ApiMinimumTest(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data_x = paddle.nn.data("x", shape=[10, 15], dtype="float32")
-            data_y = paddle.nn.data("y", shape=[10, 15], dtype="float32")
+            data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
+            data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_min = paddle.minimum(data_x, data_y)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
@@ -48,8 +48,8 @@ class ApiMinimumTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data_x = paddle.nn.data("x", shape=[10, 15], dtype="float32")
-            data_z = paddle.nn.data("z", shape=[15], dtype="float32")
+            data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
+            data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_min = paddle.minimum(data_x, data_z, axis=1)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
@@ -61,8 +61,8 @@ class ApiMinimumTest(unittest.TestCase):
     def test_dynamic_api(self):
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
-        x = paddle.to_variable(self.input_x)
-        y = paddle.to_variable(self.input_y)
+        x = paddle.to_tensor(self.input_x)
+        y = paddle.to_tensor(self.input_y)
         z = paddle.minimum(x, y)
         np_z = z.numpy()
         z_expected = np.array(np.minimum(self.input_x, self.input_y))
@@ -73,8 +73,8 @@ class ApiMinimumTest(unittest.TestCase):
         np_x = np.random.rand(5, 4, 3, 2).astype("float64")
         np_y = np.random.rand(4, 3).astype("float64")
 
-        x = paddle.to_variable(self.input_x)
-        y = paddle.to_variable(self.input_y)
+        x = paddle.to_tensor(self.input_x)
+        y = paddle.to_tensor(self.input_y)
         result_1 = paddle.minimum(x, y, axis=1)
         result_2 = paddle.minimum(x, y, axis=-2)
         self.assertEqual((result_1.numpy() == result_2.numpy()).all(), True)

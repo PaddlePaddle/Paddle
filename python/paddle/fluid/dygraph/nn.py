@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 from six.moves import reduce
 from .. import core
 from ..layers import utils
@@ -30,6 +31,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
+import paddle.utils.deprecated as deprecated
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
@@ -893,9 +895,6 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
@@ -2444,6 +2443,10 @@ class BilinearTensorProduct(layers.Layer):
             dtype=self._dtype,
             is_bias=True)
 
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.nn.Bilinear",
+        reason="New name and new args in Bilinear, easier to use.")
     def forward(self, x, y):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'BilinearTensorProduct')
@@ -3224,14 +3227,11 @@ class Flatten(layers.Layer):
         .. code-block:: python
 
           import paddle
-          from paddle import to_variable
           import numpy as np
+          paddle.disable_static()
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
-          
-          paddle.disable_static()
-          
-          inp_np = to_variable(inp_np)
+          inp_np = paddle.to_tensor(inp_np)
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
           flatten_res = flatten(inp_np)
 
@@ -3243,19 +3243,6 @@ class Flatten(layers.Layer):
         self.stop_axis = stop_axis
 
     def forward(self, input):
-        out = self._helper.create_variable_for_type_inference(input.dtype)
-        x_shape = self._helper.create_variable_for_type_inference(input.dtype)
-
-        if in_dygraph_mode():
-            dy_out, _ = core.ops.flatten_contiguous_range(
-                input, 'start_axis', self.start_axis, 'stop_axis',
-                self.stop_axis)
-            return dy_out
-        self._helper.append_op(
-            type="flatten_contiguous_range",
-            inputs={"X": input},
-            outputs={"Out": out,
-                     "XShape": x_shape},
-            attrs={"start_axis": self.start_axis,
-                   "stop_axis": self.stop_axis})
+        out = paddle.tensor.manipulation.flatten(
+            input, start_axis=self.start_axis, stop_axis=self.stop_axis)
         return out

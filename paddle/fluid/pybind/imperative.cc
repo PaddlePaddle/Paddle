@@ -30,7 +30,6 @@ limitations under the License. */
 
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
-#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -66,11 +65,13 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::CPUPlace>();
   } else if (py::isinstance<platform::CUDAPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPlace>();
+  } else if (py::isinstance<platform::XPUPlace>(place_obj)) {
+    return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
 }
 
@@ -92,6 +93,9 @@ static void InitTensorForVarBase(imperative::VarBase *self,
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
         tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
+  } else if (platform::is_xpu_place(place)) {
+    SetTensorFromPyArray<platform::XPUPlace>(
+        tensor, array, BOOST_GET_CONST(platform::XPUPlace, place), zero_copy);
   } else if (platform::is_gpu_place(place)) {
     SetTensorFromPyArray<platform::CUDAPlace>(
         tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
@@ -101,7 +105,7 @@ static void InitTensorForVarBase(imperative::VarBase *self,
         zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
   if (stop_gradient != -1) {
     self->SetOverridedStopGradient(stop_gradient);
@@ -502,50 +506,6 @@ void BindImperative(py::module *m_ptr) {
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 #endif
 
-  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
-      m, "BackwardStrategy", R"DOC(
-
-    BackwardStrategy is a descriptor of how to run the backward process.
-
-    **Note**:
-        **This API is only available in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
-
-    Attribute:
-        **sort_sum_gradient**:
-
-        If framework will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if framework will sum gradient of `x_var` by the reverse order.
-
-        By Default: False
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle.fluid as fluid
-
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    x_var = fluid.dygraph.to_variable(x)
-                    sums_inputs = []
-                    # x_var will be multi-scales' input here
-                    for _ in range(10):
-                        sums_inputs.append(fluid.layers.scale(x_var))
-                    ret2 = fluid.layers.sums(sums_inputs)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
-      )DOC");
-  backward_strategy.def(py::init())
-      .def_property("sort_sum_gradient",
-                    [](const imperative::detail::BackwardStrategy &self) {
-                      return self.sorted_sum_gradient_;
-                    },
-                    [](imperative::detail::BackwardStrategy &self,
-                       bool sorted_sum_gradient) {
-                      self.sorted_sum_gradient_ = sorted_sum_gradient;
-                    });
-
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
@@ -588,6 +548,10 @@ void BindImperative(py::module *m_ptr) {
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
            py::arg("stop_gradient") = -1)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::XPUPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false,
+           py::arg("zero_copy") = false, py::arg("name") = "",
+           py::arg("stop_gradient") = -1)
       .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
            py::arg("value"), py::arg("place"), py::arg("persistable") = false,
            py::arg("zero_copy") = false, py::arg("name") = "",
@@ -599,6 +563,33 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
+      .def("__setitem__",
+           [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
+              py::object &value_obj) {
+             auto self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto self_numpy = TensorToPyArray(*self_tensor);
+
+             if (py::isinstance<py::array>(value_obj) ||
+                 py::isinstance<py::int_>(value_obj) ||
+                 py::isinstance<py::float_>(value_obj)) {
+               auto value_numpy = value_obj;
+               self_numpy[_index] = value_numpy;
+               SetTensorFromPyArray(self_tensor, self_numpy,
+                                    self_tensor->place(), true);
+
+             } else {
+               auto value =
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               auto value_tensor =
+                   value->MutableVar()->GetMutable<framework::LoDTensor>();
+               auto value_numpy = TensorToPyArray(*value_tensor);
+
+               self_numpy[_index] = value_numpy;
+               SetTensorFromPyArray(self_tensor, self_numpy,
+                                    self_tensor->place(), true);
+             }
+           })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
@@ -685,72 +676,55 @@ void BindImperative(py::module *m_ptr) {
              return self.NewVarBase(tensor.place(), false);
            },
            py::return_value_policy::copy, R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
 
-        Returns a new Variable, detached from the current graph.
+        Returns a new Tensor, detached from the current graph.
 
-        Returns:
-             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
-
+        Returns: The detached Tensor.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
-
+                linear = Linear(32, 64)
+                data = paddle.uniform(shape=[30, 10, 32], -1, 1)
+                x = linear(data)
+                y = x.detach()
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
-        **Notes**:
-        **1. This API is ONLY available in Dygraph mode**
+        Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
-        **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
-
-        Clear  (set to ``0`` ) the Gradient of Current Variable
+        The Gradient of current Tensor will be set to ``0`` .
 
         Returns:  None
 
         Examples:
              .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                         tmp = fluid.dygraph.base.to_variable(x)
-                         tmp.stop_gradient=False
-                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
-                    print(loss2.gradient())
-                    loss2.clear_gradient()
-                    print("After clear {}".format(loss2.gradient()))
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.ones([2, 2])
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs2)
+                loss = paddle.reduce_sum(ret)
+                loss.backward()
+                print("Before clear_gradient {}".format(loss.grad))
+                loss.clear_gradient()
+                print("After clear_gradient {}".format(loss.grad))
       )DOC")
       .def("_run_backward",
-           [](imperative::VarBase &self,
-              const imperative::detail::BackwardStrategy &bckst,
-              const imperative::Tracer &tracer, bool retain_graph) {
+           [](imperative::VarBase &self, const imperative::Tracer &tracer,
+              bool retain_graph) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
              auto *engine = tracer.GetEngine();
-             engine->Init(&self, bckst, retain_graph);
+             engine->Init(&self, retain_graph);
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
@@ -824,6 +798,10 @@ void BindImperative(py::module *m_ptr) {
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
       .def("_copy_to",
+           [](const imperative::VarBase &self, const platform::XPUPlace &place,
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::copy)
+      .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CUDAPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
            py::return_value_policy::copy)
@@ -846,7 +824,8 @@ void BindImperative(py::module *m_ptr) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
             } else {
-              VLOG(2) << "It is meaningless to get shape of variable type "
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
                       << GetTypeName(self);
               return std::vector<int>();
             }
@@ -890,6 +869,9 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
+            } else if (py::isinstance<platform::XPUPlace>(obj)) {
+              auto p = obj.cast<platform::XPUPlace *>();
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
               self.SetExpectedPlace(*p);
@@ -898,7 +880,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
+                  "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
+                  "CPUPlace, "
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -927,6 +910,19 @@ void BindImperative(py::module *m_ptr) {
              return std::make_tuple(
                  *(imperative::AmpOperators::Instance().GetAllowOps()),
                  *(imperative::AmpOperators::Instance().GetBlockOps()));
+           })
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::XPUPlace &place,
+              bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
@@ -994,13 +990,11 @@ void BindImperative(py::module *m_ptr) {
              &output_targets,
          const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
          const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
-         const platform::Place &place,
-         const imperative::detail::BackwardStrategy &strategy,
-         bool create_graph, bool retain_graph, bool allow_unused,
-         bool only_inputs) {
+         const platform::Place &place, bool create_graph, bool retain_graph,
+         bool allow_unused, bool only_inputs) {
         imperative::PartialGradEngine engine(
             input_targets, output_targets, output_grads, no_grad_vars, place,
-            strategy, create_graph, retain_graph, allow_unused, only_inputs);
+            create_graph, retain_graph, allow_unused, only_inputs);
         engine.Execute();
         return engine.GetResult();
       },

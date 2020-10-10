@@ -20,6 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class AssignFunctor {
  public:
@@ -52,7 +59,10 @@ class AssignFunctor {
 
   template <typename T>
   void operator()(const T &v) const {
-    PADDLE_THROW("Not support type for assign op %s", typeid(T).name());
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::PermissionDenied(
+            "Not support type for assign op with type %s", typeid(T).name()));
   }
 
  private:

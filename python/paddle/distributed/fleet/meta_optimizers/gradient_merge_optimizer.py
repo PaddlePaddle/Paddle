@@ -14,15 +14,18 @@
 from paddle.fluid.optimizer import GradientMergeOptimizer as GM
 from .meta_optimizer_base import MetaOptimizerBase
 
-__all__ = ["GradientMergeOptimizer"]
-
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(GradientMergeOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         self.wrapped_opt = GM(optimizer)
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "LarsOptimizer",
+            "LambOptimizer",
+            "GraphExecutionOptimizer",
+        ]
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -34,13 +37,20 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             self.user_defined_strategy.gradient_merge_configs["avg"])
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         can_apply = (self.user_defined_strategy.gradient_merge == True) and \
-                  self.user_defined_strategy.gradient_merge_configs["k_steps"] > 1
+            self.user_defined_strategy.gradient_merge_configs["k_steps"] > 1
         return can_apply
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.gradient_merge = False
         dist_strategy.gradient_merge_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        # we currently do not support auto-enable gradient merge
+        return
 
     def minimize_impl(self,
                       loss,

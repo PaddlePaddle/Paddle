@@ -60,7 +60,7 @@ class StrategyCompiler(StrategyCompilerBase):
 
     def _get_valid_strategy(self, dist_strategy, can_not_apply_optimizer_list):
         import copy
-        valid_strategy = copy.copy(dist_strategy)
+        valid_strategy = copy.deepcopy(dist_strategy)
         invalid_optimizers = []
         for candidate in self._meta_optimizer_candidates:
             is_valid = False
@@ -114,4 +114,18 @@ class StrategyCompiler(StrategyCompilerBase):
                 0]
             return_graph = None if graph_optimizers == None else graph_optimizers[
                 0]
+
+            if meta_optimizers == None or graph_optimizers == None:
+                return return_meta, return_graph
+
+            # do heuristic filter here, if any meta optimizer in graph optimizers is in 
+            # any meta optimizers' black list, set return_graph to None
+            need_graph_opt = True
+            for graph_opt in graph_optimizers:
+                for program_opt in meta_optimizers:
+                    if graph_opt.__class__.__name__ in program_opt.meta_optimizers_black_list:
+                        need_graph_opt = False
+            if not need_graph_opt:
+                return_graph = None
+
             return return_meta, return_graph

@@ -18,8 +18,8 @@ import collections
 import inspect
 
 import gast
-
 from paddle.fluid import core
+from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.framework import Program
 
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
@@ -124,8 +124,13 @@ class OriginInfoAttacher(gast.NodeTransformer):
 
     def _abs_lineno(self, node):
         # NOTE(liym27):
-        #   If the first gast.FunctionDef has decorator, its lineno is 1, which
-        #   equals to the lineno of the first decorator node.
+        #   There are differences in ast_node.lineno between PY3.8+ and PY3.8-.
+        #   If the first gast.FunctionDef has decorator, the lineno of gast.FunctionDef is differs.
+        #       1. < PY3.8
+        #           its lineno equals to the lineno of the first decorator node, which is not right.
+        #       2. >= PY3.8
+        #           its lineno is the actual lineno, which is right.
+
         return self.lineno_offset + node.lineno
 
     def _abs_col_offset(self, node):
@@ -195,18 +200,6 @@ def attach_origin_info(ast_node, func):
     resolver = OriginInfoAttacher(ast_node, func)
     resolver.transform()
     return ast_node
-
-
-# NOTE: inspect.unwrap() exits in PY3 but not in PY2.
-def unwrap(func):
-    def _is_wrapped(f):
-        return hasattr(f, '__wrapped__')
-
-    unwrapped_f = func
-    while (_is_wrapped(unwrapped_f)):
-        unwrapped_f = unwrapped_f.__wrapped__
-
-    return unwrapped_f
 
 
 def ast_walk(transformed_node, static_node):

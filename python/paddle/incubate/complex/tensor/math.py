@@ -330,8 +330,8 @@ def sum(input, dim=None, keep_dim=False, name=None):
 
     """
     complex_variable_exists([input], "sum")
-    real = math.sum(input.real, dim=dim, keep_dim=keep_dim, name=name)
-    imag = math.sum(input.imag, dim=dim, keep_dim=keep_dim, name=name)
+    real = math.sum(input.real, axis=dim, keepdim=keep_dim, name=name)
+    imag = math.sum(input.imag, axis=dim, keepdim=keep_dim, name=name)
     return ComplexVariable(real, imag)
 
 

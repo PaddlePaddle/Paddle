@@ -15,8 +15,6 @@ from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["DGCOptimizer"]
-
 
 class DGCOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -25,6 +23,7 @@ class DGCOptimizer(MetaOptimizerBase):
         self.dgc_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -48,17 +47,20 @@ class DGCOptimizer(MetaOptimizerBase):
             sparsity=configs['sparsity'],
             parameter_list=opt._parameter_list,
             use_nesterov=opt._use_nesterov,
-            num_trainers=self.role_maker.worker_num(),
+            num_trainers=self.role_maker._worker_num(),
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
             name=opt._name)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.dgc:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn("dgc only works on Momentum optimizer")
                 return False
-            if self.role_maker.worker_num() <= 1:
+            if self.role_maker._worker_num() <= 1:
                 logging.warn("dgc only works on multi cards")
                 return False
 
@@ -69,6 +71,10 @@ class DGCOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.dgc = False
         dist_strategy.dgc_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.dgc = True
+        dist_strategy.dgc_configs = {"rampup_begin_step": 0, "rampup_step": 1}
 
     def backward(self,
                  loss,
@@ -86,5 +92,5 @@ class DGCOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         optimize_ops, params_grads = \
             self.dgc_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+                                  parameter_list, no_grad_set)
         return optimize_ops, params_grads
