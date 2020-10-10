@@ -191,7 +191,8 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
     }
 
     if (value.prev_state_value) {
-      r_prev_state = (reinterpret_cast<__m256 *>(value.prev_state_value))[i];
+      r_prev_state =
+          (reinterpret_cast<__m256 const *>(value.prev_state_value))[i];
     }
 
     op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_prev_state,
@@ -263,7 +264,8 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
     r_output_grad = (reinterpret_cast<__m256 *>(grad.output_grad))[i];
     r_state_grad = (reinterpret_cast<__m256 *>(grad.state_grad))[i];
     if (value.prev_state_value) {
-      r_prev_state = (reinterpret_cast<__m256 *>(value.prev_state_value))[i];
+      r_prev_state =
+          (reinterpret_cast<__m256 const *>(value.prev_state_value))[i];
     }
 
     op(&r_value_in, &r_value_ig, &r_value_fg, &r_value_og, &r_grad_in,
