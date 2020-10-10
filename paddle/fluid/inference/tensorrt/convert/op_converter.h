@@ -217,7 +217,7 @@ class OpConverter {
     }
     PADDLE_ENFORCE_EQ(all_dynamic_shape_set, true,
                       platform::errors::InvalidArgument(
-                          "some trt intputs dynamic shape info not set, "
+                          "some trt inputs dynamic shape info not set, "
                           "check the INFO log above for more details."));
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
