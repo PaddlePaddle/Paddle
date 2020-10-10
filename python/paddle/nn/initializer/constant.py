@@ -14,9 +14,6 @@
 
 # TODO: define the initializers of Constant in neural network
 from ...fluid.initializer import ConstantInitializer
-from ...fluid import framework
-from ...fluid import unique_name
-from ...fluid.core import VarDesc
 
 __all__ = ['Constant']
 
