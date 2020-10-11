@@ -695,11 +695,16 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._worker_endpoints = []
 
         trainers_num = os.getenv("PADDLE_TRAINERS_NUM", None)
-        assert trainers_num != None
+        if trainers_num == None:
+            raise ValueError(
+                "Can not find PADDLE_TRAINERS_NUM, please check your environment."
+            )
         trainers_num = int(trainers_num)
 
         training_role = os.getenv("TRAINING_ROLE", None)
-        assert training_role != None
+        if training_role == None:
+            raise ValueError(
+                "Can not find TRAINING_ROLE, please check your environment.")
 
         if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
             raise ValueError(
@@ -727,29 +732,37 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if training_role == "TRAINER":
             role = Role.WORKER
             current_id = os.getenv("PADDLE_TRAINER_ID", None)
-            assert current_id != None
+            if current_id == None:
+                raise ValueError(
+                    "Can not find PADDLE_TRAINER_ID, please check your environment."
+                )
             current_id = int(current_id)
             if len(self._worker_endpoints) > 0:
                 self._cur_endpoint = self._worker_endpoints[current_id]
         elif training_role == "PSERVER":
             role = Role.SERVER
             port = os.getenv("PADDLE_PORT", None)
-            assert port != None
+            if port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
             ip = os.getenv("POD_IP", None)
-            assert ip != None
+            if ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
             self._cur_endpoint = ip + ":" + port
             current_id = self._server_endpoints.index(self._cur_endpoint)
         elif training_role == "HETER_TRAINER":
             role = Role.HETER_WORKER
             cur_port = os.getenv("PADDLE_PORT", None)
-            assert cur_port != None
+            if cur_port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
             cur_ip = os.getenv("POD_IP", None)
-            assert cur_ip != None
+            if cur_ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
             curr_endpoint = ":".join([cur_ip, cur_port])
             current_id = heter_trainer_eplist.index(curr_endpoint)
-        else:
-            raise ValueError(
-                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER")
 
         self._trainers_num = trainers_num
         self._role = role
