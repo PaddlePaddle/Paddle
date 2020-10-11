@@ -209,7 +209,7 @@ from .vision import grid_sample  #DEFINE_ALIAS
 # from .vision import image_resize  #DEFINE_ALIAS
 # from .vision import image_resize_short  #DEFINE_ALIAS
 # from .vision import multi_box_head  #DEFINE_ALIAS
-# from .vision import pixel_shuffle  #DEFINE_ALIAS
+from .vision import pixel_shuffle  #DEFINE_ALIAS
 # from .vision import prior_box  #DEFINE_ALIAS
 # from .vision import prroi_pool  #DEFINE_ALIAS
 # from .vision import psroi_pool  #DEFINE_ALIAS

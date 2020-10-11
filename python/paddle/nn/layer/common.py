@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # TODO: define the common classes to build a neural network
+import paddle
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
@@ -628,7 +629,7 @@ class Pad2D(layers.Layer):
                                                       int) else paddings
 
     def forward(self, input):
-        return F.pad2d(
+        return paddle.fluid.layers.pad2d(
             input,
             paddings=self._paddings,
             mode=self._mode,
