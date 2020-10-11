@@ -765,7 +765,7 @@ def add_n(inputs, name=None):
             input1 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]], dtype='float32')
             output = paddle.add_n([input0, input1])
             # [[8., 10., 12.], 
-               [14., 16., 18.]]
+            #  [14., 16., 18.]]
     """
     if in_dygraph_mode():
         return core.ops.sum(inputs, 'use_mkldnn', False)
