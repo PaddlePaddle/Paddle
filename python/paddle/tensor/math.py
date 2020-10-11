@@ -708,8 +708,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 @templatedoc(op_type="sum")
 def elementwise_sum(inputs, name=None):
     """
-	:alias_main: paddle.elementwise_sum
-	:alias: paddle.elementwise_sum,paddle.tensor.elementwise_sum,paddle.tensor.math.elementwise_sum
 
     ${comment}
 

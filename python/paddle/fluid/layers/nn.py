@@ -4448,9 +4448,6 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
 
 def reduce_max(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_max
-	:alias: paddle.reduce_max,paddle.tensor.reduce_max,paddle.tensor.math.reduce_max
-	:old_api: paddle.fluid.layers.reduce_max
 
     Computes the maximum of tensor elements over the given dimension.
 
@@ -4514,9 +4511,6 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
 
 def reduce_min(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_min
-	:alias: paddle.reduce_min,paddle.tensor.reduce_min,paddle.tensor.math.reduce_min
-	:old_api: paddle.fluid.layers.reduce_min
 
     Computes the minimum of tensor elements over the given dimension.
 
@@ -4580,9 +4574,6 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
 
 def reduce_prod(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_prod
-	:alias: paddle.reduce_prod,paddle.tensor.reduce_prod,paddle.tensor.math.reduce_prod
-	:old_api: paddle.fluid.layers.reduce_prod
 
     Computes the product of tensor elements over the given dimension.
 
@@ -11473,9 +11464,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 def elementwise_add(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_add
-	:alias: paddle.elementwise_add,paddle.tensor.elementwise_add,paddle.tensor.math.elementwise_add
-	:old_api: paddle.fluid.layers.elementwise_add
 
 Examples:
 
@@ -11567,9 +11555,6 @@ Examples:
 @deprecated(since="2.0.0", update_to="paddle.divide")
 def elementwise_div(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_div
-	:alias: paddle.elementwise_div,paddle.tensor.elementwise_div,paddle.tensor.math.elementwise_div
-	:old_api: paddle.fluid.layers.elementwise_div
 
 Examples:
 
@@ -11741,9 +11726,6 @@ Examples:
 @deprecated(since="2.0.0", update_to="paddle.multiply")
 def elementwise_mul(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_mul
-	:alias: paddle.elementwise_mul,paddle.tensor.elementwise_mul,paddle.tensor.math.elementwise_mul
-	:old_api: paddle.fluid.layers.elementwise_mul
 
 Examples:
 
@@ -11951,9 +11933,6 @@ Examples:
 
 def elementwise_pow(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_pow
-	:alias: paddle.elementwise_pow,paddle.tensor.elementwise_pow,paddle.tensor.math.elementwise_pow
-	:old_api: paddle.fluid.layers.elementwise_pow
 
 Examples:
 
@@ -11988,9 +11967,6 @@ Examples:
 @deprecated(since="2.0.0", update_to="paddle.remainder")
 def elementwise_mod(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_mod
-	:alias: paddle.elementwise_mod,paddle.tensor.elementwise_mod,paddle.tensor.math.elementwise_mod
-	:old_api: paddle.fluid.layers.elementwise_mod
 
 Examples:
 
@@ -12026,9 +12002,6 @@ Examples:
 @deprecated(since="2.0.0", update_to="paddle.floor_divide")
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     """
-    :alias_main: paddle.elementwise_floordiv
-	:alias: paddle.elementwise_floordiv,paddle.tensor.elementwise_floordiv,paddle.tensor.math.elementwise_floordiv
-	:old_api: paddle.fluid.layers.elementwise_floordiv
 
 Examples:
 

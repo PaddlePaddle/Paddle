@@ -1414,7 +1414,7 @@ class TestHardswishAPI(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.hardswish(x)
             m = paddle.nn.Hardswish()
             out2 = m(x)
@@ -1455,10 +1455,10 @@ class TestHardswishAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardswish, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.hardswish, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardswish(x_fp16)
 
 
@@ -2067,7 +2067,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.hardsigmoid(x)
             m = paddle.nn.Hardsigmoid()
             out2 = m(x)
@@ -2108,10 +2108,10 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            x_int32 = paddle.fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
             F.hardsigmoid(x_fp16)
 
 

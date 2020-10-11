@@ -5360,7 +5360,7 @@ def default_main_program():
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
     
-    For example ``z = paddle.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    For example ``z = paddle.fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
     Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
     The ``default main program`` is the default value for ``Program`` parameter in 
