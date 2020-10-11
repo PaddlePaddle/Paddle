@@ -28,7 +28,7 @@ function(py_dist_test TARGET_NAME)
                ${PYTHON_EXECUTABLE} -u ${py_dist_test_SRCS} ${py_dist_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       # No unit test should exceed 10 minutes.
-      set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=DIST")
+      set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 15 LABELS "RUN_TYPE=DIST")
     endif()
 
     
@@ -49,4 +49,4 @@ set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 19)
 set_tests_properties(test_vision_models PROPERTIES TIMEOUT 76)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 19)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 98)
-set_tests_properties(test_transformer PROPERTIES TIMEOUT 41)
+# set_tests_properties(test_transformer PROPERTIES TIMEOUT 41)
