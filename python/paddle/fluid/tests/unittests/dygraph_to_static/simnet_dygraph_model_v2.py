@@ -104,7 +104,7 @@ class ReduceMeanLayer(object):
         """
         operation
         """
-        mean = paddle.reduce_mean(input)
+        mean = paddle.fluid.layers.reduce_mean(input)
         return mean
 
 
@@ -472,8 +472,8 @@ class BOW(paddle.nn.Layer):
         right_emb = paddle.reshape(
             right_emb, shape=[-1, self.seq_len, self.bow_dim])
 
-        bow_left = paddle.reduce_sum(left_emb, dim=1)
-        bow_right = paddle.reduce_sum(right_emb, dim=1)
+        bow_left = paddle.fluid.layers.reduce_sum(left_emb, dim=1)
+        bow_right = paddle.fluid.layers.reduce_sum(right_emb, dim=1)
         softsign_layer = SoftsignLayer()
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)

@@ -600,7 +600,7 @@ class SaveLoadConfig(object):
     def keep_name_table(self):
         """
         Configures whether keep ``structured_name -> parameter_name`` dict in loaded state dict.
-        This dict is the debugging information saved when call ``paddle.save`` . 
+        This dict is the debugging information saved when call ``paddle.framework.io.save`` . 
         It is generally only used for debugging and does not affect the actual training or inference. 
         By default, it will not be retained in ``paddle.load`` result. Default: False.
         
@@ -617,11 +617,11 @@ class SaveLoadConfig(object):
                 linear = paddle.nn.Linear(5, 1)
 
                 state_dict = linear.state_dict()
-                paddle.save(state_dict, "paddle_dy.pdparams")
+                paddle.framework.io.save(state_dict, "paddle_dy.pdparams")
 
                 config = paddle.SaveLoadConfig()
                 config.keep_name_table = True
-                para_state_dict = paddle.load("paddle_dy.pdparams", config)
+                para_state_dict = paddle.framework.io.load("paddle_dy.pdparams", config)
 
                 print(para_state_dict)
                 # the name_table is 'StructuredToParameterName@@'

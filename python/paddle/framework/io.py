@@ -140,7 +140,7 @@ def save(obj, path):
 
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
-            paddle.save(layer_state_dict, "emb.pdparams")
+            paddle.framework.io.save(layer_state_dict, "emb.pdparams")
 
             scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
                 d_model=0.01, warmup_steps=100, verbose=True)
@@ -148,7 +148,7 @@ def save(obj, path):
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
-            paddle.save(opt_state_dict, "adam.pdopt")
+            paddle.framework.io.save(opt_state_dict, "adam.pdopt")
     '''
 
     # 1. input check
@@ -214,7 +214,7 @@ def load(path, config=None):
 
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
-            paddle.save(layer_state_dict, "emb.pdparams")
+            paddle.framework.io.save(layer_state_dict, "emb.pdparams")
 
             scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
                 d_model=0.01, warmup_steps=100, verbose=True)
@@ -222,10 +222,10 @@ def load(path, config=None):
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
-            paddle.save(opt_state_dict, "adam.pdopt")
+            paddle.framework.io.save(opt_state_dict, "adam.pdopt")
 
-            load_layer_state_dict = paddle.load("emb.pdparams")
-            load_opt_state_dict = paddle.load("adam.pdopt")
+            load_layer_state_dict = paddle.framework.io.load("emb.pdparams")
+            load_opt_state_dict = paddle.framework.io.load("adam.pdopt")
     '''
     # 1. input check
     if not os.path.exists(path):
@@ -248,7 +248,7 @@ def load(path, config=None):
     # 2. load target
     load_result = None
     if os.path.isfile(path):
-        # we think path is file means this file is created by paddle.save
+        # we think path is file means this file is created by paddle.framework.io.save
         with open(path, 'rb') as f:
             load_result = pickle.load(f) if six.PY2 else pickle.load(
                 f, encoding='latin1')

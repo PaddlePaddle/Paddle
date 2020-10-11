@@ -4317,9 +4317,6 @@ def conv3d_transpose(input,
 
 def reduce_sum(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_sum
-	:alias: paddle.reduce_sum,paddle.tensor.reduce_sum,paddle.tensor.math.reduce_sum
-	:old_api: paddle.fluid.layers.reduce_sum
 
     Computes the sum of tensor elements over the given dimension.
 
@@ -4659,9 +4656,6 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
 
 def reduce_all(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_all
-	:alias: paddle.reduce_all,paddle.tensor.reduce_all,paddle.tensor.logic.reduce_all
-	:old_api: paddle.fluid.layers.reduce_all
 
     This OP computes the ``logical and`` of tensor elements over the given dimension, and output the result.
 
@@ -13394,9 +13388,6 @@ def shuffle_channel(x, group, name=None):
 @templatedoc()
 def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     """
-    :alias_main: paddle.nn.functional.temporal_shift
-	:alias: paddle.nn.functional.temporal_shift,paddle.nn.functional.extension.temporal_shift
-	:old_api: paddle.fluid.layers.temporal_shift
 
     **Temporal Shift Operator**
 
@@ -13424,7 +13415,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             import paddle.nn.functional as F
 
             input = paddle.randn([6, 4, 2, 2])
-            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
+            out = paddle.fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')

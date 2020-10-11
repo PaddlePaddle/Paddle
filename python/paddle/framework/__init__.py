@@ -25,6 +25,7 @@ __all__ += [
 ]
 
 from . import random
+from . import io
 from .random import manual_seed
 from .framework import get_default_dtype
 from .framework import set_default_dtype

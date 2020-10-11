@@ -174,7 +174,7 @@ class NoamLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -272,7 +272,7 @@ class PiecewiseLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -356,7 +356,7 @@ class NaturalExpLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -435,7 +435,7 @@ class InverseTimeLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -531,7 +531,7 @@ class PolynomialLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -647,7 +647,7 @@ class LinearLrWarmup(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -752,7 +752,7 @@ class ExponentialLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -840,7 +840,7 @@ class MultiStepLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -949,7 +949,7 @@ class StepLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -1045,7 +1045,7 @@ class LambdaLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -1145,7 +1145,7 @@ class ReduceLROnPlateau(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()
@@ -1362,7 +1362,7 @@ class CosineAnnealingLR(_LRScheduler):
                 for batch_id in range(2):
                     x = paddle.to_tensor(x)
                     out = linear(x)
-                    loss = paddle.reduce_mean(out)
+                    loss = paddle.fluid.layers.reduce_mean(out)
                     loss.backward()
                     sgd.minimize(loss)
                     linear.clear_gradients()

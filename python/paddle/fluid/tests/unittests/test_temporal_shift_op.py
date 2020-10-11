@@ -81,7 +81,7 @@ class TestTemporalShift3(TestTemporalShift):
 class TestTemporalShiftAPI(unittest.TestCase):
     def test_api(self):
         input = paddle.randn([6, 4, 2, 2])
-        out = paddle.nn.functional.temporal_shift(
+        out = paddle.fluid.layers.temporal_shift(
             x=input, seg_num=2, shift_ratio=0.2)
 
 

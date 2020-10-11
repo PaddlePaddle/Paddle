@@ -127,7 +127,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         load_param_dict, _ = fluid.load_dygraph(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(self.save_dirname)
+        new_load_param_dict = paddle.framework.io.load(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_filename(self):
@@ -142,7 +142,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         load_param_dict, _ = fluid.load_dygraph(self.save_dirname, config)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(self.save_dirname, config)
+        new_load_param_dict = paddle.framework.io.load(self.save_dirname, config)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_param_filename(self):
@@ -156,7 +156,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         load_param_dict, _ = fluid.load_dygraph(self.save_dirname, config)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(self.save_dirname, config)
+        new_load_param_dict = paddle.framework.io.load(self.save_dirname, config)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_and_param_filename(self):
@@ -171,7 +171,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         load_param_dict, _ = fluid.load_dygraph(self.save_dirname, config)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(self.save_dirname, config)
+        new_load_param_dict = paddle.framework.io.load(self.save_dirname, config)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_state_dict_from_save_params(self):
@@ -182,7 +182,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         load_param_dict, _ = fluid.load_dygraph(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
-        new_load_param_dict = paddle.load(self.save_dirname)
+        new_load_param_dict = paddle.framework.io.load(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
 

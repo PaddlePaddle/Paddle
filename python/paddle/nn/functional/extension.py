@@ -15,7 +15,8 @@
 # TODO: define the extention functions
 
 __all__ = [
-    'diag_embed'
+    'diag_embed',
+    'row_conv'
 ]
 
 import numpy as np
@@ -190,7 +191,7 @@ def row_conv(input, weight, act=None):
             with dg.guard(place):
                 x_var = dg.to_variable(x)
                 w_var = dg.to_variable(weight)
-                y_var = F.row_conv(x_var, w_var)
+                y_var = F.extension.row_conv(x_var, w_var)
                 y_np = y_var.numpy()
 
             print(y_np.shape)
