@@ -27,10 +27,7 @@ def download_file():
         sys.exit(1)
     else:
         lt = data.strip().split('\n')
-        if sys.platform == "win32":
-            lt = '^^' + '$|^^'.join(lt) + '$'
-        else:
-            lt = '^' + '$|^'.join(lt) + '$'
+        lt = '^' + '$|^'.join(lt) + '$'
         print(lt)
         sys.exit(0)
 
