@@ -82,12 +82,8 @@ class Optimizer(object):
 
             #Take the subclass adam as an example
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
+            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
             out = linear(inp)
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=0.1,
@@ -169,7 +165,6 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
                 emb = paddle.nn.Embedding(10, 10)
 
                 adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
@@ -314,7 +309,6 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
                 linear = paddle.nn.Linear(10, 10)
 
                 adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
@@ -373,14 +367,12 @@ class Optimizer(object):
                 import numpy as np
                 import paddle
                 # example1: LRScheduler is not used, return value is all the same
-                paddle.disable_static()
                 emb = paddle.nn.Embedding(10, 10)
                 adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
                 lr = adam.get_lr()
                 print(lr) # 0.001
 
-                # example2: PiecewiseDecay is used, return the step learning rate
-                paddle.disable_static()
+                # example2: PiecewiseDecay is used, return the scheduled learning rate
                 inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
                 linear = paddle.nn.Linear(10, 10)
                 inp = paddle.to_tensor(inp)
@@ -658,7 +650,6 @@ class Optimizer(object):
 
                 import paddle
                 import numpy as np
-                paddle.disable_static()
                 value = np.arange(26).reshape(2, 13).astype("float32")
                 a = paddle.to_tensor(value)
                 linear = paddle.nn.Linear(13, 5)
@@ -729,7 +720,6 @@ class Optimizer(object):
                 import paddle
                 import numpy as np
 
-                paddle.disable_static()
                 inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
                 linear = paddle.nn.Linear(10, 10)
                 inp = paddle.to_tensor(inp)
@@ -807,7 +797,7 @@ class Optimizer(object):
 
                 import numpy as np
                 import paddle
-                paddle.disable_static()
+
                 value = np.arange(26).reshape(2, 13).astype("float32")
                 a = paddle.to_tensor(value)
                 linear = paddle.nn.Linear(13, 5)
@@ -856,13 +846,9 @@ class Optimizer(object):
             .. code-block:: python
  
                 import paddle
-                import numpy as np
-
-                paddle.disable_static()
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
                 linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
-                out = linear(inp)
+                input = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+                out = linear(input)
                 loss = paddle.mean(out)
 
                 beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -905,7 +891,7 @@ class Optimizer(object):
 
                 import paddle
                 import numpy as np
-                paddle.disable_static()
+
                 value = np.arange(26).reshape(2, 13).astype("float32")
                 a = paddle.to_tensor(value)
                 linear = paddle.nn.Linear(13, 5)

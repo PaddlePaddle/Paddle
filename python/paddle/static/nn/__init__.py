@@ -39,7 +39,8 @@ __all__ = [
     'switch_case',
 ]
 
-from ...fluid.layers import fc  #DEFINE_ALIAS
+from .common import fc  #DEFINE_ALIAS
+
 from ...fluid.layers import batch_norm  #DEFINE_ALIAS
 from ...fluid.layers import bilinear_tensor_product  #DEFINE_ALIAS
 from ...fluid.layers import case  #DEFINE_ALIAS

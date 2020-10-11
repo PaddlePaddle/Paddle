@@ -1681,11 +1681,6 @@ from .control_flow import equal
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
-    :alias_main: paddle.nn.functional.npair_loss
-	:alias: paddle.nn.functional.npair_loss,paddle.nn.functional.loss.npair_loss
-	:old_api: paddle.fluid.layers.npair_loss
-
-  **Npair Loss Layer**
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
        <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
@@ -1696,29 +1691,31 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   takes the similarity matrix of anchor and positive as logits.
 
   Args:
-    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+    anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
                       the data type is float32 or float64.
-    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+    positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
                       the data type is float32 or float64.
-    labels(Variable): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
+    labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
     l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
   Returns:
-    A Variable holding Tensor representing the npair loss, the data type is the same as 
+    A Tensor representing the npair loss, the data type is the same as 
     anchor, the shape is [1].
 
   Examples:
     .. code-block:: python
 
-       import paddle.fluid as fluid
-       anchor = fluid.data(
-                     name = 'anchor', shape = [18, 6], dtype = 'float32')
-       positive = fluid.data(
-                     name = 'positive', shape = [18, 6], dtype = 'float32')
-       labels = fluid.data(
-                     name = 'labels', shape = [18], dtype = 'float32')
+        import paddle
+        
+        DATATYPE = "float32"
 
-       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+        anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        labels = paddle.rand(shape=(18,), dtype=DATATYPE)
+        
+        npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+        print(npair_loss.numpy())
+
   '''
     check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
                              'npair_loss')

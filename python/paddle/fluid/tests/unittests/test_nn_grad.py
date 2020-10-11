@@ -153,6 +153,38 @@ class TestMulDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestMatmulDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        eps = 0.005
+        x_shapes = [[2], [2, 3], [2, 4, 3], [2, 3, 4, 5], [2, 3, 4]]
+        y_shapes = [[2], [3, 2], [2, 4, 5], [2, 3, 3, 5], [4, 3]]
+        transpose_xs = [False, True, True, False, False]
+        transpose_ys = [False, True, False, True, False]
+        dtypes = [np.float64, np.float64, np.float32, np.float32, np.float64]
+        typenames = ["float64", "float64", "float32", "float32", "float64"]
+        for i, (x_shape, y_shape, transpose_x, transpose_y, dtype, typename) \
+            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys, dtypes, typenames)):
+            x = layers.create_parameter(
+                dtype=typename, shape=x_shape, name='x{}'.format(i))
+            y = layers.create_parameter(
+                dtype=typename, shape=y_shape, name='y{}'.format(i))
+            out = layers.matmul(
+                x, y, transpose_x, transpose_y, name='out{}'.format(i))
+
+            x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+            y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestReshapeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):

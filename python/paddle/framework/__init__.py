@@ -20,8 +20,8 @@ __all__ = [
 ]
 
 __all__ += [
-    'grad', 'LayerList', 'load', 'save', 'SaveLoadConfig', 'to_variable',
-    'no_grad', 'DataParallel'
+    'grad', 'LayerList', 'load', 'save', 'to_variable', 'no_grad',
+    'DataParallel'
 ]
 
 from . import random
@@ -45,5 +45,4 @@ from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
 from .io import save
 from .io import load
-from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS

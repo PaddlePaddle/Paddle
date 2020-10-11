@@ -43,7 +43,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.distributed.prepare_context', 'paddle.DataParallel',
             'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
             'paddle.jit.ProgramTranslator', 'paddle.jit.TranslatedLayer',
-            'paddle.jit.save', 'paddle.jit.load', 'paddle.SaveLoadConfig',
+            'paddle.jit.save', 'paddle.jit.load',
             'paddle.optimizer.lr.LRScheduler', 'paddle.optimizer.lr.NoamDecay',
             'paddle.optimizer.lr.PiecewiseDecay',
             'paddle.optimizer.lr.NaturalExpDecay',
@@ -111,9 +111,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.imperative.TracedLayer', 'paddle.imperative.declarative',
             'paddle.imperative.ProgramTranslator',
             'paddle.imperative.TranslatedLayer', 'paddle.imperative.jit.save',
-            'paddle.imperative.jit.load',
-            'paddle.imperative.jit.SaveLoadConfig',
-            'paddle.imperative.NoamDecay'
+            'paddle.imperative.jit.load', 'paddle.imperative.NoamDecay'
             'paddle.imperative.PiecewiseDecay',
             'paddle.imperative.NaturalExpDecay',
             'paddle.imperative.ExponentialDecay',
