@@ -56,8 +56,6 @@ class TestGatherOp(OpTest):
         self.index_type = "int32"
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestXPUGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
