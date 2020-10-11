@@ -754,16 +754,18 @@ def add_n(inputs, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor: the sum of input :math:`inputs` , its shape and data types are consistent with :math:`inputs`.
+        Tensor, the sum of input :math:`inputs` , its shape and data types are consistent with :math:`inputs`.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            input0 = paddle.randn(shape=[2, 3], dtype='float32')
-            input1 = paddle.randn(shape=[2, 3], dtype='float32')
+            input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+            input1 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]], dtype='float32')
             output = paddle.add_n([input0, input1])
+            # [[8., 10., 12.], 
+               [14., 16., 18.]]
     """
     if in_dygraph_mode():
         return core.ops.sum(inputs, 'use_mkldnn', False)
@@ -1909,7 +1911,7 @@ def increment(x, value=1.0, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
+        Tensor, the elementwise-incremented tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python

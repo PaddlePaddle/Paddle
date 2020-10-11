@@ -39,25 +39,39 @@ def accuracy(input, label, k=1, correct=None, total=None):
     Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
 
     Args:
-        input(Tensor): The input of accuracy layer, which is the predictions of network. A Tensor with type float32,float64.
+        input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
             The shape is ``[sample_number, class_dim]`` .
-        label(Tensor): The label of dataset. Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
+        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
-        correct(Tensor): The correct predictions count. A Tensor with type int64 or int32.
-        total(Tensor): The total entries count. A tensor with type int64 or int32.
+        correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
+        total(Variable): The total entries count. A tensor with type int64 or int32.
 
     Returns:
-        Tensor: The correct rate. A Tensor with type float32.
+        Variable: The correct rate. A Tensor with type float32.
 
     Examples:
         .. code-block:: python
 
-            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
 
-            predictions = paddle.to_tensor([[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]], dtype='float32')
-            label = paddle.to_tensor([[2], [0]], dtype="int64")
-            result = paddle.metric.accuracy(input=predictions, label=label, k=1)
-            # [0.5]
+            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1,1], dtype="int")
+            fc_out = fluid.layers.fc(input=data, size=10)
+            predict = fluid.layers.softmax(input=fc_out)
+            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 32, 32).astype("float32")
+            y = np.array([[1],[0],[1]])
+            output= exe.run(feed={"input": x,"label": y},
+                             fetch_list=[result[0]])
+            print(output)
+
+            #[array([0.6666667], dtype=float32)]
     """
     if in_dygraph_mode():
         if correct is None:
