@@ -1979,22 +1979,24 @@ class TestSoftsignAPI(unittest.TestCase):
             F.softsign(x_fp16)
 
 
+def ref_thresholded_relu(x, threshold=1.0):
+    out = (x > threshold) * x
+    return out
+
+
 class TestThresholdedRelu(TestActivation):
     def setUp(self):
         self.op_type = "thresholded_relu"
         self.init_dtype()
 
-        threshold = 0.25
-        self.delta = 0.005
+        threshold = 15
+
         np.random.seed(1024)
-        X = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-
-        # Same reason as TestAbs
-        X[np.abs(X - threshold) < self.delta] = threshold + 0.2
-        out = (X > threshold) * X
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
-        self.attrs = {'threshold': threshold}
+        x = np.random.uniform(-20, 20, [10, 12]).astype(self.dtype)
+        x[np.abs(x) < 0.005] = 0.02
+        out = ref_thresholded_relu(x, threshold)
+        self.inputs = {'X': x}
+        self.attrs = {"threshold": threshold}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
@@ -2003,17 +2005,61 @@ class TestThresholdedRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestThresholdedReluOpError(unittest.TestCase):
+class TestThresholdedReluAPI(unittest.TestCase):
+    # test paddle.nn.ThresholdedReLU, paddle.nn.functional.thresholded_relu
+    def setUp(self):
+        self.threshold = 15
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.thresholded_relu(x, self.threshold)
+            thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+            out2 = thresholded_relu(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.thresholded_relu(x, self.threshold)
+        thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+        out2 = thresholded_relu(x)
+        out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.thresholded_relu(x, self.threshold)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.thresholded_relu, 1)
+            self.assertRaises(TypeError, F.thresholded_relu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.thresholded_relu, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.thresholded_relu, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.thresholded_relu(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.thresholded_relu(x_fp16)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
@@ -2115,37 +2161,82 @@ class TestHardsigmoidAPI(unittest.TestCase):
             F.hardsigmoid(x_fp16)
 
 
+def ref_swish(x):
+    out = x * expit(x)
+    return out
+
+
 class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
         self.init_dtype()
 
         np.random.seed(1024)
-        X = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        beta = 2.3
-        out = X * expit(beta * X)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
-        self.attrs = {'beta': beta}
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        out = ref_swish(x)
+        self.inputs = {'X': x}
+        self.attrs = {'slope': 1.0}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out')
 
 
-class TestSwishOpError(unittest.TestCase):
+class TestSwishAPI(unittest.TestCase):
+    # test paddle.nn.Swish, paddle.nn.functional.swish
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
+            out1 = F.swish(x)
+            swish = paddle.nn.Swish()
+            out2 = swish(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_swish(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.swish(x)
+        swish = paddle.nn.Swish()
+        out2 = swish(x)
+        out_ref = ref_swish(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = fluid.layers.swish(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_swish(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.swish, 1)
+            self.assertRaises(TypeError, F.swish, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.swish, x_int32)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.swish, x_int32)
             # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.swish(x_fp16)
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.swish(x_fp16)
 
 
 #------------------ Test Error Activation----------------------
