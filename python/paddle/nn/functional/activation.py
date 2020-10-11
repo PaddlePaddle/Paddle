@@ -15,9 +15,7 @@
 # TODO: define activation functions of neural network
 from ...fluid.layers import erf  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 
 __all__ = [
@@ -787,8 +785,6 @@ def relu6(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
             out = F.relu6(x) # [0, 0.3, 6]
     """
@@ -838,8 +834,6 @@ def selu(x,
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
@@ -1054,8 +1048,6 @@ def softplus(x, beta=1, threshold=20, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
@@ -1103,8 +1095,6 @@ def softshrink(x, threshold=0.5, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
             out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
     """
@@ -1151,8 +1141,6 @@ def softsign(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
@@ -1164,6 +1152,47 @@ def softsign(x, name=None):
     helper = LayerHelper('softsign', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='softsign', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def swish(x, name=None):
+    """
+    swish activation.
+
+    .. math::
+
+        swish(x) = \\frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            x = paddle.to_tensor(np.array([-2., 0., 1.]))
+            out = F.swish(x) # [-0.238406, 0., 0.731059]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.swish(x, 'slop', 1.0)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
+    helper = LayerHelper('swish', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': 1.0})
     return out
 
 
@@ -1190,8 +1219,6 @@ def tanhshrink(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
     """
@@ -1203,6 +1230,52 @@ def tanhshrink(x, name=None):
     helper = LayerHelper('tanh_shrink', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh_shrink', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def thresholded_relu(x, threshold=1.0, name=None):
+    """
+    thresholded relu activation.
+
+    .. math::
+
+        thresholded\\_relu(x) = \\begin{cases}
+                                 x, \\text{if } x > threshold \\\\
+                                 0, \\text{otherwise}
+                                \\end{cases}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold for thresholded_relu. Default is 1.0
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            x = paddle.to_tensor(np.array([2., 0., 1.]))
+            out = F.thresholded_relu(x) # [2., 0., 0.]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.thresholded_relu(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'thresholded_relu')
+    helper = LayerHelper('thresholded_relu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='thresholded_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
     return out
 
 

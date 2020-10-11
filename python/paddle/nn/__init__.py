@@ -69,7 +69,9 @@ from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
 from .layer.activation import Softshrink  #DEFINE_ALIAS
 from .layer.activation import Softsign  #DEFINE_ALIAS
+from .layer.activation import Swish  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
+from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
