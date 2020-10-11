@@ -9713,7 +9713,7 @@ def swish(x, beta=1.0, name=None):
         type='swish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'slope': beta})
+        attrs={'beta': beta})
     return out
 
 
