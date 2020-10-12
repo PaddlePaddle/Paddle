@@ -472,12 +472,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         x = paddle.to_tensor([[True, False], [True, False]])
         y = paddle.to_tensor([[False, False], [False, True]])
         self.assertTrue(
-            np.array_equal(x.reduce_all().numpy(), paddle.fluid.layers.reduce_all(x).numpy(
-            )))
-        self.assertTrue(
-            np.array_equal(x.reduce_any().numpy(), paddle.reduce_any(x).numpy(
-            )))
-        self.assertTrue(
             np.array_equal(
                 x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()))
         self.assertTrue(
