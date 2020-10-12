@@ -85,6 +85,13 @@ class DGCOptimizer(MetaOptimizerBase):
         return self.dgc_opt.backward(loss, startup_program, parameter_list,
                                      no_grad_set, callbacks)
 
+    def apply_gradients(self, params_grads):
+        return self.dgc_opt.apply_gradients(params_grads=params_grads)
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        return self.dgc_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
