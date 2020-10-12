@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/xpu_header.h"
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
