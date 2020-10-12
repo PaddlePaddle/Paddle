@@ -2443,23 +2443,17 @@ def lstm(input,
     input_shape = list(input.shape)
     input_size = input_shape[-1]
     weight_size = 0
+    num_dirrection = 2 if is_bidirec == True else 1
+
     for i in range(num_layers):
         if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
+            input_weight_size = (input_size * hidden_size) * 4 * num_dirrection
         else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
-            else:
-                input_weight_size = (hidden_size * hidden_size) * 4
+            input_weight_size = (hidden_size * hidden_size) * 4 * num_dirrection
+        hidden_weight_size = (hidden_size * hidden_size) * 4 * num_dirrection
 
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
+        weight_size += input_weight_size + hidden_weight_size
+        weight_size += hidden_size * 8 * num_dirrection
 
     weight = helper.create_parameter(
         attr=helper.param_attr,
