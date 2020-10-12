@@ -21,6 +21,8 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestLoadOpXpu(unittest.TestCase):
     """ Test load operator.
     """
