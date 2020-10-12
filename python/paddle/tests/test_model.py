@@ -299,7 +299,7 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         return np.random.random(size=(20,)).astype(np.float32), \
                np.random.randint(0, 10, size=(1,)).astype(np.int64)
-    
+
     def __len__(self):
         return 40
 
@@ -599,19 +599,20 @@ class TestModelWithLRScheduler(unittest.TestCase):
             boundaries = [5, 8]
             values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
             learning_rate = paddle.optimizer.PiecewiseLR(
-                    boundaries=boundaries, values=values)
+                boundaries=boundaries, values=values)
             learning_rate = paddle.optimizer.LinearLrWarmup(
-                    learning_rate=learning_rate,
-                    warmup_steps=4,
-                    start_lr=base_lr / 5.,
-                    end_lr=base_lr, verbose=True)
+                learning_rate=learning_rate,
+                warmup_steps=4,
+                start_lr=base_lr / 5.,
+                end_lr=base_lr,
+                verbose=True)
             optimizer = paddle.optimizer.Momentum(
-                    learning_rate=learning_rate,
-                    weight_decay=weight_decay,
-                    momentum=momentum,
-                    parameters=parameters)
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                momentum=momentum,
+                parameters=parameters)
             return optimizer
-        
+
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
         net = MyModel()
@@ -619,16 +620,11 @@ class TestModelWithLRScheduler(unittest.TestCase):
         labels = [InputSpec([None, 1], 'int64', 'label')]
         optim = make_optimizer(net.parameters())
         model = Model(net, inputs, labels)
-        model.prepare(
-                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-        
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
         dataset = MyDataset()
-        model.fit(dataset,
-                  dataset,
-                  batch_size=4,
-                  epochs=10,
-                  num_workers=0)
-        
+        model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
+
         paddle.enable_static()
 
 
