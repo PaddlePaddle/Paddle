@@ -48,7 +48,7 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
       data_cpu[i] = truncated_normal(dist(engine));
     }
 
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), data,
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()), data,
                  platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
                  size * sizeof(T));
   }
