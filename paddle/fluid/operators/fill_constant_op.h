@@ -66,7 +66,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
               value_tensor->numel()));
       const T *tensor_data = value_tensor->data<T>();
       framework::Tensor cpu_tensor;
-      if (platform::is_gpu_place(value_tensor->place())) {
+      if (!platform::is_cpu_place(value_tensor->place())) {
         TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
         tensor_data = cpu_tensor.data<T>();
       }
@@ -96,7 +96,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
               tensor, static_cast<T>(value));
     }
 #ifdef PADDLE_WITH_CUDA
-    if (ctx.GetPlace == platform::CUDAPlace()) {
+    if (ctx.GetPlace() == platform::CUDAPlace()) {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
