@@ -17,6 +17,7 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -88,5 +89,14 @@ class TestCastOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_dtype_type)
 
 
+class TestCastOpDynamic(unittest.TestCase):
+    def test_dynamic(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor([2, 3, 4], 'float64')
+            y = paddle.cast(x, 'uint8')
+            self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
