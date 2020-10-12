@@ -160,7 +160,7 @@ class RNNCellBase(Layer):
                 states. For `batch_ref`'s shape d, `d[batch_dim_idx]` is 
                 treated as batch size.
             shape (list|tuple, optional): A (possibly nested structure of) shape[s], 
-                where a shape is a list/tuple of integer). `-1` (for batch size) 
+                where a shape is a list/tuple of integer. `-1` (for batch size) 
                 will be automatically prepended if a shape does not starts with 
                 it. If None, property `state_shape` will be used. Defaults to 
                 None.
@@ -268,11 +268,9 @@ class SimpleRNNCell(RNNCellBase):
     The formula used is as follows:
 
     .. math::
-        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h_{t-1} + b_{hh})
+
         y_{t} & = h_{t}
-    
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
-    multiplication operator.
 
     Please refer to `Finding Structure in Time 
     <https://crl.ucsd.edu/~elman/Papers/fsit.pdf>`_ for more details.
@@ -329,13 +327,15 @@ class SimpleRNNCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
 
             cell = paddle.nn.SimpleRNNCell(16, 32)
             y, h = cell(x, prev_h)
+            print(y.shape)
+
+            #[4,32]
 
     """
 
@@ -407,14 +407,20 @@ class LSTMCell(RNNCellBase):
 
     .. math::
         i_{t} & = \sigma(W_{ii}x_{t} + b_{ii} + W_{hi}h_{t-1} + b_{hi})
+
         f_{t} & = \sigma(W_{if}x_{t} + b_{if} + W_{hf}h_{t-1} + b_{hf})
+
         o_{t} & = \sigma(W_{io}x_{t} + b_{io} + W_{ho}h_{t-1} + b_{ho})
-        \\widetilde{c}_{t} & = \\tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
-        c_{t} & = f_{t} \* c{t-1} + i{t} \* \\widetile{c}_{t}
-        h_{t} & = o_{t} \* \\tanh(c_{t})
+
+        \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
+
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetile{c}_{t}
+
+        h_{t} & = o_{t} * \tanh(c_{t})
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
@@ -462,7 +468,7 @@ class LSTMCell(RNNCellBase):
             corresponding to :math:`h_{t}` in the formula.
         states (tuple): a tuple of two tensors, each of shape 
             `[batch_size, hidden_size]`, the new hidden states,
-            corresponding to :math:`h_{t}, c{t}` in the formula.
+            corresponding to :math:`h_{t}, c_{t}` in the formula.
 
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by 
@@ -475,7 +481,6 @@ class LSTMCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
@@ -483,6 +488,14 @@ class LSTMCell(RNNCellBase):
 
             cell = paddle.nn.LSTMCell(16, 32)
             y, (h, c) = cell(x, (prev_h, prev_c))
+
+            print(y.shape)
+            print(h.shape)
+            print(c.shape)
+
+            #[4,32]
+            #[4,32]
+            #[4,32]
 
     """
 
@@ -562,12 +575,16 @@ class GRUCell(RNNCellBase):
     .. math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
+
         z_{t} & = \sigma(W_{iz)x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
-        \\widetilde{h}_{t} & = \\tanh(W_{ic)x_{t} + b_{ic} + r_{t} \* (W_{hc}x_{t} + b{hc}))
-        h_{t} & = z_{t} \* h_{t-1} + (1 - z_{t}) \* \\widetilde{h}_{t}
+
+        \widetilde{h}_{t} & = \tanh(W_{ic)x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t})
+
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
@@ -625,13 +642,18 @@ class GRUCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
 
             cell = paddle.nn.GRUCell(16, 32)
             y, h = cell(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,32]
+            #[4,32]
 
     """
 
@@ -717,8 +739,8 @@ class RNN(Layer):
     Inputs:
         inputs (Tensor): A (possibly nested structure of) tensor[s]. The input 
             sequences. 
-            If time major is True, the shape is `[batch_size, time_steps, input_size]`
-            If time major is False, the shape is [time_steps, batch_size, input_size]`
+            If time major is False, the shape is `[batch_size, time_steps, input_size]`
+            If time major is True, the shape is `[time_steps, batch_size, input_size]`
             where `input_size` is the input size of the cell.
         initial_states (Tensor|list|tuple, optional): Tensor of a possibly 
             nested structure of tensors, representing the initial state for 
@@ -753,7 +775,6 @@ class RNN(Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             inputs = paddle.rand((4, 23, 16))
             prev_h = paddle.randn((4, 32))
@@ -761,6 +782,12 @@ class RNN(Layer):
             cell = paddle.nn.SimpleRNNCell(16, 32)
             rnn = paddle.nn.RNN(cell)
             outputs, final_states = rnn(inputs, prev_h)
+
+            print(outputs.shape)
+            print(final_states.shape)
+
+            #[4,23,32]
+            #[4,32]
 
     """
 
@@ -841,7 +868,6 @@ class BiRNN(Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             cell_fw = paddle.nn.LSTMCell(16, 32)
             cell_bw = paddle.nn.LSTMCell(16, 32)
@@ -849,6 +875,12 @@ class BiRNN(Layer):
 
             inputs = paddle.rand((2, 23, 16))
             outputs, final_states = rnn(inputs)
+
+            print(outputs.shape)
+            print(final_states[0][0].shape,len(final_states),len(final_states[0]))
+
+            #[4,23,64]
+            #[2,32] 2 2
 
     """
 
@@ -936,11 +968,9 @@ class SimpleRNN(RNNMixin):
 
     .. math::
 
-        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h_{t-1} + b_{hh})
+
         y_{t} & = h_{t}
-    
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
-    multiplication operator.
 
     Arguments:
         input_size (int): The input size for the first layer's cell.
@@ -997,13 +1027,18 @@ class SimpleRNN(RNNMixin):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.SimpleRNN(16, 32, 2)
 
             x = paddle.randn((4, 23, 16))
             prev_h = paddle.randn((2, 4, 32))
             y, h = rnn(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,23,32]
+            #[2,4,32]
 
     """
 
@@ -1077,14 +1112,20 @@ class LSTM(RNNMixin):
     .. math::
 
         i_{t} & = \sigma(W_{ii}x_{t} + b_{ii} + W_{hi}h_{t-1} + b_{hi})
+
         f_{t} & = \sigma(W_{if}x_{t} + b_{if} + W_{hf}h_{t-1} + b_{hf})
+
         o_{t} & = \sigma(W_{io}x_{t} + b_{io} + W_{ho}h_{t-1} + b_{ho})
-        \\widetilde{c}_{t} & = \\tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
-        c_{t} & = f_{t} \* c{t-1} + i{t} \* \\widetile{c}_{t}
-        h_{t} & = o_{t} \* \\tanh(c_{t})
+
+        \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
+
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetile{c}_{t}
+
+        h_{t} & = o_{t} * \tanh(c_{t})
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Arguments:
@@ -1130,7 +1171,7 @@ class LSTM(RNNMixin):
             `[batch_size, time_steps, num_directions * hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1. 
-        final_states (Tensor): the final state, a tuple of two tensors, h and c. 
+        final_states (tuple): the final state, a tuple of two tensors, h and c. 
             The shape of each is 
             `[num_lauers * num_directions, batch_size, hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
@@ -1141,7 +1182,6 @@ class LSTM(RNNMixin):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.LSTM(16, 32, 2)
 
@@ -1149,6 +1189,14 @@ class LSTM(RNNMixin):
             prev_h = paddle.randn((2, 4, 32))
             prev_c = paddle.randn((2, 4, 32))
             y, (h, c) = rnn(x, (prev_h, prev_c))
+
+            print(y.shape)
+            print(h.shape)
+            print(c.shape)
+
+            #[4,23,32]
+            #[2,4,32]
+            #[2,4,32]
 
     """
 
@@ -1215,12 +1263,16 @@ class GRU(RNNMixin):
     .. math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
+
         z_{t} & = \sigma(W_{iz)x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
-        \\widetilde{h}_{t} & = \\tanh(W_{ic)x_{t} + b_{ic} + r_{t} \* (W_{hc}x_{t} + b{hc}))
-        h_{t} & = z_{t} \* h_{t-1} + (1 - z_{t}) \* \\widetilde{h}_{t}
+
+        \widetilde{h}_{t} & = \tanh(W_{ic)x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Arguments:
@@ -1277,13 +1329,18 @@ class GRU(RNNMixin):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.GRU(16, 32, 2)
 
             x = paddle.randn((4, 23, 16))
             prev_h = paddle.randn((2, 4, 32))
             y, h = rnn(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,23,32]
+            #[2,4,32]
 
     """
 
