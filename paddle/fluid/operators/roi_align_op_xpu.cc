@@ -60,8 +60,9 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
             width, pooled_height, pooled_width, sampling_ratio, spatial_scale,
             output_data +
                 rois_lod[n] * channels * pooled_height * pooled_width);
-        PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                       platform::errors::InvalidArgument("XPU kernel error!"));
+        PADDLE_ENFORCE_EQ(
+            r, xpu::Error_t::SUCCESS,
+            platform::errors::InvalidArgument("roi_align XPU kernel error!"));
       }
     }
   }

@@ -30,7 +30,9 @@ class StackXPUKernel : public framework::OpKernel<T> {
       axis += (x[0]->dims().size() + 1);
     }
     int n = static_cast<int>(x.size());
-    PADDLE_ENFORCE(n <= 24, "XPU only surpport at most 24 tensors for now");
+    PADDLE_ENFORCE_LE(n, 24,
+                      platform::errors::InvalidArgument(
+                          "XPU only surpport at most 24 tensors for now"));
     auto* y_data = y->mutable_data<T>(ctx.GetPlace());
     int pre = 1, post = 1;
     auto& dim = x[0]->dims();
@@ -52,7 +54,9 @@ class StackXPUKernel : public framework::OpKernel<T> {
                  platform::CPUPlace(), x_datas_host, n * sizeof(void*));
     int r = xpu::stack_forward<float>(dev_ctx.x_context(), pre, post, n,
                                       x_datas_device, y_data);
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::InvalidArgument("stack XPU kernel error!"));
     dev_ctx.Wait();
     std::free(x_datas_host);
     xpu_free(x_datas_device);
