@@ -470,10 +470,10 @@ def save(layer, path, input_spec=None, **configs):
     format model, which can be used for inference or fine-tuning after loading.
 
     It will save the translated program and all related persistable 
-    variables of input Layer to given ``path``.
+    variables of input Layer to given ``path`` .
     
     ``path`` is the prefix of saved objects, and the saved translated program file 
-    suffix is ``.pdmodel``, the saved persistable variables file suffix is ``.pdiparams``,
+    suffix is ``.pdmodel`` , the saved persistable variables file suffix is ``.pdiparams`` ,
     and here also saved some additional variable description information to a file,  
     its suffix is ``.pdiparams.info``, these additional information is used in fine-tuning.
 
@@ -485,7 +485,7 @@ def save(layer, path, input_spec=None, **configs):
     Args:
         layer (Layer): The Layer to be saved.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model’s forward 
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward 
             method, which can be described by InputSpec or example Tensor. If None, all input variables of 
             the original Layer's forward method would be the inputs of the saved model. Default None.
         **configs (dict, optional): Other save configuration options for compatibility. We do not 
@@ -734,7 +734,7 @@ def load(path, **configs):
         4. The parameter's ``trainable`` information is lost and can not be recovered.
 
     Args:
-        path (str): The path prefix to load model. The format is ``dirname/file_prefix`` or ``file_prefix``.
+        path (str): The path prefix to load model. The format is ``dirname/file_prefix`` or ``file_prefix`` .
         **configs (dict, optional): Other load configuration options for compatibility. We do not 
             recommend using these configurations, they may be removed in the future. If not necessary, 
             DO NOT use them. Default None.
@@ -867,6 +867,8 @@ def load(path, **configs):
 
                 def __len__(self):
                     return self.num_samples
+
+            paddle.enable_static()
 
             image = static.data(name='image', shape=[None, 784], dtype='float32')
             label = static.data(name='label', shape=[None, 1], dtype='int64')
