@@ -972,9 +972,9 @@ class Executor(object):
                 use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
-                which means the operators and tensors in program that generate :code:`feed` and are not 
+                which means the operators and variables in program that generate :code:`feed` and are not 
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the 
-                program will not pruned and all the operators and tensors will be executed during running.
+                program will not pruned and all the operators and variables will be executed during running.
                 Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`, 
                 :code:`use_prune` will be overrided to True, and the program will be pruned.
                 
