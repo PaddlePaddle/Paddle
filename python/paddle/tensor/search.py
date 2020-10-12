@@ -640,7 +640,6 @@ def index_sample(x, index):
             # [ 800  700]
             # [1200 1100]]
 
-
     """
     if in_dygraph_mode():
         return core.ops.index_sample(x, index)
