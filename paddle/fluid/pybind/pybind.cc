@@ -443,11 +443,15 @@ PYBIND11_MODULE(core_noavx, m) {
     if (kwargs.contains("linewidth")) {
       print_opt.linewidth = kwargs["linewidth"].cast<int>();
     }
+    if (kwargs.contains("sci_mode")) {
+      print_opt.sci_mode = kwargs["sci_mode"].cast<bool>();
+    }
 
     VLOG(4) << "Set printoptions: precision=" << print_opt.precision
             << ", threshold=" << print_opt.threshold
             << ", edgeitems=" << print_opt.edgeitems
-            << ", linewidth=" << print_opt.linewidth;
+            << ", linewidth=" << print_opt.linewidth
+            << ", sci_mode=" << print_opt.sci_mode;
   });
 
   m.def(

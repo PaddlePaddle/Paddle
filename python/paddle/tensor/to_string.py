@@ -21,9 +21,10 @@ __all__ = ['set_printoptions']
 
 
 class PrintOptions(object):
-    precision = 4
+    precision = 8
     threshold = 1000
     edgeitems = 3
+    linewidth = 80
     sci_mode = False
 
 
@@ -38,7 +39,7 @@ def set_printoptions(precision=None,
     NOTE: The function is similar with numpy.set_printoptions()
 
     Args:
-        precision (int, optional): Number of digits of the floating number, default 6.
+        precision (int, optional): Number of digits of the floating number, default 8.
         threshold (int, optional): Total number of elements printed, default 1000.
         edgeitems (int, optional): Number of elements in summary at the begining and end of each dimension, defalt 3.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
@@ -89,6 +90,7 @@ def set_printoptions(precision=None,
         check_type(sci_mode, 'sci_mode', (bool), 'set_printoptions')
         DEFAULT_PRINT_OPTIONS.sci_mode = sci_mode
         kwargs['sci_mode'] = sci_mode
+    #TODO(zhiqiu): support linewidth
     core.set_printoptions(**kwargs)
 
 
@@ -122,7 +124,7 @@ def _format_tensor(var, sumary, indent=0):
             ]
         else:
             items = [_format_item(item) for item in list(var.numpy())]
-        #elements_per_line = max(1, int(math.floor((PRINT_OPTS.linewidth - indent) / (element_length))))
+
         s = ', '.join(items)
         return '[' + s + ']'
     else:

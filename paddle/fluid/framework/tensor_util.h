@@ -35,17 +35,15 @@ class PrintOptions {
   PrintOptions(const PrintOptions& o) = delete;
   const PrintOptions& operator=(const PrintOptions& o) = delete;
 
-  int precision = 6;
+  int precision = 8;
   int threshold = 1000;
   int edgeitems = 3;
-  int linewidth = 80;
+  int linewidth = 75;
+  bool sci_mode = false;
 
  private:
   PrintOptions() {}
 };
-
-void SetPrintOptions(int precision, int threshold, int edgeitems,
-                     int linewidth);
 
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
