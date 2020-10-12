@@ -48,7 +48,7 @@ class TestGaussianRandomOp(OpTest):
 
     def set_attrs(self):
         self.mean = 1.0
-        self.std = 2.
+        self.std = 2.0
 
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
