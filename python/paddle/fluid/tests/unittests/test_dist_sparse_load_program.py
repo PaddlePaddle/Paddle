@@ -47,15 +47,10 @@ class SparseLoadOp(unittest.TestCase):
             with fluid.program_guard(train_program, startup_program):
                 with fluid.unique_name.guard():
                     dense_input = fluid.data(
-                        'input', shape=[None, 1], dtype="int64")
-
-                    emb = fluid.layers.embedding(
-                        input=dense_input,
-                        is_sparse=True,
-                        size=[10, 10],
-                        param_attr=fluid.ParamAttr(name="embedding"))
-
-                    fc1 = fluid.layers.fc(input=emb, size=10, act="relu")
+                        'input', shape=[None, 10], dtype="float32")
+                    fc1 = fluid.layers.fc(input=dense_input,
+                                          size=10,
+                                          act="relu")
                     loss = fluid.layers.reduce_mean(fc1)
             return scope, train_program, startup_program, loss
 
@@ -106,7 +101,7 @@ class SparseLoadOp(unittest.TestCase):
         scope, train_program, startup_program, loss = self.net()
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
-                optimizer = fluid.optimizer.Momentum(1e-3)
+                optimizer = fluid.optimizer.Momentum(1e-3, 0.9)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy)
                 optimizer.minimize(loss)
                 fleet.init_server()
