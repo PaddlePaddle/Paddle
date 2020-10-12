@@ -35,16 +35,14 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
             "mean": .0,
             "std": 1.,
             "seed": 10,
+            "use_xpu": True
         }
 
         self.outputs = ["Out"]
 
-    def test_cpu(self):
-        self.gaussian_random_test(place=fluid.CPUPlace())
-
-    def test_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.gaussian_random_test(place=fluid.CUDAPlace(0))
+    def test_xpu(self):
+        if paddle.is_compiled_with_xpu():
+            self.gaussian_random_test(place=fluid.XPUPlace(0))
 
     def gaussian_random_test(self, place):
 
