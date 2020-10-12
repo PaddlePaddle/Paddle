@@ -239,6 +239,10 @@ if(WITH_AMD_GPU)
     include(hip)
 endif(WITH_AMD_GPU)
 
+if(WITH_DISTRIBUTE)
+    set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+endif()
+
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
