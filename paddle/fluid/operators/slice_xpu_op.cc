@@ -51,7 +51,8 @@ class SliceXPUKernel : public framework::OpKernel<T> {
       start = std::max(start, 0);
       end = std::max(end, 0);
       end = std::min(end, dim_value);
-      PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+      PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
+                                        "end should greater than start"));
       starts[i] = start;
       ends[i] = end;
     }
@@ -121,7 +122,8 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
       start = std::max(start, 0);
       end = std::max(end, 0);
       end = std::min(end, dim_value);
-      PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+      PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
+                                        "end should greater than start"));
       starts[i] = start;
       ends[i] = end;
     }
@@ -153,9 +155,9 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&ends_device),
                           shape_size * sizeof(int)), XPU_SUCCESS,
                       platform::errors::External("XPU has no enough memory"));
-    memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), starts_device,
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), starts_device,
                  platform::CPUPlace(), starts_host, shape_size * sizeof(int));
-    memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), ends_device,
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), ends_device,
                  platform::CPUPlace(), ends_host, shape_size * sizeof(int));
 
     // prepare shape on XPU
@@ -167,7 +169,7 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&shape_device),
                                  shape_size * sizeof(int)), XPU_SUCCESS,
                       platform::errors::External("XPU has no enough memory"));
-    memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), shape_device,
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), shape_device,
                  platform::CPUPlace(), shape.data(), shape_size * sizeof(int));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
