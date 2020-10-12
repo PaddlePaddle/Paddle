@@ -154,6 +154,7 @@ class RNNCellBase(Layer):
         r"""
         Generate initialized states according to provided shape, data type and
         value.
+
         Arguments:
             batch_ref (Tensor): A tensor, which shape would be used to 
                 determine the batch size, which is used to generate initial 
@@ -174,6 +175,7 @@ class RNNCellBase(Layer):
                 Defaults to 0.
             batch_dim_idx (int, optional): An integer indicating which 
                 dimension of the of `batch_ref` represents batch. Defaults to 0.
+                
         Returns:
             init_states (Tensor|tuple|list): tensor of the provided shape and 
                 dtype, or list of tensors that each satisfies the requirements,
