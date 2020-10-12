@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
