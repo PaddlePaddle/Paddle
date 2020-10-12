@@ -135,17 +135,17 @@ class BadInputTest(unittest.TestCase):
 
         with fluid.dygraph.guard():
 
-            def test_has_inf_bad_x():
+            def test_has_inf_bad_x_dygraph():
                 data = [1, 2, 3]
                 result = paddle.has_inf(data)
 
-            self.assertRaises(TypeError, test_has_inf_bad_x)
+            self.assertRaises(TypeError, test_has_inf_bad_x_dygraph)
 
-            def test_has_nan_bad_x():
+            def test_has_nan_bad_x_dygraph():
                 data = [1, 2, 3]
                 result = paddle.has_nan(data)
 
-            self.assertRaises(TypeError, test_has_inf_bad_x)
+            self.assertRaises(TypeError, test_has_inf_bad_x_dygraph)
 
 
 if __name__ == '__main__':
