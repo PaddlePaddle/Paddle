@@ -32,7 +32,7 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         self.inputs = {}
         self.attrs = {
             "shape": [10000],
-            "mean": 0.0,
+            "mean": .0,
             "std": 1.,
             "seed": 10,
         }
