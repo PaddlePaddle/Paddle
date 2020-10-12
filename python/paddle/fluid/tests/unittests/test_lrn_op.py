@@ -335,12 +335,13 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 in1 = paddle.rand(shape=(3, 3, 40, 40), dtype="float32")
-                in2 = paddle.transpose(x, [0, 2, 3, 1])
+                in2 = paddle.transpose(in1, [0, 2, 3, 1])
 
-                m = paddle.nn.LocalResponseNorm(size=5)
+                m1 = paddle.nn.LocalResponseNorm(size=5, data_format='NCHW')
+                m2 = paddle.nn.LocalResponseNorm(size=5, data_format='NHWC')
 
-                res1 = m(in1, data_format='NCHW')
-                res2 = m(in2, data_format='NHWC')
+                res1 = m1(in1)
+                res2 = m2(in2)
 
                 res2_tran = np.transpose(res2.numpy(), (0, 3, 1, 2))
                 self.assertTrue(np.allclose(res1.numpy(), res2_tran))
