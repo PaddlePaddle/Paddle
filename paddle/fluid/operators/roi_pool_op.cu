@@ -162,9 +162,6 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
       int rois_batch_size = rois_lod->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size - 1, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
-      PADDLE_ENFORCE_EQ(
-          rois_batch_size - 1, batch_size,
           platform::errors::InvalidArgument(
               "The batch size of input(ROIs) and input(X) must be the same but "
               "received batch size of input(ROIs) and input(X) is %d and %d "
