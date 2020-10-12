@@ -16,7 +16,9 @@ from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper
 from .common import is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import unique_name, core
-from paddle.distributed.fleet.meta_optimizers.zero.decorator import decorate as amp_decorate
+# from paddle.distributed.fleet.meta_optimizers.zero.decorator import decorate as amp_decorate
+from paddle.fluid.contrib.mixed_precision.decorator import decorate as amp_decorate
+
 import paddle.fluid as fluid
 
 from functools import reduce
@@ -379,37 +381,105 @@ class ZeroOptimizer(MetaOptimizerBase):
         return op.type == "sum" and op.desc.has_attr("op_namescope") \
             and op.desc.attr("op_namescope").startswith("/gradient_clip_@CLIP")
 
-    def _is_amp_sum_op(self, op):
-        return op.type == "sum" and op.desc.has_attr("op_namescope") \
-            and op.desc.attr("op_namescope").startswith("/mixed_precision")
+    # def _is_amp_sum_op(self, op):
+    #     return op.type == "sum" and op.desc.has_attr("op_namescope") \
+    #         and op.desc.attr("op_namescope").startswith("/mixed_precision")
 
-    def _is_amp_subblock(self, op):
-        return op.type == "conditional_block" and op.desc.has_attr("op_namescope") \
-            and op.desc.attr("op_namescope").startswith("/mixed_precision")
+    # def _is_amp_subblock(self, op):
+    #     return op.type == "conditional_block" and op.desc.has_attr("op_namescope") \
+    #         and op.desc.attr("op_namescope").startswith("/mixed_precision")
 
     def _is_weight_decay_op(self, op):
         return op.desc.has_attr("op_namescope") \
             and op.desc.attr("op_namescope").startswith("/regularization")
+
+    def _prune_weight_decay(self, block):
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self._is_weight_decay_op(op):
+                continue
+            if OP_ROLE_VAR_KEY not in op.attr_names:
+                raise ValueError(
+                    "The Weight Dacay op should hold op_role_var attribute"
+                    "but the {} op does not hold op_role_var".format(op.type))
+            op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+            if self._param2device[op_role_var[
+                    0]] != self.role_maker._worker_index():
+                block._remove_op(idx)
+        block._sync_with_cpp()
+
+    def _prune_fp16(self, block):
+        update_loss_scaling_op_idx = -1
+        inf_var_name = ''
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type == "update_loss_scaling":
+                update_loss_scaling_op_idx = idx
+                inf_var_name = op.desc.input('FoundInfinite')[0]
+                op._rename_input(inf_var_name, inf_var_name + "@sharding")
+            if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
+                reversed_x = []
+                for input_name in op.desc.input('X'):
+                    if input_name not in self._reduced_grads_to_param:
+                        raise ValueError(
+                            "Input 'X' of check_finite_and_unscale must"
+                            "be reduced grads, but {} is not a grad".format(
+                                input_name))
+                    param_name = self._reduced_grads_to_param[input_name]
+                    if self._param2device[
+                            param_name] == self.role_maker._worker_index():
+                        reversed_x.append(input_name)
+                op.desc.set_input('X', reversed_x)
+                op.desc.set_output('Out', reversed_x)
+        if update_loss_scaling_op_idx == -1:
+            return
+        inf_var = block.var(inf_var_name)
+        inf_var_fp32 = block.create_var(
+            name=inf_var_name + "@cast_int32",
+            shape=inf_var.shape,
+            dtype=core.VarDesc.VarType.INT32)
+        inf_var_sharding = block.create_var(
+            name=inf_var_name + "@sharding",
+            shape=inf_var.shape,
+            dtype=inf_var.dtype)
+        block._insert_op(
+            update_loss_scaling_op_idx,
+            type='cast',
+            inputs={'X': inf_var},
+            outputs={'Out': inf_var_fp32},
+            attrs={
+                "in_dtype": inf_var.dtype,
+                "out_dtype": inf_var_fp32.dtype,
+                OP_ROLE_KEY: OpRole.Optimize
+            })
+        self._insert_sync_calc_op(block, update_loss_scaling_op_idx + 1,
+                                  [inf_var_fp32])
+        block._insert_op(
+            update_loss_scaling_op_idx + 2,
+            type='c_allreduce_max',
+            inputs={'X': inf_var_fp32},
+            outputs={'Out': inf_var_fp32},
+            attrs={'ring_id': 0,
+                   OP_ROLE_KEY: OpRole.Optimize})
+        self._insert_sync_comm_ops(block, update_loss_scaling_op_idx + 3,
+                                   [inf_var_fp32])
+        block._insert_op(
+            update_loss_scaling_op_idx + 4,
+            type='cast',
+            inputs={'X': inf_var_max},
+            outputs={'Out': inf_var_sharding},
+            attrs={
+                "in_dtype": inf_var_max.dtype,
+                "out_dtype": inf_var_sharding.dtype,
+                OP_ROLE_KEY: OpRole.Optimize
+            })
+        block._sync_with_cpp()
 
     def _prune_main_program(self, block):
         """
         calculate deps from allredce op to optimize op,
         remove ops and vars not needed in this worker
         """
-
-        # prune weight decay
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_weight_decay_op(op):
-                if OP_ROLE_VAR_KEY not in op.attr_names:
-                    raise ValueError(
-                        "The Weight Dacay op should hold op_role_var attribute"
-                        "but the {} op does not hold op_role_var".format(
-                            op.type))
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
-                if self._param2device[op_role_var[
-                        0]] != self.role_maker._worker_index():
-                    block._remove_op(idx)
-        block._sync_with_cpp()
+        self._prune_weight_decay(block)
+        self._prune_fp16(block)
 
         # build prog deps
         reduced_grads = []
@@ -450,7 +520,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
             ]:
                 pass
-            elif self._is_gradient_clip_sum_op(op) or self._is_amp_sum_op(op):
+            elif self._is_gradient_clip_sum_op(op):
                 reversed_input_vars = []
                 for input_name in op.desc.input_arg_names():
                     assert (input_name in var_to_reduce_var)
