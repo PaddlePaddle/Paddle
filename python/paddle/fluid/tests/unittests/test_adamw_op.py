@@ -22,7 +22,7 @@ class TestAdamWOp(unittest.TestCase):
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = paddle.to_variable(value)
+        a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.AdamW(
             learning_rate=0.01,
@@ -37,7 +37,7 @@ class TestAdamWOp(unittest.TestCase):
     def test_adamw_op_coverage(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = paddle.to_variable(value)
+        a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.AdamW(
             learning_rate=0.0,

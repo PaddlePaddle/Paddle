@@ -201,6 +201,7 @@ from .tensor.math import isfinite  #DEFINE_ALIAS
 from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
+from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
@@ -230,12 +231,10 @@ from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
-from .framework import to_variable  #DEFINE_ALIAS
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
-from .framework import SaveLoadConfig  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
 from .framework import NoamDecay  #DEFINE_ALIAS
@@ -258,6 +257,9 @@ from .tensor.stat import numel  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
+from .device import is_compiled_with_cuda  #DEFINE_ALIAS
+from .device import is_compiled_with_xpu
+from .device import XPUPlace
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
@@ -269,6 +271,7 @@ from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 
 from . import jit
 from . import static
+from . import amp
 
 # high-level api
 from .hapi import Model

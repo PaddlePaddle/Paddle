@@ -38,7 +38,8 @@ class CSyncCommStreamOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      "Sync stream op can run on gpu place only for now.");
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on gpu place only for now."));
 
 #if defined(PADDLE_WITH_NCCL)
     int ring_id = Attr<int>("ring_id");
@@ -46,7 +47,8 @@ class CSyncCommStreamOp : public framework::OperatorBase {
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -54,8 +56,10 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of the variable need to sync");
-    AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator

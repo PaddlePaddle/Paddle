@@ -26,8 +26,8 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
     def run_imperative(self):
-        input = paddle.to_variable(self.input_np)
-        label = paddle.to_variable(self.label_np)
+        input = paddle.to_tensor(self.input_np)
+        label = paddle.to_tensor(self.label_np)
         dy_result = paddle.nn.functional.l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
         self.assertTrue(np.allclose(dy_result.numpy(), expected))
@@ -106,8 +106,8 @@ class TestClassL1Loss(unittest.TestCase):
         self.label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
     def run_imperative(self):
-        input = paddle.to_variable(self.input_np)
-        label = paddle.to_variable(self.label_np)
+        input = paddle.to_tensor(self.input_np)
+        label = paddle.to_tensor(self.label_np)
         l1_loss = paddle.nn.loss.L1Loss()
         dy_result = l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
