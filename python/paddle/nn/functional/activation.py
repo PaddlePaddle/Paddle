@@ -15,9 +15,7 @@
 # TODO: define activation functions of neural network
 from ...fluid.layers import erf  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 
 __all__ = [
@@ -28,7 +26,6 @@ __all__ = [
     'hardtanh',
     'hardsigmoid',
     'hardswish',
-    'hsigmoid',
     'leaky_relu',
     'log_sigmoid',
     'maxout',
@@ -363,128 +360,6 @@ def hardswish(x, name=None):
     return out
 
 
-def hsigmoid(input,
-             label,
-             weight,
-             bias,
-             num_classes,
-             path_table=None,
-             path_code=None,
-             is_sparse=False):
-    """
-	:alias_main: paddle.nn.functional.hsigmoid
-	:alias: paddle.nn.functional.hsigmoid,paddle.nn.functional.activation.hsigmoid
-
-    The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
-    and speed up the model training, especially the training of language model.
-    Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
-    For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
-    the path, and sum them to get a total cost.
-    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
-    represents the number of classes or the size of word dict.
-
-    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
-    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_. For the custom
-    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
-
-    1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
-    2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
-    3. Creating a dict map word_id -> code of path that from the word to the root node, we call it path_code.
-       Code means the label of each binary classifier, 1 indicate true, 0 indicate false.
-    4. Now, each word should has its path and code along the path, you can pass a batch of path and code related
-       to the same batch of inputs.
-
-    Parameters:
-        input (Variable): A tensor with the shape [N, D], where N is the size of mini-batch,
-            and D is the feature size. Its data type supports float32 and float64.
-        label (Variable): A tensor contains the labels of training data. Its shape is [N, 1]
-            and data type is int64.
-        weight (Variable): A tensor with shape (num_classes - 1, D) if not using custom tree(path_code and path_table is None), or (num_classes, D) if using custom tree.
-        bias (Variable): A tensor with shape (num_classes - 1, 1) if not using custom tree(path_code and path_table is None), or (num_classes, 1) if using custom tree.
-        num_classes (int): The number of classes or the size of word dict, must be greater than 2.
-            If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
-            should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
-            :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
-            classes using by the binary classifier.
-        path_table (Variable, optional): A tensor that stores each batch of samples' path from leaf to root
-            node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
-            path_table[i] is a np.array like structure and each element in this array is the indexes in parent
-            nodes' weight matrix. Default: None.
-        path_code (Variable, optional): A tensor that stores each batch of samples' code of path from leaf
-            to root node, its shape is [N, L] and data type is int64, which is the same as :attr:`path_table`.
-            Each code of path is consisted with the code of nodes from leaf to root node. Default: None.
-        is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
-            gradient of W and input will be sparse. Default: False.
-
-    Returns:
-        Variable: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
-
-    Examples:
-        .. code-block:: python
-
-            from paddle import fluid, nn
-            import paddle.fluid.dygraph as dg
-            import paddle.nn.functional as F
-            import numpy as np
-
-            main = fluid.Program()
-            start = fluid.Program()
-            feature_size = 6
-            num_classes = 8
-            with fluid.unique_name.guard():
-                with fluid.program_guard(main, start):
-                    x = fluid.data("input", [-1, feature_size],
-                                  dtype="float32")
-                    label = fluid.data("labels", [-1, 1], dtype="int64")
-                    w = fluid.data("weight", (num_classes -1, feature_size), dtype="float32")
-                    b = fluid.data("bias", (num_classes -1, ), dtype="float32")
-                    y = F.hsigmoid(x, label, w, b, num_classes)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(start)
-            feed_dict = {
-                "input": np.random.randn(4, feature_size).astype(np.float32),
-                "labels": np.random.randint(0, num_classes, (4, 1)).astype(np.int64),
-                "weight": np.random.randn(num_classes - 1, feature_size).astype(np.float32),
-                "bias": np.random.randn(num_classes - 1, ).astype(np.float32),
-            }
-            y_np, = exe.run(main, feed=feed_dict, fetch_list=[y])
-            print(y_np.shape)
-
-          # (4, 1)
-    """
-
-    attrs = {
-        "num_classes": num_classes,
-        "is_sparse": is_sparse,
-        "remote_prefetch": is_sparse
-    }
-
-    inputs = {
-        "X": input,
-        "W": weight,
-        "Bias": bias,
-        "PathTable": path_table,
-        "PathCode": path_code,
-        "Label": label
-    }
-
-    helper = LayerHelper('hierarchical_sigmoid', **locals())
-    dtype = helper.input_dtype()
-
-    out = helper.create_variable_for_type_inference(dtype)
-    pre_out = helper.create_variable_for_type_inference(dtype)
-    outputs = {"Out": out, "PreOut": pre_out, "W_Out": weight}
-
-    helper.append_op(
-        type="hierarchical_sigmoid",
-        inputs=inputs,
-        outputs=outputs,
-        attrs=attrs)
-    return out
-
-
 def leaky_relu(x, negative_slope=0.01, name=None):
     """
     leaky_relu activation
@@ -787,8 +662,6 @@ def relu6(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
             out = F.relu6(x) # [0, 0.3, 6]
     """
@@ -838,8 +711,6 @@ def selu(x,
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
@@ -1054,8 +925,6 @@ def softplus(x, beta=1, threshold=20, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
@@ -1103,8 +972,6 @@ def softshrink(x, threshold=0.5, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
             out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
     """
@@ -1151,8 +1018,6 @@ def softsign(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
@@ -1164,6 +1029,47 @@ def softsign(x, name=None):
     helper = LayerHelper('softsign', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='softsign', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def swish(x, name=None):
+    """
+    swish activation.
+
+    .. math::
+
+        swish(x) = \\frac{x}{1 + e^{-x}}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            x = paddle.to_tensor(np.array([-2., 0., 1.]))
+            out = F.swish(x) # [-0.238406, 0., 0.731059]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.swish(x, 'beta', 1.0)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
+    helper = LayerHelper('swish', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'beta': 1.0})
     return out
 
 
@@ -1190,8 +1096,6 @@ def tanhshrink(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
     """
@@ -1203,6 +1107,52 @@ def tanhshrink(x, name=None):
     helper = LayerHelper('tanh_shrink', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh_shrink', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def thresholded_relu(x, threshold=1.0, name=None):
+    """
+    thresholded relu activation.
+
+    .. math::
+
+        thresholded\\_relu(x) = \\begin{cases}
+                                 x, \\text{if } x > threshold \\\\
+                                 0, \\text{otherwise}
+                                \\end{cases}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold for thresholded_relu. Default is 1.0
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            x = paddle.to_tensor(np.array([2., 0., 1.]))
+            out = F.thresholded_relu(x) # [2., 0., 0.]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.thresholded_relu(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'thresholded_relu')
+    helper = LayerHelper('thresholded_relu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='thresholded_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
     return out
 
 
