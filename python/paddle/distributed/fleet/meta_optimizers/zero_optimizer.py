@@ -387,11 +387,30 @@ class ZeroOptimizer(MetaOptimizerBase):
         return op.type == "conditional_block" and op.desc.has_attr("op_namescope") \
             and op.desc.attr("op_namescope").startswith("/mixed_precision")
 
+    def _is_weight_decay_op(self, op):
+        return op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/regularization")
+
     def _prune_main_program(self, block):
         """
         calculate deps from allredce op to optimize op,
         remove ops and vars not needed in this worker
         """
+
+        # prune weight decay
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_weight_decay_op(op):
+                if OP_ROLE_VAR_KEY not in op.attr_names:
+                    raise ValueError(
+                        "The Weight Dacay op should hold op_role_var attribute"
+                        "but the {} op does not hold op_role_var".format(
+                            op.type))
+                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+                if self._param2device[op_role_var[
+                        0]] != self.role_maker._worker_index():
+                    block._remove_op(idx)
+        block._sync_with_cpp()
+
         # build prog deps
         reduced_grads = []
         var_to_reduce_var = {}
@@ -941,7 +960,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             if op.type == "c_allreduce_sum":
                 var_name = op.desc.input_arg_names()[0]
                 var_status[var_name] = -1
-        
+
         for op in block.ops:
             if op.type == "c_sync_calc_stream":
                 for var_name in var_status:
@@ -951,12 +970,12 @@ class ZeroOptimizer(MetaOptimizerBase):
                 var_name = op.desc.input_arg_names()[0]
                 if var_status[var_name] == -1:
                     raise ValueError("{} is not generated, but you are"
-                        "trying to all-reduce it".format(var_name))
+                                     "trying to all-reduce it".format(var_name))
                 if var_status[var_name] == 0:
                     raise ValueError("There should be a sync_calc op "
-                        "after generate Var: {} and before the"
-                        "c_allreduce_sum op".format(var_name))
-                assert(var_status[var_name] == 1)
+                                     "after generate Var: {} and before the"
+                                     "c_allreduce_sum op".format(var_name))
+                assert (var_status[var_name] == 1)
                 var_status[var_name] = 2
             elif op.type == "c_sync_comm_stream":
                 for var_name in op.desc.input_arg_names():
@@ -966,7 +985,8 @@ class ZeroOptimizer(MetaOptimizerBase):
                 for input_name in op.desc.input_arg_names():
                     if input_name in var_status:
                         if var_status[input_name] != 3:
-                            raise ValueError("There should be a sync_comm op "
+                            raise ValueError(
+                                "There should be a sync_comm op "
                                 "after allreduce the Var: {}".format(var_name))
                 for output_name in op.desc.output_arg_names():
                     if output_name in var_status and \
