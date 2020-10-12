@@ -768,6 +768,8 @@ def add_n(inputs, name=None):
             #  [14., 16., 18.]]
     """
     if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
         return core.ops.sum(inputs, 'use_mkldnn', False)
 
     helper = LayerHelper('add_n', **locals())
@@ -1915,6 +1917,7 @@ def increment(x, value=1.0, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             data = paddle.zeros(shape=[1], dtype='float32')
