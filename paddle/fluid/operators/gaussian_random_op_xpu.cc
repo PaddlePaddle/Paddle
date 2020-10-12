@@ -15,55 +15,41 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <random>
-#include "paddle/fluid/memory/memcpy.h"
-
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class XPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
-
-    std::normal_distribution<T> dist(mean, std);
-    auto shape = GetShape(context);
-    tensor->Resize(shape);
-    int64_t size = tensor->numel();
     T* data = tensor->mutable_data<T>(context.GetPlace());
+
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
-
-    T* data_host = reinterpret_cast<T*>(std::malloc(size * sizeof(T)));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    engine.seed(seed);
+    std::normal_distribution<T> dist(mean, std);
+    int64_t size = tensor->numel();
+    std::unique_ptr<T[]> data_cpu(new T[size]);
     for (int64_t i = 0; i < size; ++i) {
-      data_host[i] = dist(*engine);
+      data_cpu[i] = dist(engine);
     }
-
-    if (std::is_same<T, float>::value &&
-        std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {
-      platform::XPUPlace place =
-          BOOST_GET_CONST(platform::XPUPlace, context.GetPlace());
-      memory::Copy(place, data, platform::CPUPlace(), data_host,
-                   size * sizeof(T));
-    } else {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Unsupported place! Only support XPU device."));
-    }
-
-    std::free(data_host);
+    memory::Copy(boost::get<platform::XPUPlace>(context.GetPlace()), data,
+                 platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
+                 size * sizeof(T));
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_XPU_KERNEL(gaussian_random,
-                       paddle::operators::XPUGaussianRandomKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_XPU_KERNEL(gaussian_random, ops::XPUGaussianRandomKernel<float>);
 #endif
