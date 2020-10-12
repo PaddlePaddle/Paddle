@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,6 +87,7 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
     auto *index = ctx.Input<Tensor>("Index");
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
     if (ctx.HasInput("Axis")) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -94,6 +95,13 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
     }
 
     dx->mutable_data<T>(ctx.GetPlace());
+    const int zero = 0;
+    int r_dx = xpu::memset(dev_ctx.x_context(), dx->data<T>(), zero,
+                           dx->numel() * sizeof(T));
+    PADDLE_ENFORCE_EQ(
+        r_dx, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU kernel error! error code=%d", r_dx));
+
     if (dout->numel() == 0) {
       return;
     }
@@ -127,7 +135,6 @@ class GatherGradOpXPUKernel : public framework::OpKernel<T> {
     int index_size = index_dims[0];
     int slice_size = dout->numel() / dout->dims()[0];
 
-    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
     int r = xpu::scatter<T>(dev_ctx.x_context(), dout->data<T>(),
                             index->data<int>(), index_size, slice_size,
                             dx->data<T>(), overwrite);
