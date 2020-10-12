@@ -78,10 +78,6 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek, const std::vector<int64_t>& shape);
-void TensorFromStream(std::istream& is, Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx,
-                      const int64_t& node_index, const int64_t& node_num,
-                      const std::vector<int64_t>& shape);
 
 // store the bool result tensor in out tensor
 void TensorContainsNANV2(const framework::Tensor& tensor,

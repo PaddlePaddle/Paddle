@@ -15,24 +15,38 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed/communicator.h"
-#include "paddle/fluid/operators/distributed/communicator_common.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/parameter_send.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using SelectedRows = framework::SelectedRows;
+
+struct DeserializedDataFunctor {
+  DeserializedDataFunctor(void **buf, Tensor *tensor,
+                          const platform::Place &place)
+      : buf_(buf), tensor_(tensor), place_(place) {}
+
+  template <typename T>
+  void apply() {
+    *buf_ = tensor_->mutable_data<T>(place_);
+  }
+
+  void **buf_;
+  Tensor *tensor_;
+  platform::Place place_;
+};
+
 template <typename DeviceContext, typename T>
-class SparseLoadKernel : public framework::OpKernel<T> {
+class SparseLoadKernel : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
     auto filename = ctx.Attr<std::string>("file_path");
     std::ifstream fin(filename, std::ios::binary);
@@ -47,18 +61,18 @@ class SparseLoadKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NOT_NULL(
         out_var, platform::errors::InvalidArgument(
                      "The variable %s to be loaded cannot be found.", name));
-    PADDLE_ENFORCE_EQ(out_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(out_var->IsType<paddle::framework::LoDTensor>(), true,
                       platform::errors::InvalidArgument(
                           "SparseLoad OP only support LoDTensor"));
     LoadLodTensor(fin, place, out_var, ctx);
   }
 
-  void LoadLodTensor(std::istream &fin, const platform::Place &place,
-                     framework::Variable *var,
-                     const framework::ExecutionContext &ctx) const {
+  void LoadLodTensor(std::istream &is, const platform::Place &place,
+                     paddle::framework::Variable *var,
+                     const paddle::framework::ExecutionContext &ctx) const {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
 
     auto node_index = ctx.Attr<int64_t>("node_index");
     auto node_num = ctx.Attr<int64_t>("node_num");
@@ -70,25 +84,140 @@ class SparseLoadKernel : public framework::OpKernel<T> {
                                          "node_num great than or equal to 0"));
     PADDLE_ENFORCE_GE(node_num, 1, platform::errors::InvalidArgument(
                                        "node_num great than or equal to 1"));
-    DeserializeFromStream(fin, tensor, dev_ctx, node_index, node_num, shape);
+
+    {
+      // the 1st field, unit32_t version for LoDTensor
+      uint32_t version;
+      is.read(reinterpret_cast<char *>(&version), sizeof(version));
+      PADDLE_ENFORCE_EQ(paddle::framework::IsTensorVersionSupported(version),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Tensor version %u is not supported.", version));
+      PADDLE_ENFORCE_EQ(version, 0U, platform::errors::InvalidArgument(
+                                         "Tensor version %u is not supported, "
+                                         "only version 0 is supported.",
+                                         version));
+    }
+
+    {
+      // the 2st field, LoD information
+      // Todo sparse load need change LoDTensor's lod level
+      uint64_t lod_level;
+      is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+      auto &lod = *tensor->mutable_lod();
+      lod.resize(lod_level);
+    }
+
+    // the 3st filed, Tensor
+
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "tensor version %u is not supported, Only version 0 is supported",
+            version));
+
+    paddle::framework::proto::VarType::TensorDesc desc;
+
+    {  // int32_t size
+      // proto buffer
+      int32_t size;
+      is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      std::unique_ptr<char[]> buf(new char[size]);
+      is.read(reinterpret_cast<char *>(buf.get()), size);
+      PADDLE_ENFORCE_EQ(
+          desc.ParseFromArray(buf.get(), size), true,
+          platform::errors::InvalidArgument("Cannot parse tensor desc"));
+    }
+
+    {  // read tensor
+      std::vector<int64_t> dims;
+      dims.reserve(static_cast<size_t>(desc.dims().size()));
+      std::copy(desc.dims().begin(), desc.dims().end(),
+                std::back_inserter(dims));
+
+      int64_t line_numel = 1;
+      for (size_t dim = 1; dim < dims.size(); dim++) {
+        line_numel *= dims[dim];
+      }
+      auto total_line = dims[0];
+
+      tensor->Resize(paddle::framework::make_ddim(shape));
+
+      void *buf;
+      auto ctx = platform::CPUDeviceContext();
+      if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
+          platform::is_xpu_place(dev_ctx.GetPlace())) {
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
+        Tensor cpu_tensor;
+        cpu_tensor.Resize(paddle::framework::make_ddim(shape));
+        paddle::framework::VisitDataType(
+            desc.data_type(),
+            DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
+        auto line_size = paddle::framework::SizeOfType(desc.data_type());
+        auto total_line = tensor->numel();
+        char *cur_buf = static_cast<char *>(buf);
+        char *temp_row = new char[line_size];
+        for (size_t line_index = 0;
+             line_index < static_cast<size_t>(total_line); ++line_index) {
+          is.read(temp_row, line_size);
+          if (static_cast<int64_t>(line_index) % node_num == node_index) {
+            memcpy(cur_buf, temp_row, line_size);
+            cur_buf += line_size;
+          }
+        }
+        auto dst_place = dev_ctx.GetPlace();
+        paddle::framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
+#else
+        if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "CUDAPlace is not supported when not compiled with CUDA"));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "XPUPlace is not supported when not compiled with XPU"));
+        }
+#endif
+      } else {
+        paddle::framework::VisitDataType(
+            desc.data_type(),
+            DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
+
+        auto line_size =
+            line_numel * paddle::framework::SizeOfType(desc.data_type());
+        char *cur_buf = static_cast<char *>(buf);
+        char *temp_row = new char[line_size];
+        VLOG(4) << "TensorFromStream: line_size " << line_size;
+        VLOG(4) << "TensorFromStream: total_line " << total_line;
+        for (size_t line_index = 0;
+             line_index < static_cast<size_t>(total_line); ++line_index) {
+          is.read(temp_row, line_size);
+          if (static_cast<int64_t>(line_index) % node_num == node_index) {
+            memcpy(cur_buf, temp_row, line_size);
+            cur_buf += line_size;
+          }
+        }
+      }
+    }
   }
 };
 
-class SparseLoadOp : public framework::OperatorWithKernel {
+class SparseLoadOp : public paddle::framework::OperatorWithKernel {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override {}
+  using paddle::framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(paddle::framework::InferShapeContext *ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::FP32, ctx.GetPlace());
+  paddle::framework::OpKernelType GetExpectedKernelType(
+      const paddle::framework::ExecutionContext &ctx) const override {
+    paddle::framework::OpKernelType kt = paddle::framework::OpKernelType(
+        paddle::framework::proto::VarType::FP32, ctx.GetPlace());
     return kt;
   }
 };
 
-class SparseLoadOpMaker : public framework::OpProtoAndCheckerMaker {
+class SparseLoadOpMaker : public paddle::framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");

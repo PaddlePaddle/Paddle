@@ -245,10 +245,6 @@ void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
-void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
-                           const platform::DeviceContext& dev_ctx,
-                           const int64_t& node_index, const int64_t& node_num,
-                           const std::vector<int64_t>& shape);
 
 /*
  * Convert between length-based LoD and offset-based LoD.
