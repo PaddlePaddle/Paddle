@@ -1509,19 +1509,19 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             Then:
                 result = [ [2], ]
     Args:
-        x (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        x (Tensor): An N-D ``Tensor``. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
-        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
-        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .                                                                                     It represents ending indices of corresponding axis in ``axes``.
-        strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .                                                                                  It represents slice step of corresponding axis in ``axes``.
+        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .                                                                                     It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Tensor): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``strides`` is an Tensor, it should be an 1-D Tensor .                                                                                  It represents slice step of corresponding axis in ``axes``.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                         For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``x``. The data type is same as ``x``.
+        Tensor:  A ``Tensor`` with the same dimension as ``x``. The data type is same as ``x``.
 
     Examples:
         .. code-block:: python
@@ -1529,7 +1529,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             import paddle
             x = paddle.zeros(shape=[3,4,5,6], dtype="float32")
             # example 1:
-            # attr starts is a list which doesn't contain tensor Variable.
+            # attr starts is a list which doesn't contain Tensor.
             axes = [1, 2, 3]
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
@@ -1538,7 +1538,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             sliced_1 = paddle.strided_slice(x, axes=axes, starts=starts, ends=ends, strides=strides_1)
             # sliced_1 is x[:, 1:3:1, 0:2:1, 2:4:1].                                
             # example 2:
-            # attr starts is a list which contain tensor Variable.
+            # attr starts is a list which contain tensor Tensor.
             minus_3 = paddle.fill_constant([1], "int32", -3)
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
