@@ -1183,7 +1183,7 @@ def swish(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.swish(x, 'slop', 1.0)
+        return core.ops.swish(x, 'beta', 1.0)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
     helper = LayerHelper('swish', **locals())
@@ -1192,7 +1192,7 @@ def swish(x, name=None):
         type='swish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'slope': 1.0})
+        attrs={'beta': 1.0})
     return out
 
 
