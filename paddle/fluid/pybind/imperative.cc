@@ -589,6 +589,10 @@ void BindImperative(py::module *m_ptr) {
                SetTensorFromPyArray(self_tensor, self_numpy,
                                     self_tensor->place(), true);
              }
+             // NOTE(liym27):
+             // Increase the version of VarBase self because __setitem__ is an
+             // inplace operator for the VarBase self.
+             BumpVersion(self);
            })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -627,6 +631,22 @@ void BindImperative(py::module *m_ptr) {
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
                return out;
              }
+           })
+      .def("variable_version",
+           [](imperative::VarBase &self) -> uint32_t {
+             const auto &var = self.MutableVar();
+             PADDLE_ENFORCE_EQ(
+                 var->IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor of %s is Empty, please check if it has no data.",
+                     self.Name()));
+
+             return var->VersionCounter().CurrentVersion();
+           })
+      .def("bump_version",
+           [](imperative::VarBase &self) {
+             // NOTE(liym27): bump_version is only used for inplace operation
+             BumpVersion(self);
            })
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
@@ -822,8 +842,10 @@ void BindImperative(py::module *m_ptr) {
                  imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
-                     "Imperative SelectedRows allreduce is not supported when "
-                     "paddle is compiled with NCCL verison lower than v2.2.12. "
+                     "Imperative SelectedRows allreduce is not supported "
+                     "when "
+                     "paddle is compiled with NCCL verison lower than "
+                     "v2.2.12. "
                      "You can set is_sparse=False for the Layer containing "
                      "this argument, such as Embedding(is_sparse=False)."));
                }

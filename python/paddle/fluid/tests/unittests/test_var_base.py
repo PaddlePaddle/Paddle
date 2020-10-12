@@ -21,8 +21,6 @@ import six
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
 
 
 class TestVarBase(unittest.TestCase):
@@ -476,9 +474,11 @@ class TestVarBaseSetitem(unittest.TestCase):
 
     def _test(self, value):
         paddle.disable_static()
-        id_origin = id(self.tensor_x)
+        self.assertEqual(self.tensor_x.version, 0)
 
+        id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
+        self.assertEqual(self.tensor_x.version, 1)
 
         if isinstance(value, (six.integer_types, float)):
             result = np.zeros((2, 3)).astype(np.float32) + value
@@ -490,10 +490,12 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
+        self.assertEqual(self.tensor_x.version, 2)
         self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
+        self.assertEqual(self.tensor_x.version, 3)
         self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
@@ -512,6 +514,19 @@ class TestVarBaseSetitem(unittest.TestCase):
     def test_value_float(self):
         paddle.disable_static()
         self._test(3.3)
+
+
+class TestVarBaseVersion(unittest.TestCase):
+    def test(self):
+        paddle.disable_static()
+        var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+        self.assertEqual(var.version, 0)
+
+        var[1] = 1
+        self.assertEqual(var.version, 1)
+
+        var[1:2] = 1
+        self.assertEqual(var.version, 2)
 
 
 if __name__ == '__main__':

@@ -393,6 +393,22 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     return nullptr;
   }
 }
+void BumpVersion(VarBase* var) {
+  PADDLE_ENFORCE_EQ(
+      var->MutableVar()->IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized, please check if it has no data.",
+          var->Name()));
+  var->MutableVar()->BumpVersion();
+}
 
+void BumpVersion(std::shared_ptr<imperative::VarBase> var) {
+  PADDLE_ENFORCE_EQ(
+      var->MutableVar()->IsInitialized(), true,
+      platform::errors::InvalidArgument(
+          "Tensor %s has not been initialized, please check if it has no data.",
+          var->Name()));
+  var->MutableVar()->BumpVersion();
+}
 }  // namespace imperative
 }  // namespace paddle

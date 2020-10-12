@@ -214,6 +214,31 @@ void BasicEngine::Execute() {
         }
       }
 
+      VLOG(4) << "Check whether there is any inplace operation affecting "
+                 "gradient calculation.";
+      for (auto& pair : bwd_ins) {
+        for (auto& var_wrapper : pair.second) {
+          auto wrapper_version = var_wrapper->Version();
+          auto variable_version =
+              var_wrapper->MutableVar()->VersionCounter().CurrentVersion();
+          PADDLE_ENFORCE_EQ(
+              variable_version, wrapper_version,
+              platform::errors::PermissionDenied(
+                  "Tensor '%s' used in gradient computation in grad op '%s' "
+                  "has been "
+                  "modified by an inplace operation. "
+                  "Its version is %s but the expected version is %s. "
+                  "Please fix your code to void calling an inplace operator "
+                  "after using the Tensor which will used in gradient "
+                  "computation.",
+                  var_wrapper->Name(), cur_op.Type(), variable_version,
+                  wrapper_version));
+
+          VLOG(6) << " The version of Tensor: " << var_wrapper->Name()
+                  << " is [ " << wrapper_version << " ]";
+        }
+      }
+
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),

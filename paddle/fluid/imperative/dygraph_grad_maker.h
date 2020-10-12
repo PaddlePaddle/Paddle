@@ -147,7 +147,6 @@ class GradOpBaseMakerBase {
                                                bool is_input) const {
     const auto& data_map = is_input ? var_base_map_in_ : var_base_map_out_;
     auto iterator = data_map.find(name);
-
     TracedVarList<VarBase, kRole> vec_temp;
     if (iterator != data_map.end()) {
       vec_temp.reserve(iterator->second.size());
@@ -226,6 +225,9 @@ class TracedGradOp {
     }
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
+
+    var_wrappers = CopyVarWrapperList(var_wrappers);
+
     if (!var_wrappers.empty()) {
       op_->SetInput(name, std::move(var_wrappers),
                     kRole == TracedVarRole::kBackward);
@@ -300,6 +302,20 @@ class TracedGradOp {
 
     if (!has_valid) {
       result.clear();
+    }
+    return result;
+  }
+
+  // Get a snapshot of VariableWrapper at a certain version.
+  // The version number of VariableWrapper is used for inplace detection.
+  static std::vector<std::shared_ptr<VariableWrapper>> CopyVarWrapperList(
+      const std::vector<std::shared_ptr<VariableWrapper>>& var_wrappers) {
+    std::vector<std::shared_ptr<VariableWrapper>> result;
+    result.reserve(var_wrappers.size());
+    for (auto& var : var_wrappers) {
+      std::shared_ptr<VariableWrapper> new_var(var);
+      new_var->UpdateVersion(var);
+      result.emplace_back(new_var);
     }
     return result;
   }

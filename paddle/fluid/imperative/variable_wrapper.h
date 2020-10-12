@@ -133,6 +133,16 @@ class VariableWrapper {
     }
   }
 
+  uint32_t Version() const { return wrapper_version_; }
+
+  void UpdateVersion(const std::shared_ptr<VariableWrapper> wrapper) {
+    auto new_version = wrapper->Var().VersionCounter().CurrentVersion();
+    VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+            << "' will be updated from " << wrapper_version_ << "to "
+            << new_version;
+    wrapper_version_ = new_version;
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
@@ -167,6 +177,8 @@ class VariableWrapper {
   // should override the frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};
   bool persistable_{false};
+
+  uint32_t wrapper_version_ = 0;
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};

@@ -226,6 +226,10 @@ def monkey_patch_varbase():
 
         return self.gradient()
 
+    @property
+    def version(self):
+        return self.variable_version()
+
     def __str__(self):
         """
         Convert a VarBase object to a readable string.
@@ -264,8 +268,9 @@ def monkey_patch_varbase():
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("grad", grad),
-        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
-        ("__module__", "paddle"), ("__name__", "Tensor")):
+        ("version", version), ("gradient", gradient), ("__str__", __str__),
+        ("__repr__", __str__), ("__module__", "paddle"),
+        ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase
