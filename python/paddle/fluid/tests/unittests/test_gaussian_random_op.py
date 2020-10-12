@@ -24,6 +24,8 @@ from paddle.fluid.executor import Executor
 from op_test import OpTest
 import paddle
 
+paddle.enable_static()
+
 
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
