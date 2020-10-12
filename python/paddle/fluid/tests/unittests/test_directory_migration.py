@@ -64,11 +64,10 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.nn.create_parameter',
             'paddle.static.nn.crf_decoding', 'paddle.static.nn.data_norm',
             'paddle.static.nn.deformable_conv', 'paddle.static.nn.group_norm',
-            'paddle.static.nn.hsigmoid', 'paddle.static.nn.instance_norm',
-            'paddle.static.nn.layer_norm', 'paddle.static.nn.multi_box_head',
-            'paddle.static.nn.nce', 'paddle.static.nn.prelu',
-            'paddle.static.nn.row_conv', 'paddle.static.nn.spectral_norm',
-            'paddle.static.nn.embedding'
+            'paddle.static.nn.instance_norm', 'paddle.static.nn.layer_norm',
+            'paddle.static.nn.multi_box_head', 'paddle.static.nn.nce',
+            'paddle.static.nn.prelu', 'paddle.static.nn.row_conv',
+            'paddle.static.nn.spectral_norm', 'paddle.static.nn.embedding'
         ]
 
         import_file = 'run_import_modules.py'
