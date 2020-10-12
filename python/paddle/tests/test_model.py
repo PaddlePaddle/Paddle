@@ -501,6 +501,11 @@ class TestModelFunction(unittest.TestCase):
         rnn = paddle.nn.LSTM(16, 32, 2)
         paddle.summary(rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
 
+    def test_summary_dtype(self):
+        input_shape = (3, 1)
+        net = paddle.nn.Embedding(10, 3, sparse=True)
+        paddle.summary(net, input_shape, dtypes='int64')
+
     def test_summary_error(self):
         with self.assertRaises(TypeError):
             nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
