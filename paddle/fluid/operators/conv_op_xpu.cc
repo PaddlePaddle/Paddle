@@ -46,14 +46,14 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(dilations[0] == 1 && dilations[1] == 1,
                    "XPU only support dilation == 1.");
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         xpu::findmax(dev_ctx.x_context(), input->data<T>(), input->numel(),
                      max_input->data<T>()) == xpu::Error_t::SUCCESS,
-        "XPU kernel error!");
-    PADDLE_ENFORCE(
+        true, platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
         xpu::findmax(dev_ctx.x_context(), filter.data<T>(), filter.numel(),
                      max_filter->data<T>()) == xpu::Error_t::SUCCESS,
-        "XPU kernel error!");
+        true, platform::errors::InvalidArgument("XPU kernel error!"));
     if (groups == 1) {
       int r = xpu::conv2d_forward_int16<float, float, float, float>(
           dev_ctx.x_context(), batch_size, img_c, img_h, img_w, f, win_h, win_w,
@@ -62,7 +62,8 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
           output->data<float>(), nullptr, nullptr, xpu::Activation_t::LINEAR,
           // nullptr, nullptr);
           max_input->data<float>(), max_filter->data<float>());
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                        platform::errors::InvalidArgument("XPU kernel error!"));
     } else {
       int r = xpu::conv2d_int16_with_group<float, float, float>(
           dev_ctx.x_context(), input->data<float>(), filter.data<float>(),
@@ -70,7 +71,8 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
           win_w, groups, strides[0], strides[1], paddings[0], paddings[1],
           // nullptr, nullptr);
           max_input->data<float>(), max_filter->data<float>());
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                        platform::errors::InvalidArgument("XPU kernel error!"));
     }
   }
 };
@@ -116,11 +118,11 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     max_output_grad->Resize({4});
     max_output_grad->mutable_data<T>(context.GetPlace());
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         xpu::findmax(dev_ctx.x_context(), output_grad->data<T>(),
                      output_grad->numel(),
                      max_output_grad->data<T>()) == xpu::Error_t::SUCCESS,
-        "XPU kernel error!");
+        true, platform::errors::InvalidArgument("XPU kernel error!"));
     if (input_grad) {
       int r = xpu::conv2d_backward_int16(
           dev_ctx.x_context(), batch_size, img_c, img_h, img_w, f, win_h, win_w,
@@ -129,7 +131,8 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
           filter.data<float>(), input_grad->data<float>(),
           // nullptr, nullptr,
           max_output_grad->data<float>(), max_filter->data<float>());
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                        platform::errors::InvalidArgument("XPU kernel error!"));
     }
     if (filter_grad) {
       int r = xpu::conv2d_backward_weight_int16(
@@ -139,7 +142,8 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
           input->data<float>(), filter_grad->data<float>(),
           // nullptr, nullptr,
           max_output_grad->data<float>(), max_input->data<float>());
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                        platform::errors::InvalidArgument("XPU kernel error!"));
     }
   }
 };

@@ -223,7 +223,9 @@ class TestConv2dOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+                place,
+                #atol=1e-5,
+                check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad") and
@@ -233,9 +235,10 @@ class TestConv2dOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, {'Input', 'Filter'},
+                place,
+                {'Input', 'Filter'},
                 'Output',
-                max_relative_error=0.02,
+                #max_relative_error=0.02,
                 check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
@@ -246,9 +249,10 @@ class TestConv2dOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['Input'],
+                place,
+                ['Input'],
                 'Output',
-                max_relative_error=0.02,
+                #max_relative_error=0.02,
                 no_grad_set=set(['Filter']),
                 check_dygraph=(self.use_mkldnn == False))
 
@@ -436,7 +440,9 @@ class TestConv2dOp_v2(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+                place,
+                #atol=1e-5,
+                check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -446,9 +452,10 @@ class TestConv2dOp_v2(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, {'Input', 'Filter'},
+                place,
+                {'Input', 'Filter'},
                 'Output',
-                max_relative_error=0.02,
+                #max_relative_error=0.02,
                 check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
@@ -459,9 +466,10 @@ class TestConv2dOp_v2(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['Input'],
+                place,
+                ['Input'],
                 'Output',
-                max_relative_error=0.02,
+                #max_relative_error=0.02,
                 no_grad_set=set(['Filter']),
                 check_dygraph=(self.use_mkldnn == False))
 
