@@ -93,14 +93,15 @@ class SliceOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("StartsTensor") == false) {
       PADDLE_ENFORCE_EQ(
-                        starts_size, axes.size(),
-                        platform::errors::InvalidArgument(
-                            "The size of starts must be equal to the size of axes."));
+          starts_size, axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of starts must be equal to the size of axes."));
     }
     if (ctx->HasInput("EndsTensor") == false) {
-      PADDLE_ENFORCE_EQ(ends_size, axes.size(),
-                        platform::errors::InvalidArgument(
-                            "The size of ends must be equal to the size of axes."));
+      PADDLE_ENFORCE_EQ(
+          ends_size, axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of ends must be equal to the size of axes."));
     }
 
     int dim_value, start, end;
@@ -120,9 +121,8 @@ class SliceOp : public framework::OperatorWithKernel {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start,
-                            platform::errors::InvalidArgument(
-                                "end should greater than start"));
+          PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
+                                            "end should greater than start"));
           out_dims[axes[i]] = end - start;
         }
       }
@@ -132,9 +132,9 @@ class SliceOp : public framework::OperatorWithKernel {
       std::vector<int> new_out_shape;
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
         if (ctx->IsRuntime() && infer_flags[i] != -1) {
-          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            platform::errors::InvalidArgument(
-                                "decrease dim should be 1"));
+          PADDLE_ENFORCE_EQ(
+              out_dims[decrease_axis[i]], 1,
+              platform::errors::InvalidArgument("decrease dim should be 1"));
         }
         out_dims[decrease_axis[i]] = 0;
       }
@@ -295,9 +295,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      platform::errors::InvalidArgument(
-                          "Input should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::InvalidArgument("Input should not be null"));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should not be null"));
