@@ -1873,9 +1873,6 @@ def pool2d(input,
            exclusive=True,
            data_format="NCHW"):
     """
-    :alias_main: paddle.nn.functional.pool2d
-	:alias: paddle.nn.functional.pool2d,paddle.nn.functional.pooling.pool2d
-	:old_api: paddle.fluid.layers.pool2d
 
     ${comment}
 
@@ -2091,9 +2088,6 @@ def pool3d(input,
            exclusive=True,
            data_format="NCDHW"):
     """
-    :alias_main: paddle.nn.functional.pool3d
-	:alias: paddle.nn.functional.pool3d,paddle.nn.functional.pooling.pool3d
-	:old_api: paddle.fluid.layers.pool3d
 
     ${comment}
 
