@@ -1309,6 +1309,7 @@ def log1p(x, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             data = paddle.to_tensor([[0], [1]], dtype='float32')

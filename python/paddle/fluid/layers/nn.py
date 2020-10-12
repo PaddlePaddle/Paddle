@@ -8687,6 +8687,7 @@ def log(x, name=None):
     Examples:
 
         .. code-block:: python
+
             import paddle
 
             x = [[2,3,4], [7,8,9]]
