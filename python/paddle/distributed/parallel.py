@@ -16,7 +16,6 @@ import os
 import six
 import warnings
 from multiprocessing import Process, Manager
-import netifaces
 import time
 import sys
 
@@ -27,6 +26,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 __all__ = ["init_parallel_env"]
 
@@ -41,29 +41,6 @@ def _start_kv_server(port, http_server_d):
     while http_server_d.get("running", False):
         time.sleep(wait_seconds)
     http_server.stop()
-
-
-def _get_iface_by_ip(ip_address):
-    """
-    Get network interface name by its ip address.
-
-    Args:
-        ip_address (string): ip address
-    
-    Returns:
-        Name of the network interface which has the ip address 'ip_address',
-        or None if the ip_address is not found.
-    """
-    nicfaces = netifaces.interfaces()
-    for nicface in nicfaces:
-        message = netifaces.ifaddresses(nicface)
-        iface_info = message.get(netifaces.AF_INET)
-        if iface_info:
-            iface_dict = iface_info[0]
-            ipaddr = iface_dict.get('addr')
-            if ipaddr == ip_address:
-                return nicface
-    return None
 
 
 def init_parallel_env():
@@ -163,17 +140,13 @@ def init_parallel_env():
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
+    wait_server_ready([ParallelEnv().trainer_endpoints[0]])
 
-    iface = _get_iface_by_ip(ep_rank[0])
-    if iface is None:
-        raise ValueError("No network interface associated with the "
-                         "ip address: {}.".format(ep_rank_0[0]))
     gloo_strategy = core.GlooParallelStrategy()
     gloo_strategy.rank = ParallelEnv().rank
     gloo_strategy.rank_num = ParallelEnv().world_size
     gloo_strategy.ip_address = ep_rank_0[0]
     gloo_strategy.ip_port = int(ep_rank_0[1])
-    gloo_strategy.iface = iface
     default_init_timeout_seconds = 3600
     default_run_timeout_seconds = 9999999
     gloo_strategy.init_seconds = default_init_timeout_seconds

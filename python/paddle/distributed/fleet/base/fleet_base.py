@@ -187,6 +187,8 @@ class Fleet(object):
 
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
+            if self.worker_num() == 1:
+                return
             if parallel_helper._is_parallel_ctx_initialized():
                 warnings.warn(
                     "The dygraph parallel environment has been initialized.")

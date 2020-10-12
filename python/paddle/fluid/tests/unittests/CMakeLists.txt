@@ -335,6 +335,7 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_isolated_var)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -546,6 +547,10 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 
+if (WITH_XPU)
+    add_subdirectory(xpu)
+endif()
+
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
@@ -562,12 +567,12 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op
         test_dataloader_keep_order
         test_dataloader_unkeep_order
-        test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
-
+# disable test_parallel_executor_fetch_isolated_var
+# set_tests_properties(test_parallel_executor_fetch_isolated_var PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
