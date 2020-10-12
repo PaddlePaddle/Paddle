@@ -150,8 +150,6 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 @templatedoc()
 def row_conv(input, weight, act=None):
     """
-	:alias_main: paddle.nn.functional.row_conv
-	:alias: paddle.nn.functional.row_conv,paddle.nn.functional.extension.row_conv
 
     ${comment}
 

@@ -1859,7 +1859,6 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.pool2d")
 @templatedoc()
 def pool2d(input,
            pool_size=-1,
@@ -2074,7 +2073,6 @@ def pool2d(input,
     return pool_out
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.pool3d")
 @templatedoc()
 def pool3d(input,
            pool_size=-1,
@@ -4702,10 +4700,6 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
 
 def reduce_any(input, dim=None, keep_dim=False, name=None):
     """
-    :alias_main: paddle.reduce_any
-	:alias: paddle.reduce_any,paddle.tensor.reduce_any,paddle.tensor.logic.reduce_any
-	:old_api: paddle.fluid.layers.reduce_any
-
     This OP computes the ``logical or`` of tensor elements over the given dimension, and output the result.
 
     Args:
@@ -4918,9 +4912,6 @@ def split(input, num_or_sections, dim=-1, name=None):
 
 def l2_normalize(x, axis, epsilon=1e-12, name=None):
     """
-    :alias_main: paddle.nn.functional.l2_normalize
-	:alias: paddle.nn.functional.l2_normalize,paddle.nn.functional.norm.l2_normalize
-	:old_api: paddle.fluid.layers.l2_normalize
 
     This op normalizes `x` along dimension `axis` using an L2
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
@@ -5764,9 +5755,6 @@ def multiplex(inputs, index):
 
 def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     """
-    :alias_main: paddle.nn.functional.smooth_l1
-	:alias: paddle.nn.functional.smooth_l1,paddle.nn.functional.loss.smooth_l1
-	:old_api: paddle.fluid.layers.smooth_l1
 
     This layer computes the smooth L1 loss for Variable :attr:`x` and :attr:`y`.
     It takes the first dimension of :attr:`x` and :attr:`y` as batch size.
@@ -6836,9 +6824,6 @@ def roi_pool(input,
              rois_num=None,
              name=None):
     """
-    :alias_main: paddle.nn.functional.roi_pool
-	:alias: paddle.nn.functional.roi_pool,paddle.nn.functional.vision.roi_pool
-	:old_api: paddle.fluid.layers.roi_pool
 
     This operator implements the roi_pooling layer.
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
@@ -6943,9 +6928,6 @@ def roi_align(input,
               rois_num=None,
               name=None):
     """
-    :alias_main: paddle.nn.functional.roi_align
-	:alias: paddle.nn.functional.roi_align,paddle.nn.functional.vision.roi_align
-	:old_api: paddle.fluid.layers.roi_align
 
     ${comment}
 
@@ -7087,9 +7069,6 @@ def image_resize(input,
                  align_mode=1,
                  data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.image_resize
-	:alias: paddle.nn.functional.image_resize,paddle.nn.functional.vision.image_resize
-	:old_api: paddle.fluid.layers.image_resize
 
     This op resizes a batch of images.
 
@@ -7687,9 +7666,6 @@ def resize_bilinear(input,
                     align_mode=1,
                     data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.resize_bilinear
-	:alias: paddle.nn.functional.resize_bilinear,paddle.nn.functional.vision.resize_bilinear
-	:old_api: paddle.fluid.layers.resize_bilinear
 
     This op resizes the input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -7854,9 +7830,6 @@ def resize_trilinear(input,
                      align_mode=1,
                      data_format='NCDHW'):
     """
-    :alias_main: paddle.nn.functional.resize_trilinear
-	:alias: paddle.nn.functional.resize_trilinear,paddle.nn.functional.vision.resize_trilinear
-	:old_api: paddle.fluid.layers.resize_trilinear
 
     This op resizes the input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -8022,9 +7995,6 @@ def resize_nearest(input,
                    align_corners=True,
                    data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.resize_nearest
-	:alias: paddle.nn.functional.resize_nearest,paddle.nn.functional.vision.resize_nearest
-	:old_api: paddle.fluid.layers.resize_nearest
 
     This op resizes the input by performing nearest neighbor interpolation in both the
     height direction and the width direction based on given output shape
@@ -9255,9 +9225,6 @@ def pad2d(input,
           data_format="NCHW",
           name=None):
     """
-    :alias_main: paddle.nn.functional.pad2d
-	:alias: paddle.nn.functional.pad2d,paddle.nn.functional.common.pad2d
-	:old_api: paddle.fluid.layers.pad2d
 
     Pad 2-d images according to 'paddings' and 'mode'.
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
@@ -9859,9 +9826,6 @@ def leaky_relu(x, alpha=0.02, name=None):
 
 def soft_relu(x, threshold=40.0, name=None):
     """
-    :alias_main: paddle.nn.functional.soft_relu
-	:alias: paddle.nn.functional.soft_relu,paddle.nn.functional.activation.soft_relu
-	:old_api: paddle.fluid.layers.soft_relu
 
     SoftRelu Activation Operator.
 
@@ -12560,9 +12524,6 @@ def maxout(x, groups, name=None, axis=1):
 
 def space_to_depth(x, blocksize, name=None):
     """
-    :alias_main: paddle.nn.functional.space_to_depth
-	:alias: paddle.nn.functional.space_to_depth,paddle.nn.functional.vision.space_to_depth
-	:old_api: paddle.fluid.layers.space_to_depth
 
     Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
 
@@ -12671,9 +12632,6 @@ def affine_channel(x,
                    name=None,
                    act=None):
     """
-    :alias_main: paddle.nn.functional.affine_channel
-	:alias: paddle.nn.functional.affine_channel,paddle.nn.functional.vision.affine_channel
-	:old_api: paddle.fluid.layers.affine_channel
 
     Applies a separate affine transformation to each channel of the input.
     Useful for replacing spatial batch norm with its equivalent fixed
@@ -12860,9 +12818,6 @@ def similarity_focus(input, axis, indexes, name=None):
 
 def hash(input, hash_size, num_hash=1, name=None):
     """
-    :alias_main: paddle.nn.functional.hash
-	:alias: paddle.nn.functional.hash,paddle.nn.functional.lod.hash
-	:old_api: paddle.fluid.layers.hash
 
     This OP hash the input to an integer less than the hash_size.
     The hash algorithm we used was xxHash - Extremely fast hash algorithm
@@ -12924,9 +12879,6 @@ def hash(input, hash_size, num_hash=1, name=None):
 @templatedoc()
 def grid_sampler(x, grid, name=None):
     """
-    :alias_main: paddle.nn.functional.grid_sampler
-	:alias: paddle.nn.functional.grid_sampler,paddle.nn.functional.vision.grid_sampler
-	:old_api: paddle.fluid.layers.grid_sampler
 
     This operation samples input X by using bilinear interpolation based on
     flow field grid, which is usually generated by :code:`affine_grid` . The grid of
@@ -13084,9 +13036,6 @@ def log_loss(input, label, epsilon=1e-4, name=None):
 
 def add_position_encoding(input, alpha, beta, name=None):
     """
-    :alias_main: paddle.nn.functional.add_position_encoding
-	:alias: paddle.nn.functional.add_position_encoding,paddle.nn.functional.extension.add_position_encoding
-	:old_api: paddle.fluid.layers.add_position_encoding
 
     This operator performs weighted sum of input feature at each position
     (position in the sequence) and the corresponding position encoding.
@@ -13717,9 +13666,6 @@ def psroi_pool(input,
                pooled_width,
                name=None):
     """
-    :alias_main: paddle.nn.functional.psroi_pool
-	:alias: paddle.nn.functional.psroi_pool,paddle.nn.functional.vision.psroi_pool
-	:old_api: paddle.fluid.layers.psroi_pool
 
     ${comment}
 
@@ -13787,9 +13733,6 @@ def prroi_pool(input,
                batch_roi_nums=None,
                name=None):
     """
-    :alias_main: paddle.nn.functional.prroi_pool
-	:alias: paddle.nn.functional.prroi_pool,paddle.nn.functional.vision.prroi_pool
-	:old_api: paddle.fluid.layers.prroi_pool
 
     The precise roi pooling implementation for paddle. Reference: https://arxiv.org/pdf/1807.11590.pdf
 
@@ -14579,9 +14522,6 @@ def deformable_roi_pooling(input,
                            position_sensitive=False,
                            name=None):
     """
-    :alias_main: paddle.nn.functional.deformable_roi_pooling
-	:alias: paddle.nn.functional.deformable_roi_pooling,paddle.nn.functional.vision.deformable_roi_pooling
-	:old_api: paddle.fluid.layers.deformable_roi_pooling
 
     Deformable ROI Pooling Layer
 

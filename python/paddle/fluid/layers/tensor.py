@@ -1235,10 +1235,6 @@ def load_combine(out, file_path):
 
 def has_inf(x):
     """
-	:alias_main: paddle.has_inf
-	:alias: paddle.has_inf,paddle.tensor.has_inf,paddle.tensor.search.has_inf
-	:old_api: paddle.fluid.layers.has_inf
-
     Test if any of x contains an infinity number
 
     Args:
@@ -1264,10 +1260,6 @@ def has_inf(x):
 
 def has_nan(x):
     """
-	:alias_main: paddle.has_nan
-	:alias: paddle.has_nan,paddle.tensor.has_nan,paddle.tensor.search.has_nan
-	:old_api: paddle.fluid.layers.has_nan
-
     Test if any of x contains a NAN
 
     Args:
