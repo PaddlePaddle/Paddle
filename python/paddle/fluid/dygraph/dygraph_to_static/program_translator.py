@@ -791,8 +791,7 @@ class ProgramTranslator(object):
             **kwargs (dict): the input argument of dygraph_func.
 
         Returns:
-            Tensor or tuple of Tensors: the dygraph Tensor containing digital
-                result.
+            Tensor or tuple of Tensors: the dygraph Tensor containing digital result.
 
         Examples:
             .. code-block:: python
