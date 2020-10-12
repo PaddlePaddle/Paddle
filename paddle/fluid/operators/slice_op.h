@@ -192,7 +192,8 @@ class SliceKernel : public framework::OpKernel<T> {
         std::vector<int64_t> new_out_shape;
         for (size_t i = 0; i < decrease_axis.size(); ++i) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+                            platform::errors::InvalidArgument(
+                                "decrease dim should be 1"));
           out_dims[decrease_axis[i]] = 0;
         }
 
