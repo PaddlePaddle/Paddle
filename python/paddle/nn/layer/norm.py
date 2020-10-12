@@ -718,14 +718,15 @@ class BatchNorm1d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Defalut "NCL".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length).
+        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length) when data_format is "NC" or "NCL",
+            (batch, length, num_features) when data_format is "NLC".
         - output: 3-D tensor with same shape as input x.
 
     Returns:
@@ -754,8 +755,11 @@ class BatchNorm1d(_BatchNormBase):
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
+        elif input == "NHWC" or input == 'NLC':
+            self._data_format = "NHWC"
         else:
-            raise ValueError('expected NC , NCL or None for data_format input')
+            raise ValueError(
+                'expected NC , NCL, NLC or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
@@ -811,14 +815,15 @@ class BatchNorm2d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCHW". Default: NCHW.
+        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 4-D tensor with shape: (batch, num_features, height, weight).
+        - x: 4-D tensor with shape: (batch, num_features, height, weight) when data_format is "NCHW",
+            or (batch, height, weight, num_features) when data_format is "NHWC".
         - output: 4-D tensor with same shape as input x.
 
     Returns:
@@ -846,8 +851,10 @@ class BatchNorm2d(_BatchNormBase):
     def _check_data_format(self, input):
         if input == 'NCHW':
             self._data_format = input
+        elif input == "NHWC":
+            self._data_format = input
         else:
-            raise ValueError('expected NCHW for data_format input')
+            raise ValueError('expected NCHW or NHWC for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
@@ -903,14 +910,15 @@ class BatchNorm3d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCDHW". Default: NCDHW.
+        data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
+        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight) when data_format is "NCDHW",
+            or (batch, dims, height, weight, num_features) when data_format is "NDHWC".
         - output: 5-D tensor with same shape as input x.
 
     Returns:
@@ -938,8 +946,11 @@ class BatchNorm3d(_BatchNormBase):
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
+        elif input == "NHWC" or input == "NDHWC":
+            self._data_format = 'NHWC'
         else:
-            raise ValueError('expected NCDHW or None for data_format input')
+            raise ValueError(
+                'expected NCDHW, NDHWC or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
