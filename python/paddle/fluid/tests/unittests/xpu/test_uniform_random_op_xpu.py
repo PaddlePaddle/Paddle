@@ -48,7 +48,7 @@ class TestXPUUniformRandomOp(OpTest):
     def init_attrs(self):
         self.attrs = {
             "shape": [1000, 784],
-            "min": -5.0,
+            "min": -5.,
             "max": 10.0,
             "seed": 10,
             "use_xpu": True
