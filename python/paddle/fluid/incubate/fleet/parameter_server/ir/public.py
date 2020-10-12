@@ -261,17 +261,11 @@ class CompileTimeStrategy(object):
         elif op_type == "adagrad":
             if varkey == "Moment":
                 related_var_names.append(op.input(varkey)[0])
-        elif op_type == "adamax":
-            if varkey in ["Moment", "InfNorm"]:
-                related_var_names.append(op.input(varkey)[0])
         elif op_type in ["momentum", "lars_momentum"]:
             if varkey == "Velocity":
                 related_var_names.append(op.input(varkey)[0])
         elif op_type == "rmsprop":
             if varkey in ["Moment", "MeanSquare"]:
-                related_var_names.append(op.input(varkey)[0])
-        elif op_type == "decayed_adagrad":
-            if varkey == "Moment":
                 related_var_names.append(op.input(varkey)[0])
         elif op_type == "ftrl":
             if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
