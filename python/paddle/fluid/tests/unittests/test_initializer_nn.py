@@ -150,7 +150,7 @@ class TestKaimingInitializer(unittest.TestCase):
         with fluid.dygraph.guard():
             linear = nn.Linear(40, 20, weight_attr=init_inst)
 
-    def test_kaiming_sdygraph(self):
+    def test_kaiming_dygraph(self):
         self.dygraph_test_kaiming_initializer_common(
             init_inst=initializer.KaimingUniform(),
             dtype="float32",
