@@ -22,7 +22,6 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 from decorator_helper import prog_scope
-paddle.enable_static()
 
 
 class TestMulGradCheck(unittest.TestCase):
@@ -163,7 +162,7 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
-        out = paddle.squeeze(x, axes)
+        out = layers.squeeze(x, axes)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(
@@ -187,7 +186,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
-        out = paddle.unsqueeze(x, axes)
+        out = layers.unsqueeze(x, axes)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(

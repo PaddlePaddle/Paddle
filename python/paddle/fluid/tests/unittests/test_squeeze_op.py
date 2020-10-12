@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
 from op_test import OpTest
-paddle.enable_static()
 
 
 # Correct: General.

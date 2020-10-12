@@ -19,7 +19,6 @@ import numpy as np
 
 from op_test import OpTest
 import paddle
-paddle.enable_static()
 
 
 # Correct: General.
