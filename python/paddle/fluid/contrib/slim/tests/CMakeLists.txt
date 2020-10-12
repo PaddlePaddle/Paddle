@@ -128,6 +128,8 @@ if(WIN32)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
+    # TODO(wozna) remove after generating new mnist model after merge #27777
+    list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
 
 	#### Image classification dataset: ImageNet (small)
 	# The dataset should already be downloaded for INT8v2 unit tests
