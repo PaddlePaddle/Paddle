@@ -418,12 +418,11 @@ class ZeroOptimizer(MetaOptimizerBase):
             if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
                 reversed_x = []
                 for input_name in op.desc.input('X'):
-                    if input_name not in self._reduced_grads_to_param:
+                    param_name = input_name.strip("@GRAD")
+                    if param_name not in self._param2device:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"
-                            "be reduced grads, but {} is not a grad".format(
-                                input_name))
-                    param_name = self._reduced_grads_to_param[input_name]
+                            "be grads, but {} is not a grad".format(input_name))
                     if self._param2device[
                             param_name] == self.role_maker._worker_index():
                         reversed_x.append(input_name)
@@ -464,10 +463,10 @@ class ZeroOptimizer(MetaOptimizerBase):
         block._insert_op(
             update_loss_scaling_op_idx + 4,
             type='cast',
-            inputs={'X': inf_var_max},
+            inputs={'X': inf_var_fp32},
             outputs={'Out': inf_var_sharding},
             attrs={
-                "in_dtype": inf_var_max.dtype,
+                "in_dtype": inf_var_fp32.dtype,
                 "out_dtype": inf_var_sharding.dtype,
                 OP_ROLE_KEY: OpRole.Optimize
             })
