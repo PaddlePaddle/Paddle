@@ -32,7 +32,9 @@ __all__ = [
     'Softplus',
     'Softshrink',
     'Softsign',
+    'Swish',
     'Tanhshrink',
+    'ThresholdedReLU',
     'LogSigmoid',
     'LogSoftmax',
     'Maxout',
@@ -580,8 +582,6 @@ class ReLU6(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
             m = paddle.nn.ReLU6()
             out = m(x) # [0, 0.3, 6]
@@ -622,8 +622,6 @@ class SELU(layers.Layer):
 
             import paddle
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             m = paddle.nn.SELU()
@@ -801,8 +799,6 @@ class Softplus(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             m = paddle.nn.Softplus()
             out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
@@ -845,8 +841,6 @@ class Softshrink(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
             m = paddle.nn.Softshrink()
             out = m(x) # [-0.4, 0, 0, 0.3]
@@ -883,8 +877,6 @@ class Softsign(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             m = paddle.nn.Softsign()
             out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
@@ -896,6 +888,41 @@ class Softsign(layers.Layer):
 
     def forward(self, x):
         return F.softsign(x, self._name)
+
+
+class Swish(layers.Layer):
+    """
+    Swish Activation.
+
+    .. math::
+
+        Swish(x) = \\frac{x}{1 + e^{-x}}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x = paddle.to_tensor(np.array([-2., 0., 1.]))
+            m = paddle.nn.Swish()
+            out = m(x) # [-0.238406, 0., 0.731059]
+    """
+
+    def __init__(self, name=None):
+        super(Swish, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.swish(x, self._name)
 
 
 class Tanhshrink(layers.Layer):
@@ -920,8 +947,6 @@ class Tanhshrink(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             m = paddle.nn.Tanhshrink()
             out = m(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
@@ -933,6 +958,46 @@ class Tanhshrink(layers.Layer):
 
     def forward(self, x):
         return F.tanhshrink(x, self._name)
+
+
+class ThresholdedReLU(layers.Layer):
+    """
+    Thresholded ReLU Activation
+
+    .. math::
+
+        ThresholdedReLU(x) = \\begin{cases}
+                               x, \\text{if } x > threshold \\\\
+                               0, \\text{otherwise}
+                              \\end{cases}
+
+    Parameters:
+        threshold (float, optional): The value of threshold for ThresholdedReLU. Default is 1.0
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x = paddle.to_tensor(np.array([2., 0., 1.]))
+            m = paddle.nn.ThresholdedReLU()
+            out = m(x) # [2., 0., 0.]
+    """
+
+    def __init__(self, threshold=1.0, name=None):
+        super(ThresholdedReLU, self).__init__()
+        self._threshold = threshold
+        self._name = name
+
+    def forward(self, x):
+        return F.thresholded_relu(x, self._threshold, self._name)
 
 
 class LogSigmoid(layers.Layer):
