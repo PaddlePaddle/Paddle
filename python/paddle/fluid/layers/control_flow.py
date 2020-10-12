@@ -1419,13 +1419,16 @@ def increment(x, value=1.0, in_place=True):
     """
     The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
+
     Parameters:
         x (Variable): A tensor that must always contain only one element, its data type supports
             float32, float64, int32 and int64.
         value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
         in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
+
     Returns:
         Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
+
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
