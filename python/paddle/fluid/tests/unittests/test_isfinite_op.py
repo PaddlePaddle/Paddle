@@ -134,18 +134,12 @@ class BadInputTest(unittest.TestCase):
             self.assertRaises(TypeError, test_has_nan_bad_x)
 
         with fluid.dygraph.guard():
-
-            def test_has_inf_bad_x_dygraph():
-                data = [1, 2, 3]
-                result = paddle.has_inf(data)
-
-            self.assertRaises(TypeError, test_has_inf_bad_x_dygraph)
-
-            def test_has_nan_bad_x_dygraph():
-                data = [1, 2, 3]
-                result = paddle.has_nan(data)
-
-            self.assertRaises(TypeError, test_has_inf_bad_x_dygraph)
+            data = paddle.zeros([2, 3])
+            result = paddle.has_inf(data)
+            expect_value = np.array([False])
+            self.assertEqual((result.numpy() == expect_value).all(), True)
+            result = paddle.has_nan(data)
+            self.assertEqual((result.numpy() == expect_value).all(), True)
 
 
 if __name__ == '__main__':
