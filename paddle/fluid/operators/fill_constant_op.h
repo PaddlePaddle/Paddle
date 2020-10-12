@@ -96,7 +96,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
               tensor, static_cast<T>(value));
     }
 #ifdef PADDLE_WITH_CUDA
-    if (!cpu_place) {
+    if (ctx.GetPlace == platform::CUDAPlace()) {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
