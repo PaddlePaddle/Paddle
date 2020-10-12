@@ -55,7 +55,7 @@ class ParallelExecutor(object):
             otherwise, the results may be wrong**. The default is None.
         main_program (Program): This parameter represents the Program to be executed.
             If this parameter is not provided, that parameter is None, the program will
-            be set to :code:`fluid.default_main_program()`. The default is None.
+            be set to :code:`paddle.static.default_main_program()`. The default is None.
         share_vars_from(ParallelExecutor): If share_vars_from is set, the current
             ParallelExecutor will share the parameters with the ParallelExecutor
             specified by share_vars_from. This parameter needs to be set when model testing
@@ -66,13 +66,13 @@ class ParallelExecutor(object):
             The default is None.
         exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
             be changed when running the current model, such as the thread pool size.
-            For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
+            For more information about exec_strategy, please refer to :code:`paddle.static.ExecutionStrategy`.
             The default is None.
         build_strategy(BuildStrategy): By configuring build_strategy, we can
             optimize the computational graph, such as operators' fusion in the
             computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
-            please refer to :code:`fluid.BuildStrategy`.  The default is None.
+            please refer to :code:`paddle.static.BuildStrategy`.  The default is None.
         num_trainers(int): This parameter needs to be set in GPU distributed training.
             If the parameter value is greater than 1, NCCL will be initialized by multi-level
             nodes. Each node should have the same number of GPUs. The default is 1.
@@ -81,7 +81,7 @@ class ParallelExecutor(object):
             Trainer_id indicates the "rank" of the current node. The trainer_id starts
             counting from 0. The default is 0.
         scope(Scope): Specifies the scope in which the program is executed.
-            The default is fluid.global_scope().
+            The default is paddle.static.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -110,7 +110,7 @@ class ParallelExecutor(object):
           place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
           # NOTE: If you use CPU to run the program, you need
-          # to specify the CPU_NUM, otherwise, fluid will use
+          # to specify the CPU_NUM, otherwise, PaddlePaddle will use
           # all the number of the logic core as the CPU_NUM,
           # in that case, the batch size of the input should be
           # greater than CPU_NUM, if not, the process will be
@@ -135,6 +135,7 @@ class ParallelExecutor(object):
           train_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
                                                      main_program=train_program,
                                                      loss_name=loss.name)
+          # Note: if share_vars_from is not set here, the test parameter is different to the train one
           test_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
                                                     main_program=test_program,
                                                     share_vars_from=train_exe)
