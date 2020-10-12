@@ -208,8 +208,8 @@ def save(obj, path):
         there is no need to distinguish multiple saved files by adding a suffix. The argument ``path`` 
         of ``paddle.save`` will be directly used as the saved file name instead of a prefix. 
         In order to unify the saved file name format, we recommend using the paddle standard suffix:
-        1. for ``Layer.state_dict`` -> ``.pdparams``
-        2. for ``Optimizer.state_dict`` -> ``.pdopt``
+        1. for ``Layer.state_dict`` , recommend to use ``.pdparams`` ; 
+        2. for ``Optimizer.state_dict`` , recommend to use ``.pdopt`` . 
         For specific examples, please refer to API code examples.
     
     Args:
@@ -275,7 +275,7 @@ def load(path, **configs):
         Now only supports load ``state_dict`` of Layer or Optimizer.
 
     .. note::
-        In order to use the model parameters saved by paddle more efficiently，
+        In order to use the model parameters saved by paddle more efficiently, 
          ``paddle.load`` supports loading ``state_dict`` of Layer from the result of 
         other save APIs except ``paddle.save`` , but the argument ``path`` format is 
         different:
