@@ -324,7 +324,7 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dim)
 
 
-class TestLocalResponseNormCAPI():
+class TestLocalResponseNormCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
