@@ -92,26 +92,6 @@ def set_printoptions(precision=None,
     core.set_printoptions(**kwargs)
 
 
-def _to_sumary(var):
-    edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
-
-    if len(var.shape) == 0:
-        return var
-    elif len(var.shape) == 1:
-        if var.shape[0] > 2 * edgeitems:
-            return paddle.concat([var[:edgeitems], var[-edgeitems:]])
-        else:
-            return var
-    else:
-        # recursively handle all dimensions
-        if var.shape[0] > 2 * edgeitems:
-            begin = [x for x in var[:edgeitems]]
-            end = [x for x in var[-edgeitems:]]
-            return paddle.stack([_to_sumary(x) for x in (begin + end)])
-        else:
-            return paddle.stack([_to_sumary(x) for x in var])
-
-
 def _format_item(np_var):
     if np_var.dtype == np.float32 or np_var.dtype == np.float64 or np_var.dtype == np.float16:
         if DEFAULT_PRINT_OPTIONS.sci_mode:
@@ -123,7 +103,7 @@ def _format_item(np_var):
             return '{{:.{}f}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
                 np_var)
     else:
-        return '{}'.format(var)
+        return '{}'.format(np_var)
 
 
 def _format_tensor(var, sumary, indent=0):
