@@ -10241,9 +10241,9 @@ def unstack(x, axis=0, num=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
-            y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
+            import paddle
+            x = paddle.ones(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
     helper = LayerHelper('unstack', **locals())
@@ -11017,7 +11017,7 @@ def slice(input, axes, starts, ends):
     return out
 
 
-@templatedoc()
+@deprecated(since='2.0.0', update_to="paddle.strided_slice")
 def strided_slice(input, axes, starts, ends, strides):
     """
     :alias_main: paddle.strided_slice
@@ -11095,7 +11095,9 @@ def strided_slice(input, axes, starts, ends, strides):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
+            paddle.enable_static()
             input = fluid.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
