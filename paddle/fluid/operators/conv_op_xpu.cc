@@ -43,8 +43,9 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     const int f = static_cast<int>(filter.dims()[0]);
     const int win_h = static_cast<int>(filter.dims()[2]);
     const int win_w = static_cast<int>(filter.dims()[3]);
-    PADDLE_ENFORCE(dilations[0] == 1 && dilations[1] == 1,
-                   "XPU only support dilation == 1.");
+    PADDLE_ENFORCE_EQ(
+        dilations[0] == 1 && dilations[1] == 1, true,
+        platform::errors::InvalidArgument("XPU only support dilation == 1."));
     auto& dev_ctx = context.template device_context<DeviceContext>();
     PADDLE_ENFORCE_EQ(
         xpu::findmax(dev_ctx.x_context(), input->data<T>(), input->numel(),
@@ -100,9 +101,11 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
     const int batch_size = static_cast<int>(input->dims()[0]);
-    PADDLE_ENFORCE(groups == 1, "XPU only support groups == 1.");
-    PADDLE_ENFORCE(dilations[0] == 1 && dilations[1] == 1,
-                   "XPU only support dilation == 1.");
+    PADDLE_ENFORCE_EQ(groups == 1, true, platform::errors::InvalidArgument(
+                                             "XPU only support groups == 1."));
+    PADDLE_ENFORCE_EQ(
+        dilations[0] == 1 && dilations[1] == 1, true,
+        platform::errors::InvalidArgument("XPU only support dilation == 1."));
     const int img_c = static_cast<int>(input->dims()[1]);
     const int img_h = static_cast<int>(input->dims()[2]);
     const int img_w = static_cast<int>(input->dims()[3]);

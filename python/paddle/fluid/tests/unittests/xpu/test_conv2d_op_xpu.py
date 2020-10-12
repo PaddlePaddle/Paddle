@@ -222,10 +222,7 @@ class TestConv2dOp(OpTest):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(
-                place,
-                #atol=1e-5,
-                check_dygraph=(self.use_mkldnn == False))
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad") and
@@ -234,12 +231,7 @@ class TestConv2dOp(OpTest):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place,
-                {'Input', 'Filter'},
-                'Output',
-                #max_relative_error=0.02,
-                check_dygraph=(self.use_mkldnn == False))
+            self.check_grad_with_place(place, {'Input', 'Filter'}, 'Output')
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad") and
@@ -249,12 +241,7 @@ class TestConv2dOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place,
-                ['Input'],
-                'Output',
-                #max_relative_error=0.02,
-                no_grad_set=set(['Filter']),
-                check_dygraph=(self.use_mkldnn == False))
+                place, ['Input'], 'Output', no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16 or (hasattr(self, "no_need_check_grad") and
@@ -264,10 +251,7 @@ class TestConv2dOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['Filter'],
-                'Output',
-                no_grad_set=set(['Input']),
-                check_dygraph=(self.use_mkldnn == False))
+                place, ['Filter'], 'Output', no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -439,10 +423,7 @@ class TestConv2dOp_v2(OpTest):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(
-                place,
-                #atol=1e-5,
-                check_dygraph=(self.use_mkldnn == False))
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -451,12 +432,7 @@ class TestConv2dOp_v2(OpTest):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place,
-                {'Input', 'Filter'},
-                'Output',
-                #max_relative_error=0.02,
-                check_dygraph=(self.use_mkldnn == False))
+            self.check_grad_with_place(place, {'Input', 'Filter'}, 'Output')
 
     def test_check_grad_no_filter(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -466,12 +442,7 @@ class TestConv2dOp_v2(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place,
-                ['Input'],
-                'Output',
-                #max_relative_error=0.02,
-                no_grad_set=set(['Filter']),
-                check_dygraph=(self.use_mkldnn == False))
+                place, ['Input'], 'Output', no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -481,10 +452,7 @@ class TestConv2dOp_v2(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['Filter'],
-                'Output',
-                no_grad_set=set(['Input']),
-                check_dygraph=(self.use_mkldnn == False))
+                place, ['Filter'], 'Output', no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
