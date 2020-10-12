@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/xpu_header.h"
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -35,14 +34,13 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      auto shape = ctx.Attr<std::vector<int>>("shape");
+      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
       tensor->Resize(framework::make_ddim(shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be Tensor, "
-          "SelectedRows. But got "
-          "unsupport type: %s.",
+          "SelectedRows. But got unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
     T* data = tensor->mutable_data<T>(ctx.GetPlace());
@@ -53,19 +51,6 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("max")));
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     auto engine = framework::GetCPURandomEngine(seed);
-
-    /*
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
-    std::uniform_real_distribution<T> dist(
-        static_cast<T>(ctx.Attr<float>("min")),
-        static_cast<T>(ctx.Attr<float>("max")));
-    int64_t size = tensor->numel();
-    */
 
     T* data_host = reinterpret_cast<T*>(std::malloc(size * sizeof(T)));
     for (int64_t i = 0; i < size; ++i) {
@@ -78,17 +63,6 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
           BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace());
       memory::Copy(place, data, platform::CPUPlace(), data_host,
                    size * sizeof(T));
-
-      // auto context = ctx.xpu_device_context();
-      // xpu_api::memcpy(context.x_context(), data, data_host, size * sizeof(T),
-      // xpu::MemcpyHostToDevice);
-      // xpu_api::memcpy_device(context.x_context(), data, data_host, size *
-      // sizeof(T));
-
-      // auto memory =
-      // math::XPUMemory<platform::XPUDeviceContext>(ctx.xpu_device_context());
-      // memory.memcpyH2D(data, data_host, size * sizeof(T));
-
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "Unsupported place! Only support XPU device."));

@@ -50,7 +50,8 @@ class TestXPUUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "seed": 10
+            "seed": 10,
+            "use_xpu": True
         }
         self.output_hist = output_hist
 
@@ -69,7 +70,6 @@ class TestXPUUniformRandomOp(OpTest):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
-"""
 class TestXPUUniformRandomOpSelectedRows(unittest.TestCase):
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
@@ -93,7 +93,7 @@ class TestXPUUniformRandomOpSelectedRows(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
-"""
+
 
 if __name__ == "__main__":
     unittest.main()
