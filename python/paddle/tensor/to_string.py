@@ -94,36 +94,73 @@ def set_printoptions(precision=None,
     core.set_printoptions(**kwargs)
 
 
-def _format_item(np_var):
+def _to_sumary(var):
+    edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
+
+    if len(var.shape) == 0:
+        return var
+    elif len(var.shape) == 1:
+        if var.shape[0] > 2 * edgeitems:
+            return paddle.concat([var[:edgeitems], var[-edgeitems:]])
+        else:
+            return var
+    else:
+        # recursively handle all dimensions
+        if var.shape[0] > 2 * edgeitems:
+            begin = [x for x in var[:edgeitems]]
+            end = [x for x in var[-edgeitems:]]
+            return paddle.stack([_to_sumary(x) for x in (begin + end)])
+        else:
+            return paddle.stack([_to_sumary(x) for x in var])
+
+
+def _format_item(np_var, max_width=0):
     if np_var.dtype == np.float32 or np_var.dtype == np.float64 or np_var.dtype == np.float16:
         if DEFAULT_PRINT_OPTIONS.sci_mode:
-            return '{{:.{}e}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
-                np_var)
+            item_str = '{{:.{}e}}'.format(
+                DEFAULT_PRINT_OPTIONS.precision).format(np_var)
         elif np.ceil(np_var) == np_var:
-            return '{:.0f}.'.format(np_var)
+            item_str = '{:.0f}.'.format(np_var)
         else:
-            return '{{:.{}f}}'.format(DEFAULT_PRINT_OPTIONS.precision).format(
-                np_var)
+            item_str = '{{:.{}f}}'.format(
+                DEFAULT_PRINT_OPTIONS.precision).format(np_var)
     else:
-        return '{}'.format(np_var)
+        item_str = '{}'.format(np_var)
+
+    if max_width > len(item_str):
+        return '{indent}{data}'.format(
+            indent=(max_width - len(item_str)) * ' ', data=item_str)
+    else:
+        return item_str
+
+
+def _get_max_width(var):
+    max_width = 0
+    for item in np.nditer(var.numpy()):
+        item_str = _format_item(item)
+        max_width = max(max_width, len(item_str))
+    return max_width
 
 
 def _format_tensor(var, sumary, indent=0):
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
+    max_width = _get_max_width(_to_sumary(var))
 
     if len(var.shape) == 0:
-        return _format_item(var.numpy.items(0))
+        return _format_item(var.numpy.items(0), max_width)
     elif len(var.shape) == 1:
         if sumary and var.shape[0] > 2 * edgeitems:
             items = [
-                _format_item(item)
+                _format_item(item, max_width)
                 for item in list(var.numpy())[:DEFAULT_PRINT_OPTIONS.edgeitems]
             ] + ['...'] + [
-                _format_item(item)
+                _format_item(item, max_width)
                 for item in list(var.numpy())[-DEFAULT_PRINT_OPTIONS.edgeitems:]
             ]
         else:
-            items = [_format_item(item) for item in list(var.numpy())]
+            items = [
+                _format_item(item, max_width) for item in list(var.numpy())
+            ]
 
         s = ', '.join(items)
         return '[' + s + ']'
@@ -142,12 +179,14 @@ def _format_tensor(var, sumary, indent=0):
                       (indent + 1)).join(vars) + ']'
 
 
-def to_string(var):
-    _template = "  - place: {place}\n  - shape: {shape}\n  - layout: {layout}\n  - dtype: {dtype}\n  - data: {data}"
+def to_string(var, prefix='Tensor'):
+    indent = len(prefix) + 1
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     tensor = var.value().get_tensor()
     if not tensor._is_initialized():
-        return "Not initialized"
+        return "Tensor(Not initialized)"
 
     if len(var.shape) == 0:
         size = 0
@@ -160,11 +199,13 @@ def to_string(var):
     if size > DEFAULT_PRINT_OPTIONS.threshold:
         sumary = True
 
-    data = _format_tensor(var, sumary, indent=10)
+    data = _format_tensor(var, sumary, indent=indent)
 
     return _template.format(
-        place=var._place_str,
+        prefix=prefix,
         shape=var.shape,
-        layout=tensor._layout(),
         dtype=convert_dtype(var.dtype),
+        place=var._place_str,
+        stop_gradient=var.stop_gradient,
+        indent=' ' * indent,
         data=data)
