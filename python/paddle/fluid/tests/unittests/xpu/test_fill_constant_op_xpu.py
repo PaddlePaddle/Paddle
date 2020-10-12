@@ -33,8 +33,7 @@ from paddle.fluid import compiler, Program, program_guard
                  "core is not compiled with XPU")
 class TestFillConstantOp1(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
+        '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
 
         self.inputs = {}
@@ -50,8 +49,7 @@ class TestFillConstantOp1(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp2(OpTest):
     def setUp(self):
-        '''Test fill_constant op with default value
-        '''
+        '''Test fill_constant op with default value'''
         self.op_type = "fill_constant"
 
         self.inputs = {}
@@ -67,8 +65,7 @@ class TestFillConstantOp2(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp3(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified int64 value
-        '''
+        '''Test fill_constant op with specified int64 value'''
         self.op_type = "fill_constant"
 
         self.inputs = {}
@@ -84,8 +81,7 @@ class TestFillConstantOp3(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp4(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified int value
-        '''
+        '''Test fill_constant op with specified int value'''
         self.op_type = "fill_constant"
 
         self.inputs = {}
@@ -102,8 +98,7 @@ class TestFillConstantOp4(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp1_ShapeTensorList(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
+        '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
         self.init_data()
         shape_tensor_list = []
@@ -129,8 +124,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp2_ShapeTensorList(OpTest):
     def setUp(self):
-        '''Test fill_constant op with default value
-        '''
+        '''Test fill_constant op with default value'''
         self.op_type = "fill_constant"
         self.init_data()
         shape_tensor_list = []
@@ -174,8 +168,7 @@ class TestFillConstantOp4_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
                  "core is not compiled with XPU")
 class TestFillConstantOp1_ShapeTensor(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
+        '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
         self.init_data()
 
@@ -197,8 +190,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp1_ValueTensor(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
+        '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
         self.init_data()
 
@@ -224,8 +216,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
                  "core is not compiled with XPU")
 class TestFillConstantOp2_ValueTensor(OpTest):
     def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
+        '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
         self.init_data()
 
