@@ -885,15 +885,10 @@ class BeamSearchDecoder(Decoder):
             
             import numpy as np
             import paddle
-            from paddle.text import BeamSearchDecoder, dynamic_decode
-            from paddle.nn import GRUCell
-            from paddle.nn import functional as F
-            weight = paddle.to_tensor(
-                np.array(np.random.rand(100, 32), dtype=paddle.get_default_dtype()))
-            weight_linear = paddle.to_tensor(
-                np.array(np.random.rand(32, 32), dtype=paddle.get_default_dtype()))
-            trg_embeder = lambda x: F.embedding(x, weight=weight, padding_idx=0)
-            output_layer = lambda x: F.linear(x, weight=weight_linear)
+            from paddle.fluid.layers import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import GRUCell, Linear, Embedding
+            trg_embeder = Embedding(100, 32)
+            output_layer = Linear(32, 32)
             decoder_cell = GRUCell(input_size=32, hidden_size=32)
             decoder = BeamSearchDecoder(decoder_cell,
                                         start_token=0,
@@ -922,9 +917,6 @@ class BeamSearchDecoder(Decoder):
             embedding_fn(optional): A callable to apply to selected candidate ids. 
                 Mostly it is an embedding layer to transform ids to embeddings,
                 and the returned value acts as the `input` argument for `cell.call`.
-                **Note that paddle.nn.functional.embedding should be used here rather than
-                paddle.nn.Embedding, since shape of ids is [batch_size, beam_size].
-                when using paddle.nn.Embedding, must unsqueeze in embedding_fn.**
                 If not provided, the id to embedding transformation must be built into
                 `cell.call`. Default None.
             output_fn(optional): A callable to apply to the cell's output prior to
@@ -1638,15 +1630,10 @@ def dynamic_decode(decoder,
             
             import numpy as np
             import paddle
-            from paddle.text import BeamSearchDecoder, dynamic_decode
-            from paddle.nn import GRUCell
-            from paddle.nn import functional as F
-            weight = paddle.to_tensor(
-                np.array(np.random.rand(100, 32), dtype=paddle.get_default_dtype()))
-            weight_linear = paddle.to_tensor(
-                np.array(np.random.rand(32, 32), dtype=paddle.get_default_dtype()))
-            trg_embeder = lambda x: F.embedding(x, weight=weight, padding_idx=0)
-            output_layer = lambda x: F.linear(x, weight=weight_linear)
+            from paddle.fluid.layers import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import GRUCell, Linear, Embedding
+            trg_embeder = Embedding(100, 32)
+            output_layer = Linear(32, 32)
             decoder_cell = GRUCell(input_size=32, hidden_size=32)
             decoder = BeamSearchDecoder(decoder_cell,
                                         start_token=0,
