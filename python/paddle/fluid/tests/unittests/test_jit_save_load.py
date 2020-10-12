@@ -268,7 +268,7 @@ class TestJitSaveLoad(unittest.TestCase):
         # construct new model
         new_layer = LinearNet(784, 1)
         orig_state_dict = new_layer.state_dict()
-        load_state_dict = paddle.load(self.model_path)
+        load_state_dict = paddle.framework.io.load(self.model_path)
         for structured_name in orig_state_dict:
             self.assertTrue(structured_name in load_state_dict)
         new_layer.set_state_dict(load_state_dict)
