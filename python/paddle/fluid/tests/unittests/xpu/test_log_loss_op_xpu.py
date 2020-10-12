@@ -58,7 +58,7 @@ class TestXPULogLossOp(OpTest):
         if paddle.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
-            self.check_grad(['Predicted'], 'Loss', max_relative_error=0.03)
+            self.check_grad(['Predicted'], 'Loss')
 
 
 if __name__ == '__main__':

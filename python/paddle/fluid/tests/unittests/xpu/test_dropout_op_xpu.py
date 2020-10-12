@@ -24,8 +24,6 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
@@ -94,40 +92,6 @@ class TestDropoutOp3(TestDropoutOp):
         }
 
 
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
-class TestDropoutOp4(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
-        self.outputs = {
-            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-        }
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
-
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
-class TestDropoutOp5(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.75, 'is_test': True}
-        self.outputs = {
-            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-        }
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
-
 class TestDropoutOp6(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
@@ -142,45 +106,6 @@ class TestDropoutOp6(TestDropoutOp):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64, 2)).astype('uint8')
         }
-
-
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
-class TestDropoutOp7(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {
-            'dropout_prob': 0.35,
-            'fix_seed': True,
-            'is_test': True,
-            'dropout_implementation': 'upscale_in_train'
-        }
-        self.outputs = {'Out': self.inputs['X']}
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
-
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
-class TestDropoutOp8(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
-        self.attrs = {
-            'dropout_prob': 0.75,
-            'is_test': True,
-            'dropout_implementation': 'upscale_in_train'
-        }
-        self.outputs = {'Out': self.inputs['X']}
-
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
 
 
 if __name__ == '__main__':
