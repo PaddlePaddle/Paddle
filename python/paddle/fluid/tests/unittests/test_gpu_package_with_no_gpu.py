@@ -25,8 +25,8 @@ class TestGPUVersionPaddle(unittest.TestCase):
         import paddle
         if paddle.is_compiled_with_cuda():
             x = paddle.rand([3, 4])
-            assert x.place.is_cpu_place(
-            ) is True, "There is no CUDA device, but Tensor's place is not CPUPlace"
+            assert x.place.is_gpu_place(
+            ) is False, "There is no CUDA device, but Tensor's place is CUDAPlace"
 
 
 if __name__ == '__main__':
