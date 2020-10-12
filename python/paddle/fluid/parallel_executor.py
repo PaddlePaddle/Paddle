@@ -50,7 +50,7 @@ class ParallelExecutor(object):
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.
-        loss_name (str): This parameter is the name of the loss variable of the
+        loss_name (str): This parameter is the name of the loss tensor of the
             model. **Note: If it is data-parallel model training, you must set loss_name,
             otherwise, the results may be wrong**. The default is None.
         main_program (Program): This parameter represents the Program to be executed.
@@ -101,12 +101,13 @@ class ParallelExecutor(object):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy
           import os
 
           use_cuda = True
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          paddle.enable_static()
+          place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
           # NOTE: If you use CPU to run the program, you need
           # to specify the CPU_NUM, otherwise, fluid will use
@@ -117,26 +118,26 @@ class ParallelExecutor(object):
           if not use_cuda:
               os.environ['CPU_NUM'] = str(2)
 
-          exe = fluid.Executor(place)
+          exe = paddle.static.Executor(place)
 
-          train_program = fluid.Program()
-          startup_program = fluid.Program()
-          with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              test_program = fluid.default_main_program().clone(for_test=True)
-              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+          train_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(train_program, startup_program):
+              data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+              hidden = paddle.static.nn.fc(data, 10)
+              loss = paddle.mean(hidden)
+              test_program = paddle.static.default_main_program().clone(for_test=True)
+              paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
           startup_program.random_seed=1
           exe.run(startup_program)
 
-          train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                             main_program=train_program,
-                                             loss_name=loss.name)
-          test_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                            main_program=test_program,
-                                            share_vars_from=train_exe)
+          train_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                     main_program=train_program,
+                                                     loss_name=loss.name)
+          test_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                    main_program=test_program,
+                                                    share_vars_from=train_exe)
 
           x = numpy.random.random(size=(10, 1)).astype('float32')
           loss_data, = train_exe.run(feed={"X": x},
@@ -205,11 +206,11 @@ class ParallelExecutor(object):
         fetch_list.
 
         Args:
-            fetch_list(list): This parameter represents the variables that need to be returned
+            fetch_list(list): This parameter represents the tensors that need to be returned
                 after the model runs. The default is None.
-            feed(list|dict): This parameter represents the input variables of the model.
+            feed(list|dict): This parameter represents the input tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list type variable. If the
+                training, the parameter feed can be dict or list of tensor. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
                 sent to different devices, so you should make sure the number of samples of
@@ -219,8 +220,8 @@ class ParallelExecutor(object):
                 The default is None.
             feed_dict: Alias for feed parameter, for backward compatibility.
                 This parameter has been deprecated. Default None.
-            return_numpy(bool): This parameter indicates whether convert the fetched variables
-                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+            return_numpy(bool): This parameter indicates whether convert the fetched tensors
+                (the tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
 
         Returns:
@@ -241,19 +242,20 @@ class ParallelExecutor(object):
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same variable values
-               (variables in fetch_list) on different devices.
+               results are spliced together in dimension 0 for the same tensor values
+               (tensors in fetch_list) on different devices.
 
 
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               import numpy
               import os
 
               use_cuda = True
-              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              paddle.enable_static()
+              place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
               # NOTE: If you use CPU to run the program, you need
               # to specify the CPU_NUM, otherwise, fluid will use
@@ -264,21 +266,21 @@ class ParallelExecutor(object):
               if not use_cuda:
                   os.environ['CPU_NUM'] = str(2)
 
-              exe = fluid.Executor(place)
+              exe = paddle.static.Executor(place)
 
-              train_program = fluid.Program()
-              startup_program = fluid.Program()
-              with fluid.program_guard(train_program, startup_program):
-                  data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-                  hidden = fluid.layers.fc(input=data, size=10)
-                  loss = fluid.layers.mean(hidden)
-                  fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+              train_program = paddle.static.Program()
+              startup_program = paddle.static.Program()
+              with paddle.static.program_guard(train_program, startup_program):
+                  data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                  hidden = paddle.static.nn.fc(data, 10)
+                  loss = paddle.mean(hidden)
+                  paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
               exe.run(startup_program)
 
-              train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                                 main_program=train_program,
-                                                 loss_name=loss.name)
+              train_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                         main_program=train_program,
+                                                         loss_name=loss.name)
 
               # If the feed is a dict:
               # the image will be split into devices. If there is two devices
@@ -325,7 +327,7 @@ class ParallelExecutor(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               import numpy
               import os
 
@@ -339,26 +341,28 @@ class ParallelExecutor(object):
               if not use_cuda:
                   os.environ['CPU_NUM'] = str(2)
 
-              train_program = fluid.Program()
-              startup_program = fluid.Program()
-              with fluid.program_guard(train_program, startup_program):
-                  data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-                  hidden = fluid.layers.fc(input=data, size=10)
-                  loss = fluid.layers.mean(hidden)
+              paddle.enable_static()
+              train_program = paddle.static.Program()
+              startup_program = paddle.static.Program()
+              with paddle.static.program_guard(train_program, startup_program):
+                  data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                  hidden = paddle.static.nn.fc(data, 10)
+                  loss = paddle.mean(hidden)
 
-              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-              exe = fluid.Executor(place)
+              place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+              exe = paddle.static.Executor(place)
               exe.run(startup_program)
 
-              parallel_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                                 main_program=train_program,
-                                                 loss_name=loss.name)
+              parallel_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                            main_program=train_program,
+                                                            loss_name=loss.name)
 
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = parallel_exe.run(feed={"X": x},
-                                         fetch_list=[loss.name])
+                                            fetch_list=[loss.name])
 
               parallel_exe.drop_local_exe_scopes()
+
         """
         check_type(self._compiled_program._executor,
                    "the Executor of compiled program", core.ParallelExecutor,
