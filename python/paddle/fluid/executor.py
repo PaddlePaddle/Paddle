@@ -491,60 +491,58 @@ class Executor(object):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.fluid.compiler as compiler
-          import numpy
-          import os
+            import paddle
+            import numpy
+            import os
 
-          # Set place explicitly.
-          # use_cuda = True
-          # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          # exe = fluid.Executor(place)
+            # Executor is only used in static graph mode
+            paddle.enable_static()
 
-          # If you don't set place, PaddlePaddle sets the default device.
-          exe = fluid.Executor()
+            # Set place explicitly.
+            # use_cuda = True
+            # place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            # exe = paddle.static.Executor(place)
 
-          train_program = fluid.Program()
-          startup_program = fluid.Program()
-          with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            # If you don't set place, PaddlePaddle sets the default device.
+            exe = paddle.static.Executor()
 
-          # Run the startup program once and only once.
-          # Not need to optimize/compile the startup program.
-          startup_program.random_seed=1
-          exe.run(startup_program)
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                hidden = paddle.static.nn.fc(data, 10)
+                loss = paddle.mean(hidden)
+                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-          # Run the main program directly without compile.
-          x = numpy.random.random(size=(10, 1)).astype('float32')
-          loss_data, = exe.run(train_program,
-                               feed={"X": x},
-                               fetch_list=[loss.name])
+            # Run the startup program once and only once.
+            # Not need to optimize/compile the startup program.
+            startup_program.random_seed = 1
+            exe.run(startup_program)
 
-          # Or, compiled the program and run. See `CompiledProgram`
-          # for more detail.
-          # NOTE: If you use CPU to run the program or Paddle is
-          # CPU version, you need to specify the CPU_NUM, otherwise,
-          # fluid will use all the number of the logic core as
-          # the CPU_NUM, in that case, the batch size of the input
-          # should be greater than CPU_NUM, if not, the process will be
-          # failed by an exception.
+            # Run the main program directly without compile.
+            x = numpy.random.random(size=(10, 1)).astype('float32')
+            loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
 
-          # Set place explicitly.
-          # if not use_cuda:
-          #     os.environ['CPU_NUM'] = str(2)
+            # Or, compiled the program and run. See `CompiledProgram`
+            # for more details.
+            # NOTE: If you use CPU to run the program or Paddle is
+            # CPU version, you need to specify the CPU_NUM, otherwise,
+            # fluid will use all the number of the logic core as
+            # the CPU_NUM, in that case, the batch size of the input
+            # should be greater than CPU_NUM, if not, the process will be
+            # failed by an exception.
 
-          # If you don't set place and PaddlePaddle is CPU version
-          os.environ['CPU_NUM'] = str(2)
+            # Set place explicitly.
+            # if not use_cuda:
+            #     os.environ['CPU_NUM'] = str(2)
 
-          compiled_prog = compiler.CompiledProgram(
-              train_program).with_data_parallel(
-              loss_name=loss.name)
-          loss_data, = exe.run(compiled_prog,
-                               feed={"X": x},
-                               fetch_list=[loss.name])
+            # If you don't set place and PaddlePaddle is CPU version
+            os.environ['CPU_NUM'] = str(2)
+
+            compiled_prog = paddle.static.CompiledProgram(
+                train_program).with_data_parallel(loss_name=loss.name)
+            loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
+
     """
 
     def __init__(self, place=None):
@@ -841,10 +839,10 @@ class Executor(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
 
-              cpu = fluid.CPUPlace()
-              exe = fluid.Executor(cpu)
+              cpu = paddle.CPUPlace()
+              exe = paddle.static.Executor(cpu)
               # execute training or testing
               exe.close()
         """
@@ -935,9 +933,9 @@ class Executor(object):
                 :code:`CompiledProgram` to be executed. If this parameter is not provided, that
                 parameter is None, the program will be set to :code:`fluid.default_main_program()`.
                 The default is None.
-            feed(list|dict): This parameter represents the input variables of the model.
+            feed(list|dict): This parameter represents the input tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list type variable. If the
+                training, the parameter feed can be dict or list of tensors. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
                 sent to different devices, so you should make sure the number of samples of
@@ -945,23 +943,23 @@ class Executor(object):
                 if the parameter type is list, those data are copied directly to each device,
                 so the length of this list should be equal to the number of places.
                 The default is None.
-            fetch_list(list): This parameter represents the variables that need to be returned
+            fetch_list(list): This parameter represents the tensors that need to be returned
                 after the model runs. The default is None. 
-            feed_var_name(str): This parameter represents the name of the input variable of
+            feed_var_name(str): This parameter represents the name of the input tensor of
                 the feed operator. The default is "feed".
-            fetch_var_name(str): This parameter represents the name of the output variable of
+            fetch_var_name(str): This parameter represents the name of the output tensor of
                 the fetch operator. The default is "fetch".
             scope(Scope): the scope used to run this program, you can switch 
                 it to different scope. default is :code:`fluid.global_scope()`
-            return_numpy(bool): This parameter indicates whether convert the fetched variables
-                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+            return_numpy(bool): This parameter indicates whether convert the fetched tensors
+                (the tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
             use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
                 If the parameter is True, the model may run faster in the following cases:
-                the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
-                and fetch_list variable) of this interface remains unchanged during running.
+                the input program is :code:`fluid.Program`, and the parameters(program, feed tensor name
+                and fetch_list tensor) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched variables (the variables
+            return_merged(bool): This parameter indicates whether fetched tensors (the tensors
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
                 of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
@@ -974,9 +972,9 @@ class Executor(object):
                 use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
-                which means the operators and variables in program that generate :code:`feed` and are not 
+                which means the operators and tensors in program that generate :code:`feed` and are not 
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the 
-                program will not pruned and all the operators and variables will be executed during running.
+                program will not pruned and all the operators and tensors will be executed during running.
                 Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`, 
                 :code:`use_prune` will be overrided to True, and the program will be pruned.
                 
@@ -995,8 +993,8 @@ class Executor(object):
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same variable values
-               (variables in fetch_list) on different devices.
+               results are spliced together in dimension 0 for the same tensor values
+               (tensors in fetch_list) on different devices.
 
         Examples 1:
             .. code-block:: python
