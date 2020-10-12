@@ -201,8 +201,11 @@ def prepare_distributed_context(place=None):
 
 
 def _update_input_shapes(inputs):
+    "Get input shape list by given inputs in Model initialization."
     shapes = None
-    if isinstance(inputs, list):
+    if isinstance(inputs, Input):
+        shapes = [list(inputs.shape)]
+    elif isinstance(inputs, list):
         shapes = [list(input.shape) for input in inputs]
     elif isinstance(inputs, dict):
         shapes = [list(inputs[name].shape) for name in inputs]
@@ -638,19 +641,14 @@ class DynamicGraphAdapter(object):
 
         if self._nranks > 1:
             outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
-            final_loss = self.ddp_model.scale_loss(final_loss)
-            final_loss.backward()
-            self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
                 * [to_variable(x) for x in inputs])
-            losses = self.model._loss(*(to_list(outputs) + labels))
-            losses = to_list(losses)
-            final_loss = fluid.layers.sum(losses)
-            final_loss.backward()
+
+        losses = self.model._loss(*(to_list(outputs) + labels))
+        losses = to_list(losses)
+        final_loss = fluid.layers.sum(losses)
+        final_loss.backward()
 
         self.model._optimizer.minimize(final_loss)
         self.model.network.clear_gradients()
@@ -922,9 +920,7 @@ class Model(object):
         """
         loss = self._adapter.train_batch(inputs, labels)
         if fluid.in_dygraph_mode() and self._input_shapes is None:
-            self._input_shapes = self._adapter._input_shapes
-            self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._input_shapes, True)
+            self._update_inputs()
         return loss
 
     def eval_batch(self, inputs, labels=None):
@@ -972,9 +968,7 @@ class Model(object):
         """
         loss = self._adapter.eval_batch(inputs, labels)
         if fluid.in_dygraph_mode() and self._input_shapes is None:
-            self._input_shapes = self._adapter._input_shapes
-            self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._input_shapes, True)
+            self._update_inputs()
         return loss
 
     def test_batch(self, inputs):
@@ -1017,9 +1011,7 @@ class Model(object):
         """
         loss = self._adapter.test_batch(inputs)
         if fluid.in_dygraph_mode() and self._input_shapes is None:
-            self._input_shapes = self._adapter._input_shapes
-            self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._input_shapes, True)
+            self._update_inputs()
         return loss
 
     def save(self, path, training=True):
@@ -1712,7 +1704,7 @@ class Model(object):
                 layer = self.network
                 if self._input_shapes is None:  # No provided or inferred
                     raise RuntimeError(
-                        "Saving inference model needs 'inputs' or running before saving. Please specify 'inputs' in Model initialization or input training zqqdata and perform a training for shape derivation."
+                        "Saving inference model needs 'inputs' or running before saving. Please specify 'inputs' in Model initialization or input training data and perform a training for shape derivation."
                     )
                 if self._is_shape_inferred:
                     warnings.warn(
@@ -1958,3 +1950,9 @@ class Model(object):
         except Exception:
             steps = None
         return steps
+
+    def _update_inputs(self):
+        "Update self._inputs according to given inputs."
+        self._input_shapes = self._adapter._input_shapes
+        self._is_shape_inferred = True
+        self._inputs = self._verify_spec(None, self._input_shapes, True)
