@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
@@ -131,6 +132,20 @@ class BadInputTest(unittest.TestCase):
                 result = fluid.layers.has_nan(data)
 
             self.assertRaises(TypeError, test_has_nan_bad_x)
+
+        with fluid.dygraph.guard():
+
+            def test_has_inf_bad_x():
+                data = [1, 2, 3]
+                result = paddle.has_inf(data)
+
+            self.assertRaises(TypeError, test_has_inf_bad_x)
+
+            def test_has_nan_bad_x():
+                data = [1, 2, 3]
+                result = paddle.has_nan(data)
+
+            self.assertRaises(TypeError, test_has_inf_bad_x)
 
 
 if __name__ == '__main__':
