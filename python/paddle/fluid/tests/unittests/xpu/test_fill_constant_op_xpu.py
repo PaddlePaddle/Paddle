@@ -37,12 +37,12 @@ class TestFillConstantOp1(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 3.8}
+        self.attrs = {'shape': [123, 92], 'dtype': 5, 'value': 3.8}
         self.outputs = {'Out': np.full((123, 92), 3.8)}
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -53,12 +53,12 @@ class TestFillConstantOp2(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92]}
+        self.attrs = {'shape': [123, 92], 'dtype': 5}
         self.outputs = {'Out': np.full((123, 92), 0.0)}
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -69,12 +69,12 @@ class TestFillConstantOp3(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 10000000000}
+        self.attrs = {'shape': [123, 92], 'dtype': 3, 'value': 10000000000}
         self.outputs = {'Out': np.full((123, 92), 10000000000)}
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -85,12 +85,12 @@ class TestFillConstantOp4(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 3}
+        self.attrs = {'shape': [123, 92], 'dtype': 2, 'value': 3}
         self.outputs = {'Out': np.full((123, 92), 3)}
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 # Situation 2: Attr(shape) is a list(with tensor)
@@ -107,7 +107,11 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
-        self.attrs = {'shape': self.infer_shape, 'value': self.value}
+        self.attrs = {
+            'shape': self.infer_shape,
+            'dtype': 5,
+            'value': self.value
+        }
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def init_data(self):
@@ -117,7 +121,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -133,7 +137,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
-        self.attrs = {'shape': self.infer_shape}
+        self.attrs = {'shape': self.infer_shape, 'dtype': 5}
         self.outputs = {'Out': np.full(self.shape, 0.0)}
 
     def init_data(self):
@@ -142,7 +146,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
@@ -173,7 +177,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.init_data()
 
         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
-        self.attrs = {'value': self.value}
+        self.attrs = {'value': self.value, 'dtype': 5}
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def init_data(self):
@@ -182,7 +186,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 # Situation 4: value is a tensor
@@ -198,7 +202,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
             "ShapeTensor": np.array(self.shape).astype("int32"),
             'ValueTensor': np.array([self.value]).astype("float32")
         }
-        self.attrs = {'value': self.value + 1.0}
+        self.attrs = {'value': self.value + 1.0, 'dtype': 5}
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def init_data(self):
@@ -208,7 +212,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 # Situation 5: value is a tensor
@@ -234,7 +238,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 
     def test_check_output(self):
         place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=2e-1)
+        self.check_output_with_place(place)
 
 
 if __name__ == "__main__":
