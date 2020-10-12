@@ -16,60 +16,51 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/xpu_header.h"
-
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class XPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    framework::Tensor* tensor = nullptr;
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    framework::Tensor *tensor = nullptr;
     auto out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
     } else if (out_var->IsType<framework::SelectedRows>()) {
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
+      tensor = selected_rows->mutable_value();
       tensor->Resize(framework::make_ddim(shape));
+      selected_rows->mutable_rows()->reserve(shape[0]);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "Expected type of Output(out) in uniform_random_op must be "
+          "LoDTensor, "
           "SelectedRows. But got unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
-    T* data = tensor->mutable_data<T>(ctx.GetPlace());
-
-    int64_t size = tensor->numel();
+    T *data = tensor->mutable_data<T>(ctx.GetPlace());
+    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    engine.seed(seed);
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
-
-    T* data_host = reinterpret_cast<T*>(std::malloc(size * sizeof(T)));
+    int64_t size = tensor->numel();
+    std::unique_ptr<T[]> data_cpu(new T[size]);
     for (int64_t i = 0; i < size; ++i) {
-      data_host[i] = dist(*engine);
+      data_cpu[i] = dist(engine);
     }
-
-    if (std::is_same<T, float>::value &&
-        std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {
-      platform::XPUPlace place =
-          BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace());
-      memory::Copy(place, data, platform::CPUPlace(), data_host,
-                   size * sizeof(T));
-    } else {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Unsupported place! Only support XPU device."));
-    }
-
-    std::free(data_host);
+    memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), data,
+                 platform::CPUPlace(), reinterpret_cast<void *>(data_cpu.get()),
+                 size * sizeof(T));
   }
 };
 
@@ -77,7 +68,6 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_XPU_KERNEL(uniform_random,
-                       paddle::operators::XPUUniformRandomKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+                       paddle::operators::XPUUniformRandomKernel<float>);
 
 #endif  // PADDLE_WITH_XPU
