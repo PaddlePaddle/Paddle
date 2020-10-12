@@ -731,9 +731,6 @@ class Optimizer(object):
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
-    def _append_dgc_ops(self, param_and_grad):
-        pass
-
     def backward(self,
                  loss,
                  startup_program=None,
@@ -801,9 +798,6 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
-                # Note: since we can't use all_reduce_op now,
-                # dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -1569,6 +1563,11 @@ class DGCMomentumOptimizer(Optimizer):
 
     @imperative_base.no_grad
     def apply_gradients(self, params_grads):
+        # Note: since we can't use all_reduce_op now,
+        # dgc_op should be the last op of one grad.
+        # Maybe need a grad allreduce pass.
+        self._append_dgc_ops(params_grads)
+
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
@@ -4784,10 +4783,6 @@ class RecomputeOptimizer(Optimizer):
 
             params_grads = append_backward(
                 loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
-            # Note: since we can't use all_reduce_op now,
-            #  dgc_op should be the last op of one grad.
-            if hasattr(self._optimizer, "_append_dgc_ops"):
-                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4884,29 +4879,35 @@ class LookaheadOptimizer(object):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            import numpy.random as random
 
-	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
-	    loss = fluid.layers.cross_entropy(input=y, label=label)
-	    loss = fluid.layers.mean(x=loss)
-	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
-	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
-                                            alpha=0.5,
-                                            k=5)
-	    optimizer.minimize(loss)
-	    main_program = fluid.default_main_program()
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            paddle.enable_static()
+        
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            y = fluid.layers.fc(input=[x], size=2, act="softmax")
+            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                                alpha=0.5,
+                                                k=5)
+            optimizer.minimize(loss)
+            main_program = fluid.default_main_program()
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
 
-	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
-
-	    step = 0
-            while(step < 10):
-                step += 1
-		exe.run(fluid.default_main_program(),
-            	feed=feeder.feed(batch_data))
+            def train_reader(limit=5):
+                for i in range(limit):
+                    yield random.random([2]).astype('float32'), random.random([1]).astype('int64')
+            
+            feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+            reader = paddle.batch(paddle.reader.shuffle(train_reader, buf_size=50000),batch_size=1)
+            
+            for batch_data in reader():
+                exe.run(fluid.default_main_program(),
+                feed=feeder.feed(batch_data))
 
     """
 
