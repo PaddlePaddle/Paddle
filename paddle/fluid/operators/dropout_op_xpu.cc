@@ -35,7 +35,8 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           ("Input(Seed) not supported on XPU")));
     if (!context.Attr<bool>("is_test")) {
-      int dev_id = boost::get<platform::XPUPlace>(context.GetPlace()).device;
+      int dev_id =
+          BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
       int prop = static_cast<int>(dropout_prob * 100);
       int is_upscale = (dropout_implementation == "upscale_in_train");
       /* mask_data_tables key contains 3 part:
@@ -67,7 +68,7 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
             xpu_malloc(reinterpret_cast<void**>(&mask_data_table),
                        max_data_size * sizeof(float)) == xpu::Error_t::SUCCESS,
             "XPU no enough memory");
-        memory::Copy(boost::get<platform::XPUPlace>(context.GetPlace()),
+        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
                      mask_data_table, platform::CPUPlace(), mask_data_host,
                      max_data_size * sizeof(float));
         mask_data_tables[index] = mask_data_table;
