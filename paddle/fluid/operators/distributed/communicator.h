@@ -58,14 +58,19 @@ template <typename T>
 class BlockingQueue {
  public:
   explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
-    PADDLE_ENFORCE_GT(capacity_, 0, "The capacity must be greater than 0.");
+    PADDLE_ENFORCE_GT(capacity_, 0,
+                      platform::errors::InvalidArgument(
+                          "The capacity must be greater than 0."));
   }
 
   bool Push(const T &elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      PADDLE_ENFORCE_LT(
+          queue_.size(), capacity_,
+          platform::errors::OutOfRange("The queue size: %s out of capacity:%s",
+                                       queue_.size(), capacity_));
       queue_.push_back(elem);
     }
     cv_.notify_one();
@@ -76,7 +81,10 @@ class BlockingQueue {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      PADDLE_ENFORCE_LT(
+          queue_.size(), capacity_,
+          platform::errors::OutOfRange("The queue size: %s out of capacity:%s",
+                                       queue_.size(), capacity_));
       queue_.emplace_back(std::move(elem));
     }
     cv_.notify_one();
@@ -118,7 +126,8 @@ template <typename T>
 inline void MergeVars(const std::string &var_name,
                       const std::vector<std::shared_ptr<Variable>> &vars,
                       Scope *scope, bool merge_add = true) {
-  PADDLE_ENFORCE(!vars.empty(), "should have value to merge!");
+  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
+                                            "vector vars are empty."));
   auto cpu_place = platform::CPUPlace();
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
@@ -132,7 +141,9 @@ inline void MergeVars(const std::string &var_name,
     // check the input dims
     for (auto &var : vars) {
       auto &var_t = var->Get<framework::LoDTensor>();
-      PADDLE_ENFORCE_EQ(var_t.dims(), dims, "should have the same dims");
+      PADDLE_ENFORCE_EQ(
+          var_t.dims(), dims,
+          platform::errors::InvalidArgument("vars should have the same dims"));
     }
 
     // set output tensor to 0.
@@ -173,7 +184,8 @@ inline void MergeVars(const std::string &var_name,
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims() << "; merge add: " << merge_add;
   } else {
-    PADDLE_THROW("unsupported var type!");
+    PADDLE_THROW(platform::errors::InvalidArgument("unsupported var type: %s!",
+                                                   var0->Type()));
   }
 }
 
