@@ -2297,11 +2297,6 @@ def copy_var_to_parent_block(var, layer_helper):
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
-    :api_attr: Static Graph
-	:alias_main: paddle.nn.cond
-	:alias: paddle.nn.cond,paddle.nn.control_flow.cond
-	:old_api: paddle.fluid.layers.cond
-    
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
     ``None`` if do nothing and this API will treat the callable simply returns
@@ -2324,11 +2319,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            a = paddle.to_tensor(np.zeros((1, 1)))
-            b = paddle.to_tensor(np.zeros((1, 1)))
+            a = paddle.zeros((1, 1))
+            b = paddle.zeros((1, 1))
             c = a * b
             out = paddle.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
