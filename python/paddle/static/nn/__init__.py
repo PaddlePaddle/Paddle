@@ -27,7 +27,6 @@ __all__ = [
     'data_norm',
     'deformable_conv',
     'group_norm',
-    'hsigmoid',
     'instance_norm',
     'layer_norm',
     'multi_box_head',
