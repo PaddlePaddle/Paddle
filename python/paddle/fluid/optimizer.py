@@ -731,9 +731,6 @@ class Optimizer(object):
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
-    def _append_dgc_ops(self, param_and_grad):
-        pass
-
     def backward(self,
                  loss,
                  startup_program=None,
@@ -801,9 +798,6 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
-                # Note: since we can't use all_reduce_op now,
-                # dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -1569,6 +1563,11 @@ class DGCMomentumOptimizer(Optimizer):
 
     @imperative_base.no_grad
     def apply_gradients(self, params_grads):
+        # Note: since we can't use all_reduce_op now,
+        # dgc_op should be the last op of one grad.
+        # Maybe need a grad allreduce pass.
+        self._append_dgc_ops(params_grads)
+
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
@@ -4784,10 +4783,6 @@ class RecomputeOptimizer(Optimizer):
 
             params_grads = append_backward(
                 loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
-            # Note: since we can't use all_reduce_op now,
-            #  dgc_op should be the last op of one grad.
-            if hasattr(self._optimizer, "_append_dgc_ops"):
-                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
