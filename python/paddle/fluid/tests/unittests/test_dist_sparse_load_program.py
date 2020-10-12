@@ -26,7 +26,7 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
 
 
-class SparseLoadOp(unittest.TestCase):
+class TestSparseLoadProgram(unittest.TestCase):
     """ 
     Test Sparse load operator.
     """
