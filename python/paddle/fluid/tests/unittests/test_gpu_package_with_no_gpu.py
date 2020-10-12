@@ -15,58 +15,18 @@
 from __future__ import print_function
 
 import os
-import sys
-import subprocess
 import unittest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
 
 
 class TestGPUVersionPaddle(unittest.TestCase):
     def test_warning(self):
-        if core.is_compiled_with_cuda():
-            os.environ['CUDA_VISIBLE_DEVICES'] = ''
-            test_file = 'test_no_gpu.py'
-            with open(test_file, 'w') as wb:
-                cmd_test = 'import paddle'
-                wb.write(cmd_test)
+        os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-            _python = sys.executable
-
-            ps_cmd = '{} {}'.format(_python, test_file)
-            ps_proc = subprocess.Popen(
-                ps_cmd.strip().split(" "),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            stdout, stderr = ps_proc.communicate()
-
-            assert 'CPU device will be used by default' in str(
-                stderr
-            ), "GPU version Paddle is installed. But CPU device can't be used when CUDA device is not set properly"
-
-    def test_run_rand(self):
-        if core.is_compiled_with_cuda():
-            os.environ['CUDA_VISIBLE_DEVICES'] = ''
-            test_file = 'test_no_gpu_run_rand.py'
-            with open(test_file, 'w') as wb:
-                cmd_test = """
-import paddle
-x = paddle.rand([3,4])
-assert x.place.is_cpu_place() is True, 'Error occurs because place is not CPUPlace'
-"""
-                wb.write(cmd_test)
-
-            _python = sys.executable
-
-            ps_cmd = '{} {}'.format(_python, test_file)
-            ps_proc = subprocess.Popen(
-                ps_cmd.strip().split(" "),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            stdout, stderr = ps_proc.communicate()
-
-            assert "Error" not in str(stderr), 'place is not CPUPlace'
+        import paddle
+        if paddle.is_compiled_with_cuda():
+            x = paddle.rand([3, 4])
+            assert x.place.is_cpu_place(
+            ) is True, "There is no CUDA device, but Tensor's place is not CPUPlace"
 
 
 if __name__ == '__main__':
