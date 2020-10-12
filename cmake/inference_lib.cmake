@@ -130,15 +130,9 @@ function(copy_part_of_thrid_party TARGET DST)
 
     if (LITE_BINARY_DIR)
         set(dst_dir "${DST}/third_party/install/lite")
-        if (WITH_ARM)
-          copy(${TARGET}
-                  SRCS ${LITE_BINARY_DIR}/inference_lite_lib.armlinux.armv8/*
-                  DSTS ${dst_dir})
-        else()
-          copy(${TARGET}
-                  SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
-                  DSTS ${dst_dir})
-        endif()
+        copy(${TARGET}
+                SRCS ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/*
+                DSTS ${dst_dir})
     endif()
 endfunction()
 

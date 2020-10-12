@@ -43,7 +43,6 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
 
   # No quotes, so cmake can resolve it as a command with arguments.
   if(WITH_ARM)
-    #set(LITE_BUILD_COMMAND ./src/extern_lite/lite/tools/build_linux.sh --arch=armv8 --with_extra=ON full_publish)
     set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
     message(WARNING "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS -DWITH_MKL=OFF
@@ -63,14 +62,13 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY      "https://gitee.com/jiweibo/Paddle-Lite.git"
+      GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
       PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
-      BUILD_ALWAYS        1
       CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                           -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                           -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
