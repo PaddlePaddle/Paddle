@@ -16,6 +16,7 @@ import sys
 import requests
 import ssl
 
+
 def download_file():
     """Get disabled unit tests"""
     ssl._create_default_https_context = ssl._create_unverified_context
@@ -30,7 +31,6 @@ def download_file():
         lt = '^' + '$|^'.join(lt) + '$'
         print(lt)
         sys.exit(0)
-
 
 
 if __name__ == '__main__':
