@@ -69,11 +69,10 @@ void Print3DTensor(const Tensor* a, std::string name) {
   VLOG(0) << "----------------------------";
 }
 
-void SwapPoniter(Tensor*& a, Tensor*& b) {
-  Tensor* c;
-  c = a;
-  a = b;
-  b = c;
+void SwapPoniter(Tensor** a, Tensor** b) {
+  Tensor* c = *a;
+  *a = *b;
+  *b = *c;
 }
 
 template <typename T>
@@ -435,8 +434,8 @@ struct SingleLayer : Layer<T> {
           init_c_holder = &init_c_temp;
           has_allocate_mem = true;
         }
-        SwapPoniter(init_h_holder, last_h_holder);
-        SwapPoniter(init_c_holder, last_c_holder);
+        SwapPoniter(&init_h_holder, &last_h_holder);
+        SwapPoniter(&init_c_holder, &last_c_holder);
       }
       if (i == 0) {
         cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[layer_idx],
@@ -473,20 +472,26 @@ struct BidirLayer : Layer<T> {
                   const Tensor* sequence_length, TensorList last_h,
                   TensorList last_c, Tensor* output, const int& layer_idx,
                   const int& gate_num) {
+    TensorList output_vec;
+    Tensor temp_forward, temp_backward;
+    output_vec.reserve(2);
+    output_vec.emplace_back(temp_forward);
+    output_vec.emplace_back(temp_backward);
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     // first step, calculate the fw_ih * input + fb_ih to more faster
     const int& time_step = input->dims()[0];
     const int& batch_size = input->dims()[1];
+    const int& hidden_size = output->dims()[2];
     const Tensor& forward_input_w =
         this->preprocess(context, input, vec[0], vec[2], vec[3]);
-    auto input_tensors = Unbind(forward_input_w);
+    auto forward_input_tensors = Unbind(forward_input_w);
 
-    // for the calcluate simple, resize the output data
-    output->Resize(
-        framework::make_ddim({time_step * 2, batch_size,
-                              output->numel() / (2 * time_step * batch_size)}));
-    auto output_tensors = Unbind(*output);
+    // create the temp output for the forward
+    output_vec[0].Resize(
+        framework::make_ddim({time_step, batch_size, hidden_size / 2}));
+    output_vec[0].mutable_data<T>(context.GetPlace());
+    auto forward_output_tensors = Unbind(output_vec[0]);
 
     // if has the sequence, build mask tensor list
     bool has_sequence_length = false;
@@ -520,25 +525,33 @@ struct BidirLayer : Layer<T> {
           forward_init_c_holder = &forward_init_c_temp;
           has_forward_allocate_mem = true;
         }
-        SwapPoniter(forward_init_h_holder, forward_last_h_holder);
-        SwapPoniter(forward_init_c_holder, forward_last_c_holder);
+        SwapPoniter(&forward_init_h_holder, &forward_last_h_holder);
+        SwapPoniter(&forward_init_c_holder, &forward_last_c_holder);
       }
       if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[2 * layer_idx],
-              &init_c[2 * layer_idx], &last_h[2 * layer_idx],
-              &last_c[2 * layer_idx], &output_tensors[2 * i],
-              forward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &forward_input_tensors[i], &vec[1],
+              &init_h[2 * layer_idx], &init_c[2 * layer_idx],
+              &last_h[2 * layer_idx], &last_c[2 * layer_idx],
+              &forward_output_tensors[i], forward_mask_tensor_list[i]);
       } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1], forward_init_h_holder,
-              forward_init_c_holder, forward_last_h_holder,
-              forward_last_c_holder, &output_tensors[2 * i],
-              forward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &forward_input_tensors[i], &vec[1],
+              forward_init_h_holder, forward_init_c_holder,
+              forward_last_h_holder, forward_last_c_holder,
+              &forward_output_tensors[i], forward_mask_tensor_list[i]);
       }
       if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[2 * i],
+        this->postprocess(context, &forward_output_tensors[i],
                           forward_mask_tensor_list[i]);
       }
     }
+    // create the temp output for the forward
+    output_vec[1].Resize(
+        framework::make_ddim({time_step, batch_size, hidden_size / 2}));
+    output_vec[1].mutable_data<T>(context.GetPlace());
+    auto backward_output_tensors = Unbind(output_vec[1]);
+    std::reverse(backward_output_tensors.begin(),
+                 backward_output_tensors.end());
+
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
     const Tensor& backward_input_w =
         this->preprocess(context, input, vec[4], vec[6], vec[7]);
@@ -571,25 +584,30 @@ struct BidirLayer : Layer<T> {
           backward_init_c_holder = &backward_init_c_temp;
           has_backward_allocate_mem = true;
         }
-        SwapPoniter(backward_init_h_holder, backward_last_h_holder);
-        SwapPoniter(backward_init_c_holder, backward_last_c_holder);
+        SwapPoniter(&backward_init_h_holder, &backward_last_h_holder);
+        SwapPoniter(&backward_init_c_holder, &backward_last_c_holder);
       }
       if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[5], &init_h[2 * layer_idx + 1],
-              &init_c[2 * layer_idx + 1], &last_h[2 * layer_idx + 1],
-              &last_c[2 * layer_idx + 1], &output_tensors[2 * i + 1],
-              backward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &backward_input_tensors[i], &vec[5],
+              &init_h[2 * layer_idx + 1], &init_c[2 * layer_idx + 1],
+              &last_h[2 * layer_idx + 1], &last_c[2 * layer_idx + 1],
+              &backward_output_tensors[i], backward_mask_tensor_list[i]);
       } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[5], backward_init_h_holder,
-              backward_init_c_holder, backward_last_h_holder,
-              backward_last_c_holder, &output_tensors[2 * i + 1],
-              backward_mask_tensor_list[i]);
+        cell_(&dev_ctx, &backward_input_tensors[i], &vec[5],
+              backward_init_h_holder, backward_init_c_holder,
+              backward_last_h_holder, backward_last_c_holder,
+              &backward_output_tensors[i], backward_mask_tensor_list[i]);
       }
       if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[2 * i + 1],
+        this->postprocess(context, &backward_output_tensors[i],
                           backward_mask_tensor_list[i]);
       }
     }
+    // concat the the output result
+    paddle::operators::math::ConcatFunctor<platform::CPUDeviceContext, T>
+        concat_functor;
+    concat_functor(dev_ctx, output_vec, static_cast<int>(2), output);
+
     if (time_step % 2 == 0) {
       framework::TensorCopy(
           *forward_last_h_holder, context.GetPlace(),
@@ -623,15 +641,16 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const bool& is_bidirec, const std::string& cell_type,
              const float& dropout_prob, const bool& is_test, const int& seed) {
   // check the dim message of init state
+  const int& direction_num = is_bidirec ? 2 : 1;
   const auto& init_h_dims = init_h->dims();
   const auto& init_c_dims = init_c->dims();
-  PADDLE_ENFORCE_EQ(init_h_dims[0], num_layers,
+  PADDLE_ENFORCE_EQ(init_h_dims[0], num_layers * direction_num,
                     platform::errors::InvalidArgument(
                         "The num_layers of in RNN layer must be the same as "
                         "first dim of init hidden, but received"
                         " num_layers:%d, dim:%d",
                         num_layers, init_h_dims[0]));
-  PADDLE_ENFORCE_EQ(init_c_dims[0], num_layers,
+  PADDLE_ENFORCE_EQ(init_c_dims[0], num_layers * direction_num,
                     platform::errors::InvalidArgument(
                         "The num_layers of in RNN layer must be the same as "
                         "first dim of cell state hidden, but received"
@@ -660,7 +679,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
         input_holder = &temp;
         has_allocate_mem = true;
       }
-      SwapPoniter(output_holder, input_holder);
+      SwapPoniter(&output_holder, &input_holder);
       if (dropout_prob != 0 && (!is_test)) {
         // only train mode just need dropout
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
