@@ -572,7 +572,7 @@ class GRUCell(RNNCellBase):
 
     The formula for GRU used is as follows:
 
-    .. math::
+    ..  math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
 
@@ -580,7 +580,7 @@ class GRUCell(RNNCellBase):
 
         \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
 
-        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t})
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
 
         y_{t} & = h_{t}
     
