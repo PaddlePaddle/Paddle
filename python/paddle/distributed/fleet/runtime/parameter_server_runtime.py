@@ -102,7 +102,7 @@ class ParameterServerRuntime(RuntimeBase):
 
             if os.path.isfile(var_path):
                 load_block.append_op(
-                    type='sparse_load',
+                    type='sparse_tensor_load',
                     inputs={},
                     outputs={'Out': [new_var]},
                     attrs={
