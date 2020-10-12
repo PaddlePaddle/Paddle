@@ -276,7 +276,7 @@ def load(path, **configs):
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
-         ``paddle.load`` supports loading ``state_dict`` of Layer from the result of 
+        ``paddle.load`` supports loading ``state_dict`` of Layer from the result of 
         other save APIs except ``paddle.save`` , but the argument ``path`` format is 
         different:
         1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,  
