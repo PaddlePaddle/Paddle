@@ -359,6 +359,9 @@ class TestCUDNNLstmOp(OpTest):
         self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
+        self.is_bidirec = False
+
+        self.set_attrs()
 
         seq_length = 12
         batch_size = 5
@@ -405,10 +408,10 @@ class TestCUDNNLstmOp(OpTest):
         }
         self.attrs = {
             'dropout_prob': 0.0,
-            'is_bidirec': False,
+            'is_bidirec': self.is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,
-            'num_layers': 1,
+            'num_layers': self.num_layers,
         }
         self.outputs = {
             'Out': output,
@@ -433,13 +436,27 @@ class TestCUDNNLstmOp(OpTest):
                                    ['Out', 'LastH', 'LastC'])
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestCUDNNLstmOp2(TestCUDNNLstmOp):
-    def set_attrs(self):
-        self.num_layers = 2
+#@unittest.skipIf(not core.is_compiled_with_cuda(),
+#                 "core is not compiled with CUDA")
+#class TestCUDNNLstmOp2(TestCUDNNLstmOp):
+#    def set_attrs(self):
+#        self.num_layers = 2
 
 
+class TestCUDNNLstmCpu(TestCUDNNLstmOp):
+    def test_output_with_place(self):
+        place = core.CPUPlace()
+        self.check_output_with_place(
+            place, no_check_set=['Reserve', 'StateOut'])
+
+    def test_grad_with_place(self):
+        pass
+
+
+#class TestCUDNNLstmCpu2(TestCUDNNLstmCpu):
+#    def set_attrs(self):
+#        self.num_layers=2
+#
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
