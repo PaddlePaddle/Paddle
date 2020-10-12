@@ -17,16 +17,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include <memory>
-#ifdef PADDLE_WITH_XPU
+
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_XPU
 template <typename DeviceContext, typename T>
 class LookupTableV2XPUKernel : public framework::OpKernel<T> {
-public:
+ public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");
-    auto *output_t = context.Output<LoDTensor>("Out");
+    auto *ids_t = context.Input<LoDTensor>("Ids");     // int tensor
+    auto *output_t = context.Output<LoDTensor>("Out");   // float tensor
     auto *table_var = context.InputVar("W");
 
     if (!std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {
@@ -63,7 +64,7 @@ public:
 
 template <typename DeviceContext, typename T>
 class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
-public:
+ public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
@@ -109,11 +110,13 @@ public:
                       platform::errors::InvalidArgument("XPU kernel error!"));
   }
 };
+#endif
 
-} // namespace operators
-} // namespace paddle
+}   // namespace operators
+}   // namespace paddle
 
 namespace ops = paddle::operators;
+#ifdef PADDLE_WITH_XPU
 REGISTER_OP_XPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2XPUKernel<paddle::platform::XPUDeviceContext, float>);
