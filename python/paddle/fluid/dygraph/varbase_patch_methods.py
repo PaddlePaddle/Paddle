@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import inspect
+import numpy as np
+
+import paddle
 from .. import framework
 from .. import core
 from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
-import numpy as np
 from .math_op_patch import monkey_patch_math_varbase
+from .parallel import scale_loss
 
 
 def monkey_patch_varbase():
@@ -165,7 +168,12 @@ def monkey_patch_varbase():
 
         """
         if framework.in_dygraph_mode():
-            self._run_backward(framework._dygraph_tracer(), retain_graph)
+            if paddle.distributed.get_world_size() > 1:
+                scaled_loss = scale_loss(self)
+                scaled_loss._run_backward(framework._dygraph_tracer(),
+                                          retain_graph)
+            else:
+                self._run_backward(framework._dygraph_tracer(), retain_graph)
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")

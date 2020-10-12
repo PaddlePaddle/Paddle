@@ -807,55 +807,30 @@ def meshgrid(*args, **kwargs):
     vector, and creates N-dimensional grids.
     
     Args:
-        *args(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
+        *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         **kwargs (optional): Currently, we only accept name in **kwargs 
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
-         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
+         Tensor: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
 
     Examples:
       .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
-          import numpy as np
 
-          x = fluid.data(name='x', shape=[100], dtype='int32')
-          y = fluid.data(name='y', shape=[200], dtype='int32')
+          x = paddle.randint(low=0, high=100, shape=[100])
+          y = paddle.randint(low=0, high=100, shape=[200])
 
-          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+          grid_x, grid_y = paddle.meshgrid(x, y)
 
-          exe = fluid.Executor(place=fluid.CPUPlace())
-          grid_x, grid_y = paddle.tensor.meshgrid(x, y)
-          res_1, res_2 = exe.run(fluid.default_main_program(),
-                                 feed={'x': input_1,
-                                       'y': input_2},
-                                 fetch_list=[grid_x, grid_y])
-     
+          print(grid_x.shape)
+          print(grid_y.shape)
+
           #the shape of res_1 is (100, 200)
           #the shape of res_2 is (100, 200)
-
-      .. code-block:: python
-
-          #example 2: in dygraph mode
-
-          import paddle
-          import numpy as np
-          
-          paddle.disable_static()
-
-          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.to_tensor(input_3)
-          tensor_4 = paddle.to_tensor(input_4)
-          grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
-
-          #the shape of grid_x is (100, 200)
-          #the shape of grid_y is (100, 200)
 
     """
 
