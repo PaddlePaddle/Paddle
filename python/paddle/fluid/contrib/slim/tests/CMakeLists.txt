@@ -267,6 +267,9 @@ list(REMOVE_ITEM TEST_OPS
 	quant_int8_image_classification_comparison
 	quant_int8_nlp_comparison)
 
+# TODO(wozna) remove after generating new mnist model after merge #27777
+list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
+
 #TODO(wanghaoshuang): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
