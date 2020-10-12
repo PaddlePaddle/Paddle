@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -49,13 +50,12 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        place = core.XPUPlace(0)
+        place = paddle.XPUPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad_normal(self):
-        place = core.XPUPlace(0)
-        self.check_grad_with_place(
-            place, ['Input'], 'Out', max_relative_error=0.006)
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(place, ['Input'], 'Out')
 
 
 class TestCase1(TestSliceOp):
@@ -104,13 +104,12 @@ class TestSliceOp_decs_dim(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        place = core.XPUPlace(0)
+        place = paddle.XPUPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad_normal(self):
-        place = core.XPUPlace(0)
-        self.check_grad_with_place(
-            place, ['Input'], 'Out', max_relative_error=0.006)
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(place, ['Input'], 'Out')
 
 
 class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):

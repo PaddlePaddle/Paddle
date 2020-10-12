@@ -14,11 +14,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/operators/slice_op.h"
 
 namespace paddle {
 namespace operators {
@@ -43,41 +43,42 @@ class SliceXPUKernel : public framework::OpKernel<T> {
     // If the value passed to start or end is larger than the n
     // (the number of elements in this dimension), it represents n.
     for (size_t i = 0; i < axes.size(); ++i) {
-        dim_value = in_dims[axes[i]];
-        start = starts[i];
-        end = ends[i];
-        start = start < 0 ? (start + dim_value) : start;
-        end = end < 0 ? (end + dim_value) : end;
-        start = std::max(start, 0);
-        end = std::max(end, 0);
-        end = std::min(end, dim_value);
-        PADDLE_ENFORCE_GT(end, start, "end should greater than start");
-        starts[i] = start;
-        ends[i] = end;
+      dim_value = in_dims[axes[i]];
+      start = starts[i];
+      end = ends[i];
+      start = start < 0 ? (start + dim_value) : start;
+      end = end < 0 ? (end + dim_value) : end;
+      start = std::max(start, 0);
+      end = std::max(end, 0);
+      end = std::min(end, dim_value);
+      PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+      starts[i] = start;
+      ends[i] = end;
     }
     size_t shape_size = in_dims.size();
-    // the slice XPU kernel require that the length of `start`, `end` must be equal
+    // the slice XPU kernel require that the length of `start`, `end` must be
+    // equal
     // to the dims size of input tensor, therefore, if shape_size > axes.size(),
     // the `starts_extension` and `ends_extension` is necessary.
     std::vector<int> starts_extension(shape_size, 0);
     std::vector<int> ends_extension(shape_size, 0);
     if (shape_size > axes.size()) {
-        for (size_t i = 0; i < shape_size; ++i){
-            ends_extension[i] = in_dims[i];
-        }
-        for (size_t i = 0; i < axes.size(); ++i) {
-            starts_extension[axes[i]] = starts[i];
-            ends_extension[axes[i]] = ends[i];
-        }
+      for (size_t i = 0; i < shape_size; ++i){
+        ends_extension[i] = in_dims[i];
+      }
+      for (size_t i = 0; i < axes.size(); ++i) {
+        starts_extension[axes[i]] = starts[i];
+        ends_extension[axes[i]] = ends[i];
+      }
     } else {
-        starts_extension = std::move(starts);
-        ends_extension = std::move(ends);
+      starts_extension = std::move(starts);
+      ends_extension = std::move(ends);
     }
 
     // prepare shape on XPU
     std::vector<int> shape(shape_size, 0);
     for (size_t i = 0; i < shape_size; ++i) {
-        shape[i] = in_dims[i];
+      shape[i] = in_dims[i];
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -85,9 +86,10 @@ class SliceXPUKernel : public framework::OpKernel<T> {
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     int r = xpu::slice_forward(dev_ctx.x_context(), shape.data(),
-           starts_extension.data(), ends_extension.data(),
-           shape_size, in_data, out_data);
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+                               starts_extension.data(), ends_extension.data(),
+                               shape_size, in_data, out_data);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+                                          "XPU kernel error!"));
   }
 };
 
@@ -111,65 +113,70 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
     // If the value passed to start or end is larger than the n
     // (the number of elements in this dimension), it represents n.
     for (size_t i = 0; i < axes.size(); ++i) {
-        dim_value = in_dims[axes[i]];
-        start = starts[i];
-        end = ends[i];
-        start = start < 0 ? (start + dim_value) : start;
-        end = end < 0 ? (end + dim_value) : end;
-        start = std::max(start, 0);
-        end = std::max(end, 0);
-        end = std::min(end, dim_value);
-        PADDLE_ENFORCE_GT(end, start, "end should greater than start");
-        starts[i] = start;
-        ends[i] = end;
+      dim_value = in_dims[axes[i]];
+      start = starts[i];
+      end = ends[i];
+      start = start < 0 ? (start + dim_value) : start;
+      end = end < 0 ? (end + dim_value) : end;
+      start = std::max(start, 0);
+      end = std::max(end, 0);
+      end = std::min(end, dim_value);
+      PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+      starts[i] = start;
+      ends[i] = end;
     }
     size_t shape_size = in_dims.size();
-    // the slice XPU kernel require that the length of `start`, `end` must be equal
+    // the slice XPU kernel require that the length of `start`, `end` must be
+    // equal
     // to the dims size of input tensor, therefore, if shape_size > axes.size(),
     // the `starts_extension` and `ends_extension` is necessary.
     std::vector<int> starts_extension(shape_size, 0);
     std::vector<int> ends_extension(shape_size, 0);
     if (shape_size > axes.size()) {
-        for (size_t i = 0; i < shape_size; ++i){
-            ends_extension[i] = in_dims[i];
-        }
-        for (size_t i = 0; i < axes.size(); ++i) {
-            starts_extension[axes[i]] = starts[i];
-            ends_extension[axes[i]] = ends[i];
-        }
+      for (size_t i = 0; i < shape_size; ++i){
+        ends_extension[i] = in_dims[i];
+      }
+      for (size_t i = 0; i < axes.size(); ++i) {
+        starts_extension[axes[i]] = starts[i];
+        ends_extension[axes[i]] = ends[i];
+      }
     }
     int* starts_device = nullptr;
     int* ends_device = nullptr;
-    int* starts_host = shape_size > axes.size() ?
-        starts_extension.data() : starts.data();
-    int* ends_host = shape_size > axes.size() ?
-        ends_extension.data() : ends.data();
-    PADDLE_ENFORCE(xpu_malloc((void**)(&starts_device), shape_size * sizeof(int)) == XPU_SUCCESS);
-    PADDLE_ENFORCE(xpu_malloc((void**)(&ends_device), shape_size * sizeof(int)) == XPU_SUCCESS);
+    int* starts_host =
+        shape_size > axes.size() ? starts_extension.data() : starts.data();
+    int* ends_host =
+        shape_size > axes.size() ? ends_extension.data() : ends.data();
+    PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&starts_device),
+                          shape_size * sizeof(int)), XPU_SUCCESS,
+                      platform::errors::External("XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&ends_device),
+                          shape_size * sizeof(int)), XPU_SUCCESS,
+                      platform::errors::External("XPU has no enough memory"));
     memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), starts_device,
-            platform::CPUPlace(), starts_host,
-            shape_size * sizeof(int));
+                 platform::CPUPlace(), starts_host, shape_size * sizeof(int));
     memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), ends_device,
-            platform::CPUPlace(), ends_host,
-            shape_size * sizeof(int));
+                 platform::CPUPlace(), ends_host, shape_size * sizeof(int));
 
     // prepare shape on XPU
     std::vector<int> shape(shape_size, 0);
     for (size_t i = 0; i < shape_size; ++i) {
-        shape[i] = in_dims[i];
+      shape[i] = in_dims[i];
     }
     int* shape_device = nullptr;
-    PADDLE_ENFORCE(xpu_malloc((void**)(&shape_device), shape_size * sizeof(int)) == XPU_SUCCESS);
+    PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&shape_device),
+                                 shape_size * sizeof(int)), XPU_SUCCESS,
+                      platform::errors::External("XPU has no enough memory"));
     memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), shape_device,
-            platform::CPUPlace(), shape.data(),
-            shape_size * sizeof(int));
+                 platform::CPUPlace(), shape.data(), shape_size * sizeof(int));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::slice_backward(dev_ctx.x_context(),
-            shape_device, starts_device, ends_device,
-            shape_size, d_out->data<T>(), d_in->data<T>(),
-            d_in->numel(), d_out->numel());
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    int r =
+        xpu::slice_backward(dev_ctx.x_context(),
+                            shape_device, starts_device, ends_device,
+                            shape_size, d_out->data<T>(), d_in->data<T>(),
+                            d_in->numel(), d_out->numel());
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External("xpu kernel error"));
     dev_ctx.Wait();
     // free device data
     xpu_free(shape_device);
@@ -183,8 +190,9 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(slice,
-        ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(slice_grad,
-        ops::SliceGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+    slice, ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+    slice_grad,
+    ops::SliceGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 #endif
