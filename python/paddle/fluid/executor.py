@@ -999,75 +999,82 @@ class Executor(object):
         Examples 1:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy
+                import paddle
+                import numpy
 
-              # First create the Executor.
-              place = fluid.CPUPlace() # fluid.CUDAPlace(0)
-              exe = fluid.Executor(place)
+                # First create the Executor.
+                paddle.enable_static()
+                place = paddle.CPUPlace()  # paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
 
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              adam = fluid.optimizer.Adam()
-              adam.minimize(loss)
-              i = fluid.layers.zeros(shape=[1], dtype='int64')
-              array = fluid.layers.array_write(x=loss, i=i)
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                hidden = paddle.static.nn.fc(data, 10)
+                loss = paddle.mean(hidden)
+                adam = paddle.optimizer.Adam()
+                adam.minimize(loss)
+                i = paddle.zeros(shape=[1], dtype='int64')
+                array = paddle.fluid.layers.array_write(x=loss, i=i)
 
-              # Run the startup program once and only once.
-              exe.run(fluid.default_startup_program())
+                # Run the startup program once and only once.
+                exe.run(paddle.static.default_startup_program())
 
-              x = numpy.random.random(size=(10, 1)).astype('float32')
-              loss_val, array_val = exe.run(feed={'X': x},
-                                            fetch_list=[loss.name, array.name])
-              print(array_val)
-              # [array([0.02153828], dtype=float32)]
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                loss_val, array_val = exe.run(feed={'X': x},
+                                              fetch_list=[loss.name, array.name])
+                print(array_val)
+                # [array([0.02153828], dtype=float32)]
 
         Examples 2:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 # First create the Executor.
-                place = fluid.CUDAPlace(0)
-                exe = fluid.Executor(place)
+                paddle.enable_static()
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
 
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
                 class_dim = 2
-                prediction = fluid.layers.fc(input=data, size=class_dim)
-                loss = fluid.layers.mean(prediction)
-                adam = fluid.optimizer.Adam()
+                prediction = paddle.static.nn.fc(data, class_dim)
+                loss = paddle.mean(prediction)
+                adam = paddle.optimizer.Adam()
                 adam.minimize(loss)
 
                 # Run the startup program once and only once.
-                exe.run(fluid.default_startup_program())
-                build_strategy = fluid.BuildStrategy()
-                binary = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(
-                    loss_name=loss.name, build_strategy=build_strategy)
+                exe.run(paddle.static.default_startup_program())
+                build_strategy = paddle.static.BuildStrategy()
+                binary = paddle.static.CompiledProgram(
+                    paddle.static.default_main_program()).with_data_parallel(
+                        loss_name=loss.name, build_strategy=build_strategy)
                 batch_size = 6
                 x = np.random.random(size=(batch_size, 1)).astype('float32')
 
                 # Set return_merged as False to fetch unmerged results:
-                unmerged_prediction, = exe.run(binary, feed={'X': x},
-                    fetch_list=[prediction.name],
-                    return_merged=False)
+                unmerged_prediction, = exe.run(binary,
+                                               feed={'X': x},
+                                               fetch_list=[prediction.name],
+                                               return_merged=False)
                 # If the user uses two GPU cards to run this python code, the printed result will be
                 # (2, 3, class_dim). The first dimension value of the printed result is the number of used
                 # GPU cards, and the second dimension value is the quotient of batch_size and the
                 # number of used GPU cards.
-                print("The unmerged prediction shape: {}".format(np.array(unmerged_prediction).shape))
+                print("The unmerged prediction shape: {}".format(
+                    np.array(unmerged_prediction).shape))
                 print(unmerged_prediction)
 
                 # Set return_merged as True to fetch merged results:
-                merged_prediction, = exe.run(binary, feed={'X': x},
-                    fetch_list=[prediction.name],
-                    return_merged=True)
+                merged_prediction, = exe.run(binary,
+                                             feed={'X': x},
+                                             fetch_list=[prediction.name],
+                                             return_merged=True)
                 # If the user uses two GPU cards to run this python code, the printed result will be
                 # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                print("The merged prediction shape: {}".format(np.array(merged_prediction).shape))
+                print("The merged prediction shape: {}".format(
+                    np.array(merged_prediction).shape))
                 print(merged_prediction)
-
+        
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1082,6 +1089,7 @@ class Executor(object):
                 #  [-0.24635398 -0.13003758]
                 #  [-0.49232286 -0.25939852]
                 #  [-0.44514108 -0.2345845 ]]
+
         """
         try:
             return self._run_impl(
@@ -1518,20 +1526,22 @@ class Executor(object):
 
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
-                exe = fluid.Executor(place)
-                x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
-                y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-                dataset = fluid.DatasetFactory().create_dataset()
+                paddle.enable_static()
+                place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
+                exe = paddle.static.Executor(place)
+                x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+                y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+                dataset = paddle.fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
-                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                filelist = []
                 dataset.set_filelist(filelist)
-                exe.run(fluid.default_startup_program())
-                exe.infer_from_dataset(program=fluid.default_main_program(),
-                                       dataset=dataset)        
+                exe.run(paddle.static.default_startup_program())
+                exe.infer_from_dataset(program=paddle.static.default_main_program(),
+                                       dataset=dataset)
 
         """
         return self._run_from_dataset(program, dataset, scope, thread, True,
@@ -1638,19 +1648,21 @@ class Executor(object):
         
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
 
-              place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
-              exe = fluid.Executor(place)
-              x = fluid.data(name="x", shape=[None, 10, 10], dtype="int64")
-              y = fluid.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
-              dataset = fluid.DatasetFactory().create_dataset()
+              paddle.enable_static()
+              place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
+              exe = paddle.static.Executor(place)
+              x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+              y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+              dataset = paddle.fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)
-              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+              # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+              filelist = []
               dataset.set_filelist(filelist)
-              exe.run(fluid.default_startup_program())
-              exe.train_from_dataset(program=fluid.default_main_program(),
+              exe.run(paddle.static.default_startup_program())
+              exe.train_from_dataset(program=paddle.static.default_main_program(),
                                      dataset=dataset)
 
         """
