@@ -556,9 +556,10 @@ class TestModelFunction(unittest.TestCase):
                 shutil.rmtree(save_dir)
             paddle.enable_static()
 
-    def test_dygraph_export_deploy_model_without_inputs(self):
+    def test_dygraph_export_deploy_model_about_inputs(self):
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
+        # without inputs
         for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
@@ -584,6 +585,18 @@ class TestModelFunction(unittest.TestCase):
 
             model.save(save_dir, training=False)
             shutil.rmtree(save_dir)
+        # with inputs, and the type of inputs is InputSpec
+        save_dir = tempfile.mkdtemp()
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        net = LeNet()
+        inputs = InputSpec([None, 1, 28, 28], 'float32', 'x')
+        model = Model(net, inputs)
+        optim = fluid.optimizer.Adam(
+            learning_rate=0.001, parameter_list=model.parameters())
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+        model.save(save_dir, training=False)
+        shutil.rmtree(save_dir)
 
 
 class TestRaiseError(unittest.TestCase):

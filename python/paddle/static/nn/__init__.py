@@ -27,7 +27,6 @@ __all__ = [
     'data_norm',
     'deform_conv2d',
     'group_norm',
-    'hsigmoid',
     'instance_norm',
     'layer_norm',
     'multi_box_head',
@@ -53,7 +52,6 @@ from ...fluid.layers import create_parameter  #DEFINE_ALIAS
 from ...fluid.layers import crf_decoding  #DEFINE_ALIAS
 from ...fluid.layers import data_norm  #DEFINE_ALIAS
 from ...fluid.layers import group_norm  #DEFINE_ALIAS
-from ...fluid.layers import hsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import instance_norm  #DEFINE_ALIAS
 from ...fluid.layers import layer_norm  #DEFINE_ALIAS
 from ...fluid.layers import multi_box_head  #DEFINE_ALIAS
