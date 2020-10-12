@@ -702,11 +702,11 @@ class ProgramTranslator(object):
     Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        # Two methods get same object because ProgramTranslator is a singleton
-        paddle.jit.ProgramTranslator()
-        paddle.jit.ProgramTranslator.get_instance()
+            # Two methods get same object because ProgramTranslator is a singleton
+            paddle.jit.ProgramTranslator()
+            paddle.jit.ProgramTranslator.get_instance()
 
     """
 
@@ -787,7 +787,8 @@ class ProgramTranslator(object):
 
         Args:
             dygraph_func (callable): the dygraph function.
-            *args, **kwargs : the input argument of dygraph_func.
+            *args (tuple): the input argument of dygraph_func.
+            **kwargs (dict): the input argument of dygraph_func.
 
         Returns:
             Tensor or tuple of Tensors: the dygraph Tensor containing digital
@@ -910,7 +911,8 @@ class ProgramTranslator(object):
 
         Args:
             dygraph_func (callable): the dygraph function.
-            *args, **kwargs : the input arguments of dygraph_func.
+            *args (tuple): the input argument of dygraph_func.
+            **kwargs (dict): the input argument of dygraph_func.
 
         Returns:
             tuple of (main_program, startup_program, inputs, outputs) whose
