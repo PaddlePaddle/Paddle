@@ -56,6 +56,7 @@ void RecvSparseLodTensor(const CommContext &rpc_ctx,
   for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
     auto &recv_var_name = rpc_ctx.splited_varnames[i];
     VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+    local_scope->Var(recv_var_name);
     // sparse param in recv_scope is LoDTensor
     rets.push_back(rpc_client->AsyncGetVarNoBarrier(
         rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
@@ -67,7 +68,7 @@ void RecvSparseLodTensor(const CommContext &rpc_ctx,
     PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
                                                "internal error in RPCClient"));
     auto &recv_var_name = recv_varnames[i];
-    auto *local_var = local_scope->Var(recv_var_name);
+    auto *local_var = local_scope->FindVar(recv_var_name);
     const auto *value = local_var->Get<framework::LoDTensor>().data<float>();
     tensors.push_back(value);
   }
