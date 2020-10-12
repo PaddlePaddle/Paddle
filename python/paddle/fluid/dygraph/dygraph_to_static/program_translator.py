@@ -938,9 +938,9 @@ class ProgramTranslator(object):
                 x = paddle.ones([1, 2])
                 main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
                 print([i.name for i in inputs])
-                # [u'generated_tensor_0'] the feed input variable name representing x
+                # [u'generated_tensor_0'] the feed input tensor name representing x
                 print([o.name for o in outputs])
-                # [u'_generated_var_4'] the fetch output variable name representing x_v        
+                # [u'_generated_var_4'] the fetch output tensor name representing x_v        
 
         """
         assert callable(
