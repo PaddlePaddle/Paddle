@@ -212,17 +212,18 @@ class ParameterServerRuntime(RuntimeBase):
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())
         if self.role_maker._is_heter_parameter_server_mode:
-            heter_worker_device = self.context["valid_strategy"].a_sync_configs[
-                "heter_worker_device"].upper()
-            if heter_worker_device not in ["GPU", "XPU", "CPU"]:
+            heter_worker_device_guard = self.context[
+                "valid_strategy"].a_sync_configs[
+                    "heter_worker_device_guard"].upper()
+            if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
                 raise ValueError("Heter Worker Not Support Device {}".format(
-                    heter_worker_device))
+                    heter_worker_device_guard))
             if self.role_maker._is_heter_worker():
-                if heter_worker_device == "GPU":
+                if heter_worker_device_guard == "GPU":
                     executor = Executor(
                         fluid.CUDAPlace(
                             int(os.getenv("FLAGS_selected_gpus", "0"))))
-                elif heter_worker_device == "XPU":
+                elif heter_worker_device_guard == "XPU":
                     executor = Executor(
                         fluid.XPUPlace(
                             int(os.getenv("FLAGS_selected_xpus", "0"))))

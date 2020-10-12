@@ -52,7 +52,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         self.strategy.a_sync = True
         self.strategy.a_sync_configs = {
             "launch_barrier": False,
-            "heter_worker_device": "gpu"
+            "heter_worker_device_guard": "gpu"
         }
         return self.strategy
 

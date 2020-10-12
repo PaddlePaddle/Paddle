@@ -168,11 +168,12 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
                 self.reader.reset()
+
         if fleet.is_first_worker():
             model_path = tempfile.mkdtemp()
             fleet.save_persistables(executor=exe, dirname=model_path)
+            shutil.rmtree(model_path)
         fleet.stop_worker()
-        shutil.rmtree(model_path)
 
     def do_dataset_training(self, fleet):
         train_file_list = ctr_dataset_reader.prepare_fake_data()
