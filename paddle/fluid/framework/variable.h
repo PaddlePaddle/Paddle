@@ -23,6 +23,25 @@
 namespace paddle {
 namespace framework {
 
+// NOTE(liym27): [ What is VariableInplaceVersion used for? ]
+//
+// VariableInplaceVersion is a version counter and every Variable has a version
+// counter.
+// It's used to check whether an inplace operation will result in an incorrect
+// gradient calculation.
+// Version is incemented when the data of the Variable is modified in place.
+class VariableInplaceVersion {
+ public:
+  explicit VariableInplaceVersion(uint32_t inplace_version = 0)
+      : inplace_version_(inplace_version) {}
+  bool IsUnique() const { return inplace_version_ == 0; }
+  void Bump() { ++inplace_version_; }
+  uint32_t CurrentVersion() const { return inplace_version_; }
+
+ private:
+  uint32_t inplace_version_;
+};
+
 class Variable {
  public:
   template <typename T>
@@ -69,6 +88,10 @@ class Variable {
     return holder_->Type();
   }
 
+  VariableInplaceVersion& InplaceVersionCounter() {
+    return inplace_version_counter_;
+  }
+
  private:
   struct Placeholder {
     virtual ~Placeholder() PADDLE_MAY_THROW {}
@@ -102,6 +125,7 @@ class Variable {
 
   // pointers to a PlaceholderImpl object indeed.
   std::unique_ptr<Placeholder> holder_;
+  VariableInplaceVersion inplace_version_counter_;
 };
 
 }  // namespace framework
