@@ -926,12 +926,12 @@ class Executor(object):
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
         operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
         specify the scope to store the :code:`Variables` during the executor running if the scope
-        is not set, the executor will use the global scope, i.e. :code:`fluid.global_scope()`.
+        is not set, the executor will use the global scope, i.e. :code:`paddle.static.global_scope()`.
 
         Args:
             program(Program|CompiledProgram): This parameter represents the :code:`Program` or
                 :code:`CompiledProgram` to be executed. If this parameter is not provided, that
-                parameter is None, the program will be set to :code:`fluid.default_main_program()`.
+                parameter is None, the program will be set to :code:`paddle.static.default_main_program()`.
                 The default is None.
             feed(list|dict): This parameter represents the input tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
@@ -950,7 +950,7 @@ class Executor(object):
             fetch_var_name(str): This parameter represents the name of the output tensor of
                 the fetch operator. The default is "fetch".
             scope(Scope): the scope used to run this program, you can switch 
-                it to different scope. default is :code:`fluid.global_scope()`
+                it to different scope. default is :code:`paddle.static.global_scope()`
             return_numpy(bool): This parameter indicates whether convert the fetched tensors
                 (the tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
