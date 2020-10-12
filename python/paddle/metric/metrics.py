@@ -20,8 +20,9 @@ import six
 import abc
 import numpy as np
 
-from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers.nn import topk
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
 import paddle
 
