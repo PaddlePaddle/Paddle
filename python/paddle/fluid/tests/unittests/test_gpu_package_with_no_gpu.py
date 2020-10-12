@@ -23,6 +23,7 @@ class TestGPUVersionPaddle(unittest.TestCase):
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
         import paddle
+        paddle.disable_static()
         if paddle.is_compiled_with_cuda():
             x = paddle.rand([3, 4])
             assert x.place.is_gpu_place(
