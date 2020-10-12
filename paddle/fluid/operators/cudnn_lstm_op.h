@@ -82,24 +82,27 @@ void create_mask_matrix(const framework::ExecutionContext& context,
                         const bool& is_reverse) {
   const auto& seq_len_vec = GetDataFromTensor<int>(sequence_length);
   const int& table_width = mask_matrix->dims()[0];
+  VLOG(2) << "INPUT MASK TENSOR SHAPE:" << mask_matrix->dims();
   Tensor temp;
   temp.Resize(
       framework::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
   T* data_temp = temp.mutable_data<T>(context.GetPlace());
-  std::memset(data_temp, 1, mask_matrix->numel() * sizeof(T));
+  std::fill(data_temp, data_temp + mask_matrix->numel(), static_cast<T>(1.0));
   for (unsigned int i = 0; i < seq_len_vec.size(); i++) {
     // reset the mask matrix
     if (seq_len_vec[i] == table_width) {
       continue;
     }
     if (is_reverse) {
-      std::memset(data_temp + i * table_width * sizeof(T), 0,
-                  (table_width - seq_len_vec[i]) * sizeof(T));
+      std::fill(data_temp + i * table_width,
+                data_temp + i * table_width + seq_len_vec[i],
+                static_cast<T>(0));
     } else {
-      std::memset(data_temp + (i * table_width + seq_len_vec[i]) * sizeof(T), 0,
-                  (table_width - seq_len_vec[i]) * sizeof(T));
+      std::fill(data_temp + i * table_width + seq_len_vec[i],
+                data_temp + (i + 1) * table_width, static_cast<T>(0));
     }
   }
+  Print2DTensor<T>(&temp, "Original mask Tensor");
   // transpose the result for the mask
   mask_matrix->mutable_data<T>(context.GetPlace());
   std::vector<int> trans_vec;
@@ -125,8 +128,8 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
       auto mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       // Special case when dropout_prob is 1.0
       if (dropout_prob == 1.0f) {
-        std::memset(x_data, 0, size * sizeof(*x_data));
-        std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
+        std::fill(x_data, x_data + size, static_cast<T>(0));
+        std::fill(mask_data, mask_data + size, static_cast<T>(0));
         return;
       }
       auto engine = framework::GetCPURandomEngine(seed_number);
@@ -145,7 +148,7 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     }
     auto mask_data = mask->data<uint8_t>();
     if (dropout_prob == 1.0f) {
-      std::memset(x_data, 0, size * sizeof(*x_data));
+      std::fill(x_data, x_data + size, static_cast<T>(0));
       return;
     }
     for (size_t i = 0; i < size; ++i) {
@@ -300,15 +303,27 @@ struct LSTMCell : Cell<T> {
         cell_act, cand_act);
     framework::TensorCopy(*output, device_ctx->GetPlace(), *device_ctx, last_h);
     Print3DTensor<T>(last_h, "last_h");
-    // auto eigen_output =
-    //    framework::EigenMatrix<T>::Reshape(*output, output->dims().size() -
-    //    1);
-    // auto eigen_mask = framework::EigenMatrix<T>::From(
-    //    mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    //// eigen_output.device(device_ctx->eigen_device()) =
-    // eigen_output =
-    //    eigen_output *
-    //    eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+
+    auto eigen_init_h =
+        framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
+    auto eigen_last_h =
+        framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
+
+    auto eigen_mask = framework::EigenMatrix<T>::From(
+        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+    // eigen_output.device(device_ctx->eigen_device()) =
+    auto eigen_mask_broadcast =
+        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+    auto& place = *device_ctx->eigen_device();
+    eigen_last_h.device(place) = eigen_last_h * eigen_mask_broadcast +
+                                 eigen_init_h * (1 - eigen_mask_broadcast);
+
+    auto eigen_init_c =
+        framework::EigenMatrix<T>::Reshape(*init_c, init_c->dims().size() - 1);
+    auto eigen_last_c =
+        framework::EigenMatrix<T>::Reshape(*last_c, last_c->dims().size() - 1);
+    eigen_last_c.device(place) = eigen_last_c * eigen_mask_broadcast +
+                                 eigen_init_c * (1 - eigen_mask_broadcast);
   }
 };
 
@@ -367,7 +382,9 @@ struct Layer {
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
     auto eigen_mask = framework::EigenMatrix<T>::From(
         mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    eigen_output =
+    auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_output.device(place) =
         eigen_output *
         eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
   }
@@ -412,6 +429,7 @@ struct SingleLayer : Layer<T> {
     mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
     if (has_sequence_length) {
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, false);
+      Print2DTensor<T>(&mask_matrix, "Mask Matrix");
       mask_tensor_list = Unbind(mask_matrix);
     }
 
@@ -447,9 +465,9 @@ struct SingleLayer : Layer<T> {
               init_c_holder, last_h_holder, last_c_holder, &output_tensors[i],
               mask_tensor_list[i]);
       }
-      // if (has_sequence_length) {
-      //  this->postprocess(context, &output_tensors[i], mask_tensor_list[i]);
-      //}
+      if (has_sequence_length) {
+        this->postprocess(context, &output_tensors[i], mask_tensor_list[i]);
+      }
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
@@ -717,7 +735,13 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     auto* weight = ctx.Input<Tensor>("W");
     auto* init_h = ctx.Input<Tensor>("InitH");
     auto* init_c = ctx.Input<Tensor>("InitC");
-    auto* sequence_length = ctx.Input<Tensor>("SequenceLength");
+
+    bool has_seq_length = ctx.HasInput("SequenceLength");
+    const Tensor* sequence_length = nullptr;
+    if (has_seq_length) {
+      sequence_length = ctx.Input<Tensor>("SequenceLength");
+    }
+    // auto* sequence_length = ctx.Input<Tensor>("SequenceLength");
     auto* last_h = ctx.Output<Tensor>("LastH");
     auto* last_c = ctx.Output<Tensor>("LastC");
     auto* output = ctx.Output<Tensor>("Out");
