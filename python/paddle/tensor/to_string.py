@@ -22,7 +22,7 @@ __all__ = ['set_printoptions']
 
 class PrintOptions(object):
     precision = 4
-    threshold = 100
+    threshold = 1000
     edgeitems = 3
     sci_mode = False
 
@@ -42,6 +42,20 @@ def set_printoptions(precision=None,
         threshold (int, optional): Total number of elements printed, default 1000.
         edgeitems (int, optional): Number of elements in summary at the begining and end of each dimension, defalt 3.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
+    
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.manual_seed(10)
+            a = paddle.rand([10, 20, 30])
+            paddle.set_printoptions(4, 1000, 3)
+            print(a)
+
     """
     kwargs = {}
 
