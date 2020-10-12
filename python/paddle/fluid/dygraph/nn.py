@@ -895,9 +895,6 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
@@ -3230,14 +3227,11 @@ class Flatten(layers.Layer):
         .. code-block:: python
 
           import paddle
-          from paddle import to_variable
           import numpy as np
+          paddle.disable_static()
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
-          
-          paddle.disable_static()
-          
-          inp_np = to_variable(inp_np)
+          inp_np = paddle.to_tensor(inp_np)
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
           flatten_res = flatten(inp_np)
 

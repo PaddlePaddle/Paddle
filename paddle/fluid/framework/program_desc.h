@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/proto_desc.h"
@@ -57,7 +58,7 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
-  proto::OpCompatibleMap *OpCompatibleMap();
+  proto::OpVersionMap *OpVersionMap();
 
   int64_t Version() const;
 

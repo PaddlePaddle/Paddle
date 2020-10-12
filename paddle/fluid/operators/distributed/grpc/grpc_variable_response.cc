@@ -12,15 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdint.h>
 #include <string>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_NCCL
-#include <nccl.h>
-#endif
 
+#include "google/protobuf/io/coded_stream.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_bytebuffer_stream.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace google {
+namespace protobuf {
+namespace io {
+class ZeroCopyInputStream;
+}  // namespace io
+}  // namespace protobuf
+}  // namespace google
+namespace grpc {
+class ByteBuffer;
+}  // namespace grpc
 
 namespace paddle {
 namespace operators {
@@ -244,7 +257,8 @@ int GRPCVariableResponse::Parse(Source* source) {
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                         meta_.type() == sendrecv::LOD_TENSOR) &&
                            meta_.varname() != "",
-                       "meta info should be got first!");
+                       platform::errors::PreconditionNotMet(
+                           "meta info should be got first!"));
 
         int num_bytes = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||

@@ -39,9 +39,9 @@ fi
 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_spec_diff" != "" ]; then
-    echo_line="You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
+    echo_line="APIs without core.ops: \n${api_spec_diff}\n"
+    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
     echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
-    echo_line="${echo_line}Related APIs: ${api_spec_diff}\n"
     check_approval 1 6888866 43953930
 fi
 

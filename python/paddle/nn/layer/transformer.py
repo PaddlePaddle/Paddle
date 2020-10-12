@@ -24,7 +24,9 @@ __all__ = [
 
 import copy
 import collections
+import numpy as np
 
+import paddle
 from .common import Linear, Dropout
 from .norm import LayerNorm
 from .. import functional as F
@@ -53,7 +55,22 @@ def _convert_param_attr_to_list(param_attr, n):
     if isinstance(param_attr, (list, tuple)):
         assert len(param_attr) == n, (
             "length of param_attr should be %d when it is a list/tuple" % n)
-        param_attrs = [ParamAttr._to_attr(attr) for attr in param_attr]
+        param_attrs = []
+        for attr in param_attr:
+            if isinstance(attr, bool):
+                if attr:
+                    param_attrs.append(ParamAttr._to_attr(None))
+                else:
+                    param_attrs.append(False)
+            else:
+                param_attrs.append(ParamAttr._to_attr(attr))
+        # param_attrs = [ParamAttr._to_attr(attr) for attr in param_attr]
+    elif isinstance(param_attr, bool):
+        param_attrs = []
+        if param_attr:
+            param_attrs = [ParamAttr._to_attr(None) for i in range(n)]
+        else:
+            param_attrs = [False] * n
     else:
         param_attrs = []
         attr = ParamAttr._to_attr(param_attr)
@@ -417,7 +434,7 @@ class TransformerEncoderLayer(Layer):
             Otherwise, MHA and FFN both use it as `weight_attr` to create parameters.
             Default: None, which means the default weight parameter property is used.
             See usage for details in :code:`ParamAttr` . 
-        bias_attr (ParamAttr|tuple, optional): To specify the bias parameter property.
+        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
             If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
             MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `bias_attr` to create parameters.
@@ -627,7 +644,7 @@ class TransformerDecoderLayer(Layer):
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
             in :ref:`api_fluid_ParamAttr` . 
-        bias_attr (ParamAttr|tuple, optional): To specify the bias parameter property.
+        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
             If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
             cross attention, and `bias_attr[2]` would be used as `bias_attr`
@@ -965,12 +982,12 @@ class Transformer(Layer):
     applies another layer normalization on the output of last encoder/decoder layer.
 
     Parameters:
-        d_model (int): The expected feature size in the encoder/decoder input
-            and output.
-        nhead (int): The number of heads in multi-head attention(MHA).
-        num_encoder_layers (int): The number of layers in encoder.
-        num_encoder_layers (int): The number of layers in decoder.
-        dim_feedforward (int): The hidden layer size in the feedforward network(FFN).
+        d_model (int, optional): The expected feature size in the encoder/decoder input
+            and output. Default 512
+        nhead (int, optional): The number of heads in multi-head attention(MHA). Default 8
+        num_encoder_layers (int, optional): The number of layers in encoder. Default 6
+        num_decoder_layers (int, optional): The number of layers in decoder. Default 6
+        dim_feedforward (int, optional): The hidden layer size in the feedforward network(FFN). Default 2048
         dropout (float, optional): The dropout probability used in pre-process
             and post-precess of MHA and FFN sub-layer. Default 0.1
         activation (str, optional): The activation function in the feedforward
@@ -986,25 +1003,34 @@ class Transformer(Layer):
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|tuple, optional): To specify the weight parameter property.
-            If it is a tuple, `weight_attr[0]` would be used as `weight_attr` for
-            self attention, `weight_attr[1]` would be used as `weight_attr` for
-            cross attention, and `weight_attr[2]` would be used as `weight_attr`
-            for linear in FFN. Otherwise, the three sub-layers all uses it as
-            `weight_attr` to create parameters. Default: None, which means the
-            default weight parameter property is used. See usage for details
+            If it is a tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
+            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]` 
+            would be used as `weight_attr` for cross attention of `TransformerDecoder`, 
+            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN. 
+            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention 
+            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for 
+            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr` 
+            for self attention, cross attention and linear in FFN. Otherwise, 
+            the three sub-layers all uses it as `weight_attr` to create parameters. 
+            Default: None, which means the default weight parameter property is used. 
+            See usage for details
             in :code:`ParamAttr` . 
-        bias_attr (ParamAttr|tuple, optional): To specify the bias parameter property.
-            If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
-            self attention, `bias_attr[1]` would be used as `bias_attr` for
-            cross attention, and `bias_attr[2]` would be used as `bias_attr`
-            for linear in FFN. Otherwise, the three sub-layers all uses it as
-            `bias_attr` to create parameters. The `False` value means the
-            corresponding layer would not have trainable bias parameter. See
-            usage for details in :code:`ParamAttr` . Default: None,which means
-            the default bias parameter property is used.
-        custom_encoder (Layer): If custom encoder is provided, use it as the encoder.
+        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
+            If it is a tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
+            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]` 
+            would be used as `bias_attr` for cross attention of `TransformerDecoder`, 
+            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN. 
+            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention 
+            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for 
+            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr` 
+            for self attention, cross attention and linear in FFN. Otherwise, 
+            the three sub-layers all uses it as `bias_attr` to create parameters. 
+            The `False` value means the corresponding layer would not have trainable 
+            bias parameter. See usage for details in :code:`ParamAttr` . 
+            Default: None,which means the default bias parameter property is used.
+        custom_encoder (Layer, optional): If custom encoder is provided, use it as the encoder.
             Default None
-        custom_decoder (Layer): If custom decoder is provided, use it as the decoder.
+        custom_decoder (Layer, optional): If custom decoder is provided, use it as the decoder.
             Default None
 
     Examples:
@@ -1049,13 +1075,51 @@ class Transformer(Layer):
                  custom_decoder=None):
         super(Transformer, self).__init__()
 
+        if isinstance(bias_attr, (list, tuple)):
+            if len(bias_attr) == 1:
+                encoder_bias_attr = [bias_attr[0]] * 2
+                decoder_bias_attr = [bias_attr[0]] * 3
+            elif len(bias_attr) == 2:
+                encoder_bias_attr = bias_attr
+                decoder_bias_attr = [bias_attr[0], bias_attr[0], bias_attr[-1]]
+            elif len(bias_attr) == 3:
+                encoder_bias_attr = [bias_attr[0], bias_attr[-1]]
+                decoder_bias_attr = bias_attr
+            else:
+                assert False, (
+                    "length of bias_attr should be 1 or 2 or 3 when it is a list/tuple"
+                )
+        else:
+            encoder_bias_attr = bias_attr
+            decoder_bias_attr = bias_attr
+
+        if isinstance(weight_attr, (list, tuple)):
+            if len(weight_attr) == 1:
+                encoder_weight_attr = [weight_attr[0]] * 2
+                decoder_weight_attr = [weight_attr[0]] * 3
+            elif len(weight_attr) == 2:
+                encoder_weight_attr = weight_attr
+                decoder_weight_attr = [
+                    weight_attr[0], weight_attr[0], weight_attr[-1]
+                ]
+            elif len(weight_attr) == 3:
+                encoder_weight_attr = [weight_attr[0], weight_attr[-1]]
+                decoder_weight_attr = weight_attr
+            else:
+                assert False, (
+                    "length of weight_attr should be 1 or 2 or 3 when it is a list/tuple"
+                )
+        else:
+            encoder_weight_attr = weight_attr
+            decoder_weight_attr = weight_attr
+
         if custom_encoder is not None:
             self.encoder = custom_encoder
         else:
             encoder_layer = TransformerEncoderLayer(
                 d_model, nhead, dim_feedforward, dropout, activation,
-                attn_dropout, act_dropout, normalize_before, weight_attr,
-                bias_attr)
+                attn_dropout, act_dropout, normalize_before,
+                encoder_weight_attr, encoder_bias_attr)
             encoder_norm = LayerNorm(d_model)
             self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers,
                                               encoder_norm)
@@ -1065,8 +1129,8 @@ class Transformer(Layer):
         else:
             decoder_layer = TransformerDecoderLayer(
                 d_model, nhead, dim_feedforward, dropout, activation,
-                attn_dropout, act_dropout, normalize_before, weight_attr,
-                bias_attr)
+                attn_dropout, act_dropout, normalize_before,
+                decoder_weight_attr, decoder_bias_attr)
             decoder_norm = LayerNorm(d_model)
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers,
                                               decoder_norm)
@@ -1112,3 +1176,39 @@ class Transformer(Layer):
         output = self.decoder(
             tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
         return output
+
+    def generate_square_subsequent_mask(self, length):
+        """
+        Generate a square mask for the sequence. The mask ensures that the
+        predictions for position i can depend only on the known outputs at
+        positions less than i.
+
+        Parameters:
+            length (int|Tensor): The length of sequence.
+
+        Returns:
+            Tensor: Generated square mask according to the given length.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.nn.layer.transformer import Transformer
+                length = 5
+                d_model, n_head, dim_feedforward = 8, 4, 64
+                transformer_paddle = Transformer(
+                    d_model, n_head, dim_feedforward=dim_feedforward)
+                mask = transformer_paddle.generate_square_subsequent_mask(length)
+                print(mask.numpy())
+
+                # [[  0. -inf -inf -inf -inf]
+                # [  0.   0. -inf -inf -inf]
+                # [  0.   0.   0. -inf -inf]
+                # [  0.   0.   0.   0. -inf]
+                # [  0.   0.   0.   0.   0.]]
+
+        """
+        return paddle.tensor.triu(
+            (paddle.ones(
+                (length, length), dtype=paddle.get_default_dtype()) * -np.inf),
+            1)

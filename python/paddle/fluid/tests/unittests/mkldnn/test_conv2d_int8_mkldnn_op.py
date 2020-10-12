@@ -36,6 +36,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.use_cuda = False
         self.use_mkldnn = False
         self.data_format = "NCHW"
+        self.mkldnn_data_type = "int8"
         self.weighttype = np.float32
         self.use_mkldnn = True
         self.init_group()
@@ -141,7 +142,8 @@ class TestConv2dInt8Op(TestConv2dOp):
             'Scale_weights': self.scale_weights,
             'Scale_in_eltwise': self.scale_in_eltwise,
             'fuse_activation': self.fuse_activation,
-            'fuse_residual_connection': self.fuse_residual
+            'fuse_residual_connection': self.fuse_residual,
+            'mkldnn_data_type': self.mkldnn_data_type
         }
         self.outputs = {'Output': output}
 

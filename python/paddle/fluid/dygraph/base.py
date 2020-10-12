@@ -23,7 +23,6 @@ from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
-import objgraph
 from ..data_feeder import convert_dtype
 import warnings
 
@@ -118,11 +117,15 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
-    This function enables dynamic graph mode.
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API turn OFF static graph mode. You can turn ON static graph mode by `enable_static <./disable_dygraph_en.html>`_ .
 
     Parameters:
-        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
-            If None, the running place will be determined according to the way of paddle compilation. Default: None
+        place(paddle.CPUPlace|paddle.CUDAPlace, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
+            determined according to the way of paddle compilation. 
 
     return:
         None
@@ -130,12 +133,15 @@ def enable_dygraph(place=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is None:
@@ -148,7 +154,11 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
-    This function disables dynamic graph mode.
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API turn ON static graph mode. You can turn ON static graph mode by `disable_static <./enable_dygraph_en.html>`_ .
 
     return:
         None
@@ -156,12 +166,15 @@ def disable_dygraph():
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is not None:
@@ -364,26 +377,8 @@ def guard(place=None):
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(place):
+                with framework._dygraph_place_guard(expected_place):
                     yield
-
-
-def _print_debug_msg(parameter_list, limit=5, is_test=False):
-    if not core._is_dygraph_debug_enabled():
-        logging.warn(
-            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
-        )
-        return
-    unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(parameter_list)
-    alive_cpp_var_size = len(core.VarBase._alive_vars())
-    if not is_test:
-        logging.warn(
-            'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
-            .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
-        objgraph.show_growth(limit=limit)
-    else:
-        return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
 @framework.dygraph_only

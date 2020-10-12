@@ -63,8 +63,10 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.epoch_num = 1
         self.batch_size = 128
         self.batch_num = 10
+        # enable static mode
+        paddle.enable_static()
 
-    def train_and_save_model(self):
+    def train_and_save_model(self, only_params=False):
         with new_program_scope():
             startup_program = fluid.default_startup_program()
             main_program = fluid.default_main_program()
@@ -102,11 +104,15 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                 static_param_dict[param.name] = fluid.executor._fetch_var(
                     param.name)
 
-            fluid.io.save_inference_model(
-                self.save_dirname, ["img"], [prediction],
-                exe,
-                model_filename=self.model_filename,
-                params_filename=self.params_filename)
+            if only_params:
+                fluid.io.save_params(
+                    exe, self.save_dirname, filename=self.params_filename)
+            else:
+                fluid.io.save_inference_model(
+                    self.save_dirname, ["img"], [prediction],
+                    exe,
+                    model_filename=self.model_filename,
+                    params_filename=self.params_filename)
 
         return static_param_dict
 
@@ -120,10 +126,11 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
 
-        configs = paddle.SaveLoadConfig()
-        configs.separate_params = True
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.load_dygraph(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
+
+        new_load_param_dict = paddle.load(self.save_dirname)
+        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_filename(self):
         self.save_dirname = "static_mnist.load_state_dict.model_filename"
@@ -131,11 +138,13 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
 
-        configs = paddle.SaveLoadConfig()
-        configs.separate_params = True
-        configs.model_filename = self.model_filename
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.load_dygraph(
+            self.save_dirname, model_filename=self.model_filename)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
+
+        new_load_param_dict = paddle.load(
+            self.save_dirname, model_filename=self.model_filename)
+        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_param_filename(self):
         self.save_dirname = "static_mnist.load_state_dict.param_filename"
@@ -143,10 +152,13 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
 
-        configs = paddle.SaveLoadConfig()
-        configs.params_filename = self.params_filename
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.load_dygraph(
+            self.save_dirname, params_filename=self.params_filename)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
+
+        new_load_param_dict = paddle.load(
+            self.save_dirname, params_filename=self.params_filename)
+        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_and_param_filename(self):
         self.save_dirname = "static_mnist.load_state_dict.model_and_param_filename"
@@ -154,11 +166,28 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
 
-        configs = paddle.SaveLoadConfig()
-        configs.params_filename = self.params_filename
-        configs.model_filename = self.model_filename
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.load_dygraph(
+            self.save_dirname,
+            params_filename=self.params_filename,
+            model_filename=self.model_filename)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
+
+        new_load_param_dict = paddle.load(
+            self.save_dirname,
+            params_filename=self.params_filename,
+            model_filename=self.model_filename)
+        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
+
+    def test_load_state_dict_from_save_params(self):
+        self.save_dirname = "static_mnist.load_state_dict.save_params"
+        self.params_filename = None
+        orig_param_dict = self.train_and_save_model(True)
+
+        load_param_dict, _ = fluid.load_dygraph(self.save_dirname)
+        self.check_load_state_dict(orig_param_dict, load_param_dict)
+
+        new_load_param_dict = paddle.load(self.save_dirname)
+        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
 
 if __name__ == '__main__':

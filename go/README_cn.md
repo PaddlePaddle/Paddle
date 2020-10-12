@@ -1,7 +1,7 @@
 # Paddle 预测golang API
 
 ## 安装
-首先cmake编译时打开`-DON_INFER=ON`,在编译目录下得到``fluid_inference_c_install_dir``,将该目录移动到当前目录中并重命名为`paddle_c`
+首先cmake编译时打开`-DON_INFER=ON`,在编译目录下得到``paddle_inference_c_install_dir``,将该目录移动到当前目录中并重命名为`paddle_c`
 
 ## 在Go中使用Paddle预测
 首先创建预测配置

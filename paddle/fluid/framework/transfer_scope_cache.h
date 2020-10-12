@@ -17,11 +17,15 @@
 #include <thread>  // NOLINT
 #include <unordered_map>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
+
+class OpKernelType;
+class Scope;
 
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache();
 

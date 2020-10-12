@@ -13,8 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+
 #include <string>
+
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

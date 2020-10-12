@@ -73,6 +73,13 @@ struct ChannelClipAndFakeQuantFunctor {
 };
 
 template <typename DeviceContext, typename T>
+struct ChannelClipFakeQuantDequantFunctor {
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
+                  const framework::Tensor& scale, const int bin_cnt,
+                  const int quant_axis, framework::Tensor* out);
+};
+
+template <typename DeviceContext, typename T>
 struct FindMovingAverageAbsMaxFunctor {
   void operator()(const DeviceContext& ctx, const framework::Tensor& in_accum,
                   const framework::Tensor& in_state,
@@ -139,17 +146,44 @@ class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
 
     auto* out = context.Output<framework::Tensor>("Out");
     auto* out_scale = context.Output<framework::Tensor>("OutScale");
-    T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
     out->mutable_data<T>(context.GetPlace());
 
     int bit_length = context.Attr<int>("bit_length");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
     int quant_axis = context.Attr<int>("quant_axis");
+    bool is_test = context.Attr<bool>("is_test");
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
+    if (!is_test) {
+      T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
+      FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
+                                                   out_scale_data);
+    }
+    ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+        dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out_scale = context.Output<framework::Tensor>("OutScale");
+    T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    out->mutable_data<T>(dev_ctx.GetPlace());
+
+    int bit_length = context.Attr<int>("bit_length");
+    int bin_cnt = std::pow(2, bit_length - 1) - 1;
+    int quant_axis = context.Attr<int>("quant_axis");
+
     FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
                                                  out_scale_data);
-    ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+
+    ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
   }
 };
