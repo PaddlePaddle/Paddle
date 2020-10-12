@@ -217,7 +217,8 @@ class SparseTensorLoadOp : public paddle::framework::OperatorWithKernel {
   }
 };
 
-class SparseLoadOpMaker : public paddle::framework::OpProtoAndCheckerMaker {
+class SparseTensorLoadOpMaker
+    : public paddle::framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddOutput("Out", "The LoDTensor / SelectedRows need to be loaded");
