@@ -405,7 +405,7 @@ class TestVarBase(unittest.TestCase):
         self.assertListEqual(list(var_base.shape), list(static_var.shape))
 
     def test_tensor_str(self):
-        paddle.disable_static()
+        paddle.disable_static(paddle.CPUPlace())
         paddle.manual_seed(10)
         a = paddle.rand([10, 20])
         paddle.set_printoptions(4, 100, 3)
