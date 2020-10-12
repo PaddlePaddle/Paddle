@@ -156,7 +156,7 @@ class TestMulDoubleGradCheck(unittest.TestCase):
 class TestMatmulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        eps = 0.005
+        eps = 0.05
         x_shapes = [[2], [2, 3], [2, 4, 3], [2, 3, 4, 5], [2, 3, 4]]
         y_shapes = [[2], [3, 2], [2, 4, 5], [2, 3, 3, 5], [4, 3]]
         transpose_xs = [False, True, True, False, False]
