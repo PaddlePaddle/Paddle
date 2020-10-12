@@ -414,7 +414,7 @@ class LSTMCell(RNNCellBase):
 
         \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
 
-        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetile{c}_{t}
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
 
         h_{t} & = o_{t} * \tanh(c_{t})
 
@@ -1119,7 +1119,7 @@ class LSTM(RNNMixin):
 
         \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
 
-        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetile{c}_{t}
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
 
         h_{t} & = o_{t} * \tanh(c_{t})
 
