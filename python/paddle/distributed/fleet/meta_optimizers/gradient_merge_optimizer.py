@@ -35,9 +35,6 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
     def _init_wrapped_opt(self):
-        if self.wrapped_opt is not None:
-            return
-
         config = self.user_defined_strategy.gradient_merge_configs
         self.wrapped_opt = GM(self.inner_opt)
         self.wrapped_opt._set_k_steps(
