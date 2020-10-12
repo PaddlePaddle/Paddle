@@ -358,7 +358,7 @@ static void HardLabelSoftmaxWithCrossEntropy(
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
     default:
       PADDLE_THROW(platform::errors::Unavailable(
-          "BlockDim must be 2^n in softmax_with_cross_entropy_op"));
+          "Block Dimension must be 2^n in softmax_with_cross_entropy_op."));
       break;
   }
 #undef CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL
@@ -399,7 +399,7 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
     default:
       PADDLE_THROW(platform::errors::Unavailable(
-          "BlockDim must be 2^n in softmax_with_cross_entropy_op"));
+          "Block Dimension must be 2^n in softmax_with_cross_entropy_op."));
       break;
   }
 
@@ -412,7 +412,8 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::Unavailable("This kernel only runs on GPU device."));
+        platform::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                      "CUDA kernel only runs on GPU device."));
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* softmax = context.Output<Tensor>("Softmax");
@@ -474,7 +475,8 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::Unavailable("This kernel only runs on GPU device."));
+        platform::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                      "CUDA kernel only runs on GPU device."));
     const Tensor* labels = context.Input<Tensor>("Label");
     const T* loss_grad_data =
         context.Input<Tensor>(framework::GradVarName("Loss"))->data<T>();
