@@ -29,6 +29,7 @@ from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
+
 class TestDygraphEmbeddingAPIError(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -53,11 +54,16 @@ class TestLookupTableOp(OpTest):
         self.outputs = {'Out': table[ids]}
 
     def test_check_output_with_place(self):
-        self.check_output_with_place(place = paddle.XPUPlace(0))
+        self.check_output_with_place(place=paddle.XPUPlace(0))
 
     def test_check_grad(self):
-        
-        self.check_grad_with_place(inputs_to_check = ['W'], output_names = 'Out', no_grad_set=set('Ids'),place = paddle.XPUPlace(0),in_place = True)
+
+        self.check_grad_with_place(
+            inputs_to_check=['W'],
+            output_names='Out',
+            no_grad_set=set('Ids'),
+            place=paddle.XPUPlace(0),
+            in_place=True)
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
@@ -69,10 +75,15 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output_with_place(place = paddle.XPUPlace(0))
+        self.check_output_with_place(place=paddle.XPUPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(inputs_to_check = ['W'], output_names ='Out', no_grad_set=set('Ids'),place = paddle.XPUPlace(0),in_place = True)
+        self.check_grad_with_place(
+            inputs_to_check=['W'],
+            output_names='Out',
+            no_grad_set=set('Ids'),
+            place=paddle.XPUPlace(0),
+            in_place=True)
 
 
 @skip_check_grad_ci(
@@ -85,7 +96,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output_with_place(place = paddle.XPUPlace(0))
+        self.check_output_with_place(place=paddle.XPUPlace(0))
 
 
 @skip_check_grad_ci(
@@ -99,7 +110,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
-        self.check_output_with_place(place = paddle.XPUPlace(0))
+        self.check_output_with_place(place=paddle.XPUPlace(0))
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
@@ -129,7 +140,6 @@ class TestLookupTableWIsSelectedRows(unittest.TestCase):
 
     def check_with_place(self, place):
         scope = core.Scope()
-
         ids_array = self.prepare_ids(scope, place)
 
         self.prepare_w(scope, place)

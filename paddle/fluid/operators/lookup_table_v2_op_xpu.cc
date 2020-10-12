@@ -12,63 +12,58 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-
+#include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/operators/lookup_table_v2_op.h"
-
+#include <memory>
+#ifdef PADDLE_WITH_XPU
 namespace paddle {
 namespace operators {
 
-#ifdef PADDLE_WITH_XPU
 template <typename DeviceContext, typename T>
 class LookupTableV2XPUKernel : public framework::OpKernel<T> {
- public:
+public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
-    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
+    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *output_t = context.Output<LoDTensor>("Out");
     auto *table_var = context.InputVar("W");
 
+    if (!std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {
+      PADDLE_THROW("Unsupported place!");
+    }
 
-      if (!std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {
-        PADDLE_THROW("Unsupported place!");
-      }
+    PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "idx in LookupTableV2XPUKernel should be LoDTensor"));
 
-      PADDLE_ENFORCE_EQ(
-          table_var->IsType<LoDTensor>(), true, 
-          platform::errors::InvalidArgument(
-              "idx in LookupTableV2XPUKernel should be LoDTensor"));
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+    int64_t ids_numel = ids_t->numel();
 
-      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-      int64_t ids_numel = ids_t->numel();
+    auto *table_t = context.Input<LoDTensor>("W");
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    // size_t N = table_t->dims()[0];
+    size_t D = table_t->dims()[1];
 
-      auto *table_t = context.Input<LoDTensor>("W");
-      auto &dev_ctx = context.template device_context<DeviceContext>();
-      // size_t N = table_t->dims()[0];
-      size_t D = table_t->dims()[1];
+    auto *table = table_t->data<T>();
+    auto *output = output_t->mutable_data<T>(context.GetPlace());
+    const int64_t *ids = ids_t->data<int64_t>();
 
-      auto *table = table_t->data<T>();
-      auto *output = output_t->mutable_data<T>(context.GetPlace());
-      const int64_t *ids = ids_t->data<int64_t>();
-
-      PADDLE_ENFORCE_EQ(ids_numel <= std::numeric_limits<int32_t>::max(), true,
-                        platform::errors::InvalidArgument(
-                            "idx_numel in LookupTableV2XPUKernel should not "
-                            "greater than int32_t::max."));
-      int ids_numel_int32 = static_cast<int>(ids_numel);
-      int r = xpu::embedding<T>(dev_ctx.x_context(), ids_numel_int32, ids, D,
-                                table, output, padding_idx);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::InvalidArgument("XPU kernel error!"));
-    
+    PADDLE_ENFORCE_EQ(ids_numel <= std::numeric_limits<int32_t>::max(), true,
+                      platform::errors::InvalidArgument(
+                          "idx_numel in LookupTableV2XPUKernel should not "
+                          "greater than int32_t::max."));
+    int ids_numel_int32 = static_cast<int>(ids_numel);
+    int r = xpu::embedding<T>(dev_ctx.x_context(), ids_numel_int32, ids, D,
+                              table, output, padding_idx);
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                      platform::errors::InvalidArgument("XPU kernel error!"));
   }
 };
 
 template <typename DeviceContext, typename T>
 class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
- public:
+public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
@@ -110,17 +105,15 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     r = xpu::embedding_backward<T, int64_t>(dev_ctx.x_context(),
                                             ids_numel_int32, ids_data, D,
                                             d_output_data, d_table_data);
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS,true,
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                       platform::errors::InvalidArgument("XPU kernel error!"));
   }
 };
-#endif
 
-}  // namespace operators
-}  // namespace paddle
+} // namespace operators
+} // namespace paddle
 
 namespace ops = paddle::operators;
-#ifdef PADDLE_WITH_XPU
 REGISTER_OP_XPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2XPUKernel<paddle::platform::XPUDeviceContext, float>);
