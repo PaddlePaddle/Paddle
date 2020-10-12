@@ -71,3 +71,99 @@ class SparseLoadOp(unittest.TestCase):
                 optimizer = fleet.distributed_optimizer(optimizer, strategy)
                 optimizer.minimize(loss)
                 fleet.init_server()
+
+    def test_adagrad(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.Adagrad(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+    def test_adamax(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.Adamax(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+    def test_momentum(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.Momentum(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+    def test_rmsprop(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.RMSProp(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+    def test_decayed_adagrad(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.DecayedAdagrad(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+    def test_ftrl(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.Ftrl(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+    def test_sgd(self):
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        scope, train_program, startup_program, loss = self.net()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(train_program, startup_program):
+                optimizer = fluid.optimizer.SGD(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()
