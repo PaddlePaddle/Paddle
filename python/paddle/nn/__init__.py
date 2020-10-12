@@ -55,6 +55,7 @@ from .layer.activation import ELU  #DEFINE_ALIAS
 from .layer.activation import GELU  #DEFINE_ALIAS
 from .layer.activation import Tanh  #DEFINE_ALIAS
 from .layer.activation import Hardshrink  #DEFINE_ALIAS
+from .layer.activation import Hardswish  #DEFINE_ALIAS
 from .layer.activation import Hardtanh  #DEFINE_ALIAS
 from .layer.activation import PReLU  #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
@@ -62,14 +63,18 @@ from .layer.activation import ReLU6  #DEFINE_ALIAS
 from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
+from .layer.activation import Hardsigmoid  #DEFINE_ALIAS
 from .layer.activation import LogSigmoid
 from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
 from .layer.activation import Softshrink  #DEFINE_ALIAS
 from .layer.activation import Softsign  #DEFINE_ALIAS
+from .layer.activation import Swish  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
+from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
+from .layer.activation import Maxout  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
