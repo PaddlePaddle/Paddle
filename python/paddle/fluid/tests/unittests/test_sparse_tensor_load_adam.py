@@ -23,44 +23,24 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet import fleet
+from test_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 
-class TestSparseLoadProgramAdam(unittest.TestCase):
+class TestSparseLoadProgramAdam(TestSparseLoadProgram):
     """ 
     Test Sparse load operator.
     """
 
-    def setUp(self):
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
-        os.environ["PADDLE_TRAINERS_NUM"] = str(2)
-        os.environ["TRAINING_ROLE"] = "PSERVER"
-        os.environ["PADDLE_PORT"] = "4001"
-        os.environ["POD_IP"] = "127.0.0.1"
-
-    def test_adam(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
+    def test_server_init(self):
+        scope, train_program, startup_program, loss = self.net()
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
-                with fluid.unique_name.guard():
-                    from paddle.distributed.fleet.base.fleet_base import Fleet
-                    fleet = Fleet()
-                    role = role_maker.PaddleCloudRoleMaker()
-                    fleet.init(role)
-                    strategy = paddle.distributed.fleet.DistributedStrategy()
-                    strategy.a_sync = True
-                    inputs = fluid.data('input', shape=[None, 1], dtype="int64")
-                    emb = fluid.layers.embedding(
-                        inputs, is_sparse=True, size=[10000, 128])
-                    fc1 = fluid.layers.fc(input=emb, size=128, act="relu")
-                    fc2 = fluid.layers.fc(input=fc1, size=64, act="relu")
-                    loss = fluid.layers.reduce_mean(fc2)
-                    optimizer = fluid.optimizer.Adam(1e-3)
-                    optimizer = fleet.distributed_optimizer(optimizer, strategy)
-                    optimizer.minimize(loss)
-                    fleet.init_server()
+                optimizer = fluid.optimizer.Adam(1e-3)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        self.strategy)
+                optimizer.minimize(loss)
+                fleet.init_server()
 
 
 if __name__ == "__main__":

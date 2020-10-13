@@ -26,7 +26,7 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
 
 
-class TestSparseLoadProgramSgd(unittest.TestCase):
+class TestSparseLoadProgram(unittest.TestCase):
     """ 
     Test Sparse load operator.
     """
@@ -38,6 +38,10 @@ class TestSparseLoadProgramSgd(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PORT"] = "4001"
         os.environ["POD_IP"] = "127.0.0.1"
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        self.strategy = paddle.distributed.fleet.DistributedStrategy()
+        self.strategy.a_sync = True
 
     def net(self):
         train_program = fluid.Program()
@@ -54,16 +58,15 @@ class TestSparseLoadProgramSgd(unittest.TestCase):
                     loss = fluid.layers.reduce_mean(fc2)
             return scope, train_program, startup_program, loss
 
-    def test_sgd(self):
-        role = role_maker.PaddleCloudRoleMaker()
-        fleet.init(role)
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.a_sync = True
+
+class TestSparseLoadProgramSGD(TestSparseLoadProgram):
+    def test_server_init(self):
         scope, train_program, startup_program, loss = self.net()
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
                 optimizer = fluid.optimizer.SGD(1e-3)
-                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        self.strategy)
                 optimizer.minimize(loss)
                 fleet.init_server()
 
