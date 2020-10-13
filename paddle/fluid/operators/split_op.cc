@@ -41,9 +41,8 @@ class SplitOp : public framework::OperatorWithKernel {
     if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(
           sections.size(), outs_number,
-          platform::errors::InvalidArgument(
-              "tensor split sections size "
-              "should be equal to output size."));
+          platform::errors::InvalidArgument("tensor split sections size "
+                                            "should be equal to output size."));
     }
 
     if (ctx->HasInput("AxisTensor")) {

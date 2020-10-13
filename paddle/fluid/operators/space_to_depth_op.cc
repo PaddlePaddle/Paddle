@@ -86,9 +86,9 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
                               "input Height should be Greater than 0"));
         PADDLE_ENFORCE_EQ(
             x_dims[2] % (blocksize), 0,
-           platform::errors::InvalidArgument(
-               "input Height should be divisible of the square of "
-               "SpaceToDepthOp blocksize"));
+            platform::errors::InvalidArgument(
+                "input Height should be divisible of the square of "
+                "SpaceToDepthOp blocksize"));
       }
 
       if (x_dims[3] != -1) {

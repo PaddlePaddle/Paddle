@@ -95,7 +95,8 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_EQ(
             sum_of_section, input_axis_dim,
             platform::errors::InvalidArgument(
-                "Sum of Attr(num_or_sections) must be equal to the input's size "
+                "Sum of Attr(num_or_sections) must be equal to the input's "
+                "size "
                 "along the split dimension. But received Attr(num_or_sections)"
                 " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
                 framework::make_ddim(sections), in_dims, axis));
