@@ -22,10 +22,14 @@ namespace operators {
 
 template <typename T>
 struct GetTensorValue<platform::CUDADeviceContext, T> {
-  T operator()(const framework::Tensor& tensor) const {
+  T operator()(const platform::CUDADeviceContext& dev_ctx,
+               const framework::Tensor& tensor) const {
     const T* data = tensor.data<T>();
     T value;
-    cudaMemcpy(&value, data, sizeof(T), cudaMemcpyDeviceToHost);
+    const auto gpu_place =
+        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    memory::Copy(platform::CPUPlace(), &value, gpu_place, data, sizeof(T),
+                 dev_ctx.stream());
     return value;
   }
 };
@@ -37,29 +41,27 @@ __global__ void AllcloseCUDAKernel(const T* in_a, const T* in_b,
   int tid = threadIdx.x;
   const T a = in_a[tid], b = in_b[tid];
   bool val;
-  __shared__ bool val_;
-  if (tid == 0) {
-    val_ = true;
-  }
-  __syncthreads();
+  extern __shared__ bool val_vector[];
   if (isnan(a) || isnan(b)) {
     val = equal_nan && isnan(a) == isnan(b);
   } else {
     T left = (a > b ? a - b : b - a);
     T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-    T dif = (left > right ? left - right : right - left);
-    val = a == b || left <= right || dif <= 1e-15;
+    T diff = (left > right ? left - right : right - left);
+    val = a == b || left <= right || diff <= 1e-15;
   }
-  atomicAnd(reinterpret_cast<int*>(&val_), static_cast<int>(val));
+  val_vector[tid] = val;
   __syncthreads();
-  if (tid == 0) {
-    *out_data = static_cast<bool>(val_);
+  for (int stride = 1; stride < blockDim.x; stride *= 2) {
+    if (tid % (2 * stride) == 0) val_vector[tid] &= val_vector[tid + stride];
   }
+  __syncthreads();
+  if (tid == 0) *out_data = val_vector[0];
 }
 
 template <typename T>
 struct AllcloseFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+  void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const framework::Tensor& in, const framework::Tensor& other,
                   const double rtol, const double atol, bool equal_nan,
                   framework::Tensor* output) {
@@ -74,16 +76,15 @@ struct AllcloseFunctor<platform::CUDADeviceContext, T> {
                           in_dims, other_dims));
     const T* in_data = in.data<T>();
     const T* other_data = other.data<T>();
-    bool* out_data = output->mutable_data<bool>(ctx.GetPlace());
+    bool* out_data = output->mutable_data<bool>(dev_ctx.GetPlace());
     int grid = 1;
     int block = in_dims;
 
-    AllcloseCUDAKernel<T><<<1, block, 0, ctx.stream()>>>(
+    AllcloseCUDAKernel<T><<<1, block, 1024 * sizeof(T), dev_ctx.stream()>>>(
         in_data, other_data, rtol, atol, equal_nan, out_data);
   }
 };
 
-// template struct AllcloseFunctor<platform::CUDADeviceContext, float>;
 template struct AllcloseFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace operators

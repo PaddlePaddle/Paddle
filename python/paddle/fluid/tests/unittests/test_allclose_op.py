@@ -131,5 +131,14 @@ class TestAllcloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_equal_nan)
 
 
+class TestAllcloseOpFloat64(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float64")
+        self.other = np.array([10]).astype("float64")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+
 if __name__ == "__main__":
     unittest.main()

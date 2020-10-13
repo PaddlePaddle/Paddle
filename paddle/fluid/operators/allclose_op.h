@@ -24,7 +24,8 @@ using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 struct GetTensorValue {
-  T operator()(const framework::Tensor& tensor) const;
+  T operator()(const platform::CUDADeviceContext& dev_ctx,
+               const framework::Tensor& tensor) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -49,8 +50,8 @@ class AllcloseKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     GetTensorValue<DeviceContext, double> get_tensor_value;
-    double rtol_v = get_tensor_value(*rtol);
-    double atol_v = get_tensor_value(*atol);
+    double rtol_v = get_tensor_value(dev_ctx, *rtol);
+    double atol_v = get_tensor_value(dev_ctx, *atol);
     AllcloseFunctor<DeviceContext, T>()(dev_ctx, *input, *other, rtol_v, atol_v,
                                         equal_nan, out);
   }

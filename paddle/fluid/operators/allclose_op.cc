@@ -23,7 +23,8 @@ namespace operators {
 
 template <typename T>
 struct GetTensorValue<platform::CPUDeviceContext, T> {
-  T operator()(const framework::Tensor& tensor) const {
+  T operator()(const platform::CPUDeviceContext& dev_ctx,
+               const framework::Tensor& tensor) const {
     return *(tensor.data<T>());
   }
 };
@@ -54,15 +55,13 @@ struct AllcloseFunctor<platform::CPUDeviceContext, T> {
       } else {
         T left = (a > b ? a - b : b - a);
         T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-        T dif = (left > right ? left - right : right - left);
-        val = a == b || left <= right || dif <= 1e-15;
+        T diff = (left > right ? left - right : right - left);
+        val = a == b || left <= right || diff <= 1e-15;
       }
       *out_data &= val;
     }
   }
 };
-
-template struct AllcloseFunctor<platform::CPUDeviceContext, double>;
 
 class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
