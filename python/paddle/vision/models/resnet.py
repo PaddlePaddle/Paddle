@@ -264,7 +264,7 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
                                                 model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        param, _ = paddle.load(weight_path)
+        param = paddle.load(weight_path)
         model.set_dict(param)
 
     return model
