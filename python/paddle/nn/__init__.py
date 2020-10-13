@@ -121,13 +121,6 @@ from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
-# from .layer.learning_rate import CosineDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import ExponentialDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import InverseTimeDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NaturalExpDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
 from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
@@ -153,6 +146,7 @@ from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
 from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS
