@@ -30,6 +30,4 @@ from .adadelta import Adadelta
 from .sgd import SGD
 from .momentum import Momentum
 
-from . import lr_scheduler
-from .lr_scheduler import _LRScheduler, NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
-            LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR
+from . import lr

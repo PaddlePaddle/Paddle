@@ -164,7 +164,7 @@ def load_dygraph(model_path, **configs):
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "paddle_dy")
 
-            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+            scheduler = paddle.optimizer.lr.NoamDecay(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
