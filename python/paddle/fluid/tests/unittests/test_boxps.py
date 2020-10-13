@@ -89,7 +89,7 @@ class TestRunCmd(unittest.TestCase):
 
 
 class TestPullBoxSparseOP(unittest.TestCase):
-    """ TestCases for run_cmd"""
+    """ TestCases for _pull_box_sparse op"""
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
