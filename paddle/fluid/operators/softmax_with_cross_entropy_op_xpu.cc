@@ -67,12 +67,12 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
           XPU_SUCCESS, platform::errors::InvalidArgument("XPU kernel error!"));
       dev_ctx.Wait();
       memory::Copy(platform::CPUPlace(), labels_int64_host,
-                   boost::get<platform::XPUPlace>(context.GetPlace()), p_labels,
-                   n * sizeof(int64_t));
+                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
+                   p_labels, n * sizeof(int64_t));
       for (int i = 0; i < n; ++i) {
         labels_int32_host[i] = labels_int64_host[i];
       }
-      memory::Copy(boost::get<platform::XPUPlace>(context.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
                    labels_int32_device, platform::CPUPlace(), labels_int32_host,
                    n * sizeof(int));
       int r = xpu::cross_entropy_forward(
