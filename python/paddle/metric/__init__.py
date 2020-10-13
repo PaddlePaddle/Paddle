@@ -15,13 +15,11 @@
 from .metrics import *
 from . import metrics
 
-from ..fluid.layers.metric_op import accuracy, auc
-from ..fluid.layers.nn import chunk_eval, cos_sim, mean_iou
+from ..fluid.layers.metric_op import auc
+from ..fluid.layers.nn import chunk_eval, mean_iou
 
 __all__ = metrics.__all__ + [
-    'accuracy',
     'auc',
     'chunk_eval',
-    'cos_sim',
     'mean_iou',
 ]

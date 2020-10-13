@@ -54,11 +54,11 @@ def global_scope():
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy
 
-          fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
-          numpy.array(fluid.global_scope().find_var("data").get_tensor())
+          paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+          numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
     """
     return g_scope
 
@@ -94,12 +94,13 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy
+            paddle.enable_static()
 
-            new_scope = fluid.Scope()
-            with fluid.scope_guard(new_scope):
-                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            new_scope = paddle.static.Scope()
+            with paddle.static.scope_guard(new_scope):
+                 paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
             numpy.array(new_scope.find_var("data").get_tensor())
     """
 
@@ -854,7 +855,7 @@ class Executor(object):
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
-        from paddle.optimizer.lr_scheduler import _LRScheduler
+        from paddle.optimizer.lr import LRScheduler
         exe = program._executor
         # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
         # instead of program. We will add support for checking Vars in Graph
@@ -900,7 +901,7 @@ class Executor(object):
 
         if hasattr(program._program, 'lr_sheduler'):
             lr_sheduler = program._program.lr_sheduler
-            assert isinstance(lr_sheduler, _LRScheduler), "must be _LRScheduler"
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
             lr_value = lr_sheduler()
             lr_var = program._program.global_block().vars[lr_sheduler._var_name]
             lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
@@ -1237,7 +1238,7 @@ class Executor(object):
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
-        from paddle.optimizer.lr_scheduler import _LRScheduler
+        from paddle.optimizer.lr import LRScheduler
         if feed is None:
             feed = {}
         elif isinstance(feed, (list, tuple)):
@@ -1295,7 +1296,7 @@ class Executor(object):
         self._feed_data(program, feed, feed_var_name, scope)
         if hasattr(program, 'lr_sheduler'):
             assert isinstance(program.lr_sheduler,
-                              _LRScheduler), "must be _LRScheduler"
+                              LRScheduler), "must be LRScheduler"
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
             lr_var = program.global_block().vars[lr_sheduler._var_name]
