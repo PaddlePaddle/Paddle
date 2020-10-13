@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -155,6 +156,21 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
+
+    if (!is_test) {
+      int device_id =
+          BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+      auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+      if (gen_cuda->GetIsInitPy() && seed == 0) {
+        // If perform `manual_seed` in python and inner seed is not specified
+        // (equals 0), use global generator generated seed.
+        seed = static_cast<int>(gen_cuda->Random64());
+      } else if (seed == 0) {
+        // use random generated seed
+        std::random_device rd;
+        seed = rd();
+      }  // else use `ctx.Attr<int>("seed")` specified seed
+    }
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
     std::vector<int> SequenceLength;

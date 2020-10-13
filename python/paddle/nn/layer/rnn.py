@@ -953,6 +953,23 @@ class RNNBase(LayerList):
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
             2 if direction == "bidirectional" else 1)
         self.could_use_cudnn &= mode == "LSTM"  # currently only support LSTM
+
+        # Expose params as RNN's attribute, which can make it compatible when
+        # replacing small ops composed rnn with cpp rnn kernel.
+        # Moreover, `jit.to_static` assumes params are added by current layer
+        # and wouldn't include sublayer's params in current layer, which also
+        # requires these params are added to current layer for `jit.save`.
+        param_names = []
+        for layer in range(self.num_layers):
+            for direction in range(self.num_directions):
+                suffix = '_reverse' if direction == 1 else ''
+                param_names.extend(['weight_ih_l{}{}', 'weight_hh_l{}{}'])
+                if bias_ih_attr != False: param_names.append('bias_ih_l{}{}')
+                if bias_hh_attr != False: param_names.append('bias_hh_l{}{}')
+                param_names = [x.format(layer, suffix) for x in param_names]
+        for name, param in zip(param_names, self.parameters()):
+            setattr(self, name, param)
+
         self.flatten_parameters()
 
     def flatten_parameters(self):
@@ -965,7 +982,7 @@ class RNNBase(LayerList):
             # for i in layer: for j in direct: w_ih, w_hh, b_ih, b_hh
             # need to reorganize to cudnn param layout:
             # all bias following all weights
-            params = self.parameters()
+            params = self.parameters(include_sublayers=False)
             shape = [np.prod(param.shape) for param in params]
             self._all_weights = [None] * len(params)
             for i, param in enumerate(params):
@@ -973,15 +990,12 @@ class RNNBase(LayerList):
                                               self.num_directions)
                 layer_idx = i // 4
                 self._all_weights[offset + layer_idx * 2 + i % 2] = param
-            # Parameter would be registered into `self._parameters`,
-            # use non-parameter `_flat_weight` to avoid and hide it
-            # after cudnn_rnn_op receives the list of separated weights
-            # as inputs, then `_flat_weight` should only be used in
-            # test mode. If hide currently, weights can not be updated.
-            # TODO(guosheng): maybe a need better way to handle this, using
-            # `create_variable` seems breaking backward.
-            self._flat_weight = self.create_parameter(
-                shape=[np.sum(shape)], dtype=params[0].dtype)
+            # wrap using a list to avoid registed into buffer and saving, maybe
+            # need a better way to handle this later.
+            self._flat_weight = [self.create_variable(dtype=params[0].dtype)]
+            self._dropout_state = [
+                self.create_variable(dtype=fluid.core.VarDesc.VarType.UINT8)
+            ]
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
                                      fluid.default_startup_program()):
@@ -1010,19 +1024,14 @@ class RNNBase(LayerList):
         last_c = self._helper.create_variable_for_type_inference(inputs.dtype)
         reserve = self._helper.create_variable_for_type_inference(
             dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
-        # `state` stands for cudnn dropout state, it should be persitable
-        # in static-graph mode
-        dropout_state = self._helper.create_variable_for_type_inference(
-            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
-        dropout_state.persistable = True
 
         inputs = {
             'Input': inputs,
             'W': self._flat_weight,
-            # 'WeightList': self._all_weights,
+            'WeightList': self._all_weights,
             'InitH': initial_states[0],
             'InitC': initial_states[1],
-            'State': dropout_state,
+            # 'State': dropout_state,
             'SequenceLength': sequence_length
         }
         attrs = {
@@ -1039,7 +1048,7 @@ class RNNBase(LayerList):
             'LastH': last_h,
             'LastC': last_c,
             'Reserve': reserve,
-            'StateOut': dropout_state,
+            'StateOut': self._dropout_state,
         }
 
         self._helper.append_op(
@@ -1161,6 +1170,17 @@ class SimpleRNN(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
+    Attributes:
+        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
+            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
+            the shape is `[hidden_size, num_directions * hidden_size]`.
+        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
+            with shape `[hidden_size, hidden_size]`.
+        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+
     Examples:
 
         .. code-block:: python
@@ -1277,6 +1297,17 @@ class LSTM(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
+    Attributes:
+        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
+            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
+            the shape is `[hidden_size, num_directions * hidden_size]`.
+        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
+            with shape `[hidden_size, hidden_size]`.
+        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+
     Examples:
     
         .. code-block:: python
@@ -1383,6 +1414,17 @@ class GRU(RNNBase):
             `[num_layers * num_directions, batch_size, hidden_size]`.
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
+
+    Attributes:
+        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
+            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
+            the shape is `[hidden_size, num_directions * hidden_size]`.
+        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
+            with shape `[hidden_size, hidden_size]`.
+        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
 
     Examples:
 
