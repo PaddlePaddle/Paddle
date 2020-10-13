@@ -72,7 +72,7 @@ void Print3DTensor(const Tensor* a, std::string name) {
 void SwapPoniter(Tensor** a, Tensor** b) {
   Tensor* c = *a;
   *a = *b;
-  *b = *c;
+  *b = c;
 }
 
 template <typename T>
@@ -329,17 +329,17 @@ struct LSTMCell : Cell<T> {
 template <typename T>
 struct Layer {
   virtual ~Layer() {}
-  Tensor preprocess(const framework::ExecutionContext& context,
-                    const Tensor* input, const Tensor& weight,
-                    const Tensor& bias_ih, const Tensor& bias_hh) {
+  void preprocess(const framework::ExecutionContext& context,
+                  const Tensor* input, const Tensor& weight,
+                  const Tensor& bias_ih, const Tensor& bias_hh,
+                  Tensor* cache_input) {
     // crate the temp input for the X * W_ih^T + Bias_ih
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     const int& hidden_size = weight.dims()[0];
-    Tensor cache_input;
-    cache_input.Resize(framework::make_ddim(
+    cache_input->Resize(framework::make_ddim(
         {input->dims()[0], input->dims()[1], hidden_size}));
-    cache_input.mutable_data<T>(context.GetPlace());
+    cache_input->mutable_data<T>(context.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
     auto mat_dim_a = math::CreateMatrixDescriptor(input->dims(), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(weight.dims(), 0, true);
@@ -347,31 +347,22 @@ struct Layer {
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     blas.MatMul(*input, mat_dim_a, weight, mat_dim_b, static_cast<T>(1.0),
-                &cache_input, T(0));
+                cache_input, T(0));
 
     auto eigen_in = framework::EigenMatrix<T>::Reshape(
-        cache_input, cache_input.dims().size() - 1);
+        *cache_input, cache_input->dims().size() - 1);
     auto eigen_bias_ih = framework::EigenMatrix<T>::From(
         bias_ih, framework::make_ddim({1, bias_ih.dims()[0]}));
     auto eigen_bias_hh = framework::EigenMatrix<T>::From(
         bias_hh, framework::make_ddim({1, bias_hh.dims()[0]}));
-    // auto eigen_bias_ih = framework::EigenVector<T>::Flatten(bias_ih);
-    // auto eigen_bias_hh = framework::EigenVector<T>::Flatten(bias_hh);
-    // use the eigen faster the add
     const int& row_num =
-        framework::product(cache_input.dims()) / cache_input.dims()[2];
-    // for (int64_t i = 0; i < row_num; ++i) {
-    //  eigen_in.chip(i, 0) = eigen_in.chip(i, 0) + eigen_bias_ih +
-    //  eigen_bias_hh;
-    //}
+        framework::product(cache_input->dims()) / cache_input->dims()[2];
     eigen_in = eigen_in +
                eigen_bias_ih.broadcast(Eigen::DSizes<int, 2>(row_num, 1)) +
                eigen_bias_hh.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     Print3DTensor<T>(input, "preprocess_input");
     Print2DTensor<T>(&weight, "preprocess_weight");
-    Print3DTensor<T>(&cache_input, "preprocess_output");
-
-    return cache_input;
+    Print3DTensor<T>(cache_input, "preprocess_output");
   }
 
   void postprocess(const framework::ExecutionContext& context, Tensor* output,
@@ -410,11 +401,9 @@ struct SingleLayer : Layer<T> {
     // first step, we could calcalute the W_ih * input + Bias_ih to more faster
     const int& time_step = input->dims()[0];
     // vec[0] is parameter of w_hi, vec[2] is bias of b_hi
-    const Tensor& input_w =
-        this->preprocess(context, input, vec[0], vec[2], vec[3]);
+    Tensor input_w;
+    this->preprocess(context, input, vec[0], vec[2], vec[3], &input_w);
     VLOG(2) << "output shape: " << output->dims();
-    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
-    set_constant(dev_ctx, output, static_cast<T>(13.0));
 
     auto input_tensors = Unbind(input_w);
     auto output_tensors = Unbind(*output);
@@ -425,8 +414,8 @@ struct SingleLayer : Layer<T> {
       has_sequence_length = true;
     }
     Tensor mask_matrix;
-    mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
     if (has_sequence_length) {
+      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, false);
       Print2DTensor<T>(&mask_matrix, "Mask Matrix");
       mask_tensor_list = Unbind(mask_matrix);
@@ -441,7 +430,6 @@ struct SingleLayer : Layer<T> {
     Tensor* last_h_holder = &last_h[layer_idx];
     Tensor* last_c_holder = &last_c[layer_idx];
     for (int i = 0; i < time_step; i++) {
-      VLOG(2) << "time_step: " << i;
       if (i > 0) {
         if (!has_allocate_mem) {
           init_h_temp.Resize(init_h[layer_idx].dims());
@@ -474,7 +462,6 @@ struct SingleLayer : Layer<T> {
       framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
                             &last_c[layer_idx]);
     }
-    // set_constant(dev_ctx, output, static_cast<T>(5.0));
   }
 
   // Cell for the rnn module
@@ -501,11 +488,10 @@ struct BidirLayer : Layer<T> {
     const int& time_step = input->dims()[0];
     const int& batch_size = input->dims()[1];
     const int& hidden_size = output->dims()[2];
-    const Tensor& forward_input_w =
-        this->preprocess(context, input, vec[0], vec[2], vec[3]);
+    Tensor forward_input_w;
+    this->preprocess(context, input, vec[0], vec[2], vec[3], &forward_input_w);
     auto forward_input_tensors = Unbind(forward_input_w);
 
-    // create the temp output for the forward
     output_vec[0].Resize(
         framework::make_ddim({time_step, batch_size, hidden_size / 2}));
     output_vec[0].mutable_data<T>(context.GetPlace());
@@ -517,10 +503,10 @@ struct BidirLayer : Layer<T> {
       has_sequence_length = true;
     }
     Tensor forward_mask_matrix;
-    forward_mask_matrix.Resize(
-        framework::make_ddim({time_step, input->dims()[1]}));
     TensorList forward_mask_tensor_list;
     if (has_sequence_length) {
+      forward_mask_matrix.Resize(
+          framework::make_ddim({time_step, input->dims()[1]}));
       create_mask_matrix<T>(context, sequence_length, &forward_mask_matrix,
                             false);
       forward_mask_tensor_list = Unbind(forward_mask_matrix);
@@ -571,8 +557,8 @@ struct BidirLayer : Layer<T> {
                  backward_output_tensors.end());
 
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
-    const Tensor& backward_input_w =
-        this->preprocess(context, input, vec[4], vec[6], vec[7]);
+    Tensor backward_input_w;
+    this->preprocess(context, input, vec[4], vec[6], vec[7], &backward_input_w);
     auto backward_input_tensors = Unbind(backward_input_w);
     std::reverse(backward_input_tensors.begin(), backward_input_tensors.end());
     Tensor backward_mask_matrix;
