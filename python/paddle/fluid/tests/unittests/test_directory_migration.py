@@ -88,8 +88,8 @@ class TestDirectory(unittest.TestCase):
             stderr=subprocess.PIPE)
         stdout, stderr = ps_proc.communicate()
 
-        assert "Error" not in str(stderr), "Error: Can't" \
-            " import Module {}".format(module)
+        assert "Error" not in str(stderr), "ErrorMessage:\n{}".format(
+            bytes.decode(stderr))
 
     def test_old_directory(self):
         old_directory = [
