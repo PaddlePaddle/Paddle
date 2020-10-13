@@ -103,15 +103,15 @@ def get_cudnn_version():
 
 def set_device(device):
     """
-    Paddle supports running calculations on various types of devices, including CPU and GPU.
+    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu`` or ``gpu:0``. When ``device`` is ``cpu``, the
-            program is running on the cpu. When ``device`` is ``gpu``, the
-            program is running ont the gpu.
+            It can be ``cpu``, ``gpu:X`` and ``xpu:X``, where ``X`` is the 
+            index of the GPUs or XPUs. 
+
     Examples:
 
      .. code-block:: python
@@ -132,20 +132,37 @@ def set_device(device):
                 "The device should not be 'gpu', " \
                 "since PaddlePaddle is not compiled with CUDA")
         place = core.CUDAPlace(ParallelEnv().dev_id)
+    elif lower_device == 'xpu':
+        if not core.is_compiled_with_xpu():
+            raise ValueError(
+                "The device should not be 'xpu', " \
+                "since PaddlePaddle is not compiled with XPU")
+        place = core.XPUPlace(ParallelEnv().dev_id)
     else:
-        avaliable_device = re.match(r'gpu:\d+', lower_device)
-        if not avaliable_device:
+        avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
+        avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
+        if not avaliable_device and not avaliable_xpu_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu' or 'gpu:0'"
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu' or 'xpu:x'"
             )
-        if not core.is_compiled_with_cuda():
-            raise ValueError(
-                "The device should not be {}, since PaddlePaddle is " \
-                "not compiled with CUDA".format(avaliable_device))
-        device_info_list = device.split(':', 1)
-        device_id = device_info_list[1]
-        device_id = int(device_id)
-        place = core.CUDAPlace(device_id)
+        if avaliable_gpu_device:
+            if not core.is_compiled_with_cuda():
+                raise ValueError(
+                    "The device should not be {}, since PaddlePaddle is " \
+                    "not compiled with CUDA".format(avaliable_device))
+            device_info_list = device.split(':', 1)
+            device_id = device_info_list[1]
+            device_id = int(device_id)
+            place = core.CUDAPlace(device_id)
+        if avaliable_xpu_device:
+            if not core.is_compiled_with_xpu():
+                raise ValueError(
+                    "The device should not be {}, since PaddlePaddle is " \
+                    "not compiled with XPU".format(avaliable_device))
+            device_info_list = device.split(':', 1)
+            device_id = device_info_list[1]
+            device_id = int(device_id)
+            place = core.XPUPlace(device_id)
     framework._set_expected_place(place)
     return place
 
