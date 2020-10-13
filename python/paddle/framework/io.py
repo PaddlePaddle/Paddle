@@ -204,10 +204,13 @@ def save(obj, path):
         Now only supports save ``state_dict`` of Layer or Optimizer.
 
     .. note::
-        ``paddle.save`` will not add a suffix to the saved results, 
-        but we recommend that you use the following paddle standard suffixes:
-        1. for ``Layer.state_dict`` -> ``.pdparams``
-        2. for ``Optimizer.state_dict`` -> ``.pdopt``
+        Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
+        there is no need to distinguish multiple saved files by adding a suffix. The argument ``path`` 
+        of ``paddle.save`` will be directly used as the saved file name instead of a prefix. 
+        In order to unify the saved file name format, we recommend using the paddle standard suffix:
+        1. for ``Layer.state_dict`` , recommend to use ``.pdparams`` ; 
+        2. for ``Optimizer.state_dict`` , recommend to use ``.pdopt`` . 
+        For specific examples, please refer to API code examples.
     
     Args:
         obj(Object) : The object to be saved.
@@ -228,7 +231,7 @@ def save(obj, path):
             layer_state_dict = emb.state_dict()
             paddle.save(layer_state_dict, "emb.pdparams")
 
-            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+            scheduler = paddle.optimizer.lr.NoamDecay(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
@@ -272,9 +275,10 @@ def load(path, **configs):
         Now only supports load ``state_dict`` of Layer or Optimizer.
 
     .. note::
-        ``paddle.load`` supports loading ``state_dict`` of Layer or Optimizer from 
-        the result of other save APIs except ``paddle.load`` , but the argument 
-        ``path`` format is different:
+        In order to use the model parameters saved by paddle more efficiently, 
+        ``paddle.load`` supports loading ``state_dict`` of Layer from the result of 
+        other save APIs except ``paddle.save`` , but the argument ``path`` format is 
+        different:
         1. loading from ``paddle.static.save`` or ``paddle.Model().save(training=True)`` ,  
         ``path`` needs to be a complete file name, such as ``model.pdparams`` or 
         ``model.pdopt`` ; 
@@ -287,22 +291,23 @@ def load(path, **configs):
         directory, such as ``model`` and model is a directory.
 
     .. note::
-        If you load ``state_dict`` from the saved result of 
+        If you load ``state_dict`` from the saved result of static mode API such as 
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` , 
-        the structured variable name will cannot be restored. You need to set the argument 
-        ``use_structured_name=False`` when using ``Layer.set_state_dict`` later.
+        the structured variable name in dynamic mode will cannot be restored. 
+        You need to set the argument ``use_structured_name=False`` when using 
+        ``Layer.set_state_dict`` later.
 
     Args:
         path(str) : The path to load the target object. Generally, the path is the target 
-            file path. When compatible with loading the saved results other APIs, the path 
-            can be a file prefix or directory. 
+            file path. When loading state_dict from the saved result of the API used to save 
+            the inference model, the path may be a file prefix or directory.
         **configs (dict, optional): other load configuration options for compatibility. We do not 
             recommend using these configurations, they may be removed in the future. If not necessary, 
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (string): The inference model file name of the paddle 1.x 
+            (1) model_filename (str): The inference model file name of the paddle 1.x 
             ``save_inference_model`` save format. Default file name is :code:`__model__` . 
-            (2) params_filename (string): The persistable variables file name of the paddle 1.x 
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x 
             ``save_inference_model`` save format. No default file name, save variables separately 
             by default.
 
@@ -320,7 +325,7 @@ def load(path, **configs):
             layer_state_dict = emb.state_dict()
             paddle.save(layer_state_dict, "emb.pdparams")
 
-            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+            scheduler = paddle.optimizer.lr.NoamDecay(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
