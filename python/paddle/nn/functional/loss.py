@@ -31,7 +31,6 @@ from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import rank_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
-from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
