@@ -67,6 +67,8 @@ endif()
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
     sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 if (WITH_GPU)
+    #register_cuda_check(EXCLUDES py_func_op warpctc_op dgc_op
+    #sync_batch_norm_op ${OP_MKL_DEPS} DEPS cuda_enforce)
     set_target_properties(nll_loss_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     set_target_properties(bernoulli_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     set_target_properties(lookup_table_v2_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
@@ -91,9 +93,6 @@ else()
 endif()
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
-if(WITH_GPU)
-    set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cuda_enforce)
-endif()
 
 if (WITH_DGC)
     op_library(dgc_op DEPS dgc)

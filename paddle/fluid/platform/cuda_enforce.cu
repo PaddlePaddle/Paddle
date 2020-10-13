@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/cuda_enforce/cuda_enforce.cuh"
+#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_CUDA_KERNEL_CHECK
+#include "paddle/fluid/platform/cuda_enforce.cuh"
 
 typedef struct _CudaKerenlErrorPro {
   char _CudaErrorMsg[__LEN_ERROR_MSG];
@@ -59,3 +61,5 @@ void get_msg_from_cuda(char* msg, char* file, int* line) {
   *line = temp._line;
 }
 }
+#endif  // PADDLE_CUDA_KERNEL_CHECK
+#endif  // PADDLE_WITH_CUDA

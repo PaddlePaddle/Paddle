@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/bernoulli_op.h"
-#include "paddle/fluid/platform/cuda_enforce/cuda_enforce.cuh"
+#include "paddle/fluid/platform/cuda_enforce.cuh"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
@@ -35,8 +35,8 @@ struct BernoulliCudaFunctor {
     // lines of error messages if, and it should be refined.
     PADDLE_ENFORCE_CUDA_KERNEL(p >= 0.0 && p <= 1.0,
                                "The probability should be >=0 and <= 1");
-    PADDLE_ENFORCE(p >= 0.0 && p <= 1.0,
-                   "The probability should be >=0 and <= 1, but got %f", p);
+    // PADDLE_ENFORCE(p >= 0.0 && p <= 1.0,
+    //                "The probability should be >=0 and <= 1, but got %f", p);
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(0.0, 1.0);
