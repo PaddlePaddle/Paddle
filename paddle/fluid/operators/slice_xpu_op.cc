@@ -64,7 +64,7 @@ class SliceXPUKernel : public framework::OpKernel<T> {
     std::vector<int> starts_extension(shape_size, 0);
     std::vector<int> ends_extension(shape_size, 0);
     if (shape_size > axes.size()) {
-      for (size_t i = 0; i < shape_size; ++i){
+      for (size_t i = 0; i < shape_size; ++i) {
         ends_extension[i] = in_dims[i];
       }
       for (size_t i = 0; i < axes.size(); ++i) {
@@ -89,8 +89,8 @@ class SliceXPUKernel : public framework::OpKernel<T> {
     int r = xpu::slice_forward(dev_ctx.x_context(), shape.data(),
                                starts_extension.data(), ends_extension.data(),
                                shape_size, in_data, out_data);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
-                                          "XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External("XPU slice kernel error!"));
   }
 };
 
@@ -135,7 +135,7 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> starts_extension(shape_size, 0);
     std::vector<int> ends_extension(shape_size, 0);
     if (shape_size > axes.size()) {
-      for (size_t i = 0; i < shape_size; ++i){
+      for (size_t i = 0; i < shape_size; ++i) {
         ends_extension[i] = in_dims[i];
       }
       for (size_t i = 0; i < axes.size(); ++i) {
@@ -149,16 +149,18 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
         shape_size > axes.size() ? starts_extension.data() : starts.data();
     int* ends_host =
         shape_size > axes.size() ? ends_extension.data() : ends.data();
-    PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&starts_device),
-                          shape_size * sizeof(int)), XPU_SUCCESS,
-                      platform::errors::External("XPU has no enough memory"));
-    PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&ends_device),
-                          shape_size * sizeof(int)), XPU_SUCCESS,
-                      platform::errors::External("XPU has no enough memory"));
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), starts_device,
-                 platform::CPUPlace(), starts_host, shape_size * sizeof(int));
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), ends_device,
-                 platform::CPUPlace(), ends_host, shape_size * sizeof(int));
+    PADDLE_ENFORCE_EQ(
+        xpu_malloc((void**)(&starts_device), shape_size * sizeof(int)),
+        XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(
+        xpu_malloc((void**)(&ends_device), shape_size * sizeof(int)),
+        XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                 starts_device, platform::CPUPlace(), starts_host,
+                 shape_size * sizeof(int));
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                 ends_device, platform::CPUPlace(), ends_host,
+                 shape_size * sizeof(int));
 
     // prepare shape on XPU
     std::vector<int> shape(shape_size, 0);
@@ -166,19 +168,20 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
       shape[i] = in_dims[i];
     }
     int* shape_device = nullptr;
-    PADDLE_ENFORCE_EQ(xpu_malloc((void**)(&shape_device),
-                                 shape_size * sizeof(int)), XPU_SUCCESS,
-                      platform::errors::External("XPU has no enough memory"));
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), shape_device,
-                 platform::CPUPlace(), shape.data(), shape_size * sizeof(int));
+    PADDLE_ENFORCE_EQ(
+        xpu_malloc((void**)(&shape_device), shape_size * sizeof(int)),
+        XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                 shape_device, platform::CPUPlace(), shape.data(),
+                 shape_size * sizeof(int));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r =
-        xpu::slice_backward(dev_ctx.x_context(),
-                            shape_device, starts_device, ends_device,
-                            shape_size, d_out->data<T>(), d_in->data<T>(),
-                            d_in->numel(), d_out->numel());
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External("xpu kernel error"));
+        xpu::slice_backward(dev_ctx.x_context(), shape_device, starts_device,
+                            ends_device, shape_size, d_out->data<T>(),
+                            d_in->data<T>(), d_in->numel(), d_out->numel());
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External("xpu slice kernel error"));
     dev_ctx.Wait();
     // free device data
     xpu_free(shape_device);
