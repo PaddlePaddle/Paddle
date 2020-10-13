@@ -23,8 +23,6 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 
-paddle.enable_static()
-
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
     def setUp(self):

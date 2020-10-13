@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
 import unittest
 import numpy
 
@@ -22,48 +24,15 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
+from test_truncated_gaussian_random_op import TestTrunctedGaussianRandomOp
 
 paddle.enable_static()
 
 
-class TestTrunctedGaussianRandomOp(unittest.TestCase):
-    def setUp(self):
-        self.op_type = "truncated_gaussian_random"
-        self.inputs = {}
-        self.attrs = {
-            "shape": [10000],
-            "mean": 0.0,
-            "std": 1.,
-            "seed": 10,
-            "use_xpu": True
-        }
-
-        self.outputs = ["Out"]
-
+class TestXPUTrunctedGaussianRandomOp(TestTrunctedGaussianRandomOp):
     def test_xpu(self):
         if paddle.is_compiled_with_xpu():
             self.gaussian_random_test(place=fluid.XPUPlace(0))
-
-    def gaussian_random_test(self, place):
-
-        program = fluid.Program()
-        block = program.global_block()
-        vout = block.create_var(name="Out")
-        op = block.append_op(
-            type=self.op_type, outputs={"Out": vout}, attrs=self.attrs)
-
-        op.desc.infer_var_type(block.desc)
-        op.desc.infer_shape(block.desc)
-
-        fetch_list = []
-        for var_name in self.outputs:
-            fetch_list.append(block.var(var_name))
-
-        exe = Executor(place)
-        outs = exe.run(program, fetch_list=fetch_list)
-        tensor = outs[0]
-        self.assertAlmostEqual(numpy.mean(tensor), .0, delta=0.1)
-        self.assertAlmostEqual(numpy.var(tensor), 0.773, delta=0.1)
 
 
 if __name__ == "__main__":

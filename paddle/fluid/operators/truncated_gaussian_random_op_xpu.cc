@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <limits>
 #include <random>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -31,21 +32,18 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                            1.0);
     TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
 
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+
     std::unique_ptr<T[]> data_cpu(new T[size]);
 
     for (int64_t i = 0; i < size; ++i) {
-      data_cpu[i] = truncated_normal(dist(engine));
+      data_cpu[i] = truncated_normal(dist(*engine));
     }
 
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()), data,
