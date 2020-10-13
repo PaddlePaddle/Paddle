@@ -26,6 +26,7 @@ __all__ = [
     'crf_decoding',
     'data_norm',
     'deformable_conv',
+    'deform_conv2d',
     'hsigmoid',
     'instance_norm',
     'layer_norm',
@@ -39,6 +40,7 @@ __all__ = [
 ]
 
 from .common import fc  #DEFINE_ALIAS
+from .common import deform_conv2d  #DEFINE_ALIAS
 
 from ...fluid.layers import batch_norm  #DEFINE_ALIAS
 from ...fluid.layers import bilinear_tensor_product  #DEFINE_ALIAS
