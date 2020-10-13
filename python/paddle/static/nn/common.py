@@ -229,7 +229,7 @@ def deform_conv2d(x,
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Tensor, Optional): The input mask of deformable convolution layer.
+        mask (Tensor, Optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -237,23 +237,23 @@ def deform_conv2d(x,
         filter_size (int|tuple): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
-        stride (int|tuple): The stride size. If stride is a tuple, it must
+        stride (int|tuple, Optional): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
+        padding (int|tuple, Optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+        dilation (int|tuple, Optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups (int): The groups number of the deformable conv layer. According to
+        groups (int, Optional): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1.
-        deformable_groups (int): The number of deformable group partitions.
+        deformable_groups (int, Optional): The number of deformable group partitions.
             Default: deformable_groups = 1.
-        im2col_step (int): Maximum number of images per im2col computation;
+        im2col_step (int, Optional): Maximum number of images per im2col computation;
             The total batch size should be devisable by this value or smaller
             than this value; if you face out of memory problem, you can try
             to use a smaller value here.

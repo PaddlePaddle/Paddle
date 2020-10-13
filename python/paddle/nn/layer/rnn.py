@@ -51,7 +51,7 @@ def split_states(states, bidirectional=False, state_components=1):
     Split states of RNN network into possibly nested list or tuple of
     states of each RNN cells of the RNN network.
 
-    Arguments:
+    Parameters:
         states (Tensor|tuple|list): the concatenated states for RNN network.
             When `state_components` is 1, states in a Tensor with shape
             `(L*D, N, C)` where `L` is the number of layers of the RNN 
@@ -104,7 +104,7 @@ def concat_states(states, bidirectional=False, state_components=1):
     Concatenate a possibly nested list or tuple of RNN cell states into a 
     compact form.
 
-    Arguments:
+    Parameters:
         states (list|tuple): a possibly nested list or tuple of RNN cell 
             states. 
             If `bidirectional` is True, it can be indexed twice to get an 
@@ -157,13 +157,14 @@ class RNNCellBase(Layer):
         r"""
         Generate initialized states according to provided shape, data type and
         value.
-        Arguments:
+
+        Parameters:
             batch_ref (Tensor): A tensor, which shape would be used to 
                 determine the batch size, which is used to generate initial 
                 states. For `batch_ref`'s shape d, `d[batch_dim_idx]` is 
                 treated as batch size.
             shape (list|tuple, optional): A (possibly nested structure of) shape[s], 
-                where a shape is a list/tuple of integer). `-1` (for batch size) 
+                where a shape is a list/tuple of integer. `-1` (for batch size) 
                 will be automatically prepended if a shape does not starts with 
                 it. If None, property `state_shape` will be used. Defaults to 
                 None.
@@ -177,6 +178,7 @@ class RNNCellBase(Layer):
                 Defaults to 0.
             batch_dim_idx (int, optional): An integer indicating which 
                 dimension of the of `batch_ref` represents batch. Defaults to 0.
+                
         Returns:
             init_states (Tensor|tuple|list): tensor of the provided shape and 
                 dtype, or list of tensors that each satisfies the requirements,
@@ -274,13 +276,13 @@ class SimpleRNNCell(RNNCellBase):
         h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
         y_{t} & = h_{t}
     
-    where :math:`act` is for :attr:`activation` , and \* is the elemetwise
+    where :math:`act` is for :attr:`activation` , and * is the elemetwise
     multiplication operator.
 
     Please refer to `Finding Structure in Time 
     <https://crl.ucsd.edu/~elman/Papers/fsit.pdf>`_ for more details.
     
-    Arguments:
+    Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         activation (str, optional): The activation in the SimpleRNN cell. 
@@ -296,7 +298,7 @@ class SimpleRNNCell(RNNCellBase):
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Parameters:
+    Attributes:
         weight_ih (Parameter): shape (hidden_size, input_size), input to hidden 
             weight, corresponding to :math:`W_{ih}` in the formula.
         weight_hh (Parameter): shape (hidden_size, hidden_size), hidden to 
@@ -332,13 +334,15 @@ class SimpleRNNCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
 
             cell = paddle.nn.SimpleRNNCell(16, 32)
             y, h = cell(x, prev_h)
+            print(y.shape)
+
+            #[4,32]
 
     """
 
@@ -410,20 +414,26 @@ class LSTMCell(RNNCellBase):
 
     .. math::
         i_{t} & = \sigma(W_{ii}x_{t} + b_{ii} + W_{hi}h_{t-1} + b_{hi})
+
         f_{t} & = \sigma(W_{if}x_{t} + b_{if} + W_{hf}h_{t-1} + b_{hf})
+
         o_{t} & = \sigma(W_{io}x_{t} + b_{io} + W_{ho}h_{t-1} + b_{ho})
-        \\widetilde{c}_{t} & = \\tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
-        c_{t} & = f_{t} \* c{t-1} + i{t} \* \\widetile{c}_{t}
-        h_{t} & = o_{t} \* \\tanh(c_{t})
+
+        \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
+
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
+
+        h_{t} & = o_{t} * \tanh(c_{t})
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
     <http://proceedings.mlr.press/v37/jozefowicz15.pdf>`_ for more details.
 
-    Arguments:
+    Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for 
@@ -437,7 +447,7 @@ class LSTMCell(RNNCellBase):
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Parameters:
+    Attributes:
         weight_ih (Parameter): shape (4 * hidden_size, input_size), input to 
             hidden weight, which corresponds to the concatenation of
              :math:`W_{ii}, W_{if}, W_{ig}, W_{io}` in the formula.
@@ -465,7 +475,7 @@ class LSTMCell(RNNCellBase):
             corresponding to :math:`h_{t}` in the formula.
         states (tuple): a tuple of two tensors, each of shape 
             `[batch_size, hidden_size]`, the new hidden states,
-            corresponding to :math:`h_{t}, c{t}` in the formula.
+            corresponding to :math:`h_{t}, c_{t}` in the formula.
 
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by 
@@ -478,7 +488,6 @@ class LSTMCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
@@ -486,6 +495,14 @@ class LSTMCell(RNNCellBase):
 
             cell = paddle.nn.LSTMCell(16, 32)
             y, (h, c) = cell(x, (prev_h, prev_c))
+
+            print(y.shape)
+            print(h.shape)
+            print(c.shape)
+
+            #[4,32]
+            #[4,32]
+            #[4,32]
 
     """
 
@@ -562,15 +579,19 @@ class GRUCell(RNNCellBase):
 
     The formula for GRU used is as follows:
 
-    .. math::
+    ..  math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
-        z_{t} & = \sigma(W_{iz)x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
-        \\widetilde{h}_{t} & = \\tanh(W_{ic)x_{t} + b_{ic} + r_{t} \* (W_{hc}x_{t} + b{hc}))
-        h_{t} & = z_{t} \* h_{t-1} + (1 - z_{t}) \* \\widetilde{h}_{t}
+
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
+
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
+
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
@@ -590,7 +611,7 @@ class GRUCell(RNNCellBase):
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Parameters:
+    Attributes:
         weight_ih (Parameter): shape (3 * hidden_size, input_size), input to 
             hidden weight, which corresponds to the concatenation of
              :math:`W_{ir}, W_{iz}, W_{ic}` in the formula.
@@ -628,13 +649,18 @@ class GRUCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
 
             cell = paddle.nn.GRUCell(16, 32)
             y, h = cell(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,32]
+            #[4,32]
 
     """
 
@@ -710,7 +736,7 @@ class RNN(Layer):
     It performs :code:`cell.forward()` repeatedly until reaches to the maximum 
     length of `inputs`.
 
-    Arguments:
+    Parameters:
         cell(RNNCellBase): An instance of `RNNCellBase`.
         is_reverse (bool, optional): Indicate whether to calculate in the reverse
             order of input sequences. Defaults to False.
@@ -720,8 +746,8 @@ class RNN(Layer):
     Inputs:
         inputs (Tensor): A (possibly nested structure of) tensor[s]. The input 
             sequences. 
-            If time major is True, the shape is `[batch_size, time_steps, input_size]`
-            If time major is False, the shape is [time_steps, batch_size, input_size]`
+            If time major is False, the shape is `[batch_size, time_steps, input_size]`
+            If time major is True, the shape is `[time_steps, batch_size, input_size]`
             where `input_size` is the input size of the cell.
         initial_states (Tensor|list|tuple, optional): Tensor of a possibly 
             nested structure of tensors, representing the initial state for 
@@ -756,7 +782,6 @@ class RNN(Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             inputs = paddle.rand((4, 23, 16))
             prev_h = paddle.randn((4, 32))
@@ -764,6 +789,12 @@ class RNN(Layer):
             cell = paddle.nn.SimpleRNNCell(16, 32)
             rnn = paddle.nn.RNN(cell)
             outputs, final_states = rnn(inputs, prev_h)
+
+            print(outputs.shape)
+            print(final_states.shape)
+
+            #[4,23,32]
+            #[4,32]
 
     """
 
@@ -798,7 +829,7 @@ class BiRNN(Layer):
     backward RNN with coresponding cells separately and concats the outputs 
     along the last axis.
 
-    Arguments:
+    Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
         time_major (bool): Whether the first dimension of the input means the
@@ -844,7 +875,6 @@ class BiRNN(Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             cell_fw = paddle.nn.LSTMCell(16, 32)
             cell_bw = paddle.nn.LSTMCell(16, 32)
@@ -852,6 +882,12 @@ class BiRNN(Layer):
 
             inputs = paddle.rand((2, 23, 16))
             outputs, final_states = rnn(inputs)
+
+            print(outputs.shape)
+            print(final_states[0][0].shape,len(final_states),len(final_states[0]))
+
+            #[4,23,64]
+            #[2,32] 2 2
 
     """
 
@@ -1114,12 +1150,12 @@ class SimpleRNN(RNNBase):
         h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
         y_{t} & = h_{t}
     
-    where :math:`act` is for :attr:`activation` , and \* is the elemetwise
+    where :math:`act` is for :attr:`activation` , and * is the elemetwise
     multiplication operator.
 
     Using key word arguments to construct is recommended.
 
-    Arguments:
+    Parameters:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
@@ -1186,13 +1222,18 @@ class SimpleRNN(RNNBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.SimpleRNN(16, 32, 2)
 
             x = paddle.randn((4, 23, 16))
             prev_h = paddle.randn((2, 4, 32))
             y, h = rnn(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,23,32]
+            #[2,4,32]
 
     """
 
@@ -1235,19 +1276,25 @@ class LSTM(RNNBase):
     .. math::
 
         i_{t} & = \sigma(W_{ii}x_{t} + b_{ii} + W_{hi}h_{t-1} + b_{hi})
+
         f_{t} & = \sigma(W_{if}x_{t} + b_{if} + W_{hf}h_{t-1} + b_{hf})
+
         o_{t} & = \sigma(W_{io}x_{t} + b_{io} + W_{ho}h_{t-1} + b_{ho})
-        \\widetilde{c}_{t} & = \\tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
-        c_{t} & = f_{t} \* c{t-1} + i{t} \* \\widetile{c}_{t}
-        h_{t} & = o_{t} \* \\tanh(c_{t})
+
+        \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
+
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
+
+        h_{t} & = o_{t} * \tanh(c_{t})
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Using key word arguments to construct is recommended.
 
-    Arguments:
+    Parameters:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
@@ -1291,7 +1338,7 @@ class LSTM(RNNBase):
             `[batch_size, time_steps, num_directions * hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1. 
-        final_states (Tensor): the final state, a tuple of two tensors, h and c. 
+        final_states (tuple): the final state, a tuple of two tensors, h and c. 
             The shape of each is 
             `[num_layers * num_directions, batch_size, hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
@@ -1313,7 +1360,6 @@ class LSTM(RNNBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.LSTM(16, 32, 2)
 
@@ -1321,6 +1367,14 @@ class LSTM(RNNBase):
             prev_h = paddle.randn((2, 4, 32))
             prev_c = paddle.randn((2, 4, 32))
             y, (h, c) = rnn(x, (prev_h, prev_c))
+
+            print(y.shape)
+            print(h.shape)
+            print(c.shape)
+
+            #[4,23,32]
+            #[2,4,32]
+            #[2,4,32]
 
     """
 
@@ -1355,21 +1409,23 @@ class GRU(RNNBase):
     .. math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
-        z_{t} & = \sigma(W_{iz)x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
-        \\widetilde{h}_{t} & = \\tanh(W_{ic)x_{t} + b_{ic} + r_{t} \* (W_{hc}x_{t} + b{hc}))
-        h_{t} & = z_{t} \* h_{t-1} + (1 - z_{t}) \* \\widetilde{h}_{t}
+
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
+
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Using key word arguments to construct is recommended.
 
-    Arguments:
+    Parameters:
         input_size (int): The input size for the first layer's cell.
-        hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward", 
             "backward" and "bidirectional". When "bidirectional", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
@@ -1431,13 +1487,18 @@ class GRU(RNNBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.GRU(16, 32, 2)
 
             x = paddle.randn((4, 23, 16))
             prev_h = paddle.randn((2, 4, 32))
             y, h = rnn(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,23,32]
+            #[2,4,32]
 
     """
 
