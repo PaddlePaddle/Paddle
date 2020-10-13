@@ -65,7 +65,6 @@ __all__ = [
     'npair_loss',
     'rank_loss',
     'sampled_softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
     'smooth_l1',
     'smooth_l1_loss',
