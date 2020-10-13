@@ -23,7 +23,7 @@ namespace operators {
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   std::vector<T> vec_new_data;
-  auto tmp_place - x->place();
+  auto tmp_place = x->place();
   if (x->type() == framework::proto::VarType::INT32) {
     auto* data = x->data<int>();
     framework::Tensor cpu_attr_tensor;
@@ -67,8 +67,8 @@ inline std::vector<T> GetDataFromTensorList(
                           tensor->dims()));
 
     if (tensor->type() == framework::proto::VarType::INT32) {
-      if (platform::is_xpu_place(tmp_place)
-                    || platform::is_gpu_place(tmp_place) {
+      if (platform::is_xpu_place(tmp_place) ||
+          platform::is_gpu_place(tmp_place)) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
