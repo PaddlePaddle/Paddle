@@ -173,5 +173,4 @@ class TestLinspaceOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

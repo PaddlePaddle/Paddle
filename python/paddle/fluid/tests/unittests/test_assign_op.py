@@ -17,7 +17,6 @@ from __future__ import print_function
 import op_test
 import numpy as np
 import unittest
-import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -100,21 +99,5 @@ class TestAssignOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.assign, x5)
 
 
-class TestAssignOpDynamic(unittest.TestCase):
-    def test_dynamic(self):
-        with fluid.dygraph.guard():
-            data = paddle.fill_constant(
-                shape=[3, 2], value=2.5,
-                dtype='float64')  # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-            array = np.array([[1, 1], [3, 4], [1, 3]]).astype(np.int64)
-            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-            paddle.nn.functional.assign(
-                array, result1)  # result1 = [[1, 1], [3 4], [1, 3]]
-            result2 = paddle.nn.functional.assign(
-                data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-            self.assertTrue(np.allclose(data.numpy(), result2.numpy()))
-
-
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
