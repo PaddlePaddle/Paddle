@@ -136,11 +136,7 @@ from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS
 from .math import sum  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
-<<<<<<< HEAD
-# from .math import elementwise_sum  #DEFINE_ALIAS
-=======
 from .math import add_n  #DEFINE_ALIAS
->>>>>>> upstream/develop
 from .math import max  #DEFINE_ALIAS
 from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
