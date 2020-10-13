@@ -115,11 +115,6 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              data_dims, strides, ksize);
 
-    PADDLE_ENFORCE(dilations.size() == 2,
-                   platform::errors::Unimplemented(
-                       "convolution transpose op now only support 2 dimension "
-                       "dilated convolution"));
-
     std::transform(dilations.begin(), dilations.end(), dilations.begin(),
                    [](int64_t i) { return i - 1; });
 

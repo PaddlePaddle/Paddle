@@ -193,11 +193,6 @@ class ConvMKLDNNHandlerT
                                data_dims, strides, ksize);
       const bool is_conv3d = strides.size() == 3U;
 
-      PADDLE_ENFORCE_EQ(
-          is_conv3d ? dilations.size() == 3 : dilations.size() == 2, true,
-          platform::errors::Unimplemented(
-              "convolution dimension and dilations dimension do not match"));
-
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
                      [](int64_t i) { return i - 1; });
 
@@ -620,8 +615,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bool is_conv3d = strides.size() == 3U;
 
       PADDLE_ENFORCE_NE(is_conv3d, true,
-                        ("int8 does not support conv3d currently, should "
-                         "set param is_conv3d as False"));
+                        platform::errors::InvalidArgument(
+                            "int8 does not support conv3d currently, should "
+                            "set param is_conv3d as False"));
 
       auto input_dims = input->dims();
       auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
@@ -640,11 +636,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       GetWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
-
-      PADDLE_ENFORCE_EQ(
-          is_conv3d ? dilations.size() == 3 : dilations.size() == 2, true,
-          platform::errors::InvalidArgument(
-              "convolution dimension and dilations dimension do not match"));
 
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
                      [](int64_t i) { return i - 1; });
