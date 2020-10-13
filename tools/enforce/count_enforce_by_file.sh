@@ -44,7 +44,7 @@
 
 . ./count_all_enforce.sh --source-only
 
-ROOT_DIR=../../paddle/fluid/operators
+ROOT_DIR=../paddle/fluid/operators
 
 if [ "$1" != "" ]; then
     ROOT_DIR=$1
@@ -64,16 +64,7 @@ FILE_WHITE_LIST="\
     errors_test.cc \
     cross_entropy.cu \
     cross_entropy.h \
-    unpooling.cu \
-    nan_inf_utils_detail.cu \
-    affine_grid_cudnn_op.cu.cc \
-    bernoulli_op.cu \
-    center_loss_op.cu \
-    lookup_table_op.cu \
-    lookup_table_v2_op.cu \
-    nll_loss_op.cu \
-    segment_pooling.cu \
-    cross_entropy_op.h"
+    unpooling.cu"
 
 function count_file_recursively(){
     dir_name=$1
