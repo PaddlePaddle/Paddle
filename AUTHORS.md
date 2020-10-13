@@ -1,6 +1,6 @@
 | Github account | name |
 |---|---|
-| abhinavarora | Abhinav Arora |
+| iabhinavarora | Abhinav Arora |
 | backyes | Yan-Fei Wang |
 | baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
