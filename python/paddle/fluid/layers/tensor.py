@@ -219,7 +219,7 @@ def cast(x, dtype):
             import paddle
 
             x = paddle.to_tensor([2, 3, 4], 'float64')
-            y = paddle.cast(x, 'uint8'
+            y = paddle.cast(x, 'uint8')
     """
     check_variable_and_dtype(
         x, 'x',
