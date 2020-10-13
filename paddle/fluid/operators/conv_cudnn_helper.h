@@ -106,11 +106,11 @@ void ChooseAlgo(const std::vector<PerfType>& perf_results,
                 size_t workspace_byte, AlgoType* algo) {
   VLOG(3) << "=========BwdFilterAlgo Perf result=========";
   for (const auto& result : perf_results) {
-    auto math_type_str = "0";
+    auto math_type_str = "False";
     if (result.mathType == CUDNN_TENSOR_OP_MATH) {
-      math_type_str = "1";
+      math_type_str = "True";
     }
-    VLOG(3) << "    algo: " << result.algo << ", TC: " << math_type_str
+    VLOG(3) << "    algo: " << result.algo << ", TensorCore: " << math_type_str
             << ", time: " << result.time << " ms"
             << ", wksp = " << result.memory << ", status = " << result.status;
   }
