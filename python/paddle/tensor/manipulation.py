@@ -675,7 +675,12 @@ def unique(x,
         dtype=attr_dtype, stop_gradient=True)
     counts = helper.create_variable_for_type_inference(
         dtype=attr_dtype, stop_gradient=True)
-    outputs = {"Out": out, "Indices": indices, "Index": inverse, "Counts": counts}
+    outputs = {
+        "Out": out,
+        "Indices": indices,
+        "Index": inverse,
+        "Counts": counts
+    }
     outs = [out]
     if return_index:
         outs.append(indices)
