@@ -195,7 +195,9 @@ class TestFleetBaseSingleError(unittest.TestCase):
             fleet.init(is_collective=True)
 
         # in non_distributed mode(use `python` to launch), raise error if has multi cards
-        self.assertRaises(ValueError, test_single_error)
+        if fluid.core.is_compiled_with_cuda(
+        ) and fluid.core.get_cuda_device_count() > 1:
+            self.assertRaises(ValueError, test_single_error)
 
 
 if __name__ == "__main__":
