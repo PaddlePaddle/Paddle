@@ -18,6 +18,7 @@ from .base.distributed_strategy import DistributedStrategy
 from .base.fleet_base import Fleet
 from .base.util_factory import UtilBase
 from .dataset import *
+from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
 #from . import metrics
 
 __all__ = [
@@ -26,6 +27,8 @@ __all__ = [
     "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker",
     "Fleet",
+    "MultiSlotDataGenerator",
+    "MultiSlotStringDataGenerator",
     "Role",
 ]
 

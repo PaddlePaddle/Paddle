@@ -895,9 +895,6 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
