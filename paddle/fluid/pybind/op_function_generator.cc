@@ -49,6 +49,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
     {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
     {"warpctc", {"Logits", "Label", "LogitsLength", "LabelLength"}},
+    {"hierarchical_sigmoid",
+     {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
 };
 
