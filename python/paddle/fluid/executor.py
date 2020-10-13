@@ -924,7 +924,7 @@ class Executor(object):
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
         operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
-        specify the scope to store the :code:`Variables` during the executor running if the scope
+        specify the scope to store the :code:`Tensor` during the executor running if the scope
         is not set, the executor will use the global scope, i.e. :code:`paddle.static.global_scope()`.
 
         Args:
@@ -932,9 +932,9 @@ class Executor(object):
                 :code:`CompiledProgram` to be executed. If this parameter is not provided, that
                 parameter is None, the program will be set to :code:`paddle.static.default_main_program()`.
                 The default is None.
-            feed(list|dict): This parameter represents the input tensors of the model.
+            feed(list|dict): This parameter represents the input Tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list of tensors. If the
+                training, the parameter feed can be dict or list of Tensors. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
                 sent to different devices, so you should make sure the number of samples of
@@ -942,23 +942,23 @@ class Executor(object):
                 if the parameter type is list, those data are copied directly to each device,
                 so the length of this list should be equal to the number of places.
                 The default is None.
-            fetch_list(list): This parameter represents the tensors that need to be returned
+            fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None. 
-            feed_var_name(str): This parameter represents the name of the input tensor of
+            feed_var_name(str): This parameter represents the name of the input Tensor of
                 the feed operator. The default is "feed".
-            fetch_var_name(str): This parameter represents the name of the output tensor of
+            fetch_var_name(str): This parameter represents the name of the output Tensor of
                 the fetch operator. The default is "fetch".
             scope(Scope): the scope used to run this program, you can switch 
                 it to different scope. default is :code:`paddle.static.global_scope()`
-            return_numpy(bool): This parameter indicates whether convert the fetched tensors
-                (the tensor specified in the fetch list) to numpy.ndarray. if it is False,
+            return_numpy(bool): This parameter indicates whether convert the fetched Tensors
+                (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
             use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
                 If the parameter is True, the model may run faster in the following cases:
-                the input program is :code:`paddle.static.Program`, and the parameters(program, feed tensor name
-                and fetch_list tensor) of this interface remains unchanged during running.
+                the input program is :code:`paddle.static.Program`, and the parameters(program, feed Tensor name
+                and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched tensors (the tensors
+            return_merged(bool): This parameter indicates whether fetched Tensors (the Tensors
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
                 of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
@@ -992,8 +992,8 @@ class Executor(object):
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same tensor values
-               (tensors in fetch_list) on different devices.
+               results are spliced together in dimension 0 for the same Tensor values
+               (Tensors in fetch_list) on different devices.
 
         Examples 1:
             .. code-block:: python
@@ -1512,9 +1512,9 @@ class Executor(object):
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
             debug(bool): whether a user wants to run infer_from_dataset, default is False
-            fetch_list(Tensor List): fetch variable list, each variable will be printed during
+            fetch_list(Tensor List): fetch Tensor list, each Tensor will be printed during
                 training, default is None
-            fetch_info(String List): print information for each variable, default is None
+            fetch_info(String List): print information for each Tensor, default is None
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
 
@@ -1633,9 +1633,9 @@ class Executor(object):
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
             debug(bool): whether a user wants to run train_from_dataset 
-            fetch_list(Tensor List): fetch variable list, each variable will be printed
+            fetch_list(Tensor List): fetch Tensor list, each variable will be printed
                 during training
-            fetch_info(String List): print information for each variable, its length should be equal
+            fetch_info(String List): print information for each Tensor, its length should be equal
                 to fetch_list
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
