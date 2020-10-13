@@ -77,14 +77,6 @@ class TestFleetDygraphSingle(unittest.TestCase):
 class TestFleetBaseSingleRunCollective(unittest.TestCase):
     def setUp(self):
         pass
-        #os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
-        """
-        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices is None or cuda_visible_devices == "":
-            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-        else:
-            os.environ["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices.split(',')[0]
-        """
 
     def gen_data(self):
         return {
@@ -121,7 +113,6 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
 class TestFleetBaseSingleRunPS(unittest.TestCase):
     def setUp(self):
         pass
-        #os.environ.pop("PADDLE_PSERVERS_IP_PORT_LIST")
 
     def gen_data(self):
         return {
@@ -151,15 +142,13 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(paddle.static.default_startup_program())
-            step = 100
+            step = 10
             for i in range(step):
                 cost_val = exe.run(program=fluid.default_main_program(),
                                    feed=self.gen_data(),
                                    fetch_list=[avg_cost.name])
                 print("worker_index: %d, step%d cost = %f" %
                       (fleet.worker_index(), i, cost_val[0]))
-            fleet.save_persistables(exe, "fleet_single_model/")
-            print("save fleet models done.")
 
 
 if __name__ == "__main__":
