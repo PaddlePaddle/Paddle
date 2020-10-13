@@ -96,7 +96,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
               tensor, static_cast<T>(value));
     }
 #ifdef PADDLE_WITH_CUDA
-    if (ctx.GetPlace() == platform::CUDAPlace()) {
+    if (ctx.GetPlace() == platform::CUDAPlace() && !force_cpu) {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
@@ -104,7 +104,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
     }
 #endif
 #ifdef PADDLE_WITH_XPU
-    if (ctx.GetPlace() == platform::XPUPlace()) {
+    if (ctx.GetPlace() == platform::XPUPlace() && !force_cpu) {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::XPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
