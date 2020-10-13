@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from paddle.fluid.layers import BeamSearchDecoder  #DEFINE_ALIAS
-from paddle.fluid.layers import dynamic_decode  #DEFINE_ALIAS
+from ..fluid.layers import BeamSearchDecoder  #DEFINE_ALIAS
+from ..fluid.layers import dynamic_decode  #DEFINE_ALIAS
 
 __all__ = [
-    'dynamic_decode',
-    'BeamSearchDecoder',
+          'BeamSearchDecoder',
+          'dynamic_decode',
 ]

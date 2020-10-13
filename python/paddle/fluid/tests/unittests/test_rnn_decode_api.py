@@ -23,7 +23,7 @@ import paddle.nn as nn
 from paddle import Model, set_device
 from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
-from paddle.text import BeamSearchDecoder, dynamic_decode
+from paddle.nn import BeamSearchDecoder, dynamic_decode
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
