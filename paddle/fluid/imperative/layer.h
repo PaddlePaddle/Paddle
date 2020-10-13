@@ -200,7 +200,8 @@ class VarBase {
   void ClearGradient();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
-                                      const bool blocking) const;
+                                      const bool blocking,
+                                      const bool share_memory = false) const;
 
  private:
   /**

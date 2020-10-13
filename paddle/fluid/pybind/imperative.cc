@@ -665,32 +665,26 @@ void BindImperative(py::module *m_ptr) {
              return TensorToPyArray(tensor, true);
            },
            R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
 
-        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
+        Returns a numpy array shows the value of current Tensor.
 
         Returns:
-            ndarray: The numpy value of current Variable.
+            ndarray: The numpy value of current Tensor.
 
         Returns type:
-            ndarray: dtype is same as current Variable
+            ndarray: dtype is same as current Tensor
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                import paddle
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    print(x.numpy())
-
+                linear = paddle.nn.Linear(32, 64)
+                data = paddle.to_tensor(data)
+                x = linear(data)
+                print(x.numpy())
        )DOC")
       .def("detach",
            [](const imperative::VarBase &self) {
@@ -698,11 +692,12 @@ void BindImperative(py::module *m_ptr) {
              PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
                                platform::errors::InvalidArgument(
                                    "%s has not been initialized", self.Name()));
-             return self.NewVarBase(tensor.place(), false);
+             return self.NewVarBase(tensor.place(), false, true);
            },
            py::return_value_policy::copy, R"DOC(
 
-        Returns a new Tensor, detached from the current graph.
+        Returns a new Tensor, detached from the current graph. 
+        It does not provide gradient propagation, but shares data with the origin tensor.
 
         Returns: The detached Tensor.
 
@@ -710,12 +705,23 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
+                import numpy as np
 
-                linear = Linear(32, 64)
-                data = paddle.uniform(shape=[30, 10, 32], -1, 1)
-                x = linear(data)
-                y = x.detach()
+                x = paddle.to_tensor(1.0, stop_gradient=False)
+                detach_x = x.detach()
+                y = x**2
+                y.backward()
+                print(x.grad)         # [2.0]
+                print(detach_x.grad)  # None, stop_gradient=True
+
+                detach_x.stop_gradient = False # Force stop_gradient to be False, supported auto-grad
+                z = detach_x**3
+                z.backward()
+                print(x.grad)         # [2.0], detach_x is detached from x's graph
+                print(detach_x.grad)  # [3.0]
+
+                detach_x[:] = 10.0
+                print(x.numpy())      # [10.0], detach_x share data with x
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 

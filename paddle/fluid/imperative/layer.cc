@@ -219,7 +219,8 @@ void VarBase::ClearGradient() {
 }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
-                                             const bool blocking) const {
+                                             const bool blocking,
+                                             const bool share_memory) const {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
                                 Var().IsType<framework::SelectedRows>()),
@@ -239,17 +240,21 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
     new_var->SetType(Type());
-    framework::TensorCopy(src_tensor, dst_place, dst_tensor);
-    if (blocking) {
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-      auto src_place = src_tensor.place();
-      if (!(src_place == dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    if (share_memory) {
+      dst_tensor->ShareDataWith(src_tensor);
+      VLOG(3) << new_var->Name() << " share data with " << Name();
+    } else {
+      framework::TensorCopy(src_tensor, dst_place, dst_tensor);
+      if (blocking) {
+        platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+        auto src_place = src_tensor.place();
+        if (!(src_place == dst_place)) {
+          platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+        }
       }
-    }
-
-    if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy tensor " << Name() << " from gpu";
+      if (platform::is_gpu_place(dst_place)) {
+        VLOG(3) << "copy tensor " << Name() << " from gpu";
+      }
     }
     return new_var;
   } else {
@@ -259,20 +264,25 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
     auto* dst_selected_rows =
         new_var->MutableVar()->GetMutable<framework::SelectedRows>();
-
-    framework::TensorCopy(src_selected_rows.value(), dst_place,
-                          dst_selected_rows->mutable_value());
-    if (blocking) {
-      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-      auto src_place = src_selected_rows.place();
-      if (!(src_place == dst_place)) {
-        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    if (share_memory) {
+      dst_selected_rows->mutable_value()->ShareDataWith(
+          src_selected_rows.value());
+      VLOG(3) << new_var->Name() << " share data with " << Name();
+    } else {
+      framework::TensorCopy(src_selected_rows.value(), dst_place,
+                            dst_selected_rows->mutable_value());
+      if (blocking) {
+        platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+        auto src_place = src_selected_rows.place();
+        if (!(src_place == dst_place)) {
+          platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+        }
       }
-    }
-    dst_selected_rows->set_height(src_selected_rows.height());
-    dst_selected_rows->set_rows(src_selected_rows.rows());
-    if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy selected rows " << Name() << " from gpu";
+      dst_selected_rows->set_height(src_selected_rows.height());
+      dst_selected_rows->set_rows(src_selected_rows.rows());
+      if (platform::is_gpu_place(dst_place)) {
+        VLOG(3) << "copy selected rows " << Name() << " from gpu";
+      }
     }
     return new_var;
   }
