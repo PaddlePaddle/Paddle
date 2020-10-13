@@ -94,7 +94,6 @@ from .manipulation import stack  #DEFINE_ALIAS
 from .manipulation import strided_slice  #DEFINE_ALIAS
 from .manipulation import transpose  #DEFINE_ALIAS
 from .manipulation import unique  #DEFINE_ALIAS
-from .manipulation import unique_with_counts  #DEFINE_ALIAS
 from .manipulation import unsqueeze  #DEFINE_ALIAS
 from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
@@ -137,9 +136,8 @@ from .math import sqrt  #DEFINE_ALIAS
 from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS
 from .math import sum  #DEFINE_ALIAS
-from .math import sums  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
-from .math import elementwise_sum  #DEFINE_ALIAS
+from .math import add_n  #DEFINE_ALIAS
 from .math import max  #DEFINE_ALIAS
 from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
@@ -195,3 +193,4 @@ from .stat import numel  #DEFINE_ALIAS
 # from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
+from .to_string import set_printoptions
