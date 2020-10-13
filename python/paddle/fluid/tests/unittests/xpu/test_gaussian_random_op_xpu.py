@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,32 +24,12 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from op_test import OpTest
-import paddle
+from test_gaussian_random_op import TestGaussianRandomOp
 
 paddle.enable_static()
 
 
-class TestGaussianRandomOp(OpTest):
-    def setUp(self):
-        self.op_type = "gaussian_random"
-        self.set_attrs()
-        self.inputs = {}
-        self.use_mkldnn = False
-        self.attrs = {
-            "shape": [123, 92],
-            "mean": self.mean,
-            "std": self.std,
-            "seed": 10,
-            "use_mkldnn": self.use_mkldnn,
-            "use_xpu": True
-        }
-
-        self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
-
-    def set_attrs(self):
-        self.mean = 1.0
-        self.std = 2.0
-
+class TestXPUGaussianRandomOp(TestGaussianRandomOp):
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
@@ -57,20 +37,6 @@ class TestGaussianRandomOp(OpTest):
             outs = [np.array(out) for out in outs]
             outs.sort(key=len)
             self.verify_output(outs)
-
-    def verify_output(self, outs):
-        self.assertEqual(outs[0].shape, (123, 92))
-        hist, _ = np.histogram(outs[0], range=(-3, 5))
-        hist = hist.astype("float32")
-        hist /= float(outs[0].size)
-        data = np.random.normal(size=(123, 92), loc=1, scale=2)
-        hist2, _ = np.histogram(data, range=(-3, 5))
-        hist2 = hist2.astype("float32")
-        hist2 /= float(outs[0].size)
-        self.assertTrue(
-            np.allclose(
-                hist, hist2, rtol=0, atol=0.01),
-            "hist: " + str(hist) + " hist2: " + str(hist2))
 
 
 if __name__ == "__main__":

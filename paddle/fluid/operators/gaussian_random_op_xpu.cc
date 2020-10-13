@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <random>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -27,19 +28,16 @@ class XPUGaussianRandomKernel : public framework::OpKernel<T> {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
-    T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
     std::normal_distribution<T> dist(mean, std);
     int64_t size = tensor->numel();
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+
     std::unique_ptr<T[]> data_cpu(new T[size]);
     for (int64_t i = 0; i < size; ++i) {
-      data_cpu[i] = dist(engine);
+      data_cpu[i] = dist(*engine);
     }
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()), data,
                  platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
