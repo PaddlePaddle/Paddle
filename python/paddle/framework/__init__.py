@@ -24,7 +24,6 @@ __all__ += [
 ]
 
 from . import random
-from . import io
 from .random import manual_seed
 from .framework import get_default_dtype
 from .framework import set_default_dtype
@@ -42,8 +41,8 @@ from paddle.fluid import core  #DEFINE_ALIAS
 from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
 from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
-# from .io import save
-# from .io import load
+from .io import save
+from .io import load
 from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
 
 # from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS

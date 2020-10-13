@@ -226,7 +226,7 @@ def save(obj, path):
 
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
-            paddle.framework.io.save(layer_state_dict, "emb.pdparams")
+            paddle.save(layer_state_dict, "emb.pdparams")
 
             scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
                 d_model=0.01, warmup_steps=100, verbose=True)
@@ -234,7 +234,7 @@ def save(obj, path):
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
-            paddle.framework.io.save(opt_state_dict, "adam.pdopt")
+            paddle.save(opt_state_dict, "adam.pdopt")
     '''
 
     # 1. input check
@@ -318,7 +318,7 @@ def load(path, **configs):
 
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
-            paddle.framework.io.save(layer_state_dict, "emb.pdparams")
+            paddle.save(layer_state_dict, "emb.pdparams")
 
             scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
                 d_model=0.01, warmup_steps=100, verbose=True)
@@ -326,16 +326,16 @@ def load(path, **configs):
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
-            paddle.framework.io.save(opt_state_dict, "adam.pdopt")
+            paddle.save(opt_state_dict, "adam.pdopt")
 
-            load_layer_state_dict = paddle.framework.io.load("emb.pdparams")
-            load_opt_state_dict = paddle.framework.io.load("adam.pdopt")
+            load_layer_state_dict = paddle.load("emb.pdparams")
+            load_opt_state_dict = paddle.load("adam.pdopt")
     '''
     load_result = None
     config = _parse_load_config(configs)
 
     if os.path.isfile(path):
-        # we think path is file means this file is created by paddle.framework.io.save
+        # we think path is file means this file is created by paddle.save
         with open(path, 'rb') as f:
             load_result = pickle.load(f) if six.PY2 else pickle.load(
                 f, encoding='latin1')

@@ -105,12 +105,12 @@ class TestSaveLoad(unittest.TestCase):
         layer_state_dict = layer.state_dict()
         opt_state_dict = opt.state_dict()
 
-        paddle.framework.io.save(layer_state_dict, layer_save_path)
-        paddle.framework.io.save(opt_state_dict, opt_save_path)
+        paddle.save(layer_state_dict, layer_save_path)
+        paddle.save(opt_state_dict, opt_save_path)
 
         # load
-        load_layer_state_dict = paddle.framework.io.load(layer_save_path)
-        load_opt_state_dict = paddle.framework.io.load(opt_save_path)
+        load_layer_state_dict = paddle.load(layer_save_path)
+        load_opt_state_dict = paddle.load(opt_save_path)
 
         self.check_load_state_dict(layer_state_dict, load_layer_state_dict)
         self.check_load_state_dict(opt_state_dict, load_opt_state_dict)
@@ -118,27 +118,27 @@ class TestSaveLoad(unittest.TestCase):
         # test save load in static mode
         paddle.enable_static()
         static_save_path = "static_mode_test/test_paddle_save_load.linear.pdparams"
-        paddle.framework.io.save(layer_state_dict, static_save_path)
-        load_static_state_dict = paddle.framework.io.load(static_save_path)
+        paddle.save(layer_state_dict, static_save_path)
+        load_static_state_dict = paddle.load(static_save_path)
         self.check_load_state_dict(layer_state_dict, load_static_state_dict)
 
         # error test cases, some tests relay base test above
         # 1. test save obj not dict error
         test_list = [1, 2, 3]
         with self.assertRaises(NotImplementedError):
-            paddle.framework.io.save(test_list, "not_dict_error_path")
+            paddle.save(test_list, "not_dict_error_path")
 
         # 2. test save path format error
         with self.assertRaises(ValueError):
-            paddle.framework.io.save(layer_state_dict, "test_paddle_save_load.linear.model/")
+            paddle.save(layer_state_dict, "test_paddle_save_load.linear.model/")
 
         # 3. test load path not exist error
         with self.assertRaises(ValueError):
-            paddle.framework.io.load("test_paddle_save_load.linear.params")
+            paddle.load("test_paddle_save_load.linear.params")
 
         # 4. test load old save path error
         with self.assertRaises(ValueError):
-            paddle.framework.io.load("test_paddle_save_load.linear")
+            paddle.load("test_paddle_save_load.linear")
 
 
 if __name__ == '__main__':
