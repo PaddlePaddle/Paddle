@@ -7347,8 +7347,10 @@ def image_resize(input,
         .. code-block:: python
 
 	    #declarative mode
+            import paddle
 	    import paddle.fluid as fluid
 	    import numpy as np
+            paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
@@ -7797,6 +7799,8 @@ def resize_bilinear(input,
 
 	    #declarative mode
 	    import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 	    import numpy as np
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
@@ -7961,7 +7965,9 @@ def resize_trilinear(input,
 
 	    #declarative mode
 	    import paddle.fluid as fluid
+            import paddle
 	    import numpy as np
+            paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,8,10])
 
 	    #1
@@ -8116,6 +8122,9 @@ def resize_nearest(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+            import paddle
+            paddle.enable_static()
+
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
