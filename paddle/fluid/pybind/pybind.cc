@@ -1315,9 +1315,6 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    **Note**:
-        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
-        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
     CUDAPlace is a descriptor of a device.
     It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
@@ -1336,8 +1333,10 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          gpu_place = fluid.CUDAPlace(0)
+          import paddle
+
+          place = paddle.CUDAPlace(0)
+          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",

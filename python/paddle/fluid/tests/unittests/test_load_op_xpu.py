@@ -19,9 +19,12 @@ import numpy as np
 from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle
 
 
-class TestLoadOp(unittest.TestCase):
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestLoadOpXpu(unittest.TestCase):
     """ Test load operator.
     """
 
@@ -38,19 +41,19 @@ class TestLoadOp(unittest.TestCase):
                     name='w',
                     initializer=fluid.initializer.NumpyArrayInitializer(
                         self.ones)))
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
         fluid.io.save_persistables(
             exe, dirname="./model", main_program=main_prog)
 
-    def test_load(self):
+    def test_load_xpu(self):
         main_prog = fluid.Program()
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             var = layers.create_tensor(dtype='float32')
             layers.load(var, file_path='./model/w')
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
         ret = exe.run(main_prog, fetch_list=[var.name])
         self.assertTrue(np.array_equal(self.ones, ret[0]))
