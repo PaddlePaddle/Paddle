@@ -30,7 +30,6 @@ from ..fluid.layers import unstack  #DEFINE_ALIAS
 
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
-from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
 from ..fluid import layers
 import paddle
 
@@ -57,7 +56,6 @@ __all__ = [
     'strided_slice',
     'transpose',
     'unique',
-    'unique_with_counts',
     'unsqueeze',
     'unstack',
     'flip',
