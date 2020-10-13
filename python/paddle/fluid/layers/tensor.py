@@ -595,8 +595,12 @@ def assign(input, output=None):
             return core.ops.assign(input)
         else:
             attrs = get_attrs(input)
-            print("attrs:{}".format('dtype', list(input.shape)))
-            return core.ops.assign_value(*attrs)
+            print("attrs:{}".format(attrs))
+            attrs_ = []
+            for k, v in attrs.items():
+                attrs_.append(k)
+                attrs_.append(v)
+            return core.ops.assign_value(*attrs_)
     helper = LayerHelper('assign', **locals())
 
     if isinstance(input, Variable):
@@ -617,7 +621,9 @@ def assign(input, output=None):
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
         helper.append_op(
-            type='assign_value', outputs={'Out': [output]}, attrs=get_attrs())
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs=get_attrs(input))
 
     return output
 
