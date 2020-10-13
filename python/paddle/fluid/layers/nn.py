@@ -14700,7 +14700,11 @@ def deformable_roi_pooling(input,
       .. code-block:: python
 
         # position_sensitive=True
+        import paddle
         import paddle.fluid as fluid
+
+        paddle.enable_static()
+
         input = fluid.data(name="input",
                            shape=[2, 192, 64, 64],
                            dtype='float32')
@@ -14725,7 +14729,11 @@ def deformable_roi_pooling(input,
                                                 position_sensitive=True)
 
         # position_sensitive=False
+        import paddle
         import paddle.fluid as fluid
+
+        paddle.enable_static()
+
         input = fluid.data(name="input",
                            shape=[2, 192, 64, 64],
                            dtype='float32')
@@ -14766,7 +14774,7 @@ def deformable_roi_pooling(input,
     if position_sensitive == False:
         output_channels = input_channels
     else:
-        output_channels = input_channels / pooled_height / pooled_width
+        output_channels = int(input_channels / pooled_height / pooled_width)
 
     if part_size is None:
         part_height = pooled_height
