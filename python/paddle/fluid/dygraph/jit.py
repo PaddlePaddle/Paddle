@@ -872,7 +872,7 @@ def load(path, **configs):
 
             image = static.data(name='image', shape=[None, 784], dtype='float32')
             label = static.data(name='label', shape=[None, 1], dtype='int64')
-            pred = static.nn.fc(x=image, size=10, act='softmax')
+            pred = static.nn.fc(x=image, size=10, activation='softmax')
             loss = F.cross_entropy(input=pred, label=label)
             avg_loss = paddle.mean(loss)
 
