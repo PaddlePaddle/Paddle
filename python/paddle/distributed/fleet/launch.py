@@ -141,6 +141,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument(
         "--heter_worker_num", type=int, help="number of heter_workers")
+    ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     return parser.parse_args()
 
@@ -249,12 +250,8 @@ def launch_ps(args, distribute_mode):
 
 def which_distributed_mode(args):
     ps_args = [
-        '--worker_num',
-        '--server_num',
-        '--heter_worker_num',
-        '--servers',
-        '--workers',
-        '--heter_workers',
+        '--worker_num', '--server_num', '--heter_worker_num', '--servers',
+        '--workers', '--heter_workers', '--http_port'
     ]
     collective_args = ['--ips']
 
