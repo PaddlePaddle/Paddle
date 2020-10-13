@@ -72,7 +72,8 @@ FILE_WHITE_LIST="\
     lookup_table_op.cu \
     lookup_table_v2_op.cu \
     nll_loss_op.cu \
-    segment_pooling.cu"
+    segment_pooling.cu \
+    cross_entropy_op.h"
 
 function count_file_recursively(){
     dir_name=$1
