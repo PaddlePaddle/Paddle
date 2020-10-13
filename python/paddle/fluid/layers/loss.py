@@ -89,6 +89,8 @@ def center_loss(input,
         .. code-block:: python
 
           import paddle.fluid as fluid 
+          import paddle
+          paddle.enable_static()
 
           input = fluid.data(name='x',shape=[20,30],dtype='float32')
           label = fluid.data(name='y',shape=[20,1],dtype='int64')
@@ -177,6 +179,9 @@ def bpr_loss(input, label, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
 
           neg_size = 10
           label = fluid.data(
@@ -1340,6 +1345,8 @@ def rank_loss(label, left, right, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             label = fluid.data(name="label", shape=[-1, 1], dtype="float32")
             left = fluid.data(name="left", shape=[-1, 1], dtype="float32")
             right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
@@ -1509,7 +1516,8 @@ def teacher_student_sigmoid_loss(input,
         .. code-block:: python
           
           import paddle.fluid as fluid
-
+          import paddle
+          paddle.enable_static()
           batch_size = 64
           label = fluid.data(
                     name="label", shape=[batch_size, 1], dtype="int64")

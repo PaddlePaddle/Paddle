@@ -697,6 +697,9 @@ def detection_output(loc,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+
+            paddle.enable_static()
 
             pb = fluid.data(name='prior_box', shape=[10, 4], dtype='float32')
             pbv = fluid.data(name='prior_box_var', shape=[10, 4], dtype='float32')
@@ -905,6 +908,8 @@ def box_coder(prior_box,
         .. code-block:: python
  
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             # For encode
             prior_box_encode = fluid.data(name='prior_box_encode',
                                   shape=[512, 4],
@@ -1051,6 +1056,8 @@ def yolov3_loss(x,
       .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
           gt_box = fluid.data(name='gt_box', shape=[None, 6, 4], dtype='float32')
           gt_label = fluid.data(name='gt_label', shape=[None, 6], dtype='int32')
@@ -1163,6 +1170,8 @@ def yolo_box(x,
     .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
+        paddle.enable_static()
         x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
         img_size = fluid.data(name='img_size',shape=[None, 2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
@@ -1466,6 +1475,8 @@ def target_assign(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             x = fluid.data(
                 name='x',
                 shape=[4, 20, 4],
@@ -1811,6 +1822,8 @@ def prior_box(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+        import paddle
+        paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,9])
 	    image = fluid.data(name="image", shape=[None,3,9,12])
 	    box, var = fluid.layers.prior_box(
@@ -1983,6 +1996,8 @@ def density_prior_box(input,
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             input = fluid.data(name="input", shape=[None,3,6,9])
             image = fluid.data(name="image", shape=[None,3,9,12])
@@ -2429,6 +2444,9 @@ def anchor_generator(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+
+            paddle.enable_static()
             conv1 = fluid.data(name='conv1', shape=[None, 48, 16, 16], dtype='float32')
             anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
@@ -2928,6 +2946,8 @@ def generate_proposals(scores,
         .. code-block:: python
         
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             scores = fluid.data(name='scores', shape=[None, 4, 5, 5], dtype='float32')
             bbox_deltas = fluid.data(name='bbox_deltas', shape=[None, 16, 5, 5], dtype='float32')
             im_info = fluid.data(name='im_info', shape=[None, 3], dtype='float32')
@@ -3039,6 +3059,8 @@ def box_clip(input, im_info, name=None):
         .. code-block:: python
         
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             boxes = fluid.data(
                 name='boxes', shape=[None, 8, 4], dtype='float32', lod_level=1)
             im_info = fluid.data(name='im_info', shape=[-1 ,3])
@@ -3320,6 +3342,8 @@ def multiclass_nms(bboxes,
 
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             boxes = fluid.data(name='bboxes', shape=[None,81, 4],
                                       dtype='float32', lod_level=1)
             scores = fluid.data(name='scores', shape=[None,81],
@@ -3686,6 +3710,8 @@ def distribute_fpn_proposals(fpn_rois,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             fpn_rois = fluid.data(
                 name='data', shape=[None, 4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
@@ -3776,6 +3802,8 @@ def box_decoder_and_assign(prior_box,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             pb = fluid.data(
                 name='prior_box', shape=[None, 4], dtype='float32')
             pbv = fluid.data(
@@ -3870,6 +3898,8 @@ def collect_fpn_proposals(multi_rois,
         .. code-block:: python
            
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             multi_rois = []
             multi_scores = []
             for i in range(4):

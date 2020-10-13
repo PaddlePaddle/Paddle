@@ -135,10 +135,10 @@ class BadInputTest(unittest.TestCase):
 
         with fluid.dygraph.guard():
             data = paddle.zeros([2, 3])
-            result = paddle.has_inf(data)
+            result = paddle.fluid.layers.has_inf(data)
             expect_value = np.array([False])
             self.assertEqual((result.numpy() == expect_value).all(), True)
-            result = paddle.has_nan(data)
+            result = paddle.fluid.layers.has_nan(data)
             self.assertEqual((result.numpy() == expect_value).all(), True)
 
 

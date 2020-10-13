@@ -1148,6 +1148,9 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            import paddle
+            paddle.enable_static()
+
 
             def cond(i, ten):
                 return i < ten

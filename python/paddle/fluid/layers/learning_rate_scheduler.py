@@ -143,6 +143,9 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
 	      learning_rate=fluid.layers.exponential_decay(
@@ -201,6 +204,9 @@ Applies natural exponential decay to the initial learning rate.
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
 	      learning_rate=fluid.layers.natural_exp_decay(
@@ -259,6 +265,8 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
 	      learning_rate=fluid.layers.inverse_time_decay(
@@ -382,6 +390,8 @@ Applies piecewise decay to the initial learning rate.
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           boundaries = [10000, 20000]
           values = [1.0, 0.5, 0.1]
           optimizer = fluid.optimizer.Momentum(

@@ -1930,6 +1930,9 @@ def pool2d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
 
           data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
 
@@ -2145,6 +2148,9 @@ def pool3d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
 
           data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
 
@@ -4338,6 +4344,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -4466,6 +4474,8 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -4529,6 +4539,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -4592,6 +4605,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -4942,6 +4957,8 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 	    # declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+        import paddle
+        paddle.enable_static()
 	    input = fluid.data(name="input", shape=[2,3])
 	    output = fluid.layers.l2_normalize(x=input,axis=0)
 	    place = fluid.CPUPlace()
@@ -5790,6 +5807,8 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
             data = fluid.data(name="x", shape=[-1, 3], dtype="float32")
             label = fluid.data(name="y", shape=[-1, 3], dtype="float32")
             result = fluid.layers.smooth_l1(data,label)
@@ -6858,6 +6877,8 @@ def roi_pool(input,
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
+        paddle.enable_static()
 
         DATATYPE='float32'
 
@@ -6957,6 +6978,9 @@ def roi_align(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+
             x = fluid.data(
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
@@ -7310,6 +7334,8 @@ def image_resize(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+        import paddle
+        paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
@@ -7923,6 +7949,8 @@ def resize_trilinear(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+	    import paddle
+	    paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,8,10])
 
 	    #1
@@ -8077,6 +8105,8 @@ def resize_nearest(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+	    import paddle
+	    paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
@@ -8902,6 +8932,8 @@ def crop(x, shape=None, offsets=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid as fluid
+            import paddle
             x = fluid.data(name="x", shape=[3, 3, 5], dtype="float32")
             y = fluid.data(name="y", shape=[2, 2, 3], dtype="float32")
             crop = fluid.layers.crop(x, shape=y)
@@ -9009,6 +9041,8 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid as fluid
+            import paddle
             x = fluid.data(name="x", shape=[None, 3, 5], dtype="float32")
             # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
 
@@ -9836,6 +9870,8 @@ def soft_relu(x, threshold=40.0, name=None):
 
             import paddle.fluid as fluid
             import numpy as np
+            import numpy as np
+            import paddle
 
             inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
             output = fluid.layers.soft_relu(inputs, threshold=20.0)
@@ -12550,6 +12586,8 @@ def space_to_depth(x, blocksize, name=None):
 
             import paddle.fluid as fluid
             import numpy as np
+            import numpy as np
+            import paddle
 
             data = fluid.data(
                 name='data', shape=[1, 4, 2, 2], dtype='float32')
@@ -12635,6 +12673,9 @@ def affine_channel(x,
 
             import numpy as np
             import paddle.fluid as fluid
+            import paddle.fluid as fluid
+            import paddle
+
 
             use_gpu = False
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
@@ -12922,6 +12963,9 @@ def grid_sampler(x, grid, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid as fluid
+            import paddle
+
 
             # use with affine_grid
             x = fluid.data(name='x', shape=[None, 10, 32, 32], dtype='float32')
@@ -13046,10 +13090,9 @@ def add_position_encoding(input, alpha, beta, name=None):
         .. code-block:: python
 
           import paddle
-          import paddle.nn.functional as F
 
           tensor = paddle.randn([16, 32, 64])
-          position_tensor = F.add_position_encoding(
+          position_tensor = paddle.fluid.layers.add_position_encoding(
                 input=tensor, alpha=1.0, beta=1.0)
 
     """
@@ -13664,6 +13707,8 @@ def psroi_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[100, 490, 28, 28], dtype='float32')
             rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
             pool_out = fluid.layers.psroi_pool(x, rois, 10, 1.0, 7, 7)

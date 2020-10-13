@@ -3123,6 +3123,8 @@ def beam_search(pre_ids,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             # Suppose `probs` contains predicted results from the computation
             # cell and `pre_ids` and `pre_scores` is the output of beam_search
@@ -3240,7 +3242,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            import paddle
+            paddle.enable_static()
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
             ids = fluid.layers.create_array(dtype='int64')
