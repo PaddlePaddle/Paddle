@@ -95,14 +95,6 @@ from .extension import target_assign  #DEFINE_ALIAS
 from .extension import temporal_shift  #DEFINE_ALIAS
 from .extension import warpctc  #DEFINE_ALIAS
 from .extension import diag_embed  #DEFINE_ALIAS
-from .learning_rate import cosine_decay  #DEFINE_ALIAS
-from .learning_rate import exponential_decay  #DEFINE_ALIAS
-from .learning_rate import inverse_time_decay  #DEFINE_ALIAS
-from .learning_rate import natural_exp_decay  #DEFINE_ALIAS
-from .learning_rate import noam_decay  #DEFINE_ALIAS
-from .learning_rate import piecewise_decay  #DEFINE_ALIAS
-from .learning_rate import polynomial_decay  #DEFINE_ALIAS
-from .learning_rate import linear_lr_warmup  #DEFINE_ALIAS
 # from .lod import sequence_concat        #DEFINE_ALIAS
 # from .lod import sequence_conv        #DEFINE_ALIAS
 # from .lod import sequence_enumerate        #DEFINE_ALIAS

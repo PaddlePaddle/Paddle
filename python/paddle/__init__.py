@@ -237,13 +237,6 @@ from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
-from .framework import NoamDecay  #DEFINE_ALIAS
-from .framework import PiecewiseDecay  #DEFINE_ALIAS
-from .framework import NaturalExpDecay  #DEFINE_ALIAS
-from .framework import ExponentialDecay  #DEFINE_ALIAS
-from .framework import InverseTimeDecay  #DEFINE_ALIAS
-from .framework import PolynomialDecay  #DEFINE_ALIAS
-from .framework import CosineDecay  #DEFINE_ALIAS
 from .framework import set_default_dtype  #DEFINE_ALIAS
 from .framework import get_default_dtype  #DEFINE_ALIAS
 
