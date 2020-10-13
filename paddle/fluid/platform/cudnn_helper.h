@@ -357,19 +357,27 @@ class ScopedDropoutDescriptor {
 
   inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
                                              const platform::Place& place,
-                                             bool initialized,
                                              float dropout_prob_,
                                              framework::Tensor* dropout_state_,
                                              int seed, size_t state_size) {
-    auto* dropout_state_data = dropout_state_->data<uint8_t>();
-    if (!initialized) {
+    if (dropout_state_ == nullptr) {  // for no dropout or test
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
-          desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
+          desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
+          0 /* seed */));
     } else {
-      auto dropout_state_dims = dropout_state_->dims();
-      state_size = dropout_state_dims[0];
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnRestoreDropoutDescriptor(
-          desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));
+      if (!dropout_state_->IsInitialized()) {
+        auto* dropout_state_data = dropout_state_->mutable_data<uint8_t>(
+            {static_cast<int64_t>(state_size)}, place);
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+            desc_, handle, dropout_prob_, dropout_state_data, state_size,
+            seed));
+      } else {
+        auto* dropout_state_data = dropout_state_->data<uint8_t>();
+        auto dropout_state_dims = dropout_state_->dims();
+        state_size = dropout_state_dims[0];
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnRestoreDropoutDescriptor(
+            desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));
+      }
     }
     return desc_;
   }

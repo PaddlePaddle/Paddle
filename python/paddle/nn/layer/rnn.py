@@ -993,9 +993,10 @@ class RNNBase(LayerList):
             # wrap using a list to avoid registed into buffer and saving, maybe
             # need a better way to handle this later.
             self._flat_weight = [self.create_variable(dtype=params[0].dtype)]
-            self._dropout_state = [
-                self.create_variable(dtype=fluid.core.VarDesc.VarType.UINT8)
-            ]
+            # dropout state may also can be hided and avoid saving
+            # should dropout state be persistable for static-graph
+            self._dropout_state = self.create_variable(
+                dtype=fluid.core.VarDesc.VarType.UINT8)
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
                                      fluid.default_startup_program()):
@@ -1031,7 +1032,6 @@ class RNNBase(LayerList):
             'WeightList': self._all_weights,
             'InitH': initial_states[0],
             'InitC': initial_states[1],
-            # 'State': dropout_state,
             'SequenceLength': sequence_length
         }
         attrs = {

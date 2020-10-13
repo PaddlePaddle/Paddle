@@ -185,7 +185,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int seq_length = x->dims()[0];
     int batch_size = x->dims()[1];
     int input_size = x->dims()[2];
-    bool state_initialized = state_out->IsInitialized() ? true : false;
 
     size_t workspace_size;
     size_t reserve_size;
@@ -226,8 +225,8 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     }
 
     ScopedRNNBase rnn(seq_length, batch_size, input_size, hidden_size,
-                      num_layers, dropout_prob, seed, weight_numel,
-                      state_initialized, is_bidirec);
+                      num_layers, dropout_prob, seed, weight_numel, is_bidirec,
+                      is_test);
     rnn.Create<T>(handle, ctx.GetPlace(), SequenceLength, &workspace_size,
                   &reserve_size, state_out);
 
