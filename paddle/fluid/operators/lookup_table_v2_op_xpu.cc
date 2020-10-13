@@ -29,10 +29,9 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
     auto *ids_t = context.Input<LoDTensor>("Ids");      // int
     auto *output_t = context.Output<LoDTensor>("Out");  // float
     auto *table_var = context.InputVar("W");
-
-    if (!std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {
-      PADDLE_THROW("Unsupported place!");
-    }
+    PADDLE_ENFORCE_EQ(
+        (std::is_same<DeviceContext, platform::XPUDeviceContext>::value), true,
+        platform::errors::InvalidArgument("Unsupported place!"));
 
     PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
                       platform::errors::InvalidArgument(
@@ -75,10 +74,10 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     table_dim = context.Input<LoDTensor>("W")->dims();
 
     bool is_sparse = context.Attr<bool>("is_sparse");
-    if (is_sparse) {
-      PADDLE_THROW(
-          "LookupTableV2GradXPUKernel dose NOT support is_sparse = True");
-    }
+    PADDLE_ENFORCE_EQ(
+        is_sparse, false,
+        platform::errors::InvalidArgument(
+            "LookupTableV2GradXPUKernel dose NOT support is_sparse = True"));
 
     auto ids_t = context.Input<LoDTensor>("Ids");
     auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
