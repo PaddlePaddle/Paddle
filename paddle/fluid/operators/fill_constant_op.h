@@ -66,7 +66,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
               value_tensor->numel()));
       const T *tensor_data = value_tensor->data<T>();
       framework::Tensor cpu_tensor;
-      if (!platform::is_cpu_place(value_tensor->place())) {
+      auto tmp_place = value_tensor->place();
+      if (platform::is_gpu_place(tmp_place) ||
+          platform::is_xpu_place(tmp_place)) {
         TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
         tensor_data = cpu_tensor.data<T>();
       }
