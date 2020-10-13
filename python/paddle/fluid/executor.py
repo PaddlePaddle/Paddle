@@ -526,7 +526,7 @@ class Executor(object):
             # for more details.
             # NOTE: If you use CPU to run the program or Paddle is
             # CPU version, you need to specify the CPU_NUM, otherwise,
-            # fluid will use all the number of the logic core as
+            # PaddlePaddle will use all the number of the logic core as
             # the CPU_NUM, in that case, the batch size of the input
             # should be greater than CPU_NUM, if not, the process will be
             # failed by an exception.
@@ -955,7 +955,7 @@ class Executor(object):
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
             use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
                 If the parameter is True, the model may run faster in the following cases:
-                the input program is :code:`fluid.Program`, and the parameters(program, feed tensor name
+                the input program is :code:`paddle.static.Program`, and the parameters(program, feed tensor name
                 and fetch_list tensor) of this interface remains unchanged during running.
                 The default is False.
             return_merged(bool): This parameter indicates whether fetched tensors (the tensors
