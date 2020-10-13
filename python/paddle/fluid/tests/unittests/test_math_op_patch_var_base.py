@@ -341,10 +341,12 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.array_equal(x.rank().numpy(), paddle.rank(x).numpy()))
         self.assertTrue(
             np.array_equal(x[0].t().numpy(), paddle.t(x[0]).numpy()))
-        m = paddle.to_tensor(np.random.uniform(1, 2, [3, 3]), 'float32')
-        m = m.matmul(m.t())
+        d = paddle.to_tensor([[1.2285208, 1.3491015, 1.4899898],
+                              [1.30058, 1.0688717, 1.4928783],
+                              [1.0958099, 1.3724753, 1.8926544]])
+        d = d.matmul(d.t())
         self.assertTrue(
-            np.array_equal(m.cholesky().numpy(), paddle.cholesky(m).numpy()))
+            np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy()))
 
         self.assertTrue(
             np.array_equal(x.is_empty().numpy(), paddle.is_empty(x).numpy()))
@@ -395,8 +397,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(m.unique()[0].numpy(), paddle.unique(m)[0].numpy()))
         self.assertTrue(
-            np.array_equal(m.unique_with_counts()[2],
-                           paddle.unique_with_counts(m)[2]))
+            np.array_equal(
+                m.unique(return_counts=True)[1],
+                paddle.unique(
+                    m, return_counts=True)[1]))
         self.assertTrue(np.array_equal(x.flip([0]), paddle.flip(x, [0])))
         self.assertTrue(np.array_equal(x.unbind(0), paddle.unbind(x, 0)))
         self.assertTrue(np.array_equal(x.roll(1), paddle.roll(x, 1)))
@@ -511,8 +515,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.reduce_sum))
         self.assertTrue(inspect.ismethod(a.scale))
         self.assertTrue(inspect.ismethod(a.stanh))
-        self.assertTrue(inspect.ismethod(a.sums))
-        self.assertTrue(inspect.ismethod(a.elementwise_sum))
+        self.assertTrue(inspect.ismethod(a.add_n))
         self.assertTrue(inspect.ismethod(a.max))
         self.assertTrue(inspect.ismethod(a.maximum))
         self.assertTrue(inspect.ismethod(a.min))

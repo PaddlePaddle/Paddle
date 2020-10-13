@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
+
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
@@ -32,13 +33,20 @@ void GatherOpHandle::RunImpl() {
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
-      "The number of output should equal to the number of places.");
+      platform::errors::InvalidArgument(
+          "The number of input variables should be equal "
+          "to the number of places, but got the number of input variables is "
+          "%d and the number of places is %d.",
+          in_var_handles.size(), places_.size()));
 
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
-    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
-                      "The number of output should be one.");
+    PADDLE_ENFORCE_EQ(
+        out_var_handles.size(), 1,
+        platform::errors::InvalidArgument(
+            "The number of output variables should be 1, but got %d.",
+            out_var_handles.size()));
     out_var_handle = out_var_handles.front();
   }
 
@@ -47,10 +55,14 @@ void GatherOpHandle::RunImpl() {
   auto in_0_handle = in_var_handles[0];
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
-  PADDLE_ENFORCE_NOT_NULL(pre_in_var);
+  PADDLE_ENFORCE_NOT_NULL(
+      pre_in_var,
+      platform::errors::NotFound("The variable '%s' is not found in the scope.",
+                                 in_0_handle->name()));
 
-  PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
-                 "Currently, gather_op only can gather SelectedRows.");
+  PADDLE_ENFORCE_EQ(pre_in_var->IsType<framework::SelectedRows>(), true,
+                    platform::errors::Unimplemented(
+                        "Currently, gather_op only supports SelectedRows."));
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated();
@@ -63,7 +75,10 @@ void GatherOpHandle::RunImpl() {
   for (auto *in_handle : in_var_handles) {
     auto *in_var =
         var_scopes.at(in_handle->scope_idx())->FindVar(in_handle->name());
-    PADDLE_ENFORCE_NOT_NULL(in_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var,
+        platform::errors::NotFound(
+            "The variable '%s' is not found in the scope.", in_handle->name()));
     VariableVisitor::EnforceShapeAndDTypeEQ(*in_var, *pre_in_var);
 
     auto &in_sr_value = in_var->Get<framework::SelectedRows>();
@@ -76,15 +91,19 @@ void GatherOpHandle::RunImpl() {
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   platform::Place t_out_p = out_var_handle->place();
   if (platform::is_gpu_place(pre_in_value.place())) {
-    PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
-                   "Places of input and output must be all on GPU.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
+                      platform::errors::PreconditionNotMet(
+                          "Places of input and output must be all on GPU."));
   } else {
     t_out_p = platform::CPUPlace();
   }
 
   auto out_var = var_scopes.at(out_var_handle->scope_idx())
                      ->FindVar(out_var_handle->name());
-  PADDLE_ENFORCE_NOT_NULL(out_var);
+  PADDLE_ENFORCE_NOT_NULL(
+      out_var,
+      platform::errors::NotFound("The variable '%s' is not found in the scope.",
+                                 out_var_handle->name()));
   auto out_value = out_var->GetMutable<framework::SelectedRows>();
   out_value->set_height(pre_in_value.height());
   out_value->set_rows(out_rows);
