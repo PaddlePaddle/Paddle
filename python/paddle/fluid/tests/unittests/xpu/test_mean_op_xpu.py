@@ -60,19 +60,21 @@ class TestMeanOpError(unittest.TestCase):
             fluid.layers.softmax(input3)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestXPUMeanOp(TestMeanOp):
     def init_dtype_type(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        place = paddle.XPUPlace(0)
-        self.check_output_with_place(place, atol=1e-1)
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
 
     def test_checkout_grad(self):
-        place = paddle.XPUPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=0.8)
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestMeanAPI(unittest.TestCase):

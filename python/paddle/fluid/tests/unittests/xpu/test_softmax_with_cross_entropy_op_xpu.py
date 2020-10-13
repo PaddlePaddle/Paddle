@@ -93,14 +93,19 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.attrs['axis'] = self.axis
 
     def test_check_output(self):
-        self.check_output()
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.05)
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ["Logits"], "Loss", max_relative_error=0.1)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestXPUSoftmaxWithCrossEntropyOp(TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
@@ -110,6 +115,19 @@ class TestXPUSoftmaxWithCrossEntropyOp(TestSoftmaxWithCrossEntropyOp):
         self.axis = -1
         self.ignore_index = -1
         self.dtype = np.float32
+
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
+
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ["Logits"], "Loss", max_relative_error=0.1)
 
 
 class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
@@ -127,10 +145,17 @@ class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
         self.shape = [41, 37]
 
     def test_check_output(self):
-        self.check_output()
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss")
+        if paddle.is_compiled_with_xpu():
+            paddle.enable_static()
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ["Logits"], "Loss", max_relative_error=0.1)
 
 
 class TestXPUSoftmaxWithCrossEntropyOp3(TestXPUSoftmaxWithCrossEntropyOp):
@@ -230,7 +255,7 @@ class TestXPUSoftmaxWithCrossEntropyOpAxisDimEqualOne(
 
 
 class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis1(
-        TestXPUSoftmaxWithCrossEntropyOp2):
+        TestXPUSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
