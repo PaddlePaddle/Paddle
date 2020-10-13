@@ -57,3 +57,8 @@ repos:
         entry: shellcheck
         language: system
         files: .sh$
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.3
+    hooks:
+    -   id: flake8
+        args: ['--max-line-length=100', '--extend-ignore=E203']
