@@ -254,7 +254,7 @@ def summary_string(model, input_size, dtypes=None):
                 dtype = dtypes[0]
             else:
                 dtype = dtypes
-            return paddle.rand(list(input_size), dtype)
+            return paddle.cast(paddle.rand(list(input_size)), dtype)
         else:
             return [
                 build_input(i, dtype) for i, dtype in zip(input_size, dtypes)
