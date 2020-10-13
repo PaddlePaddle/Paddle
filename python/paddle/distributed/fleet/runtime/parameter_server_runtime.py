@@ -210,18 +210,23 @@ class ParameterServerRuntime(RuntimeBase):
             warnings.warn("communicator has been initialized, skip")
 
     def _get_executor(self):
-        if self.role_maker._is_heter_worker():
-            if self.role_maker._get_heter_worker_device() == "GPU":
-                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-                executor = Executor(fluid.CUDAPlace(gpu_id))
-            elif self.role_maker._get_heter_worker_device() == "XPU":
-                xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-                executor = Executor(fluid.XPUPlace(xpu_id))
-            else:
-                raise ValueError("Not Support Device {}".format(
-                    self.role_maker._get_heter_worker_device()))
-        else:
-            executor = fluid.Executor(fluid.CPUPlace())
+        executor = fluid.Executor(fluid.CPUPlace())
+        if self.role_maker._is_heter_parameter_server_mode:
+            heter_worker_device_guard = self.context[
+                "valid_strategy"].a_sync_configs[
+                    "heter_worker_device_guard"].upper()
+            if heter_worker_device_guard not in ["GPU", "XPU", "CPU"]:
+                raise ValueError("Heter Worker Not Support Device {}".format(
+                    heter_worker_device_guard))
+            if self.role_maker._is_heter_worker():
+                if heter_worker_device_guard == "GPU":
+                    executor = Executor(
+                        fluid.CUDAPlace(
+                            int(os.getenv("FLAGS_selected_gpus", "0"))))
+                elif heter_worker_device_guard == "XPU":
+                    executor = Executor(
+                        fluid.XPUPlace(
+                            int(os.getenv("FLAGS_selected_xpus", "0"))))
         return executor
 
     def _init_server(self, *args, **kwargs):
@@ -233,12 +238,14 @@ class ParameterServerRuntime(RuntimeBase):
             model_dirname = None
 
         executor = self._get_executor()
+        if self.role_maker._is_heter_worker() and self.context[
+                "valid_strategy"].a_sync_configs["launch_barrier"]:
+            # for heter trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
         executor.run(fluid.default_startup_program())
 
         if self.role_maker._is_heter_worker():
             self._init_worker()
-
-        if self.role_maker._is_heter_worker():
             return
 
         if not model_dirname:
@@ -470,13 +477,13 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
         dense_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=1)
+            recv_type=1, use_origin_program=True)
 
         sparse_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=2)
+            recv_type=2, use_origin_program=True)
 
         distributed_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=3)
+            recv_type=3, use_origin_program=True)
 
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
@@ -528,7 +535,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
 
         if main_program is None:
-            main_program = fluid.default_main_program()
+            main_program = self.compiled_strategy.get_origin_ps_main_program()
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(

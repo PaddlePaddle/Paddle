@@ -12,14 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define learning rate decay  
+from .auto_cast import auto_cast
+from .grad_scaler import GradScaler
 
-__all__ = [
-    #       'CosineDecay',
-    #       'ExponentialDecay',
-    #       'InverseTimeDecay',
-    #       'NaturalExpDecay',
-    #       'NoamDecay',
-    #       'PiecewiseDecay',
-    #       'PolynomialDecay'
-]
+__all__ = ['auto_cast', 'GradScaler']
