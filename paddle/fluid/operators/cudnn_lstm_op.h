@@ -94,7 +94,7 @@ void create_mask_matrix(const framework::ExecutionContext& context,
     }
     if (is_reverse) {
       std::fill(data_temp + i * table_width,
-                data_temp + i * table_width + seq_len_vec[i],
+                data_temp + (i + 1) * table_width - seq_len_vec[i],
                 static_cast<T>(0));
     } else {
       std::fill(data_temp + i * table_width + seq_len_vec[i],
