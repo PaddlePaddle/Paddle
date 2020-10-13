@@ -555,13 +555,12 @@ EOF
         fi
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
-        set +e
+        set +ex
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut # indicate whether the case was in quickly disable list 
         ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
-        set +x
         mactest_error=0
         retry_unittests_record=''
         retry_time=3
