@@ -29,7 +29,9 @@ import unittest
 import paddle.nn as nn
 
 print("os env CUDA_VISIBLE_DEVICES:", os.getenv("CUDA_VISIBLE_DEVICES"))
-print("fluid.core.get_cuda_device_count():", fluid.core.get_cuda_device_count())
+if fluid.core.is_compiled_with_cuda():
+    print("fluid.core.get_cuda_device_count():",
+          fluid.core.get_cuda_device_count())
 
 
 class LinearNet(nn.Layer):

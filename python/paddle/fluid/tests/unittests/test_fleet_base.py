@@ -171,5 +171,32 @@ class TestFleetDygraph(unittest.TestCase):
         final_strategy = fleet._final_strategy()
 
 
+class TestFleetBaseSingleError(unittest.TestCase):
+    def setUp(self):
+        os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
+
+    def gen_data(self):
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(
+                2, size=(128, 1)).astype('int64')
+        }
+
+    def test_single_run_collective_minimize(self):
+        def test_single_error():
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            avg_cost = paddle.mean(x=cost)
+            fleet.init(is_collective=True)
+
+        # in non_distributed mode(use `python` to launch), raise error if has multi cards
+        self.assertRaises(ValueError, test_single_error)
+
+
 if __name__ == "__main__":
     unittest.main()
