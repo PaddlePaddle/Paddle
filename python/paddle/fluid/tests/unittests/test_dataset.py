@@ -559,8 +559,10 @@ class TestDataset(unittest.TestCase):
         except Exception as e:
             self.assertTrue(False)
 
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        if os.path.exists("./test_queue_dataset_run_a.txt"):
+            os.remove("./test_queue_dataset_run_a.txt")
+        if os.path.exists("./test_queue_dataset_run_b.txt"):
+            os.remove("./test_queue_dataset_run_b.txt")
 
     def test_queue_dataset_run_2(self):
         """
@@ -611,8 +613,10 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        if os.path.exists("./test_queue_dataset_run_a.txt"):
+            os.remove("./test_queue_dataset_run_a.txt")
+        if os.path.exists("./test_queue_dataset_run_b.txt"):
+            os.remove("./test_queue_dataset_run_b.txt")
 
     def test_queue_dataset_run_3(self):
         """
@@ -669,8 +673,10 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        if os.path.exists("./test_queue_dataset_run_a.txt"):
+            os.remove("./test_queue_dataset_run_a.txt")
+        if os.path.exists("./test_queue_dataset_run_b.txt"):
+            os.remove("./test_queue_dataset_run_b.txt")
 
 
 class TestDatasetWithDataLoader(TestDataset):
