@@ -149,5 +149,19 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
   }
 }
 
+template <typename T>
+void MaxOverlaps(const framework::Tensor& iou,
+                 framework::Tensor* max_overlaps) {
+  const T* proposal_to_gt_overlaps = iou.data<T>();
+  int row = iou.dims()[0];
+  int col = iou.dims()[1];
+  T* max_overlaps_dt = max_overlaps->data<T>();
+  for (int i = 0; i < row; ++i) {
+    const T* v = proposal_to_gt_overlaps + i * col;
+    T max_v = *std::max_element(v, v + col);
+    max_overlaps_dt[i] = max_v;
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle
