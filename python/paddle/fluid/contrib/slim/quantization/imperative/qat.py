@@ -253,6 +253,7 @@ class ImperativeCalcOutScale(object):
                 self._forward_post_hook)
             self._register_hook_handle_list.append(forward_post_hook_handle)
 
+    # Get the output var name of the op
     def _get_op_output_names(self, op):
         assert isinstance(
             op, framework.Operator), "The input op should be Operator."
@@ -316,33 +317,54 @@ class ImperativeCalcOutScale(object):
                 model_filename="__model__",
                 params_filename="__variables__"))
 
-        global_block = inference_program.global_block()
-        all_ops = global_block.ops
+        # Traverse all ops in the program and find out the op matching
+        # the Layer in the dynamic graph.
         layer_var_dict = {}
-        for op in all_ops:
-            if op.type in _op_real_in_out_name:
-                output_var_names = self._get_op_output_names(op)
-                for output_var_name in output_var_names:
-                    output_var_tensor = global_block.var(output_var_name)
-                    if output_var_tensor.dtype not in [
-                            core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32
-                    ]:
-                        continue
-                    dynamic_layer_name, var_name = output_var_name.split(".")
-                    if dynamic_layer_name in layer_var_dict:
-                        if layer_var_dict[dynamic_layer_name][0] < var_name:
-                            layer_var_dict[dynamic_layer_name] = [var_name, op]
-                    else:
-                        layer_var_dict[dynamic_layer_name] = [var_name, op]
-        for (k, v) in layer_var_dict.items():
-            if 'prelu' in k:
-                k = k.replace('prelu', 'p_re_lu')
-            if 'relu' in k:
-                k = k.replace('relu', 're_lu')
-            if k not in self._out_scale_dict:
-                continue
-            v[1]._set_attr('out_threshold', self._out_scale_dict[k])
+        for block in inference_program.blocks:
+            for op in block.ops:
+                if op.type in _op_real_in_out_name:
+                    output_var_names = self._get_op_output_names(op)
+                    for output_var_name in output_var_names:
+                        output_var_tensor = block.var(output_var_name)
+                        if output_var_tensor.dtype not in [
+                                core.VarDesc.VarType.FP64,
+                                core.VarDesc.VarType.FP32
+                        ]:
+                            continue
+                        # Because the Layer in dygraph may correspond to multiple ops
+                        # in static program after being saved. To ensure correctness,
+                        # the outscale collected for output of dygraph Layer can only
+                        # be set to the last op in the corresponding ops in static program.
+                        #
+                        # We can judge the execution order of the ops which corresponding
+                        # to dygraph Layer by the name of output. And use dict to save
+                        # the corresponding relationship between the dygraph Layer and the
+                        # static graph op that needs to set the outscale attribute.
+                        dynamic_layer_name, var_name_suffix = output_var_name.split(
+                            ".")
+                        if dynamic_layer_name in layer_var_dict:
+                            if layer_var_dict[dynamic_layer_name][
+                                    0] < var_name_suffix:
+                                layer_var_dict[dynamic_layer_name] = [
+                                    var_name_suffix, op
+                                ]
+                        else:
+                            layer_var_dict[
+                                dynamic_layer_name] = [var_name_suffix, op]
 
+        # Because the naming styles of static and dynamic graph are different,
+        # in order to avoid mistakes, we unify the name here.
+        for (layer_name, var_name_op_list) in layer_var_dict.items():
+            if 'prelu' in layer_name:
+                layer_name = layer_name.replace('prelu', 'p_re_lu')
+            if 'relu' in layer_name:
+                layer_name = layer_name.replace('relu', 're_lu')
+            if layer_name not in self._out_scale_dict:
+                continue
+            var_name_op_list[1]._set_attr('out_threshold',
+                                          self._out_scale_dict[layer_name])
+
+        # Save the processed program.
         save_inference_model(
             dirname=model_path,
             feeded_var_names=feed_target_names,
@@ -353,6 +375,9 @@ class ImperativeCalcOutScale(object):
             params_filename='__variables__')
 
     def _forward_post_hook(self, layer, input, output):
+        assert isinstance(
+            output, core.VarBase
+        ), "Multiple outputs are not currently supported in ImperativeOutScale."
         if output.dtype not in [
                 core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
         ]:

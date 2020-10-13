@@ -543,15 +543,15 @@ class MovingAverageAbsMaxScale(layers.Layer):
                      not self.training)
             state = self._state if self.training else None
             accum = self._accum if self.training else None
-            scale_out = self._scale
 
             out_scale, _, _ = core.ops.moving_average_abs_max_scale(
-                input, accum, state, scale_out, state, accum, *attrs)
+                input, accum, state, self._scale, state, accum, *attrs)
             return out_scale
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'MovingAverageAbsMaxScale')
 
+        scale_out = self._scale
         attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
 
         inputs = {"X": [input]}
