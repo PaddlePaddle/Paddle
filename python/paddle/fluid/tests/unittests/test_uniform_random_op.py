@@ -26,8 +26,6 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
-paddle.enable_static()
-
 
 def output_hist(out):
     hist, _ = np.histogram(out, range=(-5, 10))

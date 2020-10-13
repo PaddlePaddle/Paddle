@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include <string>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -44,20 +45,19 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
           framework::ToTypeName(out_var->Type())));
     }
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
+
+    int64_t size = tensor->numel();
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
-    int64_t size = tensor->numel();
+    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+
     std::unique_ptr<T[]> data_cpu(new T[size]);
     for (int64_t i = 0; i < size; ++i) {
-      data_cpu[i] = dist(engine);
+      data_cpu[i] = dist(*engine);
     }
+
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), data,
                  platform::CPUPlace(), reinterpret_cast<void *>(data_cpu.get()),
                  size * sizeof(T));
