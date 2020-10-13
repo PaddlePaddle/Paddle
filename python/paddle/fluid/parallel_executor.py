@@ -50,7 +50,7 @@ class ParallelExecutor(object):
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.
-        loss_name (str): This parameter is the name of the loss tensor of the
+        loss_name (str): This parameter is the name of the loss Tensor of the
             model. **Note: If it is data-parallel model training, you must set loss_name,
             otherwise, the results may be wrong**. The default is None.
         main_program (Program): This parameter represents the Program to be executed.
@@ -206,11 +206,11 @@ class ParallelExecutor(object):
         fetch_list.
 
         Args:
-            fetch_list(list): This parameter represents the tensors that need to be returned
+            fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None.
-            feed(list|dict): This parameter represents the input tensors of the model.
+            feed(list|dict): This parameter represents the input Tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list of tensor. If the
+                training, the parameter feed can be dict or list of Tensor. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
                 sent to different devices, so you should make sure the number of samples of
@@ -220,8 +220,8 @@ class ParallelExecutor(object):
                 The default is None.
             feed_dict: Alias for feed parameter, for backward compatibility.
                 This parameter has been deprecated. Default None.
-            return_numpy(bool): This parameter indicates whether convert the fetched tensors
-                (the tensor specified in the fetch list) to numpy.ndarray. if it is False,
+            return_numpy(bool): This parameter indicates whether convert the fetched Tensors
+                (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
 
         Returns:
@@ -242,8 +242,8 @@ class ParallelExecutor(object):
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same tensor values
-               (tensors in fetch_list) on different devices.
+               results are spliced together in dimension 0 for the same Tensor values
+               (Tensors in fetch_list) on different devices.
 
 
         Examples:
@@ -258,7 +258,7 @@ class ParallelExecutor(object):
               place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
               # NOTE: If you use CPU to run the program, you need
-              # to specify the CPU_NUM, otherwise, fluid will use
+              # to specify the CPU_NUM, otherwise, PaddlePaddle will use
               # all the number of the logic core as the CPU_NUM,
               # in that case, the batch size of the input should be
               # greater than CPU_NUM, if not, the process will be
@@ -333,7 +333,7 @@ class ParallelExecutor(object):
 
               use_cuda = True
               # NOTE: If you use CPU to run the program, you need
-              # to specify the CPU_NUM, otherwise, fluid will use
+              # to specify the CPU_NUM, otherwise, PaddlePaddle will use
               # all the number of the logic core as the CPU_NUM,
               # in that case, the batch size of the input should be
               # greater than CPU_NUM, if not, the process will be
