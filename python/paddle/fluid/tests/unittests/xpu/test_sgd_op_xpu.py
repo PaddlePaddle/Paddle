@@ -42,8 +42,7 @@ class TestSGDOp(OpTest):
         self.w = 105
 
     def test_check_output_with_place(self):
-        self.check_output_with_place(
-            paddle.XPUPlace(int(os.getenv("FLAGS_selected_xpus", 0))))
+        self.check_output_with_place(paddle.XPUPlace(0))
 
 
 class TestSGDOpCase8X(TestSGDOp):
@@ -65,7 +64,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
-        place = paddle.XPUPlace(int(os.getenv("FLAGS_selected_xpus", 0)))
+        place = paddle.XPUPlace(0)
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         result = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])

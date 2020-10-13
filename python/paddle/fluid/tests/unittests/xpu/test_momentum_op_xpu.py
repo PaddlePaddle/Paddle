@@ -60,8 +60,7 @@ class TestMomentumOp1(OpTest):
         pass
 
     def test_check_output_with_place(self):
-        self.check_output_with_place(
-            paddle.XPUPlace(int(os.getenv("FLAGS_selected_xpus", 0))))
+        self.check_output_with_place(paddle.XPUPlace(0))
 
 
 if __name__ == "__main__":
