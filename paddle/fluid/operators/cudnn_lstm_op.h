@@ -102,7 +102,7 @@ void create_mask_matrix(const framework::ExecutionContext& context,
                 data_temp + (i + 1) * table_width, static_cast<T>(0));
     }
   }
-  Print2DTensor<T>(&temp, "Original mask Tensor");
+  // Print2DTensor<T>(&temp, "Original mask Tensor");
   // transpose the result for the mask
   mask_matrix->mutable_data<T>(context.GetPlace());
   std::vector<int> trans_vec;
@@ -120,12 +120,14 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
                                   const int& seed_number,
                                   const bool& upscale_in_train,
                                   const bool& is_test) {
+  VLOG(2) << "dropout_cpu_function_inplace function";
   auto* x_data = x->data<T>();
   if (!is_test) {
-    size_t size = framework::product(mask->dims());
+    size_t size = framework::product(x->dims());
 
     if (!mask->IsInitialized()) {
-      auto mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
+      auto mask_data =
+          mask->mutable_data<uint8_t>(x->dims(), context.GetPlace());
       // Special case when dropout_prob is 1.0
       if (dropout_prob == 1.0f) {
         std::fill(x_data, x_data + size, static_cast<T>(0));
@@ -137,6 +139,7 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
       for (size_t i = 0; i < size; ++i) {
         if (dist(*engine) < dropout_prob) {
           mask_data[i] = 0;
+          x_data[i] = static_cast<T>(0);
         } else {
           mask_data[i] = 1;
           if (upscale_in_train) {
@@ -156,6 +159,8 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
         if (upscale_in_train) {
           x_data[i] /= static_cast<T>(1.0f - dropout_prob);
         }
+      } else {
+        x_data[i] = static_cast<T>(0);
       }
     }
   } else {
@@ -263,8 +268,8 @@ struct LSTMCell : Cell<T> {
     VLOG(2) << "last_h shape: " << last_h->dims();
     VLOG(2) << "last_c shape: " << last_c->dims();
     VLOG(2) << "output shape: " << output->dims();
-    Print3DTensor<T>(input, "Cell Input");
-    Print3DTensor<T>(init_h, "init_h");
+    // Print3DTensor<T>(input, "Cell Input");
+    // Print3DTensor<T>(init_h, "init_h");
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
     auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
@@ -274,7 +279,7 @@ struct LSTMCell : Cell<T> {
     blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
                 input, T(1.0));
 
-    Print3DTensor<T>(input, "Cell Input after");
+    // Print3DTensor<T>(input, "Cell Input after");
 
     math::LstmMetaValue<T> lstm_value;
     lstm_value.check_ig = nullptr;
@@ -301,7 +306,7 @@ struct LSTMCell : Cell<T> {
         *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
         cell_act, cand_act);
     framework::TensorCopy(*output, device_ctx->GetPlace(), *device_ctx, last_h);
-    Print3DTensor<T>(last_h, "last_h");
+    // Print3DTensor<T>(last_h, "last_h");
   }
 };
 
@@ -346,9 +351,9 @@ struct Layer {
     eigen_in = eigen_in +
                eigen_bias_ih.broadcast(Eigen::DSizes<int, 2>(row_num, 1)) +
                eigen_bias_hh.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
-    Print3DTensor<T>(input, "preprocess_input");
-    Print2DTensor<T>(&weight, "preprocess_weight");
-    Print3DTensor<T>(&cache_input, "preprocess_output");
+    // Print3DTensor<T>(input, "preprocess_input");
+    // Print2DTensor<T>(&weight, "preprocess_weight");
+    // Print3DTensor<T>(&cache_input, "preprocess_output");
 
     return cache_input;
   }
@@ -423,7 +428,7 @@ struct SingleLayer : Layer<T> {
     mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
     if (has_sequence_length) {
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, false);
-      Print2DTensor<T>(&mask_matrix, "Mask Matrix");
+      // Print2DTensor<T>(&mask_matrix, "Mask Matrix");
       mask_tensor_list = Unbind(mask_matrix);
     }
 
@@ -699,6 +704,8 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
                                         dropout_prob, seed,
                                         true /*upscale_in_train*/, is_test);
+        Print3DTensor<T>(input_holder, "input_holder after dropout");
+        Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
       }
     }
     if (is_bidirec) {
