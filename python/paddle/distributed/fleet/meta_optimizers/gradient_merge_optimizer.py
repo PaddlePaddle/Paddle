@@ -17,7 +17,6 @@ from .meta_optimizer_base import MetaOptimizerBase
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        print("init Meta GradientMergeOptimizer with {}".format(optimizer))
         super(GradientMergeOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         self.wrapped_opt = None
