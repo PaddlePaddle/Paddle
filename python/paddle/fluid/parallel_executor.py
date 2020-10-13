@@ -129,7 +129,6 @@ class ParallelExecutor(object):
               test_program = paddle.static.default_main_program().clone(for_test=True)
               paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-          startup_program.random_seed=1
           exe.run(startup_program)
 
           train_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
