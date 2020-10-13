@@ -1087,6 +1087,9 @@ class Fleet(object):
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
 
+        if self._user_defined_strategy.sharding:
+            graph_optimizer = None
+
         if graph_optimizer:
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss,
