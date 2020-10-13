@@ -517,15 +517,27 @@ class TestVarBaseSetitem(unittest.TestCase):
 
 
 class TestVarBaseVersion(unittest.TestCase):
-    def test(self):
+    def test_setitem(self):
         paddle.disable_static()
-        var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+
+        var = paddle.ones(shape=[4, 2, 3], dtype="float32")
         self.assertEqual(var.version, 0)
 
         var[1] = 1
         self.assertEqual(var.version, 1)
 
         var[1:2] = 1
+        self.assertEqual(var.version, 2)
+
+    def test_bump_version(self):
+        paddle.disable_static()
+        var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        self.assertEqual(var.version, 0)
+
+        var.bump_version()
+        self.assertEqual(var.version, 1)
+
+        var.bump_version()
         self.assertEqual(var.version, 2)
 
 

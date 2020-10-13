@@ -228,6 +228,9 @@ def monkey_patch_varbase():
 
     @property
     def version(self):
+        """
+        The alias of variable_version().
+        """
         return self.variable_version()
 
     def __str__(self):

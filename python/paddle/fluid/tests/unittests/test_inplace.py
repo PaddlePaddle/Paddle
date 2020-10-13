@@ -33,16 +33,15 @@ class TestInplace(unittest.TestCase):
             paddle.nn.functional.assign(paddle.ones(shape=[3]), var)
 
             # NOTE!!(liym27): assign(input, output) is an inplace operation for output.
-            # However, there is no inplace-related processing for api assign, otherwise,
-            # var.version should be 2 not 1.
+            # There is inplace-related processing for api assign, var.version should be 2 not 1.
 
-            self.assertEqual(var.version, 1)
+            self.assertEqual(var.version, 2)
 
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -62,7 +61,7 @@ class TestInplace(unittest.TestCase):
         # var_b is modified inplace before using it, the inplace operator doesn't result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -77,7 +76,7 @@ class TestInplace(unittest.TestCase):
         # Although var_b is modified inplace after using it, it does not used in gradient computation.
         # The inplace operator doesn't result in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
             var_a.stop_gradient = False
 
             var_b = var_a**2
