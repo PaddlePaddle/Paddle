@@ -48,7 +48,6 @@ class KaimingNormal(MSRAInitializer):
             import paddle
             import paddle.nn as nn
 
-            paddle.disable_static()
             linear = nn.Linear(2,
                                4,
                                weight_attr=nn.initializer.KaimingNormal())
@@ -91,7 +90,6 @@ class KaimingUniform(MSRAInitializer):
             import paddle
             import paddle.nn as nn
 
-            paddle.disable_static()
             linear = nn.Linear(2,
                                4,
                                weight_attr=nn.initializer.KaimingUniform())
