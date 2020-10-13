@@ -24,7 +24,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
-from test_sparse_tensor_load_sgd import TestSparseLoadProgram
+from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 
 class TestSparseLoadProgramAdagrad(TestSparseLoadProgram):
