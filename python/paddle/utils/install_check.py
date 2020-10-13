@@ -17,28 +17,27 @@ import logging
 import numpy as np
 
 import paddle
+from .. import fluid
 from ..fluid import core
+from ..fluid.dygraph import Layer
 from ..fluid import framework
-from ..fluid import backward
 from ..fluid import executor
-from ..fluid import optimizer
-from ..fluid import compiler
 
 __all__ = ['run_check']
 
 
-class SimpleLayer(paddle.nn.Layer):
+class SimpleLayer(Layer):
     def __init__(self, input_size):
         super(SimpleLayer, self).__init__()
         self._linear1 = paddle.nn.Linear(
             input_size,
             3,
-            param_attr=paddle.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
         x = self._linear1(inputs)
-        x = paddle.nn.functional.sum(x)
+        x = paddle.tensor.sum(x)
         return x
 
 
@@ -46,7 +45,7 @@ def _simple_network():
     """
     Define a simple network composed by a single linear layer.
     """
-    input = layers.data(name="input", shape=[2, 2])
+    input = paddle.static.data(name="input", shape=[None, 2, 2])
     simple_layer = SimpleLayer(input_size=2)
     out = simple_layer(input)
     return input, out, simple_layer._linear1.weight
@@ -105,7 +104,7 @@ def _run_static_single(use_cuda):
         with framework.program_guard(train_prog, startup_prog):
             with framework.unique_name.guard():
                 input, out, weight = _simple_network()
-                param_grads = backward.append_backward(
+                param_grads = fluid.backward.append_backward(
                     out, parameter_list=[weight.name])[0]
 
         exe = executor.Executor(
@@ -132,16 +131,13 @@ def _run_static_parallel(use_cuda, device_list):
         with framework.program_guard(train_prog, startup_prog):
             with framework.unique_name.guard():
                 input, out, _ = _simple_network()
-                loss = layers.mean(out)
+                loss = paddle.tensor.mean(out)
                 loss.persistable = True
-                optimizer.SGD(learning_rate=0.01).minimize(loss)
+                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-        build_strategy = compiler.BuildStrategy()
-        build_strategy.enable_inplace = True
-        compiled_prog = compiler.CompiledProgram(train_prog).with_data_parallel(
-            build_strategy=build_strategy,
-            loss_name=loss.name,
-            places=device_list)
+        compiled_prog = fluid.compiler.CompiledProgram(
+            train_prog).with_data_parallel(
+                loss_name=loss.name, places=device_list)
 
         exe = executor.Executor(
             core.CUDAPlace(0) if use_cuda else core.CPUPlace())
