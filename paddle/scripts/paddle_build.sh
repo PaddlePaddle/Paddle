@@ -897,7 +897,10 @@ function collect_failed_tests() {
 function get_quickly_disable_ut() {
     pip install requests
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
-        :
+        echo "========================================="
+        echo "The following unittests have been disabled:"
+        echo ${disable_ut_quickly}
+        echo "========================================="
     else
         disable_ut_quickly=''
     fi
