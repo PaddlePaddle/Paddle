@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class LookupTableV2XPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
-    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
+    auto *ids_t = context.Input<LoDTensor>("Ids");      // int
+    auto *output_t = context.Output<LoDTensor>("Out");  // float
     auto *table_var = context.InputVar("W");
 
     if (!std::is_same<DeviceContext, platform::XPUDeviceContext>::value) {

@@ -36,7 +36,7 @@ class TestDygraphEmbeddingAPIError(unittest.TestCase):
             dict_size = 20
             layer = fluid.dygraph.nn.Embedding(
                 size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
-            # the input must be Variable.
+            # the input must be Variable
             x0 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], paddle.XPUPlace(0))
             self.assertRaises(TypeError, layer, x0)
