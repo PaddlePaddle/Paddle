@@ -718,7 +718,8 @@ class ParameterServerLauncher(object):
             self.http_port = args.http_port
         else:
             http_port = get_ports(1, self.server_num + self.worker_num)
-            self.http_port = "127.0.0.1:" + str(http_port[0])
+            http_ip = self.server_endpoints.split(",")[0].split(":")[0]
+            self.http_port = http_ip + ":" + str(http_port[0])
 
         # get heter worker envs
         if self.distribute_mode == DistributeMode.PS_HETER:

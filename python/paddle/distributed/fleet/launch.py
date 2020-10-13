@@ -289,9 +289,16 @@ def which_distributed_mode(args):
                     format(has_collective_args, cuda_device_num))
         return DistributeMode.COLLECTIVE
     else:
-        logger.warning(
-            "Not found distinct arguments. Default use gpu collective mode")
-        return DistributeMode.COLLECTIVE
+        if not fluid.core.is_compiled_with_cuda():
+            logger.warning(
+                "Not found distinct arguments and not compiled with cuda. Default use ps mode"
+            )
+            return DistributeMode.PS
+        else:
+            logger.warning(
+                "Not found distinct arguments and compiled with cuda. Default use collective mode"
+            )
+            return DistributeMode.COLLECTIVE
 
 
 def launch():
