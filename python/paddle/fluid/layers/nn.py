@@ -7108,9 +7108,6 @@ def image_resize(input,
                  align_mode=1,
                  data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.image_resize
-	:alias: paddle.nn.functional.image_resize,paddle.nn.functional.vision.image_resize
-	:old_api: paddle.fluid.layers.image_resize
 
     This op resizes a batch of images.
 
@@ -7708,9 +7705,6 @@ def resize_bilinear(input,
                     align_mode=1,
                     data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.resize_bilinear
-	:alias: paddle.nn.functional.resize_bilinear,paddle.nn.functional.vision.resize_bilinear
-	:old_api: paddle.fluid.layers.resize_bilinear
 
     This op resizes the input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -7875,9 +7869,6 @@ def resize_trilinear(input,
                      align_mode=1,
                      data_format='NCDHW'):
     """
-    :alias_main: paddle.nn.functional.resize_trilinear
-	:alias: paddle.nn.functional.resize_trilinear,paddle.nn.functional.vision.resize_trilinear
-	:old_api: paddle.fluid.layers.resize_trilinear
 
     This op resizes the input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -8043,9 +8034,6 @@ def resize_nearest(input,
                    align_corners=True,
                    data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.resize_nearest
-	:alias: paddle.nn.functional.resize_nearest,paddle.nn.functional.vision.resize_nearest
-	:old_api: paddle.fluid.layers.resize_nearest
 
     This op resizes the input by performing nearest neighbor interpolation in both the
     height direction and the width direction based on given output shape

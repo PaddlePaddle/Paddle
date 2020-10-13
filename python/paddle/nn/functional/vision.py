@@ -34,13 +34,9 @@ from ...fluid.layers import distribute_fpn_proposals  #DEFINE_ALIAS
 from ...fluid.layers import generate_mask_labels  #DEFINE_ALIAS
 from ...fluid.layers import generate_proposal_labels  #DEFINE_ALIAS
 from ...fluid.layers import generate_proposals  #DEFINE_ALIAS
-from ...fluid.layers import image_resize  #DEFINE_ALIAS
 from ...fluid.layers import prior_box  #DEFINE_ALIAS
 from ...fluid.layers import prroi_pool  #DEFINE_ALIAS
 from ...fluid.layers import psroi_pool  #DEFINE_ALIAS
-from ...fluid.layers import resize_bilinear  #DEFINE_ALIAS
-from ...fluid.layers import resize_nearest  #DEFINE_ALIAS
-from ...fluid.layers import resize_trilinear  #DEFINE_ALIAS
 from ...fluid.layers import roi_align  #DEFINE_ALIAS
 from ...fluid.layers import roi_pool  #DEFINE_ALIAS
 from ...fluid.layers import space_to_depth  #DEFINE_ALIAS
@@ -74,16 +70,12 @@ __all__ = [
     'generate_proposal_labels',
     'generate_proposals',
     'grid_sample',
-    'image_resize',
     'image_resize_short',
     #       'multi_box_head',
     'pixel_shuffle',
     'prior_box',
     'prroi_pool',
     'psroi_pool',
-    'resize_bilinear',
-    'resize_nearest',
-    'resize_trilinear',
     'retinanet_detection_output',
     'retinanet_target_assign',
     'roi_align',
