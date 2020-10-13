@@ -30,7 +30,7 @@ class ParallelExecutor(object):
     """
 	:api_attr: Static Graph
 
-    The ParallelExecutor is an upgraded version of :code:`fluid.Executor` that supports multi-node model
+    The ParallelExecutor is an upgraded version of :code:`paddle.static.Executor` that supports multi-node model
     training and testing based on the data-parallel mode. In data-parallel mode,
     ParallelExecutor will broadcast the parameters from Node0 to other nodes during
     construction and copy the input Program to other nodes from Node0 to make sure
@@ -316,7 +316,7 @@ class ParallelExecutor(object):
         application and release of temporary variables, the strategy adopted by
         ParallelExecutor is to drop the local execution scopes after several iterations.
         ParallelExecutor provides the num_iteration_per_drop_scope option in
-        :code:`fluid.ExecutionStrategy`, which indicates how many iterations are intervened to
+        :code:`paddle.static.ExecutionStrategy`, which indicates how many iterations are intervened to
         drop the local execution scopes. If the num_iteration_per_drop_scope value
         is 100, but you want to drop the local execution scopes after 50 iterations,
         you can call the interface manually.
