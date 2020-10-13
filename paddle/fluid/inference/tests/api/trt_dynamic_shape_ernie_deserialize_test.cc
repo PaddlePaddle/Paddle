@@ -161,8 +161,10 @@ TEST(AnalysisPredictor, no_fp16) {
 }
 
 TEST(AnalysisPredictor, fp16) {
+#if CUDA_VERSION >= 10000
   std::vector<float> result = {0.59923654, 0.21923761, 0.18152587};
   trt_ernie(true, result);
+#endif
 }
 
 }  // namespace inference

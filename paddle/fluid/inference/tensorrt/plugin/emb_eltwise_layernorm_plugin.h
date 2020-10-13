@@ -109,9 +109,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     with_fp16_ = with_fp16;
     if (with_fp16_) {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
+#if CUDA_VERSION >= 10000
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "The EmbEltwiseLayernormPluginDynamic should "
+          "complied with CUDA version >= 10.0 when running with fp16. "
+          "Please recomplie it or try to use fp32 by set "
+          "AnalysisConfig::SetTRTDynamicShapeInfo(min_input_shape, "
+          "max_input_shape, opt_input_shape, true"));
+#endif
     } else {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
@@ -157,9 +166,18 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 
     if (with_fp16_) {
+#if CUDA_VERSION >= 10000
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "The EmbEltwiseLayernormPluginDynamic should "
+          "complied with CUDA version >= 10.0 when running with fp16. "
+          "Please recomplie it or try to use fp32 by set "
+          "AnalysisConfig::SetTRTDynamicShapeInfo(min_input_shape, "
+          "max_input_shape, opt_input_shape, true"));
+#endif
     } else {
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,

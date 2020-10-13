@@ -67,9 +67,14 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
+#if CUDA_VERSION >= 10000
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
+#else
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+#endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -117,6 +122,7 @@ int SkipLayerNormPluginDynamic::enqueue(
     skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
                          output, eps_, stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
+#if CUDA_VERSION >= 10000
     VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp16";
     const half *input1 = static_cast<const half *>(inputs[0]);
     const half *input2 = static_cast<const half *>(inputs[1]);
@@ -124,6 +130,14 @@ int SkipLayerNormPluginDynamic::enqueue(
     operators::math::SkipLayerNormFunctor<half> skip_layer_norm_func;
     skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
                          output, static_cast<half>(eps_), stream);
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "The SkipLayerNorm TRT Plugin should "
+        "complied with CUDA version >= 10.0 when running with fp16. "
+        "Please recomplie it or try to use fp32 by set "
+        "AnalysisConfig::SetTRTDynamicShapeInfo(min_input_shape, "
+        "max_input_shape, opt_input_shape, true"));
+#endif
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "The SkipLayerNorm TRT Plugin's input type should be float or half."));
