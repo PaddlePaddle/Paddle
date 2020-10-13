@@ -516,7 +516,6 @@ class Executor(object):
 
             # Run the startup program once and only once.
             # Not need to optimize/compile the startup program.
-            startup_program.random_seed = 1
             exe.run(startup_program)
 
             # Run the main program directly without compile.
