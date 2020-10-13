@@ -38,6 +38,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
+#ifdef PADDLE_WITH_MKLDNN
+  dst->set_format(src.format());
+#endif
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
@@ -237,6 +240,9 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
+#ifdef PADDLE_WITH_MKLDNN
+  dst->set_format(src.format());
+#endif
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());

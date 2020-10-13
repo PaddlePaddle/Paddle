@@ -25,9 +25,8 @@ __all__ = [
     'create_parameter',
     'crf_decoding',
     'data_norm',
-    'deformable_conv',
+    'deform_conv2d',
     'group_norm',
-    'hsigmoid',
     'instance_norm',
     'layer_norm',
     'multi_box_head',
@@ -39,7 +38,9 @@ __all__ = [
     'switch_case',
 ]
 
-from ...fluid.layers import fc  #DEFINE_ALIAS
+from .common import fc  #DEFINE_ALIAS
+from .common import deform_conv2d  #DEFINE_ALIAS
+
 from ...fluid.layers import batch_norm  #DEFINE_ALIAS
 from ...fluid.layers import bilinear_tensor_product  #DEFINE_ALIAS
 from ...fluid.layers import case  #DEFINE_ALIAS
@@ -50,9 +51,7 @@ from ...fluid.layers import conv3d_transpose  #DEFINE_ALIAS
 from ...fluid.layers import create_parameter  #DEFINE_ALIAS
 from ...fluid.layers import crf_decoding  #DEFINE_ALIAS
 from ...fluid.layers import data_norm  #DEFINE_ALIAS
-from ...fluid.layers import deformable_conv  #DEFINE_ALIAS
 from ...fluid.layers import group_norm  #DEFINE_ALIAS
-from ...fluid.layers import hsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import instance_norm  #DEFINE_ALIAS
 from ...fluid.layers import layer_norm  #DEFINE_ALIAS
 from ...fluid.layers import multi_box_head  #DEFINE_ALIAS

@@ -36,9 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
@@ -432,10 +432,12 @@ PYBIND11_MODULE(core_noavx, m) {
     return map_output;
   });
 
-  m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
-    framework::OpCompatibleMap op_compatible_map;
-    op_compatible_map.InitOpCompatibleMap();
-    return op_compatible_map.ConvertToProto(desc.OpCompatibleMap());
+  m.def("save_op_version_info", [](framework::ProgramDesc &desc) {
+    framework::compatible::pb::OpVersionMap pb_vmap{desc.OpVersionMap()};
+    framework::compatible::SaveOpVersions(
+        framework::compatible::OpVersionRegistrar::GetInstance()
+            .GetVersionMap(),
+        &pb_vmap);
   });
 
   m.def(
@@ -1313,9 +1315,6 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    **Note**:
-        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
-        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
     CUDAPlace is a descriptor of a device.
     It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
@@ -1334,8 +1333,10 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          gpu_place = fluid.CUDAPlace(0)
+          import paddle
+
+          place = paddle.CUDAPlace(0)
+          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",
