@@ -32,14 +32,14 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     velocity_out->mutable_data<T>(ctx.GetPlace());
     auto* lr = learning_rate->data<T>();
-    auto* grad_var = ctx.InputVar("Grad");
 
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    auto* grad_var = ctx.InputVar("Grad");
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type of Param & Grad in "
                           "MomentumOp-XPU. Excepted "
                           "LodTensor, But received [%s] and [%s]",
-                          paddle::framework::ToTypeName(param_var->Type())));
+                          paddle::framework::ToTypeName(grad_var->Type())));
 
     auto grad = ctx.Input<framework::Tensor>("Grad");
 

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+import os
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -58,9 +59,11 @@ class TestMomentumOp1(OpTest):
     def init_dtype(self):
         pass
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_output_with_place(self):
+        self.check_output_with_place(
+            paddle.XPUPlace(int(os.getenv("FLAGS_selected_xpus", 0))))
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

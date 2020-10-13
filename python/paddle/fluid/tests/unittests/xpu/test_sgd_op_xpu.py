@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+import os
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
@@ -39,8 +41,9 @@ class TestSGDOp(OpTest):
         self.h = 102
         self.w = 105
 
-    def test_check_output(self):
-        self.check_output()
+    def test_check_output_with_place(self):
+        self.check_output_with_place(
+            paddle.XPUPlace(int(os.getenv("FLAGS_selected_xpus", 0))))
 
 
 class TestSGDOpCase8X(TestSGDOp):
@@ -54,7 +57,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
         label = fluid.layers.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32')
-        emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
+        emb = fluid.embedding(input=data, size=(10000, 150), dtype='float32')
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
         cost = fluid.layers.square_error_cost(input=out, label=label)
@@ -62,13 +65,12 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
-        place = fluid.CPUPlace()
+        place = paddle.XPUPlace(int(os.getenv("FLAGS_selected_xpus", 0)))
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fluid.default_main_program())
-        result = exe.run(compiled_prog, fetch_list=[avg_cost])
+        result = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
