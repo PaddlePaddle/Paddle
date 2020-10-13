@@ -109,7 +109,7 @@ def set_device(device):
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu:X`` and ``xpu:X``, where ``X`` is the 
+            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
             index of the GPUs or XPUs. 
 
     Examples:
@@ -141,7 +141,7 @@ def set_device(device):
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
-        if not avaliable_device and not avaliable_xpu_device:
+        if not avaliable_gpu_device and not avaliable_xpu_device:
             raise ValueError(
                 "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu' or 'xpu:x'"
             )
@@ -149,7 +149,7 @@ def set_device(device):
             if not core.is_compiled_with_cuda():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is " \
-                    "not compiled with CUDA".format(avaliable_device))
+                    "not compiled with CUDA".format(avaliable_gpu_device))
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
@@ -158,7 +158,7 @@ def set_device(device):
             if not core.is_compiled_with_xpu():
                 raise ValueError(
                     "The device should not be {}, since PaddlePaddle is " \
-                    "not compiled with XPU".format(avaliable_device))
+                    "not compiled with XPU".format(avaliable_xpu_device))
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
@@ -170,8 +170,8 @@ def set_device(device):
 def get_device():
     """
     This funciton can get the current global device of the program is running.
-    It's a string which is like 'cpu' and 'gpu:0'. if the global device is not
-    set, it will return a string which is 'gpu:0' when cuda is avaliable or it 
+    It's a string which is like 'cpu', 'gpu:x' and 'xpu:x'. if the global device is not
+    set, it will return a string which is 'gpu:x' when cuda is avaliable or it 
     will return a string which is 'cpu' when cuda is not avaliable.
 
     Examples:
@@ -190,5 +190,8 @@ def get_device():
     elif isinstance(place, core.CUDAPlace):
         device_id = place.get_device_id()
         device = 'gpu:' + str(device_id)
+    elif isinstance(place, core.XPUPlace):
+        device_id = place.get_device_id()
+        device = 'xpu:' + str(device_id)
 
     return device

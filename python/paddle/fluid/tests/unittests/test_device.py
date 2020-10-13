@@ -94,15 +94,12 @@ class TestImperativeDeviceManage(unittest.TestCase):
     def test_xpu(self):
         if core.is_compiled_with_xpu():
             with fluid.dygraph.guard():
-                paddle.set_device('xpu:0')
-                out1 = paddle.zeros(shape=[1, 3], dtype='float32')
-                out2 = paddle.ones(shape=[1, 3], dtype='float32')
-                out3 = paddle.concat(x=[out1, out2], axis=0)
+                out = paddle.to_tensor([1, 2])
                 device = paddle.get_device()
                 self.assertEqual(
                     isinstance(framework._current_expected_place(),
                                core.XPUPlace), True)
-                self.assertTrue(out3.place.is_xpu_place())
+                self.assertTrue(out.place.is_xpu_place())
                 self.assertEqual(device, "xpu:0")
 
 
