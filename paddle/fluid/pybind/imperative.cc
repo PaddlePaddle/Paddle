@@ -647,7 +647,13 @@ void BindImperative(py::module *m_ptr) {
            [](std::shared_ptr<imperative::VarBase> &self) {
              // NOTE(liym27): bump_version is only used for inplace operation
              BumpVersion(self);
-           })
+           },
+           R"DOC(
+        **Notes**:
+            **This API is ONLY available in Dygraph mode.**
+            **This is a very low level API. Users should not use it directly. **
+         Bump the version whenever the Tensor is modified through an inplace operation.
+            )DOC")
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =

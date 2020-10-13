@@ -226,10 +226,25 @@ def monkey_patch_varbase():
 
         return self.gradient()
 
+    @framework.dygraph_only
     @property
     def version(self):
         """
-        The alias of variable_version().
+        The version of current Tensor.
+        The version number is incremented whenever the current Tensor is modified through an inplace operation.
+
+        **Notes: This is a read-only property**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            print(var.version)  # 0
+
+            var[1] = 2.2
+            print(var.version)  # 1
+
         """
         return self.variable_version()
 
