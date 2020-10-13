@@ -314,7 +314,7 @@ def binary_cross_entropy_with_logits(logit,
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name)
 
     one = paddle.fill_constant(shape=[1], value=1.0, dtype=logit.dtype)
