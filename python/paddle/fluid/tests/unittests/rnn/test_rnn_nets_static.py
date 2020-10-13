@@ -15,6 +15,7 @@
 import paddle
 paddle.set_default_dtype("float64")
 from paddle.fluid.layers import sequence_mask
+paddle.enable_static()
 
 import numpy as np
 import unittest

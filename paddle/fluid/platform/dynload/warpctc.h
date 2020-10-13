@@ -53,7 +53,9 @@ extern void* warpctc_dso_handle;
   __macro(get_warpctc_version);       \
   __macro(ctcGetStatusString);        \
   __macro(compute_ctc_loss);          \
-  __macro(get_workspace_size)
+  __macro(compute_ctc_loss_double);   \
+  __macro(get_workspace_size);        \
+  __macro(get_workspace_size_double)
 
 WARPCTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP);
 

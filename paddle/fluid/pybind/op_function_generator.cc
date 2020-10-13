@@ -48,6 +48,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"collect_fpn_proposals",
      {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
     {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
+    {"warpctc", {"Logits", "Label", "LogitsLength", "LabelLength"}},
+    {"hierarchical_sigmoid",
+     {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
