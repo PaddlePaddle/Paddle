@@ -7785,6 +7785,8 @@ def resize_bilinear(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+	    import paddle
+	    paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
@@ -8934,6 +8936,7 @@ def crop(x, shape=None, offsets=None, name=None):
             import paddle.fluid as fluid
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[3, 3, 5], dtype="float32")
             y = fluid.data(name="y", shape=[2, 2, 3], dtype="float32")
             crop = fluid.layers.crop(x, shape=y)
@@ -9043,6 +9046,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             import paddle.fluid as fluid
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[None, 3, 5], dtype="float32")
             # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
 
@@ -9873,6 +9877,7 @@ def soft_relu(x, threshold=40.0, name=None):
             import numpy as np
             import paddle
 
+            paddle.enable_static()
             inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
             output = fluid.layers.soft_relu(inputs, threshold=20.0)
 
@@ -12466,6 +12471,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         ..  code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
             dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
             output = fluid.layers.mul(dataX, dataY,
@@ -12589,6 +12596,7 @@ def space_to_depth(x, blocksize, name=None):
             import numpy as np
             import paddle
 
+            paddle.enable_static()
             data = fluid.data(
                 name='data', shape=[1, 4, 2, 2], dtype='float32')
             space_to_depthed = fluid.layers.space_to_depth(
@@ -12676,7 +12684,7 @@ def affine_channel(x,
             import paddle.fluid as fluid
             import paddle
 
-
+            paddle.enable_static()
             use_gpu = False
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -12802,6 +12810,8 @@ def similarity_focus(input, axis, indexes, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             data = fluid.data(
                 name='data', shape=[-1, 3, 2, 2], dtype='float32')
             fluid.layers.similarity_focus(input=data, axis=1, indexes=[0])
@@ -12850,6 +12860,8 @@ def hash(input, hash_size, num_hash=1, name=None):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             place = fluid.core.CPUPlace()
 
@@ -12966,7 +12978,7 @@ def grid_sampler(x, grid, name=None):
             import paddle.fluid as fluid
             import paddle
 
-
+            paddle.enable_static()
             # use with affine_grid
             x = fluid.data(name='x', shape=[None, 10, 32, 32], dtype='float32')
             theta = fluid.layers.data(name='theta', shape=[2, 3], dtype='float32')
