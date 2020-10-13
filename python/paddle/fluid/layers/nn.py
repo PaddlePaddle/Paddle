@@ -10791,7 +10791,7 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    return paddle.tensor.math.elementwise_sum(x)
+    return paddle.add_n(x)
 
 
 @templatedoc()
