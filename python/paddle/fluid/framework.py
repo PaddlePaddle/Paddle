@@ -15,9 +15,7 @@
 from __future__ import print_function
 
 import collections
-from collections import defaultdict
 from collections import Iterable
-import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
@@ -28,7 +26,6 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
-import logging
 from .. import compat as cpt
 from .proto import framework_pb2
 
@@ -307,7 +304,7 @@ def _set_expected_place(place):
 def _var_base_to_np(var_base):
     """	
     convert VarBase tp numpy	
-    	
+     
     Args:	
         var_base(VarBase) : the VarBase to convert	
     Returns (np.ndarray): the np.ndarray contain the value of VarBase	
@@ -824,7 +821,7 @@ def _getitem_impl_(var, item):
         'ends': [],
         'decrease_axis': decrease_axis
     }
-    if (use_strided_slice == True):
+    if (use_strided_slice is True):
         attrs['strides'] = []
     infer_flags = list(1 for i in range(len(slice_axis)))
 
@@ -853,7 +850,7 @@ def _getitem_impl_(var, item):
         attrs['ends'] = slice_end
 
     # strides
-    if use_strided_slice == True:
+    if use_strided_slice is True:
         if contain_var(slice_step):
             inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
             for i, dim in enumerate(slice_step):
@@ -868,7 +865,7 @@ def _getitem_impl_(var, item):
     attrs['infer_flags'] = infer_flags
 
     out = var
-    if use_strided_slice == False and len(slice_axis) > 0:
+    if use_strided_slice is False and len(slice_axis) > 0:
         # append slice_op here
         slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
@@ -881,7 +878,7 @@ def _getitem_impl_(var, item):
             attrs=attrs)
 
         out = slice_out_var
-    elif use_strided_slice == True and len(slice_axis) > 0:
+    elif use_strided_slice is True and len(slice_axis) > 0:
         strided_slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_strided_slice"),
@@ -1297,10 +1294,10 @@ class Variable(object):
                 print(new_variable._to_readable_code())
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
+            var_str = "{i}{name} : fluid.{type}.shape{shape}.astype({dtype}){e}".\
                 format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
         else:
-            var_str = "{name} : fluid.{type})".\
+            var_str = "{i}{name} : fluid.{type}){e}".\
                 format(i="{", e="}", name=self.name, type=self.type)
 
         if type(self) == Parameter:
@@ -2023,8 +2020,8 @@ class Operator(object):
                     warnings.warn("The Op(%s) is not support to set device." %
                                   type)
                 if 'force_cpu' in op_attrs:
-                    if (type is 'less_than' and op_attrs['force_cpu'] != None
-                        ) or op_attrs['force_cpu'] != False:
+                    if (type == 'less_than' and op_attrs['force_cpu'] is
+                            not None) or op_attrs['force_cpu'] is not False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
@@ -2159,9 +2156,8 @@ class Operator(object):
                                 outputs={"Out": [var]})
             print(new_op._to_readable_code())
         """
-        assert isinstance(
-            skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        assert isinstance(skip_op_callstack, bool), \
+            "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
@@ -2192,7 +2188,7 @@ class Operator(object):
             attr_type = self.desc.attr_type(name)
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
-                    name=name, type=attr_type, value=self._block_attr_id(name))
+                    name=name, value=self._block_attr_id(name))
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
@@ -2200,23 +2196,23 @@ class Operator(object):
 
             if attr_type == core.AttrType.BLOCKS:
                 a = "{name} = blocks{value}".format(
-                    name=name,
-                    type=attr_type,
-                    value=self._blocks_attr_ids(name))
+                    name=name, value=self._blocks_attr_ids(name))
                 attrs_str += a
                 if i != len(attr_names) - 1:
                     attrs_str += ", "
                 continue
 
-            a = "{name} = {value}".format(
-                name=name, type=attr_type, value=self.desc.attr(name))
+            a = "{name} = {value}".format(name=name, value=self.desc.attr(name))
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
         if outputs_str != "{}":
-            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
-                format(outputs = outputs_str, op_type=self.type, inputs=inputs_str, attrs=attrs_str)
+            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".format(
+                outputs=outputs_str,
+                op_type=self.type,
+                inputs=inputs_str,
+                attrs=attrs_str)
         else:
             op_str = "{op_type}(inputs={inputs}, {attrs})".\
                 format(op_type=self.type, inputs=inputs_str, attrs=attrs_str)
@@ -2568,7 +2564,7 @@ class Block(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
@@ -3742,7 +3738,7 @@ class IrGraph(object):
         """
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
                self.graph.nodes() and op_node.node in self.graph.nodes(), \
-            'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
+               'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
         new_input_node.append_output(op_node)
@@ -3760,7 +3756,7 @@ class IrGraph(object):
         """
         assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
                self.graph.nodes() and op_node.node in self.graph.nodes(), \
-            'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+               'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
         new_output_node.append_input(op_node)
@@ -3876,8 +3872,9 @@ class IrGraph(object):
 
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
-            exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
-                                          + ' -o ' + pdf_save_path, shell=True)
+            exited_code = subprocess.call(
+                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
+                shell=True)
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
                 print('The {} is saved as the dot filetype.'.format(
@@ -4241,7 +4238,7 @@ class Program(object):
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received %s".format(
+        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
@@ -4487,7 +4484,7 @@ class Program(object):
             The two code snippets above will generate and print same programs.
         """
 
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # NOTE(zhiqiu): we sync the original program first, since its program may diff with
         # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
         self._sync_with_cpp()
 
@@ -4517,7 +4514,7 @@ class Program(object):
             if hasattr(self, 'lr_sheduler'):
                 p.lr_sheduler = self.lr_sheduler
 
-            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
 
@@ -4562,7 +4559,7 @@ class Program(object):
             Program:  A new, pruned program.
         """
 
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # NOTE(zhiqiu): we sync the original program first, since its program may diff with
         # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
         self._sync_with_cpp()
 
