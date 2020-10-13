@@ -670,8 +670,8 @@ class TestBeamSearch(ModuleApiTest):
                    hidden_size,
                    bos_id=0,
                    eos_id=1,
-                   beam_size=4,
-                   max_step_num=20):
+                   beam_size=2,
+                   max_step_num=2):
         embedder = paddle.fluid.dygraph.Embedding(size=[vocab_size, embed_dim])
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
@@ -689,6 +689,7 @@ class TestBeamSearch(ModuleApiTest):
         return dynamic_decode(
             model.beam_search_decoder, [init_hidden, init_cell],
             max_step_num=model.max_step_num,
+            impute_finished=True,
             is_test=True)[0]
 
     def make_inputs(self):
