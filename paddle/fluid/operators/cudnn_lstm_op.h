@@ -244,8 +244,7 @@ struct Cell {
   virtual void operator()(const platform::CPUDeviceContext* device_ctx,
                           Tensor* input, const Tensor* weight_hh,
                           const Tensor* init_h, const Tensor* init_c,
-                          Tensor* last_h, Tensor* last_c, Tensor* output,
-                          const Tensor& mask_tensor) {
+                          Tensor* last_h, Tensor* last_c, Tensor* output) {
     VLOG(2) << "Calling Base Cell !!!!!";
   }
 };
@@ -255,7 +254,7 @@ struct LSTMCell : Cell<T> {
   void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
                   const Tensor* weight_hh, const Tensor* init_h,
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
-                  Tensor* output, const Tensor& mask_tensor) {
+                  Tensor* output) {
     VLOG(2) << "Calling LSTM Cell !!!!!";
     VLOG(2) << "input shape: " << input->dims();
     VLOG(2) << "w_hh shape: " << weight_hh->dims();
@@ -303,27 +302,6 @@ struct LSTMCell : Cell<T> {
         cell_act, cand_act);
     framework::TensorCopy(*output, device_ctx->GetPlace(), *device_ctx, last_h);
     Print3DTensor<T>(last_h, "last_h");
-
-    auto eigen_init_h =
-        framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
-    auto eigen_last_h =
-        framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
-
-    auto eigen_mask = framework::EigenMatrix<T>::From(
-        mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    // eigen_output.device(device_ctx->eigen_device()) =
-    auto eigen_mask_broadcast =
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
-    auto& place = *device_ctx->eigen_device();
-    eigen_last_h.device(place) = eigen_last_h * eigen_mask_broadcast +
-                                 eigen_init_h * (1 - eigen_mask_broadcast);
-
-    auto eigen_init_c =
-        framework::EigenMatrix<T>::Reshape(*init_c, init_c->dims().size() - 1);
-    auto eigen_last_c =
-        framework::EigenMatrix<T>::Reshape(*last_c, last_c->dims().size() - 1);
-    eigen_last_c.device(place) = eigen_last_c * eigen_mask_broadcast +
-                                 eigen_init_c * (1 - eigen_mask_broadcast);
   }
 };
 
@@ -376,7 +354,8 @@ struct Layer {
   }
 
   void postprocess(const framework::ExecutionContext& context, Tensor* output,
-                   const Tensor& mask_tensor) {
+                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
+                   Tensor* last_c, const Tensor& mask_tensor) {
     // in the output, if mask flag is 0, we will retun the zero data
     auto eigen_output =
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
@@ -384,9 +363,24 @@ struct Layer {
         mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    eigen_output.device(place) =
-        eigen_output *
+    auto eigen_mask_broadcast =
         eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+
+    eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
+
+    auto eigen_init_h =
+        framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
+    auto eigen_last_h =
+        framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
+    eigen_last_h.device(place) = eigen_last_h * eigen_mask_broadcast +
+                                 eigen_init_h * (1 - eigen_mask_broadcast);
+
+    auto eigen_init_c =
+        framework::EigenMatrix<T>::Reshape(*init_c, init_c->dims().size() - 1);
+    auto eigen_last_c =
+        framework::EigenMatrix<T>::Reshape(*last_c, last_c->dims().size() - 1);
+    eigen_last_c.device(place) = eigen_last_c * eigen_mask_broadcast +
+                                 eigen_init_c * (1 - eigen_mask_broadcast);
   }
 
   virtual void operator()(const framework::ExecutionContext& context,
@@ -458,15 +452,22 @@ struct SingleLayer : Layer<T> {
       }
       if (i == 0) {
         cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[layer_idx],
-              &init_c[layer_idx], &last_h[layer_idx], &last_c[layer_idx],
-              &output_tensors[i], mask_tensor_list[i]);
+              &init_c[layer_idx], last_h_holder, last_c_holder,
+              &output_tensors[i]);
       } else {
         cell_(&dev_ctx, &input_tensors[i], &vec[1], init_h_holder,
-              init_c_holder, last_h_holder, last_c_holder, &output_tensors[i],
-              mask_tensor_list[i]);
+              init_c_holder, last_h_holder, last_c_holder, &output_tensors[i]);
       }
       if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[i], mask_tensor_list[i]);
+        if (i == 0) {
+          this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
+                            &init_c[layer_idx], last_h_holder, last_c_holder,
+                            mask_tensor_list[i]);
+        } else {
+          this->postprocess(context, &output_tensors[i], init_h_holder,
+                            init_c_holder, last_h_holder, last_c_holder,
+                            mask_tensor_list[i]);
+        }
       }
     }
     if (time_step % 2 == 0) {
@@ -544,17 +545,24 @@ struct BidirLayer : Layer<T> {
       if (i == 0) {
         cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[2 * layer_idx],
               &init_c[2 * layer_idx], &last_h[2 * layer_idx],
-              &last_c[2 * layer_idx], &output_tensors[2 * i],
-              forward_mask_tensor_list[i]);
+              &last_c[2 * layer_idx], &output_tensors[2 * i]);
       } else {
         cell_(&dev_ctx, &input_tensors[i], &vec[1], forward_init_h_holder,
               forward_init_c_holder, forward_last_h_holder,
-              forward_last_c_holder, &output_tensors[2 * i],
-              forward_mask_tensor_list[i]);
+              forward_last_c_holder, &output_tensors[2 * i]);
       }
       if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[2 * i],
-                          forward_mask_tensor_list[i]);
+        if (i == 0) {
+          this->postprocess(context, &output_tensors[2 * i],
+                            &init_h[2 * layer_idx], &init_c[2 * layer_idx],
+                            forward_last_h_holder, forward_last_c_holder,
+                            forward_mask_tensor_list[i]);
+        } else {
+          this->postprocess(context, &output_tensors[2 * i],
+                            forward_init_h_holder, forward_init_c_holder,
+                            forward_last_h_holder, forward_last_c_holder,
+                            forward_mask_tensor_list[i]);
+        }
       }
     }
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
@@ -595,17 +603,24 @@ struct BidirLayer : Layer<T> {
       if (i == 0) {
         cell_(&dev_ctx, &input_tensors[i], &vec[5], &init_h[2 * layer_idx + 1],
               &init_c[2 * layer_idx + 1], &last_h[2 * layer_idx + 1],
-              &last_c[2 * layer_idx + 1], &output_tensors[2 * i + 1],
-              backward_mask_tensor_list[i]);
+              &last_c[2 * layer_idx + 1], &output_tensors[2 * i + 1]);
       } else {
         cell_(&dev_ctx, &input_tensors[i], &vec[5], backward_init_h_holder,
               backward_init_c_holder, backward_last_h_holder,
-              backward_last_c_holder, &output_tensors[2 * i + 1],
-              backward_mask_tensor_list[i]);
+              backward_last_c_holder, &output_tensors[2 * i + 1]);
       }
       if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[2 * i + 1],
-                          backward_mask_tensor_list[i]);
+        if (i == 0) {
+          this->postprocess(
+              context, &output_tensors[2 * i + 1], &init_h[2 * layer_idx + 1],
+              &init_c[2 * layer_idx + 1], backward_last_h_holder,
+              backward_last_c_holder, backward_mask_tensor_list[i]);
+        } else {
+          this->postprocess(context, &output_tensors[2 * i + 1],
+                            backward_init_h_holder, backward_init_c_holder,
+                            backward_last_h_holder, backward_last_c_holder,
+                            backward_mask_tensor_list[i]);
+        }
       }
     }
     if (time_step % 2 == 0) {
