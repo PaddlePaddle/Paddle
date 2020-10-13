@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <chrono>  // NOLINT
 #include <memory>
 #include <string>
 #include <thread>  // NOLINT
@@ -123,7 +124,7 @@ void StartServer(const std::string& rpc_name) {
 
   g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
 
-  distributed::HeartBeatMonitor::Init(2, true, "w@grad");
+  //  distributed::HeartBeatMonitor::Init(1, true, "w@grad");
 
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
@@ -245,13 +246,14 @@ void StartCheckpointServer(const std::string& rpc_name) {
 
   auto meta = distributed::SparseMeta();
   meta.name = "embedding.block0";
-  meta.value_names = "Param";
-  meta.value_dims = "64";
-  meta.mode = "0";
+  meta.value_names = {"Param"};
+  meta.value_dims = {64};
+  meta.mode = distributed::Mode::training;
   meta.grad_name = "embedding@Grad";
-  meta.cached_varnames = "kSparseIds";
-  meta.initializer_attrs = "fill_constant&1.0";
+  meta.cached_varnames = {"kSparseIds"};
+  meta.initializer_attrs = {"fill_constant&1.0"};
   meta.entry = "none";
+
   metas.push_back(meta);
   distributed::LargeScaleKV::Init(metas);
 
@@ -278,32 +280,36 @@ void StartCheckpointServer(const std::string& rpc_name) {
 TEST(LARGE_SCALE_CHECKPOINT, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
+
   g_req_handler.reset(new distributed::RequestNotifyHandler(
-      distributed::DistributedMode::kAsync));
+      distributed::DistributedMode::kAsync, 1));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
+
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+
   PADDLE_ENFORCE_NE(client, nullptr,
                     platform::errors::InvalidArgument(
                         "Client Start Fail, Check Your Code & Env"));
 
-  std::thread server_thread(StartCheckpointServer, distributed::kRequestNotify);
-
+  std::thread server_thread(StartCheckpointServer,
+                            distributed::kRequestCheckpoint);
   g_rpc_service->WaitServerReady();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
-  framework::Scope scope;
-  platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
-
-  auto save_path = string::Sprintf("%s/%s/%s", "/tmp/large_scale_table/base",
-                                   "embedding", "embedding.block0");
+  auto save_path =
+      paddle::string::Sprintf("%s/%s/%s", "/tmp/large_scale_table/base",
+                              "embedding", "embedding.block0");
   int mode = 0;
   client->AsyncCheckpointNotify(ep, save_path, "embedding.block0", mode);
   client->Wait();
 
-  save_path = string::Sprintf("%s/%s/%s", "/tmp/large_scale_table/delta",
+  save_path =
+      paddle::string::Sprintf("%s/%s/%s", "/tmp/large_scale_table/delta",
                               "embedding", "embedding.block0");
   mode = 1;
   client->AsyncCheckpointNotify(ep, save_path, "embedding.block0", mode);
