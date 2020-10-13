@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cuda_runtime.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/allclose_op.h"
@@ -20,42 +21,50 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void AllcloseCUDAKernel(T* out_data, const T* in_a, const T* in_b,
-                                   const float rtol, const float atol,
-                                   bool equal_nan) {
+struct GetTensorValue<platform::CUDADeviceContext, T> {
+  T operator()(const framework::Tensor& tensor) const {
+    const T* data = tensor.data<T>();
+    T value;
+    cudaMemcpy(&value, data, sizeof(T), cudaMemcpyDeviceToHost);
+    return value;
+  }
+};
+
+template <typename T>
+__global__ void AllcloseCUDAKernel(const T* in_a, const T* in_b,
+                                   const double rtol, const double atol,
+                                   bool equal_nan, bool* out_data) {
   int tid = threadIdx.x;
   const T a = in_a[tid], b = in_b[tid];
-  T tol, dif;
-  double threshold = 1e-7;
   bool val;
+  __shared__ bool val_;
+  if (tid == 0) {
+    val_ = true;
+  }
+  __syncthreads();
   if (isnan(a) || isnan(b)) {
     val = equal_nan && isnan(a) == isnan(b);
   } else {
-    dif = fabs(fabs(a - b) - (atol + rtol * fabs(b)));
-    tol = (a > b ? a - b : b - a);
-    T tol2 = atol + (b > 0 ? rtol * b : (-rtol) * b);
-    printf("dif is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n", dif);
-    printf("tol is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n", tol);
-    printf("tol2 is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n",
-           tol2);
-    printf("rtol is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n",
-           rtol);
-    val = a == b ||
-          (a > b ? a - b : b - a) < atol + (b > 0 ? rtol * b : (-rtol) * b) ||
-          dif < threshold;
-    printf("val is >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %d\n", val);
+    T left = (a > b ? a - b : b - a);
+    T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+    T dif = (left > right ? left - right : right - left);
+    val = a == b || left <= right || dif <= 1e-15;
   }
-  out_data[tid] = val;
+  atomicAnd(reinterpret_cast<int*>(&val_), static_cast<int>(val));
+  __syncthreads();
+  if (tid == 0) {
+    *out_data = static_cast<bool>(val_);
+  }
 }
 
 template <typename T>
 struct AllcloseFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& out, const framework::Tensor& in,
-                  const framework::Tensor& other, const float rtol,
-                  const float atol, bool equal_nan) {
-    auto in_dims = in.dims().size();
-    auto other_dims = other.dims().size();
+                  const framework::Tensor& in, const framework::Tensor& other,
+                  const double rtol, const double atol, bool equal_nan,
+                  framework::Tensor* output) {
+    auto in_dims = in.numel();
+    auto other_dims = other.numel();
 
     PADDLE_ENFORCE_EQ(in_dims == other_dims, true,
                       platform::errors::InvalidArgument(
@@ -65,13 +74,12 @@ struct AllcloseFunctor<platform::CUDADeviceContext, T> {
                           in_dims, other_dims));
     const T* in_data = in.data<T>();
     const T* other_data = other.data<T>();
-    T* out_data = out.mutable_data<T>(ctx.GetPlace());
+    bool* out_data = output->mutable_data<bool>(ctx.GetPlace());
+    int grid = 1;
+    int block = in_dims;
 
-    int grid = in_dims;
-    int block = 1;
-
-    AllcloseCUDAKernel<T><<<grid, block, 0, ctx.stream()>>>(
-        out_data, in_data, other_data, rtol, atol, equal_nan);
+    AllcloseCUDAKernel<T><<<1, block, 0, ctx.stream()>>>(
+        in_data, other_data, rtol, atol, equal_nan, out_data);
   }
 };
 

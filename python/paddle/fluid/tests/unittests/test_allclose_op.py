@@ -22,19 +22,20 @@ class TestAllcloseOp(OpTest):
     def set_args(self):
         self.input = np.array([10000., 1e-07]).astype("float32")
         self.other = np.array([10000.1, 1e-08]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
     def setUp(self):
         self.set_args()
         self.op_type = "allclose"
-        self.inputs = {'Input': self.input, 'Other': self.other}
-        self.attrs = {
-            'rtol': self.rtol,
-            'atol': self.atol,
-            'equal_nan': self.equal_nan
+        self.inputs = {
+            'Input': self.input,
+            'Other': self.other,
+            "Rtol": self.rtol,
+            "Atol": self.atol
         }
+        self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
             'Out': np.array([
                 np.allclose(
@@ -52,37 +53,33 @@ class TestAllcloseOp(OpTest):
 
 class TestAllcloseOpSmallNum(TestAllcloseOp):
     def set_args(self):
-        print("THIS is case 0 .>>>>>>>>>>>>>>>>>>>>>>>>>")
-        self.input = np.array([1e-08]).astype("float32")
-        self.other = np.array([1e-09]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.input = np.array([10000., 1e-08]).astype("float32")
+        self.other = np.array([10000.1, 1e-09]).astype("float32")
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
 
 class TestAllcloseOpNanFalse(TestAllcloseOp):
     def set_args(self):
-        self.input = np.array([float('nan')]).astype("float32")
-        self.other = np.array([float('nan')]).astype("float32")
-        print("THIS is case 1 .>>>>>>>>>>>>>>>>>>>>>>>>>")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.input = np.array([1.0, float('nan')]).astype("float32")
+        self.other = np.array([1.0, float('nan')]).astype("float32")
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
 
 class TestAllcloseOpNanTrue(TestAllcloseOp):
     def set_args(self):
-        self.input = np.array([float('nan')]).astype("float32")
-        self.other = np.array([float('nan')]).astype("float32")
-        print("THIS is case 2 .>>>>>>>>>>>>>>>>>>>>>>>>>")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.input = np.array([1.0, float('nan')]).astype("float32")
+        self.other = np.array([1.0, float('nan')]).astype("float32")
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = True
 
 
 class TestAllcloseDygraph(unittest.TestCase):
     def test_api_case(self):
-        print("THIS is case 3 .>>>>>>>>>>>>>>>>>>>>>>>>>")
         paddle.disable_static()
         x_data = np.random.rand(10, 10)
         y_data = np.random.rand(10, 10)
@@ -96,8 +93,6 @@ class TestAllcloseDygraph(unittest.TestCase):
 
 class TestAllcloseError(unittest.TestCase):
     def test_input_dtype(self):
-        print("THIS is case 4 .>>>>>>>>>>>>>>>>>>>>>>>>>")
-
         def test_x_dtype():
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):

@@ -16,62 +16,53 @@
 #include <cmath>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
+struct GetTensorValue<platform::CPUDeviceContext, T> {
+  T operator()(const framework::Tensor& tensor) const {
+    return *(tensor.data<T>());
+  }
+};
+
+template <typename T>
 struct AllcloseFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& output, const framework::Tensor& in,
-                  const framework::Tensor& other, const float rtol,
-                  const float atol, bool equal_nan) {
+                  const framework::Tensor& in, const framework::Tensor& other,
+                  const double rtol, const double atol, bool equal_nan,
+                  framework::Tensor* output) {
     auto* in_a = in.data<T>();
     auto* in_b = other.data<T>();
-    auto* out_data = output.mutable_data<bool>(ctx.GetPlace());
+    auto* out_data = output->mutable_data<bool>(ctx.GetPlace());
     auto in_dims = in.numel();
     auto other_dims = other.numel();
-    printf("in_dims is :>>>>>>>>>>>>>>>>>>>>>>>>>>>>%ld\n", in_dims);
-
     PADDLE_ENFORCE_EQ(in_dims == other_dims, true,
                       platform::errors::InvalidArgument(
                           "Dims of input(a) and dims of other(b) should"
                           "be equal, but received the dims of input is : %d ,"
                           "received the dims of other is :%d. ",
                           in_dims, other_dims));
-
+    *out_data = true;
     for (int i = 0; i < in_dims; i++) {
       const T a = in_a[i], b = in_b[i];
       bool val;
-      T dif;
-      double threshold = 1e-7;
       if (std::isnan(a) || std::isnan(b)) {
-        val = equal_nan && isnan(a) == isnan(b);
+        val = equal_nan && std::isnan(a) == std::isnan(b);
       } else {
-        dif = fabs(fabs(a - b) - (atol + rtol * fabs(b)));
         T left = (a > b ? a - b : b - a);
         T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-        printf("dif is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n",
-               dif);
-        printf("left is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n",
-               left);
-        printf("right is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n",
-               right);
-        printf("rtol is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %.15f\n",
-               rtol);
-        val = a == b ||
-              (a > b ? a - b : b - a) <=
-                  atol + (b > 0 ? rtol * b : (-rtol) * b) ||
-              dif < threshold;
+        T dif = (left > right ? left - right : right - left);
+        val = a == b || left <= right || dif <= 1e-15;
       }
-      out_data[i] = val;
-      printf("val is>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: %d\n", val);
-      printf("in functor out_data[i]: %d\n", out_data[i]);
+      *out_data &= val;
     }
   }
 };
 
-template struct AllcloseFunctor<platform::CPUDeviceContext, float>;
+template struct AllcloseFunctor<platform::CPUDeviceContext, double>;
 
 class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -80,12 +71,9 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor, it's data type should be float32, float64.");
     AddInput("Other",
              "The input tensor, it's data type should be float32, float64.");
+    AddInput("Rtol", "The relative tolerance.");
+    AddInput("Atol", "The absolute tolerance.");
     AddOutput("Out", "The output tensor, it's data type is bool.");
-
-    AddAttr<float>("rtol", "The relative tolerance. Default: :math:`1e-5` .")
-        .SetDefault(1e-5);
-    AddAttr<float>("atol", "The absolute tolerance. Default: :math:`1e-8` .")
-        .SetDefault(1e-8);
     AddAttr<bool>("equal_nan",
                   "If :math:`True` , then two :math:`NaNs` will be "
                   "compared as equal. Default: :math:`False` .")
@@ -109,15 +97,11 @@ class AllcloseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      platform::errors::NotFound(
-                          "Input(Input) of allclose op should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Other"), true,
-                      platform::errors::NotFound(
-                          "Input(Other) of allclose op should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "The output(Out) of allclose op must not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Allclose");
+    OP_INOUT_CHECK(ctx->HasInput("Other"), "Input", "Other", "Allclose");
+    OP_INOUT_CHECK(ctx->HasInput("Rtol"), "Input", "Rtol", "Allclose");
+    OP_INOUT_CHECK(ctx->HasInput("Atol"), "Input", "Atol", "Allclose");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Allclose");
 
     auto input_dim = ctx->GetInputDim("Input");
     auto other_dim = ctx->GetInputDim("Other");
