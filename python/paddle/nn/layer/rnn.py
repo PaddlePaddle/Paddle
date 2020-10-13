@@ -1425,7 +1425,9 @@ class GRU(RNNBase):
 
     Parameters:
         input_size (int): The input size for the first layer's cell.
+        hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
+        direction (str, optional): The direction of the network. It can be "forward",
             "backward" and "bidirectional". When "bidirectional", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
