@@ -22,8 +22,9 @@ __all__ = ["Adagrad"]
 
 class Adagrad(Optimizer):
     """
-    The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
-    different learning rates to individual parameters.
+    The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
+    in paper: `Adaptive Subgradient Methods for Online Learning and
+    Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
     The parameter ``param_out`` update rule with gradient ``grad``:
 
@@ -33,8 +34,6 @@ class Adagrad(Optimizer):
 
         param\_out &= param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
 
-    Related paper: `Adaptive Subgradient Methods for Online Learning and
-    Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
     The original paper does not have the ``epsilon`` attribute. It is added here
     in our implementation as also proposed `Per-parameter adaptive learning rate
@@ -42,13 +41,13 @@ class Adagrad(Optimizer):
     for numerical stability to avoid the division by zero error.
 
     Args:
-        learning_rate (float|Variable): The learning rate used to update ``Parameter``.
+        learning_rate (float|Tensor): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameters (list, optional):  Iterable of ``Tensor`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
+	    This parameter is required in dygraph mode. \
+	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
 	    It canbe a float value as coeff of L2 regularization or \
 	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -57,9 +56,9 @@ class Adagrad(Optimizer):
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            some derived class of ``GradientClipBase`` . There are three cliping strategies, 
+            ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None, 
+            meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -73,9 +72,8 @@ class Adagrad(Optimizer):
             import numpy as np
 
             paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            inp = paddle.rand(shape=[10, 10])
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
             adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
