@@ -136,3 +136,17 @@ class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
         self.data_format = "NHWC"
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
+
+
+class TestConv2dTransposeMKLDNNWithDilationsExplicitPad(
+        TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.stride = [2, 1]
+        self.dilations = [1, 2]
+        self.groups = 1
+        self.input_size = [4, 3, 8, 7]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 4, 3]
+        self.pad = [1, 3, 2, 1]
+        self.padding_algorithm = "EXPLICIT"
