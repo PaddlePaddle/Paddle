@@ -1345,7 +1345,7 @@ def append_backward(loss,
             x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
             y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
             x_emb = paddle.static.nn.embedding(x, size=[100, 256])
-            y_predict = paddle.static.nn.fc(input=x_emb, size=1, act=None, name='my_fc')
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None, name='my_fc')
             loss = F.square_error_cost(input=y_predict, label=y)
             avg_loss = paddle.mean(loss)
 
