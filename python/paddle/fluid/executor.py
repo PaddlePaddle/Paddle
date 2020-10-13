@@ -479,7 +479,7 @@ class Executor(object):
     and single/multiple-CPU running.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
+        place(paddle.CPUPlace()|paddle.CUDAPlace(n)|None): This parameter represents
             which device the executor runs on. When this parameter is None, PaddlePaddle
             will set the default device according to its installation version. If Paddle
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
