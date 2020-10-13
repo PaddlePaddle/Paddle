@@ -595,6 +595,7 @@ def assign(input, output=None):
             return core.ops.assign(input)
         else:
             attrs = get_attrs(input)
+            print("attrs:{}".format(attrs))
             attrs_ = []
             for k, v in attrs.items():
                 attrs_.append(k)
