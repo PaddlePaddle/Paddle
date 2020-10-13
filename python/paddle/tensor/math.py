@@ -1324,32 +1324,34 @@ def log1p(x, name=None):
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
-	:alias_main: paddle.addcmul
-	:alias: paddle.addcmul,paddle.tensor.addcmul,paddle.tensor.math.addcmul
 
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
     tensor1, tensor2 should be broadcastable.
     The equation is:
     ..  math::
+
         out = input + value * tensor1 * tensor2
     Args:
-        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
-        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
         value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
-        out(Variable): The output result. A Tensor with the same data type as input's.
+        out(Tensor): The output result. A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
+          
           import paddle
-          import paddle.fluid as fluid
-          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
-          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
-          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
-          data = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+          input = paddle.ones([2,2])
+          tensor1 = paddle.ones([2,2])
+          tensor2 = paddle.ones([2,2])
+          out = paddle.addcmul(input, tensor1, tensor2, value=0.5)
+          print(out.numpy())
+          # [[1.5 1.5]
+          # [1.5 1.5]]
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
