@@ -472,14 +472,26 @@ def multiply(x, y, axis=-1, name=None):
     """
     op_type = 'elementwise_mul'
     act = None
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
             % (x.dtype, y.dtype))
 
     if in_dygraph_mode():
+        if not isinstance(x, (paddle.Tensor)):
+            x = paddle.to_tensor(x)
+        if not isinstance(y, (paddle.Tensor)):
+            y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
+
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        x = paddle.static.data(
+            name='x', shape=x.shape, dtype=x.dtype)
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        y = paddle.static.data(
+            name='y', shape=y.shape, dtype=y.dtype)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -1296,33 +1308,25 @@ def min(x, axis=None, keepdim=False, name=None):
 
 def log1p(x, name=None):
     """
-	:alias_main: paddle.log1p
-	:alias: paddle.log1p,paddle.tensor.log1p,paddle.tensor.math.log1p
-
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
+
     Args:
-        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+        Tensor, the natural log of the input Tensor computed element-wise.
 
     Examples:
         .. code-block:: python
+
             import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-            # Graph Organizing
-            x = fluid.data(name="x", shape=[2,1], dtype="float32")
-            res = paddle.log1p(x)
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-            # Execute
-            x_i = np.array([[0], [1]]).astype(np.float32)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
-            print(res_val) # [[0.], [0.6931472]]
+
+            data = paddle.to_tensor([[0], [1]], dtype='float32')
+            res = paddle.log1p(data)
+            # [[0.], [0.6931472]]
     """
 
     if in_dygraph_mode():
