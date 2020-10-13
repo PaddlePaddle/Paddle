@@ -54,11 +54,11 @@ def global_scope():
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy
 
-          fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
-          numpy.array(fluid.global_scope().find_var("data").get_tensor())
+          paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+          numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
     """
     return g_scope
 
@@ -94,12 +94,13 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy
+            paddle.enable_static()
 
-            new_scope = fluid.Scope()
-            with fluid.scope_guard(new_scope):
-                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            new_scope = paddle.static.Scope()
+            with paddle.static.scope_guard(new_scope):
+                 paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
             numpy.array(new_scope.find_var("data").get_tensor())
     """
 

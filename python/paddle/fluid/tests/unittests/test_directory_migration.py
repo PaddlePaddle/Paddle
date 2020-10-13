@@ -43,15 +43,14 @@ class TestDirectory(unittest.TestCase):
             'paddle.distributed.prepare_context', 'paddle.DataParallel',
             'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
             'paddle.jit.ProgramTranslator', 'paddle.jit.TranslatedLayer',
-            'paddle.jit.save', 'paddle.jit.load', 'paddle.SaveLoadConfig',
-            'paddle.NoamDecay', 'paddle.PiecewiseDecay',
-            'paddle.NaturalExpDecay', 'paddle.ExponentialDecay',
-            'paddle.InverseTimeDecay', 'paddle.PolynomialDecay',
-            'paddle.CosineDecay', 'paddle.static.Executor',
-            'paddle.static.global_scope', 'paddle.static.scope_guard',
-            'paddle.static.append_backward', 'paddle.static.gradients',
-            'paddle.static.BuildStrategy', 'paddle.static.CompiledProgram',
-            'paddle.static.ExecutionStrategy',
+            'paddle.jit.save', 'paddle.jit.load', 'paddle.NoamDecay',
+            'paddle.PiecewiseDecay', 'paddle.NaturalExpDecay',
+            'paddle.ExponentialDecay', 'paddle.InverseTimeDecay',
+            'paddle.PolynomialDecay', 'paddle.CosineDecay',
+            'paddle.static.Executor', 'paddle.static.global_scope',
+            'paddle.static.scope_guard', 'paddle.static.append_backward',
+            'paddle.static.gradients', 'paddle.static.BuildStrategy',
+            'paddle.static.CompiledProgram', 'paddle.static.ExecutionStrategy',
             'paddle.static.default_main_program',
             'paddle.static.default_startup_program', 'paddle.static.Program',
             'paddle.static.name_scope', 'paddle.static.program_guard',
@@ -64,12 +63,11 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.nn.conv3d', 'paddle.static.nn.conv3d_transpose',
             'paddle.static.nn.create_parameter',
             'paddle.static.nn.crf_decoding', 'paddle.static.nn.data_norm',
-            'paddle.static.nn.deformable_conv', 'paddle.static.nn.group_norm',
-            'paddle.static.nn.hsigmoid', 'paddle.static.nn.instance_norm',
-            'paddle.static.nn.layer_norm', 'paddle.static.nn.multi_box_head',
-            'paddle.static.nn.nce', 'paddle.static.nn.prelu',
-            'paddle.static.nn.row_conv', 'paddle.static.nn.spectral_norm',
-            'paddle.static.nn.embedding'
+            'paddle.static.nn.deform_conv2d', 'paddle.static.nn.group_norm',
+            'paddle.static.nn.instance_norm', 'paddle.static.nn.layer_norm',
+            'paddle.static.nn.multi_box_head', 'paddle.static.nn.nce',
+            'paddle.static.nn.prelu', 'paddle.static.nn.row_conv',
+            'paddle.static.nn.spectral_norm', 'paddle.static.nn.embedding'
         ]
 
         import_file = 'run_import_modules.py'
@@ -104,9 +102,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.imperative.TracedLayer', 'paddle.imperative.declarative',
             'paddle.imperative.ProgramTranslator',
             'paddle.imperative.TranslatedLayer', 'paddle.imperative.jit.save',
-            'paddle.imperative.jit.load',
-            'paddle.imperative.jit.SaveLoadConfig',
-            'paddle.imperative.NoamDecay'
+            'paddle.imperative.jit.load', 'paddle.imperative.NoamDecay'
             'paddle.imperative.PiecewiseDecay',
             'paddle.imperative.NaturalExpDecay',
             'paddle.imperative.ExponentialDecay',
