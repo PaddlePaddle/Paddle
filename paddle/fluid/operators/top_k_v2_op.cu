@@ -38,8 +38,8 @@ template <typename DeviceContext, typename T>
 class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(
-        platform::is_gpu_place(context.GetPlace()),
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument(
             "It must use CUDAPlace, you must check your device set."));
     auto* input = ctx.Input<Tensor>("X");
@@ -194,8 +194,8 @@ template <typename DeviceContext, typename T>
 class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(
-        platform::is_gpu_place(context.GetPlace()),
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
         platform::errors::InvalidArgument(
             "It must use CUDAPlace, you must check your device set."));
     auto* x = context.Input<Tensor>("X");
