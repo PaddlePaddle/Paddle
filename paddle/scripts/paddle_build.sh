@@ -557,7 +557,7 @@ EOF
         tmpfile=$tmp_dir/$tmpfile_rand
         set +ex
         ut_startTime_s=`date +%s`
-        get_quickly_disable_ut # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut|| echo "some error happen in get_quickly_disable_ut"# indicate whether the case was in quickly disable list 
         ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
@@ -894,7 +894,7 @@ function collect_failed_tests() {
 
 # getting qucik disable ut list 
 function get_quickly_disable_ut() {
-    pip install requests
+    python -m pip install requests
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
