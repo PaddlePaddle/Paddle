@@ -61,4 +61,4 @@ repos:
     rev: 3.8.3
     hooks:
     -   id: flake8
-        args: ['--max-line-length=100', '--extend-ignore=E203']
+        args: ['--extend-ignore=E203,W291,E501,W293']
