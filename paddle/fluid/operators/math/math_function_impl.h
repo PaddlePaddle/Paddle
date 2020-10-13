@@ -29,10 +29,8 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                framework::Tensor* tensor,
                                                T num) {
 #ifdef PADDLE_WITH_XPU
-  if (is_xpu_place(tensor->place())) {
-    framework::VisitDataType(tensor->type(),
-                             TensorSetConstantXPU<T>(tensor, num));
-  }
+  framework::VisitDataType(tensor->type(),
+                           TensorSetConstantXPU<T>(tensor, num));
 #else
   auto t = framework::EigenVector<T>::Flatten(*tensor);
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
