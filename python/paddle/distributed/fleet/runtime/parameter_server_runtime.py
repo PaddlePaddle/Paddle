@@ -301,12 +301,6 @@ class ParameterServerRuntime(RuntimeBase):
         if self.role_maker._is_heter_worker():
             return
 
-        if not model_dirname:
-            return
-
-        if not os.path.isdir(model_dirname):
-            raise ValueError("There is no directory named '%s'", model_dirname)
-
         sparse_varnames = self.compiled_strategy.get_sparse_varname_on_ps(False)
         sparse_related_optimize_varnames = []
         for var_name in sparse_varnames:
@@ -330,6 +324,12 @@ class ParameterServerRuntime(RuntimeBase):
                     sparse_related_optimize_varnames +
                     distributed_related_optimize_varnames),
                 fluid.default_main_program().list_vars()))
+
+        if not model_dirname:
+            return
+
+        if not os.path.isdir(model_dirname):
+            raise ValueError("There is no directory named '%s'", model_dirname)
 
         # load dense
         fluid.io.load_vars(
