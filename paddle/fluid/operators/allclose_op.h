@@ -24,7 +24,7 @@ using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 struct GetTensorValue {
-  T operator()(const platform::CUDADeviceContext& dev_ctx,
+  T operator()(const platform::DeviceContext& ctx,
                const framework::Tensor& tensor) const;
 };
 

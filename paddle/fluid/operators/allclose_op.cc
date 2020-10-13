@@ -38,16 +38,9 @@ struct AllcloseFunctor<platform::CPUDeviceContext, T> {
     auto* in_a = in.data<T>();
     auto* in_b = other.data<T>();
     auto* out_data = output->mutable_data<bool>(ctx.GetPlace());
-    auto in_dims = in.numel();
-    auto other_dims = other.numel();
-    PADDLE_ENFORCE_EQ(in_dims == other_dims, true,
-                      platform::errors::InvalidArgument(
-                          "Dims of input(a) and dims of other(b) should"
-                          "be equal, but received the dims of input is : %d ,"
-                          "received the dims of other is :%d. ",
-                          in_dims, other_dims));
+    auto num = in.numel();
     *out_data = true;
-    for (int i = 0; i < in_dims; i++) {
+    for (int i = 0; i < num; i++) {
       const T a = in_a[i], b = in_b[i];
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
