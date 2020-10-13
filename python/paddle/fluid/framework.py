@@ -5310,8 +5310,8 @@ class ParamBase(core.VarBase):
                 #   - data: [...] 
                 paddle.enable_static()
         """
-        return "Parameter containing:\n  {}\n  - stop_gradient: {}".format(
-            super(ParamBase, self).__str__(), self.stop_gradient)
+        return "Parameter containing:\n{tensor}".format(
+            tensor=super(ParamBase, self).__str__())
 
     __repr__ = __str__
 
