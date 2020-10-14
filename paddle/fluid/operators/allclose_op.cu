@@ -35,23 +35,23 @@ struct GetTensorValue<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-__global__ void AllcloseCUDAKernel(const T* in_a, const T* in_b,
+__global__ void AllcloseCUDAKernel(const T* in_data, const T* other_data,
                                    const double rtol, const double atol,
                                    bool equal_nan, int num, bool* out_data) {
-  unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid == 0) *out_data = true;
-  __syncthreads();
-  const T a = in_a[tid], b = in_b[tid];
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
-  if (isnan(a) || isnan(b)) {
-    val = equal_nan && isnan(a) == isnan(b);
-  } else {
-    T left = (a > b ? a - b : b - a);
-    T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-    T diff = (left > right ? left - right : right - left);
-    val = a == b || left <= right || diff <= 1e-15;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const T a = in_data[i], b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      T left = (a > b ? a - b : b - a);
+      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      T diff = (left > right ? left - right : right - left);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    if (!val) *out_data = false;
   }
-  if (val == 0 && tid < num) *out_data = false;
 }
 
 template <typename T>
@@ -67,8 +67,8 @@ struct AllcloseFunctor<platform::CUDADeviceContext, T> {
     int block = 1024;
     int grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
-
-    AllcloseCUDAKernel<T><<<grid, block, 1024 * sizeof(T), dev_ctx.stream()>>>(
+    cudaMemset(out_data, true, sizeof(bool));
+    AllcloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, other_data, rtol, atol, equal_nan, num, out_data);
   }
 };

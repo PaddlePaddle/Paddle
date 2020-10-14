@@ -140,5 +140,15 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
         self.equal_nan = False
 
 
+class TestAllcloseOpLargeDimInput(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array(np.zeros([2048, 1024])).astype("float64")
+        self.other = np.array(np.zeros([2048, 1024])).astype("float64")
+        self.input[-1][-1] = 100
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
+        self.equal_nan = False
+
+
 if __name__ == "__main__":
     unittest.main()
