@@ -73,9 +73,9 @@ def param_guard(parameters):
                     # Check whether has been created before.
                     if var_base.name in var_base.block.vars:
                         new_var = var_base.block.vars[var_base.name]
-                    # Note(Aurelius84): Convert VarBase in self._buffers into Variabe with
+                    # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
                     # same attributes and set persistable=True to allow saving this var.
-                    # Because users can create a VarBase in `__init__`  like a
+                    # Because users can create a VarBase in `__init__`  with `add_buffer(name, tensor)` like a
                     # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
                     # and necessary for inferring. It will be pruned if it's not necessary for inferring.
                     else:

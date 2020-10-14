@@ -193,8 +193,9 @@ class BMN(fluid.dygraph.Layer):
         sample_mask = get_interp1d_mask(self.tscale, self.dscale,
                                         self.prop_boundary_ratio,
                                         self.num_sample, self.num_sample_perbin)
-        self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
-        self.sample_mask.stop_gradient = True
+        sample_mask = fluid.dygraph.base.to_variable(sample_mask)
+        sample_mask.stop_gradient = True
+        self.register_buffer("sample_mask", sample_mask, False)
 
         self.p_conv3d1 = fluid.dygraph.Conv3D(
             num_channels=128,

@@ -1009,29 +1009,7 @@ class Layer(core.Layer):
                         .format(name, type(value).__name__))
                 layers[name] = None
             else:
-                _buffers = self.__dict__.get('_buffers', None)
-                if type(value) == core.VarBase:
-                    if _buffers is None:
-                        raise ValueError(
-                            "super(YourLayer, self).__init__() should be called first"
-                        )
-                    _remove_if_exist(self.__dict__, self._parameters,
-                                     self._sub_layers)
-                    # Set persistable=False by default. Only `register_buffer` can
-                    # add a persistable buffer.
-                    if name not in self._buffers:
-                        self._non_persistable_buffer_names_set.add(name)
-                    _buffers[name] = value
-                elif _buffers is not None and name in _buffers:
-                    if value is not None:
-                        raise TypeError(
-                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
-                            .format(name, type(value).__name__))
-                    # Assigning None will remove the buffer, but if re-assign a new varBase to it,
-                    # it will be remarked as a buffer with same `persistable` attribute.
-                    _buffers[name] = None
-                else:
-                    object.__setattr__(self, name, value)
+                object.__setattr__(self, name, value)
 
     def __delattr__(self, name):
         if name in self._parameters:
