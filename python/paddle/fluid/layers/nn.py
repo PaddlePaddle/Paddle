@@ -10897,7 +10897,7 @@ def slice(input, axes, starts, ends):
             Then:
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
     Args:
-        input (Tensor): A ``Tensor`` or ``LoDTensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
         starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.
@@ -10907,7 +10907,7 @@ def slice(input, axes, starts, ends):
                 It represents ending indices of corresponding axis in ``axes``.
 
     Returns:
-        Tensor:  A ``Tensor`` or ``LoDTensor``. The data type is same as ``input``.
+        Tensor:  A ``Tensor``. The data type is same as ``input``.
 
     Raises:
         TypeError: The type of ``starts`` must be list, tuple or Tensor.
