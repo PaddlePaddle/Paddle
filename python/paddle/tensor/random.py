@@ -115,8 +115,8 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
             out1 = paddle.multinomial(x, num_samples=5, replacement=True)
             print(out1.numpy())
-            # [[3 3 1 1 0]
-            # [0 0 0 0 1]]
+            # [[3, 3, 1, 1, 0]
+            # [0, 0, 0, 0, 1]]
 
             # out2 = paddle.multinomial(x, num_samples=5)
             # OutOfRangeError: When replacement is False, number of samples
@@ -124,8 +124,8 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
             out3 = paddle.multinomial(x, num_samples=3)
             print(out3.numpy())
-            # [[0 2 3]
-            # [0 1 3]]
+            # [[0, 2, 3]
+            # [0, 1, 3]]
 
     """
 
