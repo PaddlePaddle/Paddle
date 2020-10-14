@@ -43,8 +43,6 @@ __host__ __device__ void send_error_msg(char* msg, char* file, int line) {
   }
 }
 
-extern "C" {
-
 char ifCudaFail() {
   char occur[1];
   PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -59,7 +57,6 @@ void get_msg_from_cuda(char* msg, char* file, int* line) {
   snprintf(msg, __LEN_ERROR_MSG, temp._CudaErrorMsg);
   snprintf(file, __LEN_ERROR_MSG, temp._file);
   *line = temp._line;
-}
 }
 #endif  // PADDLE_CUDA_KERNEL_CHECK
 #endif  // PADDLE_WITH_CUDA

@@ -32,7 +32,7 @@
         get_msg_from_cuda(msg, file, &line);                        \
         char err_msg_temp[__LEN_ERROR_MSG+32]={};                   \
         snprintf(err_msg_temp, __LEN_ERROR_MSG,                     \
-        "OutOfRange:error(11), %s", msg);                           \
+        "Error:%s", msg);                           \
         throw ::paddle::platform::EnforceNotMet(err_msg_temp,       \
         file, line);                                                \
       }                                                             \
@@ -48,11 +48,11 @@
 
 __device__ __host__ void send_error_msg(char*msg, char* file, int line);
 
-extern "C" {
+
 
   char  ifCudaFail();
   void  get_msg_from_cuda(char* msg, char* file, int*line);
-}
+
 
 #define PADDLE_ENFORCE_CUDA_KERNEL _PADDLE_ENFORCE_CUDA_KERNEL
 
