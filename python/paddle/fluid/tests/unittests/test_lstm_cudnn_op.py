@@ -493,12 +493,13 @@ class TestCUDNNLstmCpu5(TestCUDNNLstmCpu):
         self.sequence_length = None
 
 
-"""
-class TestCUDNNLstmCpu2(TestCUDNNLstmCpu):
+class TestCUDNNLstmCpu6(TestCUDNNLstmCpu):
     def set_attrs(self):
-        self.is_bidirec = True 
+        self.is_bidirec = True
         self.num_layers = 2
 
+
+"""
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
