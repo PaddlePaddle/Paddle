@@ -1027,9 +1027,16 @@ class RNNBase(LayerList):
                                               self.num_directions)
                 layer_idx = i // 4
                 self._all_weights[offset + layer_idx * 2 + i % 2] = param
-            # wrap using a list to avoid registed into buffer and saving, maybe
-            # need a better way to handle this later.
-            self._flat_weight = [self.create_variable(dtype=params[0].dtype)]
+            # Wrap using a list to avoid registed into params and saving, maybe
+            # need a better way to handle this later. Use `create_parameter` to
+            # add both to main_program and startup_program for static-graph.
+            # Use Constant initializer to avoid make effect on random generator.
+            self._flat_weight = [
+                self.create_parameter(
+                    shape=[np.sum(shape)],
+                    dtype=params[0].dtype,
+                    default_initializer=I.Constant(0.0))
+            ]
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
