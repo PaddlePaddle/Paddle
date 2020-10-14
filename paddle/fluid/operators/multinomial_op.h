@@ -46,13 +46,18 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
       prob_value = in_data[i * num_categories + j];
       PADDLE_ENFORCE_GE(
           prob_value, 0.0,
+          platform::errors::OutOfRange("The input of multinomial distribution "
+                                       "should be >= 0, but got %f",
+                                       prob_value));
+      PADDLE_ENFORCE_EQ(
+          std::isinf(static_cast<double>(prob_value)), false,
           platform::errors::OutOfRange(
-              "The input of multinomial distribution should be >= 0"));
-      PADDLE_ENFORCE_EQ((std::isinf(static_cast<double>(prob_value)) ||
-                         std::isnan(static_cast<double>(prob_value))),
-                        false, platform::errors::OutOfRange(
-                                   "The input of multinomial distribution "
-                                   "shoud not be infinity or NaN"));
+              "The input of multinomial distribution shoud not be infinity"));
+      PADDLE_ENFORCE_EQ(
+          std::isnan(static_cast<double>(prob_value)), false,
+          platform::errors::OutOfRange(
+              "The input of multinomial distribution shoud not be NaN"));
+
       probs_sum += prob_value;
       if (prob_value == 0) {
         num_zeros += 1;
