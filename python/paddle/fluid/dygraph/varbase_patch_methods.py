@@ -226,7 +226,6 @@ def monkey_patch_varbase():
 
         return self.gradient()
 
-    @framework.dygraph_only
     @property
     def version(self):
         """
