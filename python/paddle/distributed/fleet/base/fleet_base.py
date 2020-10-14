@@ -917,6 +917,24 @@ class Fleet(object):
         else:
             return self._context["valid_strategy"]
 
+    def _get_applied_meta_list(self):
+        if "applied_meta_list" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before this function is called"
+            )
+            return []
+        else:
+            return self._context["applied_meta_list"]
+
+    def _get_applied_graph_list(self):
+        if "applied_graph_list" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before this function is called"
+            )
+            return []
+        else:
+            return self._context["applied_graph_list"]
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -1034,6 +1052,12 @@ class Fleet(object):
             copy_user_defined_strategy, can_not_apply_optimizer_list)
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
+
+        applied_meta_list = self.strategy_compiler._get_applied_meta_list()
+        applied_graph_list = self.strategy_compiler._get_applied_graph_list()
+
+        context['applied_meta_list'] = applied_meta_list
+        context['applied_graph_list'] = applied_graph_list
 
         self._context = context
 

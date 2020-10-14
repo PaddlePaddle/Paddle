@@ -16,6 +16,9 @@ import unittest
 import paddle
 import os
 import paddle.fluid as fluid
+import paddle.distributed.fleet as fleet
+
+paddle.enable_static()
 
 
 class TestFleetBase(unittest.TestCase):
@@ -27,7 +30,6 @@ class TestFleetBase(unittest.TestCase):
                        "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_fleet_init(self):
-        import paddle.distributed.fleet as fleet
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["POD_IP"] = "127.0.0.1"
@@ -39,6 +41,36 @@ class TestFleetBase(unittest.TestCase):
         fleet.init(is_collective=False)
         self.assertRaises(Exception, fleet.init, is_collective="F")
         self.assertRaises(Exception, fleet.init, role_maker="F")
+
+    def test_fleet_get_applied_optimizer(self):
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32')
+        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+
+        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y)
+        avg_cost = paddle.fluid.layers.mean(x=cost)
+
+        fleet.init(is_collective=True)
+
+        meta_list = fleet._get_applied_meta_list()
+        graph_list = fleet._get_applied_graph_list()
+        # not called minimize function
+        self.assertEqual(len(meta_list), 0)
+        self.assertEqual(len(graph_list), 0)
+
+        strategy = fleet.DistributedStrategy()
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        meta_list = fleet._get_applied_meta_list()
+        graph_list = fleet._get_applied_graph_list()
+        self.assertEqual(len(meta_list), 0)
+        self.assertEqual(len(graph_list), 1)
 
 
 if __name__ == "__main__":
