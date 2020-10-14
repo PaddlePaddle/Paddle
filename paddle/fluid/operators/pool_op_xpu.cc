@@ -26,7 +26,8 @@ xpu::Pooling_t XPUPoolingType(const std::string& pooltype, bool exclusive,
       return xpu::Pooling_t::AVG_WITH_PAD;
     }
   } else {
-    PADDLE_THROW("Unsupport pooling type in xpu");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Pool op only supports 2D and 3D input."));
   }
 }
 template <typename DeviceContext, typename T>
@@ -138,15 +139,16 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     int r =
         xpu::memset(dev_ctx.x_context(), reinterpret_cast<void**>(input_grad),
                     zero, in_x_grad->numel() * sizeof(float));
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::InvalidArgument("pool2d grad XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                      platform::errors::InvalidArgument(
+                          "There are pool2d grad XPU kernel error raised!"));
     r = xpu::pooling_backward(dev_ctx.x_context(), input, output, index_data,
                               output_grad, input_grad, pool_type, c, in_h, in_w,
                               pad_left, pad_right, pad_up, pad_down, win_h,
                               win_w, stride_h, stride_w, out_h, out_w);
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+                      platform::errors::InvalidArgument(
+                          "There are pool2d grad XPU kernel error raised!"));
   }
 };
 

@@ -50,13 +50,14 @@ class StackXPUKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < n; ++i) {
       ((const void**)x_datas_host)[i] = x[i]->data<T>();
     }
-    memory::Copy(boost::get<platform::XPUPlace>(ctx.GetPlace()), x_datas_device,
-                 platform::CPUPlace(), x_datas_host, n * sizeof(void*));
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                 x_datas_device, platform::CPUPlace(), x_datas_host,
+                 n * sizeof(void*));
     int r = xpu::stack_forward<float>(dev_ctx.x_context(), pre, post, n,
                                       x_datas_device, y_data);
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::InvalidArgument("stack XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                      platform::errors::InvalidArgument(
+                          "There are stack XPU kernel error raised!"));
     dev_ctx.Wait();
     std::free(x_datas_host);
     xpu_free(x_datas_device);
