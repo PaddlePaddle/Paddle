@@ -605,8 +605,6 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     """
-	:alias_main: paddle.fill_constant
-	:alias: paddle.tensor.fill_constant, paddle.tensor.creation.fill_constant
 
     This OP creates a Tensor with specified `shape` and `dtype`, and
     initializes it with a constant specified by `value`.
@@ -715,7 +713,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     return out
 
 
-@deprecated(since='1.8.0', update_to="paddle.fill_constant")
+@deprecated(since='1.8.0', update_to="paddle.fluid.layers.fill_constant")
 @templatedoc()
 def fill_constant_batch_size_like(input,
                                   shape,
@@ -1228,7 +1226,7 @@ def has_inf(x):
           
           import paddle
           data = paddle.randn(shape=[4, 32, 32], dtype="float32")
-          res = paddle.has_inf(data)
+          res = paddle.fluid.layers.has_inf(data)
           # [False]
 
     """
@@ -1257,7 +1255,7 @@ def has_nan(x):
     
           import paddle
           data = paddle.randn(shape=[2,3], dtype="float32")
-          res = paddle.has_nan(data)
+          res = paddle.fluid.layers.has_nan(data)
           # [False]
 
     """
