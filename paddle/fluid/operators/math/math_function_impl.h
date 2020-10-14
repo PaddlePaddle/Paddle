@@ -34,8 +34,7 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                              TensorSetConstantXPU<T>(tensor, num));
   }
 #endif
-  if (context.GetPlace() == platform::CPUPlace() ||
-      context.GetPlace() == platform::CUDAPlace()) {
+  if (!(context.GetPlace() == platform::XPUPlace())) {
     auto t = framework::EigenVector<T>::Flatten(*tensor);
     t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
   }
