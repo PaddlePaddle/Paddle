@@ -31,6 +31,10 @@ class DGCOptimizer(MetaOptimizerBase):
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
         opt = self.inner_opt
+
+        if not self.role_maker._is_collective:
+            return
+
         if not isinstance(opt, Momentum):
             return
 
