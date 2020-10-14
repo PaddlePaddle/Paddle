@@ -148,55 +148,23 @@ class SparseTensorLoadKernel : public paddle::framework::OpKernel<T> {
 
       void *buf;
       auto ctx = platform::CPUDeviceContext();
-      if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
-          platform::is_xpu_place(dev_ctx.GetPlace())) {
-#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
-        Tensor cpu_tensor;
-        cpu_tensor.Resize(paddle::framework::make_ddim(shape));
-        paddle::framework::VisitDataType(
-            desc.data_type(),
-            DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
-        auto line_size = paddle::framework::SizeOfType(desc.data_type());
-        auto total_line = tensor->numel();
-        char *cur_buf = static_cast<char *>(buf);
-        char *temp_row = new char[line_size];
-        for (size_t line_index = 0;
-             line_index < static_cast<size_t>(total_line); ++line_index) {
-          is.read(temp_row, line_size);
-          if (static_cast<int64_t>(line_index) % node_num == node_index) {
-            memcpy(cur_buf, temp_row, line_size);
-            cur_buf += line_size;
-          }
-        }
-        auto dst_place = dev_ctx.GetPlace();
-        paddle::framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-#else
-        if (platform::is_gpu_place(dev_ctx.GetPlace())) {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "CUDAPlace is not supported when not compiled with CUDA"));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "XPUPlace is not supported when not compiled with XPU"));
-        }
-#endif
-      } else {
-        paddle::framework::VisitDataType(
-            desc.data_type(),
-            DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
 
-        auto line_size =
-            line_numel * paddle::framework::SizeOfType(desc.data_type());
-        char *cur_buf = static_cast<char *>(buf);
-        char *temp_row = new char[line_size];
-        VLOG(4) << "TensorFromStream: line_size " << line_size;
-        VLOG(4) << "TensorFromStream: total_line " << total_line;
-        for (size_t line_index = 0;
-             line_index < static_cast<size_t>(total_line); ++line_index) {
-          is.read(temp_row, line_size);
-          if (static_cast<int64_t>(line_index) % node_num == node_index) {
-            memcpy(cur_buf, temp_row, line_size);
-            cur_buf += line_size;
-          }
+      paddle::framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
+
+      auto line_size =
+          line_numel * paddle::framework::SizeOfType(desc.data_type());
+      char *cur_buf = static_cast<char *>(buf);
+      char *temp_row = new char[line_size];
+      VLOG(4) << "TensorFromStream: line_size " << line_size;
+      VLOG(4) << "TensorFromStream: total_line " << total_line;
+      for (size_t line_index = 0; line_index < static_cast<size_t>(total_line);
+           ++line_index) {
+        is.read(temp_row, line_size);
+        if (static_cast<int64_t>(line_index) % node_num == node_index) {
+          memcpy(cur_buf, temp_row, line_size);
+          cur_buf += line_size;
         }
       }
     }

@@ -114,20 +114,6 @@ class ParameterServerRuntime(RuntimeBase):
             check_vars.append(each_var)
 
         executor.run(load_prog)
-        # check var shape
-        for each_var in check_vars:
-            if not isinstance(each_var, Parameter):
-                continue
-            var_temp = paddle.fluid.global_scope().find_var(each_var.name)
-            assert var_temp != None, "can't not find var: " + each_var.name
-            new_shape = (np.array(var_temp.get_tensor())).shape
-            assert each_var.name in orig_para_shape, each_var.name + "MUST in var list"
-            orig_shape = orig_para_shape.get(each_var.name)
-            if new_shape != orig_shape:
-                raise RuntimeError(
-                    "Variable's shape does not match, the Program requires a parameter with the shape of ({}), "
-                    "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".
-                    format(orig_shape, each_var.name, new_shape))
 
     def _load_distributed_params(self, dirname, varnames):
         from paddle.fluid.communicator import LargeScaleKV
