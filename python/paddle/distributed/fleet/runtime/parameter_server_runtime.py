@@ -21,6 +21,7 @@ from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.framework import Variable, Parameter
 
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
@@ -69,7 +70,52 @@ class ParameterServerRuntime(RuntimeBase):
             self.async_strategy, self.role_maker)
         return compiled_config
 
-    def _load_sparse_params(self, dirname, varnames):
+    def _load_sparse_params(self,
+                            executor,
+                            dirname,
+                            varnames,
+                            main_program=None):
+        assert vars != None
+        check_vars = []
+        load_prog = Program()
+        load_block = load_prog.global_block()
+
+        def _in_varnames(var):
+            return var.name in varnames
+
+        load_vars = list(
+            filter(_in_varnames, fluid.default_main_program().list_vars()))
+        if main_program is None:
+            main_program = self.origin_main_program
+
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
+        for each_var in load_vars:
+            assert isinstance(each_var, Variable)
+
+            origin_varname, _, _ = _get_varname_parts(each_var.name)
+
+            new_var = fluid.io._clone_var_in_block_(load_block, each_var)
+            var_path = os.path.join(dirname, origin_varname)
+            if not os.path.exists(var_path):
+                raise ValueError("SelectedRows var {} can not find at {}".
+                                 format(new_var.name, var_path))
+
+            if os.path.isfile(var_path):
+                load_block.append_op(
+                    type='sparse_tensor_load',
+                    inputs={},
+                    outputs={'Out': [new_var]},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_varname),
+                        'node_index': self.role_maker._server_index(),
+                        'node_num': self.role_maker._server_num(),
+                        'shape': each_var.shape
+                    })
+            check_vars.append(each_var)
+
+        executor.run(load_prog)
+
+    def _load_distributed_params(self, dirname, varnames):
         from paddle.fluid.communicator import LargeScaleKV
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
 
@@ -248,34 +294,54 @@ class ParameterServerRuntime(RuntimeBase):
             self._init_worker()
             return
 
+        sparse_varnames = self.compiled_strategy.get_sparse_varname_on_ps(False)
+        sparse_related_optimize_varnames = []
+        for var_name in sparse_varnames:
+            sparse_related_optimize_varnames += self.compiled_strategy.get_optimize_varname_on_ps(
+                var_name)
+        sparse_related_optimize_varnames = list(
+            set(sparse_related_optimize_varnames))
+        distribtued_varnames = self.compiled_strategy.get_sparse_varname_on_ps(
+            True)
+        distributed_related_optimize_varnames = []
+        for var_name in distribtued_varnames:
+            distributed_related_optimize_varnames += self.compiled_strategy.get_optimize_varname_on_ps(
+                var_name)
+        distributed_related_optimize_varnames = list(
+            set(distributed_related_optimize_varnames))
+
+        remaining_vars = list(
+            filter(
+                ParameterServerRuntime.__exclude_vars(
+                    sparse_varnames + distribtued_varnames +
+                    sparse_related_optimize_varnames +
+                    distributed_related_optimize_varnames),
+                fluid.default_main_program().list_vars()))
+
         if not model_dirname:
             return
 
         if not os.path.isdir(model_dirname):
             raise ValueError("There is no directory named '%s'", model_dirname)
 
-        sparse_varnames = self.compiled_strategy.get_sparse_varname_on_ps(True)
-
-        distribtued_varnames = self.compiled_strategy.get_sparse_varname_on_ps(
-            False)
-
-        remaining_vars = list(
-            filter(
-                ParameterServerRuntime.__exclude_vars(sparse_varnames +
-                                                      distribtued_varnames),
-                fluid.default_main_program().list_vars()))
-
+        # load dense
         fluid.io.load_vars(
             executor,
             main_program=fluid.default_main_program(),
             dirname=model_dirname,
             vars=remaining_vars)
 
+        # load sparse
         self._load_sparse_params(
-            dirname=model_dirname, varnames=sparse_varnames)
+            executor=executor,
+            dirname=model_dirname,
+            varnames=sparse_varnames + sparse_related_optimize_varnames)
 
-        # todo(tangwei12) load distributed vars
-        # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
+        # load large scale
+        self._load_distributed_params(
+            dirname=model_dirname,
+            varnames=distribtued_varnames +
+            distributed_related_optimize_varnames)
 
     def _run_server(self):
         executor = self._get_executor()

@@ -86,8 +86,10 @@ void RecvSparseLodTensor(const CommContext &rpc_ctx,
     height += splited_var->Get<framework::LoDTensor>().dims()[0];
   }
 
-  PADDLE_ENFORCE_EQ(merged_var->Get<framework::LoDTensor>().dims()[0], height,
-                    "recved var must has same dims with local var");
+  PADDLE_ENFORCE_EQ(
+      merged_var->Get<framework::LoDTensor>().dims()[0], height,
+      platform::errors::InvalidArgument(
+          "Received variable must has same dimension with local variable."));
 
   auto *merged_t = merged_var->GetMutable<framework::LoDTensor>();
   auto *merged_d = merged_t->mutable_data<float>(cpu_place);
