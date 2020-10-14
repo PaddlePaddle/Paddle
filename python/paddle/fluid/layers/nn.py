@@ -13598,7 +13598,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                     # User-defined debug functions that print out the input Tensor
                     paddle.static.nn.py_func(func=debug_func, x=hidden, out=None)
 
-                prediction = paddle.static.nn.fc(hidden, size=10, act='softmax')
+                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
                 loss = paddle.static.nn.cross_entropy(input=prediction, label=label)
                 return paddle.mean(loss)
 
