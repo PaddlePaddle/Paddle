@@ -38,7 +38,7 @@ class TestPad3dOp(OpTest):
                 "int32")
         else:
             self.attrs['paddings'] = np.array(self.paddings).flatten().astype(
-                "int32")
+                "int32c")
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -313,8 +313,6 @@ class TestPadAPI(unittest.TestCase):
             self.check_static_result_4(place=place)
 
     def test_dygraph_1(self):
-        paddle.disable_static()
-
         input_shape = (1, 2, 3, 4, 5)
         pad = [1, 2, 1, 1, 3, 4]
         mode = "constant"
@@ -341,8 +339,6 @@ class TestPadAPI(unittest.TestCase):
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
 
     def test_dygraph_2(self):
-        paddle.disable_static()
-
         input_shape = (2, 3, 4, 5)
         pad = [1, 1, 3, 4]
         mode = "constant"
@@ -371,8 +367,6 @@ class TestPadAPI(unittest.TestCase):
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
 
     def test_dygraph_2(self):
-        paddle.disable_static()
-
         input_shape = (2, 3, 4, 5)
         pad = [1, 1, 3, 4]
         mode = "constant"
@@ -400,8 +394,6 @@ class TestPadAPI(unittest.TestCase):
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
 
     def test_dygraph_3(self):
-        paddle.disable_static()
-
         input_shape = (3, 4, 5)
         pad = [3, 4]
         mode = "constant"
@@ -455,6 +447,8 @@ class TestPad1dAPI(unittest.TestCase):
             out = np.pad(input_data, pad, mode=mode)
         elif mode == "replicate":
             out = np.pad(input_data, pad, mode="edge")
+        elif mode == "circular":
+            out = np.pad(input_data, pad, mode="wrap")
 
         return out
 
@@ -464,16 +458,16 @@ class TestPad1dAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_class(self):
-        paddle.disable_static()
         for place in self.places:
             input_shape = (3, 4, 5)
             pad = [1, 2]
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_reflection = nn.ReflectionPad1d(padding=pad)
-            pad_replication = nn.ReplicationPad1d(padding=pad)
-            pad_constant = nn.ConstantPad1d(padding=pad, value=value)
+            pad_reflection = nn.Pad1D(padding=pad, mode="reflect")
+            pad_replication = nn.Pad1D(padding=pad, mode="replicate")
+            pad_constant = nn.Pad1D(padding=pad, mode="constant")
+            pad_circular = nn.Pad1D(padding=pad, mode="circular")
 
             data = paddle.to_tensor(input_data)
 
@@ -490,6 +484,11 @@ class TestPad1dAPI(unittest.TestCase):
             output = pad_constant(data)
             np_out = self._get_numpy_out(
                 input_data, pad, "constant", value=value, data_format="NCL")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
+
+            output = pad_circular(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "circular", value=value, data_format="NCL")
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
@@ -521,6 +520,8 @@ class TestPad2dAPI(unittest.TestCase):
             out = np.pad(input_data, pad, mode=mode)
         elif mode == "replicate":
             out = np.pad(input_data, pad, mode="edge")
+        elif mode == "circular":
+            out = np.pad(input_data, pad, mode="wrap")
 
         return out
 
@@ -530,17 +531,16 @@ class TestPad2dAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_class(self):
-        paddle.disable_static()
         for place in self.places:
             input_shape = (3, 4, 5, 6)
             pad = [1, 2, 2, 1]
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_reflection = nn.ReflectionPad2d(padding=pad)
-            pad_replication = nn.ReplicationPad2d(padding=pad)
-            pad_constant = nn.ConstantPad2d(padding=pad, value=value)
-            pad_zero = nn.ZeroPad2d(padding=pad)
+            pad_reflection = nn.Pad2D(padding=pad, mode="reflect")
+            pad_replication = nn.Pad2D(padding=pad, mode="replicate")
+            pad_constant = nn.Pad2D(padding=pad, mode="constant")
+            pad_circular = nn.Pad2D(padding=pad, mode="circular")
 
             data = paddle.to_tensor(input_data)
 
@@ -559,9 +559,9 @@ class TestPad2dAPI(unittest.TestCase):
                 input_data, pad, "constant", value=value, data_format="NCHW")
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
-            output = pad_zero(data)
+            output = pad_circular(data)
             np_out = self._get_numpy_out(
-                input_data, pad, "constant", value=0, data_format="NCHW")
+                input_data, pad, "circular", value=value, data_format="NCHW")
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
@@ -595,6 +595,8 @@ class TestPad3dAPI(unittest.TestCase):
             out = np.pad(input_data, pad, mode=mode)
         elif mode == "replicate":
             out = np.pad(input_data, pad, mode="edge")
+        elif mode == "circular":
+            out = np.pad(input_data, pad, mode="wrap")
 
         return out
 
@@ -604,17 +606,23 @@ class TestPad3dAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_class(self):
-        paddle.disable_static()
         for place in self.places:
             input_shape = (3, 4, 5, 6, 7)
             pad = [1, 2, 2, 1, 1, 0]
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_replication = nn.ReplicationPad3d(padding=pad)
-            pad_constant = nn.ConstantPad3d(padding=pad, value=value)
+            pad_reflection = nn.Pad3D(padding=pad, mode="reflect")
+            pad_replication = nn.Pad3D(padding=pad, mode="replicate")
+            pad_constant = nn.Pad3D(padding=pad, mode="constant")
+            pad_circular = nn.Pad3D(padding=pad, mode="circular")
 
             data = paddle.to_tensor(input_data)
+
+            output = pad_reflection(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCDHW")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
 
             output = pad_replication(data)
             np_out = self._get_numpy_out(
@@ -624,6 +632,11 @@ class TestPad3dAPI(unittest.TestCase):
             output = pad_constant(data)
             np_out = self._get_numpy_out(
                 input_data, pad, "constant", value=value, data_format="NCDHW")
+            self.assertTrue(np.allclose(output.numpy(), np_out))
+
+            output = pad_circular(data)
+            np_out = self._get_numpy_out(
+                input_data, pad, "circular", value=value, data_format="NCDHW")
             self.assertTrue(np.allclose(output.numpy(), np_out))
 
 
@@ -673,32 +686,30 @@ class TestPad3dOpError(unittest.TestCase):
 class TestPadDataformatError(unittest.TestCase):
     def test_errors(self):
         def test_ncl():
-            paddle.disable_static(paddle.CPUPlace())
             input_shape = (1, 2, 3, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
             data = np.arange(
                 np.prod(input_shape), dtype=np.float64).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad1d(padding=pad, data_format="NCL")
+            my_pad = nn.Pad1D(padding=pad, mode="replicate", data_format="NCL")
             data = paddle.to_tensor(data)
             result = my_pad(data)
 
         def test_nchw():
-            paddle.disable_static(paddle.CPUPlace())
             input_shape = (1, 2, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
             data = np.arange(
                 np.prod(input_shape), dtype=np.float64).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad1d(padding=pad, data_format="NCHW")
+            my_pad = nn.Pad1D(padding=pad, mode="replicate", data_format="NCHW")
             data = paddle.to_tensor(data)
             result = my_pad(data)
 
         def test_ncdhw():
-            paddle.disable_static(paddle.CPUPlace())
             input_shape = (1, 2, 3, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
             data = np.arange(
                 np.prod(input_shape), dtype=np.float64).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad1d(padding=pad, data_format="NCDHW")
+            my_pad = nn.Pad1D(
+                padding=pad, mode="replicate", data_format="NCDHW")
             data = paddle.to_tensor(data)
             result = my_pad(data)
 
