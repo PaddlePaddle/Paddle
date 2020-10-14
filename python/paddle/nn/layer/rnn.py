@@ -1073,7 +1073,7 @@ class RNNBase(LayerList):
 
         inputs = {
             'Input': inputs,
-            'W': self._flat_weight,
+            # 'W': self._flat_weight,  # would be unused_var
             'WeightList': self._all_weights,
             'InitH': initial_states[0],
             'InitC': initial_states[1],
