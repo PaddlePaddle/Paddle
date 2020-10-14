@@ -3674,10 +3674,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            weight = fluid.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
-            x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
+            paddle.enable_static()
+            weight = paddle.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
     check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
@@ -7108,9 +7109,6 @@ def image_resize(input,
                  align_mode=1,
                  data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.image_resize
-	:alias: paddle.nn.functional.image_resize,paddle.nn.functional.vision.image_resize
-	:old_api: paddle.fluid.layers.image_resize
 
     This op resizes a batch of images.
 
@@ -7350,8 +7348,10 @@ def image_resize(input,
         .. code-block:: python
 
 	    #declarative mode
+	    import paddle
 	    import paddle.fluid as fluid
 	    import numpy as np
+	    paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
@@ -7708,9 +7708,6 @@ def resize_bilinear(input,
                     align_mode=1,
                     data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.resize_bilinear
-	:alias: paddle.nn.functional.resize_bilinear,paddle.nn.functional.vision.resize_bilinear
-	:old_api: paddle.fluid.layers.resize_bilinear
 
     This op resizes the input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -7803,6 +7800,8 @@ def resize_bilinear(input,
 
 	    #declarative mode
 	    import paddle.fluid as fluid
+	    import paddle
+	    paddle.enable_static()
 	    import numpy as np
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
@@ -7875,9 +7874,6 @@ def resize_trilinear(input,
                      align_mode=1,
                      data_format='NCDHW'):
     """
-    :alias_main: paddle.nn.functional.resize_trilinear
-	:alias: paddle.nn.functional.resize_trilinear,paddle.nn.functional.vision.resize_trilinear
-	:old_api: paddle.fluid.layers.resize_trilinear
 
     This op resizes the input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -7970,7 +7966,9 @@ def resize_trilinear(input,
 
 	    #declarative mode
 	    import paddle.fluid as fluid
+	    import paddle
 	    import numpy as np
+	    paddle.enable_static()
 	    input = fluid.data(name="input", shape=[None,3,6,8,10])
 
 	    #1
@@ -8043,9 +8041,6 @@ def resize_nearest(input,
                    align_corners=True,
                    data_format='NCHW'):
     """
-    :alias_main: paddle.nn.functional.resize_nearest
-	:alias: paddle.nn.functional.resize_nearest,paddle.nn.functional.vision.resize_nearest
-	:old_api: paddle.fluid.layers.resize_nearest
 
     This op resizes the input by performing nearest neighbor interpolation in both the
     height direction and the width direction based on given output shape
@@ -8128,6 +8123,9 @@ def resize_nearest(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
+	    import paddle
+	    paddle.enable_static()
+
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 
 	    #1
@@ -10237,6 +10235,11 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if in_dygraph_mode():
+        if num == None:
+            num = x.shape[axis]
+        return core.ops.unstack(x, num, 'axis', int(axis), 'num', num)
+
     helper = LayerHelper('unstack', **locals())
     if num is None:
         if axis is None or x.shape[axis] <= 0:
@@ -13598,7 +13601,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                     # User-defined debug functions that print out the input Tensor
                     paddle.static.nn.py_func(func=debug_func, x=hidden, out=None)
 
-                prediction = paddle.static.nn.fc(hidden, size=10, act='softmax')
+                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
                 loss = paddle.static.nn.cross_entropy(input=prediction, label=label)
                 return paddle.mean(loss)
 

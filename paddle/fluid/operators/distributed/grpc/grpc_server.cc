@@ -106,9 +106,8 @@ class RequestSend final : public RequestBase {
                        ::grpc::ServerCompletionQueue* cq,
                        RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCVariableResponse(
-        request_handler->scope(), request_handler->dev_ctx(),
-        request_handler->distributed_mode()));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
     int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -420,9 +419,8 @@ class RequestNotify final : public RequestBase {
                          ::grpc::ServerCompletionQueue* cq,
                          RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCVariableResponse(
-        request_handler->scope(), request_handler->dev_ctx(),
-        request_handler->distributed_mode()));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
     int method_id = static_cast<int>(distributed::GrpcMethod::kRequestNotify);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -455,9 +453,8 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCVariableResponse(
-        request_handler->scope(), request_handler->dev_ctx(),
-        request_handler->distributed_mode()));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
 
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
