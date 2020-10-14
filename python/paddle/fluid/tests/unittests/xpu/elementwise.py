@@ -54,7 +54,7 @@ class TestXPUElementwiseOpBase(object):
                                inputs_to_check,
                                output_names,
                                no_grad_set=None,
-                               max_relative_error=0.05):
+                               max_relative_error=0.01):
         if self.grad_implemented and not self.is_common_broadcast   \
           and not self.is_x_size_less_than_y:
             if paddle.is_compiled_with_xpu():
