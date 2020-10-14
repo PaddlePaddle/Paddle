@@ -1463,7 +1463,7 @@ class Model(object):
 
             # step learning rate scheduler on each epcoh end
             if isinstance(self._optimizer._learning_rate,
-                          paddle.optimizer._LRScheduler):
+                          paddle.optimizer.lr.LRScheduler):
                 self._optimizer._learning_rate.step()
 
         cbks.on_end('train', logs)

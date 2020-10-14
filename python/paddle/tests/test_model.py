@@ -616,9 +616,9 @@ class TestModelWithLRScheduler(unittest.TestCase):
             weight_decay = 5e-4
             boundaries = [5, 8]
             values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
-            learning_rate = paddle.optimizer.PiecewiseLR(
+            learning_rate = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=boundaries, values=values)
-            learning_rate = paddle.optimizer.LinearLrWarmup(
+            learning_rate = paddle.optimizer.lr.LinearWarmup(
                 learning_rate=learning_rate,
                 warmup_steps=4,
                 start_lr=base_lr / 5.,
