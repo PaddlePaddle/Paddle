@@ -238,7 +238,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place);
 
-void BumpVersion(VarBase* var);
 void BumpVersion(std::shared_ptr<imperative::VarBase> var);
 
 }  // namespace imperative
