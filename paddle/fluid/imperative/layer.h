@@ -201,6 +201,7 @@ class VarBase {
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking,
+                                      const bool has_grad = true,
                                       const bool share_memory = false) const;
 
  private:

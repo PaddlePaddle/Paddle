@@ -220,6 +220,7 @@ void VarBase::ClearGradient() {
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking,
+                                             const bool has_grad,
                                              const bool share_memory) const {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
@@ -232,7 +233,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
-        true, Name() + std::to_string(copied_counter_++));
+        has_grad, Name() + std::to_string(copied_counter_++));
 
     auto* dst_tensor =
         new_var->MutableVar()->GetMutable<framework::LoDTensor>();

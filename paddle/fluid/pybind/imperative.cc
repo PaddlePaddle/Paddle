@@ -692,12 +692,13 @@ void BindImperative(py::module *m_ptr) {
              PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
                                platform::errors::InvalidArgument(
                                    "%s has not been initialized", self.Name()));
-             return self.NewVarBase(tensor.place(), false, true);
+             return self.NewVarBase(tensor.place(), false, false, true);
            },
            py::return_value_policy::copy, R"DOC(
 
-        Returns a new Tensor, detached from the current graph. 
-        It does not provide gradient propagation, but shares data with the origin tensor.
+        Returns a new Tensor, detached from the current graph.
+        It will always not have a Tensor copy and share data with origin Tensor.
+        Tn addition, the detached Tensor does not provide gradient propagation.
 
         Returns: The detached Tensor.
 

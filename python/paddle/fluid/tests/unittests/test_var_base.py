@@ -35,7 +35,9 @@ class TestVarBase(unittest.TestCase):
                 paddle.set_default_dtype('float32')
                 # set_default_dtype should not take effect on int
                 x = paddle.to_tensor(1, place=place, stop_gradient=False)
-                self.assertTrue(np.array_equal(x.numpy(), [1]))
+                detach_x = x.detach()
+                detach_x[:] = 2
+                self.assertTrue(np.array_equal(x.numpy(), [2]))
                 self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
 
                 # set_default_dtype should not take effect on numpy
