@@ -198,6 +198,8 @@ class TestFleetBaseSingleError(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda(
         ) and fluid.core.get_cuda_device_count() > 1:
             self.assertRaises(ValueError, test_single_error)
+        else:
+            test_single_error()
 
 
 if __name__ == "__main__":

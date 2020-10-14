@@ -14,24 +14,17 @@
 
 import numpy as np
 import os
-
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 else:
     os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices.split(',')[0]
-
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 import unittest
 import paddle.nn as nn
-
-print("os env CUDA_VISIBLE_DEVICES:", os.getenv("CUDA_VISIBLE_DEVICES"))
-if fluid.core.is_compiled_with_cuda():
-    print("fluid.core.get_cuda_device_count():",
-          fluid.core.get_cuda_device_count())
 
 
 class LinearNet(nn.Layer):
