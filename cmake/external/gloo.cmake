@@ -39,14 +39,14 @@ ExternalProject_Add(
     PREFIX                "${GLOO_PREFIX_DIR}"
     SOURCE_DIR            "${GLOO_SOURCE_DIR}"
     UPDATE_COMMAND        ""
+    INSTALL_COMMAND       ""
     CONFIGURE_COMMAND     ""
-    BUILD_COMMAND               mkdir -p ${GLOO_SOURCE_DIR}/build
+    BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
         && cd ${GLOO_SOURCE_DIR}/build && cmake .. && make
         && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
-    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
+    COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
+    COMMAND      ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
 )
-#&& file(COPY ${GLOO_SOURCE_DIR}/gloo DESTINATION ${GLOO_INCLUDE_DIR})
 
 
 ADD_LIBRARY(gloo STATIC IMPORTED GLOBAL)
