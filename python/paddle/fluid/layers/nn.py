@@ -6133,7 +6133,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
