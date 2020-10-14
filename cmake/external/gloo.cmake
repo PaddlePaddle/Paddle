@@ -41,10 +41,10 @@ ExternalProject_Add(
     UPDATE_COMMAND        ""
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND               mkdir -p ${GLOO_SOURCE_DIR}/build
-        && cd ${GLOO_SOURCE_DIR}/build && cmake ..
-    COMMAND               mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}
-        && cp ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}"
+        && cd ${GLOO_SOURCE_DIR}/build && cmake .. && make
+        && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
+    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
 )
 #&& file(COPY ${GLOO_SOURCE_DIR}/gloo DESTINATION ${GLOO_INCLUDE_DIR})
 
