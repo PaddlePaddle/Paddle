@@ -140,9 +140,6 @@ from .loss import mse_loss  #DEFINE_ALIAS
 from .loss import nll_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS
 from .loss import npair_loss  #DEFINE_ALIAS
-# from .loss import rank_loss  #DEFINE_ALIAS
-# from .loss import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
-from .loss import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 # from .loss import smooth_l1  #DEFINE_ALIAS
 from .loss import smooth_l1_loss  #DEFINE_ALIAS
