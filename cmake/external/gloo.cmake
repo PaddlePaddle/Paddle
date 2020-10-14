@@ -35,7 +35,6 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
     "${GLOO_DOWNLOAD_CMD}"
-    DEPENDS               gtest_main
     PREFIX                "${GLOO_PREFIX_DIR}"
     SOURCE_DIR            "${GLOO_SOURCE_DIR}"
     UPDATE_COMMAND        ""
@@ -50,4 +49,3 @@ ExternalProject_Add(
 
 ADD_LIBRARY(gloo STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET gloo PROPERTY IMPORTED_LOCATION ${GLOO_LIBRARIES})
-ADD_DEPENDENCIES(gloo extern_gloo gtest_main)
