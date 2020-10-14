@@ -32,12 +32,14 @@ __global__ void NormalizeProbability(T* norm_probs, const T* in_data,
                                      T* sum_rows) {
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
-  PADDLE_ENFORCE(in_data[id] >= 0.0,
-                 "The input of multinomial distribution should be >= 0");
   PADDLE_ENFORCE(
-      !std::isinf(static_cast<double>(in_data[id])) &&
-          !std::isnan(static_cast<double>(in_data[id])),
-      "The input of multinomial distribution shoud not be infinity or NaN");
+      in_data[id] >= 0.0,
+      "The input of multinomial distribution should be >= 0, but got %f",
+      in_data[id]);
+  PADDLE_ENFORCE(!std::isinf(static_cast<double>(in_data[id])),
+                 "The input of multinomial distribution shoud not be infinity");
+  PADDLE_ENFORCE(!std::isnan(static_cast<double>(in_data[id])),
+                 "The input of multinomial distribution shoud not be NaN");
   PADDLE_ENFORCE(sum_rows[blockIdx.y] > 0.0,
                  "The sum of input should not be 0");
   norm_probs[id] = in_data[id] / sum_rows[blockIdx.y];
