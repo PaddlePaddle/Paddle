@@ -37,6 +37,7 @@ namespace platform = paddle::platform;
 namespace distributed = paddle::operators::distributed;
 
 USE_NO_KERNEL_OP(lookup_sparse_table_read);
+USE_NO_KERNEL_OP(checkpoint_notify);
 USE_OP(scale);
 
 std::unique_ptr<distributed::RPCServer> g_rpc_service;
@@ -284,6 +285,9 @@ TEST(LARGE_SCALE_CHECKPOINT, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
 
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace place;
+
   g_req_handler.reset(new distributed::RequestCheckpointHandler(
       distributed::DistributedMode::kAsync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
@@ -298,8 +302,6 @@ TEST(LARGE_SCALE_CHECKPOINT, CPU) {
   std::thread server_thread(StartCheckpointServer,
                             distributed::kRequestCheckpoint);
   g_rpc_service->WaitServerReady();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   int port = g_rpc_service->GetSelectedPort();
   std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
@@ -317,6 +319,17 @@ TEST(LARGE_SCALE_CHECKPOINT, CPU) {
   mode = 1;
   client->AsyncCheckpointNotify(ep, save_path, "embedding.block0", mode);
   client->Wait();
+
+  paddle::framework::AttributeMap attrs;
+  attrs["endpoints"] = {ep};
+  attrs["dirname"] = std::string("/tmp/large_scale_table/delta1");
+  attrs["varname"] = std::string("embedding");
+  attrs["mode"] = 2;
+  attrs["slice_varnames"] = {std::string("embedding.block0")};
+  attrs["remote_varnames"] = {std::string("embedding.block0")};
+
+  auto ops = framework::OpRegistry::CreateOp("checkpoint_notify", {}, {}, attrs,
+                                             false);
 
   g_rpc_service->ShutDown();
   server_thread.join();
