@@ -885,7 +885,7 @@ class BeamSearchDecoder(Decoder):
             
             import numpy as np
             import paddle
-            from paddle.fluid.layers import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import BeamSearchDecoder, dynamic_decode
             from paddle.nn import GRUCell, Linear, Embedding
             trg_embeder = Embedding(100, 32)
             output_layer = Linear(32, 32)
@@ -1630,7 +1630,7 @@ def dynamic_decode(decoder,
             
             import numpy as np
             import paddle
-            from paddle.fluid.layers import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import BeamSearchDecoder, dynamic_decode
             from paddle.nn import GRUCell, Linear, Embedding
             trg_embeder = Embedding(100, 32)
             output_layer = Linear(32, 32)
