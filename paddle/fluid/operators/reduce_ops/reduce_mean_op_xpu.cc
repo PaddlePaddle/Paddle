@@ -25,8 +25,8 @@ template <typename DeviceContext, typename T>
 class ReduceMeanXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_xpu_place(context.GetPlace()),
-                   "This kernel only runs on XPU.");
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(context.GetPlace()), true,
+                      "This kernel only runs on XPU.");
     // bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
@@ -42,7 +42,7 @@ class ReduceMeanXPUKernel : public framework::OpKernel<T> {
     int r =
         xpu::reduce(dev_ctx.x_context(), input->data<T>(), output->data<T>(),
                     idims.data(), ndim, dims.data(), rdim, xpu::REDUCE_MEAN);
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
   }
 };
 }  // namespace operators

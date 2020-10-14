@@ -23,8 +23,8 @@ template <typename DeviceContext, typename T>
 class ReduceSumXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_xpu_place(context.GetPlace()),
-                   "This kernel only runs on XPU.");
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(context.GetPlace()),
+                      true "This kernel only runs on XPU.");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
@@ -34,7 +34,7 @@ class ReduceSumXPUKernel : public framework::OpKernel<T> {
       int input_len = input->numel();
       int r = xpu::sum(dev_ctx.x_context(), input->data<T>(), output->data<T>(),
                        input_len);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
     } else {
       int ndim = input->dims().size();
       std::vector<int> idims;
@@ -46,7 +46,7 @@ class ReduceSumXPUKernel : public framework::OpKernel<T> {
       int r =
           xpu::reduce(dev_ctx.x_context(), input->data<T>(), output->data<T>(),
                       idims.data(), ndim, dims.data(), rdim, xpu::REDUCE_SUM);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
     }
   }
 };
@@ -73,7 +73,7 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
       r = xpu::reduce_grad(dev_ctx.x_context(), input2_d, output_d,
                            idims.data(), idims.size(), &reduce_dim, 1,
                            xpu::REDUCE_SUM);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
     } else if (dims.size() == 1) {
       // handle reduce by one dimension
       int reduce_dim_index = dims[0];
@@ -97,7 +97,7 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
       r = xpu::reduce_grad(dev_ctx.x_context(), input2_d, output_d,
                            idims.data(), idims.size(), &reduce_dim, 1,
                            xpu::REDUCE_SUM);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
     } else {
       PADDLE_THROW("unsupport reduce sum grad");
     }
