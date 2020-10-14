@@ -199,16 +199,12 @@ from .vision import generate_mask_labels  #DEFINE_ALIAS
 from .vision import generate_proposal_labels  #DEFINE_ALIAS
 from .vision import generate_proposals  #DEFINE_ALIAS
 from .vision import grid_sample  #DEFINE_ALIAS
-from .vision import image_resize  #DEFINE_ALIAS
 from .vision import image_resize_short  #DEFINE_ALIAS
 # from .vision import multi_box_head  #DEFINE_ALIAS
 from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .vision import prior_box  #DEFINE_ALIAS
 from .vision import prroi_pool  #DEFINE_ALIAS
 from .vision import psroi_pool  #DEFINE_ALIAS
-from .vision import resize_bilinear  #DEFINE_ALIAS
-from .vision import resize_nearest  #DEFINE_ALIAS
-from .vision import resize_trilinear  #DEFINE_ALIAS
 from .vision import retinanet_detection_output  #DEFINE_ALIAS
 from .vision import retinanet_target_assign  #DEFINE_ALIAS
 from .vision import roi_align  #DEFINE_ALIAS
