@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
+
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -38,6 +41,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
+#ifdef PADDLE_WITH_MKLDNN
+  dst->set_format(src.format());
+#endif
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
@@ -237,6 +243,9 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
+#ifdef PADDLE_WITH_MKLDNN
+  dst->set_format(src.format());
+#endif
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
@@ -935,6 +944,12 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
 #ifdef PADDLE_WITH_XPU
   PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
 #endif
+}
+
+template <typename T>
+std::string format_tensor(const framework::Tensor& tensor) {
+  // TODO(zhiqiu): use the print option to format tensor.
+  return "NOT IMPLEMENTED";
 }
 
 template <typename T>
