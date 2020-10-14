@@ -702,9 +702,6 @@ class Conv3DTranspose(layers.Layer):
 
 class Pool2D(layers.Layer):
     """
-    :alias_main: paddle.nn.Pool2D
-	:alias: paddle.nn.Pool2D,paddle.nn.layer.Pool2D,paddle.nn.layer.common.Pool2D
-	:old_api: paddle.fluid.dygraph.Pool2D
 
     This interface is used to construct a callable object of the ``Pool2D`` class.
     For more details, refer to code examples.
@@ -2354,9 +2351,6 @@ class PRelu(layers.Layer):
 
 class BilinearTensorProduct(layers.Layer):
     """
-    :alias_main: paddle.nn.BilinearTensorProduct
-	:alias: paddle.nn.BilinearTensorProduct,paddle.nn.layer.BilinearTensorProduct,paddle.nn.layer.common.BilinearTensorProduct
-	:old_api: paddle.fluid.dygraph.BilinearTensorProduct
 
     **Add Bilinear Tensor Product Layer**
 

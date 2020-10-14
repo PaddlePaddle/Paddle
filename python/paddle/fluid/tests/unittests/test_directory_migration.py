@@ -37,8 +37,7 @@ class TestDirectory(unittest.TestCase):
         new_directory = [
             'paddle.enable_static', 'paddle.disable_static',
             'paddle.in_dynamic_mode', 'paddle.to_tensor', 'paddle.grad',
-            'paddle.no_grad', 'paddle.save', 'paddle.load',
-            'paddle.static.save', 'paddle.static.load',
+            'paddle.no_grad', 'paddle.static.save', 'paddle.static.load',
             'paddle.distributed.ParallelEnv',
             'paddle.distributed.prepare_context', 'paddle.DataParallel',
             'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
