@@ -14,7 +14,6 @@
 
 # TODO: define the initializers to create a Parameter in neural network
 from ...fluid.initializer import Bilinear  #DEFINE_ALIAS
-from ...fluid.initializer import MSRA  #DEFINE_ALIAS
 from ...fluid.initializer import Normal  #DEFINE_ALIAS
 from ...fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
 from ...fluid.initializer import Uniform  #DEFINE_ALIAS
@@ -23,9 +22,12 @@ from ...fluid.initializer import Xavier  #DEFINE_ALIAS
 from . import constant
 from .constant import Constant  #DEFINE_ALIAS
 
+from . import kaiming
+from .kaiming import KaimingNormal  #DEFINE_ALIAS
+from .kaiming import KaimingUniform  #DEFINE_ALIAS
+
 __all__ = [
     'Bilinear',
-    'MSRA',
     'Normal',
     'TruncatedNormal',
     'Uniform',
@@ -33,3 +35,4 @@ __all__ = [
 ]
 
 __all__ += constant.__all__
+__all__ += kaiming.__all__

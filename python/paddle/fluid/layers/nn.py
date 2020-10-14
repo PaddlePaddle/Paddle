@@ -3674,10 +3674,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            weight = fluid.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
-            x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
+            paddle.enable_static()
+            weight = paddle.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
     check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
@@ -13598,7 +13599,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                     # User-defined debug functions that print out the input Tensor
                     paddle.static.nn.py_func(func=debug_func, x=hidden, out=None)
 
-                prediction = paddle.static.nn.fc(hidden, size=10, act='softmax')
+                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
                 loss = paddle.static.nn.cross_entropy(input=prediction, label=label)
                 return paddle.mean(loss)
 
