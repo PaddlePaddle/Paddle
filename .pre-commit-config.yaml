@@ -57,3 +57,4 @@ repos:
         entry: shellcheck
         language: system
         files: .sh$
+        exclude: (paddle_build.sh|fast_install.sh|check_file_diff_approvals.sh)
