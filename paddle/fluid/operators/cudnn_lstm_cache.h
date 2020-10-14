@@ -26,7 +26,7 @@ class ScopedRNNBase {
  public:
   ScopedRNNBase(int seq_length, int batch_size, int input_size, int hidden_size,
                 int num_layers, float dropout_prob, int seed, int weight_numel,
-                bool is_bidirec, bool is_test)
+                bool initialized, bool is_bidirec)
       : seq_length_(seq_length),
         batch_size_(batch_size),
         input_size_(input_size),
@@ -35,8 +35,8 @@ class ScopedRNNBase {
         dropout_prob_(dropout_prob),
         seed_(seed),
         weight_numel_(weight_numel),
-        is_bidirec_(is_bidirec),
-        is_test_(is_test) {}
+        initialized_(initialized),
+        is_bidirec_(is_bidirec) {}
 
   template <typename T>
   void Create(const cudnnHandle_t& handle, const platform::Place& place,
@@ -75,12 +75,15 @@ class ScopedRNNBase {
     last_c_desc_.descriptor<T>(dims_hx, strides_hx);
 
     // ------------------- cudnn dropout descriptors ---------------------
-    if (is_test_) dropout_state = nullptr;
     size_t state_size;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-    dropout_desc_.descriptor(handle, place, dropout_prob_, dropout_state, seed_,
-                             state_size);
+    if (!initialized_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
+                                           place);
+    }
+    dropout_desc_.descriptor(handle, place, initialized_, dropout_prob_,
+                             dropout_state, seed_, state_size);
 
 // ------------------- cudnn rnn descriptors ---------------------
 #if CUDNN_VERSION >= 6000
@@ -149,8 +152,8 @@ class ScopedRNNBase {
   float dropout_prob_;
   int seed_;
   int weight_numel_;
+  bool initialized_;
   bool is_bidirec_;
-  bool is_test_;
   std::vector<cudnnTensorDescriptor_t> x_descs_;
   std::vector<cudnnTensorDescriptor_t> y_descs_;
 
