@@ -896,7 +896,7 @@ function card_test() {
     set -m
     case_count $1 $2
     ut_startTime_s=`date +%s` 
-    # get the CUDA device count
+    # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     else
