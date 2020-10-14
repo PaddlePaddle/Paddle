@@ -712,7 +712,7 @@ void BindImperative(py::module *m_ptr) {
                     tmp.stop_gradient=False
                     inputs.append(tmp)
                 ret = paddle.sums(inputs2)
-                loss = paddle.reduce_sum(ret)
+                loss = paddle.fluid.layers.reduce_sum(ret)
                 loss.backward()
                 print("Before clear_gradient {}".format(loss.grad))
                 loss.clear_gradient()

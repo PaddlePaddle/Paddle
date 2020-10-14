@@ -994,6 +994,11 @@ class SyncBatchNorm(_BatchNormBase):
     - :math:`\\gamma` : trainable scale parameter vector
     - :math:`\\beta` : trainable shift parameter vector 
 
+    Note:
+        If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
+        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of 
+        ``list`` to pack the model. 
+
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.

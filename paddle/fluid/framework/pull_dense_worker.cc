@@ -67,7 +67,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
 }
 
 void PullDenseWorker::CreatePinVar() {
-#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
   // for (auto& v : dense_value_names_) {
   //  for (auto& name : v.second) {
   for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
