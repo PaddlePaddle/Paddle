@@ -161,10 +161,10 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         y_shapes = [[2], [3, 2], [2, 4, 5], [2, 3, 3, 5], [4, 3]]
         transpose_xs = [False, True, True, False, False]
         transpose_ys = [False, True, False, True, False]
-        dtypes = [np.float64, np.float64, np.float32, np.float32, np.float64]
-        typenames = ["float64", "float64", "float32", "float32", "float64"]
-        for i, (x_shape, y_shape, transpose_x, transpose_y, dtype, typename) \
-            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys, dtypes, typenames)):
+        dtype = np.float64
+        typename = "float64"
+        for i, (x_shape, y_shape, transpose_x, transpose_y) \
+            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys)):
             x = layers.create_parameter(
                 dtype=typename, shape=x_shape, name='x{}'.format(i))
             y = layers.create_parameter(

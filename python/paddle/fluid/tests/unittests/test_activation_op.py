@@ -2175,7 +2175,7 @@ class TestSwish(TestActivation):
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = ref_swish(x)
         self.inputs = {'X': x}
-        self.attrs = {'slope': 1.0}
+        self.attrs = {'beta': 1.0}
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
