@@ -527,6 +527,9 @@ void GeoCommunicator::MainThread() {
         for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
           auto send_recv_task = [this, ep_idx, &var_name] {
             auto before_send_sparse = GetCurrentUS();
+            if (var_name == STEP_COUNTER) {
+              return;
+            }
             auto send_varname =
                 send_varname_to_ctx_.at(var_name).splited_varnames[ep_idx];
             auto sparse_ids = MergeSparseIds(send_varname);
@@ -549,6 +552,9 @@ void GeoCommunicator::MainThread() {
         }
       } else {
         auto send_recv_task = [this, &var_name, &send_ctx] {
+          if (var_name == STEP_COUNTER) {
+            return;
+          }
           SendDense(var_name);
           RecvDense(var_name);
         };

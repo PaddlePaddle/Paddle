@@ -221,9 +221,10 @@ def append_send_ops_pass(program, config):
         if merged_name == STEP_COUNTER:
             origin_varnames.append("")
             merged_names.append(merged_name)
-        for var in send.origin_varnames():
-            origin_varnames.append(var)
-            merged_names.append(merged_name)
+        else:
+            for var in send.origin_varnames():
+                origin_varnames.append(var)
+                merged_names.append(merged_name)
 
     if len(origin_varnames) > 0:
         dummys.append(_append_send_op(origin_varnames, merged_names))
