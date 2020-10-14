@@ -285,9 +285,9 @@ struct LSTMCell : Cell<T> {
     lstm_value.check_fg = nullptr;
     lstm_value.check_og = nullptr;
 
-    auto gate_act = math::detail::GetActivationType("sigmoid");
-    auto cell_act = math::detail::GetActivationType("tanh");
-    auto cand_act = math::detail::GetActivationType("tanh");
+    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
+    auto cell_act = math::detail::GetActivationType("tanh_v2");
+    auto cand_act = math::detail::GetActivationType("tanh_v2");
 
     size_t frame_size = init_h->dims()[2];
     size_t batch_size = init_h->dims()[1];

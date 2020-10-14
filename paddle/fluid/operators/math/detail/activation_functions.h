@@ -30,18 +30,24 @@ namespace detail {
 
 enum ActivationType {
   kSigmoid,
+  KSigmoidV2,
   kReLU,
   kTanh,
+  kTanhV2,
   kIdentity,
 };
 
 inline ActivationType GetActivationType(const std::string &type) {
   if (type == "sigmoid") {
     return ActivationType::kSigmoid;
+  } else if (type == "sigmoid_v2") {
+    return ActivationType::KSigmoidV2;
   } else if (type == "relu") {
     return ActivationType::kReLU;
   } else if (type == "tanh") {
     return ActivationType::kTanh;
+  } else if (type == "tanh_v2") {
+    return ActivationType::kTanhV2;
   } else if (type == "identity" || type == "") {
     return ActivationType::kIdentity;
   }
@@ -66,6 +72,17 @@ DEVICE T Sigmoid(const T a) {
   const T max = SIGMOID_THRESHOLD_MAX;
   T tmp = (a < min) ? min : ((a > max) ? max : a);
   return static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-tmp));
+}
+
+template <typename T>
+DEVICE T SigmoidV2(const T a) {
+  return static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-a));
+}
+
+template <typename T>
+DEVICE T TanhV2(const T a) {
+  T tmp = -2.0 * a;
+  return (2.0 / (1.0 + exp(tmp))) - 1.0;
 }
 
 template <typename T>
