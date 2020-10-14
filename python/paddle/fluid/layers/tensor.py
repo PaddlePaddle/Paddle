@@ -199,49 +199,27 @@ def create_global_var(shape,
 
 def cast(x, dtype):
     """
-	:alias_main: paddle.cast
-	:alias: paddle.cast,paddle.tensor.cast,paddle.tensor.manipulation.cast
-	:old_api: paddle.fluid.layers.cast
 
     This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
     Args:
-        x(Variable): An input N-D Tensor with data type bool, float16,
+        x(Tensor): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
             bool, float16, float32, float64, int8, int32, int64, uint8.
 
     Returns:
-        Variable: A Tensor with the same shape as input's.
+        Tensor: A Tensor with the same shape as input's.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+            import paddle
 
-            place = fluid.core.CPUPlace()
-
-            x_lod = fluid.data(name="x", shape=[2,2], lod_level=0)
-            cast_res1 = fluid.layers.cast(x=x_lod, dtype="uint8")
-            cast_res2 = fluid.layers.cast(x=x_lod, dtype=np.int32)
-
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-
-            x_i_lod = fluid.core.LoDTensor()
-            x_i_lod.set(np.array([[1.3,-2.4],[0,4]]).astype("float32"), place)
-            x_i_lod.set_recursive_sequence_lengths([[0,2]])
-            res1 = exe.run(fluid.default_main_program(), feed={'x':x_i_lod}, fetch_list=[cast_res1], return_numpy=False)
-            res2 = exe.run(fluid.default_main_program(), feed={'x':x_i_lod}, fetch_list=[cast_res2], return_numpy=False)
-            print(np.array(res1[0]), np.array(res1[0]).dtype)
-            # [[  1 254]
-            #  [  0   4]] uint8
-            print(np.array(res2[0]), np.array(res2[0]).dtype)
-            # [[ 1 -2]
-            #  [ 0  4]] int32
+            x = paddle.to_tensor([2, 3, 4], 'float64')
+            y = paddle.cast(x, 'uint8')
     """
     check_variable_and_dtype(
         x, 'x',
@@ -550,9 +528,6 @@ def sums(input, out=None):
 
 def assign(input, output=None):
     """
-	:alias_main: paddle.nn.functional.assign
-	:alias: paddle.nn.functional.assign,paddle.nn.functional.common.assign
-	:old_api: paddle.fluid.layers.assign
 
     The OP copies the :attr:`input` to the :attr:`output`.
 
@@ -568,13 +543,16 @@ def assign(input, output=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy as np
-          data = fluid.layers.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result1 = fluid.layers.create_tensor(dtype='float64')
-          fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.nn.functional.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.nn.functional.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.nn.functional.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
@@ -1438,9 +1416,9 @@ def linspace(start, stop, num, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
-             data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
+             import paddle
+             data = paddle.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+             data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
     if dtype is None:
