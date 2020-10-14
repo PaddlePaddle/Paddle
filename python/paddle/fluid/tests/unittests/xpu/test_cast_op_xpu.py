@@ -29,10 +29,10 @@ class TestCastOp1(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
-        self.outputs = {'Out': ipt.astype('float64')}
+        self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP64)
+            'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
 
@@ -50,10 +50,10 @@ class TestCastOp1(op_test.OpTest):
 class TestCastOp2(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float16')}
+        self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP16),
+            'in_dtype': int(core.VarDesc.VarType.FP32),
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
@@ -69,10 +69,10 @@ class TestCastOp3(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
-        self.outputs = {'Out': ipt.astype('float16')}
+        self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP16)
+            'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'
 
@@ -88,9 +88,9 @@ class TestCastOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
             x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+                np.array([[-1]]), [[1]], fluid.XPUPlace(0))
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
-            # The input dtype of cast_op must be bool, float16, float32, float64, int32, int64, uint8.
+            # The input dtype of cast_op must be float32, int32, int64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype='int16')
             self.assertRaises(TypeError, fluid.layers.cast, x2, 'int32')
 
