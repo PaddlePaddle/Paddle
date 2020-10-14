@@ -13,16 +13,13 @@
 # limitations under the License.
 
 __all__ = [
-    'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
-    'Adamax', 'AdamW', 'DecayedAdagrad', 'DecayedAdagradOptimizer', 'Dpsgd',
-    'DpsgdOptimizer', 'Ftrl', 'FtrlOptimizer', 'Momentum', 'MomentumOptimizer',
-    'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer'
+    'Adadelta', 'Adam', 'Adamax', 'AdamW', 'Momentum', 'MomentumOptimizer',
+    'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer', '_LRScheduler', 'NoamLR',
+    'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
+    'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR',
+    'ReduceLROnPlateau', 'CosineAnnealingLR'
 ]
 
-
-from ..fluid.optimizer import Momentum, Dpsgd, DecayedAdagrad, Ftrl,\
-            AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
-            FtrlOptimizer, AdadeltaOptimizer
 
 from .optimizer import Optimizer
 from .adagrad import Adagrad

@@ -35,21 +35,21 @@ from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
 from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_max    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_min    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
 from ..fluid.layers import round    #DEFINE_ALIAS
 from ..fluid.layers import rsqrt    #DEFINE_ALIAS
 from ..fluid.layers import scale    #DEFINE_ALIAS
@@ -73,12 +73,6 @@ __all__ = [
         'cos',
         'cosh',
         'cumsum',
-        'elementwise_add',
-        'elementwise_div',
-        'elementwise_floordiv',
-        'elementwise_mod',
-        'elementwise_pow',
-        'elementwise_sub',
         'exp',
         'floor',
         'increment',
@@ -89,10 +83,6 @@ __all__ = [
         'pow',
         'prod',
         'reciprocal',
-        'reduce_max',
-        'reduce_min',
-        'reduce_prod',
-        'reduce_sum',
         'round',
         'rsqrt',
         'scale',
@@ -180,7 +170,7 @@ def pow(x, y, name=None):
             print(res.numpy()) # [1 4 9]
             
             # example 2: y is a Tensor
-            y = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+            y = paddle.fluid.layers.fill_constant(shape=[1], value=2, dtype='float32')
             res = paddle.pow(x, y)
             print(res.numpy()) # [1 4 9]
 
@@ -1348,7 +1338,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
           input = paddle.ones([2,2])
           tensor1 = paddle.ones([2,2])
           tensor2 = paddle.ones([2,2])
-          out = paddle.addcmul(input, tensor1, tensor2, value=0.5)
+          out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
           print(out.numpy())
           # [[1.5 1.5]
           # [1.5 1.5]]

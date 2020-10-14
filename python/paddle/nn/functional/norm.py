@@ -109,8 +109,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     helper.append_op(
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
-    paddle.fill_constant([1], out.dtype, epsilon, out=eps)
-    return paddle.elementwise_div(x, paddle.maximum(out, eps), name=name)
+    paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
+    return paddle.fluid.layers.elementwise_div(x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(x,

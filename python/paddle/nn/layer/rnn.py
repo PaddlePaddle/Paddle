@@ -807,7 +807,7 @@ class RNN(Layer):
                 initial_states=None,
                 sequence_length=None,
                 **kwargs):
-        final_outputs, final_states = F.rnn(self.cell,
+        final_outputs, final_states = paddle.fluid.layers.rnn(self.cell,
                                             inputs,
                                             initial_states=initial_states,
                                             sequence_length=sequence_length,
@@ -909,7 +909,7 @@ class BiRNN(Layer):
             assert len(initial_states) == 2, \
                 "length of initial_states should be 2 when it is a list/tuple"
 
-        outputs, final_states = F.birnn(self.cell_fw, self.cell_bw, inputs,
+        outputs, final_states = paddle.fluid.layers.birnn(self.cell_fw, self.cell_bw, inputs,
                                         initial_states, sequence_length,
                                         self.time_major, **kwargs)
         return outputs, final_states
