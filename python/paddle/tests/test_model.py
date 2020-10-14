@@ -25,7 +25,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
+from paddle.nn import Conv2d, Linear, ReLU, Sequential, Softmax
 
 from paddle import Model
 from paddle.static import InputSpec
@@ -47,11 +47,11 @@ class LeNetDygraph(paddle.nn.Layer):
             Conv2d(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
-            Pool2D(2, 'max', 2),
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
             Conv2d(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
-            Pool2D(2, 'max', 2))
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2))
 
         if num_classes > 0:
             self.fc = Sequential(
