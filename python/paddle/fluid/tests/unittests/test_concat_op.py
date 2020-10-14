@@ -161,8 +161,10 @@ def create_test_AxisTensor(parent):
             }
 
     cls_name = "{0}_{1}".format(parent.__name__, "AxisTensor")
+    print("cls_name:{}".format(cls_name))
     TestConcatAxisTensor.__name__ = cls_name
     globals()[cls_name] = TestConcatAxisTensor
+    print("globals cls_name:{}".format(globals()[cls_name]))
 
 
 create_test_AxisTensor(TestConcatOp)
@@ -363,4 +365,5 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

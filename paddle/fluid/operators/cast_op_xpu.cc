@@ -44,9 +44,11 @@ class CastXPUKernel : public framework::OpKernel<InT> {
       r = xpu::cast<InT, int64_t>(dev_ctx.x_context(), in_data, out_data,
                                   numel);
     } else {
-      PADDLE_THROW("Not supported cast %s -> %d", typeid(int).name(), out_type);
+      PADDLE_THROW(platform::errors::Unavailable("Not supported cast %s -> %d",
+                                                 typeid<int>.name(), out_type));
     }
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                      platform::errors::InvalidArgument("XPU kernel error!"));
   }
 };
 
