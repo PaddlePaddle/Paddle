@@ -670,7 +670,7 @@ class TranslatedLayer(layers.Layer):
                 elif isinstance(var, core.VarBase):
                     dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
-                    self.register_buffer(dy_name, var)
+                    self.add_buffer(dy_name, var)
                 else:
                     raise TypeError(
                         "Adding persistent variable which  to layer is not supported now"

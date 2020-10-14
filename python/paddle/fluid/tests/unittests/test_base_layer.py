@@ -116,7 +116,7 @@ class BufferLayer(fluid.Layer):
     def __init__(self):
         super(BufferLayer, self).__init__()
         buffer_var = to_variable(np.zeros([2, 4]).astype('int32'))
-        self.register_buffer("layer_buffer", buffer_var)
+        self.add_buffer("layer_buffer", buffer_var)
 
     def forward(self):
         pass
@@ -129,7 +129,7 @@ class BufferNet(fluid.Layer):
         self.w1 = self.create_parameter(
             shape=[2, 2], dtype='float32', is_bias=False)
         buffer_var = to_variable(np.ones([2, 4]).astype('int32'))
-        self.register_buffer("net_buffer", buffer_var)
+        self.add_buffer("net_buffer", buffer_var)
 
         self.new_buffer = to_variable(np.ones([4, 2]).astype('int32'))
 
@@ -159,48 +159,48 @@ class TestBuffer(unittest.TestCase):
                 names(net.named_buffers(include_sublayers=False)),
                 ['net_buffer', 'new_buffer'])
 
-    def test_register_buffer_with_error(self):
+    def test_add_buffer_with_error(self):
         with fluid.dygraph.guard():
             net = fluid.Layer()
             var = to_variable(np.zeros([1]))
 
             with self.assertRaisesRegexp(TypeError,
                                          "name of buffer should be a string"):
-                net.register_buffer(12, var)
+                net.add_buffer(12, var)
 
             with self.assertRaisesRegexp(TypeError,
                                          "buffer should be a core.VarBase"):
-                net.register_buffer("buffer_name", ParamBase([2, 2], 'float32'))
+                net.add_buffer("buffer_name", ParamBase([2, 2], 'float32'))
 
             with self.assertRaisesRegexp(KeyError,
                                          "name of buffer can not contain"):
-                net.register_buffer("buffer.name", var)
+                net.add_buffer("buffer.name", var)
 
             with self.assertRaisesRegexp(KeyError,
                                          "name of buffer can not be empty"):
-                net.register_buffer("", var)
+                net.add_buffer("", var)
 
             net.attr_name = 10
             with self.assertRaisesRegexp(KeyError, "already exists"):
-                net.register_buffer("attr_name", var)
+                net.add_buffer("attr_name", var)
 
             del net.attr_name
             net.attr_name = ParamBase([2, 2], 'float32')
             with self.assertRaisesRegexp(KeyError, "already exists"):
-                net.register_buffer("attr_name", var)
+                net.add_buffer("attr_name", var)
 
-    def test_register_buffer_same_name(self):
+    def test_add_buffer_same_name(self):
         with fluid.dygraph.guard():
             net = fluid.Layer()
             var1 = to_variable(np.zeros([1]))
             var2 = to_variable(np.zeros([2]))
             var3 = to_variable(np.zeros([3]))
 
-            net.register_buffer("buffer_name", var1)
+            net.add_buffer("buffer_name", var1)
             self.assert_var_base_equal(net.buffer_name, var1)
-            net.register_buffer("buffer_name", var2)
+            net.add_buffer("buffer_name", var2)
             self.assert_var_base_equal(net.buffer_name, var2)
-            net.register_buffer("buffer_name", var3)
+            net.add_buffer("buffer_name", var3)
             self.assert_var_base_equal(net.buffer_name, var3)
 
     def test_buffer_not_persistable(self):
@@ -208,7 +208,7 @@ class TestBuffer(unittest.TestCase):
             net = fluid.Layer()
             var1 = to_variable(np.zeros([1]))
 
-            net.register_buffer("buffer_name", var1, persistable=False)
+            net.add_buffer("buffer_name", var1, persistable=False)
             self.assertEqual(len(net.buffers()), 1)
             self.assertEqual(len(net.state_dict()), 0)
 
@@ -216,7 +216,7 @@ class TestBuffer(unittest.TestCase):
         with fluid.dygraph.guard():
             net = fluid.Layer()
             var1 = to_variable(np.zeros([1]))
-            net.register_buffer("buffer_name", var1, persistable=False)
+            net.add_buffer("buffer_name", var1, persistable=False)
             del net.buffer_name
             self.assertEqual(len(net.buffers()), 0)
 
@@ -225,14 +225,14 @@ class TestBuffer(unittest.TestCase):
             net = fluid.Layer()
             var1 = to_variable(np.zeros([1]))
             var2 = to_variable(np.zeros([2]))
-            net.register_buffer("buffer_name", var1, persistable=False)
-            net.register_buffer("buffer_name", var2)
+            net.add_buffer("buffer_name", var1, persistable=False)
+            net.add_buffer("buffer_name", var2)
 
             # Allow to overwrite a non-persistable buffer with a persistable var.
             self.assertEqual(len(net.buffers()), 1)
             self.assertEqual(len(net.state_dict()), 1)
 
-            net.register_buffer("buffer_name", var1, persistable=False)
+            net.add_buffer("buffer_name", var1, persistable=False)
             self.assertEqual(len(net.buffers()), 1)
             self.assertEqual(len(net.state_dict()), 0)
 
@@ -240,7 +240,7 @@ class TestBuffer(unittest.TestCase):
         with fluid.dygraph.guard():
             net = fluid.Layer()
             var1 = to_variable(np.zeros([1]))
-            net.register_buffer("buffer_name", var1, persistable=False)
+            net.add_buffer("buffer_name", var1, persistable=False)
 
             # Assigning Nones will remove the buffer, but allow to re-assign
             # to remark it as buffer.
@@ -261,7 +261,7 @@ class TestBuffer(unittest.TestCase):
         with fluid.dygraph.guard():
             net = fluid.Layer()
             var1 = to_variable(np.zeros([1]))
-            net.register_buffer("buffer_name", var1, persistable=False)
+            net.add_buffer("buffer_name", var1, persistable=False)
             net.load_dict({})
 
     def test_buffer_state_dict(self):
@@ -269,8 +269,8 @@ class TestBuffer(unittest.TestCase):
             net = fluid.Layer()
             var1 = to_variable(np.zeros([2, 3]))
             var2 = to_variable(np.zeros([3, 2]))
-            net.register_buffer("buffer_var1", var1)
-            net.register_buffer("buffer_var2", var2, persistable=False)
+            net.add_buffer("buffer_var1", var1)
+            net.add_buffer("buffer_var2", var2, persistable=False)
 
             self.assertEqual(len(net.state_dict()), 1)
             self.assertEqual([name for name, _ in net.state_dict().items()],
@@ -279,7 +279,7 @@ class TestBuffer(unittest.TestCase):
             # load state_dict
             net_load = fluid.Layer()
             var = to_variable(np.ones([2, 3]))
-            net_load.register_buffer("buffer_var1", var)
+            net_load.add_buffer("buffer_var1", var)
             net_load.load_dict(net.state_dict())
 
             self.assert_var_base_equal(net_load.buffer_var1, var1)

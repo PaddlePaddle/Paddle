@@ -632,7 +632,7 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
-    def register_buffer(self, name, tensor, persistable=True):
+    def add_buffer(self, name, tensor, persistable=True):
         """
         Registers a tensor as buffer into the layer.
 
@@ -663,7 +663,7 @@ class Layer(core.Layer):
                 linear = paddle.nn.Linear(10, 3)
                 value = np.array([0]).astype("float32")
                 buffer = paddle.to_tensor(value)
-                linear.register_buffer("buf_name", buffer, persistable=True)
+                linear.add_buffer("buf_name", buffer, persistable=True)
 
                 # get the buffer by attribute.
                 print(linear.buf_name)
@@ -716,7 +716,7 @@ class Layer(core.Layer):
                 linear = paddle.nn.Linear(10, 3)
                 value = np.array([0]).astype("float32")
                 buffer = paddle.to_tensor(value)
-                linear.register_buffer("buf_name", buffer, persistable=True)
+                linear.add_buffer("buf_name", buffer, persistable=True)
 
                 print(linear.buffers())     # == print([linear.buf_name])
 
@@ -749,7 +749,7 @@ class Layer(core.Layer):
                 fc1 = paddle.nn.Linear(10, 3)
                 buffer1 = paddle.to_tensor(np.array([0]).astype("float32"))
                 # register a tensor as buffer by specific `persistable`
-                fc1.register_buffer("buf_name_1", buffer1, persistable=True)
+                fc1.add_buffer("buf_name_1", buffer1, persistable=True)
 
                 fc2 = paddle.nn.Linear(3, 10)
                 buffer2 = paddle.to_tensor(np.array([1]).astype("float32"))
@@ -1017,7 +1017,7 @@ class Layer(core.Layer):
                         )
                     _remove_if_exist(self.__dict__, self._parameters,
                                      self._sub_layers)
-                    # Set persistable=False by default. Only `register_buffer` can
+                    # Set persistable=False by default. Only `add_buffer` can
                     # add a persistable buffer.
                     if name not in self._buffers:
                         self._non_persistable_buffer_names_set.add(name)
