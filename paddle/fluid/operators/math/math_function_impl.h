@@ -28,13 +28,15 @@ template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                framework::Tensor* tensor,
                                                T num) {
+  bool xpu_place = false;
 #ifdef PADDLE_WITH_XPU
   if (context.GetPlace() == platform::XPUPlace()) {
+    xpu_place = true;
     framework::VisitDataType(tensor->type(),
                              TensorSetConstantXPU<T>(tensor, num));
   }
 #endif
-  if (!(context.GetPlace() == platform::XPUPlace())) {
+  if (!xpu_place()) {
     auto t = framework::EigenVector<T>::Flatten(*tensor);
     t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
   }
