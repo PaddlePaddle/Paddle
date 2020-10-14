@@ -236,9 +236,9 @@ class CompileTimeStrategy(object):
     def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
             endpoint = self.get_ps_endpoint()
-
         varnames = get_sparse_tablenames(self.get_origin_main_program(),
                                          is_distributed)
+
         ps_sparse_varnames = []
         for varname in varnames:
             tables = self.get_var_distributed(varname, True)
@@ -247,6 +247,55 @@ class CompileTimeStrategy(object):
                 if ep == endpoint:
                     ps_sparse_varnames.append(table)
         return ps_sparse_varnames
+
+    def get_optimize_varname_on_ps(self, param_name):
+        origin_param_name, _, _ = _get_varname_parts(param_name)
+        optimize_var_names = []
+        for op in self.get_origin_main_program().global_block().ops:
+            # check all optimizer op
+            if int(op.all_attrs()["op_role"]) == 2:
+                # check param name 
+                if op.input("Param")[0] != origin_param_name:
+                    continue
+                # check all input
+                for key in op.input_names:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
+                        continue
+                    # check varibale shape related param, e.g: Moment1
+                    optimize_var_names += self._get_optimizer_param_related_var_name(
+                        op, op.type, key)
+        return optimize_var_names
+
+    def _get_optimizer_param_related_var_name(self, op, op_type, varkey):
+        """
+        Returns the names for optimizer inputs that need to be load 
+        """
+        related_var_names = []
+        if op_type == "adam":
+            if varkey in ["Moment1", "Moment2"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "adagrad":
+            if varkey == "Moment":
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type in ["momentum", "lars_momentum"]:
+            if varkey == "Velocity":
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "rmsprop":
+            if varkey in ["Moment", "MeanSquare"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "ftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "sgd":
+            pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
+        return related_var_names
 
     def build_ctx(self,
                   vars,

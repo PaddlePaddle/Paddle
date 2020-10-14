@@ -41,7 +41,8 @@ class EmbeddingLayer(object):
             is_sparse=True,
             padding_idx=self.padding_idx,
             param_attr=paddle.ParamAttr(
-                name=self.name, initializer=paddle.nn.initializer.Xavier()))
+                name=self.name,
+                initializer=paddle.nn.initializer.XavierUniform()))
 
         return emb
 

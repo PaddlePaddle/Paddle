@@ -49,7 +49,7 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     int r = xpu::scale(dev_ctx.x_context(), in->numel(), scale, bias,
                        bias_after_scale, in->data<float>(), out->data<float>());
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::Fatal("XPU kernel error!"));
+                      platform::errors::Fatal("XPU scale kernel error!"));
   }
 };
 
