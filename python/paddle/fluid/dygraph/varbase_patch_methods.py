@@ -236,22 +236,15 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-                x = paddle.rand([1, 5])
+                x = paddle.rand([2, 5])
                 print(x)
-                # Variable: eager_tmp_0
-                #   - place: CUDAPlace(0)
-                #   - shape: [1, 5]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
-                paddle.enable_static()
+                
+                # Tensor(shape=[2, 5], dtype=float32, place=CPUPlace,
+                #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
+                #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        tensor = self.value().get_tensor()
-        if tensor._is_initialized():
-            return 'Tensor: %s\n%s' % (self.name, str(tensor))
-        else:
-            return 'Tensor: %s, not initialized' % (self.name)
+        from paddle.tensor.to_string import to_string
+        return to_string(self)
 
     @property
     def block(self):

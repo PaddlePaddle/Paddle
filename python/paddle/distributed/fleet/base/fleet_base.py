@@ -637,9 +637,7 @@ class Fleet(object):
 
                 print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
@@ -849,9 +847,7 @@ class Fleet(object):
 
                 print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
@@ -910,9 +906,7 @@ class Fleet(object):
 
                 print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
