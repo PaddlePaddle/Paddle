@@ -20,8 +20,8 @@ SET(GLOO_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gloo)
 SET(GLOO_INCLUDE_DIR   "${GLOO_INSTALL_DIR}/include" CACHE PATH "gloo include directory." FORCE)
 SET(GLOO_LIBRARY_DIR   "${GLOO_INSTALL_DIR}/lib" CACHE PATH "gloo library directory." FORCE)
 SET(GLOO_REPOSITORY    https://github.com/sandyhouse/gloo.git)
-SET(GLOO_TAG           v0.0.1)
-SET(GLOO_LIBRARIES     "${GLOO_INSTALL_DIR}/lib/libgloo.a", CACHE FILEPATH "gloo library." FORCE)
+SET(GLOO_TAG           v0.0.2)
+SET(GLOO_LIBRARIES     "${GLOO_INSTALL_DIR}/lib/libgloo.a" CACHE FILEPATH "gloo library." FORCE)
 
 INCLUDE_DIRECTORIES(${GLOO_INCLUDE_DIR})
 
@@ -39,13 +39,12 @@ ExternalProject_Add(
     PREFIX                "${GLOO_PREFIX_DIR}"
     SOURCE_DIR            "${GLOO_SOURCE_DIR}"
     UPDATE_COMMAND        ""
-    INSTALL_COMMAND       ""
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
         && cd ${GLOO_SOURCE_DIR}/build && cmake .. && make
         && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
-    COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-    COMMAND      ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
+    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
+    COMMAND              ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
 )
 
 
