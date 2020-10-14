@@ -28,6 +28,7 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeCalcOutScale
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass
 from paddle.fluid.dygraph.container import Sequential
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 from paddle.fluid.log_helper import get_logger
@@ -234,10 +235,11 @@ class TestImperativeOutSclae(unittest.TestCase):
             before_save = lenet(test_img)
 
         # save inference quantized model
-        path = "./mnist_infer_model"
+        path = "./outscale_infer_model/lenet"
+        save_dir = "./outscale_infer_model"
         imperative_out_scale.save_quantized_model(
-            model=lenet,
-            model_path=path,
+            layer=lenet,
+            path=path,
             input_spec=[
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')
@@ -250,10 +252,10 @@ class TestImperativeOutSclae(unittest.TestCase):
         exe = fluid.Executor(place)
         [inference_program, feed_target_names, fetch_targets] = (
             fluid.io.load_inference_model(
-                dirname=path,
+                dirname=save_dir,
                 executor=exe,
-                model_filename="__model__",
-                params_filename="__variables__"))
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX))
         after_save, = exe.run(inference_program,
                               feed={feed_target_names[0]: test_data},
                               fetch_list=fetch_targets)
@@ -340,9 +342,13 @@ class TestImperativeOutSclae(unittest.TestCase):
             lenet.eval()
             op_object_list = (Conv2D, ReLU, ReLU6, LeakyReLU, Sigmoid, Pool2D,
                               BatchNorm)
+
+        path = "./dynamic_outscale_infer_model/lenet"
+        save_dir = "./dynamic_outscale_infer_model"
+
         imperative_out_scale.save_quantized_model(
-            model=lenet,
-            model_path='./dynamic_out_scale',
+            layer=lenet,
+            path=path,
             input_spec=[
                 paddle.static.InputSpec(
                     shape=[None, 1, 28, 28], dtype='float32')
@@ -434,10 +440,10 @@ class TestImperativeOutSclae(unittest.TestCase):
         # load dynamic model
         [inference_program, feed_target_names, fetch_targets] = (
             fluid.io.load_inference_model(
-                dirname='./dynamic_out_scale',
+                dirname=save_dir,
                 executor=exe,
-                model_filename="__model__",
-                params_filename="__variables__"))
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX))
 
         global_block = inference_program.global_block()
         for op in global_block.ops:

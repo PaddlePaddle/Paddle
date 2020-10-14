@@ -15,9 +15,11 @@
 import logging
 import numpy as np
 import sys
+import os
 import paddle
 from paddle.fluid import dygraph, core, framework
 from paddle.fluid.executor import Executor
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
@@ -267,42 +269,40 @@ class ImperativeCalcOutScale(object):
                 var_names.append(var_name)
         return var_names
 
-    def save_quantized_model(self,
-                             model,
-                             model_path,
-                             input_spec=None,
-                             config=None):
+    def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
 
         Args:
-            model(fluid.dygraph.Layer): The output scale would be added to the model.
-            model_path (str): the directory to save the model.
-            input_spec (list[Variable], optional): Describes the input of the saved model. 
-                It is the example inputs that will be passed to saved TranslatedLayer's forward
-                function. If None, all input variables of the original Layer's forward function
-                would be the inputs of the saved model. Default None.
-            config (SaveLoadConfig, optional): :ref:`api_imperative_jit_saveLoadConfig` object
-                that specifies additional configuration options. Default None.
+            layer (Layer): The Layer to be saved.
+            path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
+            input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward 
+                method, which can be described by InputSpec or example Tensor. If None, all input variables of 
+                the original Layer's forward method would be the inputs of the saved model. Default None.
+            **configs (dict, optional): Other save configuration options for compatibility. We do not 
+                recommend using these configurations, they may be removed in the future. If not necessary, 
+                DO NOT use them. Default None.
+                The following options are currently supported:
+                (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
+                By default, all return variables of original Layer's forward method are kept as the 
+                output of the saved model. If the provided ``output_spec`` list is not all output variables, 
+                the saved model will be pruned according to the given ``output_spec`` list. 
 
         Returns:
             None
         """
+
         assert isinstance(
-            model, dygraph.Layer), "model must be the instance of dygraph.Layer"
+            layer, dygraph.Layer), "model must be the instance of dygraph.Layer"
         with dygraph.guard():
-            model.eval()
+            layer.eval()
             for handle in self._register_hook_handle_list:
                 handle.remove()
             for key in self._out_scale_dict:
                 self._out_scale_dict[key] = float(self._out_scale_dict[key]
                                                   .numpy())
 
-        paddle.jit.save(
-            layer=model,
-            model_path=model_path,
-            input_spec=input_spec,
-            config=config)
+        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -310,12 +310,17 @@ class ImperativeCalcOutScale(object):
             place = core.CPUPlace()
         exe = Executor(place)
 
+        file_prefix = os.path.basename(path)
+        dirname = os.path.dirname(path)
+        model_filename = file_prefix + INFER_MODEL_SUFFIX
+        params_filename = file_prefix + INFER_PARAMS_SUFFIX
+
         [inference_program, feed_target_names, fetch_targets] = (
             load_inference_model(
-                dirname=model_path,
+                dirname=dirname,
                 executor=exe,
-                model_filename="__model__",
-                params_filename="__variables__"))
+                model_filename=model_filename,
+                params_filename=params_filename))
 
         # Traverse all ops in the program and find out the op matching
         # the Layer in the dynamic graph.
@@ -366,13 +371,13 @@ class ImperativeCalcOutScale(object):
 
         # Save the processed program.
         save_inference_model(
-            dirname=model_path,
+            dirname=dirname,
             feeded_var_names=feed_target_names,
             target_vars=fetch_targets,
             executor=exe,
             main_program=inference_program.clone(),
-            model_filename='__model__',
-            params_filename='__variables__')
+            model_filename=model_filename,
+            params_filename=params_filename)
 
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
