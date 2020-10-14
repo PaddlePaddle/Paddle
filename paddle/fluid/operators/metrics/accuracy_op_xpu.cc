@@ -81,9 +81,9 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
     memory::Copy(platform::CPUPlace(), label_int64_host,
                  BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
                  label_data, label_int64_size);
-    for (int i = 0; i < num_samples; ++i) {
+    for (size_t i = 0; i < num_samples; ++i) {
       label_int32_host[i] = label_int64_host[i];
-      for (int j = 0; j < class_dim; ++j) {
+      for (size_t j = 0; j < class_dim; ++j) {
         indices_int32_host[i * class_dim + j] =
             indices_int64_host[i * class_dim + j];
       }

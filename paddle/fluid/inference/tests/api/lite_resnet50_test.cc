@@ -26,7 +26,11 @@ namespace inference {
 TEST(AnalysisPredictor, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
+#if defined(PADDLE_WITH_CUDA)
   config.EnableUseGpu(100, 0);
+#elif defined(PADDLE_WITH_XPU)
+  config.EnableXpu(100);
+#endif
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
 
@@ -40,7 +44,7 @@ TEST(AnalysisPredictor, use_gpu) {
   std::vector<float> input(input_num, 1);
 
   PaddleTensor in;
-  in.shape = {1, 3, 318, 318};
+  in.shape = {batch, channel, height, width};
   in.data =
       PaddleBuf(static_cast<void*>(input.data()), input_num * sizeof(float));
   in.dtype = PaddleDType::FLOAT32;
@@ -92,7 +96,7 @@ TEST(Predictor, use_gpu) {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputHandle(input_names[0]);
 
-  input_t->Reshape({1, 3, 318, 318});
+  input_t->Reshape({batch, channel, height, width});
   input_t->CopyFromCpu(input.data());
   predictor->Run();
 
