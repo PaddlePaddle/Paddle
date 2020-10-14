@@ -36,7 +36,7 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                              TensorSetConstantXPU<T>(tensor, num));
   }
 #endif
-  if (!xpu_place()) {
+  if (!xpu_place) {
     auto t = framework::EigenVector<T>::Flatten(*tensor);
     t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
   }
