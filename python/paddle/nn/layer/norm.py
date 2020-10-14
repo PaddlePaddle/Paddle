@@ -28,7 +28,7 @@
 # TODO: define normalization api  
 
 import six
-from ...fluid.dygraph.nn import InstanceNorm
+#from ...fluid.dygraph.nn import InstanceNorm
 
 from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
 #from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
@@ -51,11 +51,12 @@ import numpy as np
 import numbers
 import warnings
 from ...fluid.dygraph.base import no_grad
+from .. import functional as F
 
 __all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
-    'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d',
-    'InstanceNorm2d', 'InstanceNorm3d', 'SyncBatchNorm'
+    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1d',
+    'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d', 'InstanceNorm2d',
+    'InstanceNorm3d', 'SyncBatchNorm', 'LocalResponseNorm'
 ]
 
 
@@ -1147,3 +1148,63 @@ class SyncBatchNorm(_BatchNormBase):
                                       cls.convert_sync_batchnorm(sublayer))
         del layer
         return layer_output
+
+
+class LocalResponseNorm(layers.Layer):
+    """
+        Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
+        For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+        See more details in :ref:`api_paddle_nn_functional_local_response_norm` .
+
+        Parameters:
+            size (int): The number of channels to sum over.
+            alpha (float, optional): The scaling parameter, positive. Default:1e-4
+            beta (float, optional): The exponent, positive. Default:0.75
+            k (float, optional): An offset, positive. Default: 1.0
+            data_format (str, optional): Specify the data format of the input, and the data format of the output
+                will be consistent with that of the input. An optional string from:
+                If input is 3-D Tensor, the string could be `"NCL"` or `"NLC"` . When it is `"NCL"`,
+                the data is stored in the order of: `[batch_size, input_channels, feature_length]`.
+                If input is 4-D Tensor, the string could be  `"NCHW"`, `"NHWC"`. When it is `"NCHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
+                If input is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+            name (str, optional): Name for the operation (optional, default is None). For more information,
+                please refer to :ref:`api_guide_Name`.
+
+        Shape:
+            - input: 3-D/4-D/5-D tensor.
+            - output: 3-D/4-D/5-D tensor, the same shape as input.
+
+        Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            m = paddle.nn.LocalResponseNorm(size=5)
+            y = m(x)
+            print(y.shape)  # [3, 3, 112, 112]
+        """
+
+    def __init__(self,
+                 size,
+                 alpha=0.0001,
+                 beta=0.75,
+                 k=1.0,
+                 data_format="NCHW",
+                 name=None):
+        super(LocalResponseNorm, self).__init__()
+        self.size = size
+        self.alpha = alpha
+        self.beta = beta
+        self.k = k
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.local_response_norm(input, self.size, self.alpha, self.beta,
+                                    self.k, self.data_format, self.name)
+        return out

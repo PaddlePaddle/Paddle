@@ -55,6 +55,7 @@ from .layer.activation import ELU  #DEFINE_ALIAS
 from .layer.activation import GELU  #DEFINE_ALIAS
 from .layer.activation import Tanh  #DEFINE_ALIAS
 from .layer.activation import Hardshrink  #DEFINE_ALIAS
+from .layer.activation import Hardswish  #DEFINE_ALIAS
 from .layer.activation import Hardtanh  #DEFINE_ALIAS
 from .layer.activation import PReLU  #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
@@ -62,14 +63,17 @@ from .layer.activation import ReLU6  #DEFINE_ALIAS
 from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
+from .layer.activation import Hardsigmoid  #DEFINE_ALIAS
 from .layer.activation import LogSigmoid
 from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
 from .layer.activation import Softshrink  #DEFINE_ALIAS
 from .layer.activation import Softsign  #DEFINE_ALIAS
+from .layer.activation import Swish  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
+from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
-from .layer.activation import HSigmoid  #DEFINE_ALIAS
+from .layer.activation import Maxout  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
@@ -117,17 +121,11 @@ from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
-# from .layer.learning_rate import CosineDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import ExponentialDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import InverseTimeDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NaturalExpDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
 from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
+from .layer.loss import HSigmoidLoss  #DEFINE_ALIAS
 from .layer.loss import MSELoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer.loss import NLLLoss  #DEFINE_ALIAS
@@ -141,13 +139,13 @@ from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
 from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS
