@@ -66,7 +66,7 @@ endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
     sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
-if (WITH_GPU)
+if (WITH_GPU AND USE_PADDLE_CUDA_KERNEL_CHECK)
     #register_cuda_check(EXCLUDES py_func_op warpctc_op dgc_op
     #sync_batch_norm_op ${OP_MKL_DEPS} DEPS cuda_enforce)
     set_target_properties(nll_loss_op PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
