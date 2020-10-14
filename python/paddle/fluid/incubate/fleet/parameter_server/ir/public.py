@@ -372,8 +372,6 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
-            name, ctx = self._step_ctx()
-            send_ctx[name] = ctx
         else:
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
