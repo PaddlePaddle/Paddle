@@ -1333,7 +1333,9 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
+                paddle.enable_static()
                 cur_program = fluid.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
