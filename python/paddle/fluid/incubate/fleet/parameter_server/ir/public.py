@@ -399,6 +399,8 @@ class CompileTimeStrategy(object):
                                   param_ctx.is_distributed())
 
                 send_ctx[ctx.var_name()] = ctx
+            name, ctx = self._step_ctx()
+            send_ctx[name] = ctx
         return send_ctx
 
     def get_communicator_send_context(self):
@@ -421,6 +423,8 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(param, self.param_var_mapping, False, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
+            name, ctx = self._step_ctx()
+            send_ctx[name] = ctx
         else:
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
