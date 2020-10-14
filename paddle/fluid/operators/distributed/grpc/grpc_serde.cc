@@ -41,6 +41,39 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+void SerializeMultiVarToByteBuffer(
+    const std::string& message_name,
+    const std::vector<std::string>& send_var_name,
+    const framework::Scope& scope, const platform::DeviceContext& ctx,
+    ::grpc::ByteBuffer* msg, const std::vector<std::string>& out_var_name,
+    const int trainer_id, const std::string& table_name) {
+  MultiVarMsg request;
+  TensorPayload* payload = nullptr;
+
+  request.set_message_name = message_name;
+  request.set_var_num = send_var_name.shape();
+
+  for (size_t var_index = 0; var_index < send_var_name.shape(); var_index++) {
+  }
+}
+
+void SerializeLodTensorToVarMsg(const std::string& var_name,
+                                const framework::Scope& scope,
+                                const platform::DeviceContext& ctx,
+                                const int trainer_id,
+                                VariableMessage* var_msg) {
+  Variable* var = scope->FindVar(varname);
+  if (var == nullptr) {
+    // throw error
+    return;
+  }
+
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  var_msg->set_varname(var_name);
+  var_msg->set_trainer_id(trainer_id);
+  request.set_type(::sendrecv::LOD_TENSOR);
+}
+
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,

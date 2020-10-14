@@ -493,23 +493,25 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
-                                          const platform::DeviceContext& ctx,
-                                          const framework::Scope& scope,
-                                          const std::string& send_var_name,
-                                          const std::string& recv_var_name,
-                                          const std::string& table_name,
-                                          int64_t time_out) {
+VarHandlePtr GRPCClient::AsyncSendAndRecv(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& message_name,
+    const std::vector<std::string>& send_var_name,
+    const std::vector<std::string>& recv_var_name,
+    const std::vector<std::string>& table_name, int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
-  const std::string ep_val = ep;
-  const std::string send_var_name_val = send_var_name;
-  const std::string recv_var_name_val = recv_var_name;
-  const std::string table_name_val = table_name;
   const framework::Scope* p_scope = &scope;
+
+  const std::string ep_val = ep;
+  const std::string message_name = message_name;
+  const std::vector<std::string> send_var_name_val = send_var_name;
+  const std::vector<std::string> recv_var_name_val = recv_var_name;
+  const std::vector<std::string> table_name_val = table_name;
   const auto ch = GetChannel(ep_val);
+
   const std::string method = kSendAndRecvRPC;
-  VLOG(4) << "GRPCClient::SendAndRecv Begin ,Send_var_name: "
-          << send_var_name_val << " Recv_var_name: " << recv_var_name_val;
+  VLOG(4) << "GRPCClient::SendAndRecv Begin, Send message name: "
+          << message_name;
   int retry_times_ = 0;
 
   while (true) {
@@ -521,16 +523,19 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
     s->Prepare(h, time_out);
     s->RecvPrepare(h_recv);
 
-    framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
-                        p_scope, p_ctx, s, method, h, this] {
-      auto* send_var = p_scope->FindVar(send_var_name_val);
-      send_var->GetMutable<framework::LoDTensor>()->set_lod({});
+    framework::AsyncIO([message_name, send_var_name_val, recv_var_name_val,
+                        table_name_val, p_scope, p_ctx, s, method, h, this] {
+      // auto* send_var = p_scope->FindVar(send_var_name_val);
+      // send_var->GetMutable<framework::LoDTensor>()->set_lod({});
       ::grpc::ByteBuffer buf;
       VLOG(4) << "SerializeToByteBuffer: send_var_name_val: "
               << send_var_name_val
               << " recv_var_name_val: " << recv_var_name_val;
-      SerializeToByteBuffer(send_var_name_val, send_var, *p_ctx, &buf,
-                            recv_var_name_val, trainer_id_, table_name_val);
+      // SerializeToByteBuffer(send_var_name_val, send_var, *p_ctx, &buf,
+      //                       recv_var_name_val, trainer_id_, table_name_val);
+      SerializeMultiVarToByteBuffer(message_name, send_var_name_val, *p_scope,
+                                    *p_ctx, &buf, recv_var_name_val,
+                                    trainer_id_, table_name_val);
 
       VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
