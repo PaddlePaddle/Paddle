@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/multinomial_op.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
@@ -31,6 +32,14 @@ __global__ void NormalizeProbability(T* norm_probs, const T* in_data,
                                      T* sum_rows) {
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
+  PADDLE_ENFORCE(in_data[id] >= 0.0,
+                 "The input of multinomial distribution should be >= 0");
+  PADDLE_ENFORCE(
+      !std::isinf(static_cast<double>(in_data[id])) &&
+          !std::isnan(static_cast<double>(in_data[id])),
+      "The input of multinomial distribution shoud not be infinity or NaN");
+  PADDLE_ENFORCE(sum_rows[blockIdx.y] > 0.0,
+                 "The sum of input should not be 0");
   norm_probs[id] = in_data[id] / sum_rows[blockIdx.y];
 }
 
