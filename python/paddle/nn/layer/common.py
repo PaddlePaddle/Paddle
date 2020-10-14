@@ -705,7 +705,7 @@ class AlphaDropout(layers.Layer):
 class Pad1D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Pad1D`` class.
-    Pad tensor according to 'pad' and 'mode'.
+    Pad tensor according to 'pad', 'mode' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
@@ -716,7 +716,7 @@ class Pad1D(layers.Layer):
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'
+            Default is 'constant'.
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
@@ -782,7 +782,7 @@ class Pad1D(layers.Layer):
 class Pad2D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Pad2D`` class.
-    Pad tensor according to 'pad' and 'mode'.
+    Pad tensor according to 'pad', 'mode' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
     than width-1. The height dimension has the same condition.
 
@@ -794,7 +794,7 @@ class Pad2D(layers.Layer):
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'
+            Default is 'constant'.
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
            Default is  "NCHW"
@@ -862,7 +862,7 @@ class Pad2D(layers.Layer):
 class Pad3D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
-    Pad tensor according to 'pad' and 'mode'.
+    Pad tensor according to 'pad', 'mode' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
@@ -874,7 +874,7 @@ class Pad3D(layers.Layer):
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
-            Default is 'constant'
+            Default is 'constant'.
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"

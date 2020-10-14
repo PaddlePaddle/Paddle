@@ -369,6 +369,7 @@ class TestPadAPI(unittest.TestCase):
         self.assertTrue(np.allclose(y2.numpy(), np_out2))
 
     def test_dygraph_3(self):
+        paddle.disable_static()
         input_shape = (3, 4, 5)
         pad = [3, 4]
         mode = "constant"
