@@ -219,7 +219,7 @@ def append_send_ops_pass(program, config):
     merged_names = []
     for merged_name, send in sends.items():
         if merged_name == STEP_COUNTER:
-            origin_varnames.append("")
+            origin_varnames.append("@EMPTY@")
             merged_names.append(merged_name)
         else:
             for var in send.origin_varnames():
