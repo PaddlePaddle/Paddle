@@ -99,7 +99,7 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
                            xpu::REDUCE_SUM);
       PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
     } else {
-      PADDLE_THROW("unsupport reduce sum grad");
+      PADDLE_THROW(platform::errors::"unsupport reduce sum grad");
     }
   }
 };
