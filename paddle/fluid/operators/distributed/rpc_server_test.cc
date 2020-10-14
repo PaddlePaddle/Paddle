@@ -257,6 +257,9 @@ void StartCheckpointServer(const std::string& rpc_name) {
   metas.push_back(meta);
   distributed::LargeScaleKV::Init(metas);
 
+  auto* ins = distributed::LargeScaleKV::GetInstance();
+  ins->Get("embedding.block0")->Init({0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
+
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       prefetch_var_name_to_prepared;
@@ -281,8 +284,8 @@ TEST(LARGE_SCALE_CHECKPOINT, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
 
-  g_req_handler.reset(new distributed::RequestNotifyHandler(
-      distributed::DistributedMode::kAsync, 1));
+  g_req_handler.reset(new distributed::RequestCheckpointHandler(
+      distributed::DistributedMode::kAsync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
 
   distributed::RPCClient* client =

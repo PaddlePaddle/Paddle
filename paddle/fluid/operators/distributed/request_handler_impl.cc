@@ -274,10 +274,10 @@ bool RequestCheckpointHandler::Handle(const std::string &varname,
                                       const int trainer_id,
                                       const std::string &out_var_name,
                                       const std::string &table_name) {
-  int mode = std::stoi(out_var_name);
-
   VLOG(4) << "receive save var " << varname << " with path " << out_var_name
-          << " mode " << mode;
+          << " mode " << table_name;
+
+  int mode = std::stoi(table_name);
 
   auto *ins = distributed::LargeScaleKV::GetInstance();
   ins->Get(varname)->Save(out_var_name, mode);
