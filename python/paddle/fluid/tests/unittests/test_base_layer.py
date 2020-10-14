@@ -131,7 +131,7 @@ class BufferNet(fluid.Layer):
         buffer_var = to_variable(np.ones([2, 4]).astype('int32'))
         self.register_buffer("net_buffer", buffer_var)
 
-        self.new_buffer = to_variable(np.ones([4, 2]).astype('int32'))
+        self.not_buffer = to_variable(np.ones([4, 2]).astype('int32'))
 
     def forward(self):
         pass
@@ -149,15 +149,15 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(layer.buffers()), 1)
             self.assertEqual(names(layer.named_buffers()), ['layer_buffer'])
 
-            self.assertEqual(len(net.buffers()), 3)
+            self.assertEqual(len(net.buffers()), 2)
             self.assertEqual(
                 names(net.named_buffers()),
-                ['net_buffer', 'new_buffer', 'buffer_layer.layer_buffer'])
+                ['net_buffer', 'buffer_layer.layer_buffer'])
 
-            self.assertEqual(len(net.buffers(include_sublayers=False)), 2)
+            self.assertEqual(len(net.buffers(include_sublayers=False)), 1)
             self.assertEqual(
                 names(net.named_buffers(include_sublayers=False)),
-                ['net_buffer', 'new_buffer'])
+                ['net_buffer'])
 
     def test_register_buffer_with_error(self):
         with fluid.dygraph.guard():

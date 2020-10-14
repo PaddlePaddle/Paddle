@@ -1009,7 +1009,22 @@ class Layer(core.Layer):
                         .format(name, type(value).__name__))
                 layers[name] = None
             else:
-                object.__setattr__(self, name, value)
+                _buffers = self.__dict__.get('_buffers', None)
+                if _buffers and name in _buffers:
+                    if isinstance(value, core.VarBase):
+                        _remove_if_exist(self.__dict__, self._parameters,
+                                         self._sub_layers)
+                        _buffers[name] = value
+                    elif value is not None:
+                        raise TypeError(
+                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
+                            .format(name, type(value).__name__))
+                    else:
+                        # Assigning None will remove the buffer, but if re-assign a new varBase to it,
+                        # it will be remarked as a buffer with same `persistable` attribute.
+                        _buffers[name] = None
+                else:
+                    object.__setattr__(self, name, value)
 
     def __delattr__(self, name):
         if name in self._parameters:
