@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,38 +17,25 @@ import logging
 import numpy as np
 
 import paddle
-from .. import fluid
-from ..fluid import core
-from ..fluid.dygraph import Layer
-from ..fluid import framework
-from ..fluid import executor
+import paddle.fluid as fluid
 
 __all__ = ['run_check']
-
-
-class SimpleLayer(Layer):
-    def __init__(self, input_size):
-        super(SimpleLayer, self).__init__()
-        self._linear1 = paddle.nn.Linear(
-            input_size,
-            3,
-            weight_attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=0.1)))
-
-    def forward(self, inputs):
-        x = self._linear1(inputs)
-        x = paddle.tensor.sum(x)
-        return x
 
 
 def _simple_network():
     """
     Define a simple network composed by a single linear layer.
     """
-    input = paddle.static.data(name="input", shape=[None, 2, 2])
-    simple_layer = SimpleLayer(input_size=2)
-    out = simple_layer(input)
-    return input, out, simple_layer._linear1.weight
+    input = paddle.static.data(
+        name="input", shape=[None, 2, 2], dtype="float32")
+    weight = paddle.create_parameter(
+        shape=[2, 3],
+        dtype="float32",
+        attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(0.1)))
+    bias = paddle.create_parameter(shape=[3], dtype="float32")
+    linear_out = paddle.nn.functional.linear(x=input, weight=weight, bias=bias)
+    out = paddle.tensor.sum(linear_out)
+    return input, out, weight
 
 
 def _prepare_data(device_count):
@@ -75,9 +62,9 @@ def _is_cuda_available():
     """
     Check whether CUDA is avaiable.
     """
-    if core.is_compiled_with_cuda():
+    if fluid.core.is_compiled_with_cuda():
         try:
-            core.get_cuda_device_count()
+            fluid.core.get_cuda_device_count()
             return True
         except Exception as e:
             logging.warning(
@@ -97,18 +84,18 @@ def _run_static_single(use_cuda):
         use_cuda (bool): Whether running with CUDA.
     """
     paddle.enable_static()
-    with executor.scope_guard(core.Scope()):
-        train_prog = framework.Program()
-        startup_prog = framework.Program()
+    with fluid.scope_guard(fluid.core.Scope()):
+        train_prog = fluid.Program()
+        startup_prog = fluid.Program()
         startup_prog.random_seed = 1
-        with framework.program_guard(train_prog, startup_prog):
-            with framework.unique_name.guard():
+        with fluid.program_guard(train_prog, startup_prog):
+            with fluid.unique_name.guard():
                 input, out, weight = _simple_network()
                 param_grads = fluid.backward.append_backward(
                     out, parameter_list=[weight.name])[0]
 
-        exe = executor.Executor(
-            core.CUDAPlace(0) if use_cuda else core.CPUPlace())
+        exe = fluid.Executor(
+            fluid.core.CUDAPlace(0) if use_cuda else fluid.core.CPUPlace())
         exe.run(startup_prog)
         exe.run(train_prog,
                 feed={input.name: _prepare_data(1)},
@@ -125,11 +112,11 @@ def _run_static_parallel(use_cuda, device_list):
         device_list (int): The specified devices.
     """
     paddle.enable_static()
-    with executor.scope_guard(core.Scope()):
-        train_prog = framework.Program()
-        startup_prog = framework.Program()
-        with framework.program_guard(train_prog, startup_prog):
-            with framework.unique_name.guard():
+    with fluid.scope_guard(fluid.core.Scope()):
+        train_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        with fluid.program_guard(train_prog, startup_prog):
+            with fluid.unique_name.guard():
                 input, out, _ = _simple_network()
                 loss = paddle.tensor.mean(out)
                 loss.persistable = True
@@ -139,8 +126,8 @@ def _run_static_parallel(use_cuda, device_list):
             train_prog).with_data_parallel(
                 loss_name=loss.name, places=device_list)
 
-        exe = executor.Executor(
-            core.CUDAPlace(0) if use_cuda else core.CPUPlace())
+        exe = fluid.Executor(
+            fluid.core.CUDAPlace(0) if use_cuda else fluid.core.CPUPlace())
         exe.run(startup_prog)
         exe.run(compiled_prog,
                 feed={input.name: _prepare_data(len(device_list))},
@@ -172,10 +159,10 @@ def run_check():
     use_cuda = _is_cuda_available()
     if use_cuda:
         device_str = "GPU"
-        device_list = framework.cuda_places()
+        device_list = fluid.cuda_places()
     else:
         device_str = "CPU"
-        device_list = [core.CPUPlace(), core.CPUPlace()]
+        device_list = [fluid.core.CPUPlace(), fluid.core.CPUPlace()]
     device_count = len(device_list)
 
     _run_static_single(use_cuda)
