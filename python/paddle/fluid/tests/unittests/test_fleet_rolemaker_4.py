@@ -182,7 +182,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         h.log_message("666")
         s.get_deleted_size("haha")
         s1 = TmpS()
-        s1.shoud_stop()
+        s1.should_stop()
 
 
 if __name__ == "__main__":

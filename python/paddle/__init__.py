@@ -130,7 +130,6 @@ from .tensor.manipulation import stack  #DEFINE_ALIAS
 from .tensor.manipulation import strided_slice  #DEFINE_ALIAS
 from .tensor.manipulation import transpose  #DEFINE_ALIAS
 from .tensor.manipulation import unique  #DEFINE_ALIAS
-from .tensor.manipulation import unique_with_counts  #DEFINE_ALIAS
 from .tensor.manipulation import unsqueeze  #DEFINE_ALIAS
 from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
@@ -172,9 +171,8 @@ from .tensor.math import sqrt  #DEFINE_ALIAS
 from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
 from .tensor.math import sum  #DEFINE_ALIAS
-from .tensor.math import sums  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
-from .tensor.math import elementwise_sum  #DEFINE_ALIAS
+from .tensor.math import add_n  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
@@ -201,6 +199,7 @@ from .tensor.math import isfinite  #DEFINE_ALIAS
 from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
+from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
@@ -219,6 +218,9 @@ from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
+
+from .tensor.to_string import set_printoptions
+
 from .framework.random import manual_seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
 from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
@@ -234,16 +236,8 @@ from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
-from .framework import SaveLoadConfig  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
-from .framework import NoamDecay  #DEFINE_ALIAS
-from .framework import PiecewiseDecay  #DEFINE_ALIAS
-from .framework import NaturalExpDecay  #DEFINE_ALIAS
-from .framework import ExponentialDecay  #DEFINE_ALIAS
-from .framework import InverseTimeDecay  #DEFINE_ALIAS
-from .framework import PolynomialDecay  #DEFINE_ALIAS
-from .framework import CosineDecay  #DEFINE_ALIAS
 from .framework import set_default_dtype  #DEFINE_ALIAS
 from .framework import get_default_dtype  #DEFINE_ALIAS
 
@@ -271,6 +265,7 @@ from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 
 from . import jit
 from . import static
+from . import amp
 
 # high-level api
 from .hapi import Model

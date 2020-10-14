@@ -86,6 +86,7 @@ pip install --upgrade pip --user
 pip install wheel --user
 pip install gym --user
 pip install -U -r %work_dir%\python\requirements.txt --user
+pip install -U -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install requirements.txt failed!

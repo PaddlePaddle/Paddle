@@ -210,6 +210,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
+        read_env_flags.append('tracer_mkldnn_ops_on')
+        read_env_flags.append('tracer_mkldnn_ops_off')
 
     if core.is_compiled_with_dist():
         #env for rpc

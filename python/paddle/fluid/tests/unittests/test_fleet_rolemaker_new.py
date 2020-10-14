@@ -282,8 +282,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
         os.environ["PADDLE_WITH_GLOO"] = "1"
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
-        os.environ["PADDLE_GLOO_HTTP_HOST"] = "127.0.0.1"
-        os.environ["PADDLE_GLOO_HTTP_PORT"] = "30019"
+        os.environ["PADDLE_GLOO_HTTP_ENDPOINT"] = "127.0.0.1:30019"
 
         role = role_maker.PaddleCloudRoleMaker()
         role._generate_role()
@@ -541,8 +540,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
         os.environ["PADDLE_WITH_GLOO"] = "1"
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
-        os.environ["PADDLE_GLOO_HTTP_HOST"] = "127.0.0.1"
-        os.environ["PADDLE_GLOO_HTTP_PORT"] = "30019"
+        os.environ["PADDLE_GLOO_HTTP_ENDPOINT"] = "127.0.0.1:30019"
 
         role = role_maker.PaddleCloudRoleMaker()
         role._generate_role()
@@ -673,11 +671,9 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
         os.environ["PADDLE_WITH_GLOO"] = "1"
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
-        os.environ["PADDLE_GLOO_HTTP_HOST"] = ""
-        os.environ["PADDLE_GLOO_HTTP_PORT"] = ""
+        os.environ["PADDLE_GLOO_HTTP_ENDPOINT"] = ""
 
         role = role_maker.PaddleCloudRoleMaker()
-        self.assertRaises(ValueError, role._generate_role)
 
     def test_fs_gloo8(self):
         plats = platform.platform()
