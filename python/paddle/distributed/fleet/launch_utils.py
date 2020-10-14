@@ -897,7 +897,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_WITH_GLOO": "1",
                 "PADDLE_GLOO_RENDEZVOUS": "2",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "PADDLE_GLOO_HTTP_PORTS": self.http_port
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
             }
             current_env.update(proc_env)
 
@@ -965,7 +965,7 @@ class ParameterServerLauncher(object):
                 "FLAGS_selected_xpus": "0",
                 "CUDA_VISIBLE_DEVICES": device_id,
                 "XPU_VISIBLE_DEVICES": device_id,
-                "PADDLE_GLOO_HTTP_PORTS": self.http_port
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
             }
             current_env.update(proc_env)
 
@@ -1034,7 +1034,7 @@ class ParameterServerLauncher(object):
                 "FLAGS_selected_xpus": "0",
                 "CUDA_VISIBLE_DEVICES": device_id,
                 "XPU_VISIBLE_DEVICES": device_id,
-                "PADDLE_GLOO_HTTP_PORTS": self.http_port
+                "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
             }
             current_env.update(proc_env)
 
