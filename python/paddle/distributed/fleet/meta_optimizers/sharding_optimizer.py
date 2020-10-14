@@ -457,10 +457,10 @@ class ShardingOptimizer(MetaOptimizerBase):
             outputs={'Out': inf_var_fp32},
             attrs={'ring_id': 0,
                    OP_ROLE_KEY: OpRole.Optimize})
-        self._insert_sync_comm_ops(block, update_loss_scaling_op_idx + 3,
-                                   [inf_var_fp32])
+        comm_op_num = self._insert_sync_comm_ops(
+            block, update_loss_scaling_op_idx + 3, [inf_var_fp32])
         block._insert_op(
-            update_loss_scaling_op_idx + 4,
+            update_loss_scaling_op_idx + 3 + comm_op_num,
             type='cast',
             inputs={'X': inf_var_fp32},
             outputs={'Out': inf_var_sharding},
@@ -681,7 +681,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 outputs={'Out': comm_dep_vars},
                 attrs={'ring_id': i,
                        OP_ROLE_KEY: OpRole.Forward})
-        return
+        return self._nrings
 
     def _insert_sync_calc_op(self, block, insert_idx, calc_dep_vars):
         """
@@ -1153,7 +1153,14 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         self._nrings = self.user_defined_strategy.sharding_configs["nrings"]
 
+        ckpts = list(self.user_defined_strategy.zero_configs["checkpoints"])
         optimizer = self.inner_opt
+        if len(ckpts) > 0:
+            print("add recompute")
+            print(ckpts)
+            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+            optimizer._set_checkpoints(ckpts)
+
         if self.user_defined_strategy.sharding_configs["amp"]:
             optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
 
