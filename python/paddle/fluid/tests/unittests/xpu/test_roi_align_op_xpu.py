@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+@skip_check_grad_ci(reason="There is no grad kernel for roi_align_xpu kernel.")
 class TestROIAlignOp(OpTest):
     def set_data(self):
         self.init_test_case()
@@ -176,9 +177,6 @@ class TestROIAlignOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        pass
 
 
 if __name__ == '__main__':

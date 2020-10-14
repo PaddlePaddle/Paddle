@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+@skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
 class TestStackOpBase(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -63,9 +64,6 @@ class TestStackOpBase(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        pass
 
 
 class TestStackOp1(TestStackOpBase):
