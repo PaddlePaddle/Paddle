@@ -284,7 +284,17 @@ def _current_expected_place():
     global _global_expected_place_
     if _global_expected_place_ is None:
         if core.is_compiled_with_cuda():
-            _global_expected_place_ = core.CUDAPlace(0)
+            try:
+                device_count = core.get_cuda_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CUDAPlace(0)
+            else:
+                warnings.warn(
+                    "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
