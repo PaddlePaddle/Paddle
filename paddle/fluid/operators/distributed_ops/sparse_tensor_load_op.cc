@@ -70,8 +70,6 @@ class SparseTensorLoadKernel : public paddle::framework::OpKernel<T> {
   void LoadLodTensor(std::istream &is, const platform::Place &place,
                      paddle::framework::Variable *var,
                      const paddle::framework::ExecutionContext &ctx) const {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
     auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
 
     auto node_index = ctx.Attr<int64_t>("node_index");
