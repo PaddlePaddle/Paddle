@@ -898,7 +898,7 @@ function card_test() {
     ut_startTime_s=`date +%s` 
     # get the CUDA device count
     if [ "${WITH_XPU}" == "ON" ];then
-        CUDA_DEVICE_COUNT=4
+        CUDA_DEVICE_COUNT=1
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
