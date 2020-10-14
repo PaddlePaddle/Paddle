@@ -136,13 +136,13 @@ from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
 from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS

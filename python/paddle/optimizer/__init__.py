@@ -22,6 +22,7 @@ __all__ = [
 
 
 from .optimizer import Optimizer
+from .adagrad import Adagrad
 from .adam import Adam
 from .adamw import AdamW
 from .adamax import Adamax
