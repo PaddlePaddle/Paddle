@@ -226,7 +226,8 @@ def append_send_ops_pass(program, config):
                 origin_varnames.append(var)
                 merged_names.append(merged_name)
 
-    dummys.append(_append_send_op(origin_varnames, merged_names))
+    if len(origin_varnames) > 0:
+        dummys.append(_append_send_op(origin_varnames, merged_names))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)
