@@ -557,7 +557,7 @@ EOF
         tmpfile=$tmp_dir/$tmpfile_rand
         set +ex
         ut_startTime_s=`date +%s`
-        get_quickly_disable_ut|| echo "some error happen in get_quickly_disable_ut"# indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
         ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
@@ -990,7 +990,7 @@ set +x
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut    # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list 
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
