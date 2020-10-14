@@ -10917,6 +10917,7 @@ def slice(input, axes, starts, ends):
         .. code-block:: python
 
             import paddle
+            import numpy as np
 
             input = np.random.random(size=(4, 5, 6)).astype('float32')
             input = paddle.to_tensor(input, dtype='float32')
