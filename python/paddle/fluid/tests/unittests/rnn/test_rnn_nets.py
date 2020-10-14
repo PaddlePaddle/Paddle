@@ -221,6 +221,16 @@ class TestLSTM(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
+        rnn2.eval()
+        y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
+        y2, (h2, c2) = rnn2(
+            paddle.to_tensor(x),
+            (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)))
+        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
+        np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
+        np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
+        rnn2.train()
+
     def test_with_zero_state(self):
         rnn1 = self.rnn1
         rnn2 = self.rnn2
