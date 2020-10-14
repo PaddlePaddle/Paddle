@@ -105,7 +105,7 @@ class ConstantInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-    	    import paddle
+            import paddle
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
