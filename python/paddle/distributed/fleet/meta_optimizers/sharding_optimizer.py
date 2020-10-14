@@ -149,10 +149,11 @@ class ProgramDeps(object):
         if var_name in self._var_to_generate_op:
             assert (op_idx in self._var_to_generate_op[var_name])
             self._var_to_generate_op[var_name].remove(op_idx)
-        if self._block.has_var(var_name) and self._var_to_generate_op[
-                var_name] == []:
-            print("main_block remove var {}".format(var_name))
-            self._block._remove_var(var_name)
+        if self._block.has_var(var_name):
+            if var_name not in self._var_to_generate_op or self._var_to_generate_op[
+                    var_name] == []:
+                print("main_block remove var {}".format(var_name))
+                self._block._remove_var(var_name)
 
     def remove_op(self, op_idx):
         # update deps
@@ -241,6 +242,22 @@ class ShardingOptimizer(MetaOptimizerBase):
         output_var = block.var(output_name)
         if input_var.dtype != core.VarDesc.VarType.FP32 or \
             output_var.dtype != core.VarDesc.VarType.FP16:
+            return False
+        return True
+
+    def _is_fp32_cast_op(self, block, op):
+        if op.type != "cast":
+            return False
+        if not is_optimizer_op(op):
+            return False
+        assert (len(op.desc.input_arg_names()) == 1)
+        assert (len(op.desc.output_arg_names()) == 1)
+        input_name, output_name = op.desc.input_arg_names()[
+            0], op.desc.output_arg_names()[0]
+        input_var = block.var(input_name)
+        output_var = block.var(output_name)
+        if input_var.dtype != core.VarDesc.VarType.FP16 or \
+            output_var.dtype != core.VarDesc.VarType.FP32:
             return False
         return True
 
@@ -376,9 +393,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._sub_progs.insert(0, sub_prog)
         return
 
-    def _is_gradient_clip_sum_op(self, op):
-        return op.type == "sum" and op.desc.has_attr("op_namescope") \
-            and op.desc.attr("op_namescope").startswith("/gradient_clip_@CLIP")
+    def is_gradient_clip_op(self, op):
+        return op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/gradient_clip")
 
     # def _is_amp_sum_op(self, op):
     #     return op.type == "sum" and op.desc.has_attr("op_namescope") \
@@ -407,6 +424,24 @@ class ShardingOptimizer(MetaOptimizerBase):
         block._sync_with_cpp()
 
     def _prune_fp16(self, block):
+        # remove cast
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self._is_fp32_cast_op(block, op):
+                continue
+            output_name = op.desc.output_arg_names()[0]
+            param_name = output_name.strip("@GRAD")
+            if param_name not in self._param2device:
+                raise ValueError("Input 'X' of check_finite_and_unscale must"
+                                 "be grads, but {} is not a grad".format(
+                                     input_name))
+            if output_name in self._reduced_grads_to_param:
+                continue
+            if self._param2device[param_name] == self.role_maker._worker_index(
+            ):
+                continue
+            block._remove_op(idx)
+
+        block._sync_with_cpp()
         update_loss_scaling_op_idx = -1
         inf_var_name = ''
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -471,65 +506,45 @@ class ShardingOptimizer(MetaOptimizerBase):
             })
         block._sync_with_cpp()
 
-    def _prune_main_program(self, block):
-        """
-        calculate deps from allredce op to optimize op,
-        remove ops and vars not needed in this worker
-        """
-        self._prune_weight_decay(block)
-        self._prune_fp16(block)
-
-        # build prog deps
-        reduced_grads = []
-        var_to_reduce_var = {}
+    def _prune_gradient_clip(self, block):
+        deperated_vars = set()
+        deperate_op_idx = set()
         for idx, op in enumerate(block.ops):
-            input_names = op.desc.input_arg_names()
-            output_names = op.desc.output_arg_names()
-            if op.type == "c_allreduce_sum":
-                assert (len(output_names) == 1)
-                output_name = output_names[0]
-                reduced_grads.append(output_name)
-                var_to_reduce_var[output_name] = output_name
-            else:
-                non_persistable_input = [
-                    x for x in input_names if not block.var(x).persistable
-                ]
-                if len(non_persistable_input) == 1 and len(
-                        output_names) == 1 and non_persistable_input[
-                            0] in var_to_reduce_var:
-                    var_to_reduce_var[output_names[0]] = var_to_reduce_var[
-                        non_persistable_input[0]]
-
-        params = []
-        for var_name in list(block.vars.keys()):
-            if self._is_opti_var(var_name) and \
-                self._var_device_id(var_name) != self.role_maker._worker_index():
-                params.append(var_name)
-        program_deps = ProgramDeps(block, reduced_grads, params)
-
-        # Init
-        for var_name in program_deps._end_vars:
-            program_deps._should_removed_var.add(var_name)
-
-        # Prune
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type in [
-                    "c_allreduce_sum", "c_sync_comm_stream",
-                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
-            ]:
-                pass
-            elif self._is_gradient_clip_sum_op(op):
-                reversed_input_vars = []
-                for input_name in op.desc.input_arg_names():
-                    assert (input_name in var_to_reduce_var)
-                    reduce_var = var_to_reduce_var[input_name]
-                    param_name = self._reduced_grads_to_param[reduce_var]
+            if not self.is_gradient_clip_op(op):
+                continue
+            if op.type == "sum":
+                continue
+            deperate_op = False
+            for input_name in op.desc.input_arg_names():
+                if input_name in deperated_vars:
+                    deperate_op = True
+                param_name = input_name.strip("@GRAD")
+                if param_name in self._param2device:
                     if self._param2device[
                             param_name] != self.role_maker._worker_index():
-                        program_deps.crop_input_var_from_op(idx, input_name)
-                    else:
-                        reversed_input_vars.append(input_name)
-                op.desc.set_input("X", reversed_input_vars)
+                        deperate_op = True
+
+            if deperate_op:
+                deperate_op_idx.add(idx)
+                for output_name in op.desc.output_arg_names():
+                    deperated_vars.add(output_name)
+
+        if not deperated_vars:
+            # got no gradient_clip op
+            return
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self.is_gradient_clip_op(op):
+                continue
+            if idx in deperate_op_idx:
+                block._remove_op(idx)
+                continue
+            reversed_inputs = []
+            if op.type == "sum":
+                for input_name in op.desc.input_arg_names():
+                    if input_name not in deperated_vars:
+                        reversed_inputs.append(input_name)
+                op.desc.set_input("X", reversed_inputs)
                 assert (len(op.desc.output_arg_names()) == 1)
                 sum_res = op.desc.output_arg_names()[0]
                 block._insert_op(
@@ -552,6 +567,49 @@ class ShardingOptimizer(MetaOptimizerBase):
                     inputs={'X': sum_res},
                     outputs={'Out': sum_res},
                     attrs={OP_ROLE_KEY: OpRole.Optimize})
+        block._sync_with_cpp()
+        return
+
+    def _prune_main_program(self, block):
+        """
+        calculate deps from allredce op to optimize op,
+        remove ops and vars not needed in this worker
+        """
+        self._prune_weight_decay(block)
+        self._prune_fp16(block)
+        self._prune_gradient_clip(block)
+        # if self.role_maker._worker_index() == 1:
+        #     with open("debug_program", 'w') as f:
+        #         f.write(str(block.program))
+
+        # build prog deps
+        reduced_grads = []
+        for idx, op in enumerate(block.ops):
+            input_names = op.desc.input_arg_names()
+            output_names = op.desc.output_arg_names()
+            if op.type == "c_allreduce_sum":
+                assert (len(output_names) == 1)
+                output_name = output_names[0]
+                reduced_grads.append(output_name)
+
+        params = []
+        for var_name in list(block.vars.keys()):
+            if self._is_opti_var(var_name) and \
+                self._var_device_id(var_name) != self.role_maker._worker_index():
+                params.append(var_name)
+        program_deps = ProgramDeps(block, reduced_grads, params)
+
+        # Init
+        for var_name in program_deps._end_vars:
+            program_deps._should_removed_var.add(var_name)
+
+        # Prune
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type in [
+                    "c_allreduce_sum", "c_sync_comm_stream",
+                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
+            ]:
+                pass
             elif op.type == "conditional_block":
                 assert (op.desc.has_attr("sub_block"))
                 subblock_idx = op.desc.attr("sub_block").id
