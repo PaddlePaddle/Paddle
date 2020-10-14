@@ -147,7 +147,8 @@ def _format_tensor(var, sumary, indent=0):
     max_width = _get_max_width(_to_sumary(var))
 
     if len(var.shape) == 0:
-        # currently, shape = [] is not supported.
+        # currently, shape = [], i.e., scaler tensor is not supported.
+        # If it is supported, it should be formatted like this.
         return _format_item(var.numpy().item(0), max_width)
     elif len(var.shape) == 1:
         if sumary and var.shape[0] > 2 * edgeitems:
