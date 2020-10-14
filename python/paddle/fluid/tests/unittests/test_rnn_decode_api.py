@@ -531,6 +531,7 @@ class TestDynamicDecode(unittest.TestCase):
                   (iter_idx, reward.mean(), cost))
 
     def test_beam_search_infer(self):
+        paddle.set_default_dtype("float32")
         paddle.enable_static()
         self.model_hparams["decoding_strategy"] = "beam_search"
         main_program = fluid.Program()
@@ -650,10 +651,11 @@ class ModuleApiTest(unittest.TestCase):
 
 class TestBeamSearch(ModuleApiTest):
     def setUp(self):
+        paddle.set_default_dtype("float64")
         shape = (8, 32)
         self.inputs = [
-            np.random.random(shape).astype("float32"),
-            np.random.random(shape).astype("float32")
+            np.random.random(shape).astype("float64"),
+            np.random.random(shape).astype("float64")
         ]
         self.outputs = None
         self.attrs = {
@@ -672,7 +674,8 @@ class TestBeamSearch(ModuleApiTest):
                    eos_id=1,
                    beam_size=2,
                    max_step_num=2):
-        embedder = paddle.fluid.dygraph.Embedding(size=[vocab_size, embed_dim])
+        embedder = paddle.fluid.dygraph.Embedding(
+            size=[vocab_size, embed_dim], dtype="float64")
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num
@@ -694,8 +697,8 @@ class TestBeamSearch(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input([None, self.inputs[0].shape[-1]], "float32", "init_hidden"),
-            Input([None, self.inputs[1].shape[-1]], "float32", "init_cell"),
+            Input([None, self.inputs[0].shape[-1]], "float64", "init_hidden"),
+            Input([None, self.inputs[1].shape[-1]], "float64", "init_cell"),
         ]
         return inputs
 
