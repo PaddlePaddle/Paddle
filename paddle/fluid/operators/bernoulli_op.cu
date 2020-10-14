@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/bernoulli_op.h"
-#include "paddle/fluid/platform/cuda_enforce.cuh"
+#include "paddle/fluid/platform/cuda_enforce.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {

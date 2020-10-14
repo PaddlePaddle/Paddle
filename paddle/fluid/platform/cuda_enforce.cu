@@ -14,7 +14,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #ifdef PADDLE_CUDA_KERNEL_CHECK
-#include "paddle/fluid/platform/cuda_enforce.cuh"
+#include "paddle/fluid/platform/cuda_enforce.h"
 
 typedef struct _CudaKerenlErrorPro {
   char _CudaErrorMsg[__LEN_ERROR_MSG];
