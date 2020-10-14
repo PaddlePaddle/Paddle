@@ -10922,7 +10922,7 @@ def slice(input, axes, starts, ends):
             input = np.random.random(size=(4, 5, 6)).astype('float32')
             input = paddle.to_tensor(input, dtype='float32')
             # example 1:
-            # attr starts is a list which doesn't contain tensor Tensor.
+            # attr starts is a list which doesn't contain tensor.
             axes = [0, 1, 2]
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
@@ -10930,8 +10930,8 @@ def slice(input, axes, starts, ends):
             # sliced_1 is input[0:3, 0:2, 2:4].
 
             # example 2:
-            # attr starts is a list which contain tensor Tensor.
-            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            # attr starts is a list which contain tensor.
+            minus_3 = paddle.fill_constant([1], "int32", -3)
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
