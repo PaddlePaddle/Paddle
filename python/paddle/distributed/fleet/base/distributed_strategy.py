@@ -744,13 +744,13 @@ class DistributedStrategy(object):
             strategy.adaptive_localsgd = True # by default this is false
 
         """
-        return self.strategy.localsgd
+        return self.strategy.adaptive_localsgd
 
     @adaptive_localsgd.setter
     @is_strict_auto
     def adaptive_localsgd(self, flag):
         if isinstance(flag, bool):
-            self.strategy.localsgd = flag
+            self.strategy.adaptive_localsgd = flag
         else:
             print("WARNING: adaptive_localsgd should have value of bool type")
 

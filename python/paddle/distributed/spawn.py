@@ -314,9 +314,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
                 if print_result is True:
                     print("loss:", loss.numpy())
                 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
