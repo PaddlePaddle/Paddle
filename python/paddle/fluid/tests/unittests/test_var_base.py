@@ -404,6 +404,36 @@ class TestVarBase(unittest.TestCase):
 
         self.assertListEqual(list(var_base.shape), list(static_var.shape))
 
+    def test_tensor_str(self):
+        paddle.disable_static(paddle.CPUPlace())
+        paddle.manual_seed(10)
+        a = paddle.rand([10, 20])
+        paddle.set_printoptions(4, 100, 3)
+        a_str = str(a)
+
+        if six.PY2:
+            expected = '''Tensor(shape=[10L, 20L], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
+        [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
+        [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
+        ...,
+        [0.3426, 0.1909, 0.7240, ..., 0.4218, 0.2676, 0.5679],
+        [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
+        [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])'''
+
+        else:
+            expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
+        [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
+        [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
+        ...,
+        [0.3426, 0.1909, 0.7240, ..., 0.4218, 0.2676, 0.5679],
+        [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
+        [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
 
 class TestVarBaseSetitem(unittest.TestCase):
     def setUp(self):
