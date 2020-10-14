@@ -848,10 +848,8 @@ void BindImperative(py::module *m_ptr) {
                  imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
-                     "Imperative SelectedRows allreduce is not supported "
-                     "when "
-                     "paddle is compiled with NCCL verison lower than "
-                     "v2.2.12. "
+                     "Imperative SelectedRows allreduce is not supported when "
+                     "paddle is compiled with NCCL verison lower than v2.2.12. "
                      "You can set is_sparse=False for the Layer containing "
                      "this argument, such as Embedding(is_sparse=False)."));
                }
