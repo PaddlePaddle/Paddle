@@ -274,6 +274,7 @@ class SimpleRNNCell(RNNCellBase):
 
     .. math::
         h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+
         y_{t} & = h_{t}
     
     where :math:`act` is for :attr:`activation` , and * is the elemetwise
@@ -1055,7 +1056,8 @@ class RNNBase(LayerList):
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
         # unify LSTM/GRU/SimpleRNN later, currently only support LSTM
         # TODO(guosheng): use `core.ops.cudnn_lstm` in dygraph mode if support
-        # inplace, since `dropout_state` should be persistable
+        # specify output, since `dropout_state` should be a persistable tensor
+        # rather than a temporary on.
         out = self._helper.create_variable_for_type_inference(inputs.dtype)
         last_h = self._helper.create_variable_for_type_inference(inputs.dtype)
         last_c = self._helper.create_variable_for_type_inference(inputs.dtype)
@@ -1148,6 +1150,7 @@ class SimpleRNN(RNNBase):
     .. math::
 
         h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+
         y_{t} & = h_{t}
     
     where :math:`act` is for :attr:`activation` , and * is the elemetwise
