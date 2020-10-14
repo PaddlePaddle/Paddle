@@ -136,7 +136,7 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     // Need to init memory in the first place
     const int zero = 0;
     int r =
-        xpu::memset(dev_ctx.x_context(), reinterpret_cast<void**> input_grad,
+        xpu::memset(dev_ctx.x_context(), reinterpret_cast<void**>(input_grad),
                     zero, in_x_grad->numel() * sizeof(float));
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
@@ -153,6 +153,7 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     pool2d, ops::PoolXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(

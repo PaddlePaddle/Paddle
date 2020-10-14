@@ -65,25 +65,10 @@ class StackXPUKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-#endif
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
-                  ops::StackGradOpDescMaker);
-REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
-REGISTER_OP_CPU_KERNEL(stack, ops::StackKernel<plat::CPUDeviceContext, float>,
-                       ops::StackKernel<plat::CPUDeviceContext, double>,
-                       ops::StackKernel<plat::CPUDeviceContext, int>,
-                       ops::StackKernel<plat::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(stack_grad,
-                       ops::StackGradKernel<plat::CPUDeviceContext, float>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, double>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, int>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, int64_t>);
-
-#ifdef PADDLE_WITH_XPU
 REGISTER_OP_XPU_KERNEL(stack,
                        ops::StackXPUKernel<plat::XPUDeviceContext, float>);
 #endif
