@@ -118,5 +118,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 'init_k_steps': 1,
                 'begin_step': 1,
             }
+        elif name == "gradient_merge":
+            strategy.gradient_merge = True
+            strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
         else:
             raise NotImplementedError()

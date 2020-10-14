@@ -95,14 +95,6 @@ from .extension import target_assign  #DEFINE_ALIAS
 from .extension import temporal_shift  #DEFINE_ALIAS
 from .extension import warpctc  #DEFINE_ALIAS
 from .extension import diag_embed  #DEFINE_ALIAS
-from .learning_rate import cosine_decay  #DEFINE_ALIAS
-from .learning_rate import exponential_decay  #DEFINE_ALIAS
-from .learning_rate import inverse_time_decay  #DEFINE_ALIAS
-from .learning_rate import natural_exp_decay  #DEFINE_ALIAS
-from .learning_rate import noam_decay  #DEFINE_ALIAS
-from .learning_rate import piecewise_decay  #DEFINE_ALIAS
-from .learning_rate import polynomial_decay  #DEFINE_ALIAS
-from .learning_rate import linear_lr_warmup  #DEFINE_ALIAS
 # from .lod import sequence_concat        #DEFINE_ALIAS
 # from .lod import sequence_conv        #DEFINE_ALIAS
 # from .lod import sequence_enumerate        #DEFINE_ALIAS
@@ -165,7 +157,7 @@ from .loss import ctc_loss  #DEFINE_ALIAS
 from .norm import batch_norm  #DEFINE_ALIAS
 from .norm import instance_norm  #DEFINE_ALIAS
 from .norm import layer_norm  #DEFINE_ALIAS
-from .norm import lrn  #DEFINE_ALIAS
+from .norm import local_response_norm  #DEFINE_ALIAS
 from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
@@ -207,16 +199,12 @@ from .vision import generate_mask_labels  #DEFINE_ALIAS
 from .vision import generate_proposal_labels  #DEFINE_ALIAS
 from .vision import generate_proposals  #DEFINE_ALIAS
 from .vision import grid_sample  #DEFINE_ALIAS
-from .vision import image_resize  #DEFINE_ALIAS
 from .vision import image_resize_short  #DEFINE_ALIAS
 # from .vision import multi_box_head  #DEFINE_ALIAS
 from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .vision import prior_box  #DEFINE_ALIAS
 from .vision import prroi_pool  #DEFINE_ALIAS
 from .vision import psroi_pool  #DEFINE_ALIAS
-from .vision import resize_bilinear  #DEFINE_ALIAS
-from .vision import resize_nearest  #DEFINE_ALIAS
-from .vision import resize_trilinear  #DEFINE_ALIAS
 from .vision import retinanet_detection_output  #DEFINE_ALIAS
 from .vision import retinanet_target_assign  #DEFINE_ALIAS
 from .vision import roi_align  #DEFINE_ALIAS

@@ -833,6 +833,12 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)
+      .def_property_readonly("_place_str",
+                             [](imperative::VarBase &self) {
+                               std::stringstream ostr;
+                               ostr << self.Place();
+                               return ostr.str();
+                             })
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
@@ -890,7 +896,7 @@ void BindImperative(py::module *m_ptr) {
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
-           py::arg("key") = "eager_tmp")
+           py::arg("key") = "dygraph_tmp")
       .def(
           "_set_amp_op_list",
           [](imperative::Tracer &self,
