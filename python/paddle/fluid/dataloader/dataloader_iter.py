@@ -350,10 +350,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # _blocking_queue in keep order mode holds sub-threads
         # need to release thread resources on unexpected exit
         if self._blocking_queue:
-            try:
-                self._blocking_queue.close()
-            except:
-                self._blocking_queue.kill()
+            self._blocking_queue.close()
 
 
 # NOTE(chenweihang): _worker_loop must be top level method to be pickled
