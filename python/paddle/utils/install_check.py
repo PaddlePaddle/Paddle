@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+
 import os
 import logging
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 
 __all__ = ['run_check']
 
@@ -62,17 +63,14 @@ def _is_cuda_available():
     """
     Check whether CUDA is avaiable.
     """
-    if fluid.core.is_compiled_with_cuda():
-        try:
-            fluid.core.get_cuda_device_count()
-            return True
-        except Exception as e:
-            logging.warning(
-                "You are using GPU version PaddlePaddle, but there is no GPU "
-                "detected on your machine. Maybe CUDA devices is not set properly."
-                "\n Original Error is {}".format(e))
-            return False
-    else:
+    try:
+        assert len(paddle.static.cuda_places()) > 0
+        return True
+    except Exception as e:
+        logging.warning(
+            "You are using GPU version PaddlePaddle, but there is no GPU "
+            "detected on your machine. Maybe CUDA devices is not set properly."
+            "\n Original Error is {}".format(e))
         return False
 
 
@@ -84,18 +82,17 @@ def _run_static_single(use_cuda):
         use_cuda (bool): Whether running with CUDA.
     """
     paddle.enable_static()
-    with fluid.scope_guard(fluid.core.Scope()):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+    with paddle.static.scope_guard(paddle.static.Scope()):
+        train_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
         startup_prog.random_seed = 1
-        with fluid.program_guard(train_prog, startup_prog):
-            with fluid.unique_name.guard():
-                input, out, weight = _simple_network()
-                param_grads = fluid.backward.append_backward(
-                    out, parameter_list=[weight.name])[0]
+        with paddle.static.program_guard(train_prog, startup_prog):
+            input, out, weight = _simple_network()
+            param_grads = paddle.static.append_backward(
+                out, parameter_list=[weight.name])[0]
 
-        exe = fluid.Executor(
-            fluid.core.CUDAPlace(0) if use_cuda else fluid.core.CPUPlace())
+        exe = paddle.static.Executor(
+            paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace())
         exe.run(startup_prog)
         exe.run(train_prog,
                 feed={input.name: _prepare_data(1)},
@@ -112,22 +109,21 @@ def _run_static_parallel(use_cuda, device_list):
         device_list (int): The specified devices.
     """
     paddle.enable_static()
-    with fluid.scope_guard(fluid.core.Scope()):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        with fluid.program_guard(train_prog, startup_prog):
-            with fluid.unique_name.guard():
-                input, out, _ = _simple_network()
-                loss = paddle.tensor.mean(out)
-                loss.persistable = True
-                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+    with paddle.static.scope_guard(paddle.static.Scope()):
+        train_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(train_prog, startup_prog):
+            input, out, _ = _simple_network()
+            loss = paddle.tensor.mean(out)
+            loss.persistable = True
+            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-        compiled_prog = fluid.compiler.CompiledProgram(
+        compiled_prog = paddle.static.CompiledProgram(
             train_prog).with_data_parallel(
                 loss_name=loss.name, places=device_list)
 
-        exe = fluid.Executor(
-            fluid.core.CUDAPlace(0) if use_cuda else fluid.core.CPUPlace())
+        exe = paddle.static.Executor(
+            paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace())
         exe.run(startup_prog)
         exe.run(compiled_prog,
                 feed={input.name: _prepare_data(len(device_list))},
@@ -159,10 +155,10 @@ def run_check():
     use_cuda = _is_cuda_available()
     if use_cuda:
         device_str = "GPU"
-        device_list = fluid.cuda_places()
+        device_list = paddle.static.cuda_places()
     else:
         device_str = "CPU"
-        device_list = [fluid.core.CPUPlace(), fluid.core.CPUPlace()]
+        device_list = paddle.static.cpu_places(device_count=2)
     device_count = len(device_list)
 
     _run_static_single(use_cuda)
