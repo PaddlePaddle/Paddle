@@ -175,7 +175,7 @@ def append_send_ops_pass(program, config):
         assert (len(queue) == len(union_vars))
         for i in range(len(queue)):
             if queue[i] == STEP_COUNTER:
-                send_input_vars.append("")
+                send_input_vars.append(union_vars[i])
             else:
                 send_input_vars.append(program.global_block().vars[union_vars[
                     i]])
