@@ -224,7 +224,7 @@ void HalfAsyncCommunicator::Start() {
     BarrierTriggerReset(max_merge_var_num_);
     // start send and recv thread
     main_thread_.reset(
-        new std::thread(std::bind(&AsyncCommunicator::MainThread, this)));
+        new std::thread(std::bind(&HalfAsyncCommunicator::MainThread, this)));
   }
 }
 
@@ -362,6 +362,36 @@ void SyncCommunicator::BarrierRecv() {
   }
 
   VLOG(4) << "BarrierRecv with SyncCommunicator";
+}
+
+void GeoCommunicator::Start() {
+  VLOG(1) << "Communicator start";
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    VLOG(1) << "start send thread and recv thread";
+    waiting_ = true;
+    running_ = true;
+    BarrierTriggerReset(max_merge_var_num_);
+    // start send and recv thread
+    main_thread_.reset(
+        new std::thread(std::bind(&GeoCommunicator::MainThread, this)));
+  }
+}
+
+void GeoCommunicator::Stop() {
+  VLOG(1) << "Communicator stop";
+  running_ = false;
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    if (main_thread_) {
+      VLOG(1) << "stop send thread";
+      main_thread_->join();
+      main_thread_.reset(nullptr);
+    }
+  }
+  VLOG(1) << "Communicator stop done";
 }
 
 void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,

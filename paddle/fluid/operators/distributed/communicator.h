@@ -216,6 +216,8 @@ class Communicator {
                     const std::vector<std::string> &var_tables,
                     const framework::Scope &scope) = 0;
 
+  virtual void RecvByCommunicator() {}
+
   virtual void Barrier() {}
 
   virtual void BarrierTriggerDecrement() {}
@@ -294,6 +296,8 @@ class HalfAsyncCommunicator : public Communicator {
   explicit HalfAsyncCommunicator(const std::map<std::string, std::string> &envs)
       : Communicator(envs) {}
 
+  virtual ~HalfAsyncCommunicator();
+
   void InitEnvs() {
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
@@ -302,9 +306,21 @@ class HalfAsyncCommunicator : public Communicator {
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
 
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RpcCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) override;
+
+  void Start() override;
+
+  void Stop() override;
+
+  void Send(const std::vector<std::string> &var_names,
+            const std::vector<std::string> &var_tables,
+            const framework::Scope &scope) override;
+
   void SendByCommunicator(int batches);
 
-  void RecvByCommunicator();
+  void RecvByCommunicator() override;
 
   void MainThread();
 
@@ -312,7 +328,11 @@ class HalfAsyncCommunicator : public Communicator {
 
   void Clean() override;
 
-  void Barrier() override;
+  void Barrier();
+
+  void BarrierSend() {}
+
+  void BarrierRecv() {}
 
   void BarrierTriggerDecrement() override;
 
@@ -384,7 +404,9 @@ class GeoCommunicator : public Communicator {
   void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                 const RpcCtxMap &recv_varname_to_ctx,
                 Scope *recv_scope) override;
-  void MainThread() override;
+
+  void MainThread();
+
   void InitEnvs() {
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
@@ -394,7 +416,11 @@ class GeoCommunicator : public Communicator {
     sparse_attrs_ = envs.at("sparse_attrs");
     VLOG(0) << "GeoCommunicator Initialized";
   }
-  void MainThread();
+
+  void Start() override;
+
+  void Stop() override;
+
   void Send(const std::vector<std::string> &var_names,
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
