@@ -826,7 +826,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     start_http_server = True
             else:
                 ep_rank_0 = os.getenv("PADDLE_GLOO_HTTP_ENDPOINT", "")
-                if self._server_index() == 0:
+                if self._is_server() and self._server_index() == 0:
                     start_http_server = True
             ip, port = ep_rank_0.split(':')
             kwargs = {
