@@ -1468,6 +1468,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+#ifdef PADDLE_WITH_XPU
       .def("_type", &PlaceIndex<platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::XPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::XPUPlace, platform::CUDAPlace>)
@@ -1475,6 +1476,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::XPUPlace, platform::XPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::XPUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::XPUPlace &self) { return self.GetDeviceId(); })
+#endif
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(

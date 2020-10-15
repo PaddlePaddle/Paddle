@@ -1110,9 +1110,6 @@ def assign_skip_lod_tensor_array(input, output):
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.nn.while_loop
-	:alias: paddle.nn.while_loop,paddle.nn.control_flow.while_loop
-	:old_api: paddle.fluid.layers.while_loop
 
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
@@ -1151,6 +1148,9 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            import paddle
+            paddle.enable_static()
+
 
             def cond(i, ten):
                 return i < ten
@@ -2506,21 +2506,21 @@ def case(pred_fn_pairs, default=None, name=None):
             paddle.enable_static()
 
             def fn_1():
-                return paddle.fill_constant(shape=[1, 2], dtype='float32', value=1)
+                return paddle.fluid.layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
 
             def fn_2():
-                return paddle.fill_constant(shape=[2, 2], dtype='int32', value=2)
+                return paddle.fluid.layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
 
             def fn_3():
-                return paddle.fill_constant(shape=[3], dtype='int32', value=3)
+                return paddle.fluid.layers.fill_constant(shape=[3], dtype='int32', value=3)
 
             main_program = paddle.static.default_startup_program()
             startup_program = paddle.static.default_main_program()
 
             with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.fill_constant(shape=[1], dtype='float32', value=0.3)
-                y = paddle.fill_constant(shape=[1], dtype='float32', value=0.1)
-                z = paddle.fill_constant(shape=[1], dtype='float32', value=0.2)
+                x = paddle.fluid.layers.fill_constant(shape=[1], dtype='float32', value=0.3)
+                y = paddle.fluid.layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+                z = paddle.fluid.layers.fill_constant(shape=[1], dtype='float32', value=0.2)
 
                 pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
                 pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
@@ -3626,19 +3626,19 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             paddle.enable_static()
 
             def fn_1():
-                return paddle.fill_constant(shape=[1, 2], dtype='float32', value=1)
+                return paddle.fluid.layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
 
             def fn_2():
-                return paddle.fill_constant(shape=[2, 2], dtype='int32', value=2)
+                return paddle.fluid.layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
 
             def fn_3():
-                return paddle.fill_constant(shape=[3], dtype='int32', value=3)
+                return paddle.fluid.layers.fill_constant(shape=[3], dtype='int32', value=3)
 
             main_program = paddle.static.default_startup_program()
             startup_program = paddle.static.default_main_program()
             with paddle.static.program_guard(main_program, startup_program):
-                index_1 = paddle.fill_constant(shape=[1], dtype='int32', value=1)
-                index_2 = paddle.fill_constant(shape=[1], dtype='int32', value=2)
+                index_1 = paddle.fluid.layers.fill_constant(shape=[1], dtype='int32', value=1)
+                index_2 = paddle.fluid.layers.fill_constant(shape=[1], dtype='int32', value=2)
 
                 out_1 = paddle.static.nn.switch_case(
                     branch_index=index_1,
