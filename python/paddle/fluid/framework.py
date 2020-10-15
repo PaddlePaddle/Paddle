@@ -1193,7 +1193,7 @@ class Variable(object):
                     tmp.stop_gradient=False
                     inputs.append(tmp)
                 ret = paddle.add_n(inputs)
-                loss = paddle.reduce_sum(ret)
+                loss = paddle.sum(ret)
                 loss.backward()
 
         """
