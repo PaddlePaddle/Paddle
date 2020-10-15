@@ -501,6 +501,10 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
   }
+  if (config_.use_mkldnn_bfloat16_) {
+    LOG(INFO) << "Bfloat16 is enabled";
+    argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
+  }
 #endif
 
   auto passes = config_.pass_builder()->AllPasses();

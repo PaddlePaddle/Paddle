@@ -712,12 +712,60 @@ void BindImperative(py::module *m_ptr) {
                     tmp.stop_gradient=False
                     inputs.append(tmp)
                 ret = paddle.sums(inputs2)
-                loss = paddle.reduce_sum(ret)
+                loss = paddle.fluid.layers.reduce_sum(ret)
                 loss.backward()
                 print("Before clear_gradient {}".format(loss.grad))
                 loss.clear_gradient()
                 print("After clear_gradient {}".format(loss.grad))
       )DOC")
+      .def("clone",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             const auto &tensor = self->Var().Get<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 tensor.IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "%s has not been initialized", self->Name()));
+             auto tracer = imperative::GetCurrentTracer();
+             auto new_var = std::make_shared<imperative::VarBase>(
+                 true, tracer->GenerateUniqueName(self->Name() + "_clone"));
+             framework::AttributeMap attrs;
+             imperative::NameVarBaseMap ins = {{"X", {self}}};
+             imperative::NameVarBaseMap outs = {{"Out", {new_var}}};
+             tracer->TraceOp("assign", ins, outs, attrs);
+             return new_var;
+           },
+           py::return_value_policy::copy, R"DOC(
+
+        Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
+        It will always have a Tensor copy.
+        Tn addition, the cloned Tensor provides gradient propagation.
+
+        Returns: The cloned Tensor.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+
+              x = paddle.to_tensor(1.0, stop_gradient=False)
+              clone_x = x.clone()
+              y = clone_x**2
+              y.backward()
+              print(clone_x.stop_gradient) # False
+              print(clone_x.grad)          # [2.0], support gradient propagation
+              print(x.stop_gradient)       # False
+              print(x.grad)                # [2.0], clone_x support gradient propagation for x
+
+              x = paddle.to_tensor(1.0)
+              clone_x = x.clone()
+              clone_x.stop_gradient = False
+              z = clone_x**3
+              z.backward()
+              print(clone_x.stop_gradient) # False
+              print(clone_x.grad)          # [3.0], support gradient propagation
+              print(x.stop_gradient) # True
+              print(x.grad)          # None
+       )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self, const imperative::Tracer &tracer,
               bool retain_graph) {
@@ -833,6 +881,12 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)
+      .def_property_readonly("_place_str",
+                             [](imperative::VarBase &self) {
+                               std::stringstream ostr;
+                               ostr << self.Place();
+                               return ostr.str();
+                             })
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
@@ -890,7 +944,7 @@ void BindImperative(py::module *m_ptr) {
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
-           py::arg("key") = "eager_tmp")
+           py::arg("key") = "dygraph_tmp")
       .def(
           "_set_amp_op_list",
           [](imperative::Tracer &self,

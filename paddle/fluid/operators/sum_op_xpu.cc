@@ -51,7 +51,7 @@ class SumXPUKernel : public framework::OpKernel<T> {
     int r = xpu::sum_batch(dev_ctx.x_context(), ptrs.data(), out->data<T>(),
                            valid_count, out->numel());
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::Fatal("XPU kernel error!"));
+                      platform::errors::Fatal("XPU sum kernel error!"));
   }
 };
 

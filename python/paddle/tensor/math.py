@@ -35,21 +35,21 @@ from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
-from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
+# from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
 from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_max    #DEFINE_ALIAS
-from ..fluid.layers import reduce_min    #DEFINE_ALIAS
-from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
-from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_max    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_min    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
+# from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
 from ..fluid.layers import round    #DEFINE_ALIAS
 from ..fluid.layers import rsqrt    #DEFINE_ALIAS
 from ..fluid.layers import scale    #DEFINE_ALIAS
@@ -60,9 +60,7 @@ from ..fluid.layers import erf    #DEFINE_ALIAS
 from ..fluid.layers import sqrt    #DEFINE_ALIAS
 from ..fluid.layers import sin    #DEFINE_ALIAS
 
-from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
-from ..fluid.layers import sums    #DEFINE_ALIAS
 from ..fluid import layers
 
 
@@ -75,12 +73,6 @@ __all__ = [
         'cos',
         'cosh',
         'cumsum',
-        'elementwise_add',
-        'elementwise_div',
-        'elementwise_floordiv',
-        'elementwise_mod',
-        'elementwise_pow',
-        'elementwise_sub',
         'exp',
         'floor',
         'increment',
@@ -91,10 +83,6 @@ __all__ = [
         'pow',
         'prod',
         'reciprocal',
-        'reduce_max',
-        'reduce_min',
-        'reduce_prod',
-        'reduce_sum',
         'round',
         'rsqrt',
         'scale',
@@ -105,9 +93,8 @@ __all__ = [
         'square',
         'stanh',
         'sum',
-        'sums',
         'tanh',
-        'elementwise_sum',
+        'add_n',
         'max',
         'maximum',
         'min',
@@ -183,7 +170,7 @@ def pow(x, y, name=None):
             print(res.numpy()) # [1 4 9]
             
             # example 2: y is a Tensor
-            y = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+            y = paddle.fluid.layers.fill_constant(shape=[1], value=2, dtype='float32')
             res = paddle.pow(x, y)
             print(res.numpy()) # [1 4 9]
 
@@ -472,14 +459,26 @@ def multiply(x, y, axis=-1, name=None):
     """
     op_type = 'elementwise_mul'
     act = None
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
             % (x.dtype, y.dtype))
 
     if in_dygraph_mode():
+        if not isinstance(x, (paddle.Tensor)):
+            x = paddle.to_tensor(x)
+        if not isinstance(y, (paddle.Tensor)):
+            y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
+
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        x = paddle.static.data(
+            name='x', shape=x.shape, dtype=x.dtype)
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        y = paddle.static.data(
+            name='y', shape=y.shape, dtype=y.dtype)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -716,11 +715,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
 
 @templatedoc(op_type="sum")
-def elementwise_sum(inputs, name=None):
+def add_n(inputs, name=None):
     """
-	:alias_main: paddle.elementwise_sum
-	:alias: paddle.elementwise_sum,paddle.tensor.elementwise_sum,paddle.tensor.math.elementwise_sum
-
     ${comment}
 
     Case 1:
@@ -754,53 +750,40 @@ def elementwise_sum(inputs, name=None):
                       [14, 16, 18]]
 
     Args:
-        inputs (Variable|list(Variable)):  A Varaible list. The shape and data type of the list elementsshould be consistent.
-            Variable can be multi-dimensional Tensoror LoDTensor, and data types can be: float32, float64, int32, int64.
+        inputs (Tensor|list(Tensor)):  A Tensor list. The shape and data type of the list elements should be consistent.
+            Input can be multi-dimensional Tensor, and data types can be: float32, float64, int32, int64.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: the sum of input :math:`inputs` . its shape and data types are consistent with :math:`inputs` .
+        Tensor, the sum of input :math:`inputs` , its shape and data types are consistent with :math:`inputs`.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
 
-            input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
-            input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
-            sum = paddle.elementwise_sum([input0, input1])
-
-            # You can print out 'sum' via executor.
-            out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_main_program())
-
-            # The printed result is:
-            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
-            # Tensor[elementwise_sum_0.tmp_0]
-            #    shape: [2,3,]
-            #    dtype: l
-            #    data: 8,8,8,8,8,8,
-
-            # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
+            input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+            input1 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]], dtype='float32')
+            output = paddle.add_n([input0, input1])
+            # [[8., 10., 12.], 
+            #  [14., 16., 18.]]
     """
+    if in_dygraph_mode():
+        if isinstance(inputs, Variable):
+            inputs = [inputs]
+        return core.ops.sum(inputs, 'use_mkldnn', False)
 
-    helper = LayerHelper('elementwise_sum', **locals())
-    check_type(inputs, 'inputs', (Variable, tuple, list), 'elementwise_sum')
+    helper = LayerHelper('add_n', **locals())
+    check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         if len(inputs) > 0:
             for input in inputs:
                 check_variable_and_dtype(input, "inputs", \
-                   ['float32', 'float64', 'int32', 'int64'], 'elementwise_sum')
+                   ['float32', 'float64', 'int32', 'int64'], 'add_n')
     else:
         check_variable_and_dtype(inputs, "inputs", \
-                ['float32', 'float64', 'int32', 'int64'], 'elementwise_sum')
+                ['float32', 'float64', 'int32', 'int64'], 'add_n')
 
 
     out = helper.create_variable_for_type_inference(
@@ -1296,33 +1279,25 @@ def min(x, axis=None, keepdim=False, name=None):
 
 def log1p(x, name=None):
     """
-	:alias_main: paddle.log1p
-	:alias: paddle.log1p,paddle.tensor.log1p,paddle.tensor.math.log1p
-
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
+
     Args:
-        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+        Tensor, the natural log of the input Tensor computed element-wise.
 
     Examples:
         .. code-block:: python
+
             import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-            # Graph Organizing
-            x = fluid.data(name="x", shape=[2,1], dtype="float32")
-            res = paddle.log1p(x)
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-            # Execute
-            x_i = np.array([[0], [1]]).astype(np.float32)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
-            print(res_val) # [[0.], [0.6931472]]
+
+            data = paddle.to_tensor([[0], [1]], dtype='float32')
+            res = paddle.log1p(data)
+            # [[0.], [0.6931472]]
     """
 
     if in_dygraph_mode():
@@ -1339,32 +1314,34 @@ def log1p(x, name=None):
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
-	:alias_main: paddle.addcmul
-	:alias: paddle.addcmul,paddle.tensor.addcmul,paddle.tensor.math.addcmul
 
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
     tensor1, tensor2 should be broadcastable.
     The equation is:
     ..  math::
+
         out = input + value * tensor1 * tensor2
     Args:
-        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
-        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
         value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
-        out(Variable): The output result. A Tensor with the same data type as input's.
+        out(Tensor): The output result. A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
+          
           import paddle
-          import paddle.fluid as fluid
-          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
-          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
-          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
-          data = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+          input = paddle.ones([2,2])
+          tensor1 = paddle.ones([2,2])
+          tensor2 = paddle.ones([2,2])
+          out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
+          print(out.numpy())
+          # [[1.5 1.5]
+          # [1.5 1.5]]
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
@@ -1920,3 +1897,39 @@ def tanh(x, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
     return out
+
+def increment(x, value=1.0, name=None):
+    """
+    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    Notice that the number of elements in :attr:`x` must be equal to 1.
+
+    Args:
+        x (Tensor): A tensor that must always contain only one element, its data type supports float32, float64, int32 and int64.
+        value(float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the elementwise-incremented tensor with the same shape and data type as :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.zeros(shape=[1], dtype='float32')
+            counter = paddle.increment(data)
+            # [1.]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.increment(x, 'step', value)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'increment')
+    helper = LayerHelper("increment", **locals())
+    helper.append_op(
+        type='increment',
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={'step': float(value)})
+    return x

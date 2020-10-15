@@ -24,6 +24,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -45,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
@@ -440,6 +442,31 @@ PYBIND11_MODULE(core_noavx, m) {
         &pb_vmap);
   });
 
+  m.def("set_printoptions", [](const py::kwargs &kwargs) {
+    auto &print_opt = framework::PrintOptions::Instance();
+    if (kwargs.contains("precision")) {
+      print_opt.precision = kwargs["precision"].cast<int>();
+    }
+    if (kwargs.contains("threshold")) {
+      print_opt.threshold = kwargs["threshold"].cast<int>();
+    }
+    if (kwargs.contains("edgeitems")) {
+      print_opt.edgeitems = kwargs["edgeitems"].cast<int>();
+    }
+    if (kwargs.contains("linewidth")) {
+      print_opt.linewidth = kwargs["linewidth"].cast<int>();
+    }
+    if (kwargs.contains("sci_mode")) {
+      print_opt.sci_mode = kwargs["sci_mode"].cast<bool>();
+    }
+
+    VLOG(4) << "Set printoptions: precision=" << print_opt.precision
+            << ", threshold=" << print_opt.threshold
+            << ", edgeitems=" << print_opt.edgeitems
+            << ", linewidth=" << print_opt.linewidth
+            << ", sci_mode=" << print_opt.sci_mode;
+  });
+
   m.def(
       "_append_python_callable_object_and_return_id",
       [](py::object py_obj) -> size_t {
@@ -629,6 +656,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("_layout",
+           [](Tensor &self) { return DataLayoutToString(self.layout()); })
       .def("_share_data_with", &Tensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__", [](const Tensor &self) {
@@ -1315,9 +1344,6 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    **Note**:
-        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
-        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
     CUDAPlace is a descriptor of a device.
     It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
@@ -1336,8 +1362,10 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          gpu_place = fluid.CUDAPlace(0)
+          import paddle
+
+          place = paddle.CUDAPlace(0)
+          paddle.disable_static(place)
 
         )DOC")
       .def("__init__",
@@ -1440,6 +1468,7 @@ All parameter, weight, gradient are variables in Paddle.
              std::exit(-1);
 #endif
            })
+#ifdef PADDLE_WITH_XPU
       .def("_type", &PlaceIndex<platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::XPUPlace, platform::Place>)
       .def("_equals", &IsSamePlace<platform::XPUPlace, platform::CUDAPlace>)
@@ -1447,6 +1476,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::XPUPlace, platform::XPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::XPUPlace, platform::CUDAPinnedPlace>)
+      .def("get_device_id",
+           [](const platform::XPUPlace &self) { return self.GetDeviceId(); })
+#endif
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
