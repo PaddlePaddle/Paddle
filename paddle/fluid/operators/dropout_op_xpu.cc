@@ -84,8 +84,12 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       auto& dev_ctx = context.template device_context<DeviceContext>();
       int r = xpu::dropout(dev_ctx.x_context(), mask_data_table, x_data,
                            mask_data, y_data, max_data_size, size);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::InvalidArgument("XPU kernel error!"));
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "XPU dropout return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     } else {  // Infer
       float scale = 0.0f;
       if (dropout_implementation == "upscale_in_train") {
@@ -96,8 +100,12 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       auto& dev_ctx = context.template device_context<DeviceContext>();
       int r = xpu::scale(dev_ctx.x_context(), x->numel(), scale, 0.0f, 0,
                          x_data, y_data);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::InvalidArgument("XPU kernel error!"));
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "XPU dropout return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     }
   }
 };
@@ -115,8 +123,12 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
     int r = xpu::elementwise_mul(dev_ctx.x_context(), grad_y->data<T>(),
                                  mask->data<T>(), grad_x->data<T>(),
                                  grad_y->numel());
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU dropout return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 }  // namespace operators
