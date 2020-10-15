@@ -466,98 +466,13 @@ TEST(BOOST_GET_SAFELY, FAIL) {
 TEST(Enforce, CICheckRules) {
   using namespace paddle;  // NOLINT
 
-  int var1 = 1, var2 = 1;
-  std::unique_ptr<int> ptr(new int);
-
-  /* PADDLE_THROW */
-  // correct cases:
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This is a correct error message case."));
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This is a correct error message case, var1(%d) is not equal to var2(%d)",
-      var1, var2));
-  // wrong cases:
-  PADDLE_THROW("");
-  PADDLE_THROW("msg is too short.");
-  PADDLE_THROW("var1(%d) is equal to var2(%d).", var1, var2);
-  PADDLE_THROW("This is a error message case.");
-  PADDLE_THROW("This is a error message case, %var1(%d) is equal to var2(%d)",
-               var1, var2);
-  PADDLE_THROW(platform::errors::PreconditionNotMet());
-  PADDLE_THROW(platform::errors::PreconditionNotMet(""));
-  PADDLE_THROW(platform::errors::PreconditionNotMet("msg is too short."));
-  PADDLE_THROW(
-      platform::errors::PreconditionNotMet("var1(%d)!=var2(%d)", var1, var2));
-
-  /* PADDLE_ENFORCE */
-  // correct cases:
-  PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet(
-                           "This is a correct error message case."));
-  PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet(
-                           "This is a correct error message case, var1(%d) is "
-                           "not equal to var2(%d)",
-                           var1, var2));
-  // wrong cases:
-  PADDLE_ENFORCE(true);
-  PADDLE_ENFORCE(true, "");
-  PADDLE_ENFORCE(true, "msg is too short.");
-  PADDLE_ENFORCE(true, "var1(%d) is equal to var2(%d).", var1, var2);
-  PADDLE_ENFORCE(true, "This is a error message case.");
-  PADDLE_ENFORCE(true,
-                 "This is a error message case, %var1(%d) is equal to var2(%d)",
-                 var1, var2);
-  PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet());
-  PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet(""));
-  PADDLE_ENFORCE(true,
-                 platform::errors::PreconditionNotMet("msg is too short."));
-  PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet(
-                           "var1(%d)!=var2(%d)", var1, var2));
-
-  /* PADDLE_ENFORCE_NOT_NULL */
-  // correct cases:
-  PADDLE_ENFORCE_NOT_NULL(
-      ptr, platform::errors::NotFound("This is a correct error message case."));
-  PADDLE_ENFORCE_NOT_NULL(
-      ptr, platform::errors::NotFound("This is a correct error message case, "
-                                      "var1(%d) is not equal to var2(%d)",
-                                      var1, var2));
-  // wrong cases:
-  PADDLE_ENFORCE_NOT_NULL(ptr);
-  PADDLE_ENFORCE_NOT_NULL(ptr, "");
-  PADDLE_ENFORCE_NOT_NULL(ptr, "msg is too short.");
-  PADDLE_ENFORCE_NOT_NULL(ptr, "var1(%d) is equal to var2(%d).", var1, var2);
-  PADDLE_ENFORCE_NOT_NULL(ptr, "This is a error message case.");
-  PADDLE_ENFORCE_NOT_NULL(ptr,
-                          "This is a error message case, "
-                          "var1(%d)!=var2(%d)",
-                          var1, var2);
-  PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::NotFound());
-  PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::NotFound(""));
-  PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::NotFound("msg is too short."));
-  PADDLE_ENFORCE_NOT_NULL(ptr,
-                          platform::errors::NotFound("%d!=%d", var1, var2));
-
-  /* PADDLE_ENFORCE_EQ */
-  // correct cases:
-  PADDLE_ENFORCE_EQ(var1, var2, platform::errors::InvalidArgument(
-                                    "This is a correct error message case."));
-  PADDLE_ENFORCE_EQ(var1, var2, platform::errors::InvalidArgument(
-                                    "This is a correct error message case, "
-                                    "var1(%d) is not equal to var2(%d)",
-                                    var1, var2));
-  // wrong cases:
-  PADDLE_ENFORCE_EQ(var1, var2);
-  PADDLE_ENFORCE_EQ(var1, var2, "");
-  PADDLE_ENFORCE_EQ(var1, var2, "msg is too short.");
-  PADDLE_ENFORCE_EQ(var1, var2, "var1(%d) is equal to var2(%d).", var1, var2);
-  PADDLE_ENFORCE_EQ(var1, var2, "This is a error message case.");
-  PADDLE_ENFORCE_EQ(var1, var2,
-                    "This is a error message case, var1(%d)!=var2(%d)", var1,
-                    var2);
-  PADDLE_ENFORCE_EQ(var1, var2, platform::errors::InvalidArgument());
-  PADDLE_ENFORCE_EQ(var1, var2, platform::errors::InvalidArgument(""));
-  PADDLE_ENFORCE_EQ(var1, var2,
-                    platform::errors::InvalidArgument("msg is too short."));
-  PADDLE_ENFORCE_EQ(var1, var2,
-                    platform::errors::InvalidArgument("%d!=%d", var1, var2));
+  PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
+                        platform::errors::InvalidArgument("XPU kernel error!"));
+  PADDLE_ENFORCE_EQ(
+        xpu::findmax(dev_ctx.x_context(), input->data<T>(), input->numel(),
+                     max_input->data<T>()) == xpu::Error_t::SUCCESS,
+        true, platform::errors::InvalidArgument("XPU kernel error!"));
+  PADDLE_ENFORCE_EQ(
+        res, xpu::Error_t::SUCCESS,
+        platform::errors::Fatal("XPU kernel error! res = %d", res));
 }
