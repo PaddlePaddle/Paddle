@@ -20,13 +20,12 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-from ...fluid import one_hot  #DEFINE_ALIAS
-from ...fluid.layers import pad2d  #DEFINE_ALIAS
+# from ...fluid import one_hot  #DEFINE_ALIAS
+# from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
-from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
@@ -36,7 +35,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
-from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+# from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
@@ -51,10 +50,7 @@ __all__ = [
     #       'fc',
     'label_smooth',
     'linear',
-    'one_hot',
     'pad',
-    'pad_constant_like',
-    'pad2d',
     'unfold',
     #       'bilinear_tensor_product',
     'assign',
@@ -1395,9 +1391,9 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             # [0.99806249 0.9817672  0.94987036]
             
     """
-    w12 = sum(elementwise_mul(x1, x2), axis=axis)
-    w1 = sum(elementwise_mul(x1, x1), axis=axis)
-    w2 = sum(elementwise_mul(x2, x2), axis=axis)
+    w12 = sum(paddle.multiply(x1, x2), axis=axis)
+    w1 = sum(paddle.multiply(x1, x1), axis=axis)
+    w2 = sum(paddle.multiply(x2, x2), axis=axis)
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim
@@ -1406,46 +1402,53 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 def linear(x, weight, bias=None, name=None):
     """
 
-    Fully-connected linear transformation op
+    Fully-connected linear transformation operator. For each input :math:`X` ,
+    the equation is:
 
     .. math::
 
-        Out = {XW + b}
+        Out = XW + b
 
-    where :math:`X` is the input Tensor, :math:`W` and :math:`b` are weight and bias respectively.
+    where :math:`W` is the weight and :math:`b` is the bias.
 
-    The linear op multiplies input tensor with weight matrix and
-    produces an output Tensor of shape [N, *, output_dim], 
-    where N is batch size and `*` means any number of additional dimensions and output_dim is the last dim of ``weight``.
-    If ``bias`` is not None, a bias will be added to the output.
+    If the weight is a 2-D tensor of shape :math:`[in\_features, out\_features]` ,
+    input should be a multi-dimensional tensor of shape
+    :math:`[batch\_size, *, in\_features]` , where :math:`*` means any number of
+    additional dimensions. The linear operator multiplies input tensor with
+    weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` , 
+    If :math:`bias` is not None, the bias should be a 1-D tensor of shape
+    :math:`[out\_features]` and will be added to the output.
 
-    Args:
-        x(Tensor): Input tensor, its data type is float16, float32 or float64
-        weight(Tensor): Weight tensor, its data type is float16, float32 or float64
-        bias(Tensor|None, optional): Bias tensor, its data type is float16, float32 or float64. If it is set to None, no bias will be added to the output units.
-        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
+    Parameters:
+        x (Tensor): Input tensor. The data type should be float16, float32 or float64.
+        weight (Tensor): Weight tensor. The data type should be float16, float32 or float64.
+        bias (Tensor, optional): Bias tensor. The data type should be float16, float32 or float64.
+                                 If it is set to None, no bias will be added to the output units.
+        name (str, optional): Normally there is no need for user to set this parameter.
+                              For detailed information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Output tensor
+        Tensor, the shape is :math:`[batch\_size, *, out\_features]` and the
+        data type is the same with input :math:`x` .
 
     Examples:
         .. code-block:: python
           
-          import numpy as np
           import paddle
-          import paddle.nn.functional as F
           
-          input = np.ones((3,1,2), dtype=np.float32)
-          weight = np.ones((2,2), dtype=np.float32)
-          bias = np.ones((2), dtype=np.float32)
-          place = paddle.CPUPlace()
-          paddle.disable_static(place)
-          input = paddle.to_tensor(input)
-          weight = paddle.to_tensor(weight)
-          bias = paddle.to_tensor(bias)
-          out = F.linear(input, weight, bias)
-          print(out) #[3 3 3 3 3 3]
-    
+          x = paddle.randn((3, 2), dtype="float32")
+          # x: [[-0.32342386 -1.200079  ]
+          #     [ 0.7979031  -0.90978354]
+          #     [ 0.40597573  1.8095392 ]]
+          weight = paddle.full(shape=[2, 4], fill_value="0.5", dtype="float32", name="weight")
+          # weight: [[0.5 0.5 0.5 0.5]
+          #          [0.5 0.5 0.5 0.5]]
+          bias = paddle.ones(shape=[4], dtype="float32", name="bias")
+          # bias: [1. 1. 1. 1.]
+          y = paddle.nn.functional.linear(x, weight, bias)
+          # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
+          #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
+          #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)

@@ -40,9 +40,9 @@ class SplitByrefOp : public framework::OperatorWithKernel {
       if (ctx->IsRuntime()) {
         in_axis_dim = in_dims[0];
       }
-      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
-                        "tensor split does not result"
-                        " in an equal division");
+      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0, platform::errors::InvalidArgument(
+                                                  "tensor split does not result"
+                                                  " in an equal division"));
       size_t out_axis_dim = in_axis_dim / num;
       for (size_t i = 0; i < outs_number; ++i) {
         auto dim = in_dims;

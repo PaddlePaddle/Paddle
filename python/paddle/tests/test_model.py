@@ -25,7 +25,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
+from paddle.nn import Conv2d, Linear, ReLU, Sequential, Softmax
 
 from paddle import Model
 from paddle.static import InputSpec
@@ -33,7 +33,7 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-from paddle.io import DistributedBatchSampler
+from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
@@ -47,11 +47,11 @@ class LeNetDygraph(paddle.nn.Layer):
             Conv2d(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
-            Pool2D(2, 'max', 2),
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
             Conv2d(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
-            Pool2D(2, 'max', 2))
+            paddle.fluid.dygraph.Pool2D(2, 'max', 2))
 
         if num_classes > 0:
             self.fc = Sequential(
@@ -295,6 +295,15 @@ class MyModel(paddle.nn.Layer):
         return y
 
 
+class MyDataset(Dataset):
+    def __getitem__(self, idx):
+        return np.random.random(size=(20,)).astype(np.float32), \
+               np.random.randint(0, 10, size=(1,)).astype(np.int64)
+
+    def __len__(self):
+        return 40
+
+
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         paddle.manual_seed(seed)
@@ -501,6 +510,11 @@ class TestModelFunction(unittest.TestCase):
         rnn = paddle.nn.LSTM(16, 32, 2)
         paddle.summary(rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
 
+    def test_summary_dtype(self):
+        input_shape = (3, 1)
+        net = paddle.nn.Embedding(10, 3, sparse=True)
+        paddle.summary(net, input_shape, dtypes='int64')
+
     def test_summary_error(self):
         with self.assertRaises(TypeError):
             nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
@@ -551,9 +565,10 @@ class TestModelFunction(unittest.TestCase):
                 shutil.rmtree(save_dir)
             paddle.enable_static()
 
-    def test_dygraph_export_deploy_model_without_inputs(self):
+    def test_dygraph_export_deploy_model_about_inputs(self):
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
+        # without inputs
         for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
@@ -579,6 +594,56 @@ class TestModelFunction(unittest.TestCase):
 
             model.save(save_dir, training=False)
             shutil.rmtree(save_dir)
+        # with inputs, and the type of inputs is InputSpec
+        save_dir = tempfile.mkdtemp()
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        net = LeNet()
+        inputs = InputSpec([None, 1, 28, 28], 'float32', 'x')
+        model = Model(net, inputs)
+        optim = fluid.optimizer.Adam(
+            learning_rate=0.001, parameter_list=model.parameters())
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+        model.save(save_dir, training=False)
+        shutil.rmtree(save_dir)
+
+
+class TestModelWithLRScheduler(unittest.TestCase):
+    def test_fit(self):
+        def make_optimizer(parameters=None):
+            base_lr = 1e-3
+            momentum = 0.9
+            weight_decay = 5e-4
+            boundaries = [5, 8]
+            values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+            learning_rate = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=boundaries, values=values)
+            learning_rate = paddle.optimizer.lr.LinearWarmup(
+                learning_rate=learning_rate,
+                warmup_steps=4,
+                start_lr=base_lr / 5.,
+                end_lr=base_lr,
+                verbose=True)
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                momentum=momentum,
+                parameters=parameters)
+            return optimizer
+
+        device = paddle.set_device('cpu')
+        fluid.enable_dygraph(device)
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+        model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
+
+        paddle.enable_static()
 
 
 class TestRaiseError(unittest.TestCase):

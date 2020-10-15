@@ -687,27 +687,24 @@ def t(input, name=None):
 
 def cross(x, y, axis=None, name=None):
     """
-	:alias_main: paddle.cross
-	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
-
     Computes the cross product between two tensors along an axis.
+    
     Inputs must have the same shape, and the length of their axes should be equal to 3.
     If `axis` is not given, it defaults to the first axis found with the length 3.
     
     Args:
-        x (Variable): The first input tensor variable.
-        y (Variable): The second input tensor variable.
+        x (Tensor): The first input tensor.
+        y (Tensor): The second input tensor.
         axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
-        name (str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with same data type as `x`.
+        Tensor. A Tensor with same data type as `x`.
         
     Examples:
         .. code-block:: python
+
             import paddle
-            paddle.disable_static()
 
             x = paddle.to_tensor([[1.0, 1.0, 1.0],
                                   [2.0, 2.0, 2.0],
@@ -715,14 +712,13 @@ def cross(x, y, axis=None, name=None):
             y = paddle.to_tensor([[1.0, 1.0, 1.0],
                                   [1.0, 1.0, 1.0],
                                   [1.0, 1.0, 1.0]])
+
             z1 = paddle.cross(x, y)
-            print(z1.numpy())
             # [[-1. -1. -1.]
             #  [ 2.  2.  2.]
             #  [-1. -1. -1.]]
 
             z2 = paddle.cross(x, y, axis=1)
-            print(z2.numpy())
             # [[0. 0. 0.]
             #  [0. 0. 0.]
             #  [0. 0. 0.]]

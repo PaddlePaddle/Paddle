@@ -24,20 +24,15 @@ from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
-from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
-from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
-from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
     'to_tensor',
-    'crop_tensor',
     'diag',
-    'fill_constant',
     #       'get_tensor_from_selected_rows',
     'linspace',
     'ones',
@@ -317,7 +312,7 @@ def ones(shape, dtype=None, name=None):
           #  [1 1]]
           
           # shape is a Tensor
-          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
           data3 = paddle.ones(shape=shape, dtype='int32') 
           # [[1 1]
           #  [1 1]]
@@ -398,7 +393,7 @@ def zeros(shape, dtype=None, name=None):
           #  [0. 0.]]
           
           # shape is a Tensor
-          shape = paddle.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
           data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
@@ -526,18 +521,18 @@ def full(shape, fill_value, dtype=None, name=None):
           # [0]]
 
           # attr shape is a list which contains Tensor.
-          positive_2 = paddle.fill_constant([1], "int32", 2)
+          positive_2 = paddle.fluid.layers.fill_constant([1], "int32", 2)
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
           # [[1.5 1.5]]
 
           # attr shape is a Tensor.
-          shape = paddle.fill_constant([2], "int32", 2)
+          shape = paddle.fluid.layers.fill_constant([2], "int32", 2)
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
           # [[True True] 
           #  [True True]]
           
           # attr fill_value is a Tensor.
-          val = paddle.fill_constant([1], "float32", 2.0)
+          val = paddle.fluid.layers.fill_constant([1], "float32", 2.0)
           data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
           # [[2.0] 
           #  [2.0]]

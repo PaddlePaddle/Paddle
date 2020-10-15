@@ -36,8 +36,8 @@ class ParamAttr(object):
     
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
-        It is recommended to set ``grad_clip`` in ``optimizer`` to clip gradient. 
-        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
+        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        There are three clipping strategies: :ref:`api_paddle_nn_GradientClipByGlobalNorm` , 
         :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
 
     Parameters:
@@ -57,6 +57,7 @@ class ParamAttr(object):
         trainable (bool): Whether this parameter is trainable. Default True.
         do_model_average (bool): Whether this parameter should do model average
                 when model average is enabled. Default False.
+        need_clip (bool): Whether the parameter gradient need to be cliped in optimizer. Default is True.
 
     Examples:
         .. code-block:: python
@@ -78,7 +79,8 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 do_model_average=True):
+                 do_model_average=True,
+                 need_clip=True):
 
         if sys.version_info.major == 2:
             check_type(name, "name", (str, type(None), unicode), "ParamAttr")
@@ -87,6 +89,7 @@ class ParamAttr(object):
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+        check_type(need_clip, "need_clip", (bool), "ParamAttr")
         check_type(initializer, "initializer", (Initializer, type(None)),
                    "ParamAttr")
         check_type(regularizer, "regularizer",
@@ -101,6 +104,7 @@ class ParamAttr(object):
         self.regularizer = regularizer
         self.trainable = trainable
         self.do_model_average = do_model_average
+        self.need_clip = need_clip
 
     def _set_default_initializer(self, initializer):
         """
@@ -197,7 +201,8 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'do_model_average': self.do_model_average
+            'do_model_average': self.do_model_average,
+            'need_clip': self.need_clip
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -219,9 +224,9 @@ class WeightNormParamAttr(ParamAttr):
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
       
     Note:
-        ``gradient_clip`` of ``WeightNormParamAttr`` HAS BEEN DEPRECATED since 2.0. 
-        It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
-        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        There are three clipping strategies: :ref:`api_paddle_nn_GradientClipByGlobalNorm` , 
         :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
         
 
@@ -248,6 +253,7 @@ class WeightNormParamAttr(ParamAttr):
         trainable(bool, optional): Whether this parameter is trainable. Default True.
         do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
+        need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
 
     Examples:
         .. code-block:: python
@@ -258,16 +264,17 @@ class WeightNormParamAttr(ParamAttr):
 
             data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
 
-            fc = paddle.static.nn.fc(input=data,
+            fc = paddle.static.nn.fc(x=data,
                                      size=1000,
-                                     param_attr=paddle.static.WeightNormParamAttr(
-                                                dim=None,
-                                                name='weight_norm_param',
-                                                initializer=paddle.nn.initializer.Constant(1.0),
-                                                learning_rate=1.0,
-                                                regularizer=paddle.regularizer.L2Decay(0.1),
-                                                trainable=True,
-                                                do_model_average=False))
+                                     weight_attr=paddle.static.WeightNormParamAttr(
+                                         dim=None,
+                                         name='weight_norm_param',
+                                         initializer=paddle.nn.initializer.Constant(1.0),
+                                         learning_rate=1.0,
+                                         regularizer=paddle.regularizer.L2Decay(0.1),
+                                         trainable=True,
+                                         do_model_average=False,
+                                         need_clip=True))
 
     """
     # List to record the parameters reparameterized by weight normalization.
@@ -283,12 +290,14 @@ class WeightNormParamAttr(ParamAttr):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 do_model_average=False):
+                 do_model_average=False,
+                 need_clip=True):
         super(WeightNormParamAttr, self).__init__(
             name=name,
             initializer=initializer,
             learning_rate=learning_rate,
             regularizer=regularizer,
             trainable=trainable,
-            do_model_average=do_model_average)
+            do_model_average=do_model_average,
+            need_clip=need_clip)
         self.dim = dim

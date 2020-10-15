@@ -530,13 +530,6 @@ class RoleMakerBase(object):
         return self._heter_trainer_endpoints[(self._current_id) %
                                              self._heter_worker_num()]
 
-    def _get_heter_worker_device(self):
-        """
-        Returns:
-            string: heter_trainer's device of current node, e.g: CPU/GPU/XPU
-        """
-        return self._heter_trainer_device.upper()
-
 
 class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
@@ -677,88 +670,99 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         return self._role == Role.HETER_WORKER
 
     def _ps_env(self):
-        try:
-            # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
-            # format: string(ip:port,ip:port), eg. 127.0.0.1:6001,127.0.0.1:6002
-            self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
+        # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
+        # format: string(ip:port,ip:port), eg. 127.0.0.1:6001,127.0.0.1:6002
+        self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST", None)
 
-            if self._server_endpoints is None:
-                # back to non_distributed execution.
-                self._server_endpoints = ""
-                self._trainers_num = 1
-                self._role = Role.WORKER
-                self._current_id = 0
-                self._nodes_num = 1
-                self._heter_trainers_num = 0
-                self._heter_trainer_endpoints = None
-                self._non_distributed = True
-                return
+        if self._server_endpoints is None:
+            # back to non_distributed execution.
+            self._server_endpoints = ""
+            self._trainers_num = 1
+            self._role = Role.WORKER
+            self._current_id = 0
+            self._nodes_num = 1
+            self._heter_trainers_num = 0
+            self._heter_trainer_endpoints = None
+            self._non_distributed = True
+            return
 
-            self._server_endpoints = self._server_endpoints.split(",")
+        self._server_endpoints = self._server_endpoints.split(",")
 
-            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-            if self._worker_endpoints:
-                self._worker_endpoints = self._worker_endpoints.split(",")
-            else:
-                self._worker_endpoints = []
+        self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
+        if self._worker_endpoints != None:
+            self._worker_endpoints = self._worker_endpoints.split(",")
+        else:
+            self._worker_endpoints = []
 
-            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
-            training_role = os.environ["TRAINING_ROLE"]
-
-            if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
-                raise ValueError(
-                    "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment.".
-                    format(training_role))
-
-            # For heter parameter server env setting
-            heter_trainer_eplist = os.getenv(
-                "PADDLE_HETER_TRAINER_IP_PORT_LIST", None)
-            heter_trainer_device = os.getenv("PADDLE_HETER_TRAINER_DEVICE",
-                                             None)
-            if heter_trainer_eplist and heter_trainer_device:
-                try:
-                    heter_trainer_eplist = os.environ[
-                        "PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(",")
-                except:
-                    raise ValueError(
-                        "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
-                    )
-
-                self._is_heter_parameter_server_mode = True
-                heter_trainers_num = len(heter_trainer_eplist)
-                current_node_device = heter_trainer_device.upper()
-                if current_node_device not in ["CPU", "GPU", "XPU"]:
-                    raise ValueError(
-                        "Heter Trainer doesn't support {} device now, please use CPU / GPU / XPU(KunLun)".
-                        format(heter_trainer_device))
-                self._heter_trainer_device = current_node_device
-            else:
-                self._is_heter_parameter_server_mode = False
-                heter_trainers_num = 0
-
-            if training_role == "TRAINER":
-                role = Role.WORKER
-                current_id = int(os.environ["PADDLE_TRAINER_ID"])
-                if len(self._worker_endpoints) > 0:
-                    self._cur_endpoint = self._worker_endpoints[current_id]
-            elif training_role == "PSERVER":
-                role = Role.SERVER
-                port = os.environ["PADDLE_PORT"]
-                ip = os.environ["POD_IP"]
-                self._cur_endpoint = ip + ":" + port
-                current_id = self._server_endpoints.index(self._cur_endpoint)
-            elif training_role == "HETER_TRAINER":
-                role = Role.HETER_WORKER
-                cur_ip = os.environ["POD_IP"]
-                cur_port = os.environ["PADDLE_PORT"]
-                curr_endpoint = ":".join([cur_ip, cur_port])
-                current_id = heter_trainer_eplist.index(curr_endpoint)
-            else:
-                raise ValueError(
-                    "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER")
-        except ValueError as e:
+        trainers_num = os.getenv("PADDLE_TRAINERS_NUM", None)
+        if trainers_num == None:
             raise ValueError(
-                "Something wrong with PaddleCloud, please check environment")
+                "Can not find PADDLE_TRAINERS_NUM, please check your environment."
+            )
+        trainers_num = int(trainers_num)
+
+        training_role = os.getenv("TRAINING_ROLE", None)
+        if training_role == None:
+            raise ValueError(
+                "Can not find TRAINING_ROLE, please check your environment.")
+
+        if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
+            raise ValueError(
+                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment.".
+                format(training_role))
+
+        # For heter parameter server env setting
+        heter_trainer_eplist = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST",
+                                         "")
+        if heter_trainer_eplist != "":
+            try:
+                heter_trainer_eplist = os.environ[
+                    "PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(",")
+            except:
+                raise ValueError(
+                    "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
+                )
+
+            self._is_heter_parameter_server_mode = True
+            heter_trainers_num = len(heter_trainer_eplist)
+        else:
+            self._is_heter_parameter_server_mode = False
+            heter_trainers_num = 0
+
+        if training_role == "TRAINER":
+            role = Role.WORKER
+            current_id = os.getenv("PADDLE_TRAINER_ID", None)
+            if current_id == None:
+                raise ValueError(
+                    "Can not find PADDLE_TRAINER_ID, please check your environment."
+                )
+            current_id = int(current_id)
+            if len(self._worker_endpoints) > 0:
+                self._cur_endpoint = self._worker_endpoints[current_id]
+        elif training_role == "PSERVER":
+            role = Role.SERVER
+            port = os.getenv("PADDLE_PORT", None)
+            if port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
+            ip = os.getenv("POD_IP", None)
+            if ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
+            self._cur_endpoint = ip + ":" + port
+            current_id = self._server_endpoints.index(self._cur_endpoint)
+        elif training_role == "HETER_TRAINER":
+            role = Role.HETER_WORKER
+            cur_port = os.getenv("PADDLE_PORT", None)
+            if cur_port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
+            cur_ip = os.getenv("POD_IP", None)
+            if cur_ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
+            curr_endpoint = ":".join([cur_ip, cur_port])
+            current_id = heter_trainer_eplist.index(curr_endpoint)
 
         self._trainers_num = trainers_num
         self._role = role
@@ -821,8 +825,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 if self._is_first_worker():
                     start_http_server = True
             else:
-                ep_rank_0 = self._server_endpoints[0]
-                if self._server_index() == 0:
+                ep_rank_0 = os.getenv("PADDLE_GLOO_HTTP_ENDPOINT", "")
+                if self._is_server() and self._server_index() == 0:
                     start_http_server = True
             ip, port = ep_rank_0.split(':')
             kwargs = {
