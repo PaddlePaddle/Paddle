@@ -66,6 +66,7 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
              --infer_data=${data_path}
              --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
+             --enable_int8=true
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
@@ -81,6 +82,7 @@ function(inference_analysis_api_bfloat16_test_run TARGET_NAME test_binary model_
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
              --batch_size=50
+             --enable_bf16=true
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
@@ -92,6 +94,7 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_bi
              --infer_data=${data_path}
              --warmup_batch_size=10
              --batch_size=300
+             --enable_int8=true
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=1)
 endfunction()
@@ -115,6 +118,7 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --int8_model=${int8_model_dir}
              --infer_data=${data_path}
              --batch_size=50
+             --enable_int8=true
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)

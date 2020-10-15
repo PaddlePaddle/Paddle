@@ -110,7 +110,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
     paddle.fluid.layers.fill_constant([1], out.dtype, epsilon, out=eps)
-    return paddle.fluid.layers.elementwise_div(x, paddle.maximum(out, eps), name=name)
+    return paddle.fluid.layers.elementwise_div(
+        x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(x,
@@ -137,7 +138,7 @@ def batch_norm(x,
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Defalut "NCHW".
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -173,13 +174,13 @@ def batch_norm(x,
     mean_out = running_mean
     variance_out = running_var
 
-    true_data_format = ['NC', 'NCL', 'NCHW', 'NCDHW']
+    true_data_format = ['NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']
     if data_format not in true_data_format:
         raise ValueError(
-            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', but receive {}".
-            format(data_format))
+            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
+            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
 
-    data_format = 'NCHW'
+    data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
     if in_dygraph_mode():
         # for dygraph need tuple
