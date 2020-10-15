@@ -240,6 +240,9 @@ class TestReshapeOpBool(TestReshapeOp):
             'XShape': np.random.random(self.ori_shape).astype("float32")
         }
 
+    def test_check_grad(self):
+        pass
+
 
 # Test python API
 class TestReshapeAPI(unittest.TestCase):
