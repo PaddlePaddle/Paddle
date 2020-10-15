@@ -97,7 +97,7 @@ void BindCommunicator(py::module* m) {
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning)
-      .def("recv", &Communicator::RecvNoBarrier);
+      .def("recv", &Communicator::RecvByCommunicator);
 }
 
 void BindLargeScaleKV(py::module* m) {

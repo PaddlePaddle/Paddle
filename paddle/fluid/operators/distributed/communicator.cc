@@ -81,31 +81,11 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   InitParams();
 }
 
-void AsyncCommunicator::InitParams() { RecvNoBarrier(); }
+void AsyncCommunicator::InitParams() { RecvByCommunicator(); }
 
 AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
   if (main_thread_) main_thread_->join();
-}
-
-void AsyncCommunicator::SendGlobalStep(int batches) {
-  if (!need_global_step_) {
-    return;
-  }
-
-  if (batches == 0) {
-    return;
-  }
-
-  auto &var_name = STEP_COUNTER;
-  auto *out_var = send_scope_->Var(var_name);
-  auto *out_t = out_var->GetMutable<framework::LoDTensor>();
-  auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
-  data[0] = static_cast<int64_t>(batches);
-
-  auto &ctx = send_varname_to_ctx_.at(var_name);
-  auto send_functor = distributed::ParameterSend<float>();
-  send_functor(ctx, *send_scope_, true, 1);
 }
 
 void AsyncCommunicator::SendByCommunicator(int batches) {
@@ -155,39 +135,9 @@ void AsyncCommunicator::SendByCommunicator(int batches) {
           << after_run_send_graph - before_run_send_graph;
 }
 
-void AsyncCommunicator::MainThread() {
-  VLOG(3) << "MainThread start and wait";
-
-  while (waiting_ && running_) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    VLOG(3) << "wait for running";
-  }
-
-  while (running_) {
-    int batches = BatchesCounter();
-
-    if (batches > 0) {
-      SendGlobalStep(batches);
-      SendByCommunicator(batches);
-      BarrierSend();
-      RecvByCommunicator();
-      BarrierRecv();
-      BarrierWeakUp();
-    } else {
-      VLOG(1) << "get nothing from sending queue, will skip send/recv";
-    }
-  }
-  VLOG(1) << "communicator stopped, send thread exit";
-}
-
 void AsyncCommunicator::RecvByCommunicator() {
   VLOG(3) << "parallel run recv graph";
   if (!running_) return;
-  RecvNoBarrier();
-  VLOG(3) << "run recv graph use time";
-}
-
-void AsyncCommunicator::RecvNoBarrier() {
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(recv_varname_to_ctx_.size());
 
@@ -204,31 +154,7 @@ void AsyncCommunicator::RecvNoBarrier() {
   for (auto &task : task_futures) {
     task.wait();
   }
-}
-
-int AsyncCommunicator::BatchesCounter() {
-  auto &step_queue = send_varname_to_queue_.at(STEP_COUNTER);
-
-  size_t merged_var_num = 0;
-  size_t wait_times = 0;
-
-  while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
-    if (step_queue->Size() == 0) {
-      VLOG(3) << "wait_times -> " << wait_times;
-      if (wait_times >= static_cast<size_t>(send_wait_times_)) {
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      wait_times++;
-      continue;
-    } else {
-      step_queue->Pop();
-      wait_times = 0;
-      merged_var_num++;
-    }
-  }
-
-  return merged_var_num;
+  VLOG(3) << "run recv graph use time";
 }
 
 void AsyncCommunicator::Start() {
@@ -263,7 +189,11 @@ void AsyncCommunicator::Stop() {
 
 void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const std::vector<std::string> &var_tables,
-                             const framework::Scope &scope) {
+                             const framework::Scope &scope) {}
+
+void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_names,
+                                 const std::vector<std::string> &var_tables,
+                                 const framework::Scope &scope) {
   waiting_ = false;
 
   for (size_t i = 0; i < var_tables.size(); i++) {
@@ -318,6 +248,30 @@ void HalfAsyncCommunicator::Clean() {
 
     VLOG(3) << "clean var: " << var_name << " done";
   }
+}
+
+void HalfAsyncCommunicator::MainThread() {
+  VLOG(3) << "MainThread start and wait";
+
+  while (waiting_ && running_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    VLOG(3) << "wait for running";
+  }
+
+  while (running_) {
+    int batches = BatchesCounter();
+
+    if (batches > 0) {
+      SendByCommunicator(batches);
+      BarrierSend();
+      RecvByCommunicator();
+      BarrierRecv();
+      BarrierWeakUp();
+    } else {
+      VLOG(1) << "get nothing from sending queue, will skip send/recv";
+    }
+  }
+  VLOG(1) << "communicator stopped, send thread exit";
 }
 
 int HalfAsyncCommunicator::BatchesCounter() {

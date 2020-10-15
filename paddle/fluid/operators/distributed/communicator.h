@@ -216,8 +216,6 @@ class Communicator {
                     const std::vector<std::string> &var_tables,
                     const framework::Scope &scope) = 0;
 
-  virtual void RecvNoBarrier() {}
-
   virtual void Barrier() {}
 
   virtual void BarrierTriggerDecrement() {}
@@ -296,7 +294,7 @@ class AsyncCommunicator : public Communicator {
 
   void InitParams();
 
-  virtual void MainThread();
+  virtual void MainThread() {}
 
   void Send(const std::vector<std::string> &var_names,
             const std::vector<std::string> &var_tables,
@@ -304,19 +302,7 @@ class AsyncCommunicator : public Communicator {
 
   virtual void SendByCommunicator(int batches);
 
-  virtual void SendGlobalStep(int batches);
-
   virtual void RecvByCommunicator();
-
-  virtual void RecvNoBarrier();
-
-  virtual int BatchesCounter();
-
-  virtual void BarrierSend() {}
-
-  virtual void BarrierRecv() {}
-
-  virtual void BarrierWeakUp() {}
 
  protected:
   int min_send_grad_num_before_recv_;
@@ -446,8 +432,6 @@ class GeoCommunicator : public AsyncCommunicator {
                   const std::vector<int64_t> &sparse_ids);
 
   void SendDense(const std::string &varname);
-
-  void SendGlobalStep(int batches) override {}
 
   void RecvByCommunicator() override;
 
