@@ -226,7 +226,7 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
 
-    var_wrappers = CopyVarWrapperList(var_wrappers);
+    var_wrappers = SnapshotVarWrapperList(var_wrappers);
 
     if (!var_wrappers.empty()) {
       op_->SetInput(name, std::move(var_wrappers),
@@ -306,9 +306,10 @@ class TracedGradOp {
     return result;
   }
 
-  // Get a snapshot of VariableWrapper at a certain version.
-  // The version number of VariableWrapper is used for inplace detection.
-  static std::vector<std::shared_ptr<VariableWrapper>> CopyVarWrapperList(
+  // Get a snapshot of VariableWrapper at a certain inplace version.
+  // The inplace version number of VariableWrapper is used for inplace detection
+  // in gradient compution.
+  static std::vector<std::shared_ptr<VariableWrapper>> SnapshotVarWrapperList(
       const std::vector<std::shared_ptr<VariableWrapper>>& var_wrappers) {
     std::vector<std::shared_ptr<VariableWrapper>> result;
     result.reserve(var_wrappers.size());
