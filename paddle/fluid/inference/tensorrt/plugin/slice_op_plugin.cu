@@ -170,11 +170,13 @@ int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
   int blocks = (out_num + threads - 1) / threads;
   auto input_type = getDataType();
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Slice-->fp32";
     const float *input1 = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
     SliceKernel<float><<<blocks, threads, 3 * num_dims * sizeof(int), stream>>>(
         out_num, num_dims, input1, offset_temp_data_, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. Slice-->fp16";
     const half *input1 = static_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
     SliceKernel<half><<<blocks, threads, 3 * num_dims * sizeof(int), stream>>>(

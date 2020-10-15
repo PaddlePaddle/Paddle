@@ -108,11 +108,13 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
 
   auto type = getDataType();
   if (type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp32";
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
     gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
         kA, num, input, output);
   } else if (type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. Gelu-->fp16";
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
     no_exact_gelu_kernel<half,
