@@ -321,15 +321,20 @@ TEST(LARGE_SCALE_CHECKPOINT, CPU) {
   client->Wait();
 
   paddle::framework::AttributeMap attrs;
-  attrs["endpoints"] = {ep};
+
+  std::vector<std::string> eps = {ep};
+  attrs["endpoints"] = eps;
   attrs["dirname"] = std::string("/tmp/large_scale_table/delta1");
   attrs["varname"] = std::string("embedding");
   attrs["mode"] = 2;
-  attrs["slice_varnames"] = {std::string("embedding.block0")};
-  attrs["remote_varnames"] = {std::string("embedding.block0")};
+  std::vector<std::string> slices = {"embedding.block0"};
+  attrs["slice_varnames"] = slices;
+  std::vector<std::string> remotes = {"embedding.block0"};
+  attrs["remote_varnames"] = remotes;
 
-  auto ops = framework::OpRegistry::CreateOp("checkpoint_notify", {}, {}, attrs,
-                                             false);
+  auto ops =
+      framework::OpRegistry::CreateOp("checkpoint_notify", {}, {}, attrs, true);
+  ops->Run(scope, place);
 
   g_rpc_service->ShutDown();
   server_thread.join();
