@@ -12,7 +12,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
@@ -350,7 +349,7 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<mkldnn::memory> AcquireResidualMemory(
       const framework::Tensor* residual_param) {
     void* residual_data =
-        residual_param->type() == DataTypeTrait<T_out>::DataType()
+        residual_param->type() == framework::DataTypeTrait<T_out>::DataType()
             ? to_void_cast<T>(residual_param->data<T>())
             : to_void_cast<T_out>(residual_param->data<T_out>());
     auto user_residual_md = platform::MKLDNNMemDesc(
