@@ -91,7 +91,6 @@ class LazyInitialized(object):
         self.function = function
 
     def __get__(self, instance, cls):
-        assert instance is not None
         val = self.function(instance)
         setattr(instance, self.function.__name__, val)
         return val
