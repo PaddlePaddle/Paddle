@@ -37,8 +37,7 @@ class TestDirectory(unittest.TestCase):
         new_directory = [
             'paddle.enable_static', 'paddle.disable_static',
             'paddle.in_dynamic_mode', 'paddle.to_tensor', 'paddle.grad',
-            'paddle.no_grad', 'paddle.save', 'paddle.load',
-            'paddle.static.save', 'paddle.static.load',
+            'paddle.no_grad', 'paddle.static.save', 'paddle.static.load',
             'paddle.distributed.ParallelEnv',
             'paddle.distributed.prepare_context', 'paddle.DataParallel',
             'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
@@ -94,8 +93,8 @@ class TestDirectory(unittest.TestCase):
             stderr=subprocess.PIPE)
         stdout, stderr = ps_proc.communicate()
 
-        assert "Error" not in str(stderr), "Error: Can't" \
-            " import Module {}".format(module)
+        self.assertFalse("Error" in str(stderr),
+                         "ErrorMessage:\n{}".format(bytes.decode(stderr)))
 
     def test_old_directory(self):
         old_directory = [
@@ -177,7 +176,7 @@ if count != {len_old_directory}:
             stderr=subprocess.PIPE)
         stdout, stderr = ps_proc.communicate()
 
-        assert "Error" not in str(stdout), str(stdout)
+        self.assertFalse("Error" in str(stdout), bytes.decode(stdout))
 
 
 if __name__ == '__main__':

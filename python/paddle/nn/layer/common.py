@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # TODO: define the common classes to build a neural network
+import paddle
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
@@ -560,8 +561,6 @@ class UpsamplingBilinear2d(layers.Layer):
 
 class Pad2D(layers.Layer):
     """
-        :alias_main: paddle.nn.Pad2D
-        :alias: paddle.nn.Pad2D,paddle.nn.layer.Pad2D,paddle.nn.layer.common.Pad2D
     This interface is used to construct a callable object of the ``Pad2D``  class.
     The Pad2D layer pads the input tensor boundaries according to 'paddings' and 'mode'.
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
@@ -611,7 +610,7 @@ class Pad2D(layers.Layer):
             import paddle.nn as nn
             import numpy as np
             data = np.ones((2, 2, 2, 2)).astype('float32')
-            my_pad = nn.Pad2D(paddings=[1, 1, 1, 1])
+            my_pad = nn.layer.Pad2D(paddings=[1, 1, 1, 1])
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
                 result = my_pad(data)
@@ -630,7 +629,7 @@ class Pad2D(layers.Layer):
                                                       int) else paddings
 
     def forward(self, input):
-        return F.pad2d(
+        return paddle.fluid.layers.pad2d(
             input,
             paddings=self._paddings,
             mode=self._mode,

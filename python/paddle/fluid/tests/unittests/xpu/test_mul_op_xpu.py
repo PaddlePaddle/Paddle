@@ -28,6 +28,8 @@ import time
 paddle.enable_static()
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestMulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -43,6 +45,8 @@ class TestMulOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.mul, x3, x4)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUMulOp1(OpTest):
     def setUp(self):
         self.op_type = "mul"
@@ -67,18 +71,23 @@ class TestXPUMulOp1(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.XPUPlace(0)
+        self.check_output_with_place(place, atol=0.01)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.1)
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=0.1)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.1, no_grad_set=set('X'))
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', max_relative_error=0.1, no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.1, no_grad_set=set('Y'))
+        place = paddle.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.1, no_grad_set=set('Y'))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),

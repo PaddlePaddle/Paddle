@@ -18,7 +18,6 @@ import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle
-import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 
 
@@ -157,7 +156,7 @@ class TestAddPositionEncodingOpDygraph(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
         tensor = np.random.randn(16, 32, 64)
-        position_tensor = F.add_position_encoding(
+        position_tensor = paddle.fluid.layers.add_position_encoding(
             input=paddle.to_tensor(tensor), alpha=1.0, beta=1.0).numpy()
         paddle.enable_static()
 
