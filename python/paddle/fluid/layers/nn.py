@@ -6119,7 +6119,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64',
+                 'bool'], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
@@ -10845,10 +10846,6 @@ def sum(x):
 @templatedoc()
 def slice(input, axes, starts, ends):
     """
-    :alias_main: paddle.slice
-	:alias: paddle.slice,paddle.tensor.slice,paddle.tensor.manipulation.slice
-	:old_api: paddle.fluid.layers.slice
-
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
     https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
@@ -10881,43 +10878,42 @@ def slice(input, axes, starts, ends):
                 ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
             Then:
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
+    
     Args:
-        input (Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
-        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
+        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.
                 It represents starting indices of corresponding axis in ``axes``.
-        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
+        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .
                 It represents ending indices of corresponding axis in ``axes``.
 
     Returns:
-        Variable:  A ``Tensor`` or ``LoDTensor``. The data type is same as ``input``.
+        Tensor:  A ``Tensor``. The data type is same as ``input``.
 
     Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Variable.
-        TypeError: The type of ``ends`` must be list, tuple or Variable.
+        TypeError: The type of ``starts`` must be list, tuple or Tensor.
+        TypeError: The type of ``ends`` must be list, tuple or Tensor.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            input = fluid.data(
-                name="input", shape=[4, 5, 6], dtype='float32')
-
+            input = paddle.rand(shape=[4, 5, 6], dtype='float32')
             # example 1:
-            # attr starts is a list which doesn't contain tensor Variable.
+            # attr starts is a list which doesn't contain tensor.
             axes = [0, 1, 2]
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
-            sliced_1 = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+            sliced_1 = paddle.slice(input, axes=axes, starts=starts, ends=ends)
             # sliced_1 is input[0:3, 0:2, 2:4].
 
             # example 2:
-            # attr starts is a list which contain tensor Variable.
-            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-            sliced_2 = fluid.layers.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
+            # attr starts is a list which contain tensor.
+            minus_3 = paddle.full([1], -3, "int32")
+            sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
     if in_dygraph_mode():
