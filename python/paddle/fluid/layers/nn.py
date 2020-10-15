@@ -10896,6 +10896,7 @@ def slice(input, axes, starts, ends):
                 ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
             Then:
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
+    
     Args:
         input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
