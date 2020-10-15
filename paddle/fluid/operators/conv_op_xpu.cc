@@ -50,15 +50,17 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         xpu::findmax(dev_ctx.x_context(), input->data<T>(), input->numel(),
                      max_input->data<T>()) == xpu::Error_t::SUCCESS,
-        true, platform::errors::InvalidArgument("XPU conv kernel error,please "
-                                                "check whether Baidu Kunlun "
-                                                "Card is properly installed."));
+        true, platform::errors::InvalidArgument(
+                  "XPU conv kernel error,can not finde max_input,please "
+                  "check whether Baidu Kunlun "
+                  "Card is properly installed."));
     PADDLE_ENFORCE_EQ(
         xpu::findmax(dev_ctx.x_context(), filter.data<T>(), filter.numel(),
                      max_filter->data<T>()) == xpu::Error_t::SUCCESS,
-        true, platform::errors::InvalidArgument("XPU conv kernel error,please "
-                                                "check whether Baidu Kunlun "
-                                                "Card is properly installed."));
+        true, platform::errors::InvalidArgument(
+                  "XPU conv kernel error,can not find max_filter,please "
+                  "check whether Baidu Kunlun "
+                  "Card is properly installed."));
     if (groups == 1) {
       int r = xpu::conv2d_forward_int16<float, float, float, float>(
           dev_ctx.x_context(), batch_size, img_c, img_h, img_w, f, win_h, win_w,
@@ -137,9 +139,11 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
         xpu::findmax(dev_ctx.x_context(), output_grad->data<T>(),
                      output_grad->numel(),
                      max_output_grad->data<T>()) == xpu::Error_t::SUCCESS,
-        true, platform::errors::External("XPU conv kernel error, please check "
-                                         "whether Baidu Kunlun Card is "
-                                         "properly installed."));
+        true,
+        platform::errors::External(
+            "XPU conv kernel error, can not find max_output_grad, please check "
+            "whether Baidu Kunlun Card is "
+            "properly installed."));
     if (input_grad) {
       int r = xpu::conv2d_backward_int16(
           dev_ctx.x_context(), batch_size, img_c, img_h, img_w, f, win_h, win_w,
