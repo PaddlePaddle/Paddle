@@ -64,15 +64,16 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
             }
           }
         }
-        PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&mask_data_table),
-                                     max_data_size * sizeof(float)),
-                          XPU_SUCCESS,
-                          platform::errors::ResourceExhausted(
-                              "\n\nOut of memory error on XPU, Cannot"
-                              "allocate %s memory on XPU. \n\nPlease "
-                              "check whether there is any other process "
-                              "using XPU.\n",
-                              string::HumanReadableSize(n * sizeof(void*))));
+        PADDLE_ENFORCE_EQ(
+            xpu_malloc(reinterpret_cast<void**>(&mask_data_table),
+                       max_data_size * sizeof(float)),
+            XPU_SUCCESS,
+            platform::errors::ResourceExhausted(
+                "\n\nOut of memory error on XPU, Cannot"
+                "allocate %s memory on XPU. \n\nPlease "
+                "check whether there is any other process "
+                "using XPU.\n",
+                string::HumanReadableSize(max_data_size * sizeof(void*))));
         memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
                      mask_data_table, platform::CPUPlace(), mask_data_host,
                      max_data_size * sizeof(float));
