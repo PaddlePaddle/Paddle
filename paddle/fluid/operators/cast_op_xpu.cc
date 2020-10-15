@@ -27,6 +27,8 @@ class CastXPUKernel : public framework::OpKernel<InT> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
+    auto in_type = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("in_dtype"));
     auto out_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("out_dtype"));
     auto* in_data = in->data<InT>();
@@ -44,11 +46,11 @@ class CastXPUKernel : public framework::OpKernel<InT> {
       r = xpu::cast<InT, int64_t>(dev_ctx.x_context(), in_data, out_data,
                                   numel);
     } else {
-      PADDLE_THROW(platform::errors::Unavailable("Not supported cast %s -> %d",
-                                                 typeid<int>.name(), out_type));
+      PADDLE_THROW(platform::errors::Unavailable("Not supported cast %d -> %d",
+                                                 in_type, out_type));
     }
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+                      platform::errors::External("XPU kernel error!"));
   }
 };
 

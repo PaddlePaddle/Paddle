@@ -95,7 +95,7 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
         xpu::concat<float>(dev_ctx.x_context(), h, (const int*)in_w_host.get(),
                            n, (const float**)ptrs.get(), out->data<T>());
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+                      platform::errors::External("XPU kernel error!"));
   }
 };
 template <typename DeviceContext, typename T>
@@ -157,9 +157,10 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
       in_w_host[i] = out_stride[axis];
     }
     int r = xpu::concat_grad(dev_ctx.x_context(), h, in_w_host.get(), n,
-                             <float**> ptrs.get(), out_grad->data<T>());
+                             reinterpret_cast<float**>(ptrs.get()),
+                             out_grad->data<T>());
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+                      platform::errors::External("XPU kernel error!"));
   }
 };
 
