@@ -265,6 +265,7 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const std::vector<std::string> &var_tables,
                              const framework::Scope &scope) {
   waiting_ = false;
+
   PADDLE_ENFORCE_EQ(
       var_tables.size(), 1,
       platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
@@ -299,7 +300,7 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
       queue->Push(tmp_var);
     } else if (var->IsType<framework::LoDTensor>()) {
       // push var into send queue by var_name
-      auto var_name = var_names[i];
+      auto var_name = var_names[0];
       framework::CopyVariable(*var, tmp_var.get());
       VLOG(3) << "send to " << table_name << " with queue size "
               << queue->Size();
