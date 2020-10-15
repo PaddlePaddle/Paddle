@@ -615,9 +615,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bool is_conv3d = strides.size() == 3U;
 
       PADDLE_ENFORCE_NE(is_conv3d, true,
-                        platform::errors::InvalidArgument(
-                            "int8 does not support conv3d currently, should "
-                            "set param is_conv3d as False"));
+                        platform::errors::Unimplemented(
+                            "int8 does not support conv3d currently"));
 
       auto input_dims = input->dims();
       auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());

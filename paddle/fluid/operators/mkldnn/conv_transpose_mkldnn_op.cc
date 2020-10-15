@@ -104,6 +104,11 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
+    PADDLE_ENFORCE_EQ(
+        strides.size(), 2,
+        platform::errors::Unimplemented(
+            "Now we only support 2d oneDNN convolution transpose op"));
+
     auto input_dims = input->dims();
     auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
     auto filter_dims = filter->dims();
