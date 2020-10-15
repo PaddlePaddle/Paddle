@@ -44,11 +44,16 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         rois_batch_size, batch_size,
         platform::errors::InvalidArgument(
-            "The rois_batch_size and imgs batch_size must be the same."));
+            "The rois_batch_size and imgs batch_size of roi_align_xpu OP must "
+            "be the same. But received rois_batch_size %d , batch_size %d",
+            rois_batch_size, batch_size));
     int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      platform::errors::InvalidArgument(
-                          "The rois_num from input and lod must be the same."));
+    PADDLE_ENFORCE_EQ(
+        rois_num, rois_num_with_lod,
+        platform::errors::InvalidArgument(
+            "The rois_num from input and lod of roi_align_xpu OP must be the "
+            "same. But received input rois_num %d , input lod %d",
+            rois_num, rois_num_with_lod));
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
     for (int n = 0; n < rois_batch_size; n++) {
@@ -62,7 +67,10 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
                 rois_lod[n] * channels * pooled_height * pooled_width);
         PADDLE_ENFORCE_EQ(
             r, xpu::Error_t::SUCCESS,
-            platform::errors::InvalidArgument("roi_align XPU kernel error!"));
+            platform::errors::External(
+                "The roi_align XPU OP return wrong value[%d], please check "
+                "where Baidu Kunlun Card is properly installed.",
+                r));
       }
     }
   }
