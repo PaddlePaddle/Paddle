@@ -51,6 +51,14 @@ class TestLstm(unittest.TestCase):
             msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
                                                                 static_out))
 
+    def test_save_in_eval(self):
+        paddle.jit.ProgramTranslator().enable(True)
+        net = Net(12, 2)
+        net.eval()
+        net = paddle.jit.to_static(
+            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])])
+        paddle.jit.save(net, 'simple_lstm')
+
 
 if __name__ == "__main__":
     unittest.main()

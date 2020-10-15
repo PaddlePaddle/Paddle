@@ -82,6 +82,21 @@ class NestSequence(object):
         return self.tolist()[item]
 
 
+class LazyInitialized(object):
+    """
+    Descriptor to implement lazy initialization of property.
+    """
+
+    def __init__(self, function):
+        self.function = function
+
+    def __get__(self, instance, cls):
+        assert instance is not None
+        val = self.function(instance)
+        setattr(instance, self.function.__name__, val)
+        return val
+
+
 class PartialProgramLayer(layers.Layer):
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
@@ -109,14 +124,29 @@ class PartialProgramLayer(layers.Layer):
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
 
-        main_program = self._verify_program(main_program)
-        self._infer_program = self._clone_for_test(main_program)
-        self._train_program = self._append_backward_desc(main_program)
-
-        self._set_grad_type(self._params)
+        self._origin_main_program = self._verify_program(main_program)
         self._inner_scope = core.Scope()
         # Set default mode to train
         self.training = True
+
+    @LazyInitialized
+    def infer_program(self):
+        """
+        Lazy initialized property of infer_program.
+        """
+        return self._clone_for_test(self._origin_main_program)
+
+    @LazyInitialized
+    def train_program(self):
+        """
+        Lazy initialized property of train_program.
+        """
+        train_program = self._append_backward_desc(self._origin_main_program)
+        # Note: Only set grad type once after initializing train program. So we
+        # put it here.
+        self._set_grad_type(self._params, train_program)
+
+        return train_program
 
     def _verify_program(self, main_program):
         """
@@ -174,7 +204,7 @@ class PartialProgramLayer(layers.Layer):
             attrs={
                 'global_block': self.program.desc.block(0),
                 'start_op_index': 0,
-                'end_op_index': self._infer_program.desc.block(0).op_size(),
+                'end_op_index': self.infer_program.desc.block(0).op_size(),
                 'is_test': not self.training
             })
 
@@ -183,7 +213,7 @@ class PartialProgramLayer(layers.Layer):
 
     @property
     def program(self):
-        return self._train_program if self.training else self._infer_program
+        return self.train_program if self.training else self.infer_program
 
     def _prepare(self, inputs):
         """
@@ -280,7 +310,7 @@ class PartialProgramLayer(layers.Layer):
 
         return out_vars
 
-    def _set_grad_type(self, params):
+    def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient
         # will be SelectedRows, not LoDTensor. But tracer will just
         # set param grad VarBase by forward VarBase(LoDTensor)
@@ -289,7 +319,7 @@ class PartialProgramLayer(layers.Layer):
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = self._train_program.desc.block(0).find_var(
+            grad_var = train_program.desc.block(0).find_var(
                 cpt.to_bytes(grad_name))
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:
