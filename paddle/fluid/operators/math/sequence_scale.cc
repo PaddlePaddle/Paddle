@@ -46,6 +46,7 @@ class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
 };
 
 template class ScaleLoDTensorFunctor<platform::CPUDeviceContext, float>;
+template class ScaleLoDTensorFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators
