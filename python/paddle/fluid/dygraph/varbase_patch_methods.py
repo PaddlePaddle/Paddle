@@ -163,7 +163,7 @@ def monkey_patch_varbase():
                     tmp.stop_gradient=False
                     inputs.append(tmp)
                 ret = paddle.sums(inputs)
-                loss = paddle.reduce_sum(ret)
+                loss = paddle.fluid.layers.reduce_sum(ret)
                 loss.backward()
 
         """

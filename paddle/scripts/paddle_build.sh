@@ -555,12 +555,12 @@ EOF
         fi
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
-        set +e
+        set +ex
         ut_startTime_s=`date +%s`
-        ctest --output-on-failure -j $2 | tee $tmpfile
+        get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
+        ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
-        set +x
         mactest_error=0
         retry_unittests_record=''
         retry_time=3
@@ -892,6 +892,19 @@ function collect_failed_tests() {
     done
 }
 
+# getting qucik disable ut list 
+function get_quickly_disable_ut() {
+    python -m pip install requests
+    if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
+        echo "========================================="
+        echo "The following unittests have been disabled:"
+        echo ${disable_ut_quickly}
+        echo "========================================="
+    else
+        disable_ut_quickly=''
+    fi
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -934,15 +947,15 @@ function card_test() {
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -977,6 +990,7 @@ set +x
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
+        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list 
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue

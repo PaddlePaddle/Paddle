@@ -13,14 +13,18 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
-from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import soft_relu  #DEFINE_ALIAS
+from ...fluid.layers import brelu  #DEFINE_ALIAS
+# from ...fluid.layers import erf  #DEFINE_ALIAS
+from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
+from ...fluid.layers import hard_swish  #DEFINE_ALIAS
+from ...fluid.layers import maxout  #DEFINE_ALIAS
+# from ...fluid.layers import soft_relu  #DEFINE_ALIAS
+from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 
 __all__ = [
     'elu',
-    'erf',
     'gelu',
     'hardshrink',
     'hardtanh',
@@ -33,7 +37,6 @@ __all__ = [
     'relu',
     'relu6',
     'selu',
-    'soft_relu',
     'softmax',
     'softplus',
     'softshrink',

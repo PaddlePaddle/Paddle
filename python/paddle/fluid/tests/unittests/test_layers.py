@@ -327,7 +327,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             t = np.ones([3, 3, 5, 5], dtype='float32')
-            my_pad2d = paddle.nn.Pad2D(paddings=1)
+            my_pad2d = paddle.nn.layer.Pad2D(paddings=1)
             dy_ret = my_pad2d(base.to_variable(t))
             dy_ret_value = dy_ret.numpy()
 
