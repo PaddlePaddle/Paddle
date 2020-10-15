@@ -171,14 +171,13 @@ def append_send_ops_pass(program, config):
 
     def _append_send_op(union_vars, queue):
 
-        send_input_vars = []
-        assert (len(queue) == len(union_vars))
-        for i in range(len(queue)):
-            if queue[i] == STEP_COUNTER:
-                send_input_vars.append(union_vars[i])
-            else:
-                send_input_vars.append(program.global_block().vars[union_vars[
-                    i]])
+        if queue == STEP_COUNTER:
+            send_input_vars = []
+        else:
+            send_input_vars = [
+                program.global_block().vars[union_var]
+                for union_var in union_vars
+            ]
 
         dummy_output = []
         if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
@@ -190,7 +189,7 @@ def append_send_ops_pass(program, config):
             inputs={"X": send_input_vars},
             outputs={"Out": dummy_output},
             attrs={
-                "send_varnames": queue,
+                "send_varnames": [queue],
                 "merge_add": True,
                 "use_send_handler": False,
                 "endpoints": pserver_endpoints,
@@ -215,19 +214,8 @@ def append_send_ops_pass(program, config):
 
     sends = config.get_trainer_send_context()
 
-    origin_varnames = []
-    merged_names = []
     for merged_name, send in sends.items():
-        if merged_name == STEP_COUNTER:
-            origin_varnames.append("@EMPTY@")
-            merged_names.append(merged_name)
-        else:
-            for var in send.origin_varnames():
-                origin_varnames.append(var)
-                merged_names.append(merged_name)
-
-    if len(origin_varnames) > 0:
-        dummys.append(_append_send_op(origin_varnames, merged_names))
+        dummys.append(_append_grad_send_op(send.origin_varnames(), merged_name))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)

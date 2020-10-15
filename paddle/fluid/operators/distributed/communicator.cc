@@ -265,44 +265,48 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const std::vector<std::string> &var_tables,
                              const framework::Scope &scope) {
   waiting_ = false;
+  PADDLE_ENFORCE_EQ(
+      var_tables.size(), 1,
+      platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
-  for (size_t i = 0; i < var_tables.size(); i++) {
-    auto table_name = var_tables[i];
-    auto &queue = send_varname_to_queue_.at(table_name);
+  auto table_name = var_tables[0];
+  auto &queue = send_varname_to_queue_.at(table_name);
 
-    if (table_name == STEP_COUNTER) {
-      auto tmp_var = std::make_shared<Variable>();
-      auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-      tensor->Resize(framework::make_ddim({1}));
-      auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
-      out_d[0] = 1;
+  if (table_name == STEP_COUNTER) {
+    auto tmp_var = std::make_shared<Variable>();
+    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    tensor->Resize(framework::make_ddim({1}));
+    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    out_d[0] = 1;
+    VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
+    queue->Push(tmp_var);
+  } else {
+    PADDLE_ENFORCE_GE(var_names.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "var_names.size() >= 1 is permitted"));
+
+    auto *var = scope.FindVar(var_names[0]);
+
+    PADDLE_ENFORCE_EQ(
+        var->IsInitialized(), true,
+        platform::errors::InvalidArgument("grad var should be inited"));
+
+    auto tmp_var = std::make_shared<Variable>();
+    if (var->IsType<framework::SelectedRows>()) {
+      framework::CopyVariable(*var, tmp_var.get());
+      VLOG(3) << "send to " << table_name << " with queue size "
+              << queue->Size();
+      queue->Push(tmp_var);
+    } else if (var->IsType<framework::LoDTensor>()) {
+      // push var into send queue by var_name
+      auto var_name = var_names[i];
+      framework::CopyVariable(*var, tmp_var.get());
       VLOG(3) << "send to " << table_name << " with queue size "
               << queue->Size();
       queue->Push(tmp_var);
     } else {
-      auto *var = scope.FindVar(var_names[i]);
-
-      PADDLE_ENFORCE_EQ(
-          var->IsInitialized(), true,
-          platform::errors::InvalidArgument("grad var should be inited"));
-
-      auto tmp_var = std::make_shared<Variable>();
-      if (var->IsType<framework::SelectedRows>()) {
-        framework::CopyVariable(*var, tmp_var.get());
-        VLOG(3) << "send to " << table_name << " with queue size "
-                << queue->Size();
-        queue->Push(tmp_var);
-      } else if (var->IsType<framework::LoDTensor>()) {
-        // push var into send queue by var_name
-        auto var_name = var_names[i];
-        framework::CopyVariable(*var, tmp_var.get());
-        VLOG(3) << "send to " << table_name << " with queue size "
-                << queue->Size();
-        queue->Push(tmp_var);
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "unknown var type to copy, only support LoDTensor/SelectedRows"));
-      }
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unknown var type to copy, only support LoDTensor/SelectedRows"));
     }
   }
 }
@@ -461,37 +465,34 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const std::vector<std::string> &var_tables,
                            const framework::Scope &scope) {
   waiting_ = false;
+  PADDLE_ENFORCE_EQ(
+      var_tables.size(), 1,
+      platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
+
+  auto table_name = var_tables[0];
+  if (table_name == STEP_COUNTER) return;
 
   auto before_send = GetCurrentUS();
+  size_t splited_var_nums =
+      send_varname_to_ctx_[table_name].splited_varnames.size();
+
   std::unordered_map<std::string, std::unordered_set<int64_t>> ids_table;
 
-  for (size_t i = 0; i < var_tables.size(); i++) {
-    auto table_name = var_tables[i];
-    if (table_name != STEP_COUNTER) {
-      size_t splited_var_nums =
-          send_varname_to_ctx_[table_name].splited_varnames.size();
-
-      for (size_t j = 0; j < splited_var_nums; j++) {
-        if (ids_table.find(
-                send_varname_to_ctx_[table_name].splited_varnames[j]) ==
-            ids_table.end()) {
-          ids_table.insert(std::pair<std::string, std::unordered_set<int64_t>>(
-              send_varname_to_ctx_[table_name].splited_varnames[j],
-              std::unordered_set<int64_t>()));
-        }
-      }
-
-      auto *var = scope.FindVar(var_names[i]);
-      auto &rows = var->Get<framework::SelectedRows>().rows();
-
-      // insert ids which has not been record
-      for (size_t j = 0; j < rows.size(); j++) {
-        auto ep_idx = rows[j] % splited_var_nums;
-        ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
-            .insert(rows[j]);
-      }
-    }
+  for (size_t j = 0; j < splited_var_nums; j++) {
+    ids_table.insert(std::pair<std::string, std::unordered_set<int64_t>>(
+        send_varname_to_ctx_[table_name].splited_varnames[j],
+        std::unordered_set<int64_t>()));
   }
+  auto *var = scope.FindVar(var_names[0]);
+  auto &rows = var->Get<framework::SelectedRows>().rows();
+
+  // insert ids which has not been record
+  for (size_t j = 0; j < rows.size(); j++) {
+    auto ep_idx = rows[j] % splited_var_nums;
+    ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
+        .insert(rows[j]);
+  }
+
   auto before_push = GetCurrentUS();
   for (auto &iter : ids_table) {
     auto &key = iter.first;
@@ -503,8 +504,8 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
             << "'s queue";
   }
   auto after_send = GetCurrentUS();
-  VLOG(3) << "run send_op finish. using " << (before_push - before_send) << "; "
-          << (after_send - before_push);
+  VLOG(3) << "run send " << table_name << " op finish. using "
+          << (before_push - before_send) << "; " << (after_send - before_push);
 }
 
 void GeoCommunicator::MainThread() {
