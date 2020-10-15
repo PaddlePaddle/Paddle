@@ -488,7 +488,7 @@ def rnn(cell,
 
             inputs = paddle.rand((4, 23, 16))
             prev_h = paddle.randn((4, 32))
-            outputs, final_states = paddle.nn.functional.rnn(cell, inputs, prev_h) 
+            outputs, final_states = paddle.fluid.layers.rnn(cell, inputs, prev_h) 
 
     """
     if in_dygraph_mode():
@@ -711,7 +711,7 @@ def birnn(cell_fw,
             hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
             hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
             initial_states = ((hf, cf), (hb, cb))
-            outputs, final_states = paddle.nn.functional.birnn(
+            outputs, final_states = paddle.fluid.layers.birnn(
                 cell_fw, cell_bw, inputs, initial_states)
         
     """
@@ -2443,23 +2443,17 @@ def lstm(input,
     input_shape = list(input.shape)
     input_size = input_shape[-1]
     weight_size = 0
+    num_dirrection = 2 if is_bidirec == True else 1
+
     for i in range(num_layers):
         if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
+            input_weight_size = (input_size * hidden_size) * 4 * num_dirrection
         else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
-            else:
-                input_weight_size = (hidden_size * hidden_size) * 4
+            input_weight_size = (hidden_size * hidden_size) * 4 * num_dirrection
+        hidden_weight_size = (hidden_size * hidden_size) * 4 * num_dirrection
 
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
+        weight_size += input_weight_size + hidden_weight_size
+        weight_size += hidden_size * 8 * num_dirrection
 
     weight = helper.create_parameter(
         attr=helper.param_attr,
@@ -3052,9 +3046,6 @@ def beam_search(pre_ids,
                 name=None,
                 return_parent_idx=False):
     """
-	:alias_main: paddle.nn.beam_search
-	:alias: paddle.nn.beam_search,paddle.nn.decode.beam_search
-	:old_api: paddle.fluid.layers.beam_search
 
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
@@ -3132,6 +3123,8 @@ def beam_search(pre_ids,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             # Suppose `probs` contains predicted results from the computation
             # cell and `pre_ids` and `pre_scores` is the output of beam_search
@@ -3203,9 +3196,6 @@ def beam_search(pre_ids,
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     """
-	:alias_main: paddle.nn.beam_search_decode
-	:alias: paddle.nn.beam_search_decode,paddle.nn.decode.beam_search_decode
-	:old_api: paddle.fluid.layers.beam_search_decode
 
     This operator is used after beam search has completed. It constructs the
     full predicted sequences for each sample by walking back along the search
@@ -3252,7 +3242,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            import paddle
+            paddle.enable_static()
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
             ids = fluid.layers.create_array(dtype='int64')

@@ -229,8 +229,8 @@ class TestReshapeUint8Op(TestReshapeInt8Op):
 # Test python API
 class TestReshapeAPI(unittest.TestCase):
     def _set_paddle_api(self):
-        self.fill_constant = paddle.fill_constant
-        self.data = paddle.data
+        self.fill_constant = paddle.fluid.layers.fill_constant
+        self.data = paddle.fluid.data
         self.reshape = paddle.reshape
         self.to_tensor = paddle.to_tensor
 
@@ -305,7 +305,7 @@ class TestReshapeAPI(unittest.TestCase):
 # Test Input Error
 class TestReshapeOpError(unittest.TestCase):
     def _set_paddle_api(self):
-        self.data = paddle.data
+        self.data = paddle.fluid.data
         self.reshape = paddle.reshape
 
     def _set_fluid_api(self):
