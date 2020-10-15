@@ -348,14 +348,16 @@ class ConvMKLDNNHandlerT
 
   std::shared_ptr<mkldnn::memory> AcquireResidualMemory(
       const framework::Tensor* residual_param) {
-    const T* residual_data = residual_param->data<T>();
+    void* residual_data =
+        residual_param->type() == DataTypeTrait<T_out>::DataType()
+            ? to_void_cast<T>(residual_param->data<T>())
+            : to_void_cast<T_out>(residual_param->data<T_out>());
     auto user_residual_md = platform::MKLDNNMemDesc(
         framework::vectorize(residual_param->dims()),
         framework::ToMKLDNNDataType(residual_param->type()),
         residual_param->format());
 
-    return this->AcquireMemoryFromPrimitive(user_residual_md,
-                                            to_void_cast<T>(residual_data),
+    return this->AcquireMemoryFromPrimitive(user_residual_md, residual_data,
                                             "@user_residual_data_mem_p");
   }
 
