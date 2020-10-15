@@ -37,12 +37,12 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     PADDLE_ENFORCE_NE(ins[0], nullptr, platform::errors::InvalidArgument(
                                            "The input should not be null."));
-    PADDLE_ENFORCE_EQ(ctx.HasInput("AxisTensor"), true,
+    PADDLE_ENFORCE_NE(ctx.HasInput("AxisTensor"), true,
                       platform::errors::InvalidArgument(
                           "XPU donot surpport AxisTensor for now"));
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         axis, 0, platform::errors::InvalidArgument("concat: axis shoud >= 0!"));
     PADDLE_ENFORCE_LT(axis, ins[0]->dims().size(),
                       platform::errors::InvalidArgument(

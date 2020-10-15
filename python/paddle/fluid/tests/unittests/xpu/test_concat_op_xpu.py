@@ -213,34 +213,6 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
-    def test_api(self):
-        x_1 = paddle.data(shape=[None, 1, 4, 5], dtype='float32', name='x_1')
-        paddle.concat([x_1, x_1], 0)
-
-        input_2 = np.random.random([2, 1, 4, 5]).astype("float32")
-        input_3 = np.random.random([2, 2, 4, 5]).astype("float32")
-        x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='float32', name='x_2')
-        x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='float32', name='x_3')
-        # positive_1_int32 = paddle.fill_constant([1], "float32", 1)
-        # positive_1_int64 = paddle.fill_constant([1], "float32", 1)
-        # negative_int64 = paddle.fill_constant([1], "float32", -3)
-        out_1 = paddle.concat(x=[x_2, x_3], axis=1)
-        out_2 = paddle.concat(x=[x_2, x_3], axis=1)
-        out_3 = paddle.concat(x=[x_2, x_3], axis=1)
-        out_4 = paddle.concat(x=[x_2, x_3], axis=-3)
-
-        exe = paddle.static.Executor(place=paddle.XPUPlace(0))
-        [res_1, res_2, res_3, res_4] = exe.run(
-            paddle.static.default_main_program(),
-            feed={"x_1": input_2,
-                  "x_2": input_2,
-                  "x_3": input_3},
-            fetch_list=[out_1, out_2, out_3, out_4])
-        assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_4, np.concatenate((input_2, input_3), axis=1))
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The item in input must be Variable.
@@ -250,8 +222,8 @@ class TestConcatAPI(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.XPUPlace(0))
             self.assertRaises(TypeError, paddle.concat, [x2])
             # The input dtype of concat_op must be float32.
-            x4 = paddle.data(shape=[4], dtype='uint8', name='x4')
-            x5 = paddle.data(shape=[4], dtype='uint8', name='x5')
+            x4 = fluid.data(shape=[4], dtype='uint8', name='x4')
+            x5 = fluid.data(shape=[4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
 
             # The type of axis in concat_op should be int or Variable.
