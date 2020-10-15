@@ -15,7 +15,7 @@
 # limitations under the License.
 
 function start_build_docker() {
-    docker pull $IMG
+    docker pull "$IMG"
 
     apt_mirror='s#http://archive.ubuntu.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g'
     DOCKER_ENV=$(cat <<EOL
@@ -43,19 +43,19 @@ EOL
         DOCKER_CMD="docker"
     fi
     if [ ! -d "${HOME}/.ccache" ]; then
-        mkdir ${HOME}/.ccache
+        mkdir "${HOME}"/.ccache
     fi
     set -ex
     ${DOCKER_CMD} run -it \
-        ${DOCKER_ENV} \
-        -e SCRIPT_NAME=$0 \
-        -e CONTENT_DEC_PASSWD=$CONTENT_DEC_PASSWD \
-        -e TRAVIS_BRANCH=$TRAVIS_BRANCH \
-        -e TRAVIS_PULL_REQUEST=$TRAVIS_PULL_REQUEST \
-        -v $PADDLE_ROOT:/paddle \
-        -v ${HOME}/.ccache:/root/.ccache \
+        "${DOCKER_ENV}" \
+        -e SCRIPT_NAME="$0" \
+        -e CONTENT_DEC_PASSWD="$CONTENT_DEC_PASSWD" \
+        -e TRAVIS_BRANCH="$TRAVIS_BRANCH" \
+        -e TRAVIS_PULL_REQUEST="$TRAVIS_PULL_REQUEST" \
+        -v "$PADDLE_ROOT":/paddle \
+        -v "${HOME}"/.ccache:/root/.ccache \
         -w /paddle \
-        $IMG \
+        "$IMG" \
         paddle/scripts/paddle_build.sh $@
     set +x
 }

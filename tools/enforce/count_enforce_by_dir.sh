@@ -64,14 +64,14 @@ ROOT_DIR=../../paddle/fluid
 function count_dir_independently(){
     local sub_dir_total_check_cnt=0
     local sub_dir_valid_check_cnt=0
-    for file in `ls $1`
+    for file in `ls "$1"`
     do
-        if [ -d $1"/"$file ];then
-            enforce_count $1"/"$file dir_total_check_cnt dir_valid_check_cnt
+        if [ -d "$1""/""$file" ];then
+            enforce_count "$1""/""$file" dir_total_check_cnt dir_valid_check_cnt
             sub_dir_total_check_cnt=$(($sub_dir_total_check_cnt+$dir_total_check_cnt))
             sub_dir_valid_check_cnt=$(($sub_dir_valid_check_cnt+$dir_valid_check_cnt))
             
-            count_dir_independently $1"/"$file $dir_total_check_cnt $dir_valid_check_cnt 
+            count_dir_independently "$1""/""$file" "$dir_total_check_cnt" "$dir_valid_check_cnt" 
         fi
     done
     total_check_cnt=$(($2-$sub_dir_total_check_cnt))

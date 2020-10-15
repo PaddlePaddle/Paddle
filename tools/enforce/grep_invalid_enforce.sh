@@ -84,41 +84,41 @@ function enforce_grep(){
 function grep_file_recursively(){
     local i=0
     local dir_array
-    for file in `ls $1`
+    for file in `ls "$1"`
     do
-        if [ -f $1"/"$file ];then
-            in_white_list=$(echo $FILE_WHITE_LIST | grep "${file}")
+        if [ -f "$1""/""$file" ];then
+            in_white_list=$(echo "$FILE_WHITE_LIST" | grep "${file}")
             if [[ "$in_white_list" == "" ]];then
-                enforce_grep $1"/"$file
+                enforce_grep "$1""/""$file"
             fi
         fi
-        if [ -d $1"/"$file ];then
+        if [ -d "$1""/""$file" ];then
             dir_array[$i]=$1"/"$file
             ((i++))
         fi
     done
     for sub_dir_name in ${dir_array[@]}
     do
-        grep_file_recursively $sub_dir_name
+        grep_file_recursively "$sub_dir_name"
     done
 }
 
 function grep_file(){
     file_path=$1
-    file_name=`echo ${file_path##*/} `
-    if [ -f $file_path ];then
-        in_white_list=$(echo $FILE_WHITE_LIST | grep "${file_name}")
+    file_name=$(echo "${file_path##*/}" )
+    if [ -f "$file_path" ];then
+        in_white_list=$(echo "$FILE_WHITE_LIST" | grep "${file_name}")
         if [[ "$in_white_list" == "" ]];then
-            enforce_grep $file_path
+            enforce_grep "$file_path"
         fi
     fi
 }
 
 main() {
-    if [ -f $ROOT_DIR ];then
-        grep_file $ROOT_DIR
+    if [ -f "$ROOT_DIR" ];then
+        grep_file "$ROOT_DIR"
     else
-        grep_file_recursively $ROOT_DIR
+        grep_file_recursively "$ROOT_DIR"
     fi
 }
 

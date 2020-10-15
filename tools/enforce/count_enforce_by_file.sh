@@ -71,32 +71,32 @@ function count_file_recursively(){
     echo "**${dir_name#../}** | **$2** | **$3** | **$(($2-$3))**"
     local i=0
     local dir_array
-    for file in `ls $1`
+    for file in `ls "$1"`
     do
-        if [ -f $1"/"$file ];then
-            in_white_list=$(echo $FILE_WHITE_LIST | grep "${file}")
+        if [ -f "$1""/""$file" ];then
+            in_white_list=$(echo "$FILE_WHITE_LIST" | grep "${file}")
             if [[ "$in_white_list" == "" ]];then
-                enforce_count $1"/"$file file_total_check_cnt file_valid_check_cnt
+                enforce_count "$1""/""$file" file_total_check_cnt file_valid_check_cnt
                 file_invalid_check_cnt=$(($total_check_cnt-$valid_check_cnt))
                 if [ $file_invalid_check_cnt -gt 0 ];then
                     echo "- $file | ${file_total_check_cnt} | ${file_valid_check_cnt} | ${file_invalid_check_cnt}"
                 fi
             fi
         fi
-        if [ -d $1"/"$file ];then
+        if [ -d "$1""/""$file" ];then
             dir_array[$i]=$1"/"$file
             ((i++))
         fi
     done
     for sub_dir_name in ${dir_array[@]}
     do
-        enforce_count $sub_dir_name dir_total_check_cnt dir_valid_check_cnt
-        count_file_recursively $sub_dir_name $dir_total_check_cnt $dir_valid_check_cnt
+        enforce_count "$sub_dir_name" dir_total_check_cnt dir_valid_check_cnt
+        count_file_recursively "$sub_dir_name" "$dir_total_check_cnt" "$dir_valid_check_cnt"
     done
 }
 
 main() {
-    count_file_recursively $ROOT_DIR 0 0
+    count_file_recursively "$ROOT_DIR" 0 0
 }
 
 if [ "${1}" != "--source-only" ]; then

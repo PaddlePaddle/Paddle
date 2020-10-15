@@ -34,7 +34,7 @@ acquire_ports(){
     let "len=$1+$2"
     for((i=$1; i<$len; i++))
     do
-      grep -q $i $PORT_FILE
+      grep -q "$i" $PORT_FILE
       if [ $? -eq 0 ] ; then
         return 1 # Port already write to $PORT_FILE
       fi
@@ -42,7 +42,7 @@ acquire_ports(){
 
     for((i=$1; i<$len; i++))
     do
-      echo $i >> $PORT_FILE # Write to $PORT_FILE
+      echo "$i" >> $PORT_FILE # Write to $PORT_FILE
     done
     return 0
   )200>$PORT_LOCK_FILE
@@ -58,8 +58,8 @@ release_ports(){
     let "len=$1+$2"
     for((i=$1; i<$len; i++))
     do
-      tmp=`sed "/$i/d" $PORT_FILE`  # remove port
-      echo $tmp > $PORT_FILE
+      tmp=$(sed "/$i/d" $PORT_FILE)  # remove port
+      echo "$tmp" > $PORT_FILE
     done
   )200>$PORT_LOCK_FILE
 }
@@ -94,21 +94,21 @@ set_port()
         for((n=0;n<=num-1;n++))
             do
                 declare -i port_check=$port+$n
-                port_used_num=`netstat -a |grep $port_check|wc -l`
+                port_used_num=$(netstat -a |grep $port_check|wc -l)
                 declare -i port_used_total=$port_used_total+$port_used_num
             done
-        if [ $port_used_total -ne 0 ]
+        if [ "$port_used_total" -ne 0 ]
             then
                 continue
         fi
         # Lock Ports.
-        acquire_ports $port $num
+        acquire_ports $port "$num"
         if [ $? -ne 0 ]; then
             continue
         fi
-        $cmd --$port_type=$port
+        $cmd --"$port_type"=$port
         return_val=$?
-        release_ports $port $num
+        release_ports $port "$num"
         if [ $return_val -eq 0 ]; then
             return 0
         else

@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Top-level build script called from Dockerfile
 
 # Stop at any error, show all commands
@@ -32,7 +47,7 @@ MANYLINUX1_DEPS="glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-de
 
 # Get build utilities
 MY_DIR=$(dirname "${BASH_SOURCE[0]}")
-source $MY_DIR/build_utils.sh
+source "$MY_DIR"/build_utils.sh
 
 # EPEL support
 yum -y install wget curl
@@ -49,10 +64,10 @@ rm -f epel-release-6*.rpm
 # Development tools and libraries
 yum -y install bzip2 make git patch unzip bison yasm diffutils \
     automake which file \
-    kernel-devel-`uname -r` \
+    kernel-devel-$(uname -r) \
     devtoolset-2-binutils devtoolset-2-gcc \
     devtoolset-2-gcc-c++ devtoolset-2-gcc-gfortran \
-    ${PYTHON_COMPILE_DEPS}
+    "${PYTHON_COMPILE_DEPS}"
 
 # Install more recent version of cmake
 # curl -O https://cmake.org/files/v3.8/cmake-3.8.1-Linux-x86_64.sh
@@ -62,7 +77,7 @@ yum -y install bzip2 make git patch unzip bison yasm diffutils \
 wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz
 tar -zxvf cmake-3.16.0.tar.gz && rm cmake-3.16.0.tar.gz
 cd cmake-3.16.0 && ./bootstrap
-make -j `nproc` && make install
+make -j $(nproc) && make install
 ln -s /usr/local/bin/cmake /usr/bin/cmake
 PATH=/usr/local/bin:$PATH
 
@@ -76,7 +91,7 @@ autoconf --version
 # statically. We delete openssl afterwards.)
 build_openssl $OPENSSL_ROOT $OPENSSL_HASH
 mkdir -p /opt/python
-build_cpythons $CPYTHON_VERSIONS
+build_cpythons "$CPYTHON_VERSIONS"
 
 PY35_BIN=/opt/python/cp35-cp35m/bin
 PY36_BIN=/opt/python/cp36-cp36m/bin
@@ -125,8 +140,8 @@ ln -s $PY35_BIN/auditwheel /usr/local/bin/auditwheel
 # final image
 yum -y erase wireless-tools gtk2 libX11 hicolor-icon-theme \
     avahi freetype bitstream-vera-fonts \
-    ${PYTHON_COMPILE_DEPS}  > /dev/null 2>&1 || true
-yum -y install ${MANYLINUX1_DEPS} && yum -y clean all > /dev/null 2>&1 || true
+    "${PYTHON_COMPILE_DEPS}"  > /dev/null 2>&1 || true
+yum -y install "${MANYLINUX1_DEPS}" && yum -y clean all > /dev/null 2>&1 || true
 yum list installed
 # we don't need libpython*.a, and they're many megabytes
 find /opt/_internal -name '*.a' -print0 | xargs -0 rm -f
@@ -144,13 +159,13 @@ find /opt/_internal \
 
 for PYTHON in /opt/python/*/bin/python; do
     # Add matching directory of libpython shared library to library lookup path
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
+    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname "${PYTHON}"))/lib"
 
     # Smoke test to make sure that our Pythons work, and do indeed detect as
     # being manylinux compatible:
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
+    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname "${PYTHON}"))/lib" $PYTHON "$MY_DIR"/manylinux1-check.py
     # Make sure that SSL cert checking works
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname "${PYTHON}"))/lib" $PYTHON "$MY_DIR"/ssl-check.py
 done
 
 # Restore LD_LIBRARY_PATH
@@ -160,4 +175,4 @@ LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
 # we should install new version ar with 64-bit supported here
 wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
 tar xzf binutils-2.27.tar.gz && cd binutils-2.27
-./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install
+./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j $(nproc) && make install
