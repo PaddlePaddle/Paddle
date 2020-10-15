@@ -10918,10 +10918,8 @@ def slice(input, axes, starts, ends):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input = np.random.random(size=(4, 5, 6)).astype('float32')
-            input = paddle.to_tensor(input, dtype='float32')
+            input = paddle.rand(shape=[4, 5, 6], dtype='float32')
             # example 1:
             # attr starts is a list which doesn't contain tensor.
             axes = [0, 1, 2]
@@ -10932,7 +10930,7 @@ def slice(input, axes, starts, ends):
 
             # example 2:
             # attr starts is a list which contain tensor.
-            minus_3 = paddle.fill_constant([1], "int32", -3)
+            minus_3 = paddle.full([1], -3, "int32")
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
