@@ -23,8 +23,8 @@ template <typename DeviceContext, typename T>
 class ReduceSumXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(platform::is_xpu_place(context.GetPlace()),
-                      true "This kernel only runs on XPU.");
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(context.GetPlace()), true,
+                      "This kernel only runs on XPU.");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
@@ -99,7 +99,8 @@ class ReduceSumGradXPUKernel : public framework::OpKernel<T> {
                            xpu::REDUCE_SUM);
       PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true, "XPU kernel error!");
     } else {
-      PADDLE_THROW(platform::errors::"unsupport reduce sum grad");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("unsupport reduce sum grad"));
     }
   }
 };
