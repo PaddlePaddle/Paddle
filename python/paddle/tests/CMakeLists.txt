@@ -50,3 +50,5 @@ set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 120)
 set_tests_properties(test_callbacks PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600) 
+
