@@ -141,7 +141,7 @@ class TestVarBase(unittest.TestCase):
 
         _test_place(core.CPUPlace())
         if core.is_compiled_with_cuda():
-            #_test_place(core.CUDAPinnedPlace())
+            _test_place(core.CUDAPinnedPlace())
             _test_place(core.CUDAPlace(0))
 
     def test_to_variable(self):
