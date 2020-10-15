@@ -147,23 +147,19 @@ class GetProcessor : public BaseProcessor {
 class SendAndRecvProcessor : public BaseProcessor {
  public:
   explicit SendAndRecvProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(), stub_g_(ch) {}
+      : BaseProcessor() {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~SendAndRecvProcessor() {}
 
   void ProcessImpl() override {
-    if (response_call_back_) {
-      response_call_back_(*var_h_recv_.get(), reply_);
-      var_h_recv_->Finish(true);
-    }
+    // call back process
   }
 
-  void RecvPrepare(VarHandlePtr h_recv) { var_h_recv_ = h_recv; }
-
-  ::grpc::ByteBuffer reply_;
-  ::grpc::GenericStub stub_g_;
-  RequestGetCallBack response_call_back_ = ProcGetResponse;
-  VarHandlePtr var_h_recv_;
+  sendrecv::MultiVariableMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
+  // RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
 class BatchBarrierProcessor : public BaseProcessor {

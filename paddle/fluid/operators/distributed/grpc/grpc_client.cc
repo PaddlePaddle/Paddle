@@ -516,26 +516,20 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(
 
   while (true) {
     SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
-    VarHandlePtr h(
-        new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
-    VarHandlePtr h_recv(
-        new VarHandle(ep, method, recv_var_name_val, p_ctx, p_scope));
+    VarHandlePtr h(new VarHandle(ep, method, message_name, p_ctx, p_scope));
     s->Prepare(h, time_out);
-    s->RecvPrepare(h_recv);
 
     framework::AsyncIO([message_name, send_var_name_val, recv_var_name_val,
                         table_name_val, p_scope, p_ctx, s, method, h, this] {
-      // auto* send_var = p_scope->FindVar(send_var_name_val);
-      // send_var->GetMutable<framework::LoDTensor>()->set_lod({});
-      ::grpc::ByteBuffer buf;
       VLOG(4) << "SerializeToByteBuffer: send_var_name_val: "
               << send_var_name_val
               << " recv_var_name_val: " << recv_var_name_val;
-      // SerializeToByteBuffer(send_var_name_val, send_var, *p_ctx, &buf,
-      //                       recv_var_name_val, trainer_id_, table_name_val);
+
+      MultiVarMsg request;
+      MultiVarMsg reply;
       SerializeMultiVarToByteBuffer(message_name, send_var_name_val, *p_scope,
-                                    *p_ctx, &buf, recv_var_name_val,
-                                    trainer_id_, table_name_val);
+                                    *p_ctx, recv_var_name_val, trainer_id_,
+                                    table_name_val, &request);
 
       VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
@@ -543,16 +537,14 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(
       s->response_call_back_ = ProcGetRecvResponse;
 
       platform::RecordRPCEvent record_event(method);
-
-      auto call = s->stub_g_.PrepareUnaryCall(
-          s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
-          buf, &cq_);
-      call->StartCall();
-      call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-
-      if (UNLIKELY(platform::IsProfileEnabled())) {
-        h->Wait();
-      }
+      s->stub_.SendAndRecvVariable(s->context_.get(), &request, &reply);
+      // s->stub_g_.PrepareCall(s->context_.get(),
+      // "/sendrecv.SendRecvService/SendAndRecvVariable",&cq_)
+      // auto call = s->stub_g_.PrepareUnaryCall(
+      //     s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
+      //     buf, &cq_);
+      // call->StartCall();
+      // call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
     });
     req_count_++;
 

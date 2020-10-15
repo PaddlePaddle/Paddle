@@ -29,7 +29,7 @@ service SendRecvService {
 
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
   rpc DistributeNotify(VariableMessage) returns (VoidMessage) {}
-  rpc SendAndRecvVariable(VariableMessage) returns (VariableMessage) {}
+  rpc SendAndRecvVariable(MultiVariableMessage) returns (MultiVariableMessage) {}
   rpc GetMonomerVariable(VariableMessage) returns (VariableMessage) {}
   rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
 }
@@ -90,5 +90,7 @@ message VoidMessage {}
 message MultiVariableMessage {
    string message_name = 1;
    int64 var_num = 2;
-   repeated VariableMessage vars = 3;
+   repeated string forward_var_name = 3;
+   repeated string back_var_name = 4;
+   repeated VariableMessage vars = 5;
  };

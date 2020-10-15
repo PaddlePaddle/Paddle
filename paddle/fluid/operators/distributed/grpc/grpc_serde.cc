@@ -45,15 +45,15 @@ void SerializeMultiVarToByteBuffer(
     const std::string& message_name,
     const std::vector<std::string>& send_var_name,
     const framework::Scope& scope, const platform::DeviceContext& ctx,
-    ::grpc::ByteBuffer* msg, const std::vector<std::string>& out_var_name,
-    const int trainer_id, const std::string& table_name) {
-  MultiVarMsg request;
-  TensorPayload* payload = nullptr;
-
+    const std::vector<std::string>& out_var_name, const int trainer_id,
+    const std::string& table_name, const MultiVarMsg* request) {
   request.set_message_name = message_name;
   request.set_var_num = send_var_name.shape();
 
   for (size_t var_index = 0; var_index < send_var_name.shape(); var_index++) {
+    auto* var_msg = request.add_vars();
+    SerializeLodTensorToVarMsg(send_var_name[var_index], scope, ctx, trainer_id,
+                               var_msg);
   }
 }
 
@@ -71,7 +71,44 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   var_msg->set_varname(var_name);
   var_msg->set_trainer_id(trainer_id);
-  request.set_type(::sendrecv::LOD_TENSOR);
+  var_msg->set_type(::sendrecv::LOD_TENSOR);
+
+  for (auto& dim : framework::vectorize(tensor->dims())) {
+    var_msg->add_dims(dim);
+  }
+  const framework::LoD lod = tensor->lod();
+  if (lod.size() > 0) {
+    var_msg->set_lod_level(lod.size());
+    for (auto& each : lod) {
+      VariableMessage::LodData* lod_inner = var_msg->add_lod();
+      for (auto& d : each) {
+        lod_inner->add_lod_data(d);
+      }
+    }
+  }
+
+  auto* req_data = var_msg->mutable_data();
+  req_data->clear();
+  req_data->resize(tensor->numel() * SizeOfType(tensor->type()));
+  char* data_ptr = const_cast<char*>(req_data->data());
+
+  if (platform::is_cpu_place(tensor->place())) {
+    memcpy(data_ptr, tensor->data<void>(),
+           tensor->numel() * SizeOfType(tensor->type()));
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    memory::Copy(platform::CPUPlace(), data_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()), nullptr);
+#endif
+#ifdef PADDLE_WITH_XPU
+    memory::Copy(platform::CPUPlace(), data_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()));
+#endif
+  }
 }
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
@@ -188,6 +225,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
 }
+
+void DeserialMultiVarFromByteBuffer() { return; }
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
