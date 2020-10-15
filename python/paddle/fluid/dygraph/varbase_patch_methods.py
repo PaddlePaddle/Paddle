@@ -227,9 +227,9 @@ def monkey_patch_varbase():
         return self.gradient()
 
     @property
-    def version(self):
+    def inplace_version(self):
         """
-        The version of current Tensor.
+        The inplace version of current Tensor.
         The version number is incremented whenever the current Tensor is modified through an inplace operation.
 
         **Notes: This is a read-only property**
@@ -239,13 +239,13 @@ def monkey_patch_varbase():
 
             import paddle
             var = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            print(var.version)  # 0
+            print(var.inplace_version)  # 0
 
             var[1] = 2.2
-            print(var.version)  # 1
+            print(var.inplace_version)  # 1
 
         """
-        return self.variable_version()
+        return self.inplace_version()
 
     def __str__(self):
         """
@@ -285,8 +285,8 @@ def monkey_patch_varbase():
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("grad", grad),
-        ("version", version), ("gradient", gradient), ("__str__", __str__),
-        ("__repr__", __str__), ("__module__", "paddle"),
+        ("inplace_version", inplace_version), ("gradient", gradient),
+        ("__str__", __str__), ("__repr__", __str__), ("__module__", "paddle"),
         ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 

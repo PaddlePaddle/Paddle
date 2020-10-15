@@ -632,7 +632,7 @@ void BindImperative(py::module *m_ptr) {
                return out;
              }
            })
-      .def("variable_version",
+      .def("inplace_version",
            [](imperative::VarBase &self) -> uint32_t {
              const auto &var = self.MutableVar();
              PADDLE_ENFORCE_EQ(
@@ -643,7 +643,7 @@ void BindImperative(py::module *m_ptr) {
 
              return var->VersionCounter().CurrentVersion();
            })
-      .def("bump_version",
+      .def("bump_inplace_version",
            [](std::shared_ptr<imperative::VarBase> &self) {
              // NOTE(liym27): bump_version is only used for inplace operation
              BumpVersion(self);

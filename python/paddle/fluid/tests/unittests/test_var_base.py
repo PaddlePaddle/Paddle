@@ -474,11 +474,11 @@ class TestVarBaseSetitem(unittest.TestCase):
 
     def _test(self, value):
         paddle.disable_static()
-        self.assertEqual(self.tensor_x.version, 0)
+        self.assertEqual(self.tensor_x.inplace_version, 0)
 
         id_origin = id(self.tensor_x)
         self.tensor_x[0] = value
-        self.assertEqual(self.tensor_x.version, 1)
+        self.assertEqual(self.tensor_x.inplace_version, 1)
 
         if isinstance(value, (six.integer_types, float)):
             result = np.zeros((2, 3)).astype(np.float32) + value
@@ -490,12 +490,12 @@ class TestVarBaseSetitem(unittest.TestCase):
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[1:2] = value
-        self.assertEqual(self.tensor_x.version, 2)
+        self.assertEqual(self.tensor_x.inplace_version, 2)
         self.assertTrue(np.array_equal(self.tensor_x[1].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
         self.tensor_x[...] = value
-        self.assertEqual(self.tensor_x.version, 3)
+        self.assertEqual(self.tensor_x.inplace_version, 3)
         self.assertTrue(np.array_equal(self.tensor_x[3].numpy(), result))
         self.assertEqual(id_origin, id(self.tensor_x))
 
@@ -516,29 +516,29 @@ class TestVarBaseSetitem(unittest.TestCase):
         self._test(3.3)
 
 
-class TestVarBaseVersion(unittest.TestCase):
+class TestVarBaseInplaceVersion(unittest.TestCase):
     def test_setitem(self):
         paddle.disable_static()
 
         var = paddle.ones(shape=[4, 2, 3], dtype="float32")
-        self.assertEqual(var.version, 0)
+        self.assertEqual(var.inplace_version, 0)
 
         var[1] = 1
-        self.assertEqual(var.version, 1)
+        self.assertEqual(var.inplace_version, 1)
 
         var[1:2] = 1
-        self.assertEqual(var.version, 2)
+        self.assertEqual(var.inplace_version, 2)
 
-    def test_bump_version(self):
+    def test_bump_inplace_version(self):
         paddle.disable_static()
         var = paddle.ones(shape=[4, 2, 3], dtype="float32")
-        self.assertEqual(var.version, 0)
+        self.assertEqual(var.inplace_version, 0)
 
-        var.bump_version()
-        self.assertEqual(var.version, 1)
+        var.bump_inplace_version()
+        self.assertEqual(var.inplace_version, 1)
 
-        var.bump_version()
-        self.assertEqual(var.version, 2)
+        var.bump_inplace_version()
+        self.assertEqual(var.inplace_version, 2)
 
 
 if __name__ == '__main__':

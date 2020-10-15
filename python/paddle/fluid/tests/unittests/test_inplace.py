@@ -23,71 +23,71 @@ import paddle.fluid.core as core
 
 class TestInplace(unittest.TestCase):
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
-            var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
-            self.assertEqual(var.version, 0)
+        # with paddle.fluid.dygraph.guard():
+        var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+        self.assertEqual(var.version, 0)
 
-            var[0] = 1.1
-            self.assertEqual(var.version, 1)
+        var[0] = 1.1
+        self.assertEqual(var.version, 1)
 
-            paddle.nn.functional.assign(paddle.ones(shape=[3]), var)
+        paddle.nn.functional.assign(paddle.ones(shape=[3]), var)
 
-            # NOTE(liym27): assign(input, output) is an inplace operation for output.
-            # There is inplace-related processing for api assign, var.version should be 2 not 1.
+        # NOTE(liym27): assign(input, output) is an inplace operation for output.
+        # There is inplace-related processing for api assign, var.version should be 2 not 1.
 
-            self.assertEqual(var.version, 2)
+        self.assertEqual(var.version, 2)
 
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
-            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            var_a.stop_gradient = False
+        # with paddle.fluid.dygraph.guard():
+        var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        var_a.stop_gradient = False
 
-            var_b = var_a**2
+        var_b = var_a**2
 
-            # Here, the gradient computation will use the value of var_b
-            var_c = var_b**2
-            var_b[1:2] = 3.3  # var_b is modified inplace after using it
+        # Here, the gradient computation will use the value of var_b
+        var_c = var_b**2
+        var_b[1:2] = 3.3  # var_b is modified inplace after using it
 
-            loss = paddle.nn.functional.relu(var_c)
-            with self.assertRaisesRegexp(
-                    core.EnforceNotMet,
-                    "received variable_version:1 != wrapper_version:0"):
-                loss.backward()
+        loss = paddle.nn.functional.relu(var_c)
+        with self.assertRaisesRegexp(
+                core.EnforceNotMet,
+                "received variable_version:1 != wrapper_version:0"):
+            loss.backward()
 
     def test_backward_success_1(self):
         # var_b is modified inplace before using it, the inplace operator doesn't result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
-            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            var_a.stop_gradient = False
+        # with paddle.fluid.dygraph.guard():
+        var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        var_a.stop_gradient = False
 
-            var_b = var_a**2
-            var_b[1:2] = 3  # var_b is modified inplace before using it
+        var_b = var_a**2
+        var_b[1:2] = 3  # var_b is modified inplace before using it
 
-            # Here, the gradient computation will use the value of var_b
-            var_c = var_b**2
-            loss = var_c.sum()
-            loss.backward()
+        # Here, the gradient computation will use the value of var_b
+        var_c = var_b**2
+        loss = var_c.sum()
+        loss.backward()
 
-    def test_backward_success_2(self):
+    def _test_backward_success_2(self):
         # Although var_b is modified inplace after using it, it does not used in gradient computation.
         # The inplace operator doesn't result in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
-            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            var_a.stop_gradient = False
+        # with paddle.fluid.dygraph.guard():
+        var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+        var_a.stop_gradient = False
 
-            var_b = var_a**2
+        var_b = var_a**2
 
-            var_b[1:2] = 3  # var_b is modified inplace before using it
+        var_b[1:2] = 3  # var_b is modified inplace before using it
 
-            var_c = var_b + var_b  # Here, the grad op of sum doesn't use the value of var_b
-            loss = var_c.sum()
+        var_c = var_b + var_b  # Here, the grad op of sum doesn't use the value of var_b
+        loss = var_c.sum()
 
-            var_b[1:2] = 3  # var_b is modified inplace after using it
+        var_b[1:2] = 3  # var_b is modified inplace after using it
 
-            loss.backward()
+        loss.backward()
 
 
 if __name__ == '__main__':
