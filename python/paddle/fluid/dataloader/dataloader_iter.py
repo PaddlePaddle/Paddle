@@ -17,6 +17,7 @@ import six
 import sys
 import time
 import signal
+import numbers
 import logging
 import itertools
 import threading
@@ -83,7 +84,7 @@ def default_collate_fn(batch):
 
     outputs = []
     for slot in slots:
-        if isinstance(slot[0], np.ndarray):
+        if isinstance(slot[0], (np.ndarray, np.bool, numbers.Number)):
             tmp = np.stack(slot, axis=0)
             outputs.append(tmp)
         elif isinstance(slot[0], paddle.Tensor):
