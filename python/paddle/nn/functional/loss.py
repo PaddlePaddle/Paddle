@@ -1342,7 +1342,7 @@ def sigmoid_focal_loss(logit,
             label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
             one = paddle.to_tensor([1.], dtype='float32')
             fg_label = paddle.greater_equal(label, one)
-            fg_num = paddle.fluid.layers.reduce_sum(paddle.cast(fg_label, dtype='float32'))
+            fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
             print(output.numpy())  # [0.65782464]
 
