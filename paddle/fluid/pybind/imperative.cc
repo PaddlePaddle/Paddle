@@ -706,7 +706,6 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
                 x = paddle.to_tensor(1.0, stop_gradient=False)
                 detach_x = x.detach()
