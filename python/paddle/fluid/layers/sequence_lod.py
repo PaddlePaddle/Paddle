@@ -598,6 +598,8 @@ def sequence_slice(input, offset, length, name=None):
 
         .. code-block:: python
 
+             import paddle
+             paddle.enable_static()
              import paddle.fluid as fluid
              import numpy as np
              seqs = fluid.data(name='x', shape=[10, 5],
@@ -1048,6 +1050,8 @@ def sequence_unpad(x, length, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
+            paddle.enable_static()
             import paddle.fluid as fluid
             import numpy
 
