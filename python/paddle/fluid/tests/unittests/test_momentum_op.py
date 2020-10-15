@@ -331,6 +331,7 @@ class TestMomentumOpWithDecay(OpTest):
         pass
 
     def test_check_output(self):
+        paddle.enable_static()
         self.check_output()
 
 
@@ -459,21 +460,16 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
         out = linear(inp)
         loss = paddle.mean(out)
         # This can be any optimizer supported by dygraph.
-        adam = paddle.fluid.contrib.optimizer.Momentum(
+        momentum = paddle.fluid.contrib.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear.parameters(),
             regularization=regularization)
-        adam.minimize(loss)
+        momentum.minimize(loss)
 
     def test_momentum_dygraph_1(self):
         self._test_momentum_dygraph_common(
             regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1))
-
-    def test_momentum_dygraph_2(self):
-        self._test_momentum_dygraph_common(
-            regularization=paddle.fluid.regularizer.L1Decay(
                 regularization_coeff=0.1))
 
     def test_momentum_static(self):
@@ -499,6 +495,45 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             exe.run(fluid.default_startup_program())
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
+
+class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
+    def __get_loss(self, momentum):
+        inp = paddle.full(
+            shape=[2, 2], fill_value=1.0, dtype='float32').astype("float32")
+        linear = paddle.nn.Linear(2, 2)
+        inp = paddle.to_tensor(inp)
+        out = linear(inp)
+        loss = paddle.mean(out)
+        # print('===line 506=== loss: ', loss)
+        # This can be any optimizer supported by dygraph.
+        momentum.minimize(loss)
+        # print('===line 509=== loss: ', loss)
+        return loss
+
+    def test_vs(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(2, 2)
+        # This can be any optimizer supported by dygraph.
+        momentum_old = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=0.9,
+            parameter_list=linear.parameters(),
+            regularization=paddle.fluid.regularizer.L2Decay(
+                regularization_coeff=0.1))
+        loss_old = self.__get_loss(momentum=momentum_old)
+        loss_old = loss_old.numpy()
+        # print('===line 523=== loss_old: ', loss_old)
+
+        momentum_new = paddle.fluid.contrib.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=0.9,
+            parameter_list=linear.parameters(),
+            regularization=paddle.fluid.regularizer.L2Decay(
+                regularization_coeff=0.1))
+        loss_new = self.__get_loss(momentum=momentum_new)
+        loss_new = loss_new.numpy()
+        # print('===line 534=== loss_new: ', loss_new)
 
 
 if __name__ == "__main__":

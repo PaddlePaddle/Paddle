@@ -51,6 +51,11 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("epsilon",
                    "(float, default 0.0) epsilon to avoid Division by Zero.")
         .SetDefault(0.0);
+    AddAttr<std::string>("regularization_method",
+                         "(string) regularization_method")
+        .SetDefault("");
+    AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
+        .SetDefault(1.0);
 
     AddComment(R"DOC(
 Lars Momentum Optimizer.

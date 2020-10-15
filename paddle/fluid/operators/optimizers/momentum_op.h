@@ -104,6 +104,16 @@ class MomentumOp : public framework::OperatorWithKernel {
               param_dim, ctx->GetInputDim("Velocity")));
     }
 
+    std::string regularization_method =
+        ctx->Attrs().Get<std::string>("regularization_method");
+    if (regularization_method != "" || !regularization_method.empty()) {
+      PADDLE_ENFORCE_EQ("l2_decay", regularization_method,
+                        platform::errors::InvalidArgument(
+                            "if regularization_method is not null, "
+                            "it should be %s, but received %s",
+                            regularization_method));
+    }
+
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);
   }
@@ -119,57 +129,59 @@ class MomentumOp : public framework::OperatorWithKernel {
 template <typename T>
 class CPUDenseMomentumFunctor {
  private:
-  const Tensor* param;
-  const Tensor* grad;
-  const Tensor* velocity;
-  const Tensor* learning_rate;
-  const T mu;
-  const T use_nesterov;
-  const RegularizationFlag regularization_flag;
-  const T regularization_coeff;
-  Tensor* param_out;
-  Tensor* velocity_out;
+  const Tensor* param_;
+  const Tensor* grad_;
+  const Tensor* velocity_;
+  const Tensor* learning_rate_;
+  const T mu_;
+  const T use_nesterov_;
+  RegularizationFlag regularization_flag_;
+  const T regularization_coeff_;
+  Tensor* param_out_;
+  Tensor* velocity_out_;
 
  public:
   CPUDenseMomentumFunctor(const Tensor* param, const Tensor* grad,
                           const Tensor* velocity, const Tensor* learning_rate,
                           const T mu, const bool use_nesterov,
-                          const RegularizationFlag regularization_flag,
+                          RegularizationFlag regularization_flag,
                           const T regularization_coeff, Tensor* param_out,
                           Tensor* velocity_out)
-      : param(param),
-        grad(grad),
-        velocity(velocity),
-        learning_rate(learning_rate),
-        mu(mu),
-        use_nesterov(use_nesterov),
-        regularization_flag(regularization_flag),
-        regularization_coeff(regularization_coeff),
-        param_out(param_out),
-        velocity_out(velocity_out) {}
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
+        learning_rate_(learning_rate),
+        mu_(mu),
+        use_nesterov_(use_nesterov),
+        regularization_flag_(regularization_flag),
+        regularization_coeff_(regularization_coeff),
+        param_out_(param_out),
+        velocity_out_(velocity_out) {}
 
   inline void operator()() {
-    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
-    auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
+    auto param_out = framework::EigenVector<T>::Flatten(*param_out_);
+    auto velocity_out = framework::EigenVector<T>::Flatten(*velocity_out_);
 
-    auto p = framework::EigenVector<T>::Flatten(*param);
-    auto v = framework::EigenVector<T>::Flatten(*velocity);
-    auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto* lr = learning_rate->data<T>();
+    auto param = framework::EigenVector<T>::Flatten(*param_);
+    auto velocity = framework::EigenVector<T>::Flatten(*velocity_);
+    auto grad = framework::EigenVector<T>::Flatten(*grad_);
+    auto* lr = learning_rate_->data<T>();
 
-    if (regularization_flag == RegularizationFlag::kL2DECAY) {
-      v_out = v * mu + p * regularization_coeff + g;
-      if (use_nesterov) {
-        p_out = p - (p * regularization_coeff + g + v_out * mu) * lr[0];
+    if (regularization_flag_ == RegularizationFlag::kL2DECAY) {
+      velocity_out = velocity * mu_ + param * regularization_coeff_ + grad;
+      if (use_nesterov_) {
+        param_out =
+            param -
+            (param * regularization_coeff_ + grad + velocity_out * mu_) * lr[0];
       } else {
-        p_out = p - lr[0] * v_out;
+        param_out = param - lr[0] * velocity_out;
       }
     } else {
-      v_out = v * mu + g;
-      if (use_nesterov) {
-        p_out = p - (g + v_out * mu) * lr[0];
+      velocity_out = velocity * mu_ + grad;
+      if (use_nesterov_) {
+        param_out = param - (grad + velocity_out * mu_) * lr[0];
       } else {
-        p_out = p - lr[0] * v_out;
+        param_out = param - lr[0] * velocity_out;
       }
     }
   }
@@ -184,96 +196,100 @@ class DenseMomentumFunctor;
 template <typename T>
 class DenseMomentumFunctor<T, UseNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const T* v_;
+  const T* param_;
+  const T* grad_;
+  const T* velocity_;
   const T* lr_;
   const T mu_;
   const int64_t num_;
-  T* p_out_;
-  T* v_out_;
-  const RegularizationFlag regularization_flag;
-  const T regularization_coeff;
+  T* param_out_;
+  T* velocity_out_;
+  RegularizationFlag regularization_flag_;
+  const T regularization_coeff_;
 
  public:
-  DenseMomentumFunctor(const T* p, const T* g, const T* v,
+  DenseMomentumFunctor(const T* param, const T* grad, const T* velocity,
                        const T* learning_rate, const T mu, const int64_t num,
-                       const RegularizationFlag regularization_flag,
-                       const T regularization_coeff, T* p_out, T* v_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+                       RegularizationFlag regularization_flag,
+                       const T regularization_coeff, T* param_out,
+                       T* velocity_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(learning_rate),
         mu_(mu),
         num_(num),
-        p_out_(p_out),
-        v_out_(v_out),
-        regularization_flag(regularization_flag),
-        regularization_coeff(regularization_coeff) {}
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        regularization_flag_(regularization_flag),
+        regularization_coeff_(regularization_coeff) {}
+
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
-    const T p = p_[i];
-    T g = g_[i];
+    const T param = param_[i];
+    T grad = grad_[i];
     const T lr = lr_[0];
-    const T v = v_[i];
+    const T velocity = velocity_[i];
 
-    g = regularization_flag == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    T v_out = v * mu_ + g;
-    T p_out = p - (g + v_out * mu_) * lr;
+    T velocity_out = velocity * mu_ + grad;
+    T param_out = param - (grad + velocity_out * mu_) * lr;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = param_out;
   }
 };
 
 template <typename T>
 class DenseMomentumFunctor<T, NoNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const T* v_;
+  const T* param_;
+  const T* grad_;
+  const T* velocity_;
   const T* lr_;
   const T mu_;
   const int64_t num_;
-  T* p_out_;
-  T* v_out_;
-  const RegularizationFlag regularization_flag;
-  const T regularization_coeff;
+  T* param_out_;
+  T* velocity_out_;
+  RegularizationFlag regularization_flag_;
+  const T regularization_coeff_;
 
  public:
-  DenseMomentumFunctor(const T* p, const T* g, const T* v,
+  DenseMomentumFunctor(const T* param, const T* grad, const T* velocity,
                        const T* learning_rate, const T mu, const int64_t num,
-                       const RegularizationFlag regularization_flag,
-                       const T regularization_coeff, T* p_out, T* v_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+                       RegularizationFlag regularization_flag,
+                       const T regularization_coeff, T* param_out,
+                       T* velocity_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(learning_rate),
         mu_(mu),
         num_(num),
-        p_out_(p_out),
-        v_out_(v_out),
-        regularization_flag(regularization_flag),
-        regularization_coeff(regularization_coeff) {}
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        regularization_flag_(regularization_flag),
+        regularization_coeff_(regularization_coeff) {}
+
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
-    const T p = p_[i];
-    T g = g_[i];
+    const T param = param_[i];
+    T grad = grad_[i];
     const T lr = lr_[0];
-    const T v = v_[i];
+    const T velocity = velocity_[i];
 
-    g = regularization_flag == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    T v_out = v * mu_ + g;
-    T p_out = p - lr * v_out;
+    T velocity_out = velocity * mu_ + grad;
+    T param_out = param - lr * velocity_out;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = param_out;
   }
 };
 
@@ -283,114 +299,116 @@ class SparseMomentumFunctor;
 template <typename T>
 class SparseMomentumFunctor<T, UseNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const T* v_;
+  const T* param_;
+  const T* grad_;
+  const T* velocity_;
   const T* lr_;
   const T mu_;
   const int64_t* rows_;
   const int64_t row_numel_;
   const int64_t row_height_;
-  T* p_out_;
-  T* v_out_;
-  const RegularizationFlag regularization_flag;
-  const T regularization_coeff;
+  T* param_out_;
+  T* velocity_out_;
+  RegularizationFlag regularization_flag_;
+  const T regularization_coeff_;
 
  public:
-  SparseMomentumFunctor(const T* p, const T* g, const T* v, const T* lr,
-                        const T mu, const int64_t* rows, int64_t row_numel,
-                        int64_t row_height,
-                        const RegularizationFlag regularization_flag,
-                        const T regularization_coeff, T* p_out, T* v_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+  SparseMomentumFunctor(const T* param, const T* grad, const T* velocity,
+                        const T* lr, const T mu, const int64_t* rows,
+                        int64_t row_numel, int64_t row_height,
+                        RegularizationFlag regularization_flag,
+                        const T regularization_coeff, T* param_out,
+                        T* velocity_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(lr),
         mu_(mu),
         rows_(rows),
         row_numel_(row_numel),
         row_height_(row_height),
-        p_out_(p_out),
-        v_out_(v_out),
-        regularization_flag(regularization_flag),
-        regularization_coeff(regularization_coeff) {}
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        regularization_flag_(regularization_flag),
+        regularization_coeff_(regularization_coeff) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_]
-                       : static_cast<T>(0);
+    T grad = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
+                          : static_cast<T>(0);
     // put memory access in register
-    const T p = p_[i];
+    const T param = param_[i];
     const T lr = lr_[0];
-    const T v = v_[i];
+    const T velocity = velocity_[i];
 
-    g = regularization_flag == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    T v_out = v * mu_ + g;
-    T p_out = p - (g + v_out * mu_) * lr;
+    T velocity_out = velocity * mu_ + grad;
+    T param_out = param - (grad + velocity_out * mu_) * lr;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = param_out;
   }
 };
 
 template <typename T>
 class SparseMomentumFunctor<T, NoNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const T* v_;
+  const T* param_;
+  const T* grad_;
+  const T* velocity_;
   const T* lr_;
   const T mu_;
   const int64_t* rows_;
   const int64_t row_numel_;
   const int64_t row_height_;
-  T* p_out_;
-  T* v_out_;
-  const RegularizationFlag regularization_flag;
-  const T regularization_coeff;
+  T* param_out_;
+  T* velocity_out_;
+  RegularizationFlag regularization_flag_;
+  const T regularization_coeff_;
 
  public:
-  SparseMomentumFunctor(const T* p, const T* g, const T* v, const T* lr,
-                        const T mu, const int64_t* rows, int64_t row_numel,
-                        int64_t row_height,
-                        const RegularizationFlag regularization_flag,
-                        const T regularization_coeff, T* p_out, T* v_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+  SparseMomentumFunctor(const T* param, const T* grad, const T* velocity,
+                        const T* lr, const T mu, const int64_t* rows,
+                        int64_t row_numel, int64_t row_height,
+                        RegularizationFlag regularization_flag,
+                        const T regularization_coeff, T* param_out,
+                        T* velocity_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(lr),
         mu_(mu),
         rows_(rows),
         row_numel_(row_numel),
         row_height_(row_height),
-        p_out_(p_out),
-        v_out_(v_out),
-        regularization_flag(regularization_flag),
-        regularization_coeff(regularization_coeff) {}
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        regularization_flag_(regularization_flag),
+        regularization_coeff_(regularization_coeff) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    T g = row_idx >= 0 ? g_[row_idx * row_numel_ + i % row_numel_]
-                       : static_cast<T>(0);
+    T grad = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
+                          : static_cast<T>(0);
     // put memory access in register
-    const T p = p_[i];
+    const T param = param_[i];
     const T lr = lr_[0];
-    const T v = v_[i];
+    const T velocity = velocity_[i];
 
-    g = regularization_flag == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    T v_out = v * mu_ + g;
-    T p_out = p - v_out * lr;
+    T velocity_out = velocity * mu_ + grad;
+    T param_out = param - velocity_out * lr;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = param_out;
   }
 };
 

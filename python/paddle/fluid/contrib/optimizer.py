@@ -114,13 +114,10 @@ class Momentum(Optimizer):
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
         self._regularization_method = ""
-        self._regularization_coef = 0
+        self._regularization_coeff = 0
         if (isinstance(regularization, L2DecayRegularizer)):
             self._regularization_method = "l2_decay"
-            self._regularization_coef = regularization._regularization_coeff
-        if (isinstance(regularization, L1DecayRegularizer)):
-            self._regularization_method = "l1_decay"
-            self._regularization_coef = regularization._regularization_coeff
+            self._regularization_coeff = regularization._regularization_coeff
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -146,7 +143,7 @@ class Momentum(Optimizer):
             "mu": self._momentum,
             "use_nesterov": self._use_nesterov,
             "regularization_method": self._regularization_method,
-            "regularization_coeff": self._regularization_coef
+            "regularization_coeff": self._regularization_coeff
         }
         inputs = {
             "Param": [param_and_grad[0]],
