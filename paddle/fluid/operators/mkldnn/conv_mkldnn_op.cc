@@ -350,8 +350,8 @@ class ConvMKLDNNHandlerT
       const framework::Tensor* residual_param) {
     void* residual_data =
         residual_param->type() == framework::DataTypeTrait<T_out>::DataType()
-            ? to_void_cast<T>(residual_param->data<T>())
-            : to_void_cast<T_out>(residual_param->data<T_out>());
+            ? to_void_cast<T_out>(residual_param->data<T_out>())
+            : to_void_cast<T>(residual_param->data<T>());
     auto user_residual_md = platform::MKLDNNMemDesc(
         framework::vectorize(residual_param->dims()),
         framework::ToMKLDNNDataType(residual_param->type()),
