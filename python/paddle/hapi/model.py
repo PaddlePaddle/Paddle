@@ -453,6 +453,11 @@ class StaticGraphAdapter(object):
             if len(name) > 0:
                 rets.insert(i, feed[name])
 
+        # step learning rate scheduler on each batch end
+        if isinstance(self.model._optimizer._learning_rate,
+                      paddle.optimizer.lr.LRScheduler):
+            self.model._optimizer._learning_rate.step()
+
         # LoDTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
@@ -652,6 +657,12 @@ class DynamicGraphAdapter(object):
 
         self.model._optimizer.minimize(final_loss)
         self.model.network.clear_gradients()
+
+        # step learning rate scheduler on each batch end
+        if isinstance(self.model._optimizer._learning_rate,
+                      paddle.optimizer.lr.LRScheduler):
+            self.model._optimizer._learning_rate.step()
+
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
@@ -1460,11 +1471,6 @@ class Model(object):
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
                 cbks.on_end('eval', eval_logs)
-
-            # step learning rate scheduler on each epcoh end
-            if isinstance(self._optimizer._learning_rate,
-                          paddle.optimizer.lr.LRScheduler):
-                self._optimizer._learning_rate.step()
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
