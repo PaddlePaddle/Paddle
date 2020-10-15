@@ -21,33 +21,7 @@ class FusedFCReshapeElementwiseLayerNormOp
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto y_dims = ctx->GetInputDim("Y");
-    auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
-    auto y_mat_dim = framework::flatten_to_2d(y_dims, begin_norm_axis);
-    int64_t dim_0 = y_mat_dim[0];
-    int64_t dim_1 = y_mat_dim[1];
-    if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1);
-
-      if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], dim_1,
-                          "scale should with right");
-      }
-    }
-    if (ctx->HasInput("Bias1")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias1").size(), 1);
-      if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias1")[0], dim_1,
-                          "bias should with right");
-      }
-    }
-
     ctx->SetOutputDim("Out", y_dims);
-    if (ctx->HasOutput("Mean")) {
-      ctx->SetOutputDim("Mean", {dim_0});
-    }
-    if (ctx->HasOutput("Variance")) {
-      ctx->SetOutputDim("Variance", {dim_0});
-    }
     ctx->ShareLoD("X", "Out");
   }
 };
