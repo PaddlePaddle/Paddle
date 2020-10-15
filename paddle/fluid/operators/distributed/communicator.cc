@@ -53,9 +53,20 @@ Communicator::Communicator() {}
 std::once_flag Communicator::init_flag_;
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
+void AsyncCommunicator::Start() {}
+void AsyncCommunicator::Stop() {}
+
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                  const RpcCtxMap &recv_varname_to_ctx,
-                                 Scope *recv_scope) {
+                                 Scope *recv_scope) {}
+void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
+                             const std::vector<std::string> &var_tables,
+                             const framework::Scope &scope) {}
+AsyncCommunicator::~AsyncCommunicator() {}
+
+void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                                     const RpcCtxMap &recv_varname_to_ctx,
+                                     Scope *recv_scope) {
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -81,14 +92,14 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   InitParams();
 }
 
-void AsyncCommunicator::InitParams() { RecvByCommunicator(); }
+void HalfAsyncCommunicator::InitParams() { RecvByCommunicator(); }
 
-AsyncCommunicator::~AsyncCommunicator() {
+HalfAsyncCommunicator::~HalfAsyncCommunicator() {
   running_ = false;
   if (main_thread_) main_thread_->join();
 }
 
-void AsyncCommunicator::SendByCommunicator(int batches) {
+void HalfAsyncCommunicator::SendByCommunicator(int batches) {
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(send_varname_to_ctx_.size());
   VLOG(3) << "run send graph";
@@ -135,7 +146,7 @@ void AsyncCommunicator::SendByCommunicator(int batches) {
           << after_run_send_graph - before_run_send_graph;
 }
 
-void AsyncCommunicator::RecvByCommunicator() {
+void HalfAsyncCommunicator::RecvByCommunicator() {
   VLOG(3) << "parallel run recv graph";
   if (!running_) return;
   std::vector<std::future<void>> task_futures;
@@ -156,40 +167,6 @@ void AsyncCommunicator::RecvByCommunicator() {
   }
   VLOG(3) << "run recv graph use time";
 }
-
-void AsyncCommunicator::Start() {
-  VLOG(1) << "Communicator start";
-  if (!communicator_) {
-    VLOG(0) << "Communicator is not inited, do nothing";
-  } else {
-    VLOG(1) << "start send thread and recv thread";
-    waiting_ = true;
-    running_ = true;
-    BarrierTriggerReset(max_merge_var_num_);
-    // start send and recv thread
-    main_thread_.reset(
-        new std::thread(std::bind(&AsyncCommunicator::MainThread, this)));
-  }
-}
-
-void AsyncCommunicator::Stop() {
-  VLOG(1) << "Communicator stop";
-  running_ = false;
-  if (!communicator_) {
-    VLOG(0) << "Communicator is not inited, do nothing";
-  } else {
-    if (main_thread_) {
-      VLOG(1) << "stop send thread";
-      main_thread_->join();
-      main_thread_.reset(nullptr);
-    }
-  }
-  VLOG(1) << "Communicator stop done";
-}
-
-void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
-                             const std::vector<std::string> &var_tables,
-                             const framework::Scope &scope) {}
 
 void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_names,
                                  const std::vector<std::string> &var_tables,
@@ -235,6 +212,35 @@ void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_names,
       }
     }
   }
+}
+void HalfAsyncCommunicator::Start() {
+  VLOG(1) << "Communicator start";
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    VLOG(1) << "start send thread and recv thread";
+    waiting_ = true;
+    running_ = true;
+    BarrierTriggerReset(max_merge_var_num_);
+    // start send and recv thread
+    main_thread_.reset(
+        new std::thread(std::bind(&AsyncCommunicator::MainThread, this)));
+  }
+}
+
+void HalfAsyncCommunicator::Stop() {
+  VLOG(1) << "Communicator stop";
+  running_ = false;
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    if (main_thread_) {
+      VLOG(1) << "stop send thread";
+      main_thread_->join();
+      main_thread_.reset(nullptr);
+    }
+  }
+  VLOG(1) << "Communicator stop done";
 }
 
 void HalfAsyncCommunicator::Clean() {
@@ -643,8 +649,6 @@ void GeoCommunicator::SendDense(const std::string &varname) {
   auto send = distributed::ParameterSend<float>();
   send(ctx, *delta_scope_, true, 1);
 }
-
-void GeoCommunicator::RecvByCommunicator() { return; }
 
 void GeoCommunicator::RecvSparse(const std::string &varname, int ep_idx) {
   auto train_id = recv_varname_to_ctx_.at(varname).trainer_id;
