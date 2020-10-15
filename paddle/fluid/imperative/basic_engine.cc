@@ -218,9 +218,10 @@ void BasicEngine::Execute() {
                  "gradient calculation.";
       for (auto& pair : bwd_ins) {
         for (auto& var_wrapper : pair.second) {
-          auto wrapper_version = var_wrapper->Version();
-          auto variable_version =
-              var_wrapper->MutableVar()->VersionCounter().CurrentVersion();
+          auto wrapper_version = var_wrapper->InplaceVersion();
+          auto variable_version = var_wrapper->MutableVar()
+                                      ->InplaceVersionCounter()
+                                      .CurrentVersion();
           PADDLE_ENFORCE_EQ(
               variable_version, wrapper_version,
               platform::errors::PermissionDenied(

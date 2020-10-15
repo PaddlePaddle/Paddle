@@ -314,7 +314,7 @@ class TracedGradOp {
     result.reserve(var_wrappers.size());
     for (auto& var : var_wrappers) {
       std::shared_ptr<VariableWrapper> new_var(var);
-      new_var->UpdateVersion(var);
+      new_var->SetInplaceVersion(var);
       result.emplace_back(new_var);
     }
     return result;

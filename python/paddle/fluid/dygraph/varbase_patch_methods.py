@@ -245,7 +245,7 @@ def monkey_patch_varbase():
             print(var.inplace_version)  # 1
 
         """
-        return self.inplace_version()
+        return self._inplace_version()
 
     def __str__(self):
         """
