@@ -920,7 +920,7 @@ class Fleet(object):
     def _get_applied_meta_list(self):
         if "applied_meta_list" not in self._context:
             print(
-                "WARNING: You may need to call minimize function before this function is called"
+                "WARNING: You may need to call minimize function before _get_applied_meta_list called"
             )
             return []
         else:
@@ -929,7 +929,7 @@ class Fleet(object):
     def _get_applied_graph_list(self):
         if "applied_graph_list" not in self._context:
             print(
-                "WARNING: You may need to call minimize function before this function is called"
+                "WARNING: You may need to call minimize function before _get_applied_graph_list called"
             )
             return []
         else:
