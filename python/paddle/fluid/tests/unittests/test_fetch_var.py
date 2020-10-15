@@ -28,7 +28,7 @@ class TestFetchVar(unittest.TestCase):
     def test_fetch_var(self):
         self.set_input()
         x = layers.create_tensor(dtype="int32", persistable=True, name="x")
-        layers.assign(input=self.val, output=x)
+        layers.assign(x=self.val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")

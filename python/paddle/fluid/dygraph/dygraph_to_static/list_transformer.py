@@ -64,7 +64,7 @@ def tensor_array_pop(array, idx):
     new_array = slice_tensor_array(array, 0, idx)
     i = idx + 1
     _, new_array = while_loop(cond, body, [i, new_array])
-    assign(input=new_array, output=array)
+    assign(x=new_array, output=array)
 
     return pop_item
 

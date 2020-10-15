@@ -76,7 +76,7 @@ class TestAssignApi(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
             x = layers.create_tensor(dtype=self.dtype)
-            layers.assign(input=self.value, output=x)
+            layers.assign(x=self.value, output=x)
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])

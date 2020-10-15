@@ -28,6 +28,7 @@ from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  #DEFINE_ALIAS
+from ..fluid.layers import assign  #DEFINE_ALIAS
 import paddle
 
 __all__ = [
@@ -47,7 +48,8 @@ __all__ = [
     'empty_like',
     'triu',
     'tril',
-    'meshgrid'
+    'meshgrid',
+    'assign',
 ]
 
 

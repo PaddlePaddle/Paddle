@@ -7346,13 +7346,13 @@ def image_resize(input,
 	    #2
 	    #x = np.array([2]).astype("int32")
 	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-	    #fluid.layers.assign(input=x, output=dim1)
+	    #fluid.layers.assign(x=x, output=dim1)
 	    #output = fluid.layers.image_resize(input=input,out_shape=[12,dim1])
 
 	    #3
 	    #x = np.array([3,12]).astype("int32")
 	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-	    #fluid.layers.assign(input=x, output=shape_tensor)
+	    #fluid.layers.assign(x=x, output=shape_tensor)
 	    #output = fluid.layers.image_resize(input=input,out_shape=shape_tensor)
 
 	    #4
@@ -7797,13 +7797,13 @@ def resize_bilinear(input,
 	    #2
 	    #x = np.array([2]).astype("int32")
 	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-	    #fluid.layers.assign(input=x, output=dim1)
+	    #fluid.layers.assign(x=x, output=dim1)
 	    #output = fluid.layers.resize_bilinear(input=input,out_shape=[12,dim1])
 
 	    #3
 	    #x = np.array([3,12]).astype("int32")
 	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-	    #fluid.layers.assign(input=x, output=shape_tensor)
+	    #fluid.layers.assign(x=x, output=shape_tensor)
 	    #output = fluid.layers.resize_bilinear(input=input,out_shape=shape_tensor)
 
 	    #4
@@ -7963,13 +7963,13 @@ def resize_trilinear(input,
 	    #2
 	    #x = np.array([2]).astype("int32")
 	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-	    #fluid.layers.assign(input=x, output=dim1)
+	    #fluid.layers.assign(x=x, output=dim1)
 	    #output = fluid.layers.resize_trilinear(input=input,out_shape=[12,dim1,4])
 
 	    #3
 	    #x = np.array([3,12,12]).astype("int32")
 	    #shape_tensor = fluid.data(name="shape_tensor", shape=[3], dtype="int32")
-	    #fluid.layers.assign(input=x, output=shape_tensor)
+	    #fluid.layers.assign(x=x, output=shape_tensor)
 	    #output = fluid.layers.resize_trilinear(input=input,out_shape=shape_tensor)
 
 	    #4
@@ -8120,13 +8120,13 @@ def resize_nearest(input,
 	    #2
 	    #x = np.array([2]).astype("int32")
 	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-	    #fluid.layers.assign(input=x, output=dim1)
+	    #fluid.layers.assign(x=x, output=dim1)
 	    #output = fluid.layers.resize_nearest(input=input,out_shape=[12,dim1])
 
 	    #3
 	    #x = np.array([3,12]).astype("int32")
 	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-	    #fluid.layers.assign(input=x, output=shape_tensor)
+	    #fluid.layers.assign(x=x, output=shape_tensor)
 	    #output = fluid.layers.resize_nearest(input=input,out_shape=shape_tensor)
 
 	    #4

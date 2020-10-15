@@ -150,7 +150,7 @@ class TestWeightDecay(unittest.TestCase):
             for params in param_list:
                 updated_p = fluid.layers.elementwise_sub(
                     x=params[0], y=params[1])
-                fluid.layers.assign(input=updated_p, output=params[0])
+                fluid.layers.assign(x=updated_p, output=params[0])
 
             if use_parallel_exe:
                 loss = self.run_parallel_exe(

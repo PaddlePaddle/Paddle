@@ -431,8 +431,8 @@ def lm_model(hidden_size,
     # can be used directly in next batch. This can avoid the fetching of
     # last_hidden and last_cell and feeding of init_hidden and init_cell in
     # each training step.
-    layers.assign(input=last_cell, output=init_cell)
-    layers.assign(input=last_hidden, output=init_hidden)
+    layers.assign(x=last_cell, output=init_cell)
+    layers.assign(x=last_hidden, output=init_hidden)
 
     feeding_list = ['x', 'y', 'init_hidden', 'init_cell']
     return loss, last_hidden, last_cell, feeding_list

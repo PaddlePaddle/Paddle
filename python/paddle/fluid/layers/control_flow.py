@@ -2647,9 +2647,9 @@ class Switch(object):
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    fluid.layers.assign(input=one_var, output=lr)
+                    fluid.layers.assign(x=one_var, output=lr)
                 with switch.default():
-                    fluid.layers.assign(input=two_var, output=lr)
+                    fluid.layers.assign(x=two_var, output=lr)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -2896,7 +2896,7 @@ class IfElse(object):
             out_table.append(outside_out)
 
             # assign local var to outside
-            assign(input=each_out, output=outside_out)
+            assign(x=each_out, output=outside_out)
 
     def __call__(self):
         if self.status != self.OUT_IF_ELSE_BLOCKS:

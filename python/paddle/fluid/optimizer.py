@@ -3276,7 +3276,7 @@ class ModelAverage(Optimizer):
         num_updates = block._clone_variable(
             self._get_accumulator('num_updates', param))
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        layers.assign(x=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
@@ -3289,7 +3289,7 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
         grad = block._clone_variable(param_grad[1])
-        layers.assign(input=grad, output=param)
+        layers.assign(x=grad, output=param)
 
     def _append_average_accumulate_op(self, param):
         self.helper = LayerHelper("average_accumulate")
@@ -3575,7 +3575,7 @@ class ExponentialMovingAverage(object):
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
-                layers.assign(input=param, output=tmp)
+                layers.assign(x=param, output=tmp)
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
@@ -3590,7 +3590,7 @@ class ExponentialMovingAverage(object):
             for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
-                layers.assign(input=tmp, output=param)
+                layers.assign(x=tmp, output=param)
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
@@ -3653,7 +3653,7 @@ class ExponentialMovingAverage(object):
                 else:
                     ema_t = param_ema * self._decay_var + param * (
                         1 - self._decay_var)
-                    layers.assign(input=ema_t, output=param_ema)
+                    layers.assign(x=ema_t, output=param_ema)
 
         # for fp16 params
         for param_ema, master_ema in param_master_emas:
@@ -5005,7 +5005,7 @@ class LookaheadOptimizer(object):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        layers.assign(input=fast_var, output=slow_var)
+                        layers.assign(x=fast_var, output=slow_var)
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
@@ -5015,8 +5015,8 @@ class LookaheadOptimizer(object):
                             layers.elementwise_mul(
                                 slow_var,
                                 layers.elementwise_sub(one_var, alpha)))
-                        layers.assign(input=tmp_var, output=slow_var)
-                        layers.assign(input=tmp_var, output=fast_var)
+                        layers.assign(x=tmp_var, output=slow_var)
+                        layers.assign(x=tmp_var, output=fast_var)
                 with switch.default():
                     pass
         return mini_out

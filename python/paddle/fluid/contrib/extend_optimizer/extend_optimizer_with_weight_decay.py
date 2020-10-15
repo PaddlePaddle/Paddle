@@ -87,7 +87,7 @@ class DecoupledWeightDecay(object):
                 [param, grad]), framework.name_scope('weight decay'):
                 updated_param = paddle.fluid.layers.elementwise_sub(
                     x=param, y=scaled_param)
-                paddle.fluid.layers.assign(input=updated_param, output=param)
+                paddle.fluid.layers.assign(x=updated_param, output=param)
 
         optimize_ops = self.apply_optimize(
             loss=loss,

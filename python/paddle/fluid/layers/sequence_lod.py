@@ -602,8 +602,8 @@ def sequence_slice(input, offset, length, name=None):
              import numpy as np
              seqs = fluid.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
-             offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
-             length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
+             offset = fluid.layers.assign(x=np.array([[0, 1]]).astype("int32"))
+             length = fluid.layers.assign(x=np.array([[2, 1]]).astype("int32"))
              subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
@@ -1053,7 +1053,7 @@ def sequence_unpad(x, length, name=None):
 
             # pad data
             x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
+            pad_value = fluid.layers.assign(x=numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
             
             # unpad data

@@ -526,7 +526,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output=None):
+def assign(x, output=None):
     """
 
     The OP copies the :attr:`input` to the :attr:`output`.
@@ -545,60 +545,56 @@ def assign(input, output=None):
 
           import paddle
           import numpy as np
-          data = paddle.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           array = np.array([[1, 1],
                             [3, 4],
                             [1, 3]]).astype(np.int64)
           result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-          paddle.nn.functional.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-          result2 = paddle.nn.functional.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = paddle.nn.functional.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
-    check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
-    if isinstance(input, Variable):
+    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    if isinstance(x, Variable):
         check_dtype(
-            input.dtype, 'input',
+            x.dtype, 'x',
             ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
             'assign', '(When the type of input in assign is Variable.)')
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
-    elif isinstance(input, numpy.ndarray):
-        dtype = convert_np_dtype_to_dtype_(input.dtype)
+            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+    elif isinstance(x, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(x.dtype)
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
-            values = [bool(v) for v in input.flat]
+            values = [bool(v) for v in x.flat]
         elif dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
-            values = [float(v) for v in input.flat]
+            values = [float(v) for v in x.flat]
         elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
-            values = [int(v) for v in input.flat]
+            values = [int(v) for v in x.flat]
         elif dtype == VarDesc.VarType.INT64:
             value_name = "int64_values"
-            values = [int(v) for v in input.flat]
+            values = [int(v) for v in x.flat]
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
                 "the data type of 'input' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
-        if input.size > 1024 * 1024:
+        if x.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
-            attrs={
-                'dtype': dtype,
-                'shape': list(input.shape),
-                value_name: values
-            })
+            attrs={'dtype': dtype,
+                   'shape': list(x.shape),
+                   value_name: values})
 
     return output
 

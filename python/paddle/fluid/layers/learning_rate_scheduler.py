@@ -348,7 +348,7 @@ def polynomial_decay(learning_rate,
 
                 with control_flow.Switch() as switch:
                     with switch.case(global_step == zero_var):
-                        tensor.assign(input=one_var, output=div_res)
+                        tensor.assign(x=one_var, output=div_res)
                 decay_steps = decay_steps * div_res
             else:
                 decay_steps_var = tensor.fill_constant(
