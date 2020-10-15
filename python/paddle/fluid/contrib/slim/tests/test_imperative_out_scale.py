@@ -350,7 +350,7 @@ class TestImperativeOutSclae(unittest.TestCase):
                 executor=exe,
                 model_filename="lenet" + INFER_MODEL_SUFFIX,
                 params_filename="lenet" + INFER_PARAMS_SUFFIX))
-        # load dynamic model
+        # load static model
         [static_inference_program, feed_target_names, fetch_targets] = (
             fluid.io.load_inference_model(
                 dirname=static_save_dir,
@@ -367,6 +367,7 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
+                self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
 
