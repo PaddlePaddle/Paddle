@@ -129,23 +129,16 @@ class TestConcatOp6(TestConcatOp):
         self.outputs = {'Out': (out, self.out_lod)}
 
     def test_check_output(self):
-        #self.check_output(check_dygraph=False)
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, check_dygraph=False)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
-        # self.check_grad(['x0'], 'Out', check_dygraph=False)
-        # self.check_grad(['x1'], 'Out', check_dygraph=False)
-        # self.check_grad(['x2'], 'Out', check_dygraph=False)
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place, ['x0'], 'Out', check_dygraph=False)
-            self.check_grad_with_place(
-                place, ['x1'], 'Out', check_dygraph=False)
-            self.check_grad_with_place(
-                place, ['x2'], 'Out', check_dygraph=False)
+            self.check_grad_with_place(place, ['x0'], 'Out')
+            self.check_grad_with_place(place, ['x1'], 'Out')
+            self.check_grad_with_place(place, ['x2'], 'Out')
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
