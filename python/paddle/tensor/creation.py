@@ -1116,13 +1116,13 @@ def assign(x, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
  
     Parameters:
-        input (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+        x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
             float16, float32, float64, int32 and int64.
         output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
  
     Returns:
-        Tensor: A tensor with the same shape, data type and value as :attr:`input`.
+        Tensor: A tensor with the same shape, data type and value as :attr:`x`.
  
     Examples:
         .. code-block:: python

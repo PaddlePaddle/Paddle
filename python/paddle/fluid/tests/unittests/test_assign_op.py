@@ -100,7 +100,7 @@ class TestAssignOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.assign, x5)
 
 
-class TestAssignOpWithLoDTensorArray_api(unittest.TestCase):
+class TestAssignOApi(unittest.TestCase):
     def test_assign_LoDTensorArray(self):
         main_program = Program()
         startup_program = Program()
@@ -129,8 +129,32 @@ class TestAssignOpWithLoDTensorArray_api(unittest.TestCase):
         self.assertTrue(np.allclose(res[0], feed_add))
         self.assertTrue(np.allclose(res[1], ones / 1000.0))
 
+    def test_assign_NumpyArray(self):
+        array = np.random.random(size=(100, 10)).astype(np.bool)
+        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+        paddle.assign(array, result1)
+        self.assertTrue(np.allclose(result1.numpy(), array))
 
-class TestAssignOpError_api(unittest.TestCase):
+    def test_assign_NumpyArray1(self):
+        array = np.random.random(size=(100, 10)).astype(np.float32)
+        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+        paddle.assign(array, result1)
+        self.assertTrue(np.allclose(result1.numpy(), array))
+
+    def test_assign_NumpyArray2(self):
+        array = np.random.random(size=(100, 10)).astype(np.int32)
+        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+        paddle.assign(array, result1)
+        self.assertTrue(np.allclose(result1.numpy(), array))
+
+    def test_assign_NumpyArray3(self):
+        array = np.random.random(size=(100, 10)).astype(np.int64)
+        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+        paddle.assign(array, result1)
+        self.assertTrue(np.allclose(result1.numpy(), array))
+
+
+class TestAssignOpErrorApi(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
@@ -142,9 +166,9 @@ class TestAssignOpError_api(unittest.TestCase):
             self.assertRaises(TypeError, paddle.assign, x3)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x4 = np.array([[2.5, 2.5]], dtype='float64')
-            self.assertRaises(TypeError, fluid.layers.assign, x4)
+            self.assertRaises(TypeError, paddle.assign, x4)
             x5 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x5)
+            self.assertRaises(TypeError, paddle.assign, x5)
 
 
 if __name__ == '__main__':
