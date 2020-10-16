@@ -431,8 +431,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 2)
-            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 3)
+            dim_1 = paddle.full([1], 2, "int64")
+            dim_2 = paddle.full([1], 3, "int32")
             result_2 = paddle.tensor.random.uniform(shape=[dim_1, dim_2])
             # [[-0.9951253,   0.30757582, 0.9899647 ],
             #  [ 0.5864527,   0.6607096,  -0.8886161 ]]
