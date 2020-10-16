@@ -47,8 +47,6 @@ __global__ void GPUNLLLossForward1D_no_reduce(T* out_data, const T* x_data,
     }
     PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
                                "label should not be out of bounds");
-    // PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
-    //                "label should not be out of bounds.");
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
     out_data[i] = -x_data[i * n_classes + cur_label] * cur_weight;
   }
@@ -69,8 +67,6 @@ __global__ void GPUNLLLossForward1D_with_reduce(
     if (cur_label != ignore_index) {
       PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
                                  "label should not be out of bounds");
-      // PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
-      //                "label should not be out of bounds.");
       const auto cur_weight = weight_data ? weight_data[cur_label] : (T)1;
       sharedInputs[threadIdx.x] -=
           x_data[i * n_classes + cur_label] * cur_weight;
@@ -209,8 +205,6 @@ __global__ void GPUNLLLossForward2D_no_reduce(
     }
     PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
                                "label should not be out of bounds.");
-    // PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
-    //                "label should not be out of bounds.");
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
     out_data[index] =
         -x_data[b * sample_size + cur_label * map_size + h * in_dim3 + w] *
@@ -241,8 +235,6 @@ __global__ void GPUNLLLossForward2D_with_reduce(
     if (cur_label != ignore_index) {
       PADDLE_ENFORCE_CUDA_KERNEL(cur_label >= 0 && cur_label < n_classes,
                                  "label should not be out of bounds");
-      // PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
-      //                "label should not be out of bounds.");
       const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
       input_sum -= x_data[ioffset + i + map_nelem * cur_label] * cur_weight;
       acc_weight += cur_weight;

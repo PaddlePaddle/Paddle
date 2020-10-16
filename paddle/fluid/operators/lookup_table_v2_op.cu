@@ -36,16 +36,6 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
         id >= 0 && id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < N.");
-    // PADDLE_ENFORCE(
-    //     id >= 0,
-    //     "Variable value (input) of OP(fluid.layers.embedding) "
-    //     "expected >= 0 and < %ld, but got %ld. Please check input value.",
-    //     N, id);
-    // PADDLE_ENFORCE(
-    //     id < N,
-    //     "Variable value (input) of OP(fluid.layers.embedding) "
-    //     "expected >= 0 and < %ld, but got %ld. Please check input value.",
-    //     N, id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -75,16 +65,6 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
         id >= 0 && id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < N.");
-    // PADDLE_ENFORCE(
-    //     id >= 0,
-    //     "Variable value (input) of OP(fluid.layers.embedding) "
-    //     "expected >= 0 and < %ld, but got %ld. Please check input value.",
-    //     N, id);
-    // PADDLE_ENFORCE(
-    //     id < N,
-    //     "Variable value (input) of OP(fluid.layers.embedding) "
-    //     "expected >= 0 and < %ld, but got %ld. Please check input value.",
-    //     N, id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
