@@ -102,7 +102,7 @@ class TransposeXPUKernel : public framework::OpKernel<T> {
       auto x_cpu_data = x_cpu.mutable_data<T>(x->dims(), platform::CPUPlace());
       auto out_cpu_data =
           out_cpu.mutable_data<T>(out->dims(), platform::CPUPlace());
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*> x_cpu_data,
+      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(x_cpu_data),
                    boost::get<platform::XPUPlace>(context.GetPlace()),
                    (const void*)x_data, x->numel() * sizeof(T));
 
@@ -113,7 +113,7 @@ class TransposeXPUKernel : public framework::OpKernel<T> {
       TransCompute<platform::CPUDeviceContext, T>(ndims, *cpu_dev_ctx, x_cpu,
                                                   &out_cpu, axis);
       memory::Copy(boost::get<platform::XPUPlace>(context.GetPlace()),
-                   reinterpret_cast<void*> y_data, platform::CPUPlace(),
+                   reinterpret_cast<void*>(y_data), platform::CPUPlace(),
                    (const void*)out_cpu_data, out->numel() * sizeof(T));
       return;
     }
