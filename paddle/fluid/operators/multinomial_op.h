@@ -44,11 +44,11 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
     int64_t num_zeros = 0;
     for (int64_t j = 0; j < num_categories; j++) {
       prob_value = in_data[i * num_categories + j];
-      PADDLE_ENFORCE_GE(
-          prob_value, 0.0,
-          platform::errors::OutOfRange("The input of multinomial distribution "
-                                       "should be >= 0, but got %f",
-                                       prob_value));
+      PADDLE_ENFORCE_GE(prob_value, 0.0,
+                        platform::errors::InvalidArgument(
+                            "The input of multinomial distribution "
+                            "should be >= 0, but got %f",
+                            prob_value));
 
       probs_sum += prob_value;
       if (prob_value == 0) {
@@ -56,16 +56,17 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
       }
       cumulative_probs[j] = probs_sum;
     }
-    PADDLE_ENFORCE_GT(
-        probs_sum, 0.0,
-        platform::errors::OutOfRange("The sum of one multinomial distribution "
-                                     "probability should be > 0, but got %f",
-                                     probs_sum));
+    PADDLE_ENFORCE_GT(probs_sum, 0.0,
+                      platform::errors::InvalidArgument(
+                          "The sum of one multinomial distribution "
+                          "probability should be > 0, but got %f",
+                          probs_sum));
     PADDLE_ENFORCE_EQ(
         (replacement || (num_categories - num_zeros >= num_samples)), true,
-        platform::errors::OutOfRange("When replacement is False, number of "
-                                     "samples should be less than non-zero "
-                                     "categories"));
+        platform::errors::InvalidArgument(
+            "When replacement is False, number of "
+            "samples should be less than non-zero "
+            "categories"));
 
     for (int64_t j = 0; j < num_categories; j++) {
       cumulative_probs[j] /= probs_sum;

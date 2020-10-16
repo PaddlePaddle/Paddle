@@ -54,12 +54,12 @@ class MultinomialOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     int64_t x_rank = x_dim.size();
     PADDLE_ENFORCE_GT(x_rank, 0,
-                      platform::errors::PreconditionNotMet(
+                      platform::errors::InvalidArgument(
                           "The number of dimensions of the input probability "
                           "distribution should be > 0, but got %d.",
                           x_rank));
     PADDLE_ENFORCE_LE(x_rank, 2,
-                      platform::errors::PreconditionNotMet(
+                      platform::errors::InvalidArgument(
                           "The number of dimensions of the input probability "
                           "distribution should be <= 2, but got %d.",
                           x_rank));
@@ -72,7 +72,7 @@ class MultinomialOp : public framework::OperatorWithKernel {
     int64_t num_samples = ctx->Attrs().Get<int>("num_samples");
     PADDLE_ENFORCE_GT(
         num_samples, 0,
-        platform::errors::OutOfRange(
+        platform::errors::InvalidArgument(
             "The number of samples should be > 0, but got %d", num_samples));
     out_dims[x_rank - 1] = num_samples;
 
