@@ -168,8 +168,9 @@ class BaseTransform():
     
         .. code-block:: python
 
-            from PIL import image
-            import paddle.vision.functional as F
+            import numpy as np
+            from PIL import Image
+            import paddle.vision.transforms.functional as F
             from paddle.vision.transforms import BaseTransform
 
             def _get_image_size(img):
@@ -179,39 +180,41 @@ class BaseTransform():
                     return img.shape[:2][::-1]
                 else:
                     raise TypeError("Unexpected type {}".format(type(img)))
-            
-            class CustomRandomFlip(BaseTransform):
-                def __init__(prob=0.5, backend='pil', keys=None):
-                    super().__init(keys, backend)
 
-                def get_params(self, inputs):
-                    image = self.keys.index('image')
+            class CustomRandomFlip(BaseTransform):
+                def __init__(self, prob=0.5, keys=None, backend='pil'):
+                    super().__init__(keys, backend)
+                    self.prob = prob
+
+                def _get_params(self, inputs):
+                    image = inputs[self.keys.index('image')]
                     params = {}
                     params['flip'] = np.random.random() < self.prob
                     params['size'] = _get_image_size(image)
                     return params
 
-                def _apply_image(image):
+                def _apply_image(self, image):
                     if self.params['flip']:
-                        return F.hflip(image)
+                        return F.hflip(image, self.backend)
                     return image
 
                 # if you only want transform image, do not need to rewrite this function
-                def _apply_coords(coords):
+                def _apply_coords(self, coords):
                     if self.params['flip']:
-                        coords[:, 0] = self._w - coords[:, 0]
+                        w = self.params['size'][0]
+                        coords[:, 0] = w - coords[:, 0]
                     return coords
 
                 # if you only want transform image, do not need to rewrite this function
-                def _apply_mask(mask):
+                def _apply_mask(self, mask):
                     if self.params['flip']:
-                        return F.hflip(mask)
+                        return F.hflip(mask, self.backend)
                     return mask
-                    
+
             # create fake inputs
-            fake_img = Image.from(np.random().rand() * 255.)
+            fake_img = Image.fromarray((np.random.rand(400, 500, 3) * 255.).astype('uint8'))
             fake_boxes = np.array([[2, 3, 200, 300], [50, 60, 80, 100]])
-            fake_mask = Image.from()
+            fake_mask = fake_img.convert('L')
 
             # only transform for image:
             flip_transform = CustomRandomFlip(1.0)
@@ -219,7 +222,8 @@ class BaseTransform():
 
             # transform for image, boxes and mask
             flip_transform = CustomRandomFlip(1.0, keys=('image', 'boxes', 'mask'))
-            (converted_img, converted_boxes, converted_mask) = transform((fake_img, fake_boxes, fake_mask))
+            (converted_img, converted_boxes, converted_mask) = flip_transform((fake_img, fake_boxes, fake_mask))
+            print('converted boxes', converted_boxes)
 
     """
 
@@ -1114,11 +1118,11 @@ class RandomRotation(BaseTransform):
             when use pil backend, support method are as following:
                 'nearest': Image.NEAREST,
                 'bilinear': Image.BILINEAR,
-                'bicubic': Image.BICUBIC,
+                'bicubic': Image.BICUBIC
             when use cv2 backend, support method are as following:
                 'nearest': cv2.INTER_NEAREST,
                 'bilinear': cv2.INTER_LINEAR,
-                'bicubic': cv2.INTER_CUBIC,
+                'bicubic': cv2.INTER_CUBIC
         expand (bool|optional): Optional expansion flag. Default: False.
             If true, expands the output to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.

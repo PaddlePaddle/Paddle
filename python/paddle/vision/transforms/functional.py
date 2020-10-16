@@ -684,9 +684,17 @@ def rotate(img,
     Args:
         img (PIL.Image|np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        resample (``PIL.Image.NEAREST`` or ``PIL.Image.BILINEAR`` or ``PIL.Image.BICUBIC``, optional):
-            An optional resampling filter. See `filters`_ for more information.
-            If omitted, or if the image has mode "1" or "P", it is set to ``PIL.Image.NEAREST``.
+        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
+            according the backend.
+            when use pil backend, support method are as following:
+                'nearest': Image.NEAREST,
+                'bilinear': Image.BILINEAR,
+                'bicubic': Image.BICUBIC
+            when use cv2 backend, support method are as following:
+                'nearest': cv2.INTER_NEAREST,
+                'bilinear': cv2.INTER_LINEAR,
+                'bicubic': cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
@@ -785,15 +793,15 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
     """Normalizes a tensor or image with mean and standard deviation.
 
     Args:
-        tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
-        mean (sequence): Sequence of means for each channel.
-        std (sequence): Sequence of standard deviations for each channel.
+        img (PIL.Image|np.array|paddle.Tensor): input data to be normalized.
+        mean (list|tuple): Sequence of means for each channel.
+        std (list|tuple): Sequence of standard deviations for each channel.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
         backend (str, optional): The image resize backend type. Options are `pil`, 
                     `cv2`. Default: 'pil'. 
 
     Returns:
-        Tensor: Normalized Tensor image.
+        Tensor: Normalized mage.
     """
 
     if _is_tensor_image(img):
