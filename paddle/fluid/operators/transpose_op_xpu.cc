@@ -77,7 +77,8 @@ bool XPUSupported(int ndims, const std::vector<int>& axis) {
       }
       break;
     default:
-      PADDLE_THROW("Tensors with rank only 2, 3 and 4 are supported on XPU");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Tensors with rank only 2, 3 and 4 are supported on XPU"));
   }
   return is_supported;
 }
@@ -103,7 +104,7 @@ class TransposeXPUKernel : public framework::OpKernel<T> {
       auto out_cpu_data =
           out_cpu.mutable_data<T>(out->dims(), platform::CPUPlace());
       memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(x_cpu_data),
-                   boost::get<platform::XPUPlace>(context.GetPlace()),
+                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
                    (const void*)x_data, x->numel() * sizeof(T));
 
       const platform::CPUDeviceContext* cpu_dev_ctx =
@@ -112,7 +113,7 @@ class TransposeXPUKernel : public framework::OpKernel<T> {
                   platform::CPUPlace()));
       TransCompute<platform::CPUDeviceContext, T>(ndims, *cpu_dev_ctx, x_cpu,
                                                   &out_cpu, axis);
-      memory::Copy(boost::get<platform::XPUPlace>(context.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
                    reinterpret_cast<void*>(y_data), platform::CPUPlace(),
                    (const void*)out_cpu_data, out->numel() * sizeof(T));
       return;
@@ -151,7 +152,8 @@ class TransposeGradXPUKernel : public framework::OpKernel<T> {
 
     int ndims = axis.size();
     if (!XPUSupported(ndims, reversed_axis)) {
-      PADDLE_THROW("XPU does not support the permute");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("XPU does not support the permute"));
     }
 
     std::vector<int> out_shape_host(ndims, 0);
