@@ -234,6 +234,12 @@ class InferencePassTest(unittest.TestCase):
                 self._get_analysis_config(
                     use_gpu=use_gpu, use_trt=self.enable_trt))
 
+            if self.trt_parameters.use_static:
+                #deserialize
+                tensorrt_outputs = self._get_analysis_outputs(
+                    self._get_analysis_config(
+                        use_gpu=use_gpu, use_trt=self.enable_trt))
+
             self.assertTrue(
                 len(tensorrt_outputs) == len(outs),
                 "The number of outputs is different between GPU and TensorRT. ")

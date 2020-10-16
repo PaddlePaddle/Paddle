@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -389,8 +391,25 @@ class TensorRTSubgraphPassGeluFp16Test(TensorRTSubgraphPassActivationTest):
         self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Half, False, False)
 
+
+class TensorRTSubgraphPassGeluFp16SerializeTest(
+        TensorRTSubgraphPassActivationTest):
+    def setUpTensorRTParam(self):
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
+
     def append_act(self, x):
         return fluid.layers.gelu(x)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            if os.path.exists(self.path + "_opt_cache"):
+                shutil.rmtree(self.path + "_opt_cache")
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassGeluFp16DynamicTest(
@@ -406,6 +425,30 @@ class TensorRTSubgraphPassGeluFp16DynamicTest(
 
     def append_act(self, x):
         return fluid.layers.gelu(x)
+
+
+class TensorRTSubgraphPassGeluFp16DynamicSerializeTest(
+        TensorRTSubgraphPassActivationTest):
+    def setUpTensorRTParam(self):
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
+        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
+            {
+                'data': [1, 6, 8, 8]
+            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+
+    def append_act(self, x):
+        return fluid.layers.gelu(x)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            if os.path.exists(self.path + "_opt_cache"):
+                shutil.rmtree(self.path + "_opt_cache")
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassConcatTest(InferencePassTest):
