@@ -122,12 +122,18 @@ class StrategyCompiler(StrategyCompilerBase):
 
     def __init__(self):
         super(StrategyCompiler, self).__init__()
-        self._meta_optimizer = None
-        self._graph_optimizer = None
+        self._meta_optimizers = []
+        self._graph_optimizers = []
         self._valid_optimizer_list = None
         self._user_defined_strategy = None
         self._meta_optimizer_candidates = []
         self._graph_optimizer_candidates = []
+
+    def _get_applied_meta_list(self):
+        return [type(opt).__name__ for opt in self._meta_optimizers]
+
+    def _get_applied_graph_list(self):
+        return [type(opt).__name__ for opt in self._graph_optimizers]
 
     def _get_valid_strategy(self, dist_strategy, can_not_apply_optimizer_list):
         import copy
@@ -178,8 +184,8 @@ class StrategyCompiler(StrategyCompilerBase):
             # and graph_optimizer, the corresponding distributed strategy
             # should be updated.
 
-            self._meta_optimizers = meta_optimizers
-            self._graph_optimizers = graph_optimizers
+            self._meta_optimizers = [] if meta_optimizers is None else meta_optimizers
+            self._graph_optimizers = [] if graph_optimizers is None else graph_optimizers
 
             return_meta = None if meta_optimizers == None else meta_optimizers[
                 0]
