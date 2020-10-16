@@ -18,14 +18,21 @@ import tempfile
 import cv2
 import shutil
 import numpy as np
+from PIL import Image
 
+import paddle
 from paddle.vision.datasets import DatasetFolder
 from paddle.vision.transforms import transforms
 import paddle.vision.transforms.functional as F
 
 
-class TestTransforms(unittest.TestCase):
+def cv2_loader(path):
+    return cv2.imread(path)
+
+
+class TestTransformsCV2(unittest.TestCase):
     def setUp(self):
+        self.backend = self.set_backend()
         self.data_dir = tempfile.mkdtemp()
         for i in range(2):
             sub_dir = os.path.join(self.data_dir, 'class_' + str(i))
@@ -40,146 +47,207 @@ class TestTransforms(unittest.TestCase):
                         (400, 300, 3)) * 255).astype('uint8')
                 cv2.imwrite(os.path.join(sub_dir, str(j) + '.jpg'), fake_img)
 
+    def set_backend(self):
+        return 'cv2'
+
+    def create_image(self, shape):
+        if self.backend == 'cv2':
+            return (np.random.rand(*shape) * 255).astype('uint8')
+        elif self.backend == 'pil':
+            return Image.fromarray((np.random.rand(*shape) * 255).astype(
+                'uint8'))
+
+    def get_shape(self, img):
+        if self.backend == 'pil':
+            return np.array(img).shape
+
+        return img.shape
+
     def tearDown(self):
         shutil.rmtree(self.data_dir)
 
     def do_transform(self, trans):
-        dataset_folder = DatasetFolder(self.data_dir, transform=trans)
+        if self.backend == 'cv2':
+            loader = cv2_loader
+        else:
+            loader = None
+
+        dataset_folder = DatasetFolder(
+            self.data_dir, loader=loader, transform=trans)
 
         for _ in dataset_folder:
             pass
 
     def test_trans_all(self):
         normalize = transforms.Normalize(
-            mean=[123.675, 116.28, 103.53], std=[58.395, 57.120, 57.375])
+            mean=[123.675, 116.28, 103.53],
+            std=[58.395, 57.120, 57.375],
+            backend=self.backend)
         trans = transforms.Compose([
-            transforms.RandomResizedCrop(224), transforms.GaussianNoise(),
-            transforms.ColorJitter(
-                brightness=0.4, contrast=0.4, saturation=0.4,
-                hue=0.4), transforms.RandomHorizontalFlip(),
-            transforms.Permute(mode='CHW'), normalize
+            transforms.RandomResizedCrop(
+                224, backend=self.backend), transforms.ColorJitter(
+                    brightness=0.4,
+                    contrast=0.4,
+                    saturation=0.4,
+                    hue=0.4,
+                    backend=self.backend),
+            transforms.RandomHorizontalFlip(backend=self.backend),
+            transforms.Transpose(), normalize
         ])
 
         self.do_transform(trans)
 
     def test_normalize(self):
-        normalize = transforms.Normalize(mean=0.5, std=0.5)
-        trans = transforms.Compose([transforms.Permute(mode='CHW'), normalize])
+        normalize = transforms.Normalize(
+            mean=0.5, std=0.5, backend=self.backend)
+        trans = transforms.Compose([transforms.Transpose(), normalize])
         self.do_transform(trans)
 
     def test_trans_resize(self):
         trans = transforms.Compose([
-            transforms.Resize(300, [0, 1]),
-            transforms.RandomResizedCrop((280, 280)),
-            transforms.Resize(280, [0, 1]),
-            transforms.Resize((256, 200)),
-            transforms.Resize((180, 160)),
-            transforms.CenterCrop(128),
-            transforms.CenterCrop((128, 128)),
-        ])
-        self.do_transform(trans)
-
-    def test_trans_centerCrop(self):
-        trans = transforms.Compose([
-            transforms.CenterCropResize(224),
-            transforms.CenterCropResize(128, 160),
+            transforms.Resize(
+                300, backend=self.backend),
+            transforms.RandomResizedCrop(
+                (280, 280), backend=self.backend),
+            transforms.Resize(
+                280, backend=self.backend),
+            transforms.Resize(
+                (256, 200), backend=self.backend),
+            transforms.Resize(
+                (180, 160), backend=self.backend),
+            transforms.CenterCrop(
+                128, backend=self.backend),
+            transforms.CenterCrop(
+                (128, 128), backend=self.backend),
         ])
         self.do_transform(trans)
 
     def test_flip(self):
         trans = transforms.Compose([
-            transforms.RandomHorizontalFlip(1.0),
-            transforms.RandomHorizontalFlip(0.0),
-            transforms.RandomVerticalFlip(0.0),
-            transforms.RandomVerticalFlip(1.0),
+            transforms.RandomHorizontalFlip(
+                1.0, backend=self.backend),
+            transforms.RandomHorizontalFlip(
+                0.0, backend=self.backend),
+            transforms.RandomVerticalFlip(
+                0.0, backend=self.backend),
+            transforms.RandomVerticalFlip(
+                1.0, backend=self.backend),
         ])
         self.do_transform(trans)
 
     def test_color_jitter(self):
-        trans = transforms.BatchCompose([
-            transforms.BrightnessTransform(0.0),
-            transforms.HueTransform(0.0),
-            transforms.SaturationTransform(0.0),
-            transforms.ContrastTransform(0.0),
+        trans = transforms.Compose([
+            transforms.BrightnessTransform(
+                0.0, backend=self.backend),
+            transforms.HueTransform(
+                0.0, backend=self.backend),
+            transforms.SaturationTransform(
+                0.0, backend=self.backend),
+            transforms.ContrastTransform(
+                0.0, backend=self.backend),
         ])
         self.do_transform(trans)
 
     def test_rotate(self):
         trans = transforms.Compose([
-            transforms.RandomRotate(90),
-            transforms.RandomRotate([-10, 10]),
-            transforms.RandomRotate(
-                45, expand=True),
-            transforms.RandomRotate(
-                10, expand=True, center=(60, 80)),
+            transforms.RandomRotation(
+                90, backend=self.backend),
+            transforms.RandomRotation(
+                [-10, 10], backend=self.backend),
+            transforms.RandomRotation(
+                45, expand=True, backend=self.backend),
+            transforms.RandomRotation(
+                10, expand=True, center=(60, 80), backend=self.backend),
         ])
         self.do_transform(trans)
 
     def test_pad(self):
-        trans = transforms.Compose([transforms.Pad(2)])
+        trans = transforms.Compose([transforms.Pad(2, backend=self.backend)])
         self.do_transform(trans)
 
-        fake_img = np.random.rand(200, 150, 3).astype('float32')
-        trans_pad = transforms.Pad(10)
+        fake_img = self.create_image((200, 150, 3))
+        trans_pad = transforms.Pad(10, backend=self.backend)
         fake_img_padded = trans_pad(fake_img)
-        np.testing.assert_equal(fake_img_padded.shape, (220, 170, 3))
-        trans_pad1 = transforms.Pad([1, 2])
-        trans_pad2 = transforms.Pad([1, 2, 3, 4])
+        np.testing.assert_equal(self.get_shape(fake_img_padded), (220, 170, 3))
+        trans_pad1 = transforms.Pad([1, 2], backend=self.backend)
+        trans_pad2 = transforms.Pad([1, 2, 3, 4], backend=self.backend)
         img = trans_pad1(fake_img)
         img = trans_pad2(img)
 
-    def test_erase(self):
-        trans = transforms.Compose(
-            [transforms.RandomErasing(), transforms.RandomErasing(value=0.0)])
-        self.do_transform(trans)
-
     def test_random_crop(self):
         trans = transforms.Compose([
-            transforms.RandomCrop(200),
-            transforms.RandomCrop((140, 160)),
+            transforms.RandomCrop(
+                200, backend=self.backend),
+            transforms.RandomCrop(
+                (140, 160), backend=self.backend),
         ])
         self.do_transform(trans)
 
-        trans_random_crop1 = transforms.RandomCrop(224)
-        trans_random_crop2 = transforms.RandomCrop((140, 160))
+        trans_random_crop1 = transforms.RandomCrop(224, backend=self.backend)
+        trans_random_crop2 = transforms.RandomCrop(
+            (140, 160), backend=self.backend)
 
-        fake_img = np.random.rand(500, 400, 3).astype('float32')
+        fake_img = self.create_image((500, 400, 3))
         fake_img_crop1 = trans_random_crop1(fake_img)
         fake_img_crop2 = trans_random_crop2(fake_img_crop1)
 
-        np.testing.assert_equal(fake_img_crop1.shape, (224, 224, 3))
+        np.testing.assert_equal(self.get_shape(fake_img_crop1), (224, 224, 3))
 
-        np.testing.assert_equal(fake_img_crop2.shape, (140, 160, 3))
+        np.testing.assert_equal(self.get_shape(fake_img_crop2), (140, 160, 3))
 
-        trans_random_crop_same = transforms.RandomCrop((140, 160))
+        trans_random_crop_same = transforms.RandomCrop(
+            (140, 160), backend=self.backend)
         img = trans_random_crop_same(fake_img_crop2)
 
-        trans_random_crop_bigger = transforms.RandomCrop((180, 200))
+        trans_random_crop_bigger = transforms.RandomCrop(
+            (180, 200), pad_if_needed=True, backend=self.backend)
         img = trans_random_crop_bigger(img)
 
-        trans_random_crop_pad = transforms.RandomCrop((224, 256), 2, True)
+        trans_random_crop_pad = transforms.RandomCrop(
+            (224, 256), 2, True, backend=self.backend)
         img = trans_random_crop_pad(img)
 
     def test_grayscale(self):
-        trans = transforms.Compose([transforms.Grayscale()])
+        trans = transforms.Compose([transforms.Grayscale(backend=self.backend)])
         self.do_transform(trans)
 
-        trans_gray = transforms.Grayscale()
-        fake_img = np.random.rand(500, 400, 3).astype('float32')
+        trans_gray = transforms.Grayscale(backend=self.backend)
+        fake_img = self.create_image((500, 400, 3))
         fake_img_gray = trans_gray(fake_img)
 
-        np.testing.assert_equal(len(fake_img_gray.shape), 3)
-        np.testing.assert_equal(fake_img_gray.shape[0], 500)
-        np.testing.assert_equal(fake_img_gray.shape[1], 400)
+        np.testing.assert_equal(self.get_shape(fake_img_gray)[0], 500)
+        np.testing.assert_equal(self.get_shape(fake_img_gray)[1], 400)
 
-        trans_gray3 = transforms.Grayscale(3)
-        fake_img = np.random.rand(500, 400, 3).astype('float32')
+        trans_gray3 = transforms.Grayscale(3, backend=self.backend)
+        fake_img = self.create_image((500, 400, 3))
         fake_img_gray = trans_gray3(fake_img)
 
-    def test_exception(self):
-        trans = transforms.Compose([transforms.Resize(-1)])
+    def test_tranpose(self):
+        trans = transforms.Compose([transforms.Transpose()])
+        self.do_transform(trans)
 
-        trans_batch = transforms.BatchCompose([transforms.Resize(-1)])
+        fake_img = self.create_image((50, 100, 3))
+        converted_img = trans(fake_img)
+
+        np.testing.assert_equal(self.get_shape(converted_img), (3, 50, 100))
+
+    def test_to_tensor(self):
+        trans = transforms.Compose([transforms.ToTensor()])
+        fake_img = self.create_image((50, 100, 3))
+
+        tensor = trans(fake_img)
+
+        assert isinstance(tensor, paddle.Tensor)
+        np.testing.assert_equal(tensor.shape, (3, 50, 100))
+
+    def test_exception(self):
+        trans = transforms.Compose(
+            [transforms.Resize(
+                -1, backend=self.backend)])
+
+        trans_batch = transforms.Compose(
+            [transforms.Resize(
+                -1, backend=self.backend)])
 
         with self.assertRaises(Exception):
             self.do_transform(trans)
@@ -188,50 +256,61 @@ class TestTransforms(unittest.TestCase):
             self.do_transform(trans_batch)
 
         with self.assertRaises(ValueError):
-            transforms.ContrastTransform(-1.0)
+            transforms.ContrastTransform(-1.0, backend=self.backend)
 
         with self.assertRaises(ValueError):
-            transforms.SaturationTransform(-1.0),
+            transforms.SaturationTransform(-1.0, backend=self.backend),
 
         with self.assertRaises(ValueError):
-            transforms.HueTransform(-1.0)
+            transforms.HueTransform(-1.0, backend=self.backend)
 
         with self.assertRaises(ValueError):
-            transforms.BrightnessTransform(-1.0)
+            transforms.BrightnessTransform(-1.0, backend=self.backend)
 
         with self.assertRaises(ValueError):
-            transforms.Pad([1.0, 2.0, 3.0])
+            transforms.Pad([1.0, 2.0, 3.0], backend=self.backend)
 
         with self.assertRaises(TypeError):
-            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            fake_img = self.create_image((100, 120, 3))
             F.pad(fake_img, '1')
 
         with self.assertRaises(TypeError):
-            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            fake_img = self.create_image((100, 120, 3))
             F.pad(fake_img, 1, {})
 
         with self.assertRaises(TypeError):
-            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            fake_img = self.create_image((100, 120, 3))
             F.pad(fake_img, 1, padding_mode=-1)
 
         with self.assertRaises(ValueError):
-            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            fake_img = self.create_image((100, 120, 3))
             F.pad(fake_img, [1.0, 2.0, 3.0])
 
         with self.assertRaises(ValueError):
-            transforms.RandomRotate(-2)
+            transforms.RandomRotation(-2, backend=self.backend)
 
         with self.assertRaises(ValueError):
-            transforms.RandomRotate([1, 2, 3])
+            transforms.RandomRotation([1, 2, 3], backend=self.backend)
 
         with self.assertRaises(ValueError):
-            trans_gray = transforms.Grayscale(5)
-            fake_img = np.random.rand(100, 120, 3).astype('float32')
+            trans_gray = transforms.Grayscale(5, backend=self.backend)
+            fake_img = self.create_image((100, 120, 3))
             trans_gray(fake_img)
 
     def test_info(self):
-        str(transforms.Compose([transforms.Resize((224, 224))]))
-        str(transforms.BatchCompose([transforms.Resize((224, 224))]))
+        str(
+            transforms.Compose(
+                [transforms.Resize(
+                    (224, 224), backend=self.backend)]))
+        str(
+            transforms.Compose(
+                [transforms.Resize(
+                    (224, 224), backend=self.backend)]))
+
+
+class TestTransformsPIL(TestTransformsCV2):
+    def set_backend(self):
+        return 'pil'
 
 
 if __name__ == '__main__':

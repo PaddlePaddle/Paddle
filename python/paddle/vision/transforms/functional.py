@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+
 import sys
-import collections
-import random
 import math
-import functools
+from PIL import Image, ImageOps, ImageEnhance
 
-import numbers
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
 import numpy as np
-
-from paddle.utils import try_import
+from numpy import sin, cos, tan
+import numbers
+import collections
+import warnings
+import paddle
 
 if sys.version_info < (3, 3):
     Sequence = collections.Sequence
@@ -30,150 +37,256 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-__all__ = ['flip', 'resize', 'pad', 'rotate', 'to_grayscale']
+__all__ = [
+    'to_tensor', 'hflip', 'vflip', 'resize', 'pad', 'rotate', 'to_grayscale',
+    'crop', 'center_crop', 'adjust_brightness', 'adjust_contrast', 'adjust_hue',
+    'to_grayscale', 'normalize'
+]
+
+_pil_interp_from_str = {
+    'nearest': Image.NEAREST,
+    'bilinear': Image.BILINEAR,
+    'bicubic': Image.BICUBIC,
+    'box': Image.BOX,
+    'lanczos': Image.LANCZOS,
+    'hamming': Image.HAMMING
+}
+
+if cv2 is not None:
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
+
+    _cv2_pad_from_str = {
+        'constant': cv2.BORDER_CONSTANT,
+        'edge': cv2.BORDER_REPLICATE,
+        'reflect': cv2.BORDER_REFLECT_101,
+        'symmetric': cv2.BORDER_REFLECT
+    }
 
 
-def keepdims(func):
-    """Keep the dimension of input images unchanged"""
-
-    @functools.wraps(func)
-    def wrapper(image, *args, **kwargs):
-        if len(image.shape) != 3:
-            raise ValueError("Expect image have 3 dims, but got {} dims".format(
-                len(image.shape)))
-        ret = func(image, *args, **kwargs)
-        if len(ret.shape) == 2:
-            ret = ret[:, :, np.newaxis]
-        return ret
-
-    return wrapper
+def _is_pil_image(img):
+    return isinstance(img, Image.Image)
 
 
-@keepdims
-def flip(image, code):
-    """
-    Accordding to the code (the type of flip), flip the input image
-
-    Args:
-        image (np.ndarray): Input image, with (H, W, C) shape
-        code (int): Code that indicates the type of flip.
-            -1 : Flip horizontally and vertically
-            0 : Flip vertically
-            1 : Flip horizontally
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from paddle.vision.transforms import functional as F
-
-            fake_img = np.random.rand(224, 224, 3)
-
-            # flip horizontally and vertically
-            F.flip(fake_img, -1)
-
-            # flip vertically
-            F.flip(fake_img, 0)
-
-            # flip horizontally
-            F.flip(fake_img, 1)
-    """
-    cv2 = try_import('cv2')
-    return cv2.flip(image, flipCode=code)
+def _is_tensor_image(img):
+    return isinstance(img, paddle.Tensor)
 
 
-@keepdims
-def resize(img, size, interpolation=1):
-    """
-    resize the input data to given size
+def _is_numpy_image(img):
+    return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
+
+
+def to_tensor(pic, data_format='CHW'):
+    """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
+
+    See ``ToTensor`` for more details.
 
     Args:
-        input (np.ndarray): Input data, could be image or masks, with (H, W, C) shape
+        pic (PIL.Image|np.ndarray): Image to be converted to tensor.
+
+    Returns:
+        Tensor: Converted image.
+    """
+    if not (_is_pil_image(pic) or _is_numpy_image(pic)):
+        raise TypeError('pic should be PIL Image or ndarray. Got {}'.format(
+            type(pic)))
+
+    if not data_format in ['CHW', 'HWC']:
+        raise ValueError('data_format should be CHW or HWC. Got {}'.format(
+            data_format))
+
+    if isinstance(pic, np.ndarray):
+        # numpy array
+        if pic.ndim == 2:
+            pic = pic[:, :, None]
+
+        if data_format == 'CHW':
+            img = paddle.to_tensor(pic.transpose((2, 0, 1)))
+        else:
+            img = paddle.to_tensor(pic)
+
+        if paddle.fluid.data_feeder.convert_dtype(img.dtype) == 'uint8':
+            return paddle.cast(img, np.float32) / 255.
+        else:
+            return img
+
+    # PIL Image
+    if pic.mode == 'I':
+        img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
+    elif pic.mode == 'I;16':
+        img = paddle.to_tensor(np.array(pic, np.int16, copy=False))
+    elif pic.mode == 'F':
+        img = paddle.to_tensor(np.array(pic, np.float32, copy=False))
+    elif pic.mode == '1':
+        img = 255 * paddle.to_tensor(np.array(pic, np.uint8, copy=False))
+    else:
+        img = paddle.to_tensor(np.array(pic, copy=False))
+
+    if pic.mode == 'YCbCr':
+        nchannel = 3
+    elif pic.mode == 'I;16':
+        nchannel = 1
+    else:
+        nchannel = len(pic.mode)
+
+    if paddle.fluid.data_feeder.convert_dtype(img.dtype) == 'uint8':
+        img = paddle.cast(img, np.float32) / 255.
+
+    img = img.reshape([pic.size[1], pic.size[0], nchannel])
+
+    if data_format == 'CHW':
+        img = img.transpose([2, 0, 1])
+
+    return img
+
+
+def resize(img, size, interpolation='bilinear', backend='pil'):
+    """
+    Resizes the image to given size
+
+    Args:
+        input (PIL.Image|np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int, optional): Interpolation method.
-            0 : cv2.INTER_NEAREST 
-            1 : cv2.INTER_LINEAR 
-            2 : cv2.INTER_CUBIC 
-            3 : cv2.INTER_AREA 
-            4 : cv2.INTER_LANCZOS4 
-            5 : cv2.INTER_LINEAR_EXACT
-            7 : cv2.INTER_MAX 
-            8 : cv2.WARP_FILL_OUTLIERS 
-            16: cv2.WARP_INVERSE_MAP 
+        interpolation (int|str, optional): Interpolation method.
+            when use pil backend, support method are as following:
+                'nearest': Image.NEAREST,
+                'bilinear': Image.BILINEAR,
+                'bicubic': Image.BICUBIC,
+                'box': Image.BOX,
+                'lanczos': Image.LANCZOS,
+                'hamming': Image.HAMMING
+            when use cv2 backend, support method are as following:
+                'nearest': cv2.INTER_NEAREST,
+                'bilinear': cv2.INTER_LINEAR,
+                'area': cv2.INTER_AREA,
+                'bicubic': cv2.INTER_CUBIC,
+                'lanczos': cv2.INTER_LANCZOS4
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
 
     Examples:
         .. code-block:: python
 
             import numpy as np
+            from PIL import Image
             from paddle.vision.transforms import functional as F
 
             fake_img = np.random.rand(256, 256, 3)
 
+            fake_img = Image.fromarray(fake_img)
+            
             F.resize(fake_img, 224)
 
             F.resize(fake_img, (200, 150))
     """
-    cv2 = try_import('cv2')
-    if isinstance(interpolation, Sequence):
-        interpolation = random.choice(interpolation)
 
-    if isinstance(size, int):
-        h, w = img.shape[:2]
-        if (w <= h and w == size) or (h <= w and h == size):
-            return img
-        if w < h:
-            ow = size
-            oh = int(size * h / w)
-            return cv2.resize(img, (ow, oh), interpolation=interpolation)
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if not (isinstance(size, int) or
+            (isinstance(size, Iterable) and len(size) == 2)):
+        raise TypeError('Got inappropriate size arg: {}'.format(size))
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError(
+                'img should be PIL Image when backend is pil. Got {}'.format(
+                    type(img)))
+
+        if isinstance(size, int):
+            w, h = img.size
+            if (w <= h and w == size) or (h <= w and h == size):
+                return img
+            if w < h:
+                ow = size
+                oh = int(size * h / w)
+                return img.resize((ow, oh), _pil_interp_from_str[interpolation])
+            else:
+                oh = size
+                ow = int(size * w / h)
+                return img.resize((ow, oh), _pil_interp_from_str[interpolation])
         else:
-            oh = size
-            ow = int(size * w / h)
-            return cv2.resize(img, (ow, oh), interpolation=interpolation)
+            return img.resize(size[::-1], _pil_interp_from_str[interpolation])
     else:
-        return cv2.resize(img, size[::-1], interpolation=interpolation)
+        if not _is_numpy_image(img):
+            raise TypeError(
+                'img should be numpy image when backend is cv2. Got {}'.format(
+                    type(img)))
+
+        h, w = img.shape[:2]
+
+        if isinstance(size, int):
+            if (w <= h and w == size) or (h <= w and h == size):
+                return img
+            if w < h:
+                ow = size
+                oh = int(size * h / w)
+                output = cv2.resize(
+                    img,
+                    dsize=(ow, oh),
+                    interpolation=_cv2_interp_from_str[interpolation])
+            else:
+                oh = size
+                ow = int(size * w / h)
+                output = cv2.resize(
+                    img,
+                    dsize=(ow, oh),
+                    interpolation=_cv2_interp_from_str[interpolation])
+        else:
+            output = cv2.resize(
+                img,
+                dsize=(size[1], size[0]),
+                interpolation=_cv2_interp_from_str[interpolation])
+        if img.shape[2] == 1:
+            return output[:, :, np.newaxis]
+        else:
+            return output
 
 
-@keepdims
-def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
-    """Pads the given CV Image on all sides with speficified padding mode and fill value.
+def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
+    """
+    Pads the given PIL.Image or numpy.array on all sides with specified padding mode and fill value.
 
     Args:
-        img (np.ndarray): Image to be padded.
-        padding (int|tuple): Padding on each border. If a single int is provided this
+        img (PIL.Image|np.array): Image to be padded.
+        padding (int|list|tuple): Padding on each border. If a single int is provided this
             is used to pad all borders. If tuple of length 2 is provided this is the padding
             on left/right and top/bottom respectively. If a tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
-        fill (int|tuple): Pixel fill value for constant fill. Default is 0. If a tuple of
+        fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant
-        padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
-            ``constant`` means padding with a constant value, this value is specified with fill. 
-            ``edge`` means padding with the last value at the edge of the image. 
-            ``reflect`` means padding with reflection of image (without repeating the last value on the edge) 
-            padding ``[1, 2, 3, 4]`` with 2 elements on both sides in reflect mode 
-            will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``.
-            ``symmetric`` menas pads with reflection of image (repeating the last value on the edge)
-            padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
-            will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
+            This value is only used when the padding_mode is constant. Default: 0. 
+        padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
+            - constant: pads with a constant value, this value is specified with fill
+
+            - edge: pads with the last value on the edge of the image
+
+            - reflect: pads with reflection of image (without repeating the last value on the edge)
+
+                       padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
+                       will result in [3, 2, 1, 2, 3, 4, 3, 2]
+
+            - symmetric: pads with reflection of image (repeating the last value on the edge)
+
+                         padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
+                         will result in [2, 1, 1, 2, 3, 4, 4, 3]
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
     Returns:
-        numpy ndarray: Padded image.
-
-    Examples:
-    
-        .. code-block:: python
-
-            import numpy as np
-
-            from paddle.vision.transforms.functional import pad
-
-            fake_img = np.random.rand(500, 500, 3).astype('float32')
-
-            fake_img = pad(fake_img, 2)
-            print(fake_img.shape)
+        PIL.Image or np.array: Padded image.
 
     """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
         raise TypeError('Got inappropriate padding arg')
@@ -182,162 +295,528 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     if not isinstance(padding_mode, str):
         raise TypeError('Got inappropriate padding_mode arg')
 
-    if isinstance(padding, collections.Sequence) and len(padding) not in [2, 4]:
+    if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
         raise ValueError(
             "Padding must be an int or a 2, or 4 element tuple, not a " +
             "{} element tuple".format(len(padding)))
 
     assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
-        'Expected padding mode be either constant, edge, reflect or symmetric, but got {}'.format(padding_mode)
-
-    cv2 = try_import('cv2')
-
-    PAD_MOD = {
-        'constant': cv2.BORDER_CONSTANT,
-        'edge': cv2.BORDER_REPLICATE,
-        'reflect': cv2.BORDER_DEFAULT,
-        'symmetric': cv2.BORDER_REFLECT
-    }
+        'Padding mode should be either constant, edge, reflect or symmetric'
 
     if isinstance(padding, int):
         pad_left = pad_right = pad_top = pad_bottom = padding
-    if isinstance(padding, collections.Sequence) and len(padding) == 2:
+    if isinstance(padding, Sequence) and len(padding) == 2:
         pad_left = pad_right = padding[0]
         pad_top = pad_bottom = padding[1]
-    if isinstance(padding, collections.Sequence) and len(padding) == 4:
-        pad_left, pad_top, pad_right, pad_bottom = padding
+    if isinstance(padding, Sequence) and len(padding) == 4:
+        pad_left = padding[0]
+        pad_top = padding[1]
+        pad_right = padding[2]
+        pad_bottom = padding[3]
 
-    if isinstance(fill, numbers.Number):
-        fill = (fill, ) * (2 * len(img.shape) - 3)
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
 
-    if padding_mode == 'constant':
-        assert (len(fill) == 3 and len(img.shape) == 3) or (len(fill) == 1 and len(img.shape) == 2), \
-            'channel of image is {} but length of fill is {}'.format(img.shape[-1], len(fill))
+        if padding_mode == 'constant':
+            if img.mode == 'P':
+                palette = img.getpalette()
+                image = ImageOps.expand(img, border=padding, fill=fill)
+                image.putpalette(palette)
+                return image
 
-    img = cv2.copyMakeBorder(
-        src=img,
-        top=pad_top,
-        bottom=pad_bottom,
-        left=pad_left,
-        right=pad_right,
-        borderType=PAD_MOD[padding_mode],
-        value=fill)
+            return ImageOps.expand(img, border=padding, fill=fill)
+        else:
+            if img.mode == 'P':
+                palette = img.getpalette()
+                img = np.asarray(img)
+                img = np.pad(img, ((pad_top, pad_bottom),
+                                   (pad_left, pad_right)), padding_mode)
+                img = Image.fromarray(img)
+                img.putpalette(palette)
+                return img
 
-    return img
+            img = np.asarray(img)
+            # RGB image
+            if len(img.shape) == 3:
+                img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right),
+                                   (0, 0)), padding_mode)
+            # Grayscale image
+            if len(img.shape) == 2:
+                img = np.pad(img, ((pad_top, pad_bottom),
+                                   (pad_left, pad_right)), padding_mode)
+
+            return Image.fromarray(img)
+    elif backend == 'cv2':
+        if img.shape[2] == 1:
+            return cv2.copyMakeBorder(
+                img,
+                top=pad_top,
+                bottom=pad_bottom,
+                left=pad_left,
+                right=pad_right,
+                borderType=_cv2_pad_from_str[padding_mode],
+                value=fill)[:, :, np.newaxis]
+        else:
+            return cv2.copyMakeBorder(
+                img,
+                top=pad_top,
+                bottom=pad_bottom,
+                left=pad_left,
+                right=pad_right,
+                borderType=_cv2_pad_from_str[padding_mode],
+                value=fill)
 
 
-@keepdims
-def rotate(img, angle, interpolation=1, expand=False, center=None):
-    """Rotates the image by angle.
+def crop(img, top, left, height, width, backend='pil'):
+    """Crops the given PIL Image.
+    Args:
+        img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left 
+            corner of the image.
+        top (int): Vertical component of the top left corner of the crop box.
+        left (int): Horizontal component of the top left corner of the crop box.
+        height (int): Height of the crop box.
+        width (int): Width of the crop box.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+    Returns:
+        PIL.Image or np.array: Cropped image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError(
+                'img should be PIL Image when use backend pil. Got {}'.format(
+                    type(img)))
+
+        return img.crop((left, top, left + width, top + height))
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError(
+                'img should be numpy image when use backend cv2. Got {}'.format(
+                    type(img)))
+
+        return img[top:top + height, left:left + width, :]
+
+
+def center_crop(img, output_size, backend='pil'):
+    """Crops the given PIL Image and resize it to desired size.
+
+        Args:
+            img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
+            output_size (sequence or int): (height, width) of the crop box. If int,
+                it is used for both directions
+            backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+        Returns:
+            PIL.Image or np.array: Cropped image.
+        """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if isinstance(output_size, numbers.Number):
+        output_size = (int(output_size), int(output_size))
+
+    if backend == 'pil':
+        image_width, image_height = img.size
+        crop_height, crop_width = output_size
+        crop_top = int(round((image_height - crop_height) / 2.))
+        crop_left = int(round((image_width - crop_width) / 2.))
+        return crop(
+            img, crop_top, crop_left, crop_height, crop_width, backend='pil')
+    elif backend == 'cv2':
+        h, w = img.shape[0:2]
+        th, tw = output_size
+        i = int(round((h - th) / 2.))
+        j = int(round((w - tw) / 2.))
+        return crop(img, i, j, th, tw, backend='cv2')
+
+
+def hflip(img, backend='pil'):
+    """Horizontally flips the given PIL Image or np.array.
 
     Args:
-        img (numpy.ndarray): Image to be rotated.
-        angle (float|int): In degrees clockwise order.
-        interpolation (int, optional): Interpolation method. Default: 1.
-            0 : cv2.INTER_NEAREST 
-            1 : cv2.INTER_LINEAR 
-            2 : cv2.INTER_CUBIC 
-            3 : cv2.INTER_AREA 
-            4 : cv2.INTER_LANCZOS4 
-            5 : cv2.INTER_LINEAR_EXACT
-            7 : cv2.INTER_MAX 
-            8 : cv2.WARP_FILL_OUTLIERS 
-            16: cv2.WARP_INVERSE_MAP 
-        expand (bool|optional): Optional expansion flag.
+        img (PIL.Image|np.array): Image to be flipped.
+
+    Returns:
+        PIL.Image or np.array:  Horizontall flipped image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        return img.transpose(Image.FLIP_LEFT_RIGHT)
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy image. Got {}'.format(
+                type(img)))
+
+        return cv2.flip(img, 1)
+
+
+def vflip(img, backend=None):
+    """Vertically flips the given PIL Image or np.array.
+
+    Args:
+        img (PIL.Image|np.array): Image to be flipped.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+    Returns:
+        PIL.Image or np.array:  Vertically flipped image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        return img.transpose(Image.FLIP_TOP_BOTTOM)
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy Image. Got {}'.format(
+                type(img)))
+        if img.shape[2] == 1:
+            return cv2.flip(img, 0)[:, :, np.newaxis]
+        else:
+            return cv2.flip(img, 0)
+
+
+def adjust_brightness(img, brightness_factor, backend='pil'):
+    """Adjusts brightness of an Image.
+
+    Args:
+        img (PIL.Image|np.array): PIL Image to be adjusted.
+        brightness_factor (float):  How much to adjust the brightness. Can be
+            any non negative number. 0 gives a black image, 1 gives the
+            original image while 2 increases the brightness by a factor of 2.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+    Returns:
+        PIL.Image or np.array: Brightness adjusted image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        enhancer = ImageEnhance.Brightness(img)
+        img = enhancer.enhance(brightness_factor)
+        return img
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy Image. Got {}'.format(
+                type(img)))
+        table = np.array([i * brightness_factor
+                          for i in range(0, 256)]).clip(0, 255).astype('uint8')
+
+        if img.shape[2] == 1:
+            return cv2.LUT(img, table)[:, :, np.newaxis]
+        else:
+            return cv2.LUT(img, table)
+
+
+def adjust_contrast(img, contrast_factor, backend='pil'):
+    """Adjusts contrast of an Image.
+
+    Args:
+        img (PIL.Image|np.array): PIL Image to be adjusted.
+        contrast_factor (float): How much to adjust the contrast. Can be any
+            non negative number. 0 gives a solid gray image, 1 gives the
+            original image while 2 increases the contrast by a factor of 2.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+    Returns:
+        PIL.Image or np.array: Contrast adjusted image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(contrast_factor)
+        return img
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy Image. Got {}'.format(
+                type(img)))
+        table = np.array([(i - 74) * contrast_factor + 74
+                          for i in range(0, 256)]).clip(0, 255).astype('uint8')
+        if img.shape[2] == 1:
+            return cv2.LUT(img, table)[:, :, np.newaxis]
+        else:
+            return cv2.LUT(img, table)
+
+
+def adjust_saturation(img, saturation_factor, backend='pil'):
+    """Adjusts color saturation of an image.
+
+    Args:
+        img (PIL.Image|np.array): PIL Image to be adjusted.
+        saturation_factor (float):  How much to adjust the saturation. 0 will
+            give a black and white image, 1 will give the original image while
+            2 will enhance the saturation by a factor of 2.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+
+    Returns:
+        PIL.Image or np.array: Saturation adjusted image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        enhancer = ImageEnhance.Color(img)
+        img = enhancer.enhance(saturation_factor)
+        return img
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy Image. Got {}'.format(
+                type(img)))
+
+        dtype = img.dtype
+        img = img.astype(np.float32)
+        alpha = np.random.uniform(
+            max(0, 1 - saturation_factor), 1 + saturation_factor)
+        gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = gray_img[..., np.newaxis]
+        img = img * alpha + gray_img * (1 - alpha)
+        return img.clip(0, 255).astype(dtype)
+
+
+def adjust_hue(img, hue_factor, backend='pil'):
+    """Adjusts hue of an image.
+
+    The image hue is adjusted by converting the image to HSV and
+    cyclically shifting the intensities in the hue channel (H).
+    The image is then converted back to original image mode.
+
+    `hue_factor` is the amount of shift in H channel and must be in the
+    interval `[-0.5, 0.5]`.
+
+    Args:
+        img (PIL.Image|np.array): PIL Image to be adjusted.
+        hue_factor (float):  How much to shift the hue channel. Should be in
+            [-0.5, 0.5]. 0.5 and -0.5 give complete reversal of hue channel in
+            HSV space in positive and negative direction respectively.
+            0 means no shift. Therefore, both -0.5 and 0.5 will give an image
+            with complementary colors while 0 gives the original image.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
+
+    Returns:
+        PIL.Image or np.array: Hue adjusted image.
+    """
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
+
+    if not (-0.5 <= hue_factor <= 0.5):
+        raise ValueError('hue_factor is not in [-0.5, 0.5].'.format(hue_factor))
+
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        input_mode = img.mode
+        if input_mode in {'L', '1', 'I', 'F'}:
+            return img
+
+        h, s, v = img.convert('HSV').split()
+
+        np_h = np.array(h, dtype=np.uint8)
+        # uint8 addition take cares of rotation across boundaries
+        with np.errstate(over='ignore'):
+            np_h += np.uint8(hue_factor * 255)
+        h = Image.fromarray(np_h, 'L')
+
+        img = Image.merge('HSV', (h, s, v)).convert(input_mode)
+        return img
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy Image. Got {}'.format(
+                type(img)))
+
+        dtype = img.dtype
+        img = img.astype(np.uint8)
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
+        h, s, v = cv2.split(hsv_img)
+
+        alpha = np.random.uniform(hue_factor, hue_factor)
+        h = h.astype(np.uint8)
+        # uint8 addition take cares of rotation across boundaries
+        with np.errstate(over="ignore"):
+            h += np.uint8(alpha * 255)
+        hsv_img = cv2.merge([h, s, v])
+        return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
+
+
+def rotate(img,
+           angle,
+           resample=False,
+           expand=False,
+           center=None,
+           fill=0,
+           backend='pil'):
+    """Rotates the image by angle.
+
+
+    Args:
+        img (PIL.Image|np.array): Image to be rotated.
+        angle (float or int): In degrees degrees counter clockwise order.
+        resample (``PIL.Image.NEAREST`` or ``PIL.Image.BILINEAR`` or ``PIL.Image.BICUBIC``, optional):
+            An optional resampling filter. See `filters`_ for more information.
+            If omitted, or if the image has mode "1" or "P", it is set to ``PIL.Image.NEAREST``.
+        expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
             Note that the expand flag assumes rotation around the center and no translation.
-        center (2-tuple|optional): Optional center of rotation.
+        center (2-tuple, optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+                    `cv2`. Default: 'pil'. 
 
     Returns:
-        numpy ndarray: Rotated image.
-
-    Examples:
-    
-        .. code-block:: python
-
-            import numpy as np
-
-            from paddle.vision.transforms.functional import rotate
-
-            fake_img = np.random.rand(500, 500, 3).astype('float32')
-
-            fake_img = rotate(fake_img, 10)
-            print(fake_img.shape)
+        PIL.Image or np.array: Rotated image.
     """
-    cv2 = try_import('cv2')
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
 
-    dtype = img.dtype
-    h, w, _ = img.shape
-    point = center or (w / 2, h / 2)
-    M = cv2.getRotationMatrix2D(point, angle=-angle, scale=1)
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
 
-    if expand:
+        if isinstance(fill, int):
+            fill = tuple([fill] * 3)
+
+        return img.rotate(angle, resample, expand, center, fillcolor=fill)
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy Image. Got {}'.format(
+                type(img)))
+
+        rows, cols = img.shape[0:2]
         if center is None:
-            cos = np.abs(M[0, 0])
-            sin = np.abs(M[0, 1])
-
-            nW = int((h * sin) + (w * cos))
-            nH = int((h * cos) + (w * sin))
-
-            M[0, 2] += (nW / 2) - point[0]
-            M[1, 2] += (nH / 2) - point[1]
-
-            dst = cv2.warpAffine(img, M, (nW, nH))
+            center = (cols / 2, rows / 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1)
+        if img.shape[2] == 1:
+            return cv2.warpAffine(img, M, (cols, rows))[:, :, np.newaxis]
         else:
-            xx = []
-            yy = []
-            for point in (np.array([0, 0, 1]), np.array([w - 1, 0, 1]),
-                          np.array([w - 1, h - 1, 1]), np.array([0, h - 1, 1])):
-                target = np.dot(M, point)
-                xx.append(target[0])
-                yy.append(target[1])
-            nh = int(math.ceil(max(yy)) - math.floor(min(yy)))
-            nw = int(math.ceil(max(xx)) - math.floor(min(xx)))
-
-            M[0, 2] += (nw - w) / 2
-            M[1, 2] += (nh - h) / 2
-            dst = cv2.warpAffine(img, M, (nw, nh), flags=interpolation)
-    else:
-        dst = cv2.warpAffine(img, M, (w, h), flags=interpolation)
-    return dst.astype(dtype)
+            return cv2.warpAffine(img, M, (cols, rows))
 
 
-@keepdims
-def to_grayscale(img, num_output_channels=1):
+def to_grayscale(img, num_output_channels=1, backend='pil'):
     """Converts image to grayscale version of image.
 
     Args:
-        img (numpy.ndarray): Image to be converted to grayscale.
+        img (PIL.Image|np.array): Image to be converted to grayscale.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+                    `cv2`. Default: 'pil'. 
 
     Returns:
-        numpy.ndarray:  Grayscale version of the image.
-                        if num_output_channels == 1, returned image is single channel
-                        if num_output_channels == 3, returned image is 3 channel with r == g == b
-    
-    Examples:
-    
-        .. code-block:: python
+        PIL.Image or np.array: Grayscale version of the image.
+            if num_output_channels = 1 : returned image is single channel
 
-            import numpy as np
-
-            from paddle.vision.transforms.functional import to_grayscale
-
-            fake_img = np.random.rand(500, 500, 3).astype('float32')
-
-            fake_img = to_grayscale(fake_img)
-            print(fake_img.shape)
+            if num_output_channels = 3 : returned image is 3 channel with r = g = b
+        
     """
-    cv2 = try_import('cv2')
+    if backend not in ['cv2', 'pil']:
+        raise ValueError(f'backend: {backend} is not supported.'
+                         f"Supported backends are 'cv2', 'pil'")
 
-    if num_output_channels == 1:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    elif num_output_channels == 3:
-        img = cv2.cvtColor(
-            cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
+    if backend == 'pil':
+        if not _is_pil_image(img):
+            raise TypeError('img should be PIL Image. Got {}'.format(type(img)))
+
+        if num_output_channels == 1:
+            img = img.convert('L')
+        elif num_output_channels == 3:
+            img = img.convert('L')
+            np_img = np.array(img, dtype=np.uint8)
+            np_img = np.dstack([np_img, np_img, np_img])
+            img = Image.fromarray(np_img, 'RGB')
+        else:
+            raise ValueError('num_output_channels should be either 1 or 3')
+
+        return img
+    elif backend == 'cv2':
+        if not _is_numpy_image(img):
+            raise TypeError('img should be numpy ndarray. Got {}'.format(
+                type(img)))
+
+        if num_output_channels == 1:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)[:, :, np.newaxis]
+        elif num_output_channels == 3:
+            # much faster than doing cvtColor to go back to gray
+            img = np.broadcast_to(
+                cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)[:, :, np.newaxis],
+                img.shape)
+        else:
+            raise ValueError('num_output_channels should be either 1 or 3')
+
+        return img
+
+
+def normalize(img, mean, std, data_format='CHW', to_rgb=False):
+    """Normalizes a tensor or image with mean and standard deviation.
+
+    Args:
+        tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
+        to_rgb (bool, optional): Whether to convert to rgb. Default: False.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+                    `cv2`. Default: 'pil'. 
+
+    Returns:
+        Tensor: Normalized Tensor image.
+    """
+
+    if _is_tensor_image(img):
+        if data_format == 'CHW':
+            mean = paddle.to_tensor(mean).reshape([-1, 1, 1])
+            std = paddle.to_tensor(std).reshape([-1, 1, 1])
+        else:
+            mean = paddle.to_tensor(mean)
+            std = paddle.to_tensor(std)
+        return (img - mean) / std
     else:
-        raise ValueError('num_output_channels should be either 1 or 3')
+        if _is_pil_image(img):
+            img = np.array(img).astype(np.float32)
 
+        if data_format == 'CHW':
+            mean = np.float32(np.array(mean).reshape(-1, 1, 1))
+            std = np.float32(np.array(std).reshape(-1, 1, 1))
+        else:
+            mean = np.float32(np.array(mean).reshape(1, 1, -1))
+            std = np.float32(np.array(std).reshape(1, 1, -1))
+        if to_rgb:
+            # inplace
+            cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
+
+        img = (img - mean) / std
     return img
