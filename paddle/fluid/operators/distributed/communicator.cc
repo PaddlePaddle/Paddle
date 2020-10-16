@@ -58,10 +58,47 @@ void AsyncCommunicator::Stop() {}
 
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                  const RpcCtxMap &recv_varname_to_ctx,
-                                 Scope *recv_scope) {}
+                                 Scope *recv_scope) {
+  send_varname_to_ctx_ = std::move(send_varname_to_ctx);
+  recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
+  recv_scope_ = std::move(recv_scope);
+
+  if (send_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be send, will not init communicator";
+  }
+
+  if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() != 0) {
+    PADDLE_THROW("got unexpected communicator send/recv context");
+  }
+
+  for (auto &ctx : send_varname_to_ctx_) {
+    auto &varname = ctx.first;
+    auto &send_ctx = ctx.second;
+
+    if (varname == STEP_COUNTER || send_ctx.is_sparse) {
+      auto only_send =
+          std::make_tuple<CommContext *, CommContext *>(&send_ctx, nullptr);
+      pair_contexts_.push_back(only_send);
+      continue;
+    }
+
+    std::string origin_varname =
+        paddle::framework::GradOriginalVarName(varname);
+    auto &recv_ctx = recv_varname_to_ctx.at(origin_varname);
+    auto send_and_recv =
+        std::make_tuple<CommContext *, CommContext *>(&send_ctx, &recv_ctx);
+    pair_contexts_.push_back(send_and_recv);
+  }
+
+  VLOG(1) << "done";
+}
 void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const std::vector<std::string> &var_tables,
                              const framework::Scope &scope) {}
+
+void AsyncCommunicator::SliceThread(const CommContext send_ctx,
+                                    const CommContext recv_ctx) {}
+
 AsyncCommunicator::~AsyncCommunicator() {}
 
 void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
