@@ -49,8 +49,12 @@ class CastXPUKernel : public framework::OpKernel<InT> {
       PADDLE_THROW(platform::errors::Unavailable("Not supported cast %d -> %d",
                                                  in_type, out_type));
     }
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 

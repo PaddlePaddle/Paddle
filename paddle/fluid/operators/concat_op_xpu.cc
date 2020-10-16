@@ -94,8 +94,12 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
     int r =
         xpu::concat<float>(dev_ctx.x_context(), h, (const int*)in_w_host.get(),
                            n, (const float**)ptrs.get(), out->data<T>());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 template <typename DeviceContext, typename T>
@@ -159,8 +163,12 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
     int r = xpu::concat_grad(dev_ctx.x_context(), h, in_w_host.get(), n,
                              reinterpret_cast<float**>(ptrs.get()),
                              out_grad->data<T>());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::External("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 
