@@ -36,12 +36,7 @@ __global__ void NormalizeProbability(T* norm_probs, const T* in_data,
       in_data[id] >= 0.0,
       "The input of multinomial distribution should be >= 0, but got %f",
       in_data[id]);
-  PADDLE_ENFORCE(in_data[id] != INFINITY,
-                 "The input of multinomial distribution shoud not be infinity");
-  PADDLE_ENFORCE(in_data[id] != NAN,
-                 "The input of multinomial distribution shoud not be NaN");
-  PADDLE_ENFORCE(sum_rows[blockIdx.y] > 0.0,
-                 "The sum of input should not be 0");
+  PADDLE_ENFORCE(sum_rows[blockIdx.y] > 0.0, "The sum of input should be > 0");
   norm_probs[id] = in_data[id] / sum_rows[blockIdx.y];
 }
 
