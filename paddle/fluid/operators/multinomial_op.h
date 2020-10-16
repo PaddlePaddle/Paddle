@@ -56,8 +56,11 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
       }
       cumulative_probs[j] = probs_sum;
     }
-    PADDLE_ENFORCE_GT(probs_sum, 0.0, platform::errors::OutOfRange(
-                                          "The sum of input should be > 0"));
+    PADDLE_ENFORCE_GT(
+        probs_sum, 0.0,
+        platform::errors::OutOfRange("The sum of one multinomial distribution "
+                                     "probability should be > 0, but got %f",
+                                     probs_sum));
     PADDLE_ENFORCE_EQ(
         (replacement || (num_categories - num_zeros >= num_samples)), true,
         platform::errors::OutOfRange("When replacement is False, number of "
