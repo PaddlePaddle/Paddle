@@ -31,11 +31,12 @@ import socket
 
 def get_logger(name, level, fmt):
     logger = logging.getLogger(name)
-    logger.setLevel(logging.WARNING)
+    logger.setLevel(level)
     handler = logging.FileHandler('http.log', mode='w')
     formatter = logging.Formatter(fmt=fmt)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    logger.propagate = False
     return logger
 
 
