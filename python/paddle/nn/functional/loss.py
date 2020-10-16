@@ -23,20 +23,14 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
-from ...fluid.layers import center_loss  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
-from ...fluid.layers import rank_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
-from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
-from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
-from ...fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
@@ -49,11 +43,8 @@ from ...fluid.framework import Variable
 __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
-    'bpr_loss',
-    'center_loss',
     'cross_entropy',
     'dice_loss',
-    'edit_distance',
     'hsigmoid_loss',
     'iou_similarity',
     'kl_div',
@@ -64,16 +55,11 @@ __all__ = [
     #       'nce',
     'nll_loss',
     'npair_loss',
-    'rank_loss',
-    'sampled_softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
-    'smooth_l1',
     'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
-    'teacher_student_sigmoid_loss',
     'ctc_loss',
 ]
 
@@ -181,7 +167,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
         outputs={'Out': [out]})
 
     if weight is not None:
-        if isinstance(weight, paddle.framework.Variable):
+        if isinstance(weight, paddle.static.Variable):
             weight_name = name if reduction is 'none' else None
             out = paddle.multiply(out, weight, axis=-1, name=weight_name)
         else:
@@ -316,16 +302,18 @@ def binary_cross_entropy_with_logits(logit,
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name)
 
-    one = paddle.fill_constant(shape=[1], value=1.0, dtype=logit.dtype)
+    one = paddle.fluid.layers.fill_constant(
+        shape=[1], value=1.0, dtype=logit.dtype)
     if pos_weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             pos_weight, 'pos_weight', ['float32', 'float64'],
             'binary_cross_entropy_with_logits')
         log_weight = paddle.add(
-            paddle.multiply(label, paddle.elementwise_sub(pos_weight, one)),
+            paddle.multiply(
+                label, paddle.fluid.layers.elementwise_sub(pos_weight, one)),
             one)
         pos_weight_name = name if reduction == 'none' and weight is None else None
         out = paddle.multiply(out, log_weight, name=pos_weight_name)
@@ -627,12 +615,13 @@ def margin_ranking_loss(input,
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64'], 'margin_rank_loss')
 
-    out = paddle.elementwise_sub(other, input)
+    out = paddle.fluid.layers.elementwise_sub(other, input)
     out = paddle.multiply(out, label)
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
-        paddle.fill_constant([1], out.dtype, margin, out=margin_var)
+        paddle.fluid.layers.fill_constant(
+            [1], out.dtype, margin, out=margin_var)
         out = paddle.add(out, margin_var)
 
     result_out = helper.create_variable_for_type_inference(input.dtype)
@@ -737,13 +726,14 @@ def l1_loss(input, label, reduction='mean', name=None):
         label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
     if reduction == 'sum':
-        unreduced = paddle.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.elementwise_sub(input, label, act='abs', name=name)
+        return paddle.fluid.layers.elementwise_sub(
+            input, label, act='abs', name=name)
 
 
 def nll_loss(input,
@@ -1010,8 +1000,8 @@ def mse_loss(input, label, reduction='mean', name=None):
             # static graph mode
             paddle.enable_static()
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.data(name="input", shape=[1])
-            label = paddle.data(name="label", shape=[1])
+            input = paddle.fluid.data(name="input", shape=[1])
+            label = paddle.fluid.data(name="label", shape=[1])
             place = paddle.CPUPlace()
 
             output = mse_loss(input,label)
@@ -1356,7 +1346,7 @@ def sigmoid_focal_loss(logit,
             label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
             one = paddle.to_tensor([1.], dtype='float32')
             fg_label = paddle.greater_equal(label, one)
-            fg_num = paddle.reduce_sum(paddle.cast(fg_label, dtype='float32'))
+            fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
             print(output.numpy())  # [0.65782464]
 

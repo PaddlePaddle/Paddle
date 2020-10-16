@@ -49,7 +49,8 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
 
     int axis = ctx.Attr<int>("axis");
     PADDLE_ENFORCE_GE(dx_dims.size(), dy_dims_untrimed.size(),
-                      "Rank of first input must >= rank of second input.");
+                      platform::errors::InvalidArgument(
+                          "Rank of first input must >= rank of second input."));
 
     if (dx != nullptr) {
       dx->mutable_data<T>(ctx.GetPlace());
@@ -69,8 +70,9 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
       n = dout->numel();
     } else {
       axis = (axis == -1 ? dx_dims.size() - dy_dims_untrimed.size() : axis);
-      PADDLE_ENFORCE(axis >= 0 && axis < dx_dims.size(),
-                     "Axis should be in range [0, dx_dims)");
+      PADDLE_ENFORCE_EQ(axis >= 0 && axis < dx_dims.size(), true,
+                        platform::errors::InvalidArgument(
+                            "Axis should be in range [0, dx_dims)"));
       auto dy_dims = trim_trailing_singular_dims(dy_dims_untrimed);
       axis = (dy_dims.size() == 0) ? dx_dims.size() : axis;
       get_mid_dims(dx_dims, dy_dims, axis, &pre, &n, &post,

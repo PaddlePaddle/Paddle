@@ -284,7 +284,17 @@ def _current_expected_place():
     global _global_expected_place_
     if _global_expected_place_ is None:
         if core.is_compiled_with_cuda():
-            _global_expected_place_ = core.CUDAPlace(0)
+            try:
+                device_count = core.get_cuda_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CUDAPlace(0)
+            else:
+                warnings.warn(
+                    "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -533,7 +543,7 @@ def name_scope(prefix=None):
           import paddle
           paddle.enable_static()
           with paddle.static.name_scope("s1"):
-             a = paddle.data(name='data', shape=[None, 1], dtype='int32')
+             a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
              with paddle.static.name_scope("s2"):
                 c = b * 1
@@ -1182,8 +1192,8 @@ class Variable(object):
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
                     inputs.append(tmp)
-                ret = paddle.sums(inputs)
-                loss = paddle.reduce_sum(ret)
+                ret = paddle.add_n(inputs)
+                loss = paddle.sum(ret)
                 loss.backward()
 
         """
@@ -1333,7 +1343,9 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
+                paddle.enable_static()
                 cur_program = fluid.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
@@ -3996,7 +4008,7 @@ class Program(object):
             with static.program_guard(main_program=main_program, startup_program=startup_program):
                 x = static.data(name="x", shape=[-1, 784], dtype='float32')
                 y = static.data(name="y", shape=[-1, 1], dtype='int32')
-                z = static.nn.fc(name="fc", input=x, size=10, act="relu")
+                z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
             print("main program is: {}".format(main_program))
             print("start up program is: {}".format(startup_program))
@@ -4344,7 +4356,7 @@ class Program(object):
             paddle.enable_static()
 
             img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(input=img, size=10, act='relu')
+            pred = static.nn.fc(x=img, size=10, actvation='relu')
             loss = paddle.mean(pred)
             # Here we use clone before Momentum
             test_program = static.default_main_program().clone(for_test=True)
@@ -4415,10 +4427,10 @@ class Program(object):
                     with static.program_guard(train_program, startup_program):
                         with utils.unique_name.guard():
                             img = static.data(name='image', shape=[None, 784])
-                            hidden = static.nn.fc(input=img, size=200, act='relu')
+                            hidden = static.nn.fc(x=img, size=200, activation='relu')
                             hidden = F.dropout(hidden, p=0.5)
                             loss = F.cross_entropy(
-                                input=static.nn.fc(hidden, size=10, act='softmax'),
+                                input=static.nn.fc(x=hidden, size=10, activation='softmax'),
                                 label=static.data(name='label', shape=[1], dtype='int64'))
                             avg_loss = paddle.mean(loss)
                             test_program = train_program.clone(for_test=True)
@@ -4462,10 +4474,10 @@ class Program(object):
 
                     def network():
                         img = static.data(name='image', shape=[None, 784])
-                        hidden = static.nn.fc(input=img, size=200, act='relu')
+                        hidden = static.nn.fc(x=img, size=200, activation='relu')
                         hidden = F.dropout(hidden, p=0.5)
                         loss = F.cross_entropy(
-                            input=static.nn.fc(hidden, size=10, act='softmax'),
+                            input=static.nn.fc(x=hidden, size=10, activation='softmax'),
                             label=static.data(name='label', shape=[1], dtype='int64'))
                         avg_loss = paddle.mean(loss)
                         return avg_loss
@@ -5079,7 +5091,7 @@ class Program(object):
 
                 program = static.default_main_program()
                 data = static.data(name='x', shape=[None, 13], dtype='float32')
-                hidden = static.nn.fc(input=data, size=10)
+                hidden = static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
                 paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -5345,9 +5357,9 @@ def default_startup_program():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = paddle.data(name="x", shape=[-1, 784], dtype='float32')
-                y = paddle.data(name="y", shape=[-1, 1], dtype='int32')
-                z = paddle.static.nn.fc(name="fc", input=x, size=10, act="relu")
+                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
+                z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
                 print("main program is: {}".format(paddle.static.default_main_program()))
                 print("start up program is: {}".format(paddle.static.default_startup_program()))
@@ -5360,7 +5372,7 @@ def default_main_program():
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
     
-    For example ``z = paddle.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    For example ``z = paddle.fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
     Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
     The ``default main program`` is the default value for ``Program`` parameter in 
@@ -5379,18 +5391,18 @@ def default_main_program():
             
             paddle.enable_static()
             # Sample Network:
-            data = paddle.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = paddle.data(name='label', shape=[None, 1], dtype='int64')
+            data = paddle.static.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             
             conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
             bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
-            pool1 = paddle.nn.functional.pool2d(bn1, 2, 'max', 2)
+            pool1 = paddle.fluid.layers.pool2d(bn1, 2, 'max', 2)
             conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
             bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
-            pool2 = paddle.nn.functional.pool2d(bn2, 2, 'max', 2)
+            pool2 = paddle.fluid.layers.pool2d(bn2, 2, 'max', 2)
             
-            fc1 = paddle.static.nn.fc(pool2, size=50, act='relu')
-            fc2 = paddle.static.nn.fc(fc1, size=102, act='softmax')
+            fc1 = paddle.static.nn.fc(x=pool2, size=50, activation='relu')
+            fc2 = paddle.static.nn.fc(x=fc1, size=102, activation='softmax')
             
             loss = paddle.nn.functional.loss.cross_entropy(input=fc2, label=label)
             loss = paddle.mean(loss)
@@ -5467,7 +5479,7 @@ def program_guard(main_program, startup_program=None):
           startup_program = paddle.static.Program()
           with paddle.static.program_guard(main_program, startup_program):
               data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-              hidden = paddle.static.nn.fc(input=data, size=10, act='relu')
+              hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.

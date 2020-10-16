@@ -30,7 +30,7 @@ class SignXPUKernel : public framework::OpKernel<T> {
     int r = xpu::activation_forward(xpu_context, xpu::Activation_t::SIGN,
                                     in->numel(), in->data<T>(), out->data<T>());
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::Fatal("XPU kernel error!"));
+                      platform::errors::Fatal("XPU sign kernel error!"));
   }
 };
 
