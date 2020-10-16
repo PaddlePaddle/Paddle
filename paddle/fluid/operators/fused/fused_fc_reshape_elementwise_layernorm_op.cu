@@ -46,13 +46,18 @@ struct PairForLayerNormAddFunctor {
 };
 
 template <typename T, bool DoRelu, int BlockDim>
-__global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_1,
-                                                 const T* scale, T* out,
-                                                 T* mean, T* variance, int M,
-                                                 int N, float epsilon) {
+__global__ void InplaceAddReluAddLayerNormKernel(
+    const T* y, const T* bias_0, const T* bias_1, const T* scale, T* out,
+    T* mean, T* variance, int M, int N, float epsilon, int bias_length) {
   using BlockReduce = cub::BlockReduce<PairForLayerNorm<T>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T shared_mem[BlockDim + 2];
+
+  for (int i = blockIdx.x; i * blockDim.x + threadIdx.x < N * M;
+       i += gridDim.x) {
+    int id = i * blockDim.x + threadIdx.x;
+    out[id] += bias_0[id % bias_length];
+  }
 
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
     int index = i * N + threadIdx.x;
@@ -197,7 +202,7 @@ class FusedFCReshapeElementwiseLayerNormOpKernel
     auto* bias0_2 = ctx.Input<framework::Tensor>("Bias0_2");
     auto* bias_1 = ctx.Input<framework::Tensor>("Bias1");
     auto* scale = ctx.Input<framework::Tensor>("Scale");
-
+    /*
     if (bias0_2) {
       const T* bias0_2_data = bias0_2->data<T>();
       const int threads = 256;
@@ -206,7 +211,9 @@ class FusedFCReshapeElementwiseLayerNormOpKernel
           T, threads><<<blocks, threads, 0, dev_ctx.stream()>>>(N, bias0_2_data,
                                                                 out_data);
     }
-
+    */
+    const T* bias0_2_data = bias0_2->data<T>();
+    int bias_length = N;
     auto bias_dims = bias_1->dims();
     M = N * M / bias_dims[0];
     N = bias_dims[0];
@@ -234,8 +241,8 @@ class FusedFCReshapeElementwiseLayerNormOpKernel
                 T, true,
                 kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
                                   kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_1_data, scale_data, out_data, mean_data,
-                variance_data, M, N, epsilon));
+                y_data, bias0_2_data, bias_1_data, scale_data, out_data,
+                mean_data, variance_data, M, N, epsilon, bias_length));
       }
     } else {
       switch (platform::RoundToPowerOfTwo(N)) {
@@ -244,8 +251,8 @@ class FusedFCReshapeElementwiseLayerNormOpKernel
                 T, false,
                 kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
                                   kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_1_data, scale_data, out_data, mean_data,
-                variance_data, M, N, epsilon));
+                y_data, bias0_2_data, bias_1_data, scale_data, out_data,
+                mean_data, variance_data, M, N, epsilon, bias_length));
       }
     }
   }
