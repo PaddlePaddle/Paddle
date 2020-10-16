@@ -32,7 +32,8 @@ class SwishPlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() override {
-    return getBaseSerializationSize() + SerializedSize(beta_);
+    return SerializedSize(getPluginType()) + getBaseSerializationSize() +
+           SerializedSize(beta_);
   }
 
   // TRT will call this func when we need to serialize the configuration of
@@ -78,6 +79,7 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
     with_fp16_ = with_fp16;
   }
   SwishPluginDynamic(void const* serialData, size_t serialLength) {
+    DeserializeValue(&serialData, &serialLength, &beta_);
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const override {
@@ -124,6 +126,46 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
  private:
   float beta_;
 };
+
+class SwishPluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  SwishPluginV2Creator() {}
+  const char* getPluginName() const override { return "swish_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    auto plugin = new SwishPluginDynamic(serial_data, serial_length);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* lib_namespace) override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
+REGISTER_TRT_PLUGIN_V2(SwishPluginV2Creator);
 #endif
 
 }  // namespace plugin

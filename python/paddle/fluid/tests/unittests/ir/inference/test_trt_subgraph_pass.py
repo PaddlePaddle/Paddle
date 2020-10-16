@@ -306,6 +306,8 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
+            if os.path.exists(self.path + "_opt_cache"):
+                shutil.rmtree(self.path + "_opt_cache")
             self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
@@ -347,6 +349,37 @@ class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):
 
 
 class TensorRTSubgraphPassSwishTest(TensorRTSubgraphPassActivationTest):
+    def setUpTensorRTParam(self):
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+
+    def append_act(self, x):
+        return fluid.layers.swish(x)
+
+
+class TensorRTSubgraphPassSwishFp16SerializeTest(
+        TensorRTSubgraphPassActivationTest):
+    def setUpTensorRTParam(self):
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
+
+    def append_act(self, x):
+        return fluid.layers.swish(x)
+
+
+class TensorRTSubgraphPassDynamicSwishFp16SerializeTest(
+        TensorRTSubgraphPassActivationTest):
+    def setUpTensorRTParam(self):
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
+        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
+            {
+                'data': [1, 6, 8, 8]
+            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
+
     def append_act(self, x):
         return fluid.layers.swish(x)
 
@@ -391,6 +424,9 @@ class TensorRTSubgraphPassGeluFp16Test(TensorRTSubgraphPassActivationTest):
         self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Half, False, False)
 
+    def append_act(self, x):
+        return fluid.layers.gelu(x)
+
 
 class TensorRTSubgraphPassGeluFp16SerializeTest(
         TensorRTSubgraphPassActivationTest):
@@ -401,15 +437,6 @@ class TensorRTSubgraphPassGeluFp16SerializeTest(
 
     def append_act(self, x):
         return fluid.layers.gelu(x)
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            if os.path.exists(self.path + "_opt_cache"):
-                shutil.rmtree(self.path + "_opt_cache")
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassGeluFp16DynamicTest(
@@ -440,15 +467,6 @@ class TensorRTSubgraphPassGeluFp16DynamicSerializeTest(
 
     def append_act(self, x):
         return fluid.layers.gelu(x)
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            if os.path.exists(self.path + "_opt_cache"):
-                shutil.rmtree(self.path + "_opt_cache")
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassConcatTest(InferencePassTest):
@@ -495,6 +513,60 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32")
+            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
+            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            if os.path.exists(self.path + "_opt_cache"):
+                shutil.rmtree(self.path + "_opt_cache")
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32")
+            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
+            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
+        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
+            {
+                'data': [1, 3, 8, 64]
+            }, {'data': [1, 3, 512, 64]}, {'data': [1, 3, 256, 64]}, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            if os.path.exists(self.path + "_opt_cache"):
+                shutil.rmtree(self.path + "_opt_cache")
             self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))

@@ -146,10 +146,13 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
 int SplitPluginDynamic::initialize() { return 0; }
 
 size_t SplitPluginDynamic::getSerializationSize() const {
-  return SerializedSize(with_fp16_);
+  return SerializedSize(axis_) + SerializedSize(output_length_) +
+         SerializedSize(with_fp16_);
 }
 
 void SplitPluginDynamic::serialize(void* buffer) const {
+  SerializeValue(&buffer, axis_);
+  SerializeValue(&buffer, output_length_);
   SerializeValue(&buffer, with_fp16_);
 }
 

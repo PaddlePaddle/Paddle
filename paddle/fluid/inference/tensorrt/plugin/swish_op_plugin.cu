@@ -90,16 +90,16 @@ int SwishPlugin::enqueue(int batch_size, const void *const *inputs,
 #if IS_TRT_VERSION_GE(6000)
 
 int SwishPluginDynamic::initialize() {
-  setPluginNamespace("swish");
   getPluginNamespace();
   return 0;
 }
 
 size_t SwishPluginDynamic::getSerializationSize() const {
-  return SerializedSize(with_fp16_);
+  return SerializedSize(beta_) + SerializedSize(with_fp16_);
 }
 
 void SwishPluginDynamic::serialize(void *buffer) const {
+  SerializeValue(&buffer, beta_);
   SerializeValue(&buffer, with_fp16_);
 }
 
