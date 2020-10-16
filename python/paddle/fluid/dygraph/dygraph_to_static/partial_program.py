@@ -96,6 +96,15 @@ class LazyInitialized(object):
         return val
 
 
+def _change_is_test_status(program, is_test):
+    # change all `is_test` attributes
+    for block in program.blocks:
+        for op in block.ops:
+            if op.has_attr('is_test'):
+                op._set_attr('is_test', is_test)
+    return program
+
+
 class PartialProgramLayer(layers.Layer):
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
@@ -161,7 +170,8 @@ class PartialProgramLayer(layers.Layer):
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        program = main_program.clone()
+        # make sure all status of is_test are False in train mode.
+        program = _change_is_test_status(main_program.clone(), is_test=False)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
