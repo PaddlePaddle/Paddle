@@ -599,9 +599,9 @@ class TestUniformInitializerDygraph(unittest.TestCase):
         """
         paddle.disable_static()
 
-        tensor = paddle.zeros([1024, 1024])
+        tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
-        self.assertTrue(np.allclose(np.zeros((1024, 1024)), tensor.numpy()))
+        self.assertTrue(np.allclose(np.zeros((1024, 1024, 16)), tensor.numpy()))
 
         uniform_ = paddle.nn.initializer.Uniform()
         uniform_(tensor)
