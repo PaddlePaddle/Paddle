@@ -102,7 +102,8 @@ from .norm import SyncBatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
 from .norm import LayerNorm  #DEFINE_ALIAS
 from .norm import SpectralNorm  #DEFINE_ALIAS
-from .norm import InstanceNorm  #DEFINE_ALIAS
+#from .norm import InstanceNorm  #DEFINE_ALIAS
+from .norm import LocalResponseNorm  #DEFINE_ALIAS
 # from .rnn import RNNCell        #DEFINE_ALIAS
 # from .rnn import GRUCell        #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS

@@ -27,8 +27,6 @@ from ..fluid.layers import logical_and  #DEFINE_ALIAS
 from ..fluid.layers import logical_not  #DEFINE_ALIAS
 from ..fluid.layers import logical_or  #DEFINE_ALIAS
 from ..fluid.layers import logical_xor  #DEFINE_ALIAS
-from ..fluid.layers import reduce_all  #DEFINE_ALIAS
-from ..fluid.layers import reduce_any  #DEFINE_ALIAS
 
 __all__ = [
     'equal',
@@ -44,8 +42,6 @@ __all__ = [
     'logical_or',
     'logical_xor',
     'not_equal',
-    'reduce_all',
-    'reduce_any',
     'allclose',
     #       'isnan'
 ]

@@ -23,10 +23,9 @@ from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS
-from .creation import crop_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
-from .creation import fill_constant  #DEFINE_ALIAS
+# from .creation import fill_constant  #DEFINE_ALIAS
 # from .creation import get_tensor_from_selected_rows        #DEFINE_ALIAS
 from .creation import linspace  #DEFINE_ALIAS
 from .creation import ones  #DEFINE_ALIAS
@@ -67,8 +66,8 @@ from .logic import logical_not  #DEFINE_ALIAS
 from .logic import logical_or  #DEFINE_ALIAS
 from .logic import logical_xor  #DEFINE_ALIAS
 from .logic import not_equal  #DEFINE_ALIAS
-from .logic import reduce_all  #DEFINE_ALIAS
-from .logic import reduce_any  #DEFINE_ALIAS
+# from .logic import reduce_all  #DEFINE_ALIAS
+# from .logic import reduce_any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
 from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
@@ -108,13 +107,13 @@ from .math import ceil  #DEFINE_ALIAS
 from .math import cos  #DEFINE_ALIAS
 from .math import cosh  #DEFINE_ALIAS
 from .math import cumsum  #DEFINE_ALIAS
-from .math import elementwise_add  #DEFINE_ALIAS
-from .math import elementwise_div  #DEFINE_ALIAS
-from .math import elementwise_floordiv  #DEFINE_ALIAS
-from .math import elementwise_mul  #DEFINE_ALIAS
-from .math import elementwise_mod  #DEFINE_ALIAS
-from .math import elementwise_pow  #DEFINE_ALIAS
-from .math import elementwise_sub  #DEFINE_ALIAS
+# from .math import elementwise_add  #DEFINE_ALIAS
+# from .math import elementwise_div  #DEFINE_ALIAS
+# from .math import elementwise_floordiv  #DEFINE_ALIAS
+# from .math import elementwise_mul  #DEFINE_ALIAS
+# from .math import elementwise_mod  #DEFINE_ALIAS
+# from .math import elementwise_pow  #DEFINE_ALIAS
+# from .math import elementwise_sub  #DEFINE_ALIAS
 from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
 from .math import increment  #DEFINE_ALIAS
@@ -122,10 +121,10 @@ from .math import log  #DEFINE_ALIAS
 from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
-from .math import reduce_max  #DEFINE_ALIAS
-from .math import reduce_min  #DEFINE_ALIAS
-from .math import reduce_prod  #DEFINE_ALIAS
-from .math import reduce_sum  #DEFINE_ALIAS
+# from .math import reduce_max  #DEFINE_ALIAS
+# from .math import reduce_min  #DEFINE_ALIAS
+# from .math import reduce_prod  #DEFINE_ALIAS
+# from .math import reduce_sum  #DEFINE_ALIAS
 from .math import round  #DEFINE_ALIAS
 from .math import rsqrt  #DEFINE_ALIAS
 from .math import scale  #DEFINE_ALIAS
@@ -155,7 +154,7 @@ from .math import logsumexp  #DEFINE_ALIAS
 from .math import inverse  #DEFINE_ALIAS
 from .math import log1p  #DEFINE_ALIAS
 from .math import erf  #DEFINE_ALIAS
-from .math import addcmul  #DEFINE_ALIAS
+# from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
 from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
@@ -175,8 +174,8 @@ from .random import randperm  #DEFINE_ALIAS
 from .search import argmax  #DEFINE_ALIAS
 from .search import argmin  #DEFINE_ALIAS
 from .search import argsort  #DEFINE_ALIAS
-from .search import has_inf  #DEFINE_ALIAS
-from .search import has_nan  #DEFINE_ALIAS
+# from .search import has_inf  #DEFINE_ALIAS
+# from .search import has_nan  #DEFINE_ALIAS
 # from .search import masked_select        #DEFINE_ALIAS
 from .search import topk  #DEFINE_ALIAS
 from .search import where  #DEFINE_ALIAS
@@ -186,10 +185,11 @@ from .search import sort  #DEFINE_ALIAS
 from .search import index_sample  #DEFINE_ALIAS
 from .search import masked_select  #DEFINE_ALIAS
 from .stat import mean  #DEFINE_ALIAS
-from .stat import reduce_mean  #DEFINE_ALIAS
+# from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
 from .stat import numel  #DEFINE_ALIAS
 # from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
+from .to_string import set_printoptions

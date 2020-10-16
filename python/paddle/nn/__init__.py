@@ -37,19 +37,16 @@ from .clip import ClipGradByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
 from .clip import clip_by_norm  #DEFINE_ALIAS
-from .control_flow import cond  #DEFINE_ALIAS
+# from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-from .control_flow import while_loop  #DEFINE_ALIAS
+# from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
-# from .decode import BeamSearchDecoder        #DEFINE_ALIAS
+from .decode import BeamSearchDecoder  #DEFINE_ALIAS
+from .decode import dynamic_decode  #DEFINE_ALIAS
 # from .decode import Decoder        #DEFINE_ALIAS
-# from .decode import beam_search  #DEFINE_ALIAS
-# from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import crf_decoding        #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
-# from .decode import dynamic_decode        #DEFINE_ALIAS
-from .decode import gather_tree  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU  #DEFINE_ALIAS
 from .layer.activation import GELU  #DEFINE_ALIAS
@@ -74,9 +71,6 @@ from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
-from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
-from .layer.common import Pool2D  #DEFINE_ALIAS
-from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import ReflectionPad1d  #DEFINE_ALIAS
 from .layer.common import ReplicationPad1d  #DEFINE_ALIAS
 from .layer.common import ConstantPad1d  #DEFINE_ALIAS
@@ -139,13 +133,13 @@ from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
 from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS

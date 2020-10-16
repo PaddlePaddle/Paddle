@@ -18,6 +18,7 @@ __all__ = [
     'embedding',
     'bilinear_tensor_product',
     'case',
+    'cond',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
@@ -36,6 +37,7 @@ __all__ = [
     'row_conv',
     'spectral_norm',
     'switch_case',
+    'while_loop',
 ]
 
 from .common import fc  #DEFINE_ALIAS
@@ -44,6 +46,7 @@ from .common import deform_conv2d  #DEFINE_ALIAS
 from ...fluid.layers import batch_norm  #DEFINE_ALIAS
 from ...fluid.layers import bilinear_tensor_product  #DEFINE_ALIAS
 from ...fluid.layers import case  #DEFINE_ALIAS
+from ...fluid.layers import cond  #DEFINE_ALIAS
 from ...fluid.layers import conv2d  #DEFINE_ALIAS
 from ...fluid.layers import conv2d_transpose  #DEFINE_ALIAS
 from ...fluid.layers import conv3d  #DEFINE_ALIAS
@@ -61,5 +64,6 @@ from ...fluid.layers import py_func  #DEFINE_ALIAS
 from ...fluid.layers import row_conv  #DEFINE_ALIAS
 from ...fluid.layers import spectral_norm  #DEFINE_ALIAS
 from ...fluid.layers import switch_case  #DEFINE_ALIAS
+from ...fluid.layers import while_loop  #DEFINE_ALIAS
 
 from ...fluid.input import embedding  #DEFINE_ALIAS

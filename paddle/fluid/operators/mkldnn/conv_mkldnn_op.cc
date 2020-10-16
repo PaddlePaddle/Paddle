@@ -193,13 +193,8 @@ class ConvMKLDNNHandlerT
                                data_dims, strides, ksize);
       const bool is_conv3d = strides.size() == 3U;
 
-      PADDLE_ENFORCE_EQ(
-          is_conv3d
-              ? dilations.size() == 3 && dilations[0] == 1 &&
-                    dilations[1] == 1 && dilations[2] == 1
-              : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-          true, platform::errors::Unimplemented(
-                    "Dilation in oneDNN convolution is not implemented yet"));
+      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                     [](int64_t i) { return i - 1; });
 
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
@@ -210,6 +205,7 @@ class ConvMKLDNNHandlerT
 
       const mkldnn::memory::dims stride_dims = strides;
       const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+      const mkldnn::memory::dims dilations_dims = dilations;
 
       /* create memory descriptor for convolution without specified format
        * ('any') which lets a primitive (convolution in this case) choose
@@ -256,13 +252,13 @@ class ConvMKLDNNHandlerT
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, bias_md, dst_md, stride_dims,
+            src_md, weights_md, bias_md, dst_md, stride_dims, dilations_dims,
             mkldnn_paddings[0], mkldnn_paddings[1]);
       } else {
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, dst_md, stride_dims, mkldnn_paddings[0],
-            mkldnn_paddings[1]);
+            src_md, weights_md, dst_md, stride_dims, dilations_dims,
+            mkldnn_paddings[0], mkldnn_paddings[1]);
       }
     }
   }
@@ -619,9 +615,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bool is_conv3d = strides.size() == 3U;
 
       PADDLE_ENFORCE_NE(is_conv3d, true,
-                        platform::errors::InvalidArgument(
-                            "int8 does not support conv3d currently, should "
-                            "set param is_conv3d as False"));
+                        platform::errors::Unimplemented(
+                            "int8 does not support conv3d currently"));
 
       auto input_dims = input->dims();
       auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
@@ -641,13 +636,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       GetWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
 
-      PADDLE_ENFORCE_EQ(
-          is_conv3d
-              ? dilations.size() == 3 && dilations[0] == 1 &&
-                    dilations[1] == 1 && dilations[2] == 1
-              : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-          true, platform::errors::Unimplemented(
-                    "dilation in convolution is not implemented yet"));
+      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                     [](int64_t i) { return i - 1; });
 
       const K* filter_data = filter->data<K>();
       auto scale_in_data = ctx.Attr<float>("Scale_in");
@@ -710,13 +700,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
                                                MKLDNNMemoryFormat::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
-            src_md, weights_md, bias_md, dst_md, strides, paddings,
+            src_md, weights_md, bias_md, dst_md, strides, dilations, paddings,
             mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
             fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       } else {
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
-            src_md, weights_md, boost::none, dst_md, strides, paddings,
-            mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
+            src_md, weights_md, boost::none, dst_md, strides, dilations,
+            paddings, mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
             fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       }
 
@@ -1019,11 +1009,14 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                           "Fail to find conv_pd in device context"));
 
     auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-
+    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                   [](int64_t i) { return i - 1; });
+    const mkldnn::memory::dims dilations_dims = dilations;
     // create backward convolution weights primitive descriptor
     auto conv_bwd_weights_desc = mkldnn::convolution_backward_weights::desc(
         mkldnn::algorithm::convolution_direct, src_md, diff_weights_md,
-        diff_dst_md, strides, mkldnn_paddings[0], mkldnn_paddings[1]);
+        diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
 
     auto conv_bwd_weights_pd =
         std::make_shared<mkldnn::convolution_backward_weights::primitive_desc>(
@@ -1032,7 +1025,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // create backward convolution data primitive descriptor
     auto conv_bwd_data_desc = mkldnn::convolution_backward_data::desc(
         mkldnn::algorithm::convolution_direct, diff_src_md, weights_md,
-        diff_dst_md, strides, mkldnn_paddings[0], mkldnn_paddings[1]);
+        diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
 
     auto conv_bwd_data_pd =
         std::make_shared<mkldnn::convolution_backward_data::primitive_desc>(
