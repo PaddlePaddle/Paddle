@@ -176,7 +176,11 @@ class ProgramDeps(object):
 class ShardingOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(ShardingOptimizer, self).__init__(optimizer)
-        self.inner_opt = optimizer
+        self.inner_opt = None
+        self.meta_optimizers_white_list = [
+            "RecomputeOptimizer",
+            "AMPOptimizer",
+        ]
         self._main_program = None
         self._startup_program = None
         # we do not allow meta optimizer to be inner optimizer currently
@@ -955,27 +959,31 @@ class ShardingOptimizer(MetaOptimizerBase):
                       parameter_list=None,
                       no_grad_set=None):
 
-        if self.user_defined_strategy.sharding_configs["allreduce"]:
-            return self.minimize_impl_allreduce(loss, startup_program,
-                                                parameter_list, no_grad_set)
+        # if self.user_defined_strategy.sharding_configs["allreduce"]:
+        #     return self.minimize_impl_allreduce(loss, startup_program,
+        #                                         parameter_list, no_grad_set)
 
-        ckpts = list(self.user_defined_strategy.sharding_configs["checkpoints"])
-        optimizer = self.inner_opt
-        if len(ckpts) > 0:
-            print("add recompute")
-            print(ckpts)
-            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-            optimizer._set_checkpoints(ckpts)
+        # ckpts = list(self.user_defined_strategy.sharding_configs["checkpoints"])
 
-        if self.user_defined_strategy.sharding_configs["amp"]:
-            optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
+        # optimizer = self.inner_opt
+        # if len(ckpts) > 0:
+        #     print("add recompute")
+        #     print(ckpts)
+        #     optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+        #     optimizer._set_checkpoints(ckpts)
+
+        # if self.user_defined_strategy.sharding_configs["amp"]:
+        #     optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
 
         self._nrings = self.user_defined_strategy.sharding_configs["nrings"]
         self._fuse_broadcast_MB_bytes = self.user_defined_strategy.sharding_configs[
             "fuse_broadcast_MB_bytes"]
 
         print("doing sharding optimize...")
-        optimize_ops, params_grads = optimizer.minimize(
+        if self.inner_opt is None:
+            raise ValueError(
+                "self.inner_opt of ShardingOptimizer should not be None.")
+        optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
         if startup_program is None:
@@ -1143,106 +1151,106 @@ class ShardingOptimizer(MetaOptimizerBase):
                 attrs={'ring_id': ring_id,
                        OP_ROLE_KEY: OpRole.Forward})
 
-    def _insert_allreduce_ops_tmp(self, block):
-        ring_id = -1
-        grad = None
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+    # def _insert_allreduce_ops_tmp(self, block):
+    #     ring_id = -1
+    #     grad = None
+    #     for idx, op in reversed(list(enumerate(block.ops))):
+    #         if is_backward_op(op) and \
+    #                 OP_ROLE_VAR_KEY in op.attr_names:
+    #             op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
 
-                if len(op_role_var) == 0:
-                    continue
-                assert len(op_role_var) % 2 == 0
+    #             if len(op_role_var) == 0:
+    #                 continue
+    #             assert len(op_role_var) % 2 == 0
 
-                offset = idx
-                for i in range(0, len(op_role_var), 2):
-                    # param = block.vars[op_role_var[i]]
-                    grad = block.vars[op_role_var[i + 1]]
-                    # TODO(mapingshuo): what is is_distributed
-                    # if param.is_distributed:
-                    #     continue
+    #             offset = idx
+    #             for i in range(0, len(op_role_var), 2):
+    #                 # param = block.vars[op_role_var[i]]
+    #                 grad = block.vars[op_role_var[i + 1]]
+    #                 # TODO(mapingshuo): what is is_distributed
+    #                 # if param.is_distributed:
+    #                 #     continue
 
-                    if offset == idx:
-                        offset += 1
-                        block._insert_op(
-                            offset,
-                            type='c_sync_calc_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
-                            attrs={OP_ROLE_KEY: OpRole.Backward})
-                        offset += 1
-                    # As we search ops reversedly, we should insert c_allreduce_sum
-                    # op in the same way to keep the ring_id alternate
-                    print("add allreduce op for {}".format(grad.name))
-                    ring_id = (ring_id + 1) % self._nrings
-                    block._insert_op(
-                        offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+    #                 if offset == idx:
+    #                     offset += 1
+    #                     block._insert_op(
+    #                         offset,
+    #                         type='c_sync_calc_stream',
+    #                         inputs={'X': grad},
+    #                         outputs={'Out': grad},
+    #                         attrs={OP_ROLE_KEY: OpRole.Backward})
+    #                     offset += 1
+    #                 # As we search ops reversedly, we should insert c_allreduce_sum
+    #                 # op in the same way to keep the ring_id alternate
+    #                 print("add allreduce op for {}".format(grad.name))
+    #                 ring_id = (ring_id + 1) % self._nrings
+    #                 block._insert_op(
+    #                     offset,
+    #                     type='c_allreduce_sum',
+    #                     inputs={'X': grad},
+    #                     outputs={'Out': grad},
+    #                     attrs={
+    #                         'ring_id': ring_id,
+    #                         OP_ROLE_KEY: OpRole.Backward
+    #                     })
 
-        if grad is None:
-            return
+    #     if grad is None:
+    #         return
 
-        for idx, op in enumerate(block.ops):
-            if is_optimizer_op(op):
-                for ring_id in range(self._nrings):
-                    block._insert_op(
-                        idx + ring_id,
-                        type='c_sync_comm_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
-                break
+    #     for idx, op in enumerate(block.ops):
+    #         if is_optimizer_op(op):
+    #             for ring_id in range(self._nrings):
+    #                 block._insert_op(
+    #                     idx + ring_id,
+    #                     type='c_sync_comm_stream',
+    #                     inputs={'X': grad},
+    #                     outputs={'Out': grad},
+    #                     attrs={
+    #                         'ring_id': ring_id,
+    #                         OP_ROLE_KEY: OpRole.Backward
+    #                     })
+    #             break
 
-    def minimize_impl_allreduce(self,
-                                loss,
-                                startup_program=None,
-                                parameter_list=None,
-                                no_grad_set=None):
+    # def minimize_impl_allreduce(self,
+    #                             loss,
+    #                             startup_program=None,
+    #                             parameter_list=None,
+    #                             no_grad_set=None):
 
-        self._nrings = self.user_defined_strategy.sharding_configs["nrings"]
+    #     self._nrings = self.user_defined_strategy.sharding_configs["nrings"]
 
-        ckpts = list(self.user_defined_strategy.zero_configs["checkpoints"])
-        optimizer = self.inner_opt
-        if len(ckpts) > 0:
-            print("add recompute")
-            print(ckpts)
-            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-            optimizer._set_checkpoints(ckpts)
+    #     ckpts = list(self.user_defined_strategy.zero_configs["checkpoints"])
+    #     optimizer = self.inner_opt
+    #     if len(ckpts) > 0:
+    #         print("add recompute")
+    #         print(ckpts)
+    #         optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+    #         optimizer._set_checkpoints(ckpts)
 
-        if self.user_defined_strategy.sharding_configs["amp"]:
-            optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
+    #     if self.user_defined_strategy.sharding_configs["amp"]:
+    #         optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
 
-        optimize_ops, params_grads = optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+    #     optimize_ops, params_grads = optimizer.minimize(
+    #         loss, startup_program, parameter_list, no_grad_set)
 
-        if startup_program is None:
-            startup_program = default_startup_program()
+    #     if startup_program is None:
+    #         startup_program = default_startup_program()
 
-        print("work idx: ", self.role_maker._worker_index())
-        endpoints = self.role_maker._get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker._worker_index()]
+    #     print("work idx: ", self.role_maker._worker_index())
+    #     endpoints = self.role_maker._get_trainer_endpoints()
+    #     current_endpoint = endpoints[self.role_maker._worker_index()]
 
-        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
-        for ring_id in range(self._nrings):
-            collective_helper._init_communicator(
-                startup_program, current_endpoint, endpoints,
-                self.role_maker._worker_index(), ring_id, '6174')
-        main_block = loss.block
-        startup_block = startup_program.global_block()
-        self._broadcast_params(startup_block)
+    #     collective_helper = CollectiveHelper(self.role_maker, self._nrings)
+    #     for ring_id in range(self._nrings):
+    #         collective_helper._init_communicator(
+    #             startup_program, current_endpoint, endpoints,
+    #             self.role_maker._worker_index(), ring_id, '6174')
+    #     main_block = loss.block
+    #     startup_block = startup_program.global_block()
+    #     self._broadcast_params(startup_block)
 
-        self._insert_scale_loss_grad_ops(
-            main_block, scale=1.0 / self.role_maker._worker_num())
-        self._insert_allreduce_ops_tmp(main_block)
-        print("insert allreduce done")
-        return optimize_ops, params_grads
+    #     self._insert_scale_loss_grad_ops(
+    #         main_block, scale=1.0 / self.role_maker._worker_num())
+    #     self._insert_allreduce_ops_tmp(main_block)
+    #     print("insert allreduce done")
+    #     return optimize_ops, params_grads
