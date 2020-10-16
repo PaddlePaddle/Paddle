@@ -55,12 +55,12 @@ class MultinomialOp : public framework::OperatorWithKernel {
     int64_t x_rank = x_dim.size();
     PADDLE_ENFORCE_GT(x_rank, 0,
                       platform::errors::PreconditionNotMet(
-                          "The number of  dimensions of  the input probability "
+                          "The number of dimensions of the input probability "
                           "distribution should be > 0, but got %d.",
                           x_rank));
     PADDLE_ENFORCE_LE(x_rank, 2,
                       platform::errors::PreconditionNotMet(
-                          "The number of  dimensions of  the input probability "
+                          "The number of dimensions of the input probability "
                           "distribution should be <= 2, but got %d.",
                           x_rank));
 
