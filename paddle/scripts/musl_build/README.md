@@ -27,7 +27,7 @@ mkdir -p build && cd build
 ```bash
 # setup proxy address
 export HTTP_PROXY='http://127.0.0.1:8080'
-export HTTPS_PROXY='http://127.0.0.1:8080'
+export HTTPS_PROXY='https://127.0.0.1:8080'
 
 # invoke build script
 ../paddle/scripts/musl_build/build_docker.sh
@@ -37,9 +37,9 @@ export HTTPS_PROXY='http://127.0.0.1:8080'
 output wheel package will save to "dist" directory.
 
 ```bash
-# setup proxy address
+# setup proxy addresss
 export HTTP_PROXY='http://127.0.0.1:8080'
-export HTTPS_PROXY='http://127.0.0.1:8080'
+export HTTPS_PROXY='https://127.0.0.1:8080'
 
 # invoke build paddle script
 ../paddle/scripts/musl_build/build_paddle.sh
@@ -88,6 +88,3 @@ make
 - build_inside.sh: build_paddle.sh will invoke this script inside the docker for compiling.
 - config.sh: build config script for configure compiling option setting.
 - Dockerfile: build docker defination file.
-
-# maintainer
-- Chen Zhiyu (quby@sina.com)

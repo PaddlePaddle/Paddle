@@ -54,10 +54,9 @@ cmake "$PADDLE_DIR" \
     -DWITH_MUSL=ON \
     -DWITH_CRYPTO=OFF \
     -DWITH_MKL=OFF \
-    -DWITH_GPU=OFF \
-    -DWITH_TESTING=OFF
+    -DWITH_GPU=OFF
 
-echo "compile with make: $"
+echo "compile with make: $*"
 # shellcheck disable=2068
 make $@
 
