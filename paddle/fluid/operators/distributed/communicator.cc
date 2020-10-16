@@ -77,7 +77,8 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
     if (varname == STEP_COUNTER || send_ctx.is_sparse) {
       auto only_send =
-          std::make_tuple<CommContext *, CommContext *>(&send_ctx, nullptr);
+          std::make_tuple<const CommContext *, const CommContext *>(&send_ctx,
+                                                                    nullptr);
       pair_contexts_.push_back(only_send);
       continue;
     }
@@ -86,8 +87,34 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
         paddle::framework::GradOriginalVarName(varname);
     auto &recv_ctx = recv_varname_to_ctx.at(origin_varname);
     auto send_and_recv =
-        std::make_tuple<CommContext *, CommContext *>(&send_ctx, &recv_ctx);
+        std::make_tuple<const CommContext *, const CommContext *>(&send_ctx,
+                                                                  &recv_ctx);
     pair_contexts_.push_back(send_and_recv);
+  }
+
+  for (auto &pair : pair_contexts_) {
+    auto *send = std::get<0>(pair);
+    auto *recv = std::get<1>(pair);
+
+    std::stringstream ss;
+
+    if (send == nullptr) {
+      ss << "pair: "
+         << " send nullptr, ";
+    } else {
+      ss << "pair: "
+         << " send " << send->print() << " ";
+    }
+
+    if (recv == nullptr) {
+      ss << " "
+         << " recv nullptr, ";
+    } else {
+      ss << " "
+         << " recv " << recv->print() << " ";
+    }
+
+    VLOG(1) << ss.str();
   }
 
   VLOG(1) << "done";

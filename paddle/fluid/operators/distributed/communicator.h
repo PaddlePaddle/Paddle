@@ -301,11 +301,13 @@ class AsyncCommunicator : public Communicator {
   int max_merge_var_num_;
   int send_wait_times_;
   int send_queue_size_;
+  int thread_pool_size_;
 
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
 
-  std::vector<std::tuple<CommContext *, CommContext *>> pair_contexts_;
+  std::vector<std::tuple<const CommContext *, const CommContext *>>
+      pair_contexts_;
   std::vector<std::unique_ptr<std::thread>> slice_threads_;
   Scope *recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
