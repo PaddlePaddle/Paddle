@@ -126,7 +126,9 @@ class TransposeXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::transpose(dev_ctx.x_context(), x_data, y_data,
                            x_shape_host.data(), permute_host, ndims);
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU kernel error! error code=%d", r));
   }
 };
 
@@ -161,7 +163,9 @@ class TransposeGradXPUKernel : public framework::OpKernel<T> {
     int r = xpu::transpose(dev_ctx.x_context(), out_grad->data<T>(),
                            x_grad->data<T>(), out_shape_host.data(),
                            permute_host, ndims);
-    PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS, "XPU kernel error!");
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU kernel error! error code=%d", r));
   }
 };
 
