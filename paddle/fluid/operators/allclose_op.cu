@@ -73,8 +73,6 @@ struct AllcloseFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct AllcloseFunctor<platform::CUDADeviceContext, double>;
-
 }  // namespace operators
 }  // namespace paddle
 
