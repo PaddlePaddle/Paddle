@@ -627,7 +627,7 @@ def _extract_indeed_params_buffers(class_instance):
     """
     params = list(get_parameters(class_instance).values())
     buffers = list(get_buffers(class_instance).values())
-    buffers = [buffer for buffer in buffers if len(buffer.shape) == 0]
+    buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
 
     return params + buffers
 
