@@ -130,27 +130,31 @@ class TestAssignOApi(unittest.TestCase):
         self.assertTrue(np.allclose(res[1], ones / 1000.0))
 
     def test_assign_NumpyArray(self):
-        array = np.random.random(size=(100, 10)).astype(np.bool)
-        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-        paddle.assign(array, result1)
+        with fluid.dygraph.guard():
+            array = np.random.random(size=(100, 10)).astype(np.bool)
+            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
 
     def test_assign_NumpyArray1(self):
-        array = np.random.random(size=(100, 10)).astype(np.float32)
-        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-        paddle.assign(array, result1)
+        with fluid.dygraph.guard():
+            array = np.random.random(size=(100, 10)).astype(np.float32)
+            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
 
     def test_assign_NumpyArray2(self):
-        array = np.random.random(size=(100, 10)).astype(np.int32)
-        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-        paddle.assign(array, result1)
+        with fluid.dygraph.guard():
+            array = np.random.random(size=(100, 10)).astype(np.int32)
+            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
 
     def test_assign_NumpyArray3(self):
-        array = np.random.random(size=(100, 10)).astype(np.int64)
-        result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-        paddle.assign(array, result1)
+        with fluid.dygraph.guard():
+            array = np.random.random(size=(100, 10)).astype(np.int64)
+            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            paddle.assign(array, result1)
         self.assertTrue(np.allclose(result1.numpy(), array))
 
 
@@ -172,4 +176,5 @@ class TestAssignOpErrorApi(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
