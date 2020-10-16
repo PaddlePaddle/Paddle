@@ -85,6 +85,12 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 #endif
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
+           platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
+                 size);
+  }
+  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
@@ -285,6 +291,12 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   }
 #endif
 #ifdef PADDLE_WITH_CUDA
+  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
+           platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
+                 size);
+  }
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
