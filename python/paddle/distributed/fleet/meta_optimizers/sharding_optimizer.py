@@ -184,7 +184,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._main_program = None
         self._startup_program = None
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
         # params and fp16 params is for broadcast
         self._params = set([])
         self._fp16_params = set([])
