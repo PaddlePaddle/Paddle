@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
@@ -22,6 +23,8 @@ import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
 import numpy
 from paddle.fluid import compiler, Program, program_guard
+
+paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):

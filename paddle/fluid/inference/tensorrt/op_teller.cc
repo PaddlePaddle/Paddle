@@ -15,6 +15,12 @@
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -31,6 +37,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
+    teller_set.insert("slice");
 #endif
   }
 
@@ -51,6 +58,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "relu",
                                                   "depthwise_conv2d",
                                                   "softmax",
+                                                  "sigmoid",
                                                   "batch_norm",
                                                   "elementwise_add",
                                                   "leaky_relu",
@@ -87,6 +95,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gelu",
       "layer_norm",
       "scale",
+      "stack",
   };
 };
 
@@ -104,7 +113,14 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
         op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-      if (paddings.size() > 2) return false;
+
+      std::string padding_algorithm = "EXPLICIT";
+      if (desc.HasAttr("padding_algorithm"))
+        padding_algorithm =
+            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+      if (paddings.size() > 2 ||
+          (padding_algorithm == "SAME" && op_type != "pool2d"))
+        return false;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

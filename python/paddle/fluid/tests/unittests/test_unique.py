@@ -233,10 +233,28 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
         paddle.enable_static()
 
+    def test_dygraph_attr_dtype(self):
+        paddle.disable_static()
+        x_data = x_data = np.random.randint(0, 10, (120))
+        x = paddle.to_tensor(x_data)
+        out, indices, inverse, counts = paddle.unique(
+            x,
+            return_index=True,
+            return_inverse=True,
+            return_counts=True,
+            dtype="int32")
+        expected_out, np_indices, np_inverse, np_counts = np.unique(
+            x_data, return_index=True, return_inverse=True, return_counts=True)
+        self.assertTrue((out.numpy() == expected_out).all(), True)
+        self.assertTrue((indices.numpy() == np_indices).all(), True)
+        self.assertTrue((inverse.numpy() == np_inverse).all(), True)
+        self.assertTrue((counts.numpy() == np_counts).all(), True)
+        paddle.enable_static()
+
     def test_static_graph(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            x = paddle.data(name='x', shape=[3, 2], dtype='float64')
+            x = paddle.fluid.data(name='x', shape=[3, 2], dtype='float64')
             unique, inverse, counts = paddle.unique(
                 x, return_inverse=True, return_counts=True, axis=0)
             place = paddle.CPUPlace()
@@ -256,13 +274,13 @@ class TestUniqueError(unittest.TestCase):
         def test_x_dtype():
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
-                x = paddle.data(name='x', shape=[10, 10], dtype='float16')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
                 result = paddle.unique(x)
 
             self.assertRaises(TypeError, test_x_dtype)
 
     def test_attr(self):
-        x = paddle.data(name='x', shape=[10, 10], dtype='float64')
+        x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
 
         def test_return_index():
             result = paddle.unique(x, return_index=0)
@@ -281,6 +299,9 @@ class TestUniqueError(unittest.TestCase):
 
         def test_axis():
             result = paddle.unique(x, axis='12')
+
+        def test_dtype():
+            result = paddle.unique(x, dtype='float64')
 
         self.assertRaises(TypeError, test_axis)
 

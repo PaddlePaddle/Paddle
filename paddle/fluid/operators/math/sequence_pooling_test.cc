@@ -50,9 +50,21 @@ void TestSequencePoolingSum(const DeviceContext &context,
   in_grad.mutable_data<T>(in_dims, place);
 
   // check tensor contruction result
-  PADDLE_ENFORCE_EQ(in_grad.dims().size(), out_grad.dims().size());
+  PADDLE_ENFORCE_EQ(
+      in_grad.dims().size(), out_grad.dims().size(),
+      paddle::platform::errors::InvalidArgument(
+          "The dimension of input and output shall be same. Expected %ld == "
+          "%ld, but got %ld != %ld. Please check the input value.",
+          in_grad.dims().size(), out_grad.dims().size(), in_grad.dims().size(),
+          out_grad.dims().size()));
   for (int64_t i = 1; i < out_grad.dims().size(); ++i) {
-    PADDLE_ENFORCE_EQ(in_grad.dims()[i], out_grad.dims()[i]);
+    PADDLE_ENFORCE_EQ(
+        in_grad.dims()[i], out_grad.dims()[i],
+        paddle::platform::errors::InvalidArgument(
+            "The dimension of input and output shall be same. Expected %ld == "
+            "%ld, but got %ld != %ld. Please check the input value.",
+            in_grad.dims()[i], out_grad.dims()[i], in_grad.dims()[i],
+            out_grad.dims()[i]));
   }
 
   // call functor

@@ -55,7 +55,7 @@ def get_os_info():
     else:
         plat = None
         ver = None
-    envs['os_info'] = "{} {}".format(plat, ver)
+    envs['os_info'] = "{0} {1}".format(plat, ver)
 
 
 def get_python_info():
@@ -93,7 +93,7 @@ def get_cudnn_info():
         if cudnn_dll_path:
             cudnn_header_path = cudnn_dll_path.split('bin')[
                 0] + 'include\cudnn.h'
-            cmd = 'type "{}" | findstr "{}" | findstr /v "CUDNN_VERSION"'
+            cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None
             return
@@ -102,7 +102,7 @@ def get_cudnn_info():
             'whereis "cudnn.h" | awk \'{print $2}\'')
         if cudnn_header_path:
             cudnn_header_path = cudnn_header_path.strip()
-            cmd = 'cat "{}" | grep "{}" | grep -v "CUDNN_VERSION"'
+            cmd = 'cat "{0}" | grep "{1}" | grep -v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None
             return
@@ -112,7 +112,7 @@ def get_cudnn_info():
     patch_level = _get_cudnn_ver(
         cmd.format(cudnn_header_path, 'CUDNN_PATCHLEVEL'))
 
-    envs['cudnn_version'] = "{}.{}.{}".format(major, minor, patch_level)
+    envs['cudnn_version'] = "{0}.{1}.{2}".format(major, minor, patch_level)
 
 
 def get_driver_info():
@@ -132,7 +132,7 @@ def main():
     get_cuda_info()
     get_cudnn_info()
     get_driver_info()
-    print(envs_template.format(**envs))
+    print('*' * 40 + envs_template.format(**envs) + '*' * 40)
 
 
 if __name__ == '__main__':

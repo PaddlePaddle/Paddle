@@ -23,8 +23,6 @@ import numpy as np
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):
-    if len(x.shape) == 1:
-        axis = 0
     xp = np.power(np.abs(x), p)
     s = np.sum(xp, axis=axis, keepdims=keepdims)
     r = np.maximum(np.power(s, 1.0 / p), epsilon)
@@ -38,10 +36,10 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         self.expected0 = p_normalize(self.input_np)
         self.expected1 = p_normalize(self.input_np, p=1.5)
         self.expected2 = p_normalize(self.input_np, axis=0)
-        self.expected3 = p_normalize(self.input_np2)
+        self.expected3 = p_normalize(self.input_np2, axis=0)
 
     def run_imperative(self):
-        x = paddle.to_variable(self.input_np)
+        x = paddle.to_tensor(self.input_np)
         y = F.normalize(x)
         self.assertTrue(np.allclose(y.numpy(), self.expected0))
 
@@ -51,18 +49,20 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         y = F.normalize(x, axis=0)
         self.assertTrue(np.allclose(y.numpy(), self.expected2))
 
-        x = paddle.to_variable(self.input_np2)
-        y = F.normalize(x)
+        x = paddle.to_tensor(self.input_np2)
+        y = F.normalize(x, axis=0)
         self.assertTrue(np.allclose(y.numpy(), self.expected3))
 
+        self.assertRaises(BaseException, F.normalize, x)
+
     def run_static(self, use_gpu=False):
-        x = paddle.data(name='input', shape=[10, 10], dtype='float32')
-        x2 = paddle.data(name='input2', shape=[2], dtype='float32')
+        x = paddle.fluid.data(name='input', shape=[10, 10], dtype='float32')
+        x2 = paddle.fluid.data(name='input2', shape=[2], dtype='float32')
         result0 = F.normalize(x)
         result1 = F.normalize(x, p=1.5)
         result2 = F.normalize(x, axis=0)
         result3 = F.normalize(x, name='aaa')
-        result4 = F.normalize(x2)
+        result4 = F.normalize(x2, axis=0)
 
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -77,6 +77,7 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         self.assertTrue(np.allclose(static_result[2], self.expected2))
         self.assertTrue('aaa' in result3.name)
         self.assertTrue(np.allclose(static_result[3], self.expected3))
+        self.assertRaises(ValueError, F.normalize, x2)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())

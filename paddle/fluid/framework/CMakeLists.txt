@@ -119,11 +119,13 @@ cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
 
-cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
+cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 
-cc_library(op_version_registry SRCS op_version_registry.cc DEPS framework_proto boost)
+cc_library(op_version_proto SRCS op_version_proto.cc DEPS framework_proto boost)
+
+cc_library(op_version_registry SRCS op_version_registry.cc DEPS op_version_proto framework_proto boost)
 cc_test(op_version_registry_test SRCS op_version_registry_test.cc DEPS op_version_registry)
 
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
@@ -245,7 +247,8 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS executor)
+cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+    conditional_block_op executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -272,7 +275,7 @@ cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatib
 
 cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
-cc_library(generator SRCS generator.cc)
+cc_library(generator SRCS generator.cc DEPS enforce place)
 
 # Get the current working branch
 execute_process(

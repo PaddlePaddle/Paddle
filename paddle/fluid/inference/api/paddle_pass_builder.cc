@@ -143,6 +143,10 @@ void GpuPassStrategy::EnableMkldnnQuantizer() {
   LOG(ERROR) << "GPU not support MKL-DNN quantization";
 }
 
+void GpuPassStrategy::EnableMkldnnBfloat16() {
+  LOG(ERROR) << "GPU not support MKL-DNN bfloat16";
+}
+
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -152,7 +156,8 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
-                  "fc_lstm_fuse_pass",                       //
+                  // TODO(wilber): fix correctness problem.
+                  // "fc_lstm_fuse_pass",                       //
                   "mul_lstm_fuse_pass",                      //
                   "fc_gru_fuse_pass",                        //
                   "mul_gru_fuse_pass",                       //
@@ -181,12 +186,14 @@ void CpuPassStrategy::EnableMKLDNN() {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
-             "depthwise_conv_mkldnn_pass",    //
-             "conv_bn_fuse_pass",             // Execute BN passes again to
-             "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
-             "conv_transpose_bn_fuse_pass",   //
-             "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-             "conv_bias_mkldnn_fuse_pass",              //
+             "depthwise_conv_mkldnn_pass",     //
+             "conv_bn_fuse_pass",              // Execute BN passes again to
+             "conv_eltwiseadd_bn_fuse_pass",   // preserve correct pass order
+             "conv_affine_channel_fuse_pass",  //
+             "conv_eltwiseadd_affine_channel_fuse_pass",  //
+             "conv_transpose_bn_fuse_pass",               //
+             "conv_transpose_eltwiseadd_bn_fuse_pass",    //
+             "conv_bias_mkldnn_fuse_pass",                //
              "conv_transpose_bias_mkldnn_fuse_pass",
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
@@ -220,6 +227,18 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
   use_mkldnn_quantizer_ = true;
 #else
   use_mkldnn_quantizer_ = false;
+#endif
+}
+
+void CpuPassStrategy::EnableMkldnnBfloat16() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!use_mkldnn_bfloat16_) {
+    passes_.push_back("cpu_bfloat16_placement_pass");
+    passes_.push_back("cpu_bfloat16_pass");
+  }
+  use_mkldnn_bfloat16_ = true;
+#else
+  use_mkldnn_bfloat16_ = false;
 #endif
 }
 

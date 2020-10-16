@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/unroll_array_ops.h"
+
 #include <gtest/gtest.h>
-#include <algorithm>
 #include <array>
-#include <cstdint>
 
 namespace paddle {
 namespace framework {

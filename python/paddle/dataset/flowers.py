@@ -37,7 +37,7 @@ from .common import download
 import tarfile
 import scipy.io as scio
 from paddle.dataset.image import *
-from paddle.reader import *
+from paddle.reader import map_readers, xmap_readers
 from paddle import compat as cpt
 import os
 import numpy as np

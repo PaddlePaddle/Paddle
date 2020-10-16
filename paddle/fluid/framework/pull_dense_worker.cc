@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
+
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
@@ -58,13 +59,15 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
   fleet_ptr_ = FleetWrapper::GetInstance();
 #ifdef PADDLE_WITH_CUDA
   copy_streams_.clear();
+#endif
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
   places_.clear();
   thread_scopes_.clear();
 #endif
 }
 
 void PullDenseWorker::CreatePinVar() {
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
   // for (auto& v : dense_value_names_) {
   //  for (auto& name : v.second) {
   for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
@@ -79,8 +82,13 @@ void PullDenseWorker::CreatePinVar() {
       auto* ptr = root_scope_->Var(name + "pin");
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       LoDTensor* pin_tensor = ptr->GetMutable<LoDTensor>();
+#ifdef PADDLE_WITH_CUDA
       pin_tensor->mutable_data<float>(tensor->dims(),
                                       platform::CUDAPinnedPlace());
+#endif
+#ifdef PADDLE_WITH_XPU
+      pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
+#endif
     }
   }
 #endif
@@ -103,7 +111,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
     exit(-1);
   }
   status_vec->resize(0);
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
 
   for (size_t i = 0; i < places_.size(); ++i) {
     // for (auto& v : dense_value_names_) {
@@ -121,9 +129,16 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         Variable* var = thread_scopes_[i]->FindVar(name);
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
+#ifdef PADDLE_WITH_CUDA
         memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, places_[i]), w,
                      platform::CUDAPinnedPlace(), pin_w,
                      sizeof(float) * tensor->numel(), copy_streams_[i]);
+#endif
+#ifdef PADDLE_WITH_XPU
+        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, places_[i]), w,
+                     platform::CPUPlace(), pin_w,
+                     sizeof(float) * tensor->numel());
+#endif
       }
     }
   }
@@ -144,7 +159,7 @@ void PullDenseWorker::PullDense(bool force_update) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);

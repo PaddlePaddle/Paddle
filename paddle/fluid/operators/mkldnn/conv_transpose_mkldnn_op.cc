@@ -117,7 +117,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-        "dilation in convolution is not implemented yet");
+        platform::errors::Unimplemented(
+            "dilation in convolution is not implemented yet"));
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();

@@ -13,12 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/memory/malloc.h"
+
 #include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

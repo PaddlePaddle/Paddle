@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -112,16 +113,19 @@ static T convert(const std::string &item,
     std::string message =
         "invalid_argument exception when try to convert : " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(message);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "invalid_argument exception when try to convert %s.", item));
   } catch (std::out_of_range &e) {
     std::string message =
         "out_of_range exception when try to convert : " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(message);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "out_of_range exception when try to convert %s.", item));
   } catch (...) {
     std::string message = "unexpected exception when try to convert " + item;
     LOG(ERROR) << message;
-    PADDLE_THROW(message);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "unexpected exception when try to convert %s.", item));
   }
   return res;
 }
@@ -353,7 +357,8 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double batch_latency, int epoch = 1,
                       const framework::proto::VarType::Type data_type =
                           framework::proto::VarType::FP32) {
-  PADDLE_ENFORCE_GT(batch_size, 0, "Non-positive batch size.");
+  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
+                                       "Non-positive batch size."));
   double sample_latency = batch_latency / batch_size;
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";

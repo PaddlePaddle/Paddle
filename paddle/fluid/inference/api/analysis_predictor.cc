@@ -32,7 +32,6 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -170,7 +169,8 @@ bool AnalysisPredictor::PrepareScope(
   if (parent_scope) {
     PADDLE_ENFORCE_NOT_NULL(
         parent_scope,
-        "Both program and parent_scope should be set in Clone mode.");
+        platform::errors::PreconditionNotMet(
+            "Both program and parent_scope should be set in Clone mode."));
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
@@ -192,11 +192,6 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
-    if (!CheckOperatorCompatible()) {
-      LOG(WARNING) << "WARNING: Results may be DIFF! "
-                      "Please use the corresponding version of the model and "
-                      "prediction library, and do not use the develop branch.";
-    }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -236,14 +231,27 @@ bool AnalysisPredictor::PrepareExecutor() {
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);
 
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_);
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::PreconditionNotMet(
+                              "The sub_scope should not be nullptr."));
 
   return true;
 }
 
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
+  std::vector<std::vector<int>> inputs_shape;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    inputs_shape.emplace_back(inputs[i].shape);
+  }
+  MkldnnPreSet(inputs_shape);
+#endif
+}
+
+void AnalysisPredictor::MkldnnPreSet(
+    const std::vector<std::vector<int>> &inputs_shape) {
+#ifdef PADDLE_WITH_MKLDNN
+  VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
           << platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
@@ -255,9 +263,9 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
         config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      for (size_t j = 0; j < inputs[i].shape.size(); ++j) {
-        ss << inputs[i].shape[j] << "-";
+    for (size_t i = 0; i < inputs_shape.size(); ++i) {
+      for (size_t j = 0; j < inputs_shape[i].size(); ++j) {
+        ss << inputs_shape[i][j] << "-";
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
@@ -298,7 +306,8 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
-  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
+  PADDLE_ENFORCE_NOT_NULL(scope, platform::errors::PreconditionNotMet(
+                                     "The scope should not be nullptr."));
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -400,7 +409,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
     int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
-    PADDLE_ENFORCE((size_t)idx == i);
+    PADDLE_ENFORCE_EQ(
+        static_cast<size_t>(idx), i,
+        platform::errors::InvalidArgument(
+            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
@@ -436,10 +449,12 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE(
-        !config_.params_file().empty(),
-        "Either model_dir or (param_file, prog_file) should be set.");
-    PADDLE_ENFORCE(!config_.prog_file().empty());
+    PADDLE_ENFORCE_EQ(config_.params_file().empty(), false,
+                      platform::errors::PreconditionNotMet(
+                          "Either model_dir or param_file should be set."));
+    PADDLE_ENFORCE_EQ(config_.prog_file().empty(), false,
+                      platform::errors::PreconditionNotMet(
+                          "Either model_dir or prog_file should be set."));
     std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
     argument_.SetModelProgramPath(config_.prog_file());
@@ -462,6 +477,8 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   if (config_.lite_engine_enabled()) {
+    argument_.SetCpuMathLibraryNumThreads(
+        config_.cpu_math_library_num_threads());
     argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
@@ -484,6 +501,10 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
   }
+  if (config_.use_mkldnn_bfloat16_) {
+    LOG(INFO) << "Bfloat16 is enabled";
+    argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
+  }
 #endif
 
   auto passes = config_.pass_builder()->AllPasses();
@@ -502,7 +523,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
   Analyzer().Run(&argument_);
 
-  PADDLE_ENFORCE(argument_.scope_valid());
+  PADDLE_ENFORCE_EQ(
+      argument_.scope_valid(), true,
+      platform::errors::InvalidArgument("The argument scope should be valid."));
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
@@ -517,13 +540,17 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+  // TODO(NHZlX): Should add the link to the doc of
+  // paddle_infer::CreatePredictor<paddle_infer::Config>
   if (config.glog_info_disabled()) {
     FLAGS_logtostderr = 1;
     FLAGS_minloglevel = 2;  // GLOG_ERROR
   }
   VLOG(3) << "create AnalysisConfig";
-  PADDLE_ENFORCE(config.is_valid(),
-                 "Note: Each config can only be used for one predictor.");
+  PADDLE_ENFORCE_EQ(
+      config.is_valid(), true,
+      platform::errors::InvalidArgument(
+          "Note: Each config can only be used for one predictor."));
 
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
@@ -620,7 +647,9 @@ bool AnalysisPredictor::MkldnnQuantize() {
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_);
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::InvalidArgument(
+                              "The sub_scope should not be nullptr."));
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
@@ -643,7 +672,8 @@ void AnalysisPredictor::PrepareFeedFetch() {
 }
 
 void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
-  PADDLE_ENFORCE_NOT_NULL(scope);
+  PADDLE_ENFORCE_NOT_NULL(scope, platform::errors::InvalidArgument(
+                                     "The scope should not be nullptr."));
   auto *var = scope->Var("feed");
   var->GetMutable<framework::FeedList>();
   var = scope->Var("fetch");
@@ -664,7 +694,8 @@ AnalysisPredictor::GetInputTensorShape() {
   std::vector<std::string> names = GetInputNames();
   for (std::string name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, "input %s does not exist.", name);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
+                                     "Input %s does not exist.", name));
     input_shapes[name] = var->GetShape();
   }
   return input_shapes;
@@ -680,7 +711,11 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
+  PADDLE_ENFORCE_NOT_NULL(
+      executor_->scope()->FindVar(name),
+      platform::errors::PreconditionNotMet(
+          "The variable named %s is not found in the scope of the exector.",
+          name));
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = true;
@@ -697,7 +732,11 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
+  PADDLE_ENFORCE_NOT_NULL(
+      executor_->scope()->FindVar(name),
+      platform::errors::PreconditionNotMet(
+          "he variable named %s is not found in the scope of the exector.",
+          name));
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = false;
@@ -713,6 +752,18 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) {
+    std::vector<std::vector<int>> shape_vector;
+    auto names = GetInputNames();
+    for (size_t i = 0; i < names.size(); ++i) {
+      auto in_tensor = GetInputTensor(names[i]);
+      shape_vector.emplace_back(in_tensor->shape());
+    }
+    MkldnnPreSet(shape_vector);
+  }
+#endif
+
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -721,6 +772,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
@@ -758,8 +812,11 @@ bool AnalysisPredictor::LoadProgramDesc() {
     std::string pb_content;
     // Read binary
     std::ifstream fin(filename, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
-                   filename);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fin.is_open()), true,
+        platform::errors::NotFound(
+            "Cannot open file %s, please confirm whether the file is normal.",
+            filename));
     fin.seekg(0, std::ios::end);
     pb_content.resize(fin.tellg());
     fin.seekg(0, std::ios::beg);
@@ -776,7 +833,8 @@ bool AnalysisPredictor::LoadProgramDesc() {
 
 bool AnalysisPredictor::LoadParameters() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
-                          "The inference program should be loaded first.");
+                          platform::errors::PreconditionNotMet(
+                              "The inference program should be loaded first."));
 
   const auto &global_block = inference_program_->MutableBlock(0);
 
@@ -852,8 +910,9 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 
 #if PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
-  PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
-                 "This func can be invoked only in trt mode");
+  PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(), true,
+                    platform::errors::PreconditionNotMet(
+                        "This func can be invoked only in trt mode"));
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
@@ -938,40 +997,6 @@ std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
 }
 
-bool AnalysisPredictor::CheckOperatorCompatible() {
-  if (!inference_program_) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Inference program version check failed because the program does not "
-        "exist."));
-    return false;
-  }
-  bool res = true;
-  op_compatible_map_.ReadFromProto(*inference_program_->OpCompatibleMap());
-  const auto &version = framework::DumpVersion(framework::kCurProgramVersion);
-  LOG(INFO) << "MODEL VERSION: "
-            << framework::DumpVersion(inference_program_->Version());
-  LOG(INFO) << "PREDICTOR VERSION: " << version;
-  std::set<std::string> op_types;
-  for (size_t i = 0; i < inference_program_->Size(); ++i) {
-    const auto &block = inference_program_->Block(i);
-    for (const auto *op : block.AllOps()) {
-      op_types.insert(op->Type());
-    }
-  }
-  for (const auto type : op_types) {
-    auto compatible_type =
-        op_compatible_map_.IsRequireMiniVersion(type, version);
-    if (compatible_type != framework::OpCompatibleType::compatible) {
-      if (!framework::kCurProgramVersion) {
-        LOG(WARNING) << " - Version incompatible ("
-                     << static_cast<int>(compatible_type) << ") " << type;
-      }
-      res = false;
-    }
-  }
-  return res;
-}
-
 // Add SaveOptimModel
 void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   // save model
@@ -1014,6 +1039,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config) {
+  LOG(WARNING) << "Deprecated. Please use CreatePredictor instead.";
   return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       config);
 }
@@ -1057,4 +1083,124 @@ USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
+USE_TRT_CONVERTER(stack);
 #endif
+
+namespace paddle_infer {
+
+void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
+
+std::vector<int> Tensor::shape() const { return tensor_->shape(); }
+
+void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
+  return tensor_->SetLoD(x);
+}
+
+std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
+
+const std::string &Tensor::name() const { return tensor_->name(); }
+
+DataType Tensor::type() const { return tensor_->type(); }
+
+Predictor::Predictor(const Config &config) {
+  const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
+  // The second parameter indicates that the discard log is not printed
+  predictor_ = paddle::CreatePaddlePredictor<
+      Config, paddle::PaddleEngineKind::kAnalysis>(config);
+}
+
+std::vector<std::string> Predictor::GetInputNames() {
+  return predictor_->GetInputNames();
+}
+
+std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
+  auto zero_copy_tensor = predictor_->GetInputTensor(name);
+  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
+  return tensor;
+}
+
+std::vector<std::string> Predictor::GetOutputNames() {
+  return predictor_->GetOutputNames();
+}
+
+std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
+  auto zero_copy_tensor = predictor_->GetOutputTensor(name);
+  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
+  return tensor;
+}
+
+bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
+
+std::unique_ptr<Predictor> Predictor::Clone() {
+  auto analysis_pred = predictor_->Clone();
+  std::unique_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
+  return pred;
+}
+
+void Predictor::ClearIntermediateTensor() {
+  predictor_->ClearIntermediateTensor();
+}
+
+int GetNumBytesOfDataType(DataType dtype) {
+  switch (dtype) {
+    case DataType::FLOAT32:
+      return sizeof(float);
+    case DataType::INT64:
+      return sizeof(int64_t);
+    case DataType::INT32:
+      return sizeof(int32_t);
+    case DataType::UINT8:
+      return sizeof(uint8_t);
+    default:
+      assert(false);
+      return -1;
+  }
+}
+
+std::string GetVersion() { return paddle::get_version(); }
+
+std::string UpdateDllFlag(const char *name, const char *value) {
+  return paddle::UpdateDllFlag(name, value);
+}
+
+}  // namespace paddle_infer
+
+namespace paddle_infer {
+std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
+  std::shared_ptr<Predictor> predictor(new Predictor(config));
+  return predictor;
+}
+
+namespace services {
+PredictorPool::PredictorPool(const Config &config, size_t size) {
+  PADDLE_ENFORCE_GE(
+      size, 1UL,
+      paddle::platform::errors::InvalidArgument(
+          "The predictor pool size should be greater than 1, but it's (%d)",
+          size));
+  Config copy_config(config);
+  main_pred_.reset(new Predictor(config));
+  for (size_t i = 0; i < size - 1; i++) {
+    if (config.tensorrt_engine_enabled()) {
+      Config config_tmp(copy_config);
+      preds_.push_back(
+          std::move(std::unique_ptr<Predictor>(new Predictor(config_tmp))));
+    } else {
+      preds_.push_back(std::move(main_pred_->Clone()));
+    }
+  }
+}
+
+Predictor *PredictorPool::Retrive(size_t idx) {
+  PADDLE_ENFORCE_LT(
+      idx, preds_.size() + 1,
+      paddle::platform::errors::InvalidArgument(
+          "There are (%d) predictors in the pool, but the idx is (%d)", idx,
+          preds_.size() + 1));
+  if (idx == 0) {
+    return main_pred_.get();
+  }
+  return preds_[idx - 1].get();
+}
+}  // namespace services
+}  // namespace paddle_infer

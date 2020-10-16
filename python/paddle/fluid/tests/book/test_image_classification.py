@@ -24,6 +24,8 @@ import unittest
 import os
 import numpy as np
 
+paddle.enable_static()
+
 
 def resnet_cifar10(input, depth=32):
     def conv_bn_layer(input,

@@ -26,13 +26,13 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.reader
-from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
     program_guard, dygraph_not_support
+from paddle.reader import cache, map_readers, buffered, compose, chain, shuffle, \
+    ComposeNotAligned, firstn, xmap_readers, multiprocess_reader
 from .wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
@@ -62,7 +62,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
-] + reader.__all__ + paddle.reader.__all__
+] + reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -1346,7 +1346,7 @@ def save_inference_model(dirname,
         append_fetch_ops(main_program, fetch_var_names)
 
         main_program.desc._set_version()
-        paddle.fluid.core.save_op_compatible_info(main_program.desc)
+        paddle.fluid.core.save_op_version_info(main_program.desc)
         with open(model_basename, "wb") as f:
             f.write(main_program.desc.serialize_to_string())
     else:
@@ -1720,7 +1720,7 @@ def save(program, model_path):
     main_program = program.clone()
     program.desc.flush()
     main_program.desc._set_version()
-    paddle.fluid.core.save_op_compatible_info(program.desc)
+    paddle.fluid.core.save_op_version_info(program.desc)
 
     with open(model_path + ".pdmodel", "wb") as f:
         f.write(program.desc.serialize_to_string())

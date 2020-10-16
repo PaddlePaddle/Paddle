@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-
 #include <string>
-#include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 

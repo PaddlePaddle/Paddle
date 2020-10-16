@@ -251,12 +251,19 @@ def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
         begin_idx = 0
     if end_idx is None:
         end_idx = len(op_descs)
-    for i in range(begin_idx, end_idx):
-        op_desc = op_descs[i]
-        if isinstance(op_desc, tuple):
-            op_desc = op_desc[0]
-        op_desc._rename_input(old_name, new_name)
-        op_desc._rename_output(old_name, new_name)
+    if isinstance(op_descs, (list, tuple)):
+        for i in range(begin_idx, end_idx):
+            op_desc = op_descs[i]
+            if isinstance(op_desc, tuple):
+                op_desc = op_desc[0]
+            op_desc._rename_input(old_name, new_name)
+            op_desc._rename_output(old_name, new_name)
+    if isinstance(op_descs, collections.OrderedDict):
+        for key, value in op_descs.items():
+            if isinstance(value, (list, tuple)):
+                for op_desc in value:
+                    op_desc._rename_input(old_name, new_name)
+                    op_desc._rename_output(old_name, new_name)
 
 
 def _create_op_desc_(op_type, inputs, outputs, attrs):
@@ -369,6 +376,41 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
+def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
+                                     op_idx):
+    """
+    Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
+    """
+    if op_idx not in pending_sum_ops.keys():
+        pending_sum_ops[op_idx] = []
+    pending_sum_ops[op_idx].append(
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
+                         {"Out": [var_name]}, {"use_mkldnn": False}))
+    renamed_vars[var_name] = [var_name]
+
+
+def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
+                                      op_idx):
+    """
+    Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
+    """
+    if op_idx not in pending_sum_ops.keys():
+        pending_sum_ops[op_idx] = []
+    out_name = renamed_vars[var_name][0]
+    for i in range(1, len(renamed_vars[var_name])):
+        x_name = out_name
+        y_name = renamed_vars[var_name][i]
+        if i != len(renamed_vars[var_name]) - 1:
+            out_name = var_name + '@ADD@' + str(i)
+        else:
+            out_name = var_name
+        pending_sum_ops[op_idx].append(
+            _create_op_desc_("grad_add", {"X": [x_name],
+                                          "Y": [y_name]}, {"Out": [out_name]},
+                             {"use_mkldnn": False}))
+    renamed_vars[var_name] = [var_name]
+
+
 def _addup_repetitive_outputs_(op_descs, block_idx):
     """
     In backward part, an variable may be the output of more than one ops.
@@ -376,7 +418,9 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
-    pending_sum_ops = []
+    _MAX_ADD_NUM_ = core.globals()['FLAGS_max_inplace_grad_add']
+    #pending_sum_ops = []
+    pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
@@ -385,10 +429,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
-                pending_sum_ops.append((_create_op_desc_(
-                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
-                    {"use_mkldnn": False}), idx))
-                renamed_vars[var_name] = [var_name]
+                if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                     pending_sum_ops, idx)
+                else:
+                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                      pending_sum_ops, idx)
+
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
             for arg_idx, var_name in enumerate(arg_names):
@@ -440,13 +487,26 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     renamed_vars[var_name].append(new_name)
 
     for var_name, inputs in six.iteritems(renamed_vars):
-        if len(inputs) > 1:
-            pending_sum_ops.append(
-                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
-                                  {"use_mkldnn": False}), len(op_descs)))
+        if len(renamed_vars[var_name]) > 1:
+            if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                 pending_sum_ops, len(op_descs))
+            else:
+                _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                  pending_sum_ops,
+                                                  len(op_descs))
+
     # sum_op descs are sorted according to their insert position
-    for p in reversed(pending_sum_ops):
-        op_descs.insert(p[1], p[0])
+    for key, value in collections.OrderedDict(
+            reversed(list(pending_sum_ops.items()))).items():
+
+        # NOTE(zhiqiu): Since reversed, the idx of op_descs to be inserted will remains correct.
+        # For example, [0, 1, 2], and we want to insert 'a' at idx 1, 'b' at idx 2, and the expected result is [0, 1, 'a', 2, 'b'].
+        # If reversed, we first insert 'b' at idx 2, it becomes [0, 1, 2, 'b'], and then insert 'a' at idx 1, it becomes [0, 1, 'a', 2, 'b'].
+        # If not reverse, we first insert 'a' at idx 1, it becomes [0, 1, 'a', 2], and then insert 'b' at idx 2, it becomes [0, 1, 'a', 'b', 2].
+        idx = key
+        for i, op in enumerate(value):
+            op_descs.insert(idx + i, op)
 
     return op_descs
 
@@ -1231,17 +1291,17 @@ def append_backward(loss,
     It will be automatically invoked by the optimizer's `minimize` function.
 
     Parameters:
-        loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
-        parameter_list(list[Variable|str], optional): List of Parameters or Parameter.names
+        loss(Tensor): The loss Tensor of the network.
+        parameter_list(list[Tensor|str], optional): List of Parameters or Parameter.names
                                            that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All variables with
+        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All Tensors with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
+                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
         callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
@@ -1252,70 +1312,73 @@ def append_backward(loss,
                                                new gradient operator is added
                                                into the program. The callable
                                                object must have two input
-                                               parameters: 'block' and 'context'.
-                                               The 'block' is the :ref:`api_guide_Block_en` which
+                                               parameters: ``block`` and ``context`` .
+                                               The ``block`` is the :ref:`api_guide_Block_en` which
                                                the new gradient operator will
-                                               be added to. The 'context' is a
+                                               be added to. The ``context`` is a
                                                map, whose keys are gradient
-                                               variable names and values are
-                                               corresponding original :ref:`api_guide_Variable_en` .
-                                               In addition to this, the 'context'
+                                               Tensor names and values are
+                                               corresponding original :ref:`api_guide_tensor_en` .
+                                               In addition to this, the ``context``
                                                has another special key-value pair:
-                                               the key is string '__current_op_desc__'
+                                               the key is string ``__current_op_desc__``
                                                and the value is the op_desc of the
                                                gradient operator who has just
                                                triggered the callable object.
                                                Default: None.
 
     Returns:
-        list of tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ): Pairs of parameter and its corresponding gradients.
-        The key is the parameter and the value is gradient variable.
+        list of tuple ( :ref:`api_guide_tensor_en` , :ref:`api_guide_tensor_en` ): Pairs of parameter and its corresponding gradients.
+        The key is the parameter and the value is gradient Tensor.
 
     Raises:
-        AssertionError: If `loss` is not an instance of Variable.
+        AssertionError: If ``loss`` is not an instance of Tensor.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.nn.functional as F
 
-            x = fluid.data(name='x', shape=[None, 13], dtype='int64')
-            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-            x_emb = fluid.embedding(x, size=[100, 256])
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None, name='my_fc')
-            loss = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_loss = fluid.layers.mean(loss)
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
+            y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
+            x_emb = paddle.static.nn.embedding(x, size=[100, 256])
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1, activation=None, name='my_fc')
+            loss = F.square_error_cost(input=y_predict, label=y)
+            avg_loss = paddle.mean(loss)
 
             # Get all weights in main_program, not include bias.
-            all_weights = [param for param in fluid.default_main_program().block(0).all_parameters() if 'w_' in param.name]
+            all_weights = [param for param in paddle.static.default_main_program().block(0).all_parameters() if 'w_' in param.name]
             all_weights_name = [w.name for w in all_weights]
 
             # return all param_grads needed to be updated if parameter_list set default None.
-            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)
+            p_g_list1 = paddle.static.append_backward(loss=avg_loss)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
-            # return the param_grads corresponding to parameter_list that can be list of param (Variable).
-            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights)
+            # return the param_grads corresponding to parameter_list that can be list of param (Tensor).
+            p_g_list2 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
             # parameter_list can be list of param.name (str).
-            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)
+            p_g_list3 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights_name)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
-            # no_grad_set can be set of Variables that means grad will be cut off from these Variables.
-            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
+            # no_grad_set can be set of Tensors that means grad will be cut off from these Tensors.
+            p_g_list4 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
             # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
-            # no_grad_set can be set of Variable.name when the Variable is created inside layers and can't be specified explicitly.
-            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
+            # no_grad_set can be set of Tensor.name when the Tensor is created inside layers and can't be specified explicitly.
+            p_g_list5 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
             # return [] because all param_grads are filtered by no_grad_set.
-            p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
+            p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
     check_type(loss, 'loss', framework.Variable,
-               'fluid.backward.append_backward')
+               'paddle.static.append_backward')
 
     if loss.op is None:
         # the loss is from a cloned program. Find loss op manually.
@@ -1327,7 +1390,7 @@ def append_backward(loss,
 
     if callbacks is not None:
         check_type(callbacks, 'callbacks', list,
-                   'fluid.backward.append_backward')
+                   'paddle.static.append_backward')
 
     program = loss.block.program
     root_block = program.block(0)
@@ -1667,21 +1730,21 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Variable|list[Variable]): The target variables
-        inputs(Variable|list[Variable]): The input variables
-        target_gradients (Variable|list[Variable], optional): The gradient variables
+        targets(Tensor|list[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor], optional): The gradient Tensors
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All variables with
+        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All Tensors with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
+                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
 
     Return:
-        (list[Variable]): A list of gradients for inputs
-        If an input does not affect targets, the corresponding gradient variable
+        (list[Tensor]): A list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient Tensor
         will be None
     """
     targets = _as_list(targets)
@@ -1756,6 +1819,12 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     op_path_dict = dict()
     op_path = _find_op_path_(block, targets, inputs, block_no_grad_set,
                              op_path_dict)
+
+    # find no grad var by op_path
+    no_grad_vars = _find_no_grad_vars(block, op_path, targets,
+                                      block_no_grad_set)
+    block_no_grad_set.update(no_grad_vars)
+
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
@@ -1799,41 +1868,42 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets (Variable|list[Variable]): The target variables.
-        inputs (Variable|list[Variable]): The input variables.
-        target_gradients (Variable|list[Variable], optional): The gradient variables
+        targets (Tensor|list[Tensor]): The target Tensors.
+        inputs (Tensor|list[Tensor]): The input Tensors.
+        target_gradients (Tensor|list[Tensor], optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-            should be ignored. All variables with `stop_gradient=True` from all blocks will
-            be automatically added into this set. If this parameter is not None, the Variables or Variable.names
+        no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+            should be ignored. All Tensors with ``stop_gradient=True`` from all blocks will
+            be automatically added into this set. If this parameter is not None, the Tensors or Tensor.names
             in this set will be added to the default set. Default: None.
 
     Return:
-        (list[Variable]): A list of gradients for inputs
-        If an input does not affect targets, the corresponding gradient variable
+        (list[Tensor]): A list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient Tensor
         will be None.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.nn.functional as F
 
-            x = fluid.data(name='x', shape=[None,2,8,8], dtype='float32')
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
             x.stop_gradient=False
-            y = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-            y = fluid.layers.relu(y)
-            y = fluid.layers.conv2d(y, 4, 1, bias_attr=False)
-            y = fluid.layers.relu(y)
-            z = fluid.gradients([y], x)
-            print(z)
+            y = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+            y = F.relu(y)
+            z = paddle.static.gradients([y], x)
+            print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
     check_type(targets, 'targets', (framework.Variable, list),
-               'fluid.backward.gradients')
+               'paddle.static.gradients')
     check_type(inputs, 'inputs', (framework.Variable, list),
-               'fluid.backward.gradients')
+               'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
-        framework.Variable, list, type(None)), 'fluid.backward.gradients')
+        framework.Variable, list, type(None)), 'paddle.static.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

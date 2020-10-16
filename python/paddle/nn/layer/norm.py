@@ -27,7 +27,8 @@
 
 # TODO: define normalization api  
 
-from ...fluid.dygraph.nn import InstanceNorm
+import six
+#from ...fluid.dygraph.nn import InstanceNorm
 
 from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
 #from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
@@ -36,7 +37,6 @@ from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
 
 from ...fluid.dygraph import layers
-
 from ...framework import get_default_dtype, set_default_dtype
 from ...fluid.framework import in_dygraph_mode
 
@@ -50,11 +50,13 @@ from ..functional import batch_norm, layer_norm, instance_norm
 import numpy as np
 import numbers
 import warnings
+from ...fluid.dygraph.base import no_grad
+from .. import functional as F
 
 __all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
-    'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d',
-    'InstanceNorm2d', 'InstanceNorm3d', 'SyncBatchNorm'
+    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1d',
+    'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d', 'InstanceNorm2d',
+    'InstanceNorm3d', 'SyncBatchNorm', 'LocalResponseNorm'
 ]
 
 
@@ -77,7 +79,7 @@ class _InstanceNormBase(layers.Layer):
         super(_InstanceNormBase, self).__init__()
 
         if weight_attr == False or bias_attr == False:
-            assert weight_attr == param_attr, "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+            assert weight_attr == bias_attr, "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -175,7 +177,7 @@ class InstanceNorm1d(_InstanceNormBase):
           instance_norm = paddle.nn.InstanceNorm1d(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
 
     """
 
@@ -252,7 +254,7 @@ class InstanceNorm2d(_InstanceNormBase):
           instance_norm = paddle.nn.InstanceNorm2d(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
     """
 
     def _check_input_dim(self, input):
@@ -328,7 +330,7 @@ class InstanceNorm3d(_InstanceNormBase):
           instance_norm = paddle.nn.InstanceNorm3d(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
     """
 
     def _check_input_dim(self, input):
@@ -345,8 +347,8 @@ class GroupNorm(layers.Layer):
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Parameters:
-        num_channels(int): The number of channels of input.
         num_groups(int): The number of groups that divided from channels.
+        num_channels(int): The number of channels of input.
         epsilon(float, optional): The small value added to the variance to prevent
                                   division by zero. Default: 1e-05.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
@@ -374,19 +376,19 @@ class GroupNorm(layers.Layer):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          group_norm = paddle.nn.GroupNorm(num_channels=3, num_groups=6)
+          group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
           group_norm_out = group_norm(x)
 
-          print(group_norm_out.numpy)
+          print(group_norm_out.numpy())
     """
 
     def __init__(self,
-                 num_channels,
                  num_groups,
+                 num_channels,
                  epsilon=1e-05,
                  weight_attr=None,
                  bias_attr=None,
-                 data_layout='NCHW',
+                 data_format='NCHW',
                  name=None):
         super(GroupNorm, self).__init__()
         self._weight_attr = weight_attr
@@ -394,18 +396,33 @@ class GroupNorm(layers.Layer):
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_layout != 'NCHW':
+        if data_format != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
         param_shape = [self._num_channels]
 
-        self.weight = self.create_parameter(
-            attr=self._weight_attr or False,
-            shape=param_shape,
-            default_initializer=Constant(1.0))
+        if weight_attr == False:
+            self.weight = self.create_parameter(
+                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+            self.weight.stop_gradient = True
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
-        self.bias = self.create_parameter(
-            attr=self._weight_attr or False, shape=param_shape, is_bias=True)
+        if bias_attr == False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
     def forward(self, input):
         inputs = {'X': input}
@@ -499,7 +516,7 @@ class LayerNorm(layers.Layer):
           layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy)
+          print(layer_norm_out.numpy())
     """
 
     def __init__(self,
@@ -566,17 +583,28 @@ class _BatchNormBase(layers.Layer):
         param_shape = [num_features]
 
         # create parameter
-        self.weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=param_shape,
-            default_initializer=Constant(1.0))
-        self.weight.stop_gradient = (self._weight_attr is False) or (
-            self._weight_attr and self._weight_attr.learning_rate == 0.)
+        if weight_attr == False:
+            self.weight = self.create_parameter(
+                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+            self.weight.stop_gradient = True
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
-        self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=param_shape, is_bias=True)
-        self.bias.stop_gradient = (self._bias_attr is False) or (
-            self._bias_attr and self._bias_attr.learning_rate == 0.)
+        if bias_attr == False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
         moving_mean_name = None
         moving_variance_name = None
@@ -591,8 +619,7 @@ class _BatchNormBase(layers.Layer):
                 initializer=Constant(0.0),
                 trainable=False,
                 do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
+            shape=param_shape)
         self._mean.stop_gradient = True
 
         self._variance = self.create_parameter(
@@ -601,8 +628,7 @@ class _BatchNormBase(layers.Layer):
                 initializer=Constant(1.0),
                 trainable=False,
                 do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
+            shape=param_shape)
         self._variance.stop_gradient = True
 
         self._data_format = data_format
@@ -611,11 +637,17 @@ class _BatchNormBase(layers.Layer):
         self._epsilon = epsilon
         self._fuse_with_relu = False
         self._track_running_stats = track_running_stats
+        self._name = name
 
     def _check_input_dim(self, input):
         raise NotImplementedError("BatchNorm Base error")
 
+    def _check_data_format(self, input):
+        raise NotImplementedError("BatchNorm Base data format error")
+
     def forward(self, input):
+
+        self._check_data_format(self._data_format)
 
         self._check_input_dim(input)
 
@@ -687,14 +719,15 @@ class BatchNorm1d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Defalut "NCL".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length).
+        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length) when data_format is "NC" or "NCL",
+            (batch, length, num_features) when data_format is "NLC".
         - output: 3-D tensor with same shape as input x.
 
     Returns:
@@ -717,8 +750,17 @@ class BatchNorm1d(_BatchNormBase):
           batch_norm = paddle.nn.BatchNorm1d(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy)
+          print(batch_norm_out.numpy())
     """
+
+    def _check_data_format(self, input):
+        if input == 'NCHW' or input == 'NC' or input == 'NCL':
+            self._data_format = 'NCHW'
+        elif input == "NHWC" or input == 'NLC':
+            self._data_format = "NHWC"
+        else:
+            raise ValueError(
+                'expected NC , NCL, NLC or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
@@ -781,7 +823,8 @@ class BatchNorm2d(_BatchNormBase):
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 4-D tensor with shape: (batch, num_features, height, weight).
+        - x: 4-D tensor with shape: (batch, num_features, height, weight) when data_format is "NCHW",
+            or (batch, height, weight, num_features) when data_format is "NHWC".
         - output: 4-D tensor with same shape as input x.
 
     Returns:
@@ -803,8 +846,16 @@ class BatchNorm2d(_BatchNormBase):
           batch_norm = paddle.nn.BatchNorm2d(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy)
+          print(batch_norm_out.numpy())
     """
+
+    def _check_data_format(self, input):
+        if input == 'NCHW':
+            self._data_format = input
+        elif input == "NHWC":
+            self._data_format = input
+        else:
+            raise ValueError('expected NCHW or NHWC for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
@@ -860,14 +911,15 @@ class BatchNorm3d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCDHW". Default: NCDHW.
+        data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
+        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight) when data_format is "NCDHW",
+            or (batch, dims, height, weight, num_features) when data_format is "NDHWC".
         - output: 5-D tensor with same shape as input x.
 
     Returns:
@@ -889,8 +941,17 @@ class BatchNorm3d(_BatchNormBase):
           batch_norm = paddle.nn.BatchNorm3d(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy)
+          print(batch_norm_out.numpy())
     """
+
+    def _check_data_format(self, input):
+        if input == 'NCHW' or input == 'NCDHW':
+            self._data_format = 'NCHW'
+        elif input == "NHWC" or input == "NDHWC":
+            self._data_format = 'NHWC'
+        else:
+            raise ValueError(
+                'expected NCDHW, NDHWC or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
@@ -898,7 +959,7 @@ class BatchNorm3d(_BatchNormBase):
                 len(input.shape)))
 
 
-class SyncBatchNorm(layers.Layer):
+class SyncBatchNorm(_BatchNormBase):
     """
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
@@ -944,6 +1005,11 @@ class SyncBatchNorm(layers.Layer):
     - :math:`\\gamma` : trainable scale parameter vector
     - :math:`\\beta` : trainable shift parameter vector 
 
+    Note:
+        If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
+        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of 
+        ``list`` to pack the model. 
+
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
@@ -984,72 +1050,16 @@ class SyncBatchNorm(layers.Layer):
 
     def __init__(self,
                  num_features,
-                 epsilon=1e-05,
                  momentum=0.9,
-                 track_running_stats=True,
+                 epsilon=1e-05,
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
+                 track_running_stats=True,
                  name=None):
-        super(SyncBatchNorm, self).__init__()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
-        self._num_features = num_features
-        self._data_layout = data_format
-        self._momentum = momentum
-        self._epsilon = epsilon
-        self._track_running_stats = track_running_stats
-
-        if self._track_running_stats == False:
-            warnings.warn(
-                "moving mean and moving variance will be calculated whether `track_running_stats` is set to `True` or `False`, we will fix it in the next version."
-            )
-
-        param_shape = [self._num_features]
-
-        # create parameter
-        if weight_attr == False:
-            self.weight = self.create_parameter(
-                attr=None, shape=param_shape, default_initializer=Constant(1.0))
-            self.weight.stop_gradient = True
-        else:
-            self.weight = self.create_parameter(
-                attr=self._weight_attr,
-                shape=param_shape,
-                default_initializer=Constant(1.0))
-            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
-
-        if bias_attr == False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                default_initializer=Constant(0.0),
-                is_bias=True)
-            self.bias.stop_gradient = True
-        else:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True)
-            self.bias.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
-
-        self._mean = self.create_parameter(
-            attr=ParamAttr(
-                name=None,
-                initializer=Constant(0.0),
-                trainable=False,
-                do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
-        self._mean.stop_gradient = True
-
-        self._variance = self.create_parameter(
-            attr=ParamAttr(
-                name=None,
-                initializer=Constant(1.0),
-                trainable=False,
-                do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
-        self._variance.stop_gradient = True
+        super(SyncBatchNorm,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, track_running_stats, name)
 
     def forward(self, x):
         # create output
@@ -1063,7 +1073,7 @@ class SyncBatchNorm(layers.Layer):
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
+                     self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
             sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
@@ -1073,13 +1083,13 @@ class SyncBatchNorm(layers.Layer):
             return sync_batch_norm_out
 
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                                 'BatchNorm')
+                                 'SyncBatchNorm')
 
         attrs = {
             "momentum": self._momentum,
             "epsilon": self._epsilon,
             "is_test": not self.training,
-            "data_layout": self._data_layout,
+            "data_layout": self._data_format,
             "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
@@ -1112,3 +1122,105 @@ class SyncBatchNorm(layers.Layer):
         self._helper.append_op(
             type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
         return sync_batch_norm_out
+
+    @classmethod
+    def convert_sync_batchnorm(cls, layer):
+        """
+        Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
+
+        Parameters:
+            layer(paddle.nn.Layer): model containing one or more `BatchNorm*d` layers.
+
+        Returns:
+            The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
+
+        Examples:
+
+            .. code-block:: python
+                import paddle
+                import paddle.nn as nn
+
+                paddle.disable_static()
+                model = nn.Sequential(nn.Conv2d(3, 5, 3), nn.BatchNorm2d(5))
+                sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+        """
+        layer_output = layer
+        if isinstance(layer, _BatchNormBase):
+            layer_output = SyncBatchNorm(
+                layer._num_features, layer._momentum, layer._epsilon,
+                layer._weight_attr, layer._bias_attr, layer._data_format,
+                layer._track_running_stats, layer._name)
+
+            if layer._weight_attr != False and layer._bias_attr != False:
+                with no_grad():
+                    layer_output.weight = layer.weight
+                    layer_output.bias = layer.bias
+            layer_output._mean = layer._mean
+            layer_output._variance = layer._variance
+
+        for name, sublayer in layer.named_sublayers():
+            layer_output.add_sublayer(name,
+                                      cls.convert_sync_batchnorm(sublayer))
+        del layer
+        return layer_output
+
+
+class LocalResponseNorm(layers.Layer):
+    """
+        Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
+        For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+        See more details in :ref:`api_paddle_nn_functional_local_response_norm` .
+
+        Parameters:
+            size (int): The number of channels to sum over.
+            alpha (float, optional): The scaling parameter, positive. Default:1e-4
+            beta (float, optional): The exponent, positive. Default:0.75
+            k (float, optional): An offset, positive. Default: 1.0
+            data_format (str, optional): Specify the data format of the input, and the data format of the output
+                will be consistent with that of the input. An optional string from:
+                If input is 3-D Tensor, the string could be `"NCL"` or `"NLC"` . When it is `"NCL"`,
+                the data is stored in the order of: `[batch_size, input_channels, feature_length]`.
+                If input is 4-D Tensor, the string could be  `"NCHW"`, `"NHWC"`. When it is `"NCHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
+                If input is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
+                the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+            name (str, optional): Name for the operation (optional, default is None). For more information,
+                please refer to :ref:`api_guide_Name`.
+
+        Shape:
+            - input: 3-D/4-D/5-D tensor.
+            - output: 3-D/4-D/5-D tensor, the same shape as input.
+
+        Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            m = paddle.nn.LocalResponseNorm(size=5)
+            y = m(x)
+            print(y.shape)  # [3, 3, 112, 112]
+        """
+
+    def __init__(self,
+                 size,
+                 alpha=0.0001,
+                 beta=0.75,
+                 k=1.0,
+                 data_format="NCHW",
+                 name=None):
+        super(LocalResponseNorm, self).__init__()
+        self.size = size
+        self.alpha = alpha
+        self.beta = beta
+        self.k = k
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.local_response_norm(input, self.size, self.alpha, self.beta,
+                                    self.k, self.data_format, self.name)
+        return out

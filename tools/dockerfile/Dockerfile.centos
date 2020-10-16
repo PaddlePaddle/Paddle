@@ -80,9 +80,7 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
-# gcc4.8 TRT
-RUN mkdir -p /opt/compiler && cd /opt/compiler && \
-    wget -q https://paddle-ci.gz.bcebos.com/gcc-4.8.2.tar.gz && \
-    tar xf gcc-4.8.2.tar.gz && rm -f gcc-4.8.2.tar.gz
+# Downgrade gcc&&g++
+<install_gcc>
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

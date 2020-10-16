@@ -14,12 +14,13 @@
 
 import time
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 import unittest
 
@@ -438,7 +439,10 @@ class Args(object):
     train_step = 10
     place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
     ) else fluid.CPUPlace()
-    model_save_path = model + ".inference.model"
+    model_save_dir = "./inference"
+    model_save_prefix = "./inference/" + model
+    model_filename = model + INFER_MODEL_SUFFIX
+    params_filename = model + INFER_PARAMS_SUFFIX
     dy_state_dict_save_path = model + ".dygraph"
 
 
@@ -447,8 +451,8 @@ def train_mobilenet(args, to_static):
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":
             net = MobileNetV1(class_dim=args.class_dim, scale=1.0)
@@ -503,7 +507,7 @@ def train_mobilenet(args, to_static):
                 t_last = time.time()
                 if batch_id > args.train_step:
                     if to_static:
-                        fluid.dygraph.jit.save(net, args.model_save_path)
+                        fluid.dygraph.jit.save(net, args.model_save_prefix)
                     else:
                         fluid.dygraph.save_dygraph(net.state_dict(),
                                                    args.dy_state_dict_save_path)
@@ -513,11 +517,15 @@ def train_mobilenet(args, to_static):
 
 
 def predict_static(args, data):
+    paddle.enable_static()
     exe = fluid.Executor(args.place)
     # load inference model
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(
-         args.model_save_path, executor=exe, params_filename=VARIABLE_FILENAME)
+         args.model_save_dir,
+         executor=exe,
+         model_filename=args.model_filename,
+         params_filename=args.params_filename)
 
     pred_res = exe.run(inference_program,
                        feed={feed_target_names[0]: data},
@@ -544,7 +552,7 @@ def predict_dygraph(args, data):
 
 def predict_dygraph_jit(args, data):
     with fluid.dygraph.guard(args.place):
-        model = fluid.dygraph.jit.load(args.model_save_path)
+        model = fluid.dygraph.jit.load(args.model_save_prefix)
         model.eval()
 
         pred_res = model(data)
@@ -553,7 +561,8 @@ def predict_dygraph_jit(args, data):
 
 
 def predict_analysis_inference(args, data):
-    output = PredictorTools(args.model_save_path, VARIABLE_FILENAME, [data])
+    output = PredictorTools(args.model_save_dir, args.model_filename,
+                            args.params_filename, [data])
     out = output()
     return out
 
@@ -564,7 +573,9 @@ class TestMobileNet(unittest.TestCase):
 
     def train(self, model_name, to_static):
         self.args.model = model_name
-        self.args.model_save_path = model_name + ".inference.model"
+        self.args.model_save_prefix = "./inference/" + model_name
+        self.args.model_filename = model_name + INFER_MODEL_SUFFIX
+        self.args.params_filename = model_name + INFER_PARAMS_SUFFIX
         self.args.dy_state_dict_save_path = model_name + ".dygraph"
         out = train_mobilenet(self.args, to_static)
         return out
@@ -578,7 +589,9 @@ class TestMobileNet(unittest.TestCase):
 
     def assert_same_predict(self, model_name):
         self.args.model = model_name
-        self.args.model_save_path = model_name + ".inference.model"
+        self.args.model_save_prefix = "./inference/" + model_name
+        self.args.model_filename = model_name + INFER_MODEL_SUFFIX
+        self.args.params_filename = model_name + INFER_PARAMS_SUFFIX
         self.args.dy_state_dict_save_path = model_name + ".dygraph"
         local_random = np.random.RandomState(SEED)
         image = local_random.random_sample([1, 3, 224, 224]).astype('float32')

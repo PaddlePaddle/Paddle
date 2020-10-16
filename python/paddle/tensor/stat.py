@@ -13,9 +13,8 @@
 # limitations under the License.
 
 # TODO: define statistical functions of a tensor  
-from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
 
-__all__ = ['mean', 'reduce_mean', 'std', 'var', 'numel']
+__all__ = ['mean', 'std', 'var', 'numel']
 
 import numpy as np
 from ..fluid.framework import Variable
@@ -237,10 +236,6 @@ def numel(x, name=None):
 
     Returns:
         Tensor: The number of elements for the input Tensor.
-    
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-
 
     Examples:
         .. code-block:: python

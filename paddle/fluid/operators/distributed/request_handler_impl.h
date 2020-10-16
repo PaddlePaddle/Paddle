@@ -15,7 +15,6 @@
 #pragma once
 
 #include <time.h>
-
 #include <functional>
 #include <memory>
 #include <string>
@@ -32,6 +31,13 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -174,6 +180,17 @@ class RequestNotifyHandler final : public RequestHandler {
  private:
   int trainers;
   std::unordered_map<int, int64_t> decay_counters;
+};
+
+class RequestSendAndRecvHandler final : public RequestHandler {
+ public:
+  explicit RequestSendAndRecvHandler(int distributed_mode)
+      : RequestHandler(distributed_mode) {}
+  virtual ~RequestSendAndRecvHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* Scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
 };
 
 }  // namespace distributed

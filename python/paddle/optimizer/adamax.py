@@ -47,15 +47,15 @@ class Adamax(Optimizer):
     it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -118,6 +118,12 @@ class Adamax(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
+        if not 0 <= beta1 < 1:
+            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
+        if not 0 <= beta2 < 1:
+            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
+        if not 0 <= epsilon:
+            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
         super(Adamax, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,

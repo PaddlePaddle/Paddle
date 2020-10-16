@@ -247,8 +247,6 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
                 const Tensor &sorted_indices, const T nms_threshold,
                 Tensor *keep_out) {
   int boxes_num = proposals.dims()[0];
-  PADDLE_ENFORCE_EQ(boxes_num, sorted_indices.dims()[0]);
-
   const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
   dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
               DIVUP(boxes_num, kThreadsPerBlock));
@@ -330,6 +328,15 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   keep_index.Resize({keep_num});
 
   Tensor scores_filter, proposals_filter;
+  // Handle the case when there is no keep index left
+  if (keep_num == 0) {
+    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
+    scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
+    set_zero(ctx, &proposals_filter, static_cast<T>(0));
+    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    return std::make_pair(proposals_filter, scores_filter);
+  }
   proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
   scores_filter.mutable_data<T>({keep_num, 1}, ctx.GetPlace());
   GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
@@ -421,7 +428,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
 
     int64_t num_proposals = 0;
     std::vector<size_t> offset(1, 0);
-    std::vector<int64_t> tmp_lod;
+    std::vector<int> tmp_num;
 
     for (int64_t i = 0; i < num; ++i) {
       Tensor im_info_slice = im_info->Slice(i, i + 1);
@@ -448,15 +455,15 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       dev_ctx.Wait();
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
-      tmp_lod.push_back(num_proposals);
+      tmp_num.push_back(proposals.dims()[0]);
     }
-    if (context.HasOutput("RpnRoisLod")) {
-      auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
-      rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
-      int64_t *lod_data = rpn_rois_lod->data<int64_t>();
-      memory::Copy(place, lod_data, cpu_place, &tmp_lod[0],
-                   sizeof(int64_t) * num, dev_ctx.stream());
-      rpn_rois_lod->Resize({num});
+    if (context.HasOutput("RpnRoisNum")) {
+      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+      rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
+      int *num_data = rpn_rois_num->data<int>();
+      memory::Copy(place, num_data, cpu_place, &tmp_num[0], sizeof(int) * num,
+                   dev_ctx.stream());
+      rpn_rois_num->Resize({num});
     }
     framework::LoD lod;
     lod.emplace_back(offset);

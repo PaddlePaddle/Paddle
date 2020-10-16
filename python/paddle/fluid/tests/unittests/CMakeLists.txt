@@ -4,6 +4,7 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FL
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(GLOB DIST_TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_dist_*.py")
+list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 if(NOT WITH_NCCL)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
 endif()
@@ -13,6 +14,13 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
+list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_collective_reduce_api)
+list(APPEND DIST_TEST_OPS test_collective_scatter_api)
+list(APPEND DIST_TEST_OPS test_collective_barrier_api)
+list(APPEND DIST_TEST_OPS test_collective_allreduce_api)
+list(APPEND DIST_TEST_OPS test_collective_broadcast_api)
+list(APPEND DIST_TEST_OPS test_collective_allgather_api)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -36,7 +44,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
@@ -44,9 +51,12 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_localsgd_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_lars_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_lamb_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_fp16_allreduce_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_distributed_strategy)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -119,6 +129,8 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
+
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
@@ -317,7 +329,6 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
-list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
@@ -326,7 +337,7 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
-
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_isolated_var)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -341,6 +352,7 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dynamic)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
 endif()
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
@@ -390,23 +402,22 @@ py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${G
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_resnet_sorted_gradient MODULES test_imperative_resnet_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mnist_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_attention_model ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
@@ -425,8 +436,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
@@ -447,13 +456,15 @@ if(WITH_DISTRIBUTE)
     	   py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_base_3 MODULES test_fleet_base_3 ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_recompute_meta_optimizer MODULES test_fleet_recompute_meta_optimizer ENVS ${dist_ENVS})
-	   py_test_modules(test_fleet_graph_execution_meta_optimizer MODULES test_fleet_graph_execution_meta_optimizer ENVS ${dist_ENVS})
-	   py_test_modules(test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS ${dist_ENVS})
+	       py_test_modules(test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS ${dist_ENVS})
            py_test_modules(test_fleet_gradient_merge_meta_optimizer MODULES test_fleet_gradient_merge_meta_optimizer ENVS ${dist_ENVS})
            py_test_modules(test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS ${dist_ENVS})
+           py_test_modules(test_fleet_fp16_allreduce_meta_optimizer MODULES test_fleet_fp16_allreduce_meta_optimizer ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_pipeline_meta_optimizer MODULES test_fleet_pipeline_meta_optimizer ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
+	   py_test_modules(test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy)
+	   #py_test_modules(test_fleet_auto MODULES test_fleet_auto ENVS ${dist_ENVS})
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
             py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
@@ -483,6 +494,7 @@ if(WITH_DISTRIBUTE)
         bash_test_modules(test_launch_ps START_BASH test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         bash_test_modules(test_fleet_launch START_BASH test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
+        # port range (20000, 23000) is reserved for dist-ops
         set(dist_ut_port 20001)
         foreach(TEST_OP ${DIST_TEST_OPS})
             bash_test_modules(${TEST_OP} START_BASH dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
@@ -522,19 +534,24 @@ if(NOT WIN32)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint1 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint3 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint_multiple START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint_dist_basic START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_hdfs1 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_hdfs2 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_hdfs3 START_BASH dist_test.sh TIMEOUT 140)
+    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 140 LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint1 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint3 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint_multiple START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint_dist_basic START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_hdfs1 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_hdfs2 START_BASH dist_test.sh TIMEOUT 140   LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_hdfs3 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 endif()
 
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
+add_subdirectory(rnn)
+
+if (WITH_XPU)
+    add_subdirectory(xpu)
+endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
@@ -549,15 +566,15 @@ endif()
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_feed_persistable_var
         test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
-        test_optimizer_in_control_flow test_dataloader_keep_order
+        test_data_norm_op
+        test_dataloader_keep_order
         test_dataloader_unkeep_order
-        test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
-
+# disable test_parallel_executor_fetch_isolated_var
+# set_tests_properties(test_parallel_executor_fetch_isolated_var PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
@@ -574,12 +591,15 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_iterable_dataset_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_dataset PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()
 
 # setting timeout value for old unittests
 # set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
-set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
-set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
-set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
-set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
-set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
+endif()

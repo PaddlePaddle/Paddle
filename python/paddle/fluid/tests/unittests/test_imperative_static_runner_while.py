@@ -111,9 +111,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
             np.random.seed(self.seed)
-
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
             while_net = fluid.dygraph.static_runner.StaticModelRunner(
                 self.save_dirname)
@@ -141,7 +139,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 loss = fluid.layers.cross_entropy(cost, label)
                 avg_loss = fluid.layers.mean(loss)
 
-                avg_loss.backward(backward_strategy)
+                avg_loss.backward()
                 sgd.minimize(avg_loss)
                 while_net.clear_gradients()
 

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import inspect
 import decorator
 import contextlib
+import functools
+import inspect
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -22,12 +23,12 @@ from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
-import objgraph
 from ..data_feeder import convert_dtype
+import warnings
 
 __all__ = [
-    'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
-    'to_variable'
+    'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
+    'enabled', 'to_variable'
 ]
 
 
@@ -116,11 +117,15 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
-    This function enables dynamic graph mode.
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API turn OFF static graph mode. You can turn ON static graph mode by `enable_static <./disable_dygraph_en.html>`_ .
 
     Parameters:
-        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
-            If None, the running place will be determined according to the way of paddle compilation. Default: None
+        place(paddle.CPUPlace|paddle.CUDAPlace, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
+            determined according to the way of paddle compilation. 
 
     return:
         None
@@ -128,12 +133,15 @@ def enable_dygraph(place=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is None:
@@ -146,7 +154,11 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
-    This function disables dynamic graph mode.
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API turn ON static graph mode. You can turn ON static graph mode by `disable_static <./enable_dygraph_en.html>`_ .
 
     return:
         None
@@ -154,12 +166,15 @@ def disable_dygraph():
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is not None:
@@ -167,7 +182,80 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-class no_grad:
+@signature_safe_contextmanager
+def _switch_tracer_mode_guard_(is_train=True):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        mode = tracer._train_mode
+        tracer._train_mode = is_train
+        try:
+            yield
+        finally:
+            tracer._train_mode = mode
+    else:
+        yield
+
+
+def no_grad(func=None):
+    """
+    :api_attr: imperative
+
+    Create a context which disables dygraph gradient calculation.
+    In this mode, the result of every computation will have `stop_gradient=True`.
+
+    Also functions as a decorator. (Make sure to instantiate without parenthesis.)
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        # use as generator
+
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad():
+                # l1.weight.stop_gradient is False
+                tmp = l1.weight * 2  # tmp.stop_gradient is True
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+            print(tmp.gradient() is None)  # True
+            print(l0.weight.gradient() is None)  # False
+
+        # use as decorator
+
+        @fluid.dygraph.no_grad
+        def test_layer():
+            with fluid.dygraph.guard():
+                inp = np.ones([3, 1024], dtype='float32')
+                t = fluid.dygraph.base.to_variable(inp)
+                linear1 = fluid.Linear(1024, 4, bias_attr=False)
+                linear2 = fluid.Linear(4, 4)
+                ret = linear1(t)
+                dy_ret = linear2(ret)
+
+        test_layer()
+
+    """
+    if func is None:
+        return _switch_tracer_mode_guard_(is_train=False)
+    else:
+
+        @decorator.decorator
+        def __impl__(func, *args, **kwargs):
+            with _switch_tracer_mode_guard_(is_train=False):
+                return func(*args, **kwargs)
+
+        return __impl__(func)
+
+
+class no_grad_:
     """
     :api_attr: imperative
 
@@ -289,26 +377,8 @@ def guard(place=None):
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(place):
+                with framework._dygraph_place_guard(expected_place):
                     yield
-
-
-def _print_debug_msg(parameter_list, limit=5, is_test=False):
-    if not core._is_dygraph_debug_enabled():
-        logging.warn(
-            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
-        )
-        return
-    unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(parameter_list)
-    alive_cpp_var_size = len(core.VarBase._alive_vars())
-    if not is_test:
-        logging.warn(
-            'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
-            .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
-        objgraph.show_growth(limit=limit)
-    else:
-        return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
 @framework.dygraph_only
@@ -319,8 +389,7 @@ def grad(outputs,
          create_graph=False,
          only_inputs=True,
          allow_unused=False,
-         no_grad_vars=None,
-         backward_strategy=None):
+         no_grad_vars=None):
     ''' 
     .. note::
         **This API is ONLY available in Dygraph mode.**
@@ -328,19 +397,19 @@ def grad(outputs,
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
     Parameters:
-        outputs (Variable|list(Variable)|tuple(Variable)): the output Variable or 
-            Variable list/tuple of the graph to compute gradients.
-        inputs (Variable|list(Variable)|tuple(Variable)): the input Variable or 
-            Variable list/tuple of the graph to compute gradients. The returned
+        outputs (Tensor|list(Tensor)|tuple(Tensor)): the output Tensor or 
+            Tensor list/tuple of the graph to compute gradients.
+        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
+            Tensor list/tuple of the graph to compute gradients. The returned
             values of this API are the gradients of `inputs` . 
-        grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional): 
+        grad_outputs (Tensor|list(Tensor|None)|tuple(Tensor|None), optional): 
             initial gradient values of `outputs` . If `grad_outputs` is None, 
             the initial gradient values of `outputs` would be Tensors filled with 1; 
             if `grad_outputs` is not None, it must have the same length as `outputs` , 
             and in this case, the initial gradient value of the i-th `outputs` would
             be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
             is None; (2) the i-th element of `grad_outputs` when the i-th element of
-            `grad_outputs` is a Variable. Default None.
+            `grad_outputs` is a Tensor. Default None.
         retain_graph (bool, optional): whether to retain the forward graph which 
             is used to calculate the gradient. When it is True, the graph would 
             be retained, in which way users can calculate backward twice for the 
@@ -352,24 +421,21 @@ def grad(outputs,
             computing process would be discarded. Default False.
         only_inputs (bool, optional): whether to only compute the gradients of
             `inputs` . If it is False, the gradients of all remaining leaf 
-            Variables in the graph would be also computed and accumulated. 
+            Tensors in the graph would be also computed and accumulated. 
             If it is True, only the gradients of `inputs` would be computed.
             Default True. only_inputs=False is under development, and it is
             not supported yet.    
         allow_unused (bool, optional): whether to raise error or return None if some 
-            Variables of `inputs` are unreachable in the graph. If some Variables of 
+            Tensors of `inputs` are unreachable in the graph. If some Tensors of 
             `inputs` are unreachable in the graph (i.e., their gradients are None),  
             error would be raised if allow_unused=False, or None would be returned as
             their gradients if allow_unused=True. Default False.
-        no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
-            the Variables whose gradients are not needed to compute. Default None.
-        backward_strategy (BackwardStrategy, optional): The backward strategy to
-            compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
-            details. Default None.
+        no_grad_vars (Tensor|list(Tensor)|tuple(Tensor)|set(Tensor), optional): 
+            the Tensors whose gradients are not needed to compute. Default None.
 
     Returns:
-        tuple: a tuple of Variables, whose length is the same as the Variable number 
-        inside `inputs`, and the i-th returned Variable is the sum of gradients of 
+        tuple: a tuple of Tensors, whose length is the same as the Tensor number 
+        inside `inputs`, and the i-th returned Tensor is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 
     Examples 1:
@@ -414,7 +480,7 @@ def grad(outputs,
             paddle.disable_static()
 
             def test_dygraph_grad(grad_outputs=None):
-                x = paddle.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x = paddle.fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -437,7 +503,7 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            grad_value = paddle.fill_constant(shape=[1], value=4.0, dtype='float32')
+            grad_value = paddle.fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
 
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
@@ -449,7 +515,7 @@ def grad(outputs,
             print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            grad_y1 = paddle.fill_constant(shape=[1], value=3.0, dtype='float32')
+            grad_y1 = paddle.fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 
@@ -503,12 +569,6 @@ def grad(outputs,
         raise AssertionError(
             "no_grad_vars must be None, Variable or list/tuple/set of Variables")
 
-    if backward_strategy is None:
-        backward_strategy = core.BackwardStrategy()
-
-    assert isinstance(backward_strategy, core.BackwardStrategy), \
-        "backward_strategy must be type paddle.fluid.dygraph.BackwardStrategy"
-
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
     if retain_graph is None:
@@ -524,9 +584,9 @@ def grad(outputs,
 
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(
-        inputs, outputs, grad_outputs, no_grad_vars, place, backward_strategy,
-        create_graph, retain_graph, allow_unused, only_inputs)
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs,
+                                     no_grad_vars, place, create_graph,
+                                     retain_graph, allow_unused, only_inputs)
 
 
 @framework.dygraph_only
@@ -545,10 +605,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             uint8, uint16, complex64, complex128}.
         name(str, optional): The default value is None. Normally there is no 
             need for user to set this property. For more information, please 
-            refer to :ref:`api_guide_Name` .
+            refer to :ref:`api_guide_Name` . 
         zero_copy(bool, optional): Whether to share memory with the input numpy 
             array. This parameter only works with CPUPlace and will be set to 
-            True when it is None. Default: None.
+            True when it is None. Default: None. (Note: zero_copy is discarded temporally for some reason.)
         dtype(str, optional): The desired data type of returned ``Variable`` .
             Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 
             'int32' , 'int64' , 'uint8' . Default: None.
@@ -601,8 +661,17 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     else:
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
-            if zero_copy is None:
-                zero_copy = True
+            #TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
+            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy. 
+            # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
+            # (2): when used in flask framework, it may result in hang.
+            # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
+            # So, we temporally diable the zero_copy strategy.
+            if zero_copy == True:
+                warnings.warn(
+                    "Currently, zero_copy is not supported, and it will be discarded."
+                )
+                zero_copy = False
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
 

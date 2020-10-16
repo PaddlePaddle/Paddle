@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import hapi
-
 __all__ = []
-__all__ += hapi.__all__
 __all__ += ["reader"]
 
 from ..fluid.contrib import reader

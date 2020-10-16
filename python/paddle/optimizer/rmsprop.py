@@ -69,8 +69,8 @@ class RMSProp(Optimizer):
 
 
     Parameters:
-        learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay.
+        learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler.
         rho(float): rho is :math: `\\rho` in equation, default is 0.95.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, default is 1e-6.
@@ -80,7 +80,7 @@ class RMSProp(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -90,9 +90,9 @@ class RMSProp(Optimizer):
 	    the regularization setting here in optimizer will be ignored for this parameter. \
 	    Otherwise, the regularization setting here in optimizer will take effect. \
 	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -104,24 +104,18 @@ class RMSProp(Optimizer):
           .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            inp = paddle.rand([10,10], dtype="float32")
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
 
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
-
-            adam = paddle.optimizer.RMSProp(learning_rate=0.1,
-                    parameters=linear.parameters(),
-                    weight_decay=0.01)
+            rmsprop = paddle.optimizer.RMSProp(learning_rate=0.1,
+                             parameters=linear.parameters(),
+                                       weight_decay=0.01)
             out.backward()
-            adam.step()
-            adam.clear_grad()
+            rmsprop.step()
+            rmsprop.clear_grad()
 
     """
 
@@ -147,6 +141,12 @@ class RMSProp(Optimizer):
             raise ValueError("epsilon is not set.")
         if momentum is None:
             raise ValueError("momentum is not set.")
+        if not 0.0 <= epsilon:
+            raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
+        if not 0.0 <= momentum:
+            raise ValueError("Invalid value of momentum, expect momentum >= 0.")
+        if not 0.0 <= rho:
+            raise ValueError("Invalid value of rho, expect rho >= 0.")
 
         super(RMSProp, self).__init__(
             learning_rate=learning_rate,

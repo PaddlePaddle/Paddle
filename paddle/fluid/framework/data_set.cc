@@ -95,9 +95,10 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
                                    const std::string& fs_ugi) {
   fs_name_ = fs_name;
   fs_ugi_ = fs_ugi;
-  std::string cmd = std::string("hadoop fs");
+  std::string cmd = std::string("$HADOOP_HOME/bin/hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
+  cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
   paddle::framework::hdfs_set_command(cmd);
 }
 

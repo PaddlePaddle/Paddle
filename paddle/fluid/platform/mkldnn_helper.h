@@ -14,7 +14,9 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -81,12 +83,30 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
     return;
   }
 
+  auto print_dims = [](const std::vector<int>& dims) {
+    std::ostringstream oss;
+
+    if (!dims.empty()) {
+      oss << "[";
+      // Convert all but the last element to avoid a trailing ","
+      std::copy(dims.begin(), dims.end() - 1,
+                std::ostream_iterator<int>(oss, ","));
+
+      // Now add the last element with no delimiter
+      oss << dims.back() << "]";
+    }
+
+    return oss.str();
+  };
+
   switch (from) {
     case framework::DataLayout::kMKLDNN:
       if (to == framework::DataLayout::kNHWC) {
         auto dims = framework::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(framework::make_ddim(dims));
+        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
+                << print_dims(dims);
       }
       break;
     case framework::DataLayout::kNHWC:
@@ -94,6 +114,8 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
         auto dims = framework::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(framework::make_ddim(dims));
+        VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
+                << print_dims(dims);
       }
       break;
     default:
@@ -159,6 +181,12 @@ inline mkldnn::memory::data_type MKLDNNGetDataType<int8_t>() {
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
   return mkldnn::memory::data_type::u8;
+}
+
+template <>
+inline mkldnn::memory::data_type
+MKLDNNGetDataType<paddle::platform::bfloat16>() {
+  return mkldnn::memory::data_type::bf16;
 }
 
 inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
@@ -437,6 +465,13 @@ inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
           op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
+inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
+}
+
+inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+}
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace platform

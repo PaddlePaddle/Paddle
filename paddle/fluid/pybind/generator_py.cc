@@ -29,23 +29,37 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-void BindGenerator(py::module* m) {
-  py::class_<framework::GeneratorState>(*m, "GeneratorState", "");
-  py::class_<std::mt19937_64>(*m, "mt19937_64", "");
+void BindGenerator(py::module* m_ptr) {
+  auto& m = *m_ptr;
+  py::class_<framework::GeneratorState,
+             std::shared_ptr<framework::GeneratorState>>(m, "GeneratorState")
+      .def("current_seed",
+           [](std::shared_ptr<framework::GeneratorState>& self) {
+             return self->current_seed;
+           });
+  py::class_<std::mt19937_64>(m, "mt19937_64", "");
   py::class_<framework::Generator, std::shared_ptr<framework::Generator>>(
-      *m, "Generator")
-      .def(py::init([]() { return framework::Generator::GetInstanceX(); }),
-           py::return_value_policy::reference)
-      .def("get_state", &framework::Generator::GetState,
-           py::return_value_policy::move)
+      m, "Generator")
+      .def("__init__",
+           [](framework::Generator& self) {
+             new (&self) framework::Generator();
+           })
+      .def("get_state", &framework::Generator::GetState)
       .def("set_state", &framework::Generator::SetState)
-      .def("manual_seed", &framework::Generator::SetCurrentSeed)
+      .def("manual_seed",
+           [](std::shared_ptr<framework::Generator>& self, uint64_t seed) {
+             self->SetCurrentSeed(seed);
+             return self;
+           })
       .def("seed", &framework::Generator::Seed)
       .def("initial_seed", &framework::Generator::GetCurrentSeed)
       .def("random", &framework::Generator::Random64)
-      .def("get_cpu_engine", &framework::Generator::GetCPUEngine,
-           py::return_value_policy::move)
-      .def("set_cpu_engine", &framework::Generator::SetCPUEngine);
-}  // end Generator
-}  // end namespace pybind
-}  // end namespace paddle
+      //  .def("get_cpu_engine", &framework::Generator::GetCPUEngine)
+      //  .def("set_cpu_engine", &framework::Generator::SetCPUEngine)
+      .def_property("_is_init_py", &framework::Generator::GetIsInitPy,
+                    &framework::Generator::SetIsInitPy);
+  m.def("default_cpu_generator", &framework::DefaultCPUGenerator);
+  m.def("default_cuda_generator", &framework::GetDefaultCUDAGenerator);
+}
+}  // namespace pybind
+}  // namespace paddle

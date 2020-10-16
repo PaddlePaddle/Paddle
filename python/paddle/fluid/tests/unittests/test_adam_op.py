@@ -448,16 +448,16 @@ class TestAdamOpV2(unittest.TestCase):
 
     def test_adam_op_with_state_dict(self):
 
-        import paddle
         paddle.disable_static()
-        emb = paddle.nn.Embedding([10, 10])
+        emb = paddle.nn.Embedding(10, 10)
 
         adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
 
-        #learning_rate is Decay
-        learning_rate = fluid.dygraph.CosineDecay(0.1, 10000, 120)
+        #learning_rate is LRScheduler
+        learning_rate = paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=0.1, T_max=10)
         adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
             weight_decay=fluid.regularizer.L2Decay(0.001),
@@ -498,15 +498,37 @@ class TestAdamOpV2(unittest.TestCase):
         adam.set_lr(lr)
         cur_lr = adam.get_lr()
         assert (lr == cur_lr)
-
-        lr_var = paddle.create_global_var(shape=[1], value=lr, dtype='float32')
-        adam.set_lr(lr_var)
-        cur_lr = adam.get_lr()
-        assert (np.float32(lr) == cur_lr)
-
         with self.assertRaises(TypeError):
-            lr = int(1)
-            adam.set_lr(lr)
+            lr_var = paddle.fluid.layers.create_global_var(
+                shape=[1], value=lr, dtype='float32')
+            adam.set_lr(lr_var)
+
+    def test_adam_op_invalid_input(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adam(
+                0.1, beta1=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adam(
+                0.1, beta2=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adam(
+                0.1, epsilon=-1, parameters=linear.parameters())
+
+    def test_adam_op_with_sparse_input_and_weight_decay(self):
+
+        paddle.disable_static()
+        x_data = np.arange(0, 10).reshape((10, 1)).astype(np.int64)
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+        emb = paddle.nn.Embedding(10, 10, sparse=True)
+        adam = paddle.optimizer.Adam(
+            0.001, parameters=emb.parameters(), weight_decay=0.01)
+
+        with self.assertRaises(RuntimeError):
+            out = emb(x)
+            out.backward()
+            adam.step()
 
 
 if __name__ == "__main__":

@@ -21,6 +21,13 @@
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
+namespace framework {
+class ExecutionContext;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace distributed {
 

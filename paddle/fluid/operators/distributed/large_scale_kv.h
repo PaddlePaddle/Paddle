@@ -14,20 +14,18 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <gflags/gflags.h>
-
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
+#include <thread>  // NOLINT
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <thread>  // NOLINT
-
-#include <ThreadPool.h>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
@@ -89,26 +87,17 @@ class UniformInitializer : public Initializer {
     min_ = std::stof(attrs[2]);
     max_ = std::stof(attrs[3]);
 
-    if (seed_ == 0) {
-      seed_ = std::random_device()();
-    }
-
-    random_engine_.seed(seed_);
     dist_ = std::uniform_real_distribution<float>(min_, max_);
+    random_engine_ = framework::GetCPURandomEngine(seed_);
   }
 
-  float GetValue() override {
-    return framework::Generator::GetInstance()->is_init_py
-               ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
-               : dist_(random_engine_);
-    // return dist_(random_engine_);
-  }
+  float GetValue() override { return dist_(*random_engine_); }
 
  private:
   float min_;
   float max_;
 
-  std::minstd_rand random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::uniform_real_distribution<float> dist_;
 };
 
@@ -139,26 +128,18 @@ class GaussianInitializer : public Initializer {
     mean_ = std::stof(attrs[2]);
     std_ = std::stof(attrs[3]);
 
-    if (seed_ == 0) {
-      seed_ = std::random_device()();
-    }
+    random_engine_ = framework::GetCPURandomEngine(seed_);
 
-    random_engine_.seed(seed_);
     dist_ = std::normal_distribution<float>(mean_, std_);
   }
 
-  float GetValue() override {
-    return framework::Generator::GetInstance()->is_init_py
-               ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
-               : dist_(random_engine_);
-    // return dist_(random_engine_);
-  }
+  float GetValue() override { return dist_(*random_engine_); }
 
  private:
   float std_;
   float mean_;
 
-  std::minstd_rand random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::normal_distribution<float> dist_;
 };
 
@@ -264,6 +245,7 @@ struct VALUE {
 
   std::vector<std::string> names_;
   int count_;
+  bool seen_after_last_save_;
   int unseen_days_;
   bool is_entry_;
   std::vector<std::vector<float>> values_;
@@ -340,6 +322,7 @@ class ValueBlock {
 
     auto value = new VALUE(value_names_);
     value->set(values);
+    value->seen_after_last_save_ = true;
     value->count_ = count;
     values_[id] = value;
   }
@@ -608,9 +591,9 @@ class SparseVariable {
     }
   }
 
-  void Save(const std::string &dirname) {
+  void Save(const std::string &dirname, const int mode = 0) {
     rwlock_->WRLock();
-    VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " begin";
+    VLOG(3) << "save " << meta_.name << " in dir: " << dirname << " begin";
 
     MkDirRecursively(dirname.c_str());
 
@@ -619,22 +602,15 @@ class SparseVariable {
       auto filename = string::Sprintf("%s/%s", dirname, value_name);
       filenames.push_back(filename);
     }
-    SaveToSelectedRows(filenames, meta_.value_names);
 
-    //    // save sparse to text
-    //    std::vector<std::string> txt_filenames;
-    //    for (auto &value_name : meta_.value_names) {
-    //      auto filename = string::Sprintf("%s/%s.txt", dirname, value_name);
-    //      txt_filenames.push_back(filename);
-    //    }
-    //    SaveToText(txt_filenames, meta_.value_names);
-
-    VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " done";
+    SaveToSelectedRows(filenames, meta_.value_names, mode);
+    VLOG(3) << "save " << meta_.name << " in dir: " << dirname << " done";
     rwlock_->UNLock();
   }
 
   void SaveToSelectedRows(const std::vector<std::string> &filenames,
-                          const std::vector<std::string> &valuenames) {
+                          const std::vector<std::string> &valuenames,
+                          const int mode) {
     for (auto &value_name : valuenames) {
       auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
                           value_name);
@@ -648,14 +624,34 @@ class SparseVariable {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
-    int64_t ids_num = 0;
+    std::vector<int64_t> ids;
+
     for (auto &block : shard_blocks_) {
-      ids_num += block->values_.size();
+      for (auto value : block->values_) {
+        if (mode == 0) {
+          ids.push_back(value.first);
+        } else {
+          bool id_need_save = false;
+          // save all params
+          if (mode == 1) {
+            id_need_save = true;
+          } else {
+            id_need_save = value.second->seen_after_last_save_;
+          }
+
+          if (id_need_save) {
+            ids.push_back(value.first);
+          }
+          value.second->seen_after_last_save_ = false;
+        }
+      }
     }
+
+    VLOG(3) << "save " << ids.size() << " feasigns for " << meta_.name
+            << " with mode: " << mode;
 
     std::vector<std::shared_ptr<framework::Variable>> variables;
     std::vector<float *> tensors;
-    std::vector<int64_t> ids;
     std::vector<int64_t> dims;
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
@@ -664,7 +660,7 @@ class SparseVariable {
       auto *slr = var->GetMutable<framework::SelectedRows>();
       auto *src_t = slr->mutable_value();
 
-      src_t->Resize({ids_num, dim});
+      src_t->Resize({static_cast<int64_t>(ids.size()), dim});
       auto *value = src_t->mutable_data<float>(place);
 
       dims.push_back(dim);
@@ -672,20 +668,17 @@ class SparseVariable {
       tensors.push_back(value);
     }
 
+    std::vector<std::vector<std::vector<float> *>> values;
+    Get(ids, valuenames, &values);
+
     int64_t offset = 0;
-    for (auto &block : shard_blocks_) {
-      for (auto value : block->values_) {
-        ids.push_back(value.first);
-        std::vector<std::vector<float> *> vss = value.second->get(valuenames);
-
-        for (int i = 0; i < static_cast<int>(vss.size()); i++) {
-          auto &vs = vss[i];
-          std::memcpy(tensors[i] + offset * dims[i], vs->data(),
-                      sizeof(float) * dims[i]);
-        }
-
-        offset += 1;
+    for (auto &vss : values) {
+      for (int i = 0; i < static_cast<int>(vss.size()); i++) {
+        auto &vs = vss[i];
+        std::memcpy(tensors[i] + offset * dims[i], vs->data(),
+                    sizeof(float) * dims[i]);
       }
+      offset += 1;
     }
 
     for (auto &var : variables) {

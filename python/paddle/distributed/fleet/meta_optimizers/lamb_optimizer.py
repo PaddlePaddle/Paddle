@@ -16,8 +16,6 @@ from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["LambOptimizer"]
-
 
 class LambOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -64,6 +62,9 @@ class LambOptimizer(MetaOptimizerBase):
             name=opt._name)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.lamb:
             if not isinstance(self.inner_opt, AdamOptimizer):
                 logging.warn(
@@ -77,6 +78,13 @@ class LambOptimizer(MetaOptimizerBase):
         dist_strategy.lamb = False
         dist_strategy.lamb_configs = {}
 
+    def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.lamb = True
+        dist_strategy.lamb_configs = {
+            "lamb_weight_decay": 0.01,
+            "exclude_from_weight_decay": []
+        }
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -86,6 +94,14 @@ class LambOptimizer(MetaOptimizerBase):
         return self.lamb_opt.backward(loss, startup_program, parameter_list,
                                       no_grad_set, callbacks)
 
+    # the following function will be used by AMP if both LARS and AMP are turn on together.
+    def apply_gradients(self, params_grads):
+        return self.lamb_opt.apply_gradients(params_grads=params_grads)
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        return self.lamb_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -93,5 +109,5 @@ class LambOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         optimize_ops, params_grads = \
             self.lamb_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+                                   parameter_list, no_grad_set)
         return optimize_ops, params_grads

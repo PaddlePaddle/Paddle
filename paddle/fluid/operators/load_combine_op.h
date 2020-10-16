@@ -70,6 +70,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     auto out_vars = context.MultiOutputVar("Out");
 
     for (size_t i = 0; i < out_var_names.size(); i++) {
+      VLOG(4) << "loading tensor: " << out_var_names[i];
       PADDLE_ENFORCE_NOT_NULL(
           out_vars[i], platform::errors::InvalidArgument(
                            "The variable %s to be loaded cannot be found.",

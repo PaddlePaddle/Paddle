@@ -44,10 +44,14 @@ class EngineIOConverter {
 
   static void ConvertInput(const std::string& op_type, const LoDTensor& in,
                            void* out, size_t max_size, cudaStream_t* stream) {
-    PADDLE_ENFORCE(stream != nullptr);
+    PADDLE_ENFORCE_NOT_NULL(stream,
+                            platform::errors::InvalidArgument(
+                                "The input stream must not be nullptr."));
     auto* converter = Registry<EngineIOConverter>::Global().Lookup(
         op_type, "default" /* default_type */);
-    PADDLE_ENFORCE_NOT_NULL(converter);
+    PADDLE_ENFORCE_NOT_NULL(
+        converter, platform::errors::Unimplemented(
+                       "The %s in is not supported yet.", op_type.c_str()));
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }
@@ -55,10 +59,14 @@ class EngineIOConverter {
   static void ConvertOutput(const std::string& op_type, const void* in,
                             LoDTensor* out, size_t max_size,
                             cudaStream_t* stream) {
-    PADDLE_ENFORCE(stream != nullptr);
+    PADDLE_ENFORCE_NOT_NULL(stream,
+                            platform::errors::InvalidArgument(
+                                "The input stream must not be nullptr."));
     auto* converter = Registry<EngineIOConverter>::Global().Lookup(
         op_type, "default" /* default_type */);
-    PADDLE_ENFORCE_NOT_NULL(converter);
+    PADDLE_ENFORCE_NOT_NULL(
+        converter, platform::errors::Unimplemented(
+                       "The %s in not supported yet.", op_type.c_str()));
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }

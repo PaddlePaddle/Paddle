@@ -44,11 +44,9 @@ import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
-import paddle
-import paddle.fluid as fluid
 
 from paddle.distributed.utils import *
-import paddle.distributed.cloud_utils as cloud_utils
+from paddle.distributed import cloud_utils
 
 
 def _print_arguments(args):
@@ -162,17 +160,21 @@ def get_cluster_from_args(args, selected_gpus):
             x for x in range(started_port, started_port + len(selected_gpus))
         ]
 
-    return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
+    trainer_endpoints = []
+    for ip in node_ips:
+        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+    return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
 
 
 def get_gpus(selected_gpus):
     if selected_gpus is None:
-        gpus_num = fluid.core.get_cuda_device_count()
-        selected_gpus = [str(x) for x in range(0, gpus_num)]
+        from paddle.fluid import core
+        gpus_num = core.get_cuda_device_count()
+        gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         if cuda_visible_devices is None or cuda_visible_devices == "":
-            selected_gpus = [x.strip() for x in selected_gpus.split(',')]
+            gpus = [x.strip() for x in selected_gpus.split(',')]
         else:
             # change selected_gpus into relative values
             # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
@@ -182,15 +184,19 @@ def get_gpus(selected_gpus):
                 assert x in cuda_visible_devices_list, "Can't find "\
                 "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
                 % (x, cuda_visible_devices)
-            selected_gpus = [
+            gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in selected_gpus.split(',')
             ]
+            logger.info("Change selected_gpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "CUDA_VISIBLE_DEVICES:{}".format(
+                            selected_gpus, gpus, cuda_visible_devices_list))
 
-    return selected_gpus
+    return gpus
 
 
-def launch(args):
+def get_cluster_and_pod(args):
     # parse arguments, used for cloud-single-machine and local
     selected_gpus = get_gpus(args.selected_gpus)
     trainers_num = cloud_utils.get_trainers_num()
@@ -208,6 +214,12 @@ def launch(args):
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
         logger.info("get cluster from args:{}".format(cluster))
+
+    return cluster, pod
+
+
+def launch(args):
+    cluster, pod = get_cluster_and_pod(args)
 
     procs = start_local_trainers(
         cluster,

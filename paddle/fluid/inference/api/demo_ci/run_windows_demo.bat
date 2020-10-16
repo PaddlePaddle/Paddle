@@ -21,7 +21,7 @@ if /i "%use_mkl%"=="N" (
 )
 
 :set_paddle_infernece_lib
-SET /P paddle_infernece_lib="Please input the path of paddle inference library, such as D:\fluid_inference_install_dir   =======>"
+SET /P paddle_infernece_lib="Please input the path of paddle inference library, such as D:\paddle_inference_install_dir   =======>"
 set tmp_var=!paddle_infernece_lib!
 call:remove_space
 set paddle_infernece_lib=!tmp_var!

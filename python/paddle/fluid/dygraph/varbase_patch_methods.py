@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import inspect
+import numpy as np
+
+import paddle
 from .. import framework
 from .. import core
-from . import BackwardStrategy
 from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
-import numpy as np
 from .math_op_patch import monkey_patch_math_varbase
+from .parallel import scale_loss
 
 
 def monkey_patch_varbase():
@@ -129,19 +131,18 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, backward_strategy=None, retain_graph=False):
+    def backward(self, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Run backward of current Graph which starts from current Variable
+        Run backward of current Graph which starts from current Tensor.
 
         Args:
-            backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
-            like to add more ops to the built graph after calling this method(`backward`), set the parameter
-            `retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
-            Defaults to False.
+                like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
+                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                Defaults to False.
 
         Returns:
             NoneType: None
@@ -149,32 +150,30 @@ def monkey_patch_varbase():
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import numpy as np
+                import paddle
+                paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
-                        # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
-                        # there is no one need gradient on it.
-                        tmp.stop_gradient=False
-                        inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.to_tensor(x)
+                    # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
+                    # there is no one need gradient on it.
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.add_n(inputs)
+                loss = paddle.sum(ret)
+                loss.backward()
 
         """
         if framework.in_dygraph_mode():
-            if backward_strategy is None:
-                backward_strategy = BackwardStrategy()
-                backward_strategy.sort_sum_gradient = False
-
-            self._run_backward(backward_strategy,
-                               framework._dygraph_tracer(), retain_graph)
+            if paddle.distributed.get_world_size() > 1:
+                scaled_loss = scale_loss(self)
+                scaled_loss._run_backward(framework._dygraph_tracer(),
+                                          retain_graph)
+            else:
+                self._run_backward(framework._dygraph_tracer(), retain_graph)
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -205,9 +204,7 @@ def monkey_patch_varbase():
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
 
         """
@@ -239,22 +236,15 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-                x = paddle.rand([1, 5])
+                x = paddle.rand([2, 5])
                 print(x)
-                # Variable: eager_tmp_0
-                #   - place: CUDAPlace(0)
-                #   - shape: [1, 5]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
-                paddle.enable_static()
+                
+                # Tensor(shape=[2, 5], dtype=float32, place=CPUPlace,
+                #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
+                #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        tensor = self.value().get_tensor()
-        if tensor._is_initialized():
-            return 'Tensor: %s\n%s' % (self.name, str(tensor))
-        else:
-            return 'Tensor: %s, not initialized' % (self.name)
+        from paddle.tensor.to_string import to_string
+        return to_string(self)
 
     @property
     def block(self):

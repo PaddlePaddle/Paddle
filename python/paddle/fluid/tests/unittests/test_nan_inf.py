@@ -19,6 +19,9 @@ import unittest
 import os
 import sys
 import subprocess
+import paddle
+
+paddle.enable_static()
 
 
 class TestNanInf(unittest.TestCase):

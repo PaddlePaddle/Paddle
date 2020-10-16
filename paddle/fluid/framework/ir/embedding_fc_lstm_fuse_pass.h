@@ -27,6 +27,8 @@ namespace ir {
 // Fusing of Embedding , FC and LSTM op
 
 // Just FC without bias
+class Graph;
+
 class EmbeddingFCLSTMFusePass : public FusePassBase {
  public:
   virtual ~EmbeddingFCLSTMFusePass() {}

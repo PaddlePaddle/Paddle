@@ -12,11 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "mkldnn.hpp"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+
+namespace paddle {
+namespace platform {
+class MKLDNNDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

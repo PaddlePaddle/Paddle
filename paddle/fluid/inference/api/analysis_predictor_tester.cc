@@ -485,4 +485,25 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
 }
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+  config.EnableUseGpu(100, 0);
+  config.EnableMkldnnBfloat16();
+#ifdef PADDLE_WITH_MKLDNN
+  ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
+#else
+  ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
+#endif
+}
+#endif
+
+TEST(AnalysisPredictor, bf16_pass_strategy) {
+  std::vector<std::string> passes;
+  PassStrategy passStrategy(passes);
+  passStrategy.EnableMkldnnBfloat16();
+}
+
 }  // namespace paddle

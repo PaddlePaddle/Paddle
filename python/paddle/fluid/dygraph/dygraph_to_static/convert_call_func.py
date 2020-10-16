@@ -27,24 +27,23 @@ import types
 import numpy
 import six
 
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+from paddle.fluid.dygraph.layers import Layer
 
-DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
-program_translator = ProgramTranslator()
-to_static_func = program_translator.get_func
+# TODO(liym27): A better way to do this.
+BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, six, numpy]
+
+translator_logger = TranslatorLogger()
 
 
 def is_builtin(func):
     if isinstance(func, types.BuiltinFunctionType):
         return True
     elif func in six.moves.builtins.__dict__.values():
-        return True
-    # Other built-in modules
-    # TODO(liym27): A better way to do this.
-    elif any(func in m.__dict__.values()
-             for m in (collections, pdb, copy, inspect, re, six, numpy)):
         return True
     else:
         return False
@@ -61,9 +60,34 @@ def is_paddle_func(func):
     return m is not None and m.__name__.startswith("paddle")
 
 
+def is_unsupported(func):
+    """
+    Checks whether the func is supported by dygraph to static graph.
+    """
+
+    for m in BUILTIN_LIKELY_MODULES:
+        for v in m.__dict__.values():
+            func_in_dict = func == v
+            if isinstance(func_in_dict, (list, numpy.ndarray)):
+                func_in_dict = any(func_in_dict)
+            if func_in_dict:
+                translator_logger.log(
+                    2,
+                    "Whitelist: {} is part of built-in module and does not have to be transformed.".
+                    format(func))
+                return True
+
+    if is_paddle_func(func):
+        translator_logger.log(
+            2,
+            "Whitelist: {} is part of Paddle module and does not have to be transformed.".
+            format(func))
+        return True
+
+
 def convert_call(func):
     """
-    Converts a function call which needs to be transformed to static fucntion.
+    Converts a function call which needs to be transformed to static function.
 
     Args:
         func (callable): A callable function or method to convert.
@@ -95,13 +119,19 @@ def convert_call(func):
           #  [1. 1. 1.]]
 
     """
+    translator_logger.log(1,
+                          "Convert callable object: convert {}.".format(func))
     func_self = None
     converted_call = None
+
+    # Function in convert_call may be decorated by another `@to_static`,
+    # in this case, unwraps it into a raw method or function.
+    _, func = unwrap_decorators(func)
 
     if is_builtin_len(func):
         return convert_len
 
-    if is_builtin(func) or is_paddle_func(func):
+    if is_builtin(func) or is_unsupported(func):
         return func
 
     if inspect.isfunction(func):
@@ -109,12 +139,37 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            global_funcs = set([
-                fn for fn in func.__globals__.values() if inspect.isfunction(fn)
-            ])
-            if func in global_funcs:
-                converted_call = to_static_func(func)
+            # Note(Aurelius84): Because `@declarative` returns a class instance instead of
+            # a function. This will modify the value referring to itself in `__globals__`.
+
+            # For example: 
+            #
+            #      @declarative
+            #      def foo(x):
+            #          return x
+            #
+            # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
+            # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
+            # `foo` function. So `isinstance(fn, StaticFunction)` is added here. 
+            global_functions = set()
+            for fn in func.__globals__.values():
+                if inspect.isfunction(fn):
+                    global_functions.add(fn)
+                elif isinstance(fn, StaticFunction):
+                    _, fn = unwrap_decorators(fn)
+                    global_functions.add(fn)
+
+            if func in global_functions:
+                converted_call = convert_to_static(func)
                 func_self = getattr(func, '__self__', None)
+            else:
+                # NOTE:
+                # If func is not in __globals__, it does not need to be transformed
+                # because it has been transformed before.
+                translator_logger.warn(
+                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is."
+                    .format(func))
+                converted_call = func
         except AttributeError:
             # NOTE:
             # If func is not in __globals__, it does not need to be transformed
@@ -127,7 +182,7 @@ def convert_call(func):
             converted_call = None
     elif inspect.ismethod(func):
         try:
-            converted_call = to_static_func(func)
+            converted_call = convert_to_static(func)
             func_self = getattr(func, '__self__', None)
         except (IOError, OSError):
             # NOTE: func may have been decorated.
@@ -136,7 +191,8 @@ def convert_call(func):
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
-                forward_func = to_static_func(func.forward)
+                _, forward_func = unwrap_decorators(func.forward)
+                forward_func = convert_to_static(forward_func)
                 setattr(func, 'forward', forward_func)
                 func_self = func
             except Exception:
@@ -146,15 +202,21 @@ def convert_call(func):
         else:
             try:
                 call_func = func.__class__.__call__
-                converted_call = to_static_func(call_func)
+                converted_call = convert_to_static(call_func)
                 func_self = func
             except Exception:
                 # NOTE:
                 # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed
                 func_self = None if func_self else func_self
+    else:
+        raise NotImplementedError(
+            "Callable {} can not be transformed at present.".format(func))
 
     if converted_call is None:
+        translator_logger.warn(
+            "{} doesn't have to be transformed to static function, and it will be run as-is."
+            .format(func))
         return func
 
     if func_self:

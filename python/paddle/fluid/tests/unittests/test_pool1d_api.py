@@ -143,6 +143,27 @@ class TestPool1d_API(unittest.TestCase):
             result = avg_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
+    def check_avg_dygraph_padding_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = F.avg_pool1d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=[1],
+                count_include_pad=True)
+
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[2], strides=[2], paddings=[1], exclusive=False)
+
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            avg_pool1d_dg = paddle.nn.AvgPool1d(
+                kernel_size=2, stride=None, padding=1, count_include_pad=True)
+            result = avg_pool1d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
@@ -174,65 +195,22 @@ class TestPool1d_API(unittest.TestCase):
             result = max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-    def check_adaptive_max_dygraph_results(self, place):
+    def check_max_dygraph_return_index_results(self, place):
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
-            result = F.adaptive_max_pool1d(input, output_size=16)
+            result, index = F.max_pool1d(
+                input, kernel_size=2, stride=2, padding=0, return_indices=True)
 
             result_np = max_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
-
-            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1d(
-                output_size=16)
-            result = ada_max_pool1d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
-
-    def check_adaptive_avg_dygraph_results(self, place):
-        with fluid.dygraph.guard(place):
-            input_np = np.random.random([2, 3, 32]).astype("float32")
-            input = fluid.dygraph.to_variable(input_np)
-            result = F.adaptive_avg_pool1d(input, output_size=16)
-            result_np = avg_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True)
+                input_np, ksize=[2], strides=[2], paddings=[0])
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1d(
-                output_size=16)
-            result = ada_max_pool1d_dg(input)
+            max_pool1d_dg = paddle.nn.layer.MaxPool1d(
+                kernel_size=2, stride=None, padding=0)
+            result = max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
-
-    def check_adaptive_max_static_results(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.adaptive_max_pool1d(input, output_size=16)
-
-            input_np = np.random.random([2, 3, 32]).astype("float32")
-            result_np = max_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True)
-
-            exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input": input_np},
-                              fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
-
-    def check_adaptive_avg_static_results(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.adaptive_avg_pool1d(input, output_size=16)
-
-            input_np = np.random.random([2, 3, 32]).astype("float32")
-            result_np = avg_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True)
-
-            exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input": input_np},
-                              fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
 
     def check_max_dygraph_padding_same(self, place):
         with fluid.dygraph.guard(place):
@@ -265,12 +243,9 @@ class TestPool1d_API(unittest.TestCase):
             self.check_avg_dygraph_results(place)
             self.check_max_static_results(place)
             self.check_avg_static_results(place)
-            self.check_adaptive_max_dygraph_results(place)
-            self.check_adaptive_avg_dygraph_results(place)
-            self.check_adaptive_max_static_results(place)
-            self.check_adaptive_avg_static_results(place)
             self.check_max_dygraph_padding_same(place)
             self.check_avg_dygraph_padding_same(place)
+            self.check_max_dygraph_return_index_results(place)
 
 
 class TestPool2dError_API(unittest.TestCase):

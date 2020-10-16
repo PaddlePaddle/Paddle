@@ -191,12 +191,14 @@ class FleetTranspiler(Fleet):
         self._communicator = Communicator(
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
+
         self._communicator.init_with_ctx(send_ctx, recv_ctx)
 
         if not self._communicator.is_running():
             self._communicator.start()
         else:
-            warnings.warn("communicator has been initialized, skip")
+            raise ValueError(
+                "Communicator can only be inited once, please check")
 
     def init_worker(self):
         """
@@ -467,7 +469,7 @@ class FleetTranspiler(Fleet):
         opts = public._get_optimize_ops(self._origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):
@@ -700,8 +702,8 @@ if you would like to save all variables in a
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -846,4 +848,4 @@ class ParameterServerOptimizer(DistributedOptimizer):
         fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
             self._build_trainer_programs(compiled_config) if fleet.is_worker() \
-                else self._build_pserver_programs(compiled_config)
+            else self._build_pserver_programs(compiled_config)

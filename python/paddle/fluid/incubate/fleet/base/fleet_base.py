@@ -145,7 +145,7 @@ class Fleet(object):
 
         Returns:
             bool: True if this is a node of server,
-                  False if not.
+                  False if not
         """
         return self._role_maker.is_server()
 

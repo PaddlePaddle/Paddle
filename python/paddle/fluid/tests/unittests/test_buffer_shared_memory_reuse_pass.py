@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Parameter
 import numpy as np
@@ -33,8 +34,10 @@ class InplaceTestBase(unittest.TestCase):
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = False
+        self.fuse_all_reduce_ops = False
 
     def setUp(self):
+        paddle.enable_static()
         self.initParameter()
         if self.use_cuda and fluid.core.is_compiled_with_cuda():
             self.device_count = fluid.core.get_cuda_device_count()
@@ -44,10 +47,10 @@ class InplaceTestBase(unittest.TestCase):
 
     def build_program_and_scope(self):
         self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         startup_program = fluid.Program()
         main_program = fluid.Program()
-        startup_program.random_seed = 1
-        main_program.random_seed = 1
 
         scope = fluid.Scope()
         with fluid.program_guard(main_program, startup_program):
@@ -91,6 +94,7 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
                 build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                build_strategy.fuse_all_reduce_ops = self.fuse_all_reduce_ops
                 compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
                     loss_name=loss.name,
                     build_strategy=build_strategy,
@@ -113,8 +117,15 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_val2, = exe.run(compiled_prog,
                                               feed=feed_dict,
                                               fetch_list=[fetch_var])
-
-                        self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
+                        #NOTE(zhiqiu): Temporally changed from array_equal to allclose. 
+                        # The real root is fuse_all_reduce and fuse_all_optimizer_opss may 
+                        # result in diff because of the instruction set on the virtual machine.
+                        # And the related unit tests: test_fuse_all_reduce_pass and test_fuse_optimizer_pass use "almostEqual" in their checks.
+                        # There are also some related issues:
+                        # https://github.com/PaddlePaddle/Paddle/issues/21270
+                        # https://github.com/PaddlePaddle/Paddle/issues/21046
+                        # https://github.com/PaddlePaddle/Paddle/issues/21045
+                        self.assertTrue(np.allclose(fetch_val1, fetch_val2))
 
     def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
@@ -137,6 +148,7 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
                 build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                build_strategy.fuse_all_reduce_ops = self.fuse_all_reduce_ops
                 compiled_program = fluid.CompiledProgram(
                     prog).with_data_parallel(
                         loss_name=loss.name,
@@ -158,13 +170,15 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_vals.append(fetch_val)
 
                 for item in fetch_vals:
-                    self.assertTrue(np.array_equal(fetch_vals[0], item))
+                    # save above
+                    self.assertTrue(np.allclose(fetch_vals[0], item))
 
 
 class CUDAInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = False
+        self.fuse_all_reduce_ops = False
 
     def test_multi_card_fetch_var(self):
         self.check_multi_card_fetch_var()
@@ -177,6 +191,7 @@ class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = False
+        self.fuse_all_reduce_ops = False
 
     def test_multi_card_fetch_var(self):
         self.check_multi_card_fetch_var()

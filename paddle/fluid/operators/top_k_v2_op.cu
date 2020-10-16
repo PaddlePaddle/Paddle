@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/p_norm_op.h"
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/fluid/operators/top_k_v2_op.h"
 
@@ -39,8 +38,10 @@ template <typename DeviceContext, typename T>
 class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::InvalidArgument(
+            "It must use CUDAPlace, you must check your device set."));
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
@@ -195,7 +196,8 @@ class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
+        platform::errors::InvalidArgument(
+            "It must use CUDAPlace, you must check your device set."));
     auto* x = context.Input<Tensor>("X");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* indices = context.Input<Tensor>("Indices");

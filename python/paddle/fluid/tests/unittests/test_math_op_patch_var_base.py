@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
+import inspect
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
@@ -302,21 +303,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertEqual(x.dim(), 2)
         self.assertEqual(x.ndimension(), 2)
         self.assertEqual(x.ndim, 2)
-        self.assertEqual(x.size(), [2, 3])
-        self.assertTrue(
-            np.array_equal(x.sigmoid().numpy(), fluid.layers.sigmoid(x).numpy(
-            )))
-        self.assertTrue(
-            np.array_equal(x.logsigmoid().numpy(),
-                           fluid.layers.logsigmoid(x).numpy()))
+        self.assertEqual(x.size, 6)
+        self.assertEqual(x.numel(), 6)
         self.assertTrue(np.array_equal(x.exp().numpy(), paddle.exp(x).numpy()))
         self.assertTrue(
             np.array_equal(x.tanh().numpy(), paddle.tanh(x).numpy()))
         self.assertTrue(
             np.array_equal(x.atan().numpy(), paddle.atan(x).numpy()))
-        self.assertTrue(
-            np.array_equal(x.tanh_shrink().numpy(),
-                           fluid.layers.tanh_shrink(x).numpy()))
         self.assertTrue(np.array_equal(x.abs().numpy(), paddle.abs(x).numpy()))
         m = x.abs()
         self.assertTrue(
@@ -345,19 +338,15 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(x.square().numpy(), paddle.square(x).numpy()))
         self.assertTrue(
-            np.array_equal(x.softplus().numpy(),
-                           fluid.layers.softplus(x).numpy()))
-        self.assertTrue(
-            np.array_equal(x.softsign().numpy(),
-                           fluid.layers.softsign(x).numpy()))
-        self.assertTrue(
             np.array_equal(x.rank().numpy(), paddle.rank(x).numpy()))
         self.assertTrue(
             np.array_equal(x[0].t().numpy(), paddle.t(x[0]).numpy()))
-        m = paddle.to_tensor(np.random.uniform(1, 2, [3, 3]), 'float32')
-        m = m.matmul(m.t())
+        d = paddle.to_tensor([[1.2285208, 1.3491015, 1.4899898],
+                              [1.30058, 1.0688717, 1.4928783],
+                              [1.0958099, 1.3724753, 1.8926544]])
+        d = d.matmul(d.t())
         self.assertTrue(
-            np.array_equal(m.cholesky().numpy(), paddle.cholesky(m).numpy()))
+            np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy()))
 
         self.assertTrue(
             np.array_equal(x.is_empty().numpy(), paddle.is_empty(x).numpy()))
@@ -408,8 +397,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(m.unique()[0].numpy(), paddle.unique(m)[0].numpy()))
         self.assertTrue(
-            np.array_equal(m.unique_with_counts()[2],
-                           paddle.unique_with_counts(m)[2]))
+            np.array_equal(
+                m.unique(return_counts=True)[1],
+                paddle.unique(
+                    m, return_counts=True)[1]))
         self.assertTrue(np.array_equal(x.flip([0]), paddle.flip(x, [0])))
         self.assertTrue(np.array_equal(x.unbind(0), paddle.unbind(x, 0)))
         self.assertTrue(np.array_equal(x.roll(1), paddle.roll(x, 1)))
@@ -422,6 +413,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(np.array_equal(x.reciprocal(), paddle.reciprocal(x)))
 
         # 2. Binary operation
+        self.assertTrue(
+            np.array_equal(x.divide(y).numpy(), paddle.divide(x, y).numpy()))
         self.assertTrue(
             np.array_equal(
                 x.matmul(y, True, False).numpy(),
@@ -481,12 +474,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         x = paddle.to_tensor([[True, False], [True, False]])
         y = paddle.to_tensor([[False, False], [False, True]])
         self.assertTrue(
-            np.array_equal(x.reduce_all().numpy(), paddle.reduce_all(x).numpy(
-            )))
-        self.assertTrue(
-            np.array_equal(x.reduce_any().numpy(), paddle.reduce_any(x).numpy(
-            )))
-        self.assertTrue(
             np.array_equal(
                 x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()))
         self.assertTrue(
@@ -501,6 +488,59 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(
                 x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()))
+        a = paddle.to_tensor([[1, 2], [3, 4]])
+        b = paddle.to_tensor([[4, 3], [2, 1]])
+        self.assertTrue(
+            np.array_equal(
+                x.where(a, b).numpy(), paddle.where(x, a, b).numpy()))
+
+        self.assertTrue(inspect.ismethod(a.dot))
+        self.assertTrue(inspect.ismethod(a.logsumexp))
+        self.assertTrue(inspect.ismethod(a.multiplex))
+        self.assertTrue(inspect.ismethod(a.prod))
+        self.assertTrue(inspect.ismethod(a.scale))
+        self.assertTrue(inspect.ismethod(a.stanh))
+        self.assertTrue(inspect.ismethod(a.add_n))
+        self.assertTrue(inspect.ismethod(a.max))
+        self.assertTrue(inspect.ismethod(a.maximum))
+        self.assertTrue(inspect.ismethod(a.min))
+        self.assertTrue(inspect.ismethod(a.minimum))
+        self.assertTrue(inspect.ismethod(a.floor_divide))
+        self.assertTrue(inspect.ismethod(a.remainder))
+        self.assertTrue(inspect.ismethod(a.floor_mod))
+        self.assertTrue(inspect.ismethod(a.multiply))
+        self.assertTrue(inspect.ismethod(a.logsumexp))
+        self.assertTrue(inspect.ismethod(a.inverse))
+        self.assertTrue(inspect.ismethod(a.log1p))
+        self.assertTrue(inspect.ismethod(a.erf))
+        self.assertTrue(inspect.ismethod(a.addmm))
+        self.assertTrue(inspect.ismethod(a.clip))
+        self.assertTrue(inspect.ismethod(a.trace))
+        self.assertTrue(inspect.ismethod(a.kron))
+        self.assertTrue(inspect.ismethod(a.isinf))
+        self.assertTrue(inspect.ismethod(a.isnan))
+        self.assertTrue(inspect.ismethod(a.concat))
+        self.assertTrue(inspect.ismethod(a.broadcast_to))
+        self.assertTrue(inspect.ismethod(a.scatter_nd_add))
+        self.assertTrue(inspect.ismethod(a.scatter_nd))
+        self.assertTrue(inspect.ismethod(a.shard_index))
+        self.assertTrue(inspect.ismethod(a.chunk))
+        self.assertTrue(inspect.ismethod(a.stack))
+        self.assertTrue(inspect.ismethod(a.strided_slice))
+        self.assertTrue(inspect.ismethod(a.unsqueeze))
+        self.assertTrue(inspect.ismethod(a.unstack))
+        self.assertTrue(inspect.ismethod(a.argmax))
+        self.assertTrue(inspect.ismethod(a.argmin))
+        self.assertTrue(inspect.ismethod(a.argsort))
+        self.assertTrue(inspect.ismethod(a.masked_select))
+        self.assertTrue(inspect.ismethod(a.topk))
+        self.assertTrue(inspect.ismethod(a.index_select))
+        self.assertTrue(inspect.ismethod(a.nonzero))
+        self.assertTrue(inspect.ismethod(a.sort))
+        self.assertTrue(inspect.ismethod(a.index_sample))
+        self.assertTrue(inspect.ismethod(a.mean))
+        self.assertTrue(inspect.ismethod(a.std))
+        self.assertTrue(inspect.ismethod(a.numel))
 
 
 if __name__ == '__main__':

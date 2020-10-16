@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 def AffineGrid(theta, size, align_corners):
@@ -49,7 +50,6 @@ class TestAffineGridOp(OpTest):
         self.initTestCase()
         self.op_type = "affine_grid"
         theta = np.random.randint(1, 3, self.theta_shape).astype("float32")
-        theta = np.ones(self.theta_shape).astype("float32")
         self.inputs = {'Theta': theta}
         self.attrs = {
             "use_cudnn": self.use_cudnn,
@@ -114,4 +114,5 @@ class TestAffineGridOpCase4(TestAffineGridOp):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

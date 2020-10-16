@@ -46,6 +46,7 @@ constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
 constexpr char kRequestNotify[] = "RequestNotify";
+constexpr char kRequestSendAndRecv[] = "RequestSendAndRecv";
 
 constexpr char kSendRPC[] = "SendRPC";
 constexpr char kGetRPC[] = "GetRPC";
@@ -57,6 +58,7 @@ constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
 constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
 constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
 constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
+constexpr char kSendAndRecvRPC[] = "SendAndRecvRPC";
 constexpr int64_t kPrefetchTimeout = 60000;
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"

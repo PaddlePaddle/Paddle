@@ -35,9 +35,30 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
     auto is_distributed = context.Attr<bool>("is_distributed");
 
+    auto lookup_table_version =
+        context.Attr<std::string>("lookup_table_version");
+
     operators::distributed::prefetchs(id_names, out_names, embedding_name,
                                       is_distributed, lookup_tables, endpoints,
                                       context, context.scope());
+
+    if (lookup_table_version == "lookup_table_v2") {
+      auto &scope = context.scope();
+      auto emb_dim =
+          scope.FindVar(embedding_name)->Get<framework::LoDTensor>().dims()[1];
+
+      for (size_t i = 0; i < id_names.size(); ++i) {
+        auto *id_var = scope.FindVar(id_names[i]);
+        auto *out_var = scope.FindVar(out_names[i]);
+        auto *id_tensor = id_var->GetMutable<framework::LoDTensor>();
+        auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
+
+        auto id_dims = id_tensor->dims();
+        out_tensor->Resize(framework::make_ddim(
+            {static_cast<int64_t>(id_dims[0]), static_cast<int64_t>(id_dims[1]),
+             static_cast<int64_t>(emb_dim)}));
+      }
+    }
   }
 };
 

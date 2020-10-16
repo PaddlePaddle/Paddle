@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unique_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -86,9 +87,17 @@ class UniqueOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    // Return CPUPlace when Attr("is_sorted") is false. Because it means
+    // that fluid.layers.unique is called, but there is no cuda kernel.
+    if (!ctx.Attr<bool>("is_sorted")) {
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+          platform::CPUPlace());
+    } else {
+      // new version paddle.unique is called.
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    }
   }
 };
 
@@ -149,3 +158,34 @@ REGISTER_OP_CPU_KERNEL(
     ops::UniqueKernel<paddle::platform::CPUDeviceContext, double>,
     ops::UniqueKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::UniqueKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_VERSION(unique)
+    .AddCheckpoint(
+        R"ROC(
+        Upgrade unique, add 2 outputs [Indices, Counts] and 5 attribute
+        [return_index, return_inverse, return_counts, axis, is_sorted].
+      )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewOutput("Indices",
+                       "The indices of the input tensor that result in the "
+                       "unique tensor.")
+            .NewOutput("Counts", "The counts for each unique element.")
+            .NewAttr("return_index",
+                     "If True, also return the indices of the input"
+                     " tensor that result in the unique Tensor.",
+                     false)
+            .NewAttr("return_inverse",
+                     "If True, also return the indices for where elements"
+                     " in the original input ended up in the returned unique "
+                     "tensor.",
+                     false)
+            .NewAttr("return_counts",
+                     "If True, also return the counts for each unique element.",
+                     false)
+            .NewAttr("axis",
+                     "The axis to apply unique. If None, the input will be "
+                     "flattened.",
+                     {})
+            .NewAttr("is_sorted",
+                     "If True, the unique elements of X are in ascending order."
+                     "Otherwise, the unique elements are not sorted.",
+                     false));

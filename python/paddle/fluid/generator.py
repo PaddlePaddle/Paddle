@@ -17,44 +17,28 @@ from . import core
 
 __all__ = ['Generator']
 
-default_rng_seed_val = 34342423252
 
-
-class Generator(object):
+class Generator(core.Generator):
     """Generator class"""
 
-    def __init__(self, device="CPU"):
-        """init"""
-        self.device = device
-        seed_in = default_rng_seed_val
-        if self.device == "CPU":
-            self.generator = core.Generator()
-            # self.generator.manual_seed(seed_in)
+    def __init__(self, place=None):
+        """
+        Create a generator object which manages the random number generation. ( Experimental Feature )
+
+        Parameters:
+            place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
+                CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+
+        Returns:
+            Generator: A generator object.
+
+        """
+        self.place = place
+        if not place:
+            place = core.CPUPlace()
+        if isinstance(place, core.CPUPlace):
+            super(Generator, self).__init__()
         else:
             raise ValueError(
-                "generator class with device %s does not exist, currently only support generator with device 'CPU' "
-                % device)
-
-    def get_state(self):
-        return self.generator.get_state()
-
-    def set_state(self, state):
-        self.generator.set_state(state)
-
-    def manual_seed(self, seed):
-        self.generator.manual_seed(seed)
-
-    def seed(self):
-        return self.generator.seed()
-
-    def initial_seed(self):
-        return self.generator.initial_seed()
-
-    def random(self):
-        return self.generator.random()
-
-    def get_cpu_engine(self):
-        return self.generator.get_cpu_engine()
-
-    def set_cpu_engine(self, cpu_engine):
-        self.generator.set_cpu_engine(cpu_engine)
+                "Generator class with %s does is not supported yet, currently only support generator with CPUPlace "
+                % place)
