@@ -1113,7 +1113,7 @@ def assign(x, output=None):
     """
  
  
-    The OP copies the :attr:`input` to the :attr:`output`.
+    The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
         x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
@@ -1165,8 +1165,8 @@ def assign(x, output=None):
             values = [int(v) for v in x.flat]
         else:
             raise TypeError(
-                "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
+                "When the type of 'x' in assign is numpy.ndarray, "
+                "the data type of 'x' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
         if x.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
