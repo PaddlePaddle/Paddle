@@ -37,19 +37,16 @@ from .clip import ClipGradByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
 from .clip import clip_by_norm  #DEFINE_ALIAS
-from .control_flow import cond  #DEFINE_ALIAS
+# from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-from .control_flow import while_loop  #DEFINE_ALIAS
+# from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
-# from .decode import BeamSearchDecoder        #DEFINE_ALIAS
+from .decode import BeamSearchDecoder  #DEFINE_ALIAS
+from .decode import dynamic_decode  #DEFINE_ALIAS
 # from .decode import Decoder        #DEFINE_ALIAS
-# from .decode import beam_search  #DEFINE_ALIAS
-# from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import crf_decoding        #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
-# from .decode import dynamic_decode        #DEFINE_ALIAS
-from .decode import gather_tree  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU  #DEFINE_ALIAS
 from .layer.activation import GELU  #DEFINE_ALIAS
@@ -74,9 +71,6 @@ from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
-from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
-from .layer.common import Pool2D  #DEFINE_ALIAS
-from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import ReflectionPad1d  #DEFINE_ALIAS
 from .layer.common import ReplicationPad1d  #DEFINE_ALIAS
 from .layer.common import ConstantPad1d  #DEFINE_ALIAS

@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
 
-SEED = 2020
+SEED = 2000
 DATATYPE = 'float32'
 program_translator = ProgramTranslator()
 

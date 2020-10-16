@@ -136,7 +136,7 @@ def _format_item(np_var, max_width=0):
 
 def _get_max_width(var):
     max_width = 0
-    for item in np.nditer(var.numpy()):
+    for item in list(var.numpy().flatten()):
         item_str = _format_item(item)
         max_width = max(max_width, len(item_str))
     return max_width
@@ -147,7 +147,9 @@ def _format_tensor(var, sumary, indent=0):
     max_width = _get_max_width(_to_sumary(var))
 
     if len(var.shape) == 0:
-        return _format_item(var.numpy.items(0), max_width)
+        # currently, shape = [], i.e., scaler tensor is not supported.
+        # If it is supported, it should be formatted like this.
+        return _format_item(var.numpy().item(0), max_width)
     elif len(var.shape) == 1:
         if sumary and var.shape[0] > 2 * edgeitems:
             items = [
