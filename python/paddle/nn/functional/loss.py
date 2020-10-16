@@ -305,13 +305,15 @@ def binary_cross_entropy_with_logits(logit,
     out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name)
 
-    one = paddle.fluid.layers.fill_constant(shape=[1], value=1.0, dtype=logit.dtype)
+    one = paddle.fluid.layers.fill_constant(
+        shape=[1], value=1.0, dtype=logit.dtype)
     if pos_weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             pos_weight, 'pos_weight', ['float32', 'float64'],
             'binary_cross_entropy_with_logits')
         log_weight = paddle.add(
-            paddle.multiply(label, paddle.fluid.layers.elementwise_sub(pos_weight, one)),
+            paddle.multiply(
+                label, paddle.fluid.layers.elementwise_sub(pos_weight, one)),
             one)
         pos_weight_name = name if reduction == 'none' and weight is None else None
         out = paddle.multiply(out, log_weight, name=pos_weight_name)
@@ -618,7 +620,8 @@ def margin_ranking_loss(input,
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
-        paddle.fluid.layers.fill_constant([1], out.dtype, margin, out=margin_var)
+        paddle.fluid.layers.fill_constant(
+            [1], out.dtype, margin, out=margin_var)
         out = paddle.add(out, margin_var)
 
     result_out = helper.create_variable_for_type_inference(input.dtype)
@@ -729,7 +732,8 @@ def l1_loss(input, label, reduction='mean', name=None):
         unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.fluid.layers.elementwise_sub(input, label, act='abs', name=name)
+        return paddle.fluid.layers.elementwise_sub(
+            input, label, act='abs', name=name)
 
 
 def nll_loss(input,
