@@ -38,6 +38,8 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    // TODO(pangyoki): implement GetXPURandomEngine to set different seeds on
+    // corresponding XPU device.
     auto engine = framework::GetCPURandomEngine(seed);
 
     std::unique_ptr<T[]> data_cpu(new T[size]);
