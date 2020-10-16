@@ -19,7 +19,7 @@ import abc
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
-from paddle.optimzier import SGD as SGD_v2
+from paddle.optimizer import SGD as SGD_v2
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
