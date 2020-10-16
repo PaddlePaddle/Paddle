@@ -138,14 +138,14 @@ class PartialProgramLayer(layers.Layer):
         self.training = True
 
     @LazyInitialized
-    def infer_program(self):
+    def _infer_program(self):
         """
         Lazy initialized property of infer_program.
         """
         return self._clone_for_test(self._origin_main_program)
 
     @LazyInitialized
-    def train_program(self):
+    def _train_program(self):
         """
         Lazy initialized property of train_program.
         """
@@ -213,7 +213,7 @@ class PartialProgramLayer(layers.Layer):
             attrs={
                 'global_block': self.program.desc.block(0),
                 'start_op_index': 0,
-                'end_op_index': self.infer_program.desc.block(0).op_size(),
+                'end_op_index': self._infer_program.desc.block(0).op_size(),
                 'is_test': not self.training
             })
 
@@ -222,7 +222,7 @@ class PartialProgramLayer(layers.Layer):
 
     @property
     def program(self):
-        return self.train_program if self.training else self.infer_program
+        return self._train_program if self.training else self._infer_program
 
     def _prepare(self, inputs):
         """

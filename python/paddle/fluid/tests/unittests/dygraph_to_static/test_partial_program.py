@@ -136,17 +136,20 @@ class TestWithTrainAndEval(unittest.TestCase):
 
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
             # check default mode is for training
-            self.assertEqual(partial_layer.program, partial_layer.train_program)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._train_program)
 
             # switch to run test program after `eval()`
             linear_net.eval()
             linear_net(x)
-            self.assertEqual(partial_layer.program, partial_layer.infer_program)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._infer_program)
 
             # switch back into training
             linear_net.train()
             linear_net(x)
-            self.assertEqual(partial_layer.program, partial_layer.train_program)
+            self.assertEqual(partial_layer.program,
+                             partial_layer._train_program)
 
 
 class GPT2LMHeadModel(fluid.dygraph.Layer):
