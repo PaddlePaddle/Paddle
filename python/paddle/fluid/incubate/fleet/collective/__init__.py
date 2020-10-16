@@ -28,6 +28,8 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid import compiler
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel, CheckpointSaver
 
+import paddle
+
 import os
 import sys
 import six
@@ -504,11 +506,18 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
 
-        optimize_ops, param_grads = self._optimizer.minimize(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        if isinstance(self._optimizer, fluid.optimizer.Optimizer):
+            optimize_ops, param_grads = self._optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
+        if isinstance(self._optimizer, paddle.optimizer.Optimizer):
+            optimize_ops, param_grads = self._optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameters=parameter_list,
+                no_grad_set=no_grad_set)
 
         fleet._origin_program = main_program.clone(for_test=False)
         fleet._transpiled_program = main_program
