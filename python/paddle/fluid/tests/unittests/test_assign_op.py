@@ -99,5 +99,52 @@ class TestAssignOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.assign, x5)
 
 
+class TestAssignOpWithLoDTensorArray_api(unittest.TestCase):
+    def test_assign_LoDTensorArray(self):
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program):
+            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
+            x.stop_gradient = False
+            y = fluid.layers.fill_constant(
+                shape=[100, 10], dtype='float32', value=1)
+            z = fluid.layers.elementwise_add(x=x, y=y)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            init_array = fluid.layers.array_write(x=z, i=i)
+            array = paddle.assign(init_array)
+            sums = fluid.layers.array_read(array=init_array, i=i)
+            mean = fluid.layers.mean(sums)
+            append_backward(mean)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        feed_x = np.random.random(size=(100, 10)).astype('float32')
+        ones = np.ones((100, 10)).astype('float32')
+        feed_add = feed_x + ones
+        res = exe.run(main_program,
+                      feed={'x': feed_x},
+                      fetch_list=[sums.name, x.grad_name])
+        self.assertTrue(np.allclose(res[0], feed_add))
+        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+
+
+class TestAssignOpError_api(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The type of input must be Variable or numpy.ndarray.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, paddle.assign, x1)
+            # When the type of input is Variable, the dtype of input must be float16, float32, float64, int32, int64, bool.
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, paddle.assign, x3)
+            # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
+            x4 = np.array([[2.5, 2.5]], dtype='float64')
+            self.assertRaises(TypeError, fluid.layers.assign, x4)
+            x5 = np.array([[2.5, 2.5]], dtype='uint8')
+            self.assertRaises(TypeError, fluid.layers.assign, x5)
+
+
 if __name__ == '__main__':
     unittest.main()
