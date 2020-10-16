@@ -20,5 +20,5 @@ CUR_DIR=$(realpath "$CUR_DIR")
 # shellcheck disable=2034
 PADDLE_DIR=$(realpath "$CUR_DIR/../../../")
 
- # shellcheck disable=2034
+# shellcheck disable=2034
 BUILD_IMAGE="paddle-musl-build:2.0"
