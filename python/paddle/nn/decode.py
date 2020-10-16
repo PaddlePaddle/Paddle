@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import datasets
-from .datasets import *
+from ..fluid.layers import BeamSearchDecoder  #DEFINE_ALIAS
+from ..fluid.layers import dynamic_decode  #DEFINE_ALIAS
 
-__all__ = datasets.__all__
+__all__ = [
+    'BeamSearchDecoder',
+    'dynamic_decode',
+]
