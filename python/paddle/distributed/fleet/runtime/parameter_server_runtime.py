@@ -521,8 +521,7 @@ class ParameterServerRuntime(RuntimeBase):
         executor.run(prog)
         return context.keys()
 
-    def _save_distributed_params(self, executor, dirname, context,
-                                 main_program):
+    def _save_distributed_params(self, executor, dirname, context, mode):
         prog = Program()
         block = prog.global_block()
 
@@ -531,7 +530,7 @@ class ParameterServerRuntime(RuntimeBase):
                 type='checkpoint_notify',
                 attrs={
                     "varname": name,
-                    "is_slice": True,
+                    "mode": mode,
                     "slice_varnames": var_ctx.split_varnames(),
                     "remote_varnames": var_ctx.split_varnames(),
                     "endpoints": var_ctx.split_endpoints(),
@@ -541,7 +540,8 @@ class ParameterServerRuntime(RuntimeBase):
         executor.run(prog)
         return context.keys()
 
-    def _save_distributed_persistables(self, executor, dirname, main_program):
+    def _save_distributed_persistables(self, executor, dirname, main_program,
+                                       mode):
         dense_ctx = self.compiled_strategy.get_communicator_recv_context(
             recv_type=1, use_origin_program=True)
 
@@ -558,7 +558,7 @@ class ParameterServerRuntime(RuntimeBase):
             executor, dirname, sparse_ctx, main_program)
 
         recv_distributed_varnames = self._save_distributed_params(
-            executor, dirname, distributed_ctx, main_program)
+            executor, dirname, distributed_ctx, mode)
 
         saved_varnames = recv_dense_varnames + list(
             recv_sparse_varnames) + list(recv_distributed_varnames)
@@ -578,6 +578,7 @@ class ParameterServerRuntime(RuntimeBase):
                                         executor,
                                         dirname,
                                         main_program=None,
+                                        mode=0,
                                         **kwargs):
         """
         This function filters out all variables with `persistable==True` from the
@@ -608,7 +609,8 @@ class ParameterServerRuntime(RuntimeBase):
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        self._save_distributed_persistables(executor, dirname, main_program)
+        self._save_distributed_persistables(executor, dirname, main_program,
+                                            mode)
 
     def _ps_inference_save_inference_model(self,
                                            executor,
@@ -654,7 +656,8 @@ class ParameterServerRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(executor, dirname, program)
+            self._ps_inference_save_persistables(
+                executor, dirname, program, mode=0)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)

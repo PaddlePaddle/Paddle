@@ -422,6 +422,7 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
 VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
                                                const std::string& dirname,
                                                const std::string& varname,
+                                               const int mode,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
 
@@ -435,6 +436,7 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
 
   sendrecv::VariableMessage req;
   req.set_varname(varname);
+  req.set_table_name(std::to_string(mode));
   req.set_out_varname(dirname);
 
   platform::RecordRPCEvent record_event(method);

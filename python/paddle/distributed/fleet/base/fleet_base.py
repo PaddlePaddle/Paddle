@@ -498,7 +498,7 @@ class Fleet(object):
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self, executor, dirname, main_program=None, mode=1):
         """
 
         saves all persistable variables from :code:`main_program` to
@@ -539,7 +539,8 @@ class Fleet(object):
 
         """
 
-        self._runtime_handle._save_persistables(executor, dirname, main_program)
+        self._runtime_handle._save_persistables(executor, dirname, main_program,
+                                                mode)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
