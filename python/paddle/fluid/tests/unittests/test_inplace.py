@@ -71,7 +71,7 @@ class TestInplace(unittest.TestCase):
             loss = var_c.sum()
             loss.backward()
 
-    def _test_backward_success_2(self):
+    def test_backward_success_2(self):
         # Although var_b is modified inplace after using it, it does not used in gradient computation.
         # The inplace operator doesn't result in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():

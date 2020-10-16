@@ -88,7 +88,7 @@ class Variable {
     return holder_->Type();
   }
 
-  VariableInplaceVersion InplaceVersionCounter() const {
+  VariableInplaceVersion& InplaceVersionCounter() {
     return inplace_version_counter_;
   }
 

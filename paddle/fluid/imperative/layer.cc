@@ -402,5 +402,6 @@ void BumpInplaceVersion(std::shared_ptr<imperative::VarBase> var) {
           var->Name()));
   var->MutableVar()->InplaceVersionCounter().Bump();
 }
+
 }  // namespace imperative
 }  // namespace paddle

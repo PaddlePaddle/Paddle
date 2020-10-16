@@ -135,8 +135,9 @@ class VariableWrapper {
 
   uint32_t InplaceVersion() const { return wrapper_inplace_version_; }
 
-  void SetInplaceVersion(const std::shared_ptr<VariableWrapper> wrapper) {
-    auto new_version = wrapper->Var().InplaceVersionCounter().CurrentVersion();
+  void SetInplaceVersion(std::shared_ptr<VariableWrapper> wrapper) {
+    auto new_version =
+        wrapper->MutableVar()->InplaceVersionCounter().CurrentVersion();
     VLOG(6) << "The wrapper version of VariableWrapper '" << name_
             << "' will be updated from " << wrapper_inplace_version_ << "to "
             << new_version;
