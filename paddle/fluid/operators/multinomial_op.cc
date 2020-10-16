@@ -73,7 +73,7 @@ class MultinomialOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         num_samples, 0,
         platform::errors::InvalidArgument(
-            "The number of samples should be > 0, but got %d", num_samples));
+            "The number of samples should be > 0, but got %d.", num_samples));
     out_dims[x_rank - 1] = num_samples;
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));

@@ -47,7 +47,7 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
       PADDLE_ENFORCE_GE(prob_value, 0.0,
                         platform::errors::InvalidArgument(
                             "The input of multinomial distribution "
-                            "should be >= 0, but got %f",
+                            "should be >= 0, but got %f.",
                             prob_value));
 
       probs_sum += prob_value;
@@ -59,14 +59,14 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
     PADDLE_ENFORCE_GT(probs_sum, 0.0,
                       platform::errors::InvalidArgument(
                           "The sum of one multinomial distribution "
-                          "probability should be > 0, but got %f",
+                          "probability should be > 0, but got %f.",
                           probs_sum));
     PADDLE_ENFORCE_EQ(
         (replacement || (num_categories - num_zeros >= num_samples)), true,
         platform::errors::InvalidArgument(
             "When replacement is False, number of "
             "samples should be less than non-zero "
-            "categories"));
+            "categories."));
 
     for (int64_t j = 0; j < num_categories; j++) {
       cumulative_probs[j] /= probs_sum;
