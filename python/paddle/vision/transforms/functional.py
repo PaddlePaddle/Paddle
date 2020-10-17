@@ -134,7 +134,8 @@ def to_tensor(pic, data_format='CHW'):
     if pic.mode == 'I':
         img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
     elif pic.mode == 'I;16':
-        img = paddle.to_tensor(np.array(pic, np.int16, copy=False))
+        # cast and reshape not support int16
+        img = paddle.to_tensor(np.array(pic, np.int32, copy=False))
     elif pic.mode == 'F':
         img = paddle.to_tensor(np.array(pic, np.float32, copy=False))
     elif pic.mode == '1':
@@ -149,7 +150,8 @@ def to_tensor(pic, data_format='CHW'):
     else:
         nchannel = len(pic.mode)
 
-    if paddle.fluid.data_feeder.convert_dtype(img.dtype) == 'uint8':
+    dtype = paddle.fluid.data_feeder.convert_dtype(img.dtype)
+    if dtype == 'uint8':
         img = paddle.cast(img, np.float32) / 255.
 
     img = img.reshape([pic.size[1], pic.size[0], nchannel])
@@ -263,7 +265,7 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
                 img,
                 dsize=(size[1], size[0]),
                 interpolation=_cv2_interp_from_str[interpolation])
-        if img.shape[2] == 1:
+        if len(img.shape) == 3 and img.shape[2] == 1:
             return output[:, :, np.newaxis]
         else:
             return output
@@ -386,7 +388,7 @@ def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
 
             return Image.fromarray(img)
     elif backend == 'cv2':
-        if img.shape[2] == 1:
+        if len(img.shape) == 3 and img.shape[2] == 1:
             return cv2.copyMakeBorder(
                 img,
                 top=pad_top,
@@ -543,7 +545,7 @@ def hflip(img, backend='pil'):
         return cv2.flip(img, 1)
 
 
-def vflip(img, backend=None):
+def vflip(img, backend='pil'):
     """Vertically flips the given PIL Image or np.array.
 
     Args:
@@ -580,7 +582,7 @@ def vflip(img, backend=None):
         if not _is_numpy_image(img):
             raise TypeError('img should be numpy Image. Got {}'.format(
                 type(img)))
-        if img.shape[2] == 1:
+        if len(img.shape) == 3 and img.shape[2] == 1:
             return cv2.flip(img, 0)[:, :, np.newaxis]
         else:
             return cv2.flip(img, 0)
@@ -631,7 +633,7 @@ def adjust_brightness(img, brightness_factor, backend='pil'):
         table = np.array([i * brightness_factor
                           for i in range(0, 256)]).clip(0, 255).astype('uint8')
 
-        if img.shape[2] == 1:
+        if len(img.shape) == 3 and img.shape[2] == 1:
             return cv2.LUT(img, table)[:, :, np.newaxis]
         else:
             return cv2.LUT(img, table)
@@ -681,7 +683,7 @@ def adjust_contrast(img, contrast_factor, backend='pil'):
                 type(img)))
         table = np.array([(i - 74) * contrast_factor + 74
                           for i in range(0, 256)]).clip(0, 255).astype('uint8')
-        if img.shape[2] == 1:
+        if len(img.shape) == 3 and img.shape[2] == 1:
             return cv2.LUT(img, table)[:, :, np.newaxis]
         else:
             return cv2.LUT(img, table)
@@ -899,7 +901,7 @@ def rotate(img,
         if center is None:
             center = (cols / 2, rows / 2)
         M = cv2.getRotationMatrix2D(center, angle, 1)
-        if img.shape[2] == 1:
+        if len(img.shape) == 3 and img.shape[2] == 1:
             return cv2.warpAffine(img, M, (cols, rows))[:, :, np.newaxis]
         else:
             return cv2.warpAffine(img, M, (cols, rows))

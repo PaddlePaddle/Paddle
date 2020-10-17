@@ -136,9 +136,9 @@ class BaseTransform(object):
     Base class of all transforms used in computer vision.
     calling logic: 
         if keys is None:
-            get_params -> _apply_image()
+            _get_params -> _apply_image()
         else:
-            get_params -> _apply_*() for * in keys 
+            _get_params -> _apply_*() for * in keys 
 
     If you want to implement a self-defined transform method for image,
     rewrite _apply_* method in subclass.
@@ -183,7 +183,7 @@ class BaseTransform(object):
 
             class CustomRandomFlip(BaseTransform):
                 def __init__(self, prob=0.5, keys=None, backend='pil'):
-                    super().__init__(keys, backend)
+                    super(CustomRandomFlip, self).__init__(keys, backend)
                     self.prob = prob
 
                 def _get_params(self, inputs):
@@ -205,6 +205,16 @@ class BaseTransform(object):
                         coords[:, 0] = w - coords[:, 0]
                     return coords
 
+                # if you only want transform image, do not need to rewrite this function
+                def _apply_boxes(self, boxes):
+                    idxs = np.array([(0, 1), (2, 1), (0, 3), (2, 3)]).flatten()
+                    coords = np.asarray(boxes).reshape(-1, 4)[:, idxs].reshape(-1, 2)
+                    coords = self._apply_coords(coords).reshape((-1, 4, 2))
+                    minxy = coords.min(axis=1)
+                    maxxy = coords.max(axis=1)
+                    trans_boxes = np.concatenate((minxy, maxxy), axis=1)
+                    return trans_boxes
+                    
                 # if you only want transform image, do not need to rewrite this function
                 def _apply_mask(self, mask):
                     if self.params['flip']:
@@ -275,13 +285,7 @@ class BaseTransform(object):
         raise NotImplementedError
 
     def _apply_boxes(self, boxes):
-        idxs = np.array([(0, 1), (2, 1), (0, 3), (2, 3)]).flatten()
-        coords = np.asarray(boxes).reshape(-1, 4)[:, idxs].reshape(-1, 2)
-        coords = self._apply_coords(coords).reshape((-1, 4, 2))
-        minxy = coords.min(axis=1)
-        maxxy = coords.max(axis=1)
-        trans_boxes = np.concatenate((minxy, maxxy), axis=1)
-        return trans_boxes
+        raise NotImplementedError
 
     def _apply_mask(self, mask):
         raise NotImplementedError
@@ -310,14 +314,16 @@ class ToTensor(BaseTransform):
 
             import numpy as np
             from PIL import Image
-            import paddle.vision.functional as F
-            from paddle.vision.transforms import T
+
+            import paddle.vision.transforms as T
+            import paddle.vision.transforms.functional as F
 
             fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
 
             transform = T.ToTensor()
 
             tensor = transform(fake_img)
+
     """
 
     def __init__(self, data_format='CHW', keys=None):
@@ -453,7 +459,7 @@ class RandomResizedCrop(BaseTransform):
         self.ratio = ratio
         self.interpolation = interpolation
 
-    def get_params(self, image, attempts=10):
+    def _get_param(self, image, attempts=10):
         width, height = _get_image_size(image)
         area = height * width
 
@@ -487,7 +493,7 @@ class RandomResizedCrop(BaseTransform):
         return i, j, h, w
 
     def _apply_image(self, img):
-        i, j, h, w = self.get_params(img)
+        i, j, h, w = self._get_param(img)
 
         cropped_img = F.crop(img, i, j, h, w, self.backend)
         return F.resize(cropped_img, self.size, self.interpolation,
@@ -578,7 +584,7 @@ class RandomVerticalFlip(BaseTransform):
 
             import numpy as np
             from PIL import Image
-            from paddle.vision.transforms import RandomHorizontalFlip
+            from paddle.vision.transforms import RandomVerticalFlip
 
             transform = RandomVerticalFlip(224)
 
@@ -586,6 +592,7 @@ class RandomVerticalFlip(BaseTransform):
 
             fake_img = transform(fake_img)
             print(fake_img.size)
+
     """
 
     def __init__(self, prob=0.5, keys=None, backend='pil'):
@@ -619,8 +626,9 @@ class Normalize(BaseTransform):
             from PIL import Image
             from paddle.vision.transforms import Normalize
 
-            normalize = Normalize(mean=[0.5, 0.5, 0.5], 
-                                std=[0.5, 0.5, 0.5])
+            normalize = Normalize(mean=[127.5, 127.5, 127.5], 
+                                  std=[127.5, 127.5, 127.5],
+                                  data_format='HWC')
 
             fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
 
@@ -646,7 +654,7 @@ class Normalize(BaseTransform):
 
         self.mean = mean
         self.std = std
-        self.data_format = 'CHW'
+        self.data_format = data_format
         self.to_rgb = to_rgb
 
     def _apply_image(self, img):
@@ -887,7 +895,7 @@ class ColorJitter(BaseTransform):
         self.saturation = saturation
         self.hue = hue
 
-    def get_params(self, brightness, contrast, saturation, hue):
+    def _get_param(self, brightness, contrast, saturation, hue):
         """Get a randomized transform to be applied on image.
 
         Arguments are same as that of __init__.
@@ -926,7 +934,7 @@ class ColorJitter(BaseTransform):
         Returns:
             PIL Image: Color jittered image.
         """
-        transform = self.get_params(self.brightness, self.contrast,
+        transform = self._get_param(self.brightness, self.contrast,
                                     self.saturation, self.hue)
         return transform(img)
 
@@ -980,7 +988,7 @@ class RandomCrop(BaseTransform):
         self.fill = fill
         self.padding_mode = padding_mode
 
-    def get_params(self, img, output_size):
+    def _get_param(self, img, output_size):
         """Get parameters for ``crop`` for a random crop.
 
         Args:
@@ -1022,7 +1030,7 @@ class RandomCrop(BaseTransform):
             img = F.pad(img, (0, self.size[0] - h), self.fill,
                         self.padding_mode, self.backend)
 
-        i, j, h, w = self.get_params(img, self.size)
+        i, j, h, w = self._get_param(img, self.size)
 
         return F.crop(img, i, j, h, w, self.backend)
 
@@ -1174,7 +1182,7 @@ class RandomRotation(BaseTransform):
         self.center = center
         self.fill = fill
 
-    def get_params(self, degrees):
+    def _get_param(self, degrees):
         angle = random.uniform(degrees[0], degrees[1])
 
         return angle
@@ -1188,7 +1196,7 @@ class RandomRotation(BaseTransform):
             PIL.Image or np.array: Rotated image.
         """
 
-        angle = self.get_params(self.degrees)
+        angle = self._get_param(self.degrees)
 
         return F.rotate(img, angle, self.resample, self.expand, self.center,
                         self.fill, self.backend)
@@ -1223,7 +1231,7 @@ class Grayscale(BaseTransform):
             print(np.array(fake_img).shape)
     """
 
-    def __init__(self, num_output_channels=1, keys=None, backend=None):
+    def __init__(self, num_output_channels=1, keys=None, backend='pil'):
         super(Grayscale, self).__init__(keys, backend)
         self.num_output_channels = num_output_channels
 

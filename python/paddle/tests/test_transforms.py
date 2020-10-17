@@ -297,6 +297,22 @@ class TestTransformsCV2(unittest.TestCase):
             fake_img = self.create_image((100, 120, 3))
             trans_gray(fake_img)
 
+        with self.assertRaises(TypeError):
+            transform = transforms.RandomResizedCrop(64)
+            transform(1)
+
+        with self.assertRaises(ValueError):
+            transform = transforms.BrightnessTransform([-0.1, -0.2])
+
+        with self.assertRaises(TypeError):
+            transform = transforms.BrightnessTransform('0.1')
+
+        with self.assertRaises(ValueError):
+            transform = transforms.BrightnessTransform('0.1', keys=1)
+
+        with self.assertRaises(NotImplementedError):
+            transform = transforms.BrightnessTransform('0.1', keys='a')
+
     def test_info(self):
         str(
             transforms.Compose(
@@ -311,6 +327,229 @@ class TestTransformsCV2(unittest.TestCase):
 class TestTransformsPIL(TestTransformsCV2):
     def set_backend(self):
         return 'pil'
+
+
+class TestFunctional(unittest.TestCase):
+    def test_errors(self):
+        with self.assertRaises(TypeError):
+            F.to_tensor(1)
+
+        with self.assertRaises(ValueError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.to_tensor(fake_img, data_format=1)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.resize(fake_img, '1')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.resize(fake_img, 24)
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.crop(fake_img, 1, 1, 1, 1)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.crop(fake_img, 1, 1, 1, 1, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.hflip(fake_img)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.hflip(fake_img, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.vflip(fake_img)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.vflip(fake_img, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.adjust_brightness(fake_img, 0.1)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.adjust_brightness(fake_img, 0.1, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.adjust_contrast(fake_img, 0.1)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.adjust_contrast(fake_img, 0.1, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.adjust_hue(fake_img, 0.1)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.adjust_hue(fake_img, 0.1, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.adjust_saturation(fake_img, 0.1)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.adjust_saturation(fake_img, 0.1, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.rotate(fake_img, 90)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.rotate(fake_img, 90, backend='cv2')
+
+        with self.assertRaises(TypeError):
+            fake_img = (np.random.rand(28, 28, 3) * 255).astype('uint8')
+            F.to_grayscale(fake_img)
+
+        with self.assertRaises(TypeError):
+            fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+                'uint8'))
+            F.to_grayscale(fake_img, backend='cv2')
+
+        fake_img = Image.fromarray((np.random.rand(28, 28, 3) * 255).astype(
+            'uint8'))
+        with self.assertRaises(ValueError):
+            F.pad(fake_img, 1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.crop(fake_img, 1, 1, 1, 1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.center_crop(fake_img, 1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.hflip(fake_img, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.vflip(fake_img, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.adjust_brightness(fake_img, 0.1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.adjust_contrast(fake_img, 0.1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.adjust_hue(fake_img, 0.1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.adjust_saturation(fake_img, 0.1, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.rotate(fake_img, 90, backend=1)
+
+        with self.assertRaises(ValueError):
+            F.to_grayscale(fake_img, backend=1)
+
+    def test_normalize(self):
+        np_img = (np.random.rand(28, 24, 3)).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(pil_img)
+        tensor_img_hwc = F.to_tensor(pil_img, data_format='HWC')
+
+        mean = [0.5, 0.5, 0.5]
+        std = [0.5, 0.5, 0.5]
+
+        normalized_img = F.normalize(tensor_img, mean, std)
+        normalized_img = F.normalize(
+            tensor_img_hwc, mean, std, data_format='HWC')
+
+        normalized_img = F.normalize(pil_img, mean, std, data_format='HWC')
+        normalized_img = F.normalize(
+            np_img, mean, std, data_format='HWC', to_rgb=True)
+
+    def test_center_crop(self):
+        np_img = (np.random.rand(28, 24, 3)).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+
+        np_cropped_img = F.center_crop(np_img, 4, backend='cv2')
+        pil_cropped_img = F.center_crop(pil_img, 4, backend='pil')
+
+        np.testing.assert_almost_equal(np_cropped_img,
+                                       np.array(pil_cropped_img))
+
+    def test_pad(self):
+        np_img = (np.random.rand(28, 24, 3)).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+
+        np_padded_img = F.pad(np_img, [1, 2],
+                              padding_mode='reflect',
+                              backend='cv2')
+        pil_padded_img = F.pad(pil_img, [1, 2],
+                               padding_mode='reflect',
+                               backend='pil')
+
+        np.testing.assert_almost_equal(np_padded_img, np.array(pil_padded_img))
+
+        pil_p_img = pil_img.convert('P')
+        pil_padded_img = F.pad(pil_p_img, [1, 2], backend='pil')
+        pil_padded_img = F.pad(pil_p_img, [1, 2],
+                               padding_mode='reflect',
+                               backend='pil')
+
+    def test_resize(self):
+        np_img = (np.zeros([28, 24, 3])).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+
+        np_reseized_img = F.resize(np_img, 40, backend='cv2')
+        pil_reseized_img = F.resize(pil_img, 40, backend='pil')
+
+        np.testing.assert_almost_equal(np_reseized_img,
+                                       np.array(pil_reseized_img))
+
+        gray_img = (np.zeros([28, 32])).astype('uint8')
+        gray_resize_img = F.resize(gray_img, 40, backend='cv2')
+
+    def test_to_tensor(self):
+        np_img = (np.random.rand(28, 28) * 255).astype('uint8')
+        pil_img = Image.fromarray(np_img)
+
+        np_tensor = F.to_tensor(np_img, data_format='HWC')
+        pil_tensor = F.to_tensor(pil_img, data_format='HWC')
+
+        np.testing.assert_allclose(np_tensor.numpy(), pil_tensor.numpy())
+
+        # test float dtype 
+        float_img = np.random.rand(28, 28)
+        float_tensor = F.to_tensor(float_img)
+
+        pil_img = Image.fromarray(np_img).convert('I')
+        pil_tensor = F.to_tensor(pil_img)
+
+        pil_img = Image.fromarray(np_img).convert('I;16')
+        pil_tensor = F.to_tensor(pil_img)
+
+        pil_img = Image.fromarray(np_img).convert('F')
+        pil_tensor = F.to_tensor(pil_img)
+
+        pil_img = Image.fromarray(np_img).convert('1')
+        pil_tensor = F.to_tensor(pil_img)
+
+        pil_img = Image.fromarray(np_img).convert('YCbCr')
+        pil_tensor = F.to_tensor(pil_img)
 
 
 if __name__ == '__main__':
