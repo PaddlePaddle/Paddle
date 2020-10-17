@@ -131,7 +131,7 @@ class Compose(object):
         return format_string
 
 
-class BaseTransform():
+class BaseTransform(object):
     """
     Base class of all transforms used in computer vision.
     calling logic: 
@@ -230,7 +230,7 @@ class BaseTransform():
     def __init__(self, keys=None, backend='pil'):
         if keys is None:
             keys = ("image", )
-        elif not isinstance(keys, collections.abc.Sequence):
+        elif not isinstance(keys, Sequence):
             raise ValueError(
                 "keys should be a sequence, but got keys={}".format(keys))
         for k in keys:
