@@ -24,7 +24,6 @@ class Net(nn.Layer):
         self.lstm = nn.LSTM(
             in_channels, hidden_size, direction='bidirectional', num_layers=2)
 
-    @paddle.jit.to_static
     def forward(self, x):
         x, _ = self.lstm(x)
         return x
@@ -39,6 +38,7 @@ class TestLstm(unittest.TestCase):
         paddle.static.default_startup_program().random_seed = 1001
 
         net = Net(12, 2)
+        net = paddle.jit.to_static(net)
         x = paddle.zeros((2, 10, 12))
         y = net(paddle.to_tensor(x))
         return y.numpy()
@@ -54,16 +54,17 @@ class TestLstm(unittest.TestCase):
     def test_save_in_eval(self):
         paddle.jit.ProgramTranslator().enable(True)
         net = Net(12, 2)
+        x = paddle.randn((2, 10, 12))
+        dygraph_out = net(x)
         # switch eval mode firstly
         net.eval()
+
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])])
         paddle.jit.save(net, 'simple_lstm')
         # load saved model
         load_net = paddle.jit.load('simple_lstm')
 
-        x = paddle.randn((2, 10, 12))
-        dygraph_out = net(x)
         static_out = load_net(x)
         self.assertTrue(
             np.allclose(dygraph_out.numpy(), static_out.numpy()),
@@ -76,6 +77,42 @@ class TestLstm(unittest.TestCase):
             np.allclose(dygraph_out.numpy(), train_out.numpy()),
             msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
                                                                 train_out))
+
+
+class LinearNet(nn.Layer):
+    def __init__(self):
+        super(LinearNet, self).__init__()
+        self.fc = nn.Linear(10, 12)
+        self.dropout = nn.Dropout(0.5)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self.fc(x)
+        y = self.dropout(y)
+        return y
+
+
+class TestSaveInEvalMode(unittest.TestCase):
+    def test_save_in_eval(self):
+        paddle.jit.ProgramTranslator().enable(True)
+        net = LinearNet()
+        # switch eval mode firstly
+        net.eval()
+        # save directly
+        net = paddle.jit.to_static(
+            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])])
+        paddle.jit.save(net, 'linear_net')
+        # load saved model
+        load_net = paddle.jit.load('linear_net')
+
+        x = paddle.randn((2, 10))
+        eval_out = net(x)
+
+        infer_out = load_net(x)
+        self.assertTrue(
+            np.allclose(eval_out.numpy(), infer_out.numpy()),
+            msg='eval_out is {}\n infer_out is \n{}'.format(eval_out,
+                                                            infer_out))
 
 
 if __name__ == "__main__":
