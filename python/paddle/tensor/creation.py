@@ -47,7 +47,8 @@ __all__ = [
     'empty_like',
     'triu',
     'tril',
-    'meshgrid'
+    'meshgrid',
+    'assign',
 ]
 
 
@@ -1106,3 +1107,38 @@ def empty_like(x, dtype=None, name=None):
         stop_gradient=True)
     out.stop_gradient = True
     return out
+
+
+def assign(x, output=None):
+    """
+    The OP copies the :attr:`x` to the :attr:`output`.
+ 
+    Args:
+        x (Tensor): A tensor and its data type supports float16, float32, float64, int32 and int64.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
+ 
+    Returns:
+        Tensor: A tensor with the same shape, data type and value as :attr:`x`.
+ 
+    Examples:
+        .. code-block:: python
+ 
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    helper = LayerHelper('assign', **locals())
+    check_type(x, 'x', (Variable), 'assign')
+    check_dtype(x.dtype, 'x',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+                'assign', '(When the type of input in assign is Variable.)')
+    if output is None:
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+
+    return output
