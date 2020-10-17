@@ -91,6 +91,21 @@ def to_tensor(pic, data_format='CHW'):
 
     Returns:
         Tensor: Converted image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            tensor = F.to_tensor(fake_img)
+            print(tensor.shape)
+
     """
     if not (_is_pil_image(pic) or _is_numpy_image(pic)):
         raise TypeError('pic should be PIL Image or ndarray. Got {}'.format(
@@ -169,6 +184,9 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
+    Returns:
+        PIL.Image or np.array: Resized image.
+
     Examples:
         .. code-block:: python
 
@@ -176,13 +194,15 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
             from PIL import Image
             from paddle.vision.transforms import functional as F
 
-            fake_img = np.random.rand(256, 256, 3)
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
 
             fake_img = Image.fromarray(fake_img)
-            
-            F.resize(fake_img, 224)
 
-            F.resize(fake_img, (200, 150))
+            converted_img = F.resize(fake_img, 224)
+            print(converted_img.size)
+
+            converted_img = F.resize(fake_img, (200, 150))
+            print(converted_img.size)
     """
 
     if backend not in ['cv2', 'pil']:
@@ -283,6 +303,22 @@ def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
     Returns:
         PIL.Image or np.array: Padded image.
 
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            padded_img = F.pad(fake_img, padding=1)
+            print(padded_img.size)
+
+            padded_img = F.pad(fake_img, padding=(2, 1))
+            print(padded_img.size)
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -303,6 +339,8 @@ def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
     assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
         'Padding mode should be either constant, edge, reflect or symmetric'
 
+    if isinstance(padding, list):
+        padding = tuple(padding)
     if isinstance(padding, int):
         pad_left = pad_right = pad_top = pad_bottom = padding
     if isinstance(padding, Sequence) and len(padding) == 2:
@@ -381,6 +419,21 @@ def crop(img, top, left, height, width, backend='pil'):
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array: Cropped image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            cropped_img = F.crop(fake_img, 56, 150, 200, 100)
+            print(cropped_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -413,6 +466,20 @@ def center_crop(img, output_size, backend='pil'):
             `cv2`. Default: 'pil'. 
         Returns:
             PIL.Image or np.array: Cropped image.
+
+        Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            cropped_img = F.center_crop(fake_img, (150, 100))
+            print(cropped_img.size)
         """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -444,6 +511,20 @@ def hflip(img, backend='pil'):
 
     Returns:
         PIL.Image or np.array:  Horizontall flipped image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            flpped_img = F.hflip(fake_img)
+            print(flpped_img.size)
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -471,6 +552,20 @@ def vflip(img, backend=None):
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array:  Vertically flipped image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            flpped_img = F.vflip(fake_img)
+            print(flpped_img.size)
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -503,6 +598,20 @@ def adjust_brightness(img, brightness_factor, backend='pil'):
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array: Brightness adjusted image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            converted_img = F.adjust_brightness(fake_img, 0.4)
+            print(converted_img.size)
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -540,6 +649,20 @@ def adjust_contrast(img, contrast_factor, backend='pil'):
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array: Contrast adjusted image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            converted_img = F.adjust_contrast(fake_img, 0.4)
+            print(converted_img.size)
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -577,6 +700,21 @@ def adjust_saturation(img, saturation_factor, backend='pil'):
 
     Returns:
         PIL.Image or np.array: Saturation adjusted image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            converted_img = F.adjust_saturation(fake_img, 0.4)
+            print(converted_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -626,6 +764,21 @@ def adjust_hue(img, hue_factor, backend='pil'):
 
     Returns:
         PIL.Image or np.array: Hue adjusted image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            converted_img = F.adjust_hue(fake_img, 0.4)
+            print(converted_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -709,6 +862,21 @@ def rotate(img,
 
     Returns:
         PIL.Image or np.array: Rotated image.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            rotated_img = F.rotate(fake_img, 90)
+            print(rotated_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -750,7 +918,21 @@ def to_grayscale(img, num_output_channels=1, backend='pil'):
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
-        
+    
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            gray_img = F.to_grayscale(fake_img)
+            print(gray_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -802,6 +984,24 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 
     Returns:
         Tensor: Normalized mage.
+    
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
+
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+
+            fake_img = Image.fromarray(fake_img)
+
+            mean = [127.5, 127.5, 127.5]
+            std = [127.5, 127.5, 127.5]
+
+            normalized_img = F.normalize(fake_img, mean, std, data_format='HWC')
+            print(normalized_img.max(), normalized_img.min())
+
     """
 
     if _is_tensor_image(img):

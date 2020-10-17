@@ -321,7 +321,7 @@ class ToTensor(BaseTransform):
     """
 
     def __init__(self, data_format='CHW', keys=None):
-        super().__init__(keys)
+        super(ToTensor, self).__init__(keys)
         self.data_format = data_format
 
     def _apply_image(self, img):
@@ -380,7 +380,7 @@ class Resize(BaseTransform):
 
     def __init__(self, size, interpolation='bilinear', keys=None,
                  backend='pil'):
-        super().__init__(keys, backend)
+        super(Resize, self).__init__(keys, backend)
         assert isinstance(size, int) or (isinstance(size, Iterable) and
                                          len(size) == 2)
         self.size = size
@@ -442,7 +442,7 @@ class RandomResizedCrop(BaseTransform):
                  interpolation='bilinear',
                  keys=None,
                  backend='pil'):
-        super().__init__(keys, backend)
+        super(RandomResizedCrop, self).__init__(keys, backend)
         if isinstance(size, int):
             self.size = (size, size)
         else:
@@ -519,7 +519,7 @@ class CenterCrop(BaseTransform):
     """
 
     def __init__(self, size, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(CenterCrop, self).__init__(keys, backend)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
@@ -554,7 +554,7 @@ class RandomHorizontalFlip(BaseTransform):
     """
 
     def __init__(self, prob=0.5, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(RandomHorizontalFlip, self).__init__(keys, backend)
         self.prob = prob
 
     def _apply_image(self, img):
@@ -589,7 +589,7 @@ class RandomVerticalFlip(BaseTransform):
     """
 
     def __init__(self, prob=0.5, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(RandomVerticalFlip, self).__init__(keys, backend)
         self.prob = prob
 
     def _apply_image(self, img):
@@ -637,7 +637,7 @@ class Normalize(BaseTransform):
                  to_rgb=False,
                  keys=None,
                  backend='pil'):
-        super().__init__(keys, backend)
+        super(Normalize, self).__init__(keys, backend)
         if isinstance(mean, numbers.Number):
             mean = [mean, mean, mean]
 
@@ -682,7 +682,7 @@ class Transpose(BaseTransform):
     """
 
     def __init__(self, order=(2, 0, 1), keys=None):
-        super().__init__(keys)
+        super(Transpose, self).__init__(keys)
         self.order = order
 
     def _apply_image(self, img):
@@ -718,7 +718,7 @@ class BrightnessTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(BrightnessTransform, self).__init__(keys, backend)
         self.value = _check_input(value, 'brightness')
 
     def _apply_image(self, img):
@@ -755,7 +755,7 @@ class ContrastTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(ContrastTransform, self).__init__(keys, backend)
         if value < 0:
             raise ValueError("contrast value should be non-negative")
         self.value = _check_input(value, 'contrast')
@@ -794,7 +794,7 @@ class SaturationTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(SaturationTransform, self).__init__(keys, backend)
         self.value = _check_input(value, 'saturation')
 
     def _apply_image(self, img):
@@ -831,7 +831,7 @@ class HueTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None, backend='pil'):
-        super().__init__(keys, backend)
+        super(HueTransform, self).__init__(keys, backend)
         self.value = _check_input(
             value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False)
 
@@ -881,7 +881,7 @@ class ColorJitter(BaseTransform):
                  hue=0,
                  keys=None,
                  backend='pil'):
-        super().__init__(keys, backend)
+        super(ColorJitter, self).__init__(keys, backend)
         self.brightness = brightness
         self.contrast = contrast
         self.saturation = saturation
@@ -970,7 +970,7 @@ class RandomCrop(BaseTransform):
                  padding_mode='constant',
                  keys=None,
                  backend='pil'):
-        super().__init__(keys, backend)
+        super(RandomCrop, self).__init__(keys, backend)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
@@ -1087,7 +1087,7 @@ class Pad(BaseTransform):
                 "Padding must be an int or a 2, or 4 element tuple, not a " +
                 "{} element tuple".format(len(padding)))
 
-        super().__init__(keys, backend)
+        super(Pad, self).__init__(keys, backend)
         self.padding = padding
         self.fill = fill
         self.padding_mode = padding_mode
@@ -1139,9 +1139,9 @@ class RandomRotation(BaseTransform):
 
             import numpy as np
             from PIL import Image
-            from paddle.vision.transforms import RandomRotate
+            from paddle.vision.transforms import RandomRotation
 
-            transform = RandomRotate(90)
+            transform = RandomRotation(90)
 
             fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
 
@@ -1168,7 +1168,7 @@ class RandomRotation(BaseTransform):
                     "If degrees is a sequence, it must be of len 2.")
             self.degrees = degrees
 
-        super().__init__(keys, backend)
+        super(RandomRotation, self).__init__(keys, backend)
         self.resample = resample
         self.expand = expand
         self.center = center
@@ -1224,7 +1224,7 @@ class Grayscale(BaseTransform):
     """
 
     def __init__(self, num_output_channels=1, keys=None, backend=None):
-        super().__init__(keys, backend)
+        super(Grayscale, self).__init__(keys, backend)
         self.num_output_channels = num_output_channels
 
     def _apply_image(self, img):
