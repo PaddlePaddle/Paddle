@@ -59,8 +59,6 @@ from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import Upsample  #DEFINE_ALIAS
-from .common import UpsamplingNearest2d  #DEFINE_ALIAS
-from .common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .common import Dropout  #DEFINE_ALIAS
 from .common import Dropout2d  #DEFINE_ALIAS
 from .common import Dropout3d  #DEFINE_ALIAS
