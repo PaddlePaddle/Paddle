@@ -186,8 +186,8 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
     """
 
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if not (isinstance(size, int) or
             (isinstance(size, Iterable) and len(size) == 2)):
@@ -285,8 +285,8 @@ def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
 
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
         raise TypeError('Got inappropriate padding arg')
@@ -383,8 +383,8 @@ def crop(img, top, left, height, width, backend='pil'):
         PIL.Image or np.array: Cropped image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -415,8 +415,8 @@ def center_crop(img, output_size, backend='pil'):
             PIL.Image or np.array: Cropped image.
         """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
@@ -446,8 +446,8 @@ def hflip(img, backend='pil'):
         PIL.Image or np.array:  Horizontall flipped image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -473,8 +473,8 @@ def vflip(img, backend=None):
         PIL.Image or np.array:  Vertically flipped image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -505,8 +505,8 @@ def adjust_brightness(img, brightness_factor, backend='pil'):
         PIL.Image or np.array: Brightness adjusted image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -542,8 +542,8 @@ def adjust_contrast(img, contrast_factor, backend='pil'):
         PIL.Image or np.array: Contrast adjusted image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -579,8 +579,8 @@ def adjust_saturation(img, saturation_factor, backend='pil'):
         PIL.Image or np.array: Saturation adjusted image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -628,8 +628,8 @@ def adjust_hue(img, hue_factor, backend='pil'):
         PIL.Image or np.array: Hue adjusted image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if not (-0.5 <= hue_factor <= 0.5):
         raise ValueError('hue_factor is not in [-0.5, 0.5].'.format(hue_factor))
@@ -711,8 +711,8 @@ def rotate(img,
         PIL.Image or np.array: Rotated image.
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
@@ -753,8 +753,8 @@ def to_grayscale(img, num_output_channels=1, backend='pil'):
         
     """
     if backend not in ['cv2', 'pil']:
-        raise ValueError(f'backend: {backend} is not supported.'
-                         f"Supported backends are 'cv2', 'pil'")
+        raise ValueError("Expected backend is 'cv2' or 'pil', \
+                          but got {}".format(backend))
 
     if backend == 'pil':
         if not _is_pil_image(img):
