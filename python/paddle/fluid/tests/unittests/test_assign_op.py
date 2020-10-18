@@ -55,6 +55,7 @@ class TestAssignFP16Op(op_test.OpTest):
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
     def test_assign_LoDTensorArray(self):
+        paddle.enable_static()
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
@@ -101,33 +102,13 @@ class TestAssignOpError(unittest.TestCase):
 
 
 class TestAssignOpHapi(unittest.TestCase):
-    def test_assign_LoDTensorArray(self):
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
-            x.stop_gradient = False
-            y = fluid.layers.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
-            z = fluid.layers.elementwise_add(x=x, y=y)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            init_array = fluid.layers.array_write(x=z, i=i)
-            array = paddle.assign(init_array)
-            sums = fluid.layers.array_read(array=init_array, i=i)
-            mean = fluid.layers.mean(sums)
-            append_backward(mean)
-
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        feed_x = np.random.random(size=(100, 10)).astype('float32')
-        ones = np.ones((100, 10)).astype('float32')
-        feed_add = feed_x + ones
-        res = exe.run(main_program,
-                      feed={'x': feed_x},
-                      fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+    def test_assign_Hapi(self):
+        paddle.disable_static()
+        array = np.random.random(size=(100, 10)).astype('float32')
+        data = paddle.to_tensor(array)
+        result1 = paddle.assign(data)
+        self.assertTrue(np.allclose(result1.numpy(), array))
+        # self.assertTrue(np.allclose(res[1], ones / 1000.0))
 
 
 class TestAssignOpErrorHapi(unittest.TestCase):
