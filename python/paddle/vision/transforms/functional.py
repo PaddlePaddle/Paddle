@@ -88,6 +88,8 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
 
     Returns:
         Tensor: Converted image.
@@ -169,19 +171,20 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
     Args:
         input (PIL.Image|np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method.
-            when use pil backend, support method are as following:
-                'nearest': Image.NEAREST,
-                'bilinear': Image.BILINEAR,
-                'bicubic': Image.BICUBIC,
-                'box': Image.BOX,
-                'lanczos': Image.LANCZOS,
+        interpolation (int|str, optional): Interpolation method. 
+            when use pil backend, support method are as following: 
+                'nearest': Image.NEAREST, 
+                'bilinear': Image.BILINEAR, 
+                'bicubic': Image.BICUBIC, 
+                'box': Image.BOX, 
+                'lanczos': Image.LANCZOS, 
                 'hamming': Image.HAMMING
-            when use cv2 backend, support method are as following:
-                'nearest': cv2.INTER_NEAREST,
-                'bilinear': cv2.INTER_LINEAR,
-                'area': cv2.INTER_AREA,
-                'bicubic': cv2.INTER_CUBIC,
+                
+            when use cv2 backend, support method are as following: 
+                'nearest': cv2.INTER_NEAREST, 
+                'bilinear': cv2.INTER_LINEAR, 
+                'area': cv2.INTER_AREA, 
+                'bicubic': cv2.INTER_CUBIC, 
                 'lanczos': cv2.INTER_LANCZOS4
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
@@ -410,6 +413,7 @@ def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
 
 def crop(img, top, left, height, width, backend='pil'):
     """Crops the given PIL Image.
+
     Args:
         img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left 
             corner of the image.
@@ -419,6 +423,7 @@ def crop(img, top, left, height, width, backend='pil'):
         width (int): Width of the crop box.
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
+
     Returns:
         PIL.Image or np.array: Cropped image.
 
@@ -464,8 +469,8 @@ def center_crop(img, output_size, backend='pil'):
             img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
-            backend (str, optional): The image resize backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+            backend (str, optional): The image resize backend type. Options are `pil`, `cv2`. Default: 'pil'. 
+        
         Returns:
             PIL.Image or np.array: Cropped image.
 
@@ -510,6 +515,8 @@ def hflip(img, backend='pil'):
 
     Args:
         img (PIL.Image|np.array): Image to be flipped.
+        backend (str, optional): The image resize backend type. Options are `pil`, 
+            `cv2`. Default: 'pil'. 
 
     Returns:
         PIL.Image or np.array:  Horizontall flipped image.
@@ -527,6 +534,7 @@ def hflip(img, backend='pil'):
 
             flpped_img = F.hflip(fake_img)
             print(flpped_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -552,6 +560,7 @@ def vflip(img, backend='pil'):
         img (PIL.Image|np.array): Image to be flipped.
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
+
     Returns:
         PIL.Image or np.array:  Vertically flipped image.
 
@@ -568,6 +577,7 @@ def vflip(img, backend='pil'):
 
             flpped_img = F.vflip(fake_img)
             print(flpped_img.size)
+
     """
     if backend not in ['cv2', 'pil']:
         raise ValueError("Expected backend is 'cv2' or 'pil', \
@@ -841,14 +851,15 @@ def rotate(img,
         angle (float or int): In degrees degrees counter clockwise order.
         resample (int|str, optional): An optional resampling filter. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend.
-            when use pil backend, support method are as following:
-                'nearest': Image.NEAREST,
-                'bilinear': Image.BILINEAR,
+            according the backend. 
+            when use pil backend, support method are as following: 
+                'nearest': Image.NEAREST, 
+                'bilinear': Image.BILINEAR, 
                 'bicubic': Image.BICUBIC
-            when use cv2 backend, support method are as following:
-                'nearest': cv2.INTER_NEAREST,
-                'bilinear': cv2.INTER_LINEAR,
+
+            when use cv2 backend, support method are as following: 
+                'nearest': cv2.INTER_NEAREST, 
+                'bilinear': cv2.INTER_LINEAR, 
                 'bicubic': cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -980,6 +991,8 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (PIL.Image|np.array|paddle.Tensor): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
         backend (str, optional): The image resize backend type. Options are `pil`, 
                     `cv2`. Default: 'pil'. 
