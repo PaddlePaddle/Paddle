@@ -165,7 +165,7 @@ class BaseTransform(object):
             
             You can also customize your data types only if you implement the corresponding
             _apply_*() methods, otherwise ``NotImplementedError`` will be raised.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     
     Examples:
@@ -370,7 +370,7 @@ class Resize(BaseTransform):
             - "bicubic": cv2.INTER_CUBIC, 
             - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Examples:
@@ -426,7 +426,7 @@ class RandomResizedCrop(BaseTransform):
             - "bicubic": cv2.INTER_CUBIC, 
             - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Examples:
@@ -511,7 +511,7 @@ class CenterCrop(BaseTransform):
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -546,7 +546,7 @@ class RandomHorizontalFlip(BaseTransform):
     Args:
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -580,7 +580,7 @@ class RandomVerticalFlip(BaseTransform):
     Args:
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Examples:
@@ -623,7 +623,7 @@ class Normalize(BaseTransform):
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
         
     Examples:
@@ -715,7 +715,7 @@ class BrightnessTransform(BaseTransform):
         value (float): How much to adjust the brightness. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -752,7 +752,7 @@ class ContrastTransform(BaseTransform):
         value (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -791,7 +791,7 @@ class SaturationTransform(BaseTransform):
         value (float): How much to adjust the saturation. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -828,7 +828,7 @@ class HueTransform(BaseTransform):
         value (float): How much to adjust the hue. Can be any number
             between 0 and 0.5, 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -872,7 +872,7 @@ class ColorJitter(BaseTransform):
         hue: How much to jitter hue.
             Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -960,7 +960,7 @@ class RandomCrop(BaseTransform):
         pad_if_needed (boolean|optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -1065,7 +1065,7 @@ class Pad(BaseTransform):
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
             will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -1146,7 +1146,7 @@ class RandomRotation(BaseTransform):
             Origin is the upper left corner.
             Default is the center of the image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Examples:
     
@@ -1215,7 +1215,7 @@ class Grayscale(BaseTransform):
     Args:
         num_output_channels (int): (1 or 3) number of channels desired for output image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Returns:
         CV Image: Grayscale version of the input.

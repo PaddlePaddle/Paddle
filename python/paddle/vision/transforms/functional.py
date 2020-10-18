@@ -185,7 +185,7 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
             - "area": cv2.INTER_AREA, 
             - "bicubic": cv2.INTER_CUBIC, 
             - "lanczos": cv2.INTER_LANCZOS4
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Returns:
@@ -302,7 +302,7 @@ def pad(img, padding, fill=0, padding_mode='constant', backend='pil'):
 
                          padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
                          will result in [2, 1, 1, 2, 3, 4, 4, 3]
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array: Padded image.
@@ -420,7 +420,7 @@ def crop(img, top, left, height, width, backend='pil'):
         left (int): Horizontal component of the top left corner of the crop box.
         height (int): Height of the crop box.
         width (int): Width of the crop box.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Returns:
@@ -468,7 +468,7 @@ def center_crop(img, output_size, backend='pil'):
             img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
-            backend (str, optional): The image resize backend type. Options are `pil`, `cv2`. Default: 'pil'. 
+            backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
         
         Returns:
             PIL.Image or np.array: Cropped image.
@@ -514,7 +514,7 @@ def hflip(img, backend='pil'):
 
     Args:
         img (PIL.Image|np.array): Image to be flipped.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Returns:
@@ -557,7 +557,7 @@ def vflip(img, backend='pil'):
 
     Args:
         img (PIL.Image|np.array): Image to be flipped.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Returns:
@@ -605,7 +605,7 @@ def adjust_brightness(img, brightness_factor, backend='pil'):
         brightness_factor (float):  How much to adjust the brightness. Can be
             any non negative number. 0 gives a black image, 1 gives the
             original image while 2 increases the brightness by a factor of 2.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array: Brightness adjusted image.
@@ -656,7 +656,7 @@ def adjust_contrast(img, contrast_factor, backend='pil'):
         contrast_factor (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives a solid gray image, 1 gives the
             original image while 2 increases the contrast by a factor of 2.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
     Returns:
         PIL.Image or np.array: Contrast adjusted image.
@@ -706,7 +706,7 @@ def adjust_saturation(img, saturation_factor, backend='pil'):
         saturation_factor (float):  How much to adjust the saturation. 0 will
             give a black and white image, 1 will give the original image while
             2 will enhance the saturation by a factor of 2.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Returns:
@@ -770,7 +770,7 @@ def adjust_hue(img, hue_factor, backend='pil'):
             HSV space in positive and negative direction respectively.
             0 means no shift. Therefore, both -0.5 and 0.5 will give an image
             with complementary colors while 0 gives the original image.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
     Returns:
@@ -867,7 +867,7 @@ def rotate(img,
             Default is the center of the image.
         fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
                     `cv2`. Default: 'pil'. 
 
     Returns:
@@ -920,7 +920,7 @@ def to_grayscale(img, num_output_channels=1, backend='pil'):
 
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
                     `cv2`. Default: 'pil'. 
 
     Returns:
@@ -991,7 +991,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         data_format (str, optional): Data format of img, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
-        backend (str, optional): The image resize backend type. Options are `pil`, 
+        backend (str, optional): The image proccess backend type. Options are `pil`, 
                     `cv2`. Default: 'pil'. 
 
     Returns:
