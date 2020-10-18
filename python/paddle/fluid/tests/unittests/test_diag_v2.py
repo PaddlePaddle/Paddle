@@ -40,6 +40,7 @@ class TestDiagV2Op(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
+        paddle.enable_static()
         self.check_output()
 
     def init_config(self):
@@ -75,6 +76,7 @@ class TestDiagV2OpCase4(TestDiagV2Op):
 
 class TestDiagV2Error(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_diag_v2_type():
@@ -175,7 +177,7 @@ class TestDiagV2API(unittest.TestCase):
         self.assertTrue(np.allclose(y.numpy(), self.expected11))
 
         x = paddle.to_tensor(self.input_np6)
-        y = paddle.diag(x)
+        y = paddle.diag(x, offset=-1)
         self.assertTrue(np.allclose(y.numpy(), self.expected12))
 
     def run_static(self, use_gpu=False):
