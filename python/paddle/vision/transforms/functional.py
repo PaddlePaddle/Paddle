@@ -173,19 +173,19 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
         size (int|list|tuple): Target size of input data, with (height, width) shape.
         interpolation (int|str, optional): Interpolation method. 
             when use pil backend, support method are as following: 
-                'nearest': Image.NEAREST, 
-                'bilinear': Image.BILINEAR, 
-                'bicubic': Image.BICUBIC, 
-                'box': Image.BOX, 
-                'lanczos': Image.LANCZOS, 
-                'hamming': Image.HAMMING
-                
+                - 'nearest': Image.NEAREST, 
+                - 'bilinear': Image.BILINEAR, 
+                - 'bicubic': Image.BICUBIC, 
+                - 'box': Image.BOX, 
+                - 'lanczos': Image.LANCZOS, 
+                - 'hamming': Image.HAMMING
+
             when use cv2 backend, support method are as following: 
-                'nearest': cv2.INTER_NEAREST, 
-                'bilinear': cv2.INTER_LINEAR, 
-                'area': cv2.INTER_AREA, 
-                'bicubic': cv2.INTER_CUBIC, 
-                'lanczos': cv2.INTER_LANCZOS4
+                - 'nearest': cv2.INTER_NEAREST, 
+                - 'bilinear': cv2.INTER_LINEAR, 
+                - 'area': cv2.INTER_AREA, 
+                - 'bicubic': cv2.INTER_CUBIC, 
+                - 'lanczos': cv2.INTER_LANCZOS4
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
 
@@ -853,14 +853,14 @@ def rotate(img,
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
             according the backend. 
             when use pil backend, support method are as following: 
-                'nearest': Image.NEAREST, 
-                'bilinear': Image.BILINEAR, 
-                'bicubic': Image.BICUBIC
+                - 'nearest': Image.NEAREST, 
+                - 'bilinear': Image.BILINEAR, 
+                - 'bicubic': Image.BICUBIC
 
             when use cv2 backend, support method are as following: 
-                'nearest': cv2.INTER_NEAREST, 
-                'bilinear': cv2.INTER_LINEAR, 
-                'bicubic': cv2.INTER_CUBIC
+                - 'nearest': cv2.INTER_NEAREST, 
+                - 'bilinear': cv2.INTER_LINEAR, 
+                - 'bicubic': cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.

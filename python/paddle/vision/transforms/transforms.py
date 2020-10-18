@@ -154,12 +154,14 @@ class BaseTransform(object):
 
             Current available strings & data type are describe below:
 
-            * "image": input image, with shape of (H, W, C)
-            * "coords": coordinates, with shape of (N, 2)
-            * "boxes": bounding boxes, with shape of (N, 4), "xyxy" format, 
-                the 1st "xy" represents top left point of a box, 
-                the 2nd "xy" represents right bottom point.
-            * "mask": map used for segmentation, with shape of (H, W, 1)
+            - "image": input image, with shape of (H, W, C) 
+            - "coords": coordinates, with shape of (N, 2) 
+            - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format, 
+            
+                       the 1st "xy" represents top left point of a box, 
+                       the 2nd "xy" represents right bottom point.
+
+            - "mask": map used for segmentation, with shape of (H, W, 1)
             
             You can also customize your data types only if you implement the corresponding
             _apply_*() methods, otherwise ``NotImplementedError`` will be raised.
@@ -355,19 +357,19 @@ class Resize(BaseTransform):
             (size * height / width, size)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. 
             when use pil backend, support method are as following: 
-                'nearest': Image.NEAREST, 
-                'bilinear': Image.BILINEAR, 
-                'bicubic': Image.BICUBIC, 
-                'box': Image.BOX, 
-                'lanczos': Image.LANCZOS, 
-                'hamming': Image.HAMMING 
-                
+                - 'nearest': Image.NEAREST, 
+                - 'bilinear': Image.BILINEAR, 
+                - 'bicubic': Image.BICUBIC, 
+                - 'box': Image.BOX, 
+                - 'lanczos': Image.LANCZOS, 
+                - 'hamming': Image.HAMMING
+
             when use cv2 backend, support method are as following: 
-                'nearest': cv2.INTER_NEAREST, 
-                'bilinear': cv2.INTER_LINEAR, 
-                'area': cv2.INTER_AREA, 
-                'bicubic': cv2.INTER_CUBIC, 
-                'lanczos': cv2.INTER_LANCZOS4
+                - 'nearest': cv2.INTER_NEAREST, 
+                - 'bilinear': cv2.INTER_LINEAR, 
+                - 'area': cv2.INTER_AREA, 
+                - 'bicubic': cv2.INTER_CUBIC, 
+                - 'lanczos': cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
@@ -411,19 +413,20 @@ class RandomResizedCrop(BaseTransform):
         scale (list|tuple): Range of size of the origin size cropped. Default: (0.08, 1.0)
         ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'.
-            when use pil backend, support method are as following:
-                'nearest': Image.NEAREST,
-                'bilinear': Image.BILINEAR,
-                'bicubic': Image.BICUBIC,
-                'box': Image.BOX,
-                'lanczos': Image.LANCZOS,
-                'hamming': Image.HAMMING
-            when use cv2 backend, support method are as following:
-                'nearest': cv2.INTER_NEAREST,
-                'bilinear': cv2.INTER_LINEAR,
-                'area': cv2.INTER_AREA,
-                'bicubic': cv2.INTER_CUBIC,
-                'lanczos': cv2.INTER_LANCZOS4
+            when use pil backend, support method are as following: 
+                - 'nearest': Image.NEAREST, 
+                - 'bilinear': Image.BILINEAR, 
+                - 'bicubic': Image.BICUBIC, 
+                - 'box': Image.BOX, 
+                - 'lanczos': Image.LANCZOS, 
+                - 'hamming': Image.HAMMING
+
+            when use cv2 backend, support method are as following: 
+                - 'nearest': cv2.INTER_NEAREST, 
+                - 'bilinear': cv2.INTER_LINEAR, 
+                - 'area': cv2.INTER_AREA, 
+                - 'bicubic': cv2.INTER_CUBIC, 
+                - 'lanczos': cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
         backend (str, optional): The image resize backend type. Options are `pil`, 
             `cv2`. Default: 'pil'. 
@@ -1131,14 +1134,14 @@ class RandomRotation(BaseTransform):
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
             according the backend.
             when use pil backend, support method are as following: 
-                'nearest': Image.NEAREST, 
-                'bilinear': Image.BILINEAR, 
-                'bicubic': Image.BICUBIC
+                - 'nearest': Image.NEAREST, 
+                - 'bilinear': Image.BILINEAR, 
+                - 'bicubic': Image.BICUBIC
 
             when use cv2 backend, support method are as following: 
-                'nearest': cv2.INTER_NEAREST, 
-                'bilinear': cv2.INTER_LINEAR, 
-                'bicubic': cv2.INTER_CUBIC
+                - 'nearest': cv2.INTER_NEAREST, 
+                - 'bilinear': cv2.INTER_LINEAR, 
+                - 'bicubic': cv2.INTER_CUBIC
         expand (bool|optional): Optional expansion flag. Default: False.
             If true, expands the output to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
