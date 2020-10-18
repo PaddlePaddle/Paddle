@@ -171,15 +171,14 @@ def resize(img, size, interpolation='bilinear', backend='pil'):
     Args:
         input (PIL.Image|np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method. 
-            when use pil backend, support method are as following: 
+        interpolation (int|str, optional): Interpolation method. when use pil backend, 
+            support method are as following: 
                 - 'nearest': Image.NEAREST, 
                 - 'bilinear': Image.BILINEAR, 
                 - 'bicubic': Image.BICUBIC, 
                 - 'box': Image.BOX, 
                 - 'lanczos': Image.LANCZOS, 
                 - 'hamming': Image.HAMMING
-
             when use cv2 backend, support method are as following: 
                 - 'nearest': cv2.INTER_NEAREST, 
                 - 'bilinear': cv2.INTER_LINEAR, 
@@ -851,12 +850,10 @@ def rotate(img,
         angle (float or int): In degrees degrees counter clockwise order.
         resample (int|str, optional): An optional resampling filter. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend. 
-            when use pil backend, support method are as following: 
+            according the backend. when use pil backend, support method are as following: 
                 - 'nearest': Image.NEAREST, 
                 - 'bilinear': Image.BILINEAR, 
                 - 'bicubic': Image.BICUBIC
-
             when use cv2 backend, support method are as following: 
                 - 'nearest': cv2.INTER_NEAREST, 
                 - 'bilinear': cv2.INTER_LINEAR, 

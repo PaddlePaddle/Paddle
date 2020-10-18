@@ -363,7 +363,6 @@ class Resize(BaseTransform):
                 - 'box': Image.BOX, 
                 - 'lanczos': Image.LANCZOS, 
                 - 'hamming': Image.HAMMING
-
             when use cv2 backend, support method are as following: 
                 - 'nearest': cv2.INTER_NEAREST, 
                 - 'bilinear': cv2.INTER_LINEAR, 
@@ -412,15 +411,14 @@ class RandomResizedCrop(BaseTransform):
         size (int|list|tuple): Target size of output image, with (height, width) shape.
         scale (list|tuple): Range of size of the origin size cropped. Default: (0.08, 1.0)
         ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
-        interpolation (int|str, optional): Interpolation method. Default: 'bilinear'.
-            when use pil backend, support method are as following: 
+        interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. when use pil backend, 
+            support method are as following: 
                 - 'nearest': Image.NEAREST, 
                 - 'bilinear': Image.BILINEAR, 
                 - 'bicubic': Image.BICUBIC, 
                 - 'box': Image.BOX, 
                 - 'lanczos': Image.LANCZOS, 
                 - 'hamming': Image.HAMMING
-
             when use cv2 backend, support method are as following: 
                 - 'nearest': cv2.INTER_NEAREST, 
                 - 'bilinear': cv2.INTER_LINEAR, 
@@ -1132,12 +1130,10 @@ class RandomRotation(BaseTransform):
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'.
         resample (int|str, optional): An optional resampling filter. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend.
-            when use pil backend, support method are as following: 
+            according the backend. when use pil backend, support method are as following: 
                 - 'nearest': Image.NEAREST, 
                 - 'bilinear': Image.BILINEAR, 
                 - 'bicubic': Image.BICUBIC
-
             when use cv2 backend, support method are as following: 
                 - 'nearest': cv2.INTER_NEAREST, 
                 - 'bilinear': cv2.INTER_LINEAR, 
