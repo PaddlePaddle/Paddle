@@ -327,6 +327,6 @@ if(APPLE)
       ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
       CACHE INTERNAL "Fluid framework lib")
 endif()
-if(NOT WITH_INFERENCE_API_TEST)
+if(NOT ON_INFER)
 set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
