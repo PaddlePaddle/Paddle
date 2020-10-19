@@ -147,23 +147,26 @@ class GetProcessor : public BaseProcessor {
 class SendAndRecvProcessor : public BaseProcessor {
  public:
   explicit SendAndRecvProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(), stub_g_(ch) {}
+      : BaseProcessor() {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~SendAndRecvProcessor() {}
 
   void ProcessImpl() override {
     if (response_call_back_) {
-      response_call_back_(*var_h_recv_.get(), reply_);
-      var_h_recv_->Finish(true);
+      response_call_back_(*var_h_.get(), reply_);
     }
   }
 
-  void RecvPrepare(VarHandlePtr h_recv) { var_h_recv_ = h_recv; }
+  void RecvPrepare(const std::vector<std::string>& recv_var_name) {
+    recv_var_names_ = recv_var_name;
+  }
 
-  ::grpc::ByteBuffer reply_;
-  ::grpc::GenericStub stub_g_;
+  sendrecv::MultiVariableMessage reply_;
+  std::vector<std::string> recv_var_names_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
   RequestGetCallBack response_call_back_ = ProcGetResponse;
-  VarHandlePtr var_h_recv_;
 };
 
 class BatchBarrierProcessor : public BaseProcessor {
@@ -269,9 +272,9 @@ class GRPCClient : public RPCClient {
   VarHandlePtr AsyncSendAndRecv(const std::string& ep,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope& scope,
-                                const std::string& send_var_name,
-                                const std::string& recv_var_name,
-                                const std::string& table_name = "",
+                                const std::string& message_name,
+                                const std::vector<std::string>& send_var_name,
+                                const std::vector<std::string>& recv_var_name,
                                 int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendComplete(

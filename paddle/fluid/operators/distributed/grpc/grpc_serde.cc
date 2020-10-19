@@ -156,6 +156,92 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   msg->Swap(&tmp);
 }
 
+MultiVarMsg SerializeToByteBuffer(
+    const std::string& message_name,
+    const std::vector<std::string>& send_var_name_val,
+    const std::vector<std::string>& recv_var_name_val,
+    const platform::DeviceContext& ctx, const framework::Scope* scope,
+    MultiVarMsg* request, const int trainer_id = 0) {
+  // 1. message_name
+  request.set_message_name(message_name);
+
+  // 2. send_var_names
+  for (auto& send_var_name : send_var_name_val) {
+    request.add_send_var_names(send_var_name);
+  }
+
+  // 3. recv_var_names
+  for (auto& recv_var_name : recv_var_name_val) {
+    request.add_recv_var_names(recv_var_name);
+  }
+
+  // 4. VarMessage
+  for (auto& send_var_name : send_var_name_val) {
+    auto* send_var_msg = request.add_vars();
+    // Todo: support selectedRows(MrChengmo)
+    SerializeLodTensorToVarMsg(send_var_name, scope, ctx, trainer_id,
+                               send_var_msg);
+  }
+
+  return request;
+}
+
+void SerializeLodTensorToVarMsg(const std::string& var_name,
+                                const framework::Scope& scope,
+                                const platform::DeviceContext& ctx,
+                                const int trainer_id,
+                                VariableMessage* var_msg) {
+  Variable* var = scope->FindVar(varname);
+  if (var == nullptr) {
+    // throw error
+    return;
+  }
+
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  var_msg->set_varname(var_name);
+  var_msg->set_trainer_id(trainer_id);
+  var_msg->set_type(::sendrecv::LOD_TENSOR);
+  var_msg->set_data_type(static_cast<VarMsg::Type>(tensor.type()));
+
+  for (auto& dim : framework::vectorize(tensor->dims())) {
+    var_msg->add_dims(dim);
+  }
+
+  const framework::LoD lod = tensor->lod();
+  if (lod.size() > 0) {
+    var_msg->set_lod_level(lod.size());
+    for (auto& each : lod) {
+      VariableMessage::LodData* lod_inner = var_msg->add_lod();
+      for (auto& d : each) {
+        lod_inner->add_lod_data(d);
+      }
+    }
+  }
+
+  auto* var_data = var_msg->mutable_data();
+  var_data->clear();
+  var_data->resize(tensor->numel() * SizeOfType(tensor->type()));
+  char* data_ptr = const_cast<char*>(var_data->data());
+
+  if (platform::is_cpu_place(tensor->place())) {
+    memcpy(data_ptr, tensor->data<void>(),
+           tensor->numel() * SizeOfType(tensor->type()));
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    memory::Copy(platform::CPUPlace(), data_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()), nullptr);
+#endif
+#ifdef PADDLE_WITH_XPU
+    memory::Copy(platform::CPUPlace(), data_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()));
+#endif
+  }
+}
+
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,

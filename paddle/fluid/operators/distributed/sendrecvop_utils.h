@@ -48,6 +48,7 @@ namespace operators {
 namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
+using MultiVarMsg = sendrecv::MultiVariableMessage;
 
 class TensorPayload final {
  public:

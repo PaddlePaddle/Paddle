@@ -17,6 +17,7 @@
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -97,8 +98,9 @@ class RPCClient {
 
   virtual VarHandlePtr AsyncSendAndRecv(
       const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& send_var_name,
-      const std::string& recv_var_name, const std::string& table_name = "",
+      const framework::Scope& scope, const std::string& message_name,
+      const std::vector<std::string>& send_var_name,
+      const std::vector<std::string>& recv_var_name,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendComplete(

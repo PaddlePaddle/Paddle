@@ -54,6 +54,19 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const int trainer_id = 0,
                            const std::string& table_name = std::string());
 
+// for SendAndRecv of MultiVarMessage
+void SerializeToByteBuffer(const std::string& message_name,
+                           const std::vector<std::string>& send_var_name_val,
+                           const std::vector<std::string>& recv_var_name_val,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope* scope,
+                           ::grpc::ByteBuffer* buf, const int trainer_id = 0);
+
+void SerializeLodTensorToVarMsg(const std::string& var_name,
+                                const framework::Scope& scope,
+                                const platform::DeviceContext& ctx,
+                                const int trainer_id, VariableMessage* var_msg);
+
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
