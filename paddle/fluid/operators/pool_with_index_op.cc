@@ -127,7 +127,7 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
+class MaxPool2DWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(
@@ -184,7 +184,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
 
     AddComment(R"DOC(
-MaxPool2d Operator.
+MaxPool2D Operator.
 
 The maxPooling2d with index operation calculates the output and the mask
 based on the input, ksize, strides, and paddings parameters. Input(X) and
@@ -217,7 +217,7 @@ Example:
   }
 };
 
-class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
+class MaxPool3DWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
@@ -274,7 +274,7 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     // TypedAttrChecker don't support vector type.)
 
     AddComment(R"DOC(
-MaxPool3d Operator.
+MaxPool3D Operator.
 
 The maxpooling3d with index operation calculates the output and the mask
 based on the input and ksize, strides, paddings parameters.
@@ -332,7 +332,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
-                  ops::MaxPool2dWithIndexOpMaker,
+                  ops::MaxPool2DWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
@@ -351,7 +351,7 @@ REGISTER_OP_CPU_KERNEL(
                                     int>);
 
 REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
-                  ops::MaxPool3dWithIndexOpMaker,
+                  ops::MaxPool3DWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,

@@ -28,7 +28,7 @@ namespace inference {
 namespace tensorrt {
 
 template <typename RegistFunc, typename SetDilationFunc>
-void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
+void ConvertConv2D(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                    const framework::Scope& scope, bool test_mode,
                    RegistFunc fadd_layer, SetDilationFunc fset_dilation,
                    const std::string& name) {
@@ -37,15 +37,15 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   framework::OpDesc op_desc(op, nullptr);
   PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL,
                     platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 input, but got %d input.",
+                        "TRT Conv2D expect 1 input, but got %d input.",
                         op_desc.Input("Input").size()));
   PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL,
                     platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 filter, but got %d filter.",
+                        "TRT Conv2D expect 1 filter, but got %d filter.",
                         op_desc.Input("Filter").size()));
   PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL,
                     platform::errors::InvalidArgument(
-                        "TRT Conv2d expect 1 output, but got %d output.",
+                        "TRT Conv2D expect 1 output, but got %d output.",
                         op_desc.Output("Output").size()));
 
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
@@ -128,11 +128,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   }
 }
 
-class Conv2dOpConverter : public OpConverter {
+class Conv2DOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    ConvertConv2d(
+    ConvertConv2D(
         engine_, op, scope, test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Conv output maps */
             int n_input,                             /* Conv input maps */
@@ -154,7 +154,7 @@ class Deconv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    ConvertConv2d(
+    ConvertConv2D(
         engine_, op, scope, test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Deconv input maps */
             int n_input,                             /* Deconv output maps */
@@ -183,5 +183,5 @@ class Deconv2dOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
+REGISTER_TRT_OP_CONVERTER(conv2d, Conv2DOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv2d_transpose, Deconv2dOpConverter);

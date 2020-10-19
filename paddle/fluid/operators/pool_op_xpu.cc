@@ -46,11 +46,11 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         !adaptive, true,
         platform::errors::InvalidArgument(
-            "The Pool2d XPU OP does not support adaptive == true!"));
+            "The Pool2D XPU OP does not support adaptive == true!"));
     PADDLE_ENFORCE_EQ(
         ksize.size(), 2,
         platform::errors::InvalidArgument(
-            "The Pool2d XPU OP only support 2 dimension pooling!"));
+            "The Pool2D XPU OP only support 2 dimension pooling!"));
     int* index_data = nullptr;
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
@@ -107,9 +107,9 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         !adaptive, true,
         platform::errors::InvalidArgument(
-            "The Pool2d XPU OP does not support adaptive == true!"));
+            "The Pool2D XPU OP does not support adaptive == true!"));
     PADDLE_ENFORCE_EQ(ksize.size(), 2, platform::errors::InvalidArgument(
-                                           "The Pool2d XPU OP only support 2 "
+                                           "The Pool2D XPU OP only support 2 "
                                            "dimension pooling!, but received "
                                            "%d-dimension pool kernel size",
                                            ksize.size()));
@@ -150,7 +150,7 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External(
-            "The Pool2d XPU OP return wrong value[%d], please check "
+            "The Pool2D XPU OP return wrong value[%d], please check "
             "where Baidu Kunlun Card is properly installed.",
             r));
     r = xpu::pooling_backward(dev_ctx.x_context(), input, output, index_data,
@@ -160,7 +160,7 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External(
-            "The Pool2d XPU OP return wrong value[%d], please check "
+            "The Pool2D XPU OP return wrong value[%d], please check "
             "where Baidu Kunlun Card is properly installed.",
             r));
   }

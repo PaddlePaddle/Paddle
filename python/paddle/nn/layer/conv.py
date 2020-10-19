@@ -15,12 +15,12 @@
 # TODO: define classes of convolutional neural network
 
 __all__ = [
-    'Conv1d',
-    'Conv2d',
-    'Conv3d',
-    'ConvTranspose1d',
-    'ConvTranspose2d',
-    'ConvTranspose3d',
+    'Conv1D',
+    'Conv2D',
+    'Conv3D',
+    'Conv1DTranspose',
+    'Conv2DTranspose',
+    'Conv3DTranspose',
 ]
 
 import numpy as np
@@ -113,9 +113,9 @@ class _ConvNd(layers.Layer):
             attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
 
 
-class Conv1d(_ConvNd):
+class Conv1D(_ConvNd):
     """
-    This interface is used to construct a callable object of the ``Conv1d`` class.
+    This interface is used to construct a callable object of the ``Conv1D`` class.
     For more details, refer to code examples.
     The convolution1D layer calculates the output based on the input, filter
     and stride, padding, dilation, groups parameters. Input and
@@ -194,7 +194,7 @@ class Conv1d(_ConvNd):
     Examples:
         .. code-block:: python
           import paddle
-          from paddle.nn import Conv1d
+          from paddle.nn import Conv1D
           import numpy as np
           x = np.array([[[4, 8, 1, 9],
             [7, 2, 0, 9],
@@ -208,7 +208,7 @@ class Conv1d(_ConvNd):
             [5, 6, 8]]]).astype(np.float32)
           paddle.disable_static()
           x_t = paddle.to_tensor(x)
-          conv = Conv1d(3, 2, 3)
+          conv = Conv1D(3, 2, 3)
           conv.weight.set_value(w)
           y_t = conv(x_t)
           y_np = y_t.numpy()
@@ -229,7 +229,7 @@ class Conv1d(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCL"):
-        super(Conv1d, self).__init__(
+        super(Conv1D, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -266,9 +266,9 @@ class Conv1d(_ConvNd):
         return out
 
 
-class ConvTranspose1d(_ConvNd):
+class Conv1DTranspose(_ConvNd):
     """
-    This interface is used to construct a callable object of the ``ConvTranspose1d`` class.
+    This interface is used to construct a callable object of the ``Conv1DTranspose`` class.
     For more details, refer to code examples.
     The 1-D convolution transpose layer calculates the output based on the input,
     filter, and dilation, stride, padding. Input(Input) and output(Output)
@@ -340,7 +340,7 @@ class ConvTranspose1d(_ConvNd):
              `[pad]` or `[pad_left, pad_right]`. Default: padding = 0.
         output_padding(int|list|tuple, optional): The count of zeros to be added to tail of each dimension.
              If it is a tuple, it must contain one integer. Default: 0.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -379,7 +379,7 @@ class ConvTranspose1d(_ConvNd):
        .. code-block:: python
 
           import paddle
-          from paddle.nn import ConvTranspose1d
+          from paddle.nn import Conv1DTranspose
           import numpy as np
           
           paddle.disable_static()
@@ -390,7 +390,7 @@ class ConvTranspose1d(_ConvNd):
           y=np.array([[[7, 0]],
                       [[4, 2]]]).astype(np.float32)
           x_t = paddle.to_tensor(x)
-          conv = ConvTranspose1d(2, 1, 2)
+          conv = Conv1DTranspose(2, 1, 2)
           conv.weight.set_value(y)
           y_t = conv(x_t)
           y_np = y_t.numpy()
@@ -411,7 +411,7 @@ class ConvTranspose1d(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCL"):
-        super(ConvTranspose1d, self).__init__(
+        super(Conv1DTranspose, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -441,9 +441,9 @@ class ConvTranspose1d(_ConvNd):
         return out
 
 
-class Conv2d(_ConvNd):
+class Conv2D(_ConvNd):
     """
-    This interface is used to construct a callable object of the ``Conv2d`` class.
+    This interface is used to construct a callable object of the ``Conv2D`` class.
     For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
@@ -491,7 +491,7 @@ class Conv2d(_ConvNd):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3d Layer. According to grouped
+        groups(int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -539,7 +539,7 @@ class Conv2d(_ConvNd):
 
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
           
-          conv = nn.Conv2d(4, 6, (3, 3))
+          conv = nn.Conv2D(4, 6, (3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
           print(y_np.shape)
@@ -558,7 +558,7 @@ class Conv2d(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCHW"):
-        super(Conv2d, self).__init__(
+        super(Conv2D, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -600,9 +600,9 @@ class Conv2d(_ConvNd):
         return out
 
 
-class ConvTranspose2d(_ConvNd):
+class Conv2DTranspose(_ConvNd):
     """
-    This interface is used to construct a callable object of the ``ConvTranspose2d`` class.
+    This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
     For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input and output
@@ -653,7 +653,7 @@ class ConvTranspose2d(_ConvNd):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -704,7 +704,7 @@ class ConvTranspose2d(_ConvNd):
 
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.ConvTranspose2d(4, 6, (3, 3))
+          conv = nn.Conv2DTranspose(4, 6, (3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
           print(y_np.shape)
@@ -723,7 +723,7 @@ class ConvTranspose2d(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCHW"):
-        super(ConvTranspose2d, self).__init__(
+        super(Conv2DTranspose, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -758,7 +758,7 @@ class ConvTranspose2d(_ConvNd):
         return out
 
 
-class Conv3d(_ConvNd):
+class Conv3D(_ConvNd):
     """
     **Convlution3d Layer**
     The convolution3d layer calculates the output based on the input, filter
@@ -802,7 +802,7 @@ class Conv3d(_ConvNd):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3d Layer. According to grouped
+        groups(int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -856,7 +856,7 @@ class Conv3d(_ConvNd):
 
           x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
           
-          conv = nn.Conv3d(4, 6, (3, 3, 3))
+          conv = nn.Conv3D(4, 6, (3, 3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
           print(y_np.shape)
@@ -875,7 +875,7 @@ class Conv3d(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCDHW"):
-        super(Conv3d, self).__init__(
+        super(Conv3D, self).__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -917,7 +917,7 @@ class Conv3d(_ConvNd):
         return out
 
 
-class ConvTranspose3d(_ConvNd):
+class Conv3DTranspose(_ConvNd):
     """
     **Convlution3D transpose layer**
     The convolution3D transpose layer calculates the output based on the input,
@@ -981,7 +981,7 @@ class ConvTranspose3d(_ConvNd):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -1038,7 +1038,7 @@ class ConvTranspose3d(_ConvNd):
 
           x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
           
-          conv = nn.ConvTranspose3d(4, 6, (3, 3, 3))
+          conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
           print(y_np.shape)
@@ -1057,7 +1057,7 @@ class ConvTranspose3d(_ConvNd):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCDHW"):
-        super(ConvTranspose3d, self).__init__(
+        super(Conv3DTranspose, self).__init__(
             in_channels,
             out_channels,
             kernel_size,

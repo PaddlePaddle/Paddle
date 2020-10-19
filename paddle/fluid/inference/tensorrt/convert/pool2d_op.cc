@@ -56,9 +56,9 @@ inline void DealCeilMode(const nvinfer1::Dims &input_shape,
 }
 
 /*
- * Pool2dOp, IPoolingLayer in TRT. This Layer doesn't has weights.
+ * Pool2DOp, IPoolingLayer in TRT. This Layer doesn't has weights.
  */
-class Pool2dOpConverter : public OpConverter {
+class Pool2DOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
                   const framework::Scope &scope, bool test_mode) override {
@@ -67,11 +67,11 @@ class Pool2dOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "TRT Pool2d expect 1 input, but got %d input.",
+                          "TRT Pool2D expect 1 input, but got %d input.",
                           op_desc.Input("X").size()));
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "TRT Pool2d expect 1 Output, but got %d output.",
+                          "TRT Pool2D expect 1 Output, but got %d output.",
                           op_desc.Output("Out").size()));
 
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -224,4 +224,4 @@ class Pool2dOpConverter : public OpConverter {
 }  // namespace paddle
 
 USE_OP(pool2d);
-REGISTER_TRT_OP_CONVERTER(pool2d, Pool2dOpConverter);
+REGISTER_TRT_OP_CONVERTER(pool2d, Pool2DOpConverter);

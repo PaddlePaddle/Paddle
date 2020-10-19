@@ -61,11 +61,11 @@ void test_pool2d(bool global_pooling, bool ceil_mode,
   validator.Execute(3);
 }
 
-TEST(Pool2dOpConverter, normal) { test_pool2d(false, false); }
-TEST(Pool2dOpConverter, test_global_pooling) { test_pool2d(true, false); }
+TEST(Pool2DOpConverter, normal) { test_pool2d(false, false); }
+TEST(Pool2DOpConverter, test_global_pooling) { test_pool2d(true, false); }
 
-TEST(Pool2dOpConverter, max_ceil_test) { test_pool2d(false, true); }
-TEST(Pool2dOpConverter, avg_ceil_test) { test_pool2d(false, true, "avg"); }
+TEST(Pool2DOpConverter, max_ceil_test) { test_pool2d(false, true); }
+TEST(Pool2DOpConverter, avg_ceil_test) { test_pool2d(false, true, "avg"); }
 
 }  // namespace tensorrt
 }  // namespace inference

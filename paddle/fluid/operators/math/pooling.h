@@ -94,11 +94,11 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
  * elements. In this case, we should compute the gradient of the first maximum
  * element.
  * This is different from average pooling. So we rewrite the max_pool_grad:
- * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
+ * MaxPool2DGradFunctor, MaxPool3DGradFunctor.
  */
 #ifdef PADDLE_WITH_CUDA
 template <typename PoolProcess, typename T>
-class Pool2dDirectCUDAFunctor {
+class Pool2DDirectCUDAFunctor {
  public:
   void operator()(const T* input, const std::vector<int>& input_shape,
                   const std::vector<int>& output_shape,
@@ -111,7 +111,7 @@ class Pool2dDirectCUDAFunctor {
 #endif
 
 template <typename DeviceContext, typename PoolProcess, typename T>
-class Pool2dFunctor {
+class Pool2DFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
@@ -129,7 +129,7 @@ class Pool2dFunctor {
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
-class Pool2dGradFunctor {
+class Pool2DGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
@@ -150,7 +150,7 @@ class Pool2dGradFunctor {
 };
 
 template <typename DeviceContext, class T>
-class MaxPool2dGradFunctor {
+class MaxPool2DGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
@@ -170,7 +170,7 @@ class MaxPool2dGradFunctor {
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
-class Pool3dFunctor {
+class Pool3DFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
@@ -187,7 +187,7 @@ class Pool3dFunctor {
 };
 
 template <typename DeviceContext, typename PoolProcess, typename T>
-class Pool3dGradFunctor {
+class Pool3DGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
@@ -208,7 +208,7 @@ class Pool3dGradFunctor {
 };
 
 template <typename DeviceContext, class T>
-class MaxPool3dGradFunctor {
+class MaxPool3DGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
@@ -235,7 +235,7 @@ class MaxPool3dGradFunctor {
  * NCDHW format.
  */
 template <typename DeviceContext, typename T1, typename T2>
-class MaxPool2dWithIndexFunctor {
+class MaxPool2DWithIndexFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
@@ -245,7 +245,7 @@ class MaxPool2dWithIndexFunctor {
 };
 
 template <typename DeviceContext, typename T1, typename T2>
-class MaxPool2dWithIndexGradFunctor {
+class MaxPool2DWithIndexGradFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::Tensor& output_grad,
@@ -256,7 +256,7 @@ class MaxPool2dWithIndexGradFunctor {
 };
 
 template <typename DeviceContext, typename T1, typename T2>
-class MaxPool3dWithIndexFunctor {
+class MaxPool3DWithIndexFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const std::vector<int>& ksize,
@@ -266,7 +266,7 @@ class MaxPool3dWithIndexFunctor {
 };
 
 template <typename DeviceContext, typename T1, typename T2>
-class MaxPool3dWithIndexGradFunctor {
+class MaxPool3DWithIndexGradFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::Tensor& output_grad,
