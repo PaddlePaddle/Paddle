@@ -12,14 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the control flow api  
-from ..fluid.layers import cond  #DEFINE_ALIAS
-from ..fluid.layers import while_loop  #DEFINE_ALIAS
+from __future__ import print_function
 
-__all__ = [
-    'cond',
-    #       'DynamicRNN',
-    #       'StaticRNN',
-    'while_loop',
-    #       'rnn'
-]
+import sys
+sys.path.append("..")
+import unittest
+import numpy
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+from paddle.fluid.executor import Executor
+from test_truncated_gaussian_random_op import TestTrunctedGaussianRandomOp
+
+paddle.enable_static()
+
+
+class TestXPUTrunctedGaussianRandomOp(TestTrunctedGaussianRandomOp):
+    def test_xpu(self):
+        if paddle.is_compiled_with_xpu():
+            self.gaussian_random_test(place=fluid.XPUPlace(0))
+
+
+if __name__ == "__main__":
+    unittest.main()
