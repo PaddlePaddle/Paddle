@@ -29,8 +29,12 @@ class LogLossXPUKernel : public framework::OpKernel<T> {
     int r =
         xpu::log_loss_fwd(dev_ctx.x_context(), n, epsilon, predict->data<T>(),
                           labels->data<T>(), loss->data<T>());
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU log_loss kernel return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 template <typename DeviceContext, typename T, typename AttrType = T>
@@ -51,8 +55,12 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
     int r = xpu::log_loss_bwd(dev_ctx.x_context(), n, epsilon,
                               predict->data<T>(), labels->data<T>(),
                               dloss->data<T>(), dpred->data<T>());
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU log_loss kernel return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 
