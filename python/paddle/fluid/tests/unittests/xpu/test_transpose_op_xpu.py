@@ -25,8 +25,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestXPUTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
@@ -63,80 +61,60 @@ class TestXPUTransposeOp(OpTest):
         self.axis = (1, 0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase0(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (100, )
         self.axis = (0, )
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase1(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase2(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase3(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase4(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase5(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 16, 96)
         self.axis = (0, 2, 1)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase6(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 10, 12, 16)
         self.axis = (3, 1, 2, 0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase7(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 10, 2, 16)
         self.axis = (0, 1, 3, 2)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase8(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
 class TestCase9(TestXPUTransposeOp):
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
