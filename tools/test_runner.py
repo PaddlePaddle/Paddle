@@ -17,12 +17,14 @@ from __future__ import print_function
 import unittest
 import os
 import sys
+import paddle
 import paddle.fluid as fluid
 import importlib
 from six.moves import cStringIO
 
 
 def main():
+    paddle.enable_static()
     sys.path.append(os.getcwd())
     some_test_failed = False
     for module_name in sys.argv[1:]:
@@ -44,6 +46,7 @@ def main():
                             'failed\n',
                             buffer.getvalue(),
                             file=sys.stderr)
+    paddle.disable_static()
 
     if some_test_failed:
         exit(1)

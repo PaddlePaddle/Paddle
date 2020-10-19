@@ -69,12 +69,14 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     ]
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and op.type == 'batch_norm':
-            if in_name != 'X':
+        if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
+                'batch_norm', 'fused_bn_add_activation'
+        ]:
+            if in_name not in {'X', 'Z'}:
                 continue
         for in_var_name in op.input(in_name):
             in_var = block.var(in_var_name)
-            if in_var.type not in valid_types:
+            if in_var.type not in valid_types or in_var.dtype == dest_dtype:
                 continue
             if in_var.dtype == src_dtype:
                 cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
@@ -84,7 +86,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         name=cast_name,
                         dtype=dest_dtype,
                         persistable=False,
-                        stop_gradient=False)
+                        stop_gradient=in_var.stop_gradient)
 
                     block._insert_op(
                         idx,
@@ -100,9 +102,10 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
-    if src_dtype == core.VarDesc.VarType.FP32:
+    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
         for out_name in op.output_names:
-            if op.type == 'batch_norm' and out_name != 'Y':
+            if op.type in ['batch_norm', 'fused_bn_add_activation'
+                           ] and out_name != 'Y':
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
@@ -328,77 +331,3 @@ def update_role_var_grad(main_prog, params_grads):
                 raise ValueError("The op {0} is not in program".format(op))
             block.desc._remove_op(op_idx, op_idx + 1)
         block._sync_with_cpp()
-
-
-def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
-                        num_bad_steps, incr_every_n_steps,
-                        decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
-    """
-    Update loss scaling according to overall gradients. If all gradients is 
-    finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
-    Otherwise, loss scaling will decrease by decr_ratio after
-    decr_every_n_nan_or_inf steps and each step some gradients are infinite.
-
-    Args:
-        is_overall_finite (Variable): A boolean variable indicates whether 
-                                     all gradients are finite.
-        prev_loss_scaling (Variable): Previous loss scaling.
-        num_good_steps (Variable): A variable accumulates good steps in which 
-                                   all gradients are finite.
-        num_bad_steps (Variable): A variable accumulates bad steps in which 
-                                  some gradients are infinite.
-        incr_every_n_steps (Variable): A variable represents increasing loss 
-                                       scaling every n consecutive steps with 
-                                       finite gradients.
-        decr_every_n_nan_or_inf (Variable): A variable represents decreasing 
-                                            loss scaling every n accumulated 
-                                            steps with nan or inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
-                           scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
-                           loss scaling.
-    """
-    zero_steps = layers.fill_constant(shape=[1], dtype='int32', value=0)
-    with layers.Switch() as switch:
-        with switch.case(is_overall_finite):
-            should_incr_loss_scaling = layers.less_than(incr_every_n_steps,
-                                                        num_good_steps + 1)
-            with layers.Switch() as switch1:
-                with switch1.case(should_incr_loss_scaling):
-                    new_loss_scaling = prev_loss_scaling * incr_ratio
-                    loss_scaling_is_finite = layers.isfinite(new_loss_scaling)
-                    with layers.Switch() as switch2:
-                        with switch2.case(loss_scaling_is_finite):
-                            layers.assign(new_loss_scaling, prev_loss_scaling)
-                        with switch2.default():
-                            pass
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-
-                with switch1.default():
-                    layers.increment(num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-
-        with switch.default():
-            should_decr_loss_scaling = layers.less_than(decr_every_n_nan_or_inf,
-                                                        num_bad_steps + 1)
-            with layers.Switch() as switch3:
-                with switch3.case(should_decr_loss_scaling):
-                    new_loss_scaling = prev_loss_scaling * decr_ratio
-                    static_loss_scaling = \
-                        layers.fill_constant(shape=[1],
-                                             dtype='float32',
-                                             value=1.0)
-                    less_than_one = layers.less_than(new_loss_scaling,
-                                                     static_loss_scaling)
-                    with layers.Switch() as switch4:
-                        with switch4.case(less_than_one):
-                            layers.assign(static_loss_scaling,
-                                          prev_loss_scaling)
-                        with switch4.default():
-                            layers.assign(new_loss_scaling, prev_loss_scaling)
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-                with switch3.default():
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.increment(num_bad_steps)

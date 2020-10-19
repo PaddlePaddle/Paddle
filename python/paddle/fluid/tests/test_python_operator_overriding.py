@@ -21,6 +21,9 @@ import numpy as np
 import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
 import paddle.fluid as fluid
+import paddle
+
+paddle.enable_static()
 
 
 class TestPythonOperatorOverride(unittest.TestCase):

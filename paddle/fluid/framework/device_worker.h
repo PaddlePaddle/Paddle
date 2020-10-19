@@ -19,6 +19,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <thread>         // NOLINT
 #include <unordered_map>  // NOLINT
@@ -38,6 +39,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class ProgramDesc;
+class Scope;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -62,7 +75,9 @@ class PullDenseWorker {
   virtual void Initialize(const TrainerDesc& param);
 #ifdef PADDLE_WITH_CUDA
   void AddStream(const cudaStream_t stream) { copy_streams_.push_back(stream); }
+#endif
 
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
   void AddPlace(const paddle::platform::Place place) {
     places_.push_back(place);
   }
@@ -123,9 +138,9 @@ class PullDenseWorker {
 
 #ifdef PADDLE_WITH_CUDA
   std::vector<cudaStream_t> copy_streams_;
+#endif
   std::vector<paddle::platform::Place> places_;
   std::vector<Scope*> thread_scopes_;
-#endif
 };
 
 // should incorporate different type of device
@@ -149,6 +164,7 @@ class DeviceWorker {
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetWorkerNum(int num) {}
   virtual void CacheProgram(const ProgramDesc& main_program) {}
+  virtual void GetXpuOpIndex() {}
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }
@@ -298,6 +314,10 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, uint64_t> table_dependency_;
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  // multitask
+  std::map<int32_t, uint64_t> cond2table_map_;
+  std::set<uint64_t> condvalue_set_;
+  bool flag_partial_push_;
 
  private:
   // std::vector<std::string> dump_param_;
@@ -441,6 +461,7 @@ class SectionWorker : public DeviceWorker {
     skip_vars_ = skip_vars;
   }
   static void ResetBatchId() { batch_id_ = 0; }
+  static void ResetThreadCompletedFlag() { threads_completed = false; }
 
   static std::atomic<int> cpu_id_;
 

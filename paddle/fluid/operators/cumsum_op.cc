@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/cum_op.h"
 
 namespace paddle {
@@ -95,3 +96,14 @@ REGISTER_OP_CPU_KERNEL(cumsum, ops::CumKernel<CPU, ops::CumsumFunctor<float>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<double>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<int>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<int64_t>>);
+
+REGISTER_OP_VERSION(cumsum)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade cumsum add a new attribute [flatten].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "flatten",
+            "In order to compute the cumsum over the flattened array when the "
+            "argument `axis` in python API is None.",
+            false));

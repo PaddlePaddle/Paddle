@@ -18,6 +18,12 @@
 #include <vector>
 
 namespace paddle {
+namespace platform {
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 namespace {  // NOLINT

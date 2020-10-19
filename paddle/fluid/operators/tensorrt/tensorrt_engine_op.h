@@ -32,6 +32,18 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
+namespace inference {
+namespace tensorrt {
+class TRTCalibratorEngine;
+class TRTCalibratorEngineManager;
+class TRTInt8Calibrator;
+}  // namespace tensorrt
+template <typename T>
+struct Singleton;
+}  // namespace inference
+}  // namespace paddle
+
+namespace paddle {
 
 namespace operators {
 
@@ -208,8 +220,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    PADDLE_ENFORCE_EQ(input_names_.empty(), false,
-                      "should pass at least one input");
+    PADDLE_ENFORCE_EQ(
+        input_names_.empty(), false,
+        platform::errors::PreconditionNotMet(
+            "TensorRT engine needs at least one input, but no input is found. "
+            "Please check if you set the input correctly."));
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -295,12 +310,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
-      PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
+      PADDLE_ENFORCE_NOT_NULL(
+          fluid_v,
+          platform::errors::NotFound(
+              "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
 
-      PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
+      PADDLE_ENFORCE_LT(bind_index, num_bindings,
+                        platform::errors::InvalidArgument(
+                            "The binding index in TRT engine should be less "
+                            "than the number of bindings, but got binding "
+                            "index = %d, number of bindings = %d.",
+                            bind_index, num_bindings));
       buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
           BOOST_GET_CONST(platform::CUDAPlace, dev_place)));
 

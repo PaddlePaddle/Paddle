@@ -12,33 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import print_function
 from functools import reduce
 
 import collections
 import math
 import os
+import warnings
 
 import six
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
+import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -52,14 +42,17 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
+SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
+SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+
 
 def _get_lr_ops(program):
     lr_ops = []
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
         if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
@@ -76,7 +69,7 @@ def _has_global_step(lr_ops):
 
 
 def is_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_sparse') is True and op.attr(
+    if op.type in SPARSE_OP_LIST and op.attr('is_sparse') is True and op.attr(
             'is_distributed') is False:
         return True
 
@@ -88,7 +81,7 @@ def is_sparse_op(op):
 
 
 def is_distributed_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_distributed') is True:
+    if op.type in SPARSE_OP_LIST and op.attr('is_distributed') is True:
         return True
 
     if op.type == "distributed_lookup_table" and op.attr(
@@ -122,13 +115,26 @@ class MergedVariable:
         self.offsets = offsets
 
 
+def Singleton(cls):
+    _instance = {}
+
+    def _singleton(*args, **kargs):
+        if cls not in _instance:
+            _instance[cls] = cls(*args, **kargs)
+        return _instance[cls]
+
+    return _singleton
+
+
+@Singleton
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
-
         self.min_block_size = 8192
 
         self.origin_main_program = main_program
         self.origin_startup_program = startup_program
+        self.origin_ps_main_program = main_program
+        self.origin_ps_startup_program = startup_program
 
         self.strategy = strategy
         self.role_maker = role_maker
@@ -149,6 +155,11 @@ class CompileTimeStrategy(object):
 
         self._build_var_distributed()
 
+        # for heter-ps save variables
+        self.origin_merged_variables_pairs = list(self.merged_variables_pairs)
+        self.origin_merged_dense_pairs = list(self.merged_dense_pairs)
+        self.origin_merged_sparse_pairs = list(self.merged_sparse_pairs)
+
     def get_distributed_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()
         return trainer.mode
@@ -166,16 +177,40 @@ class CompileTimeStrategy(object):
         return trainer.mode == DistributedMode.ASYNC
 
     def get_role_id(self):
-        return self.role_maker.role_id()
+        try:
+            return self.role_maker._role_id()
+        except Exception:
+            return self.role_maker.role_id()
 
     def get_trainers(self):
-        return self.role_maker.worker_num()
+        try:
+            return self.role_maker._worker_num()
+        except Exception:
+            return self.role_maker.worker_num()
 
     def get_ps_endpoint(self):
-        return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
+        try:
+            return self.role_maker._get_pserver_endpoints()[self.get_role_id()]
+        except Exception:
+            return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
 
     def get_ps_endpoints(self):
-        return self.role_maker.get_pserver_endpoints()
+        try:
+            return self.role_maker._get_pserver_endpoints()
+        except Exception:
+            return self.role_maker.get_pserver_endpoints()
+
+    def get_heter_worker_endpoints(self):
+        try:
+            return self.role_maker._get_heter_worker_endpoints()
+        except Exception:
+            return self.role_maker.get_heter_worker_endpoints()
+
+    def get_heter_worker_endpoint(self):
+        try:
+            return self.role_maker._get_heter_worker_endpoint()
+        except Exception:
+            return self.role_maker.get_heter_worker_endpoint()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program
@@ -186,12 +221,24 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
+    def set_origin_ps_main_program(self, program):
+        self.origin_ps_main_program = program
+
+    def set_origin_ps_startup_program(self, program):
+        self.origin_ps_startup_program = program
+
+    def get_origin_ps_main_program(self):
+        return self.origin_ps_main_program
+
+    def get_origin_ps_startup_program(self):
+        return self.origin_ps_startup_program
+
     def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
             endpoint = self.get_ps_endpoint()
-
         varnames = get_sparse_tablenames(self.get_origin_main_program(),
                                          is_distributed)
+
         ps_sparse_varnames = []
         for varname in varnames:
             tables = self.get_var_distributed(varname, True)
@@ -200,6 +247,55 @@ class CompileTimeStrategy(object):
                 if ep == endpoint:
                     ps_sparse_varnames.append(table)
         return ps_sparse_varnames
+
+    def get_optimize_varname_on_ps(self, param_name):
+        origin_param_name, _, _ = _get_varname_parts(param_name)
+        optimize_var_names = []
+        for op in self.get_origin_main_program().global_block().ops:
+            # check all optimizer op
+            if int(op.all_attrs()["op_role"]) == 2:
+                # check param name 
+                if op.input("Param")[0] != origin_param_name:
+                    continue
+                # check all input
+                for key in op.input_names:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
+                        continue
+                    # check varibale shape related param, e.g: Moment1
+                    optimize_var_names += self._get_optimizer_param_related_var_name(
+                        op, op.type, key)
+        return optimize_var_names
+
+    def _get_optimizer_param_related_var_name(self, op, op_type, varkey):
+        """
+        Returns the names for optimizer inputs that need to be load 
+        """
+        related_var_names = []
+        if op_type == "adam":
+            if varkey in ["Moment1", "Moment2"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "adagrad":
+            if varkey == "Moment":
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type in ["momentum", "lars_momentum"]:
+            if varkey == "Velocity":
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "rmsprop":
+            if varkey in ["Moment", "MeanSquare"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "ftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "sgd":
+            pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
+        return related_var_names
 
     def build_ctx(self,
                   vars,
@@ -350,7 +446,9 @@ class CompileTimeStrategy(object):
             send_ctx[name] = ctx
         return send_ctx
 
-    def get_communicator_recv_context(self, recv_type=1):
+    def get_communicator_recv_context(self,
+                                      recv_type=1,
+                                      use_origin_program=False):
         # recv_type
         # 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
@@ -364,7 +462,8 @@ class CompileTimeStrategy(object):
         sparse_recv_ctx = {}
         distributed_recv_ctx = {}
 
-        for merged in self.merged_variables_pairs:
+        variables_pairs = self.merged_variables_pairs if not use_origin_program else self.origin_merged_variables_pairs
+        for merged in variables_pairs:
             params = merged[0]
             if params.merged_var.name in sparse_varnames:
                 continue
@@ -795,11 +894,10 @@ class CompileTimeStrategy(object):
 
         def _get_sparse_varnames():
             varnames = []
-            op_types = {"lookup_table": "W"}
             for op in origin_program.global_block().ops:
-                if op.type in op_types.keys() \
+                if op.type in SPARSE_OP_TYPE_DICT.keys() \
                         and op.attr('remote_prefetch') is True:
-                    param_name = op.input(op_types[op.type])[0]
+                    param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                     varnames.append(param_name)
 
             return list(set(varnames))
@@ -810,6 +908,30 @@ class CompileTimeStrategy(object):
 
         return sparse_param_grads, dense_param_grads
 
+    def remove_var_pair_by_grad(self, var_name):
+
+        for index, pair in enumerate(self.merged_variables_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_variables_pairs[index]
+
+        for index, pair in enumerate(self.merged_dense_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_dense_pairs[index]
+                return
+
+        for index, pair in enumerate(self.merged_sparse_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_sparse_pairs[index]
+                return
+
+        print("Not find {} in self.merge_pairs".format(var_name))
+
 
 def _is_opt_role_op(op):
     # NOTE : depend on oprole to find out whether this op is for
@@ -817,7 +939,7 @@ def _is_opt_role_op(op):
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
-                    int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
         return True
     return False
 

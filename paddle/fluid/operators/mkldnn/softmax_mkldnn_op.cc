@@ -12,11 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <iostream>
-#include <numeric>
-#include "mkldnn.hpp"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -140,7 +146,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         dout->dims(), dx->dims(),
-        "The shape of softmax_grad's input and output must be identical.");
+        platform::errors::InvalidArgument(
+            "The shape of softmax_grad's input and output must be identical."));
 
     auto dims = dout->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());

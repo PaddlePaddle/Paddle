@@ -17,9 +17,7 @@ from __future__ import print_function
 from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
-from ..layers import common_methods
-from . import to_variable, no_grad
-import paddle
+from . import no_grad
 
 import numpy as np
 import six
@@ -41,7 +39,7 @@ def monkey_patch_math_varbase():
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
 
-    @no_grad()
+    @no_grad
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
         out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
@@ -54,47 +52,25 @@ def monkey_patch_math_varbase():
 
     def astype(self, dtype):
         """
-        **Notes**:
-            **The variable must be a** :ref:`api_fluid_Tensor`
 
-        Cast a variable to a specified data type.
+        Cast a Tensor to a specified data type.
 
         Args:
-
-            self(Variable): The source variable
-
-            dtype: The target data type
+            dtype: The target data type.
 
         Returns:
-            Variable: Variable with new dtype
+            Tensor: a new Tensor with target dtype
 
         Examples:
-            In Static Graph Mode:
-
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}".format(new_variable.dtype))
-
-            In Dygraph Mode:
-
-            .. code-block:: python
-
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    original_variable = fluid.dygraph.to_variable(x)
-                    print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
+                original_tensor = paddle.ones([2, 2])
+                print("original tensor's dtype is: {}".format(original_tensor.dtype))
+                new_tensor = original_tensor.astype('float32')
+                print("new tensor's dtype is: {}".format(new_tensor.dtype))
 
         """
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -148,6 +124,10 @@ def monkey_patch_math_varbase():
     def _ndim_(var):
         return len(var.shape)
 
+    @property
+    def _size_(var):
+        return np.prod(var.shape)
+
     def _scalar_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -162,26 +142,6 @@ def monkey_patch_math_varbase():
 
     def _scalar_div_(var, value):
         return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
-
-    # TODO(shenliang03):  currently, it supports divide, floor_divide, remainder
-    # for binary operator by using the api to achieve the type promotion
-    def _binary_method_creator_(op_type, reverse=False):
-        import paddle
-
-        def __impl__(self, other_var):
-            import paddle
-            op = getattr(paddle, op_type)
-            if reverse:
-                return op(other_var, self)
-            else:
-                return op(self, other_var)
-
-        __impl__.__doc__ = """
-
-        See paddle.{}""".format(op_type)
-        __impl__.__name__ = op_type
-
-        return __impl__
 
     # for binary operator such as elementwise, compare
     def _binary_creator_(method_name,
@@ -229,7 +189,6 @@ def monkey_patch_math_varbase():
         __impl__.__doc__ = """
         {0}
         Args:
-            self(Tensor): left hand Tensor
             other_var(Tensor|float|int): right hand Tensor
 
         Returns:
@@ -238,23 +197,7 @@ def monkey_patch_math_varbase():
         __impl__.__name__ = method_name
         return __impl__
 
-    # Todo(zhouwei): implement dygraph template to adapt to any function, receive('op_type', 'arg_template')
-    #  Such as _method_creator_('addmm', 'x, y, alpha=1.0, beta=1.0, name=None'). It can reduce call time.
-    def _method_creator_(op_type, arg_template=None):
-        def __impl__(self):
-            op = getattr(core.ops, op_type)
-            return op(self)
-
-        __impl__.__doc__ = """
-
-        See paddle.{}""".format(op_type)
-        __impl__.__name__ = op_type
-
-        return __impl__
-
     varbase_methods = [
-        # Type1: From custom fun or lambda
-        ##   b=-a
         ('__neg__', _neg_),
         ('__float__', _float_),
         ('__long__', _long_),
@@ -265,8 +208,7 @@ def monkey_patch_math_varbase():
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
-        ('size', lambda x: x.shape),
-        # Type2: From Template that create core.ops automatically. It's recommended.
+        ('size', _size_),
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
@@ -281,20 +223,22 @@ def monkey_patch_math_varbase():
         ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
+                                     _scalar_div_)),
+        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
+                                         False, _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                      None)),
         ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
                                           None)),
         ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
                                      None)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
-        # These binary use paddle.optype
-        ('__div__', _binary_method_creator_('divide', False)),
-        ('__truediv__', _binary_method_creator_('divide', False)),
-        ('__rtruediv__', _binary_method_creator_('divide', True)),
-        ('__rdiv__', _binary_method_creator_('divide', True)),
-        ('__floordiv__', _binary_method_creator_('floor_divide', False)),
-        ('__rfloordiv__', _binary_method_creator_('floor_divide', True)),
-        ('__mod__', _binary_method_creator_('remainder', False)),
+        ('__floordiv__', _binary_creator_('__floordiv__',
+                                          'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
+                                     None)),
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
@@ -302,31 +246,7 @@ def monkey_patch_math_varbase():
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
-        ('__array_ufunc__', None),
-        ('sigmoid', _method_creator_('sigmoid', 'name=None')),
-        ('logsigmoid', _method_creator_('logsigmoid', 'name=None')),
-        ('exp', _method_creator_('exp', 'name=None')),
-        ('tanh', _method_creator_('tanh', 'name=None')),
-        ('atan', _method_creator_('atan', 'name=None')),
-        ('tanh_shrink', _method_creator_('tanh_shrink', 'name=None')),
-        ('sqrt', _method_creator_('sqrt', 'name=None')),
-        ('rsqrt', _method_creator_('rsqrt', 'name=None')),
-        ('abs', _method_creator_('abs', 'name=None')),
-        ('ceil', _method_creator_('ceil', 'name=None')),
-        ('floor', _method_creator_('floor', 'name=None')),
-        ('cos', _method_creator_('cos', 'name=None')),
-        ('acos', _method_creator_('acos', 'name=None')),
-        ('asin', _method_creator_('asin', 'name=None')),
-        ('sin', _method_creator_('sin', 'name=None')),
-        ('sinh', _method_creator_('sinh', 'name=None')),
-        ('cosh', _method_creator_('cosh', 'name=None')),
-        ('round', _method_creator_('round', 'name=None')),
-        ('reciprocal', _method_creator_('reciprocal', 'name=None')),
-        ('square', _method_creator_('square', 'name=None')),
-        ('softplus', _method_creator_('softplus', 'name=None')),
-        ('softsign', _method_creator_('softsign', 'name=None')),
-        # Type3: Form module 'paddle.tensor' defaultly.
-        #   It's not a goodway, because it will increase call time.
+        ('__array_ufunc__', None)
     ]
 
     global _already_patch_varbase
@@ -337,7 +257,15 @@ def monkey_patch_math_varbase():
             setattr(core.VarBase, method_name, method_impl)
     else:
         import paddle.tensor
-        for method_name in common_methods:
+        # Tensor method from module paddle.tensor
+        tensor_methods = paddle.tensor.linalg.__all__ + \
+                         paddle.tensor.math.__all__ + \
+                         paddle.tensor.logic.__all__ + \
+                         paddle.tensor.manipulation.__all__ + \
+                         paddle.tensor.search.__all__ + \
+                         paddle.tensor.stat.__all__ + \
+                         paddle.tensor.attribute.__all__
+        for method_name in tensor_methods:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)

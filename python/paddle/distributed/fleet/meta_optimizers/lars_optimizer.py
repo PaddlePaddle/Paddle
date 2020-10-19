@@ -15,8 +15,6 @@ from paddle.fluid.optimizer import Momentum, LarsMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["LarsOptimizer"]
-
 
 class LarsOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -46,13 +44,19 @@ class LarsOptimizer(MetaOptimizerBase):
             parameter_list=opt._parameter_list,
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
-            name=opt._name)
+            name=opt._name,
+            exclude_from_weight_decay=configs['exclude_from_weight_decay'],
+            epsilon=configs['epsilon'])
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn(
-                    "lars need the inner optimizer to be Momentum optimizer.")
+                    "lars need the inner optimizer to be Momentum optimizer but got {}.".
+                    format(self.inner_opt.type))
                 return False
             return True
         return False
@@ -60,6 +64,13 @@ class LarsOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.lars = False
         dist_strategy.lars_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.lars = True
+        dist_strategy.lars_configs = {
+            "lars_coeff": 0.01,
+            "lars_weight_decay": 0.0005,
+        }
 
     def backward(self,
                  loss,
@@ -70,6 +81,14 @@ class LarsOptimizer(MetaOptimizerBase):
         return self.lars_opt.backward(loss, startup_program, parameter_list,
                                       no_grad_set, callbacks)
 
+    # the following function will be used by AMP if both LARS and AMP are turn on together.
+    def apply_gradients(self, params_grads):
+        return self.lars_opt.apply_gradients(params_grads=params_grads)
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        return self.lars_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -77,5 +96,5 @@ class LarsOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         optimize_ops, params_grads = \
             self.lars_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+                                   parameter_list, no_grad_set)
         return optimize_ops, params_grads

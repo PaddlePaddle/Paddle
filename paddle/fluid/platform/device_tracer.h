@@ -28,6 +28,8 @@ namespace platform {
 ///////////////////////
 // WARN: Under Development. Don't depend on it yet.
 //////////////////////
+class Event;
+
 inline uint64_t PosixInNsec() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);

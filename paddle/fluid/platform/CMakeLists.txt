@@ -88,6 +88,10 @@ ELSE()
   set(STREAM_CALLBACK_DEPS)
 ENDIF()
 
+if(WITH_GLOO)
+    cc_library(gloo_context SRCS gloo_context.cc DEPS framework_proto gloo_wrapper enforce)
+endif()
+
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
 # memcpy depends on device_context, here add deps individually for
@@ -131,6 +135,8 @@ cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
+
+cc_test(bfloat16_test SRCS bfloat16_test.cc DEPS lod_tensor)
 
 nv_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info flags)
 

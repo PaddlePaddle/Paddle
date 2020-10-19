@@ -132,6 +132,28 @@ def check_dtype(input_dtype,
              extra_message))
 
 
+def check_shape(shape,
+                op_name,
+                expected_shape_type=(list, tuple, Variable),
+                expected_element_type=(int, Variable),
+                expected_tensor_dtype=('int32', 'int64')):
+    # See NOTE [ Why skip dynamic graph check ]
+    if in_dygraph_mode():
+        return
+    check_type(shape, 'shape', expected_shape_type, op_name)
+    if expected_element_type is not None and not isinstance(shape, Variable):
+        for item in shape:
+            check_type(item, 'element of shape', expected_element_type, op_name)
+            if expected_tensor_dtype is not None and isinstance(item, Variable):
+                check_dtype(
+                    item.dtype, 'element of shape', expected_tensor_dtype,
+                    op_name,
+                    'If element of shape is Tensor, its data type should be {}'.
+                    format(', '.join(expected_tensor_dtype)))
+    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
+
+
 class DataToLoDTensorConverter(object):
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place

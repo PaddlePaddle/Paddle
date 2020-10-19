@@ -15,6 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/gru_op.h"
 
 namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+struct CUDAPlace;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>

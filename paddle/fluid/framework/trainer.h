@@ -14,14 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include <ctime>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
 
-#include <ctime>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
@@ -37,6 +38,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+class Dataset;
+class LoDTensor;
+class ProgramDesc;
+class PullDenseWorker;
+class Scope;
+class VarDesc;
+template <class T>
+class ChannelObject;
 
 class TrainerBase {
  public:
@@ -128,7 +138,8 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
 
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
 class HeterServiceContext {
  public:
   HeterServiceContext() {}
@@ -141,7 +152,9 @@ class HeterServiceContext {
   void Reset() { push_dense_status_.clear(); }
   int place_num_;
   Scope* scope_{nullptr};
+#ifdef PADDLE_WITH_CUDA
   cudaEvent_t event_;
+#endif
   std::vector<OperatorBase*> ops_;
   std::vector<::std::future<int32_t>> push_dense_status_;
 };
@@ -168,10 +181,18 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
+  virtual std::string GetDumpPath(int tid) { return ""; }
+  virtual void InitDumpEnv() {}
   template <typename T>
+#ifdef PADDLE_WITH_CUDA
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
                    cudaStream_t stream);
+#endif
+#ifdef PADDLE_WITH_XPU
+  void HeterMemCpy(LoDTensor* thread_tensor, LoDTensor* root_tensor,
+                   const paddle::platform::Place& thread_place);
+#endif
   void CreateThreadParam(const ProgramDesc& program, int num);
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
@@ -197,9 +218,11 @@ class HeterXpuTrainer : public TrainerBase {
   std::vector<std::string> op_names_;
   std::vector<Scope*> place_scopes_;
   BtObjectPool<HeterServiceContext> object_pool_;
-  std::vector<cudaStream_t> copy_streams_;
   std::vector<platform::Place> places_;
+#ifdef PADDLE_WITH_CUDA
+  std::vector<cudaStream_t> copy_streams_;
   std::vector<cudaEvent_t> events_;
+#endif
 };
 #endif
 

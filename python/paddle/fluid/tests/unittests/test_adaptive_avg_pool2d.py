@@ -110,7 +110,7 @@ class TestAdaptiveAvgPool2dAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
 
             out_1 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3])
@@ -147,7 +147,7 @@ class TestAdaptiveAvgPool2dAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
-            x = paddle.to_variable(self.x_np)
+            x = paddle.to_tensor(self.x_np)
 
             out_1 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3])
@@ -163,6 +163,9 @@ class TestAdaptiveAvgPool2dAPI(unittest.TestCase):
             out_5 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[None, 3])
 
+            out_6 = paddle.nn.functional.interpolate(
+                x=x, mode="area", size=[2, 5])
+
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
             assert np.allclose(out_2.numpy(), self.res_2_np)
@@ -172,6 +175,8 @@ class TestAdaptiveAvgPool2dAPI(unittest.TestCase):
             assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
+
+            assert np.allclose(out_6.numpy(), self.res_3_np)
 
 
 class TestAdaptiveAvgPool2dClassAPI(unittest.TestCase):
@@ -200,7 +205,7 @@ class TestAdaptiveAvgPool2dClassAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=[3, 3])
             out_1 = adaptive_avg_pool(x=x)
@@ -240,7 +245,7 @@ class TestAdaptiveAvgPool2dClassAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
-            x = paddle.to_variable(self.x_np)
+            x = paddle.to_tensor(self.x_np)
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2d(output_size=[3, 3])
             out_1 = adaptive_avg_pool(x=x)

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -78,7 +79,8 @@ class ConcatOp : public framework::OperatorWithKernel {
       }
     }
     if (flag == 0) {
-      PADDLE_THROW("All Inputs of Concat OP are Empty!");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "All Inputs of Concat OP are Empty!"));
     }
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {

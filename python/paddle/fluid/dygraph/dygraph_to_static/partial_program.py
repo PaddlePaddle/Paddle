@@ -14,19 +14,16 @@
 
 from __future__ import print_function
 import numpy as np
-import logging
+import six
 
-from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 import paddle.compat as cpt
-
-_logger = log_helper.get_logger(
-    __name__, logging.WARNING, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class NestSequence(object):
@@ -71,7 +68,7 @@ class NestSequence(object):
                 if not isinstance(var, (framework.Variable, core.VarBase)):
                     warning_types.add(type(var))
             if warning_types:
-                _logger.warning(
+                logging_utils.warn(
                     "Output of traced function contains non-tensor type values: {}. "
                     "Currently, We don't support to update them while training and will return "
                     "what we first saw. Please try to return them as tensor.".
@@ -83,6 +80,29 @@ class NestSequence(object):
 
     def __getitem__(self, item):
         return self.tolist()[item]
+
+
+class LazyInitialized(object):
+    """
+    Descriptor to implement lazy initialization of property.
+    """
+
+    def __init__(self, function):
+        self.function = function
+
+    def __get__(self, instance, cls):
+        val = self.function(instance)
+        setattr(instance, self.function.__name__, val)
+        return val
+
+
+def _change_is_test_status(program, is_test):
+    # change all `is_test` attributes
+    for block in program.blocks:
+        for op in block.ops:
+            if op.has_attr('is_test'):
+                op._set_attr('is_test', is_test)
+    return program
 
 
 class PartialProgramLayer(layers.Layer):
@@ -112,14 +132,29 @@ class PartialProgramLayer(layers.Layer):
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
 
-        main_program = self._verify_program(main_program)
-        self._infer_program = self._clone_for_test(main_program)
-        self._train_program = self._append_backward_desc(main_program)
-
-        self._set_grad_type(self._params)
+        self._origin_main_program = self._verify_program(main_program)
         self._inner_scope = core.Scope()
         # Set default mode to train
         self.training = True
+
+    @LazyInitialized
+    def _infer_program(self):
+        """
+        Lazy initialized property of infer_program.
+        """
+        return self._clone_for_test(self._origin_main_program)
+
+    @LazyInitialized
+    def _train_program(self):
+        """
+        Lazy initialized property of train_program.
+        """
+        train_program = self._append_backward_desc(self._origin_main_program)
+        # Note: Only set grad type once after initializing train program. So we
+        # put it here.
+        self._set_grad_type(self._params, train_program)
+
+        return train_program
 
     def _verify_program(self, main_program):
         """
@@ -135,7 +170,8 @@ class PartialProgramLayer(layers.Layer):
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        program = main_program.clone()
+        # make sure all status of is_test are False in train mode.
+        program = _change_is_test_status(main_program.clone(), is_test=False)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
@@ -283,7 +319,7 @@ class PartialProgramLayer(layers.Layer):
 
         return out_vars
 
-    def _set_grad_type(self, params):
+    def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient
         # will be SelectedRows, not LoDTensor. But tracer will just
         # set param grad VarBase by forward VarBase(LoDTensor)
@@ -292,7 +328,7 @@ class PartialProgramLayer(layers.Layer):
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = self._train_program.desc.block(0).find_var(
+            grad_var = train_program.desc.block(0).find_var(
                 cpt.to_bytes(grad_name))
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:
@@ -334,7 +370,7 @@ class PartialProgramLayer(layers.Layer):
             param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
-            for name, var in block.vars.items():
+            for name, var in six.iteritems(block.vars):
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(

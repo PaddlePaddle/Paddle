@@ -18,6 +18,7 @@ import paddle
 import copy
 
 np.random.seed(10)
+paddle.manual_seed(10)
 
 
 class TestNormalAPI(unittest.TestCase):
@@ -25,7 +26,7 @@ class TestNormalAPI(unittest.TestCase):
         self.mean = 1.0
         self.std = 0.0
         self.shape = None
-        self.repeat_num = 1000
+        self.repeat_num = 2000
         self.set_attrs()
         self.dtype = self.get_dtype()
         self.place=paddle.CUDAPlace(0) \
@@ -60,8 +61,8 @@ class TestNormalAPI(unittest.TestCase):
         if isinstance(self.mean, np.ndarray) \
             and isinstance(self.std, np.ndarray):
             with paddle.static.program_guard(paddle.static.Program()):
-                mean = paddle.data('Mean', self.mean.shape, self.mean.dtype)
-                std = paddle.data('Std', self.std.shape, self.std.dtype)
+                mean = paddle.fluid.data('Mean', self.mean.shape, self.mean.dtype)
+                std = paddle.fluid.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
@@ -75,7 +76,7 @@ class TestNormalAPI(unittest.TestCase):
             return ret_all
         elif isinstance(self.mean, np.ndarray):
             with paddle.static.program_guard(paddle.static.Program()):
-                mean = paddle.data('Mean', self.mean.shape, self.mean.dtype)
+                mean = paddle.fluid.data('Mean', self.mean.shape, self.mean.dtype)
                 out = paddle.normal(mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
@@ -85,7 +86,7 @@ class TestNormalAPI(unittest.TestCase):
             return ret_all
         elif isinstance(self.std, np.ndarray):
             with paddle.static.program_guard(paddle.static.Program()):
-                std = paddle.data('Std', self.std.shape, self.std.dtype)
+                std = paddle.fluid.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(self.mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
@@ -134,8 +135,8 @@ class TestNormalAPI(unittest.TestCase):
                 if isinstance(self.mean, np.ndarray) else self.mean
             std_ref=self.std.reshape([1, -1]) \
                 if isinstance(self.std, np.ndarray) else self.std
-            self.assertTrue(np.allclose(mean_ref, mean, 0.1, 0.1))
-            self.assertTrue(np.allclose(std_ref, std, 0.1, 0.1))
+            self.assertTrue(np.allclose(mean_ref, mean, 0.2, 0.2))
+            self.assertTrue(np.allclose(std_ref, std, 0.2, 0.2))
 
 
 class TestNormalAPI_mean_is_tensor(TestNormalAPI):
@@ -179,17 +180,17 @@ class TestNormalErrors(unittest.TestCase):
             std = [1, 2, 3]
             self.assertRaises(TypeError, paddle.normal, std=std)
 
-            mean = paddle.data('Mean', [100], 'int32')
+            mean = paddle.fluid.data('Mean', [100], 'int32')
             self.assertRaises(TypeError, paddle.normal, mean)
 
-            std = paddle.data('Std', [100], 'int32')
+            std = paddle.fluid.data('Std', [100], 'int32')
             self.assertRaises(TypeError, paddle.normal, mean=1.0, std=std)
 
             self.assertRaises(TypeError, paddle.normal, shape=1)
 
             self.assertRaises(TypeError, paddle.normal, shape=[1.0])
 
-            shape = paddle.data('Shape', [100], 'float32')
+            shape = paddle.fluid.data('Shape', [100], 'float32')
             self.assertRaises(TypeError, paddle.normal, shape=shape)
 
 

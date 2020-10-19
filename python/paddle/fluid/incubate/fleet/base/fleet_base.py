@@ -19,6 +19,7 @@ import abc
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
+from paddle.optimizer import SGD as SGD_v2
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
@@ -145,7 +146,7 @@ class Fleet(object):
 
         Returns:
             bool: True if this is a node of server,
-                  False if not.
+                  False if not
         """
         return self._role_maker.is_server()
 
@@ -291,7 +292,8 @@ class DistributedOptimizer(object):
 
     def __init__(self, optimizer, strategy=None):
         if not isinstance(optimizer, SGD.__bases__) \
-                and not isinstance(optimizer, OptimizerWithMixedPrecision):
+                and not isinstance(optimizer, OptimizerWithMixedPrecision) \
+                and not isinstance(optimizer, SGD_v2.__base__):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer

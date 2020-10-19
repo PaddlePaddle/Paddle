@@ -20,8 +20,6 @@ from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
-__all__ = ["PipelineOptimizer"]
-
 
 class PipelineHelper(CollectiveHelper):
     def __init__(self, role_maker, nrings=1, wait_port='6174'):
@@ -105,6 +103,9 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.wrapped_opt = PO(self.inner_opt, num_microbatches=num_microbatches)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.pipeline == True:
             return True
         return False
@@ -112,6 +113,10 @@ class PipelineOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.pipeline = False
         dist_strategy.pipeline_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        # we do not support enable pipeline automatically right now
+        return
 
     def minimize_impl(self,
                       loss,
@@ -121,11 +126,11 @@ class PipelineOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads, prog_list = \
             self.wrapped_opt.minimize(loss, startup_program,
                                       parameter_list, no_grad_set)
-        if self.role_maker.worker_num() == 1:
+        if self.role_maker._worker_num() == 1:
             return optimize_ops, params_grads
 
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker._worker_index()]
         self.startup_program = startup_program
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
@@ -137,7 +142,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.nranks = nranks
         self.nrings = len(self.main_program_list)
 
-        self.rank = self.role_maker.worker_index()
+        self.rank = self.role_maker._worker_index()
         self.endpoints = endpoints
         self.current_endpoint = current_endpoint
 
@@ -178,7 +183,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
-                OP_ROLE_VAR_KEY in op.attr_names:
+                    OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
                 if len(op_role_var) == 0:
                     continue

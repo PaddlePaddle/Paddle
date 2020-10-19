@@ -52,6 +52,7 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
 };
 
 template class ScaleLoDTensorFunctor<platform::CUDADeviceContext, float>;
+template class ScaleLoDTensorFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

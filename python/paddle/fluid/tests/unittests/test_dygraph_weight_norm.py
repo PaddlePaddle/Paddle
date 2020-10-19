@@ -121,6 +121,9 @@ class TestDygraphWeightNorm(unittest.TestCase):
         before_weight = linear.weight.numpy()
         if self.dim == None:
             self.dim = -1
+
+        if self.dim != -1:
+            self.dim = (self.dim + len(before_weight)) % len(before_weight)
         wn = weight_norm(linear, dim=self.dim)
         outputs = []
         for name, data in self.data.items():
@@ -156,6 +159,13 @@ class TestDygraphWeightNormCase3(TestDygraphWeightNorm):
         self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
         self.dim = 3
+
+
+class TestDygraphWeightNormCase4(TestDygraphWeightNorm):
+    def init_test_case(self):
+        self.batch_size = 3
+        self.data_desc = (['x', [2, 3, 3]], )
+        self.dim = -3
 
 
 class TestDygraphRemoveWeightNorm(unittest.TestCase):

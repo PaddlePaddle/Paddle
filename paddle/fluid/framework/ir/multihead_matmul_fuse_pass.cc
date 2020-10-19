@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"
-#include <memory>
+
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
@@ -615,6 +616,16 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
                               multihead_pattern);
 
+    // If weights or biases in qkv's fc are shared by multiple multihead_matmul
+    // patterns, we do not support this kind of fusion, this pass will not take
+    // effect.
+    bool is_fc_params_shared =
+        mul0_w->outputs.size() > 1 || mul1_w->outputs.size() > 1 ||
+        mul2_w->outputs.size() > 1 || eltadd0_b->outputs.size() > 1 ||
+        eltadd1_b->outputs.size() > 1 || eltadd2_b->outputs.size() > 1;
+    if (is_fc_params_shared) {
+      return;
+    }
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
                  reshape2_0, reshape2_qkv_out, scale, scale_out);
@@ -697,3 +708,13 @@ REGISTER_PASS(multihead_matmul_fuse_pass,
 
 REGISTER_PASS(multihead_matmul_fuse_pass_v2,
               paddle::framework::ir::MultiHeadMatmulV2FusePass);
+REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v2)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("scale", 0)
+            .EQ("matmul", 0)
+            .EQ("softmax", 0));

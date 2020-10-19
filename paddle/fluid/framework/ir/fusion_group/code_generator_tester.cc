@@ -12,18 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/init.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 
 #ifdef PADDLE_WITH_CUDA
 

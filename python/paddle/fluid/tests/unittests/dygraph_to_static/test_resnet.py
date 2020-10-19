@@ -24,7 +24,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
 
@@ -38,7 +38,11 @@ batch_size = 2
 epoch_num = 1
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
     else fluid.CPUPlace()
-MODEL_SAVE_PATH = "./resnet.inference.model"
+
+MODEL_SAVE_DIR = "./inference"
+MODEL_SAVE_PREFIX = "./inference/resnet"
+MODEL_FILENAME = "resnet" + INFER_MODEL_SUFFIX
+PARAMS_FILENAME = "resnet" + INFER_PARAMS_SUFFIX
 DY_STATE_DICT_SAVE_PATH = "./resnet.dygraph"
 program_translator = ProgramTranslator()
 
@@ -215,8 +219,8 @@ def train(to_static):
     """
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         train_reader = paddle.batch(
             reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
@@ -261,7 +265,7 @@ def train(to_static):
                             total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
                 if batch_id == 10:
                     if to_static:
-                        fluid.dygraph.jit.save(resnet, MODEL_SAVE_PATH)
+                        fluid.dygraph.jit.save(resnet, MODEL_SAVE_PREFIX)
                     else:
                         fluid.dygraph.save_dygraph(resnet.state_dict(),
                                                    DY_STATE_DICT_SAVE_PATH)
@@ -287,10 +291,14 @@ def predict_dygraph(data):
 
 
 def predict_static(data):
+    paddle.enable_static()
     exe = fluid.Executor(place)
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(
-         MODEL_SAVE_PATH, executor=exe, params_filename=VARIABLE_FILENAME)
+         MODEL_SAVE_DIR,
+         executor=exe,
+         model_filename=MODEL_FILENAME,
+         params_filename=PARAMS_FILENAME)
 
     pred_res = exe.run(inference_program,
                        feed={feed_target_names[0]: data},
@@ -301,7 +309,7 @@ def predict_static(data):
 
 def predict_dygraph_jit(data):
     with fluid.dygraph.guard(place):
-        resnet = fluid.dygraph.jit.load(MODEL_SAVE_PATH)
+        resnet = fluid.dygraph.jit.load(MODEL_SAVE_PREFIX)
         resnet.eval()
 
         pred_res = resnet(data)
@@ -310,7 +318,8 @@ def predict_dygraph_jit(data):
 
 
 def predict_analysis_inference(data):
-    output = PredictorTools(MODEL_SAVE_PATH, VARIABLE_FILENAME, [data])
+    output = PredictorTools(MODEL_SAVE_DIR, MODEL_FILENAME, PARAMS_FILENAME,
+                            [data])
     out = output()
     return out
 
@@ -345,6 +354,13 @@ class TestResnet(unittest.TestCase):
             msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                              dygraph_loss))
         self.verify_predict()
+
+    def test_in_static_mode_mkldnn(self):
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            train(to_static=True)
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

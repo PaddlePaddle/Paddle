@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 

@@ -200,3 +200,14 @@ def cluster_files_reader(files_pattern,
                     yield line
 
     return reader
+
+
+def _check_exists_and_download(path, url, md5, module_name, download=True):
+    if path and os.path.exists(path):
+        return path
+
+    if download:
+        return paddle.dataset.common.download(url, module_name, md5)
+    else:
+        raise ValueError('{} not exists and auto download disabled'.format(
+            path))

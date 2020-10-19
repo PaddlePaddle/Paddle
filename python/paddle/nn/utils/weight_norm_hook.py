@@ -112,6 +112,14 @@ class WeightNorm(object):
         if dim is None:
             dim = -1
 
+        # support dim is negative numeber, (dim = -1) == (dim = None)
+        weight_dim = len(layer._parameters[name].shape)
+        assert (
+            dim < weight_dim and dim >= -1 * weight_dim
+        ), "dim must set between [-R, R), R means the dimension of weight."
+        if dim != -1:
+            dim = (dim + weight_dim) % weight_dim
+
         fn = WeightNorm(name, dim)
 
         w = getattr(layer, name)

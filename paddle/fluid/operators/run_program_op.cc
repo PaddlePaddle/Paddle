@@ -27,9 +27,6 @@ class RunProgramOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
                       platform::errors::NotFound(
                           "Input(X) of RunProgramOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Params"), true,
-                      platform::errors::NotFound(
-                          "Input(Params) of RunProgramOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"), true,
                       platform::errors::NotFound(
                           "Output(Out) of RunProgramOp should not be null."));
@@ -73,7 +70,8 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
              "(vector<LoDTensor or SelecetedRows>)"
              "The input parameter of RunProgram operator, also the parameters "
              "of the loaded program.")
-        .AsDuplicable();
+        .AsDuplicable()
+        .AsDispensable();
     AddOutput("Out",
               "(vector<LoDTensor>)"
               "The output tensors of RunProgram operator, also the fetch "
@@ -121,10 +119,6 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
                       platform::errors::NotFound(
                           "Input(X) of RunProgramGradOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInputs("Params"), true,
-        platform::errors::NotFound(
-            "Input(Params) of RunProgramGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInputs(framework::GradVarName("Out")), true,
         platform::errors::NotFound(

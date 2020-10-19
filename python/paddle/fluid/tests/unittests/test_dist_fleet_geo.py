@@ -21,7 +21,10 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 from test_dist_fleet_base import TestFleetBase
-from dist_simnet_bow import train_network
+from dist_fleet_simnet_bow import train_network
+import paddle
+
+paddle.enable_static()
 
 
 class TestDistGeoCtr_2x2(TestFleetBase):
@@ -72,7 +75,7 @@ class TestGeoSgdTranspiler(unittest.TestCase):
 
         strategy = StrategyFactory.create_geo_strategy(5)
 
-        avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
+        avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
 
         optimizer = fluid.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)

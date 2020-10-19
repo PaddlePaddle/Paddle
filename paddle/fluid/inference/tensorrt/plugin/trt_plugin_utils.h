@@ -103,7 +103,11 @@ struct Serializer<std::vector<T>,
     DeserializeValue(buffer, buffer_size, &size);
     value->resize(size);
     size_t nbyte = value->size() * sizeof(T);
-    PADDLE_ENFORCE_GE(*buffer_size, nbyte);
+    PADDLE_ENFORCE_GE(*buffer_size, nbyte,
+                      platform::errors::InvalidArgument(
+                          "Insufficient data in buffer, expect contains %d "
+                          "byte, but actually only contains %d byte.",
+                          *buffer_size, nbyte));
     std::memcpy(value->data(), *buffer, nbyte);
     reinterpret_cast<char const*&>(*buffer) += nbyte;
     *buffer_size -= nbyte;

@@ -35,7 +35,7 @@ extern void* tensorrt_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                            \
   struct DynLoad__##__name {                                                  \
     template <typename... Args>                                               \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {          \
+    void* operator()(Args... args) {                                          \
       std::call_once(tensorrt_dso_flag, []() {                                \
         tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
       });                                                                     \
@@ -44,11 +44,13 @@ extern void* tensorrt_dso_handle;
         return nullptr;                                                       \
       }                                                                       \
       using tensorrt_func = decltype(&::__name);                              \
-      return reinterpret_cast<tensorrt_func>(p_##__name)(args...);            \
+      auto ret = reinterpret_cast<tensorrt_func>(p_##__name)(args...);        \
+      return static_cast<void*>(ret);                                         \
     }                                                                         \
   };                                                                          \
   extern DynLoad__##__name __name
 
+#ifdef NV_TENSORRT_MAJOR
 #if (NV_TENSORRT_MAJOR >= 6)
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
@@ -61,6 +63,7 @@ extern void* tensorrt_dso_handle;
 #endif
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
+#endif
 
 }  // namespace dynload
 }  // namespace platform

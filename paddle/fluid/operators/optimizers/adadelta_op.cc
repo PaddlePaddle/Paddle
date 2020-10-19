@@ -24,49 +24,70 @@ class AdadeltaOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("AvgSquaredGrad"),
-                   "Input(AvgSquaredGrad) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("AvgSquaredUpdate"),
-                   "Input(AvgSquaredUpdate) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Param) of AdadeltaOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Grad) of AdadeltaOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("AvgSquaredGrad"), true,
+        platform::errors::InvalidArgument(
+            "Input(AvgSquaredGrad) of AdadeltaOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("AvgSquaredUpdate"), true,
+        platform::errors::InvalidArgument(
+            "Input(AvgSquaredUpdate) of AdadeltaOp should not be null."));
+    PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Param").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
-    PADDLE_ENFORCE(
+        true,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->Inputs("Param").front(),
+            ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Grad").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
+        true,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->Inputs("Grad").front(),
+            ctx->GetInputsVarType("Grad").front()));
 
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("AvgSquaredGradOut"),
-        "Output(AvgSquaredGradOut) of AdadeltaOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("AvgSquaredUpdateOut"),
-        "Output(AvgSquaredUpdateOut) of AdadeltaOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("ParamOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(ParamOut) of AdadeltaOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("AvgSquaredGradOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(AvgSquaredGradOut) of AdadeltaOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("AvgSquaredUpdateOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(AvgSquaredUpdateOut) of AdadeltaOp should not be null."));
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dim, ctx->GetInputDim("Grad"),
-        "param and grad input of AdadeltaOp should have same dimension");
-    PADDLE_ENFORCE_NE(framework::product(ctx->GetInputDim("AvgSquaredGrad")), 0,
-                      "Maybe the Input variable AvgSquaredGrad has not "
-                      "been initialized. You may need to confirm if you put "
-                      "exe.run(startup_program) after optimizer.minimize "
-                      "function.");
+        platform::errors::InvalidArgument(
+            "Param and grad input of AdadeltaOp should have same dimension."));
+    PADDLE_ENFORCE_NE(
+        framework::product(ctx->GetInputDim("AvgSquaredGrad")), 0,
+        platform::errors::InvalidArgument(
+            "Maybe the Input variable AvgSquaredGrad has not "
+            "been initialized. You may need to confirm if you put "
+            "exe.run(startup_program) after optimizer.minimize "
+            "function."));
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredGrad"),
-                      "Param and AvgSquaredGrad input of AdadeltaOp "
-                      "should have same dimension");
+                      platform::errors::InvalidArgument(
+                          "Param and AvgSquaredGrad input of AdadeltaOp "
+                          "should have same dimension"));
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredUpdate"),
-                      "Param and AvgSquaredUpdate input of AdadeltaOp "
-                      "should have same dimension");
+                      platform::errors::InvalidArgument(
+                          "Param and AvgSquaredUpdate input of AdadeltaOp "
+                          "should have same dimension"));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("AvgSquaredGradOut", param_dim);

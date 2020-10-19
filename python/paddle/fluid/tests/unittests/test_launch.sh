@@ -48,9 +48,9 @@ if [ -f $file_1 ]; then
     rm $file_1
 fi
 
-
+# test use DISTRIBUTED_TRAINER_ENDPOINTS env in paddlecloud
 unset PADDLE_PORT
-unset TRAINER_PORTS_NUM
+export DISTRIBUTED_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171
 
 echo ""
 echo "paddle.distributed.launch async poll process test"

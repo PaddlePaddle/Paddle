@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <tuple>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/diag_v2_op.h"
 
@@ -58,6 +59,17 @@ class DiagV2CUDAKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
+    auto GetBlockGridSize = [&dev_ctx](int64_t size) {
+      const int64_t block_size =
+          std::min(size, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock()));
+      int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+      const int64_t max_blocks = std::max(((max_threads - 1) / block_size + 1),
+                                          static_cast<int64_t>(1));
+      const int64_t grid_size =
+          std::min(max_blocks, (size + block_size - 1) / block_size);
+      return std::tuple<int64_t, int64_t>{block_size, grid_size};
+    };
+
     if (x_dims.size() == 1) {
       float padding_value = context.Attr<float>("padding_value");
       math::SetConstant<DeviceContext, T> set_padding_value;
@@ -67,26 +79,23 @@ class DiagV2CUDAKernel : public framework::OpKernel<T> {
       auto size = (offset > 0) ? x_length + offset : x_length - offset;
       const int& x_stride = ComputeStride(0, x_dims);
       if (size > 0) {
-        const int block_num = std::min(static_cast<int>(size),
-                                       dev_ctx.GetMaxPhysicalThreadCount());
-        int size_ = static_cast<int>(size);
-        int block_num_ = static_cast<int>(block_num);
-        const int grid_num =
-            std::min(1024, (size_ + block_num_ - 1) / block_num_);
         const auto& out_stride_0 = ComputeStride(0, out_dims);
         const auto& out_stride_1 = ComputeStride(1, out_dims);
         auto start =
             (offset >= 0 ? offset * out_stride_1 : -offset * out_stride_0);
 
-        PasteDiagonalKernel<T><<<grid_num, block_num, 0, dev_ctx.stream()>>>(
-            out_data, x_data, start, x_length, out_stride_0 + out_stride_1,
-            x_stride);
+        std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
+
+        PasteDiagonalKernel<
+            T><<<std::get<1>(block_grid_size), std::get<0>(block_grid_size), 0,
+                 dev_ctx.stream()>>>(out_data, x_data, start, x_length,
+                                     out_stride_0 + out_stride_1, x_stride);
       }
     } else {
       const int& x_stride_0 = ComputeStride(0, x_dims);
       const int& x_stride_1 = ComputeStride(1, x_dims);
 
-      int size;
+      int64_t size;
       if (offset > 0) {
         size = std::min(x_dims[0], x_dims[1] - offset);
       } else {
@@ -94,18 +103,15 @@ class DiagV2CUDAKernel : public framework::OpKernel<T> {
       }
 
       if (size > 0) {
-        const int block_num = std::min(static_cast<int>(size),
-                                       dev_ctx.GetMaxPhysicalThreadCount());
-        int size_ = static_cast<int>(size);
-        int block_num_ = static_cast<int>(block_num);
-        const int grid_num =
-            std::min(1024, (size_ + block_num_ - 1) / block_num_);
         auto start = (offset >= 0 ? offset * x_stride_1 : -offset * x_stride_0);
         const auto& out_stride_0 = ComputeStride(0, out_dims);
 
-        ExtractDiagonalKernel<T><<<grid_num, block_num, 0, dev_ctx.stream()>>>(
-            out_data, x_data, start, size, x_stride_0 + x_stride_1,
-            out_stride_0);
+        std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
+
+        ExtractDiagonalKernel<
+            T><<<std::get<1>(block_grid_size), std::get<0>(block_grid_size), 0,
+                 dev_ctx.stream()>>>(out_data, x_data, start, size,
+                                     x_stride_0 + x_stride_1, out_stride_0);
       }
     }
   }

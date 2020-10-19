@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
 #include <memory>
-#include <vector>
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"

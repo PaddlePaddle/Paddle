@@ -98,7 +98,7 @@ class AutoCheckpointChecker(object):
             self._fs_cache = os.getenv("PADDLE_EDL_FS_CACHE", ".cache")
 
             self._save_checkpoint_inter = int(
-                os.getenv("PADDLE_EDL_SAVE_CHECKPOINT_INTER", "900"))  #s
+                os.getenv("PADDLE_EDL_SAVE_CHECKPOINT_INTER", "900"))  # s
 
             if not self._ce_test:
                 assert len(self._hdfs_home) > 3 and \
@@ -132,7 +132,7 @@ class AutoCheckpointChecker(object):
         if in_dygraph_mode():
             return False
 
-        return  self._run_env is not None and \
+        return self._run_env is not None and \
             self._platform is not None and \
             self._job_id is not None and \
             self._hdfs_home is not None and \

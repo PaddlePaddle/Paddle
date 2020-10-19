@@ -39,7 +39,7 @@ class LiteEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> in_names_;
   std::vector<std::string> out_names_;
-  paddle::lite::Predictor *engine_;
+  paddle::lite_api::PaddlePredictor *engine_;
   framework::proto::VarType::Type precision_;
   bool use_gpu_;
   bool zero_copy_;
@@ -78,10 +78,10 @@ class LiteEngineOp : public framework::OperatorBase {
       framework::LoDTensor src_t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope,
                                                                   in_names_[i]);
-      paddle::lite::Tensor *dst_t = engine_->GetInput(i);
+      paddle::lite_api::Tensor dst_t = *(engine_->GetInput(i));
       VLOG(3) << "== fluid -> lite (" << in_names_[i] << " -> "
               << engine_->GetInputNames()[i] << ")";
-      inference::lite::utils::TensorCopy(dst_t, &src_t, *ctx, zero_copy_);
+      inference::lite::utils::TensorCopy(&dst_t, &src_t, *ctx, zero_copy_);
     }
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(dev_place)) {
@@ -93,7 +93,7 @@ class LiteEngineOp : public framework::OperatorBase {
     engine_->Run();
     VLOG(3) << "lite engine run done";
     for (size_t i = 0; i < out_names_.size(); i++) {
-      paddle::lite::Tensor src_t = *(engine_->GetOutput(i));
+      paddle::lite_api::Tensor src_t = *(engine_->GetOutput(i));
       framework::LoDTensor *dst_t =
           &inference::analysis::GetFromScope<framework::LoDTensor>(
               scope, out_names_[i]);

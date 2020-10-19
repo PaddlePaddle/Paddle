@@ -44,10 +44,10 @@ class PairwiseDistance(layers.Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        x: :math:`(N, D)` where `D` is the dimension of vector, available dtype
+        x: :math:`[N, D]` where `D` is the dimension of vector, available dtype
             is float32, float64.
-        y: :math:`(N, D)`, y have the same shape and dtype as x.
-        out: :math:`(N)`. If :attr:`keepdim` is ``True``, the out shape is :math:`(N, 1)`.
+        y: :math:`[N, D]`, y have the same shape and dtype as x.
+        out: :math:`[N]`. If :attr:`keepdim` is ``True``, the out shape is :math:`[N, 1]`.
             The same dtype as input tensor.
 
     Examples:
@@ -58,8 +58,8 @@ class PairwiseDistance(layers.Layer):
             paddle.disable_static()
             x_np = np.array([[1., 3.], [3., 5.]]).astype(np.float64)
             y_np = np.array([[5., 6.], [7., 8.]]).astype(np.float64)
-            x = paddle.to_variable(x_np)
-            y = paddle.to_variable(y_np)
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
             dist = paddle.nn.PairwiseDistance()
             distance = dist(x, y)
             print(distance.numpy()) # [5. 5.]
@@ -86,7 +86,7 @@ class PairwiseDistance(layers.Layer):
                                  'PairwiseDistance')
         check_variable_and_dtype(y, 'y', ['float32', 'float64'],
                                  'PairwiseDistance')
-        sub = paddle.elementwise_sub(x, y)
+        sub = paddle.fluid.layers.elementwise_sub(x, y)
 
         helper = LayerHelper("PairwiseDistance", name=self.name)
         attrs = {

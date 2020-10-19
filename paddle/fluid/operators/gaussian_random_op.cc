@@ -34,31 +34,18 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
 
     std::normal_distribution<T> dist(mean, std);
-    const std::string op_type = "gaussian_random";
-    auto shape = GetShape(context, op_type);
+    auto shape = GetShape(context);
     tensor->Resize(shape);
     int64_t size = tensor->numel();
     T* data = tensor->mutable_data<T>(context.GetPlace());
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
 
-    if (framework::Generator::GetInstance()->is_init_py) {
-      std::mt19937_64& gen_engine =
-          framework::Generator::GetInstance()->GetCPUEngine();
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(gen_engine);
-      }
-    } else {
-      unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-      std::minstd_rand engine;
-      if (seed == 0) {
-        seed = std::random_device()();
-      }
-      engine.seed(seed);
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(engine);
-      }
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = dist(*engine);
     }
   }
-};
+};  // namespace operators
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {

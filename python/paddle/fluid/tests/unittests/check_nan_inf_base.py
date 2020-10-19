@@ -28,6 +28,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.compat as cpt
 
+paddle.enable_static()
+
 np.random.seed(0)
 
 

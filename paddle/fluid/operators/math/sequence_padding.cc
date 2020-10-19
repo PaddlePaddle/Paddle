@@ -15,6 +15,16 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence_padding.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace math {
 
@@ -35,7 +45,11 @@ void CopyValidData(framework::Tensor* dst_tensor,
     int valid_seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
     PADDLE_ENFORCE_GE(
         pad_seq_len, valid_seq_len,
-        "The padded sequence length can not be less than its original length.");
+        platform::errors::InvalidArgument(
+            "The padded sequence length can not "
+            "be less than its original length. Expected %ld >= %ld, but got "
+            "%ld < %ld. Please check input value.",
+            pad_seq_len, valid_seq_len, pad_seq_len, valid_seq_len));
     int seq_data_offset = seq_offsets[seq_idx] * step_width;
     int pad_data_offset = layout == kBatchLengthWidth
                               ? seq_idx * pad_seq_len * step_width
@@ -95,9 +109,14 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
-                   "The numel of 'pad_value' can only be 1 or be equal to the "
-                   "'step_width'.");
+
+    PADDLE_ENFORCE_EQ(
+        pad_value.numel() == 1 || pad_value.numel() == step_width, true,
+        platform::errors::InvalidArgument(
+            "The numel of 'pad_value' can only be 1 or be equal to the "
+            "'step_width', but got %ld != 1 and %ld. Please check the input "
+            "value.",
+            pad_value.numel(), step_width));
 
     // fill padding value
     T* pad_data = pad_tensor->data<T>();

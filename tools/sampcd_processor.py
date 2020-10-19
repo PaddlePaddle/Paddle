@@ -480,14 +480,8 @@ def get_filenames():
                 filename = ''
                 print("\nWARNING:----Exception in get api filename----\n")
                 print("\n" + api + ' module is ' + module + "\n")
-            if filename != '':
-                # rm contrib file
-                if filename.startswith(
-                        '../python/paddle/fluid/contrib'
-                ) or filename == '../python/paddle/verison.py':
-                    pass
-                elif filename not in filenames:
-                    filenames.append(filename)
+            if filename != '' and filename not in filenames:
+                filenames.append(filename)
             # get all methods
             method = ''
             if inspect.isclass(eval(api)):
@@ -540,13 +534,6 @@ def get_incrementapi():
                 f.write('\n')
 
 
-# only white on CPU
-gpu_not_white = [
-    "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
-    "cuda_profiler", 'DGCMomentumOptimizer'
-]
-
-
 def get_wlist():
     '''
     this function will get the white list of API.
@@ -557,14 +544,26 @@ def get_wlist():
 
     '''
     wlist = []
+    wlist_file = []
+    # only white on CPU
+    gpu_not_white = []
     with open("wlist.json", 'r') as load_f:
         load_dict = json.load(load_f)
         for key in load_dict:
-            wlist = wlist + load_dict[key]
-    return wlist
+            if key == 'wlist_dir':
+                for item in load_dict[key]:
+                    wlist_file.append(item["name"])
+            elif key == "gpu_not_white":
+                gpu_not_white = load_dict[key]
+            elif key == "wlist_api":
+                for item in load_dict[key]:
+                    wlist.append(item["name"])
+            else:
+                wlist = wlist + load_dict[key]
+    return wlist, wlist_file, gpu_not_white
 
 
-wlist = get_wlist()
+wlist, wlist_file, gpu_not_white = get_wlist()
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
@@ -590,8 +589,14 @@ else:
     if len(filenames) == 0 and len(whl_error) == 0:
         print("-----API_PR.spec is the same as API_DEV.spec-----")
         exit(0)
-    elif '../python/paddle/fluid/core_avx.py' in filenames:
-        filenames.remove('../python/paddle/fluid/core_avx.py')
+    rm_file = []
+    for f in filenames:
+        for w_file in wlist_file:
+            if f.startswith(w_file):
+                rm_file.append(f)
+                filenames.remove(f)
+    if len(rm_file) != 0:
+        print("REMOVE white files: %s" % rm_file)
     print("API_PR is diff from API_DEV: %s" % filenames)
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
     if one_part_filenum == 0:

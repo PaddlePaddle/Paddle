@@ -12,14 +12,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <dirent.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
+
+int DeleteCache(std::string path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir == NULL) return 0;
+  struct dirent* ptr;
+  while ((ptr = readdir(dir)) != NULL) {
+    if (std::strcmp(ptr->d_name, ".") == 0 ||
+        std::strcmp(ptr->d_name, "..") == 0) {
+      continue;
+    } else if (ptr->d_type == 8) {
+      std::string file_rm = path + "/" + ptr->d_name;
+      return remove(file_rm.c_str());
+    }
+  }
+  return 0;
+}
 
 void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
@@ -86,11 +104,15 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
 void trt_ernie(bool with_fp16, std::vector<float> result) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
+  // Delete serialization cache to perform serialization first rather than
+  // deserialization.
+  std::string opt_cache_dir = FLAGS_infer_model + "/_opt_cache";
+  DeleteCache(opt_cache_dir);
+
   SetConfig(&config, model_dir, true /* use_gpu */);
 
   config.SwitchUseFeedFetchOps(false);
 
-  int head_number = 12;
   int batch = 1;
   int min_seq_len = 1;
   int max_seq_len = 128;
@@ -104,17 +126,17 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
       {"read_file_0.tmp_0", min_shape},
       {"read_file_0.tmp_1", min_shape},
       {"read_file_0.tmp_2", min_shape},
-      {"stack_0.tmp_0", {batch, head_number, min_seq_len, min_seq_len}}};
+      {"matmul_0.tmp_0", {batch, min_seq_len, min_seq_len}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
       {"read_file_0.tmp_0", max_shape},
       {"read_file_0.tmp_1", max_shape},
       {"read_file_0.tmp_2", max_shape},
-      {"stack_0.tmp_0", {batch, head_number, max_seq_len, max_seq_len}}};
+      {"matmul_0.tmp_0", {batch, max_seq_len, max_seq_len}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"read_file_0.tmp_0", opt_shape},
       {"read_file_0.tmp_1", opt_shape},
       {"read_file_0.tmp_2", opt_shape},
-      {"stack_0.tmp_0", {batch, head_number, opt_seq_len, opt_seq_len}}};
+      {"matmul_0.tmp_0", {batch, opt_seq_len, opt_seq_len}}};
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
@@ -129,7 +151,7 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   run(config, &out_data);         // serialize
   run(*config_deser, &out_data);  // deserialize
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-6);
+    EXPECT_NEAR(result[i], out_data[i], 1e-2);
   }
 }
 
@@ -137,13 +159,11 @@ TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
   trt_ernie(false, result);
 }
-
-TEST(AnalysisPredictor, fp16) {
 #ifdef SUPPORTS_CUDA_FP16
-  std::vector<float> result = {0.598336, 0.219558, 0.182106};
+TEST(AnalysisPredictor, fp16) {
+  std::vector<float> result = {0.59923654, 0.21923761, 0.18152587};
   trt_ernie(true, result);
-#endif
 }
-
+#endif  // SUPPORTS_CUDA_FP16
 }  // namespace inference
 }  // namespace paddle

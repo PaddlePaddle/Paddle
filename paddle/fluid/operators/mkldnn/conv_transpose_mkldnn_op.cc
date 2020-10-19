@@ -104,6 +104,11 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
+    PADDLE_ENFORCE_EQ(
+        strides.size(), 2,
+        platform::errors::Unimplemented(
+            "Now we only support 2d oneDNN convolution transpose op"));
+
     auto input_dims = input->dims();
     auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
     auto filter_dims = filter->dims();
@@ -115,9 +120,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              data_dims, strides, ksize);
 
-    PADDLE_ENFORCE(
-        dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-        "dilation in convolution is not implemented yet");
+    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                   [](int64_t i) { return i - 1; });
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -209,11 +213,12 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
-          src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_activation, fuse_alpha, fuse_beta, false, fwd_prop_kind);
+          src_md, weights_md, bias_md, dst_md, strides, dilations, paddings,
+          mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta, false,
+          fwd_prop_kind);
     } else {
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
-          src_md, weights_md, boost::none, dst_md, strides, paddings,
+          src_md, weights_md, boost::none, dst_md, strides, dilations, paddings,
           mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta, false,
           fwd_prop_kind);
     }

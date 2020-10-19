@@ -26,7 +26,19 @@
 
 namespace paddle {
 namespace framework {
+class OperatorBase;
+class Scope;
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
+struct VarHandleBase;
+
 class ComputationOpHandle : public OpHandleBase {
  public:
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,

@@ -884,8 +884,8 @@ class TestNLLLossName(unittest.TestCase):
         startup_prog = paddle.static.Program()
         place = paddle.CPUPlace()
         with paddle.static.program_guard(prog, startup_prog):
-            x = paddle.data(name='x', shape=[10, 10], dtype='float64')
-            label = paddle.data(name='label', shape=[10], dtype='int64')
+            x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+            label = paddle.fluid.data(name='label', shape=[10], dtype='int64')
             nll_loss = paddle.nn.loss.NLLLoss(name='nll_loss')
             res = nll_loss(x, label)
             self.assertTrue(res.name.startswith('nll_loss'))
@@ -898,8 +898,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             startup_prog = paddle.static.Program()
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
-                x = paddle.data(name='x', shape=[10, ], dtype='float64')
-                label = paddle.data(name='label', shape=[10, ], dtype='float64')
+                x = paddle.fluid.data(name='x', shape=[10, ], dtype='float64')
+                label = paddle.fluid.data(name='label', shape=[10, ], dtype='float64')
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(x, label)
 
@@ -909,8 +909,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             with fluid.dygraph.guard():
                 x_np = np.random.random(size=(5, )).astype(np.float64)
                 label_np = np.random.randint(0, 10, size=(5, )).astype(np.int64)
-                x = paddle.to_variable(x_np)
-                label = paddle.to_variable(label_np)
+                x = paddle.to_tensor(x_np)
+                label = paddle.to_tensor(label_np)
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(x, label)
 
@@ -922,8 +922,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             startup_prog = paddle.static.Program()
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
-                x = paddle.data(name='x', shape=[10, 10], dtype='float64')
-                label = paddle.data(name='label', shape=[10], dtype='int64')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+                label = paddle.fluid.data(name='label', shape=[10], dtype='int64')
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='')
                 res = nll_loss(x, label)
 
@@ -933,8 +933,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             with fluid.dygraph.guard():
                 x_np = np.random.random(size=(5, 3)).astype(np.float64)
                 label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
-                x = paddle.to_variable(x_np)
-                label = paddle.to_variable(label_np)
+                x = paddle.to_tensor(x_np)
+                label = paddle.to_tensor(label_np)
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='')
                 res = nll_loss(x, label)
 
@@ -946,8 +946,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             startup_prog = paddle.static.Program()
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
-                x = paddle.data(name='x', shape=[10, 10], dtype='float64')
-                label = paddle.data(name='label', shape=[10], dtype='int64')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+                label = paddle.fluid.data(name='label', shape=[10], dtype='int64')
                 res = paddle.nn.functional.nll_loss(x, label, reduction='')
 
         self.assertRaises(ValueError,
@@ -957,8 +957,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             with fluid.dygraph.guard():
                 x_np = np.random.random(size=(5, 3)).astype(np.float64)
                 label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
-                x = paddle.to_variable(x_np)
-                label = paddle.to_variable(label_np)
+                x = paddle.to_tensor(x_np)
+                label = paddle.to_tensor(label_np)
                 res = paddle.nn.functional.nll_loss(x, label, reduction='')
 
         self.assertRaises(

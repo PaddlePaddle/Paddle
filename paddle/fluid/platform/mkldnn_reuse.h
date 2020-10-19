@@ -82,17 +82,21 @@ class MKLDNNHandlerT {
         fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src_mem_p");
   }
 
+  template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
-    T* ptr = output->mutable_data<T>(place_, fwd_pd_->dst_desc().get_size());
+    T_out* ptr =
+        output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
                                             "@dst_mem_p");
   }
 
+  template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       const framework::Tensor* output) {
-    const T* output_data = output->data<T>();
-    return this->AcquireMemoryFromPrimitive(
-        bwd_pd_->dst_desc(), to_void_cast<T>(output_data), "@bwd-dst_mem_p");
+    const T_out* output_data = output->data<T_out>();
+    return this->AcquireMemoryFromPrimitive(bwd_pd_->dst_desc(),
+                                            to_void_cast<T_out>(output_data),
+                                            "@bwd-dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(
@@ -849,6 +853,9 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
         CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
                           mkldnn_paddings[1]);
       }
+
+      ComputeAdaptivePoolParameters(ctx, src_tz, ksize, strides);
+
       this->AcquireForwardPrimitiveDescriptor(
           is_test ? mkldnn::prop_kind::forward_inference
                   : mkldnn::prop_kind::forward_training,
@@ -913,6 +920,27 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       }
     }
     return mem_p;
+  }
+
+  static void ComputeAdaptivePoolParameters(
+      const paddle::framework::ExecutionContext& ctx,
+      const std::vector<int64_t>& src_tz, std::vector<int64_t>& ksize,
+      std::vector<int64_t>& strides) {
+    if (ctx.Attr<bool>("adaptive")) {
+      // (jczaja): oneDNN is supporting only unchangable in size pool window
+      PADDLE_ENFORCE_EQ(
+          src_tz[src_tz.size() - 1] % ksize[1], 0,
+          platform::errors::Unimplemented(
+              "Input dim must be divisible by corressponding ksize dim."));
+      PADDLE_ENFORCE_EQ(
+          src_tz[src_tz.size() - 2] % ksize[0], 0,
+          platform::errors::Unimplemented(
+              "Input dim must be divisible by corressponding ksize dim."));
+      ksize[0] = src_tz[src_tz.size() - 2] / ksize[0];
+      ksize[1] = src_tz[src_tz.size() - 1] / ksize[1];
+      strides[0] = ksize[0];
+      strides[1] = ksize[1];
+    }
   }
 
  private:
@@ -1302,6 +1330,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
       boost::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int64_t>& strides,
+      const std::vector<int64_t>& dilations,
       const std::vector<int64_t>& paddings, const mkldnn::engine& engine,
       const std::string& fuse_activation, float fuse_alpha, float fuse_beta,
       const bool fuse_residual_conn, mkldnn::prop_kind fwd_prop_kind,
@@ -1324,18 +1353,18 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
           dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {
         mkldnn::memory::dims stride_dims = strides;
-
+        mkldnn::memory::dims dilations_dims = dilations;
         auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
         auto conv_desc =
             bias ? typename forward_t::desc(
                        fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, *bias, dst, stride_dims,
+                       src, weights, *bias, dst, stride_dims, dilations_dims,
                        mkldnn_paddings[0], mkldnn_paddings[1])
                  : typename forward_t::desc(
                        fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, dst, stride_dims, mkldnn_paddings[0],
-                       mkldnn_paddings[1]);
+                       src, weights, dst, stride_dims, dilations_dims,
+                       mkldnn_paddings[0], mkldnn_paddings[1]);
 
         mkldnn::primitive_attr conv_attr =
             CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,

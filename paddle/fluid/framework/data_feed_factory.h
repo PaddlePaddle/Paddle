@@ -16,10 +16,13 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
 namespace framework {
+class DataFeed;
+
 class DataFeedFactory {
  public:
   static std::string DataFeedTypeList();
