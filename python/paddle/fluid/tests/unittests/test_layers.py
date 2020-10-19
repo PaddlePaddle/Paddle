@@ -316,23 +316,6 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
-    def test_pad2d(self):
-        with self.static_graph():
-            t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
-            ret = layers.pad2d(t, paddings=[1, 1, 1, 1])
-            static_ret = self.get_static_graph_result(
-                feed={'t': np.ones(
-                    [3, 3, 5, 5], dtype='float32')},
-                fetch_list=[ret])[0]
-
-        with self.dynamic_graph():
-            t = np.ones([3, 3, 5, 5], dtype='float32')
-            my_pad2d = paddle.nn.layer.Pad2D(paddings=1)
-            dy_ret = my_pad2d(base.to_variable(t))
-            dy_ret_value = dy_ret.numpy()
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-
     def test_matmul(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
