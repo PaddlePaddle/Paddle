@@ -50,6 +50,7 @@ extern void* tensorrt_dso_handle;
   };                                                                          \
   extern DynLoad__##__name __name
 
+#ifdef NV_TENSORRT_MAJOR
 #if (NV_TENSORRT_MAJOR >= 6)
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
@@ -62,6 +63,7 @@ extern void* tensorrt_dso_handle;
 #endif
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
+#endif
 
 }  // namespace dynload
 }  // namespace platform
