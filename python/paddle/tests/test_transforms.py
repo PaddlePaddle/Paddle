@@ -332,7 +332,7 @@ class TestFunctional(unittest.TestCase):
         with self.assertRaises(TypeError):
             F.to_grayscale(1)
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             set_image_backend(1)
 
     def test_normalize(self):

@@ -34,6 +34,7 @@ def set_image_backend(backend):
             import shutil
             import tempfile
             import numpy as np
+            from PIL import Image
 
             from paddle.vision import DatasetFolder
             from paddle.vision import set_image_backend
@@ -48,8 +49,8 @@ def set_image_backend(backend):
                     if not os.path.exists(sub_dir):
                         os.makedirs(sub_dir)
                     for j in range(2):
-                        fake_img = (np.random.random((32, 32, 3)) * 255).astype('uint8')
-                        cv2.imwrite(os.path.join(sub_dir, str(j) + '.jpg'), fake_img)
+                        fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype('uint8'))
+                        fake_img.save(os.path.join(sub_dir, str(j) + '.png'))
                 return data_dir
 
             temp_dir = make_fake_dir()
@@ -64,7 +65,7 @@ def set_image_backend(backend):
 
             # use opencv as backend
             # set_image_backend('cv2')
-    
+
             # cv2_data_folder = DatasetFolder(temp_dir)
 
             # for items in cv2_data_folder:
@@ -78,7 +79,7 @@ def set_image_backend(backend):
     global _image_backend
     if backend not in ['pil', 'cv2']:
         raise ValueError(
-            "Expected backend are one of {'pil', 'cv2'}, but got {}"
+            "Expected backend are one of ['pil', 'cv2'], but got {}"
             .format(backend))
     _image_backend = backend
 
