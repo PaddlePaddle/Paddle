@@ -111,7 +111,8 @@ def download(url, module_name, md5sum, save_name=None):
                             sys.stderr.write(".")
                         sys.stdout.flush()
         except Exception as e:
-            break
+            # re-try
+            continue
     sys.stderr.write("\nDownload finished\n")
     sys.stdout.flush()
     return filename
