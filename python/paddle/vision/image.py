@@ -123,6 +123,7 @@ def image_load(path, backend=None):
     
         .. code-block:: python
 
+            import numpy as np
             from PIL import Image
             from paddle.vision import image_load, set_image_backend
 
