@@ -4691,7 +4691,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     This OP computes the ``logical and`` of tensor elements over the given dimension, and output the result.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor, the input data type should be `bool`.
+        input (Tensor): the input tensor, it's data type should be `bool`.
         dim (list|int|optional): The dimension along which the logical and is computed.
             If :attr:`None`, compute the logical and over all elements of
             :attr:`input` and return a Tensor variable with a single element,
@@ -4704,11 +4704,12 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
                        will be named automatically. The default value is None.
 
     Returns:
-        Variable, the output data type is bool. : The reduced tensor variable with ``logical and`` in given dims.
+        Tensor, the output data type is bool. : The reduced tensor variable with ``logical and`` in given dims.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
@@ -4716,15 +4717,15 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
-            x = layers.cast(x, 'bool')
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.cast(x, 'bool')
 
-            out = layers.reduce_all(x)  # False
-            out = layers.reduce_all(x, dim=0)  # [True, False]
-            out = layers.reduce_all(x, dim=-1)  # [False, True]
+            out = paddle.reduce_all(x)  # False
+            out = paddle.reduce_all(x, dim=0)  # [True, False]
+            out = paddle.reduce_all(x, dim=-1)  # [False, True]
             # keep_dim=False, x.shape=(2,2), out.shape=(2,)
 
-            out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
+            out = paddle.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
@@ -4751,7 +4752,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     This OP computes the ``logical or`` of tensor elements over the given dimension, and output the result.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor, the input data type should be `bool`.
+        input (Tensor): the input tensor, it's data type should be `bool`.
         dim (list|int|optional): The dimension along which the logical and is computed.
             If :attr:`None`, compute the logical and over all elements of
             :attr:`input` and return a Tensor variable with a single element,
@@ -4760,14 +4761,15 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true. The default value is False.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable, the output data type is bool. : The reduced tensor variable with ``logical or`` in given dims.
+        Tensor, the output data type is bool. : The reduced tensor variable with ``logical or`` in given dims.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
@@ -4775,15 +4777,15 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
-            x = layers.cast(x, 'bool')
+            x = paddle.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = paddle.cast(x, 'bool')
 
-            out = layers.reduce_any(x)  # True
-            out = layers.reduce_any(x, dim=0)  # [True, False]
-            out = layers.reduce_any(x, dim=-1)  # [True, False]
+            out = paddle.reduce_any(x)  # True
+            out = paddle.reduce_any(x, dim=0)  # [True, False]
+            out = paddle.reduce_any(x, dim=-1)  # [True, False]
             # keep_dim=False, x.shape=(2,2), out.shape=(2,)
 
-            out = layers.reduce_any(x, dim=1,
+            out = paddle.reduce_any(x, dim=1,
                                      keep_dim=True)  # [[True], [False]]
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
