@@ -1529,6 +1529,11 @@ function test_fluid_lib() {
 EOF
     fluid_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    gcc_v=`gcc -dumpversion`
+    if [[ "${gcc_v}" == "8.2.0" ]]; then
+        export CUDA_LIB=`find /usr -name libcuda.so`;
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CUDA_LIB}:/usr/lib64;
+    fi
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
