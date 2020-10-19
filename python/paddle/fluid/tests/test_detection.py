@@ -318,8 +318,7 @@ class TestGenerateProposalLabels(unittest.TestCase):
                 name='is_crowd', shape=[6], dtype='int32', lod_level=1)
             gt_boxes = fluid.data(
                 name='gt_boxes', shape=[6, 4], dtype='float32', lod_level=1)
-            im_info = fluid.data(
-                name='im_info', shape=[1, 3], dtype='float32', lod_level=1)
+            im_info = fluid.data(name='im_info', shape=[1, 3], dtype='float32')
             max_overlap = fluid.data(
                 name='max_overlap', shape=[4], dtype='float32', lod_level=1)
             self.class_nums = 5

@@ -33,6 +33,9 @@ void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
+// Filter the ground-truth in RoIs and the RoIs with non-positive area.
+// The ground-truth has max overlap with itself so the max_overlap is 1
+// and the corresponding RoI will be removed.
 template <typename T>
 void FilterRoIs(const platform::DeviceContext& ctx, const Tensor& rpn_rois,
                 const Tensor& max_overlap, Tensor* keep) {
@@ -354,7 +357,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   proposal_with_max_overlap.mutable_data<T>({proposals_num},
                                             context.GetPlace());
 
-  MaxOverlaps<T>(proposal_to_gt_overlaps, &proposal_with_max_overlap);
+  MaxIoU<T>(proposal_to_gt_overlaps, &proposal_with_max_overlap);
 
   // Generate proposal index
   std::vector<std::vector<int>> fg_bg_gt =
@@ -546,7 +549,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         max_overlap_slice =
             max_overlap->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       } else {
-        max_overlap_slice.mutable_data<T>(im_info_slice.dims(),
+        max_overlap_slice.mutable_data<T>({rpn_rois_slice.dims()[0]},
                                           context.GetPlace());
       }
       std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
@@ -620,8 +623,8 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("MaxOverlap",
              "(LoDTensor), This input is a 1D LoDTensor with shape [N]."
              "N is the number of Input(RpnRois), "
-             "each element is the maxoverlap between "
-             "the input RoIs and ground-truth.")
+             "each element is the maximum overlap between "
+             "the proposal RoI and ground-truth.")
         .AsDispensable();
 
     AddOutput(
