@@ -59,7 +59,7 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
           r, xpu::Error_t::SUCCESS,
           platform::errors::PermissionDenied(
               "XPU kernel error of MomentumOp, error message: RUNTIME_ERROR, "
-              "please check whether Baidu Kunlun Card is properly installed."));
+              "please check whether Baidu Kunlun card is properly installed."));
     } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
       PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                         platform::errors::OutOfRange(
