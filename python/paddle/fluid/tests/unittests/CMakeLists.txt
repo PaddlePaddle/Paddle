@@ -129,6 +129,8 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
+
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()

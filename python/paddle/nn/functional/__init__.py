@@ -216,3 +216,4 @@ from .vision import pixel_shuffle  #DEFINE_ALIAS
 # from .vision import yolov3_loss  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
 from .input import embedding  #DEFINE_ALIAS
+from ...fluid.layers import gather_tree

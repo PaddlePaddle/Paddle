@@ -174,7 +174,7 @@ class CacheKey(object):
         # 1. filter `self` in args
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
-        # 2. convert tensor and numpy array into InputSpec 
+        # 2. convert tensor and numpy array into InputSpec
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
         input_with_spec = function_spec.args_to_input_spec(_args, _kwargs)
 
@@ -592,9 +592,8 @@ class ConcreteProgram(object):
                     inputs = tuple([class_instance] + list(inputs))
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = list(
-                    get_parameters(class_instance).values()) + list(
-                        get_buffers(class_instance).values())
+                all_parameters_and_buffers = _extract_indeed_params_buffers(
+                    class_instance)
 
                 # 3. Builds program only once and returns the output Variables.
                 with param_guard(get_parameters(
@@ -620,6 +619,17 @@ class ConcreteProgram(object):
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
+
+
+def _extract_indeed_params_buffers(class_instance):
+    """
+    To filter not initialzed buffers.
+    """
+    params = list(get_parameters(class_instance).values())
+    buffers = list(get_buffers(class_instance).values())
+    buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
+
+    return params + buffers
 
 
 class ProgramCache(object):
