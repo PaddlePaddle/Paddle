@@ -2640,8 +2640,8 @@ def generate_proposal_labels(rpn_rois,
         use_random(bool): Use random sampling to choose foreground and background boxes.
         is_cls_agnostic(bool): bbox regression use class agnostic simply which only represent fg and bg boxes.
         is_cascade_rcnn(bool): it will filter some bbox crossing the image's boundary when setting True.
-        max_overlap(Variable): Maximum overlap between each Input box and ground-truth.
-        return_max_overlap(bool): Whether return the maximum overlap between each Output box and ground-truth.
+        max_overlap(Variable): Maximum overlap between each proposal box and ground-truth.
+        return_max_overlap(bool): Whether return the maximum overlap between each sampled RoI and ground-truth.
 
     Returns:
         tuple:
@@ -2652,7 +2652,7 @@ def generate_proposal_labels(rpn_rois,
         - **bbox_targets**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The regression targets of all RoIs. The data type is the same as ``rpn_rois``.
         - **bbox_inside_weights**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of foreground boxes' regression loss. The data type is the same as ``rpn_rois``.
         - **bbox_outside_weights**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of regression loss. The data type is the same as ``rpn_rois``.
-        - **max_overlap**: 1-D LoDTensor with shape ``[P]``. P is the number of output ``rois``. The maximum overlap between each output box and ground-truth.
+        - **max_overlap**: 1-D LoDTensor with shape ``[P]``. P is the number of output ``rois``. The maximum overlap between each sampled RoI and ground-truth.
 
     Examples:
         .. code-block:: python
