@@ -295,6 +295,15 @@ class MyModel(paddle.nn.Layer):
         return y
 
 
+class MyDataset(Dataset):
+    def __getitem__(self, idx):
+        return np.random.random(size=(20,)).astype(np.float32), \
+                np.random.randint(0, 10, size=(1,)).astype(np.int64)
+
+    def __len__(self):
+        return 40
+
+
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         paddle.manual_seed(seed)
