@@ -31,7 +31,6 @@ def set_image_backend(backend):
         .. code-block:: python
 
             import os
-            import cv2
             import shutil
             import tempfile
             import numpy as np
@@ -39,7 +38,7 @@ def set_image_backend(backend):
             from paddle.vision import DatasetFolder
             from paddle.vision import set_image_backend
 
-            set_image_backend('cv2')
+            set_image_backend('pil')
 
             def make_fake_dir():
                 data_dir = tempfile.mkdtemp()
@@ -55,16 +54,6 @@ def set_image_backend(backend):
 
             temp_dir = make_fake_dir()
 
-            cv2_data_folder = DatasetFolder(temp_dir)
-
-            for items in cv2_data_folder:
-                break
-
-            # should get numpy.ndarray
-            print(type(items[0]))
-
-            set_image_backend('pil')
-
             pil_data_folder = DatasetFolder(temp_dir)
 
             for items in pil_data_folder:
@@ -72,6 +61,17 @@ def set_image_backend(backend):
 
             # should get PIL.Image.Image
             print(type(items[0]))
+
+            # use opencv as backend
+            # set_image_backend('cv2')
+    
+            # cv2_data_folder = DatasetFolder(temp_dir)
+
+            # for items in cv2_data_folder:
+            #     break
+
+            # should get numpy.ndarray
+            # print(type(items[0]))
 
             shutil.rmtree(temp_dir)
     """
