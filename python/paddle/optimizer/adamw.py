@@ -42,8 +42,8 @@ class AdamW(Adam):
 
 
     Args:
-        learning_rate (float|_LRScheduler, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a _LRScheduler. The default value is 0.001.
+        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler. The default value is 0.001.
 	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.

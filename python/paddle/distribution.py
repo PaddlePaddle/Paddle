@@ -25,9 +25,9 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
+from .fluid.layers import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 from .fluid import core
 from .fluid.framework import in_dygraph_mode
-from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 from .tensor import arange, gather_nd, concat, multinomial
 import math
 import numpy as np
@@ -662,48 +662,54 @@ class Categorical(Distribution):
 
     Args:
         logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
+        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Categorical
+            import paddle
+            from paddle.distribution import Categorical
 
-          x = paddle.rand([6])
-          print(x.numpy())
-          # [0.32564053, 0.99334985, 0.99034804,
-          #  0.09053693, 0.30820143, 0.19095989]
-          y = paddle.rand([6])
-          print(y.numpy())
-          # [0.6365463 , 0.7278677 , 0.90260243, 
-          # 0.5226815 , 0.35837543, 0.13981032]
+            paddle.manual_seed(100) # on CPU device
+            x = paddle.rand([6])
+            print(x.numpy())
+            # [0.5535528  0.20714243 0.01162981
+            #  0.51577556 0.36369765 0.2609165 ]
 
-          cat = Categorical(x)
-          cat2 = Categorical(y)
+            paddle.manual_seed(200) # on CPU device
+            y = paddle.rand([6])
+            print(y.numpy())
+            # [0.77663314 0.90824795 0.15685187
+            #  0.04279523 0.34468332 0.7955718 ]
 
-          cat.sample([2,3])
-          # [[5, 1, 1],
-          # [0, 1, 2]]
+            cat = Categorical(x)
+            cat2 = Categorical(y)
 
-          cat.entropy()
-          # [1.71887]
+            paddle.manual_seed(1000) # on CPU device
+            cat.sample([2,3])
+            # [[0, 0, 5],
+            #  [3, 4, 5]]
 
-          cat.kl_divergence(cat2)
-          # [0.0278455]
+            cat.entropy()
+            # [1.77528]
 
-          value = paddle.to_tensor([2,1,3])
-          cat.probs(value)
-          # [0.341613 0.342648 0.03123]
+            cat.kl_divergence(cat2)
+            # [0.071952]
 
-          cat.log_prob(value)
-          # [-1.07408 -1.07105 -3.46638]
+            value = paddle.to_tensor([2,1,3])
+            cat.probs(value)
+            # [0.00608027 0.108298 0.269656]
+
+            cat.log_prob(value)
+            # [-5.10271 -2.22287 -1.31061]
 
     """
 
     def __init__(self, logits, name=None):
         """
         Args:
-            logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32 or float64.
+            logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
+            name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         """
         if not in_dygraph_mode():
             check_type(logits, 'logits', (np.ndarray, tensor.Variable, list),
@@ -727,27 +733,29 @@ class Categorical(Distribution):
         """Generate samples of the specified shape.
 
         Args:
-          shape (list): Shape of the generated samples.
+            shape (list): Shape of the generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.
+            Tensor: A tensor with prepended dimensions shape.
         
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Categorical
+                import paddle
+                from paddle.distribution import Categorical
 
-          x = paddle.rand([6])
-          print(x.numpy())
-          # [0.32564053, 0.99334985, 0.99034804,
-          #  0.09053693, 0.30820143, 0.19095989]
+                paddle.manual_seed(100) # on CPU device
+                x = paddle.rand([6])
+                print(x.numpy())
+                # [0.5535528  0.20714243 0.01162981
+                #  0.51577556 0.36369765 0.2609165 ]
 
-          cat = Categorical(x)
+                cat = Categorical(x)
 
-          cat.sample([2,3])
-          # [[5, 1, 1],
-          # [0, 1, 2]]
+                paddle.manual_seed(1000) # on CPU device
+                cat.sample([2,3])
+                # [[0, 0, 5],
+                #  [3, 4, 5]]
 
         """
         name = self.name + '_sample'
@@ -775,28 +783,31 @@ class Categorical(Distribution):
             other (Categorical): instance of Categorical. The data type is float32.
 
         Returns:
-            Variable: kl-divergence between two Categorical distributions.
+            Tensor: kl-divergence between two Categorical distributions.
         
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Categorical
+                import paddle
+                from paddle.distribution import Categorical
 
-          x = paddle.rand([6])
-          print(x.numpy())
-          # [0.32564053, 0.99334985, 0.99034804,
-          #  0.09053693, 0.30820143, 0.19095989]
-          y = paddle.rand([6])
-          print(y.numpy())
-          # [0.6365463 , 0.7278677 , 0.90260243, 
-          # 0.5226815 , 0.35837543, 0.13981032]
+                paddle.manual_seed(100) # on CPU device
+                x = paddle.rand([6])
+                print(x.numpy())
+                # [0.5535528  0.20714243 0.01162981
+                #  0.51577556 0.36369765 0.2609165 ]
 
-          cat = Categorical(x)
-          cat2 = Categorical(y)
+                paddle.manual_seed(200) # on CPU device
+                y = paddle.rand([6])
+                print(y.numpy())
+                # [0.77663314 0.90824795 0.15685187
+                #  0.04279523 0.34468332 0.7955718 ]
 
-          cat.kl_divergence(cat2)
-          # [0.0278455]
+                cat = Categorical(x)
+                cat2 = Categorical(y)
+
+                cat.kl_divergence(cat2)
+                # [0.071952]
 
         """
         name = self.name + '_kl_divergence'
@@ -823,23 +834,24 @@ class Categorical(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of Categorical distribution. The data type is float32.
+            Tensor: Shannon entropy of Categorical distribution. The data type is float32.
         
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Categorical
+                import paddle
+                from paddle.distribution import Categorical
 
-          x = paddle.rand([6])
-          print(x.numpy())
-          # [0.32564053, 0.99334985, 0.99034804,
-          #  0.09053693, 0.30820143, 0.19095989]
+                paddle.manual_seed(100) # on CPU device
+                x = paddle.rand([6])
+                print(x.numpy())
+                # [0.5535528  0.20714243 0.01162981
+                #  0.51577556 0.36369765 0.2609165 ]
 
-          cat = Categorical(x)
+                cat = Categorical(x)
 
-          cat.entropy()
-          # [1.71887]
+                cat.entropy()
+                # [1.77528]
 
         """
         name = self.name + '_entropy'
@@ -864,27 +876,28 @@ class Categorical(Distribution):
         with ``logits. That is, ``value[:-1] = logits[:-1]``.
 
         Args:
-          value (Tensor): The input tensor represents the selected category index.
+            value (Tensor): The input tensor represents the selected category index.
 
         Returns:
-          Tensor: probability according to the category index.
+            Tensor: probability according to the category index.
         
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Categorical
+                import paddle
+                from paddle.distribution import Categorical
 
-          x = paddle.rand([6])
-          print(x.numpy())
-          # [0.32564053, 0.99334985, 0.99034804,
-          #  0.09053693, 0.30820143, 0.19095989]
+                paddle.manual_seed(100) # on CPU device
+                x = paddle.rand([6])
+                print(x.numpy())
+                # [0.5535528  0.20714243 0.01162981
+                #  0.51577556 0.36369765 0.2609165 ]
 
-          cat = Categorical(x)
+                cat = Categorical(x)
 
-          value = paddle.to_tensor([2,1,3])
-          cat.probs(value)
-          # [0.341613 0.342648 0.03123]
+                value = paddle.to_tensor([2,1,3])
+                cat.probs(value)
+                # [0.00608027 0.108298 0.269656]
 
         """
         name = self.name + '_probs'
@@ -929,28 +942,28 @@ class Categorical(Distribution):
         """Log probabilities of the given category. Refer to ``probs`` method.
 
         Args:
-          value (Tensor): The input tensor represents the selected category index.
+            value (Tensor): The input tensor represents the selected category index.
 
         Returns:
-          Tensor: Log probability.
+            Tensor: Log probability.
         
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-          import paddle
-          from paddle.distribution import Categorical
+                import paddle
+                from paddle.distribution import Categorical
 
-          x = paddle.rand([6])
-          print(x.numpy())
-          # [0.32564053, 0.99334985, 0.99034804,
-          #  0.09053693, 0.30820143, 0.19095989]
+                paddle.manual_seed(100) # on CPU device
+                x = paddle.rand([6])
+                print(x.numpy())
+                # [0.5535528  0.20714243 0.01162981
+                #  0.51577556 0.36369765 0.2609165 ]
 
-          cat = Categorical(x)
+                cat = Categorical(x)
 
-          value = paddle.to_tensor([2,1,3])
-
-          cat.log_prob(value)
-          # [-1.07408 -1.07105 -3.46638]
+                value = paddle.to_tensor([2,1,3])
+                cat.log_prob(value)
+                # [-5.10271 -2.22287 -1.31061]
 
         """
         name = self.name + '_log_prob'

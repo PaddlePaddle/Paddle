@@ -128,6 +128,36 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         # recompute
         self.assertIn('subprog', ''.join(outs))
 
+    def test_amp_recompute_lars_dgc_not_apply_optimizer(self):
+        """ test amp + recompute + lars + dgc,
+            amp -/-> dgc, max_path is amp-->recompute-->lars
+        """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'dgc')
+        self.set_strategy(strategy, 'amp')
+        self.set_strategy(strategy, 'recompute')
+        self.set_strategy(strategy, 'lars')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+
+        strategy = fleet._final_strategy()
+
+        ops = [op.type for op in avg_cost.block.ops]
+        outs = [
+            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
+        ]
+        self.assertIn('cast', ops)
+        self.assertIn('check_finite_and_unscale', ops)
+
+        # recompute
+        self.assertIn('subprog', ''.join(outs))
+
+        # lars
+        self.assertIn('lars_momentum', ops)
+
+        # dgc not apply
+        self.assertFalse(strategy.dgc)
+
 
 if __name__ == "__main__":
     unittest.main()
