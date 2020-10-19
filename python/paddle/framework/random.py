@@ -48,7 +48,7 @@ def seed(seed):
             core.default_cuda_generator(i).manual_seed(seed)
 
     core.default_cpu_generator()._is_init_py = True
-    return core.default_cpu_generator().manual_seed(seed)
+    return core.default_cpu_generator().seed(seed)
 
 
 def get_cuda_rng_state():
