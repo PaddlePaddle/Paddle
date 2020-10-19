@@ -55,6 +55,7 @@ class TestAssignFP16Op(op_test.OpTest):
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
     def test_assign_LoDTensorArray(self):
+        paddle.enable_static()
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program):
