@@ -63,14 +63,14 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
     PADDLE_ENFORCE_EQ(beta1_pow_out->numel(), 1,
                       platform::errors::InvalidArgument(
-                          "Tensor holds the wrong size, Expected beta1 pow "
+                          "Unsupported Variable Type, Expected beta1 pow "
                           "output size is 1, but received "
                           "value is:%d.",
                           beta1_pow_out->numel()));
 
     PADDLE_ENFORCE_EQ(beta2_pow_out->numel(), 1,
                       platform::errors::InvalidArgument(
-                          "Tensor holds the wrong size, Expected beta2 pow "
+                          "Unsupported Variable Type, Expected beta2 pow "
                           "output size is 1, but received "
                           "value is:%d.",
                           beta2_pow_out->numel()));
