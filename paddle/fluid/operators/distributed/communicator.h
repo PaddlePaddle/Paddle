@@ -306,8 +306,7 @@ class AsyncCommunicator : public Communicator {
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
 
-  std::vector<std::tuple<const CommContext *, const CommContext *>>
-      pair_contexts_;
+  std::vector<C10Context> slice_contexts_;
   std::vector<std::unique_ptr<std::thread>> slice_threads_;
   Scope *recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope

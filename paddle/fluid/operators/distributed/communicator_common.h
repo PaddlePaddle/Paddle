@@ -22,6 +22,15 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+struct C10Context {
+  C10Context() = default;
+  C10Context(const CommContext *send, const CommContext *recv)
+      : send(send), recv(recv) {}
+
+  const CommContext *send;
+  const CommContext *recv;
+};
+
 struct CommContext {
   CommContext() = default;
 
