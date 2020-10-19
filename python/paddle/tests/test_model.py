@@ -631,6 +631,7 @@ class TestModelWithLRScheduler(unittest.TestCase):
                 parameters=parameters)
             return optimizer
 
+        # dynamic test
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
         net = MyModel()
@@ -643,7 +644,18 @@ class TestModelWithLRScheduler(unittest.TestCase):
         dataset = MyDataset()
         model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
 
+        # static test
         paddle.enable_static()
+
+        net = MyModel()
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        optim = make_optimizer(net.parameters())
+        model = Model(net, inputs, labels)
+        model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+
+        dataset = MyDataset()
+        model.fit(dataset, dataset, batch_size=4, epochs=10, num_workers=0)
 
 
 class TestRaiseError(unittest.TestCase):
