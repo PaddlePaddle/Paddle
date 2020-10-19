@@ -162,8 +162,8 @@ def monkey_patch_varbase():
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
                     inputs.append(tmp)
-                ret = paddle.sums(inputs)
-                loss = paddle.fluid.layers.reduce_sum(ret)
+                ret = paddle.add_n(inputs)
+                loss = paddle.sum(ret)
                 loss.backward()
 
         """

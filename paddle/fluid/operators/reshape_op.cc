@@ -675,6 +675,6 @@ REGISTER_OP_XPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel, plat::float16,
-                               ops::ReshapeGradKernel,
-                               bool ops::ReshapeGradKernel);
+                               ops::ReshapeGradKernel, bool,
+                               ops::ReshapeGradKernel);
 #endif

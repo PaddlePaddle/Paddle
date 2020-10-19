@@ -1330,6 +1330,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       const mkldnn::memory::desc& src, const mkldnn::memory::desc& weights,
       boost::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int64_t>& strides,
+      const std::vector<int64_t>& dilations,
       const std::vector<int64_t>& paddings, const mkldnn::engine& engine,
       const std::string& fuse_activation, float fuse_alpha, float fuse_beta,
       const bool fuse_residual_conn, mkldnn::prop_kind fwd_prop_kind,
@@ -1352,18 +1353,18 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
           dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {
         mkldnn::memory::dims stride_dims = strides;
-
+        mkldnn::memory::dims dilations_dims = dilations;
         auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
         auto conv_desc =
             bias ? typename forward_t::desc(
                        fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, *bias, dst, stride_dims,
+                       src, weights, *bias, dst, stride_dims, dilations_dims,
                        mkldnn_paddings[0], mkldnn_paddings[1])
                  : typename forward_t::desc(
                        fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, dst, stride_dims, mkldnn_paddings[0],
-                       mkldnn_paddings[1]);
+                       src, weights, dst, stride_dims, dilations_dims,
+                       mkldnn_paddings[0], mkldnn_paddings[1]);
 
         mkldnn::primitive_attr conv_attr =
             CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,

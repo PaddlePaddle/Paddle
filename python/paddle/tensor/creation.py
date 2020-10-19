@@ -47,7 +47,8 @@ __all__ = [
     'empty_like',
     'triu',
     'tril',
-    'meshgrid'
+    'meshgrid',
+    'assign',
 ]
 
 
@@ -312,7 +313,7 @@ def ones(shape, dtype=None, name=None):
           #  [1 1]]
           
           # shape is a Tensor
-          shape = paddle.fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
           data3 = paddle.ones(shape=shape, dtype='int32') 
           # [[1 1]
           #  [1 1]]
@@ -393,7 +394,7 @@ def zeros(shape, dtype=None, name=None):
           #  [0. 0.]]
           
           # shape is a Tensor
-          shape = paddle.fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
           data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
@@ -521,18 +522,18 @@ def full(shape, fill_value, dtype=None, name=None):
           # [0]]
 
           # attr shape is a list which contains Tensor.
-          positive_2 = paddle.fluid.layers.fill_constant([1], "int32", 2)
+          positive_2 = paddle.full([1], 2, "int32")
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
           # [[1.5 1.5]]
 
           # attr shape is a Tensor.
-          shape = paddle.fluid.layers.fill_constant([2], "int32", 2)
+          shape = paddle.full([2], 2, "int32")
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
           # [[True True] 
           #  [True True]]
           
           # attr fill_value is a Tensor.
-          val = paddle.fluid.layers.fill_constant([1], "float32", 2.0)
+          val = paddle.full([1], 2.0, "float32")
           data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
           # [[2.0] 
           #  [2.0]]
@@ -1106,3 +1107,77 @@ def empty_like(x, dtype=None, name=None):
         stop_gradient=True)
     out.stop_gradient = True
     return out
+
+
+def assign(x, output=None):
+    """
+ 
+ 
+    The OP copies the :attr:`x` to the :attr:`output`.
+ 
+    Parameters:
+        x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+            float16, float32, float64, int32 and int64.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
+ 
+    Returns:
+        Tensor: A tensor with the same shape, data type and value as :attr:`x`.
+ 
+    Examples:
+        .. code-block:: python
+ 
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    helper = LayerHelper('assign', **locals())
+    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    if isinstance(x, Variable):
+        check_dtype(
+            x.dtype, 'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+            'assign', '(When the type of input in assign is Variable.)')
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+    elif isinstance(x, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(x.dtype)
+        if dtype == VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [bool(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.INT32:
+            value_name = "int32_values"
+            values = [int(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.INT64:
+            value_name = "int64_values"
+            values = [int(v) for v in x.flat]
+        else:
+            raise TypeError(
+                "When the type of 'x' in assign is numpy.ndarray, "
+                "the data type of 'x' must be bool, float32, int32 or int64, but "
+                "received %s." % convert_dtype(dtype))
+        if x.size > 1024 * 1024:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={'dtype': dtype,
+                   'shape': list(x.shape),
+                   value_name: values})
+
+    return output
