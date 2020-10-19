@@ -531,4 +531,6 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.enable_static()
     unittest.main()
