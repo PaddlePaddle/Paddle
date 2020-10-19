@@ -110,6 +110,7 @@ if(WITH_MKLDNN)
     pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
     pass_library(reshape_transpose_matmul_mkldnn_fuse_pass inference DIR mkldnn)
     pass_library(matmul_transpose_reshape_fuse_pass inference DIR mkldnn)
+    pass_library(batch_norm_act_fuse_pass inference DIR mkldnn)
 endif()
 
 cc_library(fuse_bn_act_pass SRCS fuse_bn_act_pass.cc DEPS pass graph_pattern_detector )
