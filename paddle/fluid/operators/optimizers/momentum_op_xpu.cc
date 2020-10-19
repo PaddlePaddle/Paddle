@@ -57,12 +57,12 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     } else if (r == xpu::Error_t::RUNTIME_ERROR) {
       PADDLE_ENFORCE_EQ(
           r, xpu::Error_t::SUCCESS,
-          platform::errors::PermissionDenied(
+          platform::errors::Unavailable(
               "XPU kernel error of MomentumOp, error message: RUNTIME_ERROR, "
               "please check whether Baidu Kunlun card is properly installed."));
     } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
       PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::OutOfRange(
+                        platform::errors::ResourceExhausted(
                             "XPU kernel error of MomentumOp, error message: "
                             "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
     }
