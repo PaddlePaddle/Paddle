@@ -45,25 +45,9 @@ void* GetTensorRtHandle() {
 
   if (nullptr == dso_handle) {
     auto error_msg =
-        "TensorRT dynamic library (%s) that Paddle depends on is not "
-        "configured correctly. (error code is %s)\n"
-        "  Suggestions:\n"
-        "  1. Check if TensorRT "
-        "is installed correctly and its version is matched with paddlepaddle "
-        "you installed.\n"
-        "  2. Configure TensorRT dynamic library environment variables as "
-        "follows:\n"
-        "  - Linux: set LD_LIBRARY_PATH by `export LD_LIBRARY_PATH=...`\n"
-        "  - Windows: set PATH by `set PATH=XXX;%PATH%`\n"
-        "  - Mac: set  DYLD_LIBRARY_PATH by `export DYLD_LIBRARY_PATH=...` "
-        "[Note: After Mac OS 10.11, using the DYLD_LIBRARY_PATH is "
-        "impossible unless System Integrity Protection (SIP) is disabled.]";
-#if !defined(_WIN32)
-    auto errorno = dlerror();
-#else
-    auto errorno = GetLastError();
-#endif  // !_WIN32
-    std::cerr << string::Sprintf(error_msg, dso_name, errorno);
+        "You are using Paddle compiled with TensorRT, but TensorRT dynamic "
+        "library is not found. Ignore this if TensorRT is not needed.";
+    std::cerr << error_msg;
   }
 
   return dso_handle;
