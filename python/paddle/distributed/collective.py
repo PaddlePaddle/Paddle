@@ -41,8 +41,11 @@ class ReduceOp:
     It should be one of the following values:
 
         ReduceOp.SUM:
+
         ReduceOp.MAX:
+
         ReduceOp.MIN:
+
         ReduceOp.PROD:     
     """
     SUM = 0
