@@ -103,9 +103,11 @@ class FusedFCReshapeElementwiseLayerNormOpMaker
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_GE(epsilon, 0.0f,
-                            "'epsilon' should be between 0.0 and 0.001.");
+                            platform::errors::InvalidArgument(
+                                "'epsilon' should be between 0.0 and 0.001."));
           PADDLE_ENFORCE_LE(epsilon, 0.001f,
-                            "'epsilon' should be between 0.0 and 0.001.");
+                            platform::errors::InvalidArgument(
+                                "'epsilon' should be between 0.0 and 0.001."));
         });
     AddAttr<int>("begin_norm_axis",
                  "the axis of `begin_norm_axis ... Rank(Y) - 1` will be "
@@ -113,8 +115,10 @@ class FusedFCReshapeElementwiseLayerNormOpMaker
                  "matrix [N,H]. [default 1].")
         .SetDefault(1)
         .AddCustomChecker([](const int &begin_norm_axis) {
-          PADDLE_ENFORCE_GT(begin_norm_axis, 0,
-                            "'begin_norm_axis' should be greater than zero.");
+          PADDLE_ENFORCE_GT(
+              begin_norm_axis, 0,
+              platform::errors::InvalidArgument(
+                  "'begin_norm_axis' should be greater than zero."));
         });
     AddComment(R"DOC(
 fc_out <= fc(X, W, Bias0)
