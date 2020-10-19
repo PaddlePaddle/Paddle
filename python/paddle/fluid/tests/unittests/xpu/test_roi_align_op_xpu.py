@@ -179,5 +179,29 @@ class TestROIAlignOp(OpTest):
             self.check_output_with_place(place)
 
 
+class TestROIAlignInLodOp(TestROIAlignOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_align()
+
+        seq_len = self.rois_lod[0]
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisNum': np.asarray(seq_len).astype('int32')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width,
+            'sampling_ratio': self.sampling_ratio
+        }
+
+        self.outputs = {'Out': self.out_data}
+
+
 if __name__ == '__main__':
     unittest.main()
