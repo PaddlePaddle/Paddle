@@ -86,3 +86,14 @@ message VariableMessage {
 }
 
 message VoidMessage {}
+
+# for SendAndRecv RPC method
+message MultiVariableMessage {
+  // message flags
+  string message_name = 1;
+  // A(origin) --> B : send_var_names
+  repeated string send_var_names = 2;
+  // A(origin) <-- B : recv_var_names
+  repeated string recv_var_names = 3;
+  repeated VariableMessage = 4;
+}
