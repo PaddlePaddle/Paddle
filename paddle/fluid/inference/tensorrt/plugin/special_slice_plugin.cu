@@ -79,15 +79,18 @@ bool SpecialSlicePluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* desc, int nb_inputs,
     int nb_outputs) {
   if (pos == 0)  // slice tensor
-    return (desc[pos].type ==
-            nvinfer1::DataType::kHALF);  // || desc[pos].type ==
-                                         // nvinfer1::DataType::kFLOAT);
+    return (desc[pos].type == nvinfer1::DataType::kHALF &&
+            desc[pos].format ==
+                nvinfer1::TensorFormat::kLINEAR);  // || desc[pos].type ==
+  // nvinfer1::DataType::kFLOAT);
 
   if (pos == 1)  // cu_seqlen
     return (desc[pos].type == nvinfer1::DataType::kINT32 &&
             desc[pos].format == nvinfer1::TensorFormat::kLINEAR);
 
-  return (desc[pos].type == nvinfer1::DataType::kHALF);  // || desc[pos].type ==
+  return (desc[pos].type == nvinfer1::DataType::kHALF &&
+          desc[pos].format ==
+              nvinfer1::TensorFormat::kLINEAR);  // || desc[pos].type ==
   // nvinfer1::DataType::kFLOAT);
 }
 
