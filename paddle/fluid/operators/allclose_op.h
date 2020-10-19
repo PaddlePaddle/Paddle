@@ -23,37 +23,37 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
+struct GetTensorValue {
+  T operator()(const platform::DeviceContext& ctx,
+               const framework::Tensor& tensor) const;
+};
+
+template <typename DeviceContext, typename T>
+struct AllcloseFunctor {
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
+                  const framework::Tensor& other, const float rtol,
+                  const float atol, bool equal_nan, framework::Tensor* output);
+};
+
+template <typename DeviceContext, typename T>
 class AllcloseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // get attrs
-    float rtol = ctx.Attr<float>("rtol");
-    float atol = ctx.Attr<float>("atol");
     bool equal_nan = ctx.Attr<bool>("equal_nan");
     // get input/output
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* other = ctx.Input<Tensor>("Other");
+    const auto* input = ctx.Input<Tensor>("Input");
+    const auto* other = ctx.Input<Tensor>("Other");
+    const auto* rtol = ctx.Input<Tensor>("Rtol");
+    const auto* atol = ctx.Input<Tensor>("Atol");
     auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<bool>(ctx.GetPlace());
-    // get place
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    auto input_v = framework::EigenVector<T>::Flatten(*input);
-    auto other_v = framework::EigenVector<T>::Flatten(*other);
-    auto out_v = framework::EigenScalar<bool>::From(*out);
-
-    auto left = (input_v - other_v).abs();
-    auto right = static_cast<T>(atol) + static_cast<T>(rtol) * other_v.abs();
-    auto compare_res = left <= right;
-
-    if (equal_nan) {
-      auto input_nan = input_v.isnan();
-      auto other_nan = other_v.isnan();
-      out_v.device(place) =
-          (input_nan == other_nan).all() && (compare_res != input_nan).all();
-    } else {
-      out_v.device(place) = compare_res.all();
-    }
+    GetTensorValue<DeviceContext, double> get_tensor_value;
+    double rtol_v = get_tensor_value(dev_ctx, *rtol);
+    double atol_v = get_tensor_value(dev_ctx, *atol);
+    AllcloseFunctor<DeviceContext, T>()(dev_ctx, *input, *other, rtol_v, atol_v,
+                                        equal_nan, out);
   }
 };
 
