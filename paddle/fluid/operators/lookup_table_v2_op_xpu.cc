@@ -31,13 +31,14 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
     auto *table_var = context.InputVar("W");
     PADDLE_ENFORCE_EQ(
         (std::is_same<DeviceContext, platform::XPUDeviceContext>::value), true,
-        platform::errors::PreconditionNotMet(
-            "Unsupported place! please check your place"));
+        platform::errors::PreconditionNotMet("Unsupported place! only support "
+                                             "xpu place , please check your "
+                                             "place."));
 
     PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
-                      platform::errors::InvalidArgument(
-                          "Tensor holds the wrong type,idx in "
-                          "LookupTableV2XPUKernel should be LoDTensor"));
+                      platform::errors::PermissionDenied(
+                          "Unsupported Variable Type , idx in "
+                          "LookupTableV2XPUKernel should be LoDTensor."));
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
     int64_t ids_numel = ids_t->numel();
@@ -51,16 +52,17 @@ class LookupTableV2XPUKernel : public framework::OpKernel<T> {
     auto *output = output_t->mutable_data<T>(context.GetPlace());
     const int64_t *ids = ids_t->data<int64_t>();
 
-    PADDLE_ENFORCE_EQ(ids_numel <= std::numeric_limits<int32_t>::max(), true,
-                      platform::errors::OutOfRange(
-                          "idx_numel greater than int32_t::max. please check "
-                          "idx_numel in LookupTableV2XPUKernel"));
+    PADDLE_ENFORCE_EQ(
+        ids_numel <= std::numeric_limits<int32_t>::max(), true,
+        platform::errors::OutOfRange(
+            "Number of ids greater than int32_t::max , please check "
+            "number of ids in LookupTableV2XPUKernel."));
     int ids_numel_int32 = static_cast<int>(ids_numel);
     int r = xpu::embedding<T>(dev_ctx.x_context(), ids_numel_int32, ids, D,
                               table, output, padding_idx);
     PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                       platform::errors::External(
-                          "XPU API return wrong value[%d], please check where "
+                          "XPU API return wrong value[%d] , please check where "
                           "Baidu Kunlun Card is properly installed.",
                           r));
   }
@@ -73,26 +75,27 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
     PADDLE_ENFORCE_EQ(table_var->IsType<LoDTensor>(), true,
-                      platform::errors::InvalidArgument(
-                          "Tensor holds the wrong type,idx in "
-                          "LookupTableV2GradXPUKernel should be LoDTensor"));
+                      platform::errors::PermissionDenied(
+                          "Unsupported Variable Type , idx in "
+                          "LookupTableV2GradXPUKernel should be LoDTensor."));
     table_dim = context.Input<LoDTensor>("W")->dims();
 
     bool is_sparse = context.Attr<bool>("is_sparse");
     PADDLE_ENFORCE_EQ(
         is_sparse, false,
         platform::errors::InvalidArgument(
-            "LookupTableV2GradXPUKernel dose NOT support is_sparse = True"));
+            "LookupTableV2GradXPUKernel dose NOT support is_sparse = True."));
 
     auto ids_t = context.Input<LoDTensor>("Ids");
     auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto d_table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
 
     int64_t ids_numel = ids_t->numel();
-    PADDLE_ENFORCE_EQ(ids_numel <= std::numeric_limits<int32_t>::max(), true,
-                      platform::errors::OutOfRange(
-                          "idx_numel greater than int32_t::max. please check "
-                          "idx_numel in LookupTableV2GradXPUKernel"));
+    PADDLE_ENFORCE_EQ(
+        ids_numel <= std::numeric_limits<int32_t>::max(), true,
+        platform::errors::OutOfRange(
+            "Number of ids greater than int32_t::max , please check "
+            "number of ids in LookupTableV2GradXPUKernel."));
     int ids_numel_int32 = static_cast<int>(ids_numel);
     const int64_t *ids_data = ids_t->data<int64_t>();
 
@@ -115,7 +118,7 @@ class LookupTableV2GradXPUKernel : public framework::OpKernel<T> {
                                             d_output_data, d_table_data);
     PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
                       platform::errors::External(
-                          "XPU API return wrong value[%d], please check where "
+                          "XPU API return wrong value[%d] , please check where "
                           "Baidu Kunlun Card is properly installed.",
                           r));
   }
