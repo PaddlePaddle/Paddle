@@ -223,9 +223,9 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)){
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
-  } else{
+  } else {
     LOG(INFO) << "CPU does not support BFLOAT16 calculations";
     use_mkldnn_bfloat16_ = false;
   }
