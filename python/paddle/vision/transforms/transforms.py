@@ -113,13 +113,15 @@ class Compose(object):
 
     def __call__(self, data):
         for f in self.transforms:
-            try:
-                data = f(data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                print("fail to perform transform [{}] with error: "
-                      "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
+            # try:
+            data = f(data)
+            if data is None:
+                print('deubgggggggg:', f)
+            # except Exception as e:
+            #     stack_info = traceback.format_exc()
+            #     print("fail to perform transform [{}] with error: "
+            #           "{} and stack:\n{}".format(f, e, str(stack_info)))
+            #     raise e
         return data
 
     def __repr__(self):
@@ -165,8 +167,6 @@ class BaseTransform(object):
             
             You can also customize your data types only if you implement the corresponding
             _apply_*() methods, otherwise ``NotImplementedError`` will be raised.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
     
     Examples:
     
@@ -186,8 +186,8 @@ class BaseTransform(object):
                     raise TypeError("Unexpected type {}".format(type(img)))
 
             class CustomRandomFlip(BaseTransform):
-                def __init__(self, prob=0.5, keys=None, backend='pil'):
-                    super(CustomRandomFlip, self).__init__(keys, backend)
+                def __init__(self, prob=0.5, keys=None):
+                    super(CustomRandomFlip, self).__init__(keys)
                     self.prob = prob
 
                 def _get_params(self, inputs):
@@ -199,7 +199,7 @@ class BaseTransform(object):
 
                 def _apply_image(self, image):
                     if self.params['flip']:
-                        return F.hflip(image, self.backend)
+                        return F.hflip(image)
                     return image
 
                 # if you only want to transform image, do not need to rewrite this function
@@ -222,7 +222,7 @@ class BaseTransform(object):
                 # if you only want to transform image, do not need to rewrite this function
                 def _apply_mask(self, mask):
                     if self.params['flip']:
-                        return F.hflip(mask, self.backend)
+                        return F.hflip(mask)
                     return mask
 
             # create fake inputs
@@ -241,7 +241,7 @@ class BaseTransform(object):
 
     """
 
-    def __init__(self, keys=None, backend='pil'):
+    def __init__(self, keys=None):
         if keys is None:
             keys = ("image", )
         elif not isinstance(keys, Sequence):
@@ -252,7 +252,7 @@ class BaseTransform(object):
                 raise NotImplementedError(
                     "{} is unsupported data structure".format(k))
         self.keys = keys
-        self.backend = backend
+
         # storage some params get from function get_params()
         self.params = None
 
@@ -370,8 +370,6 @@ class Resize(BaseTransform):
             - "bicubic": cv2.INTER_CUBIC, 
             - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
 
     Examples:
     
@@ -389,16 +387,15 @@ class Resize(BaseTransform):
             print(fake_img.size)
     """
 
-    def __init__(self, size, interpolation='bilinear', keys=None,
-                 backend='pil'):
-        super(Resize, self).__init__(keys, backend)
+    def __init__(self, size, interpolation='bilinear', keys=None):
+        super(Resize, self).__init__(keys)
         assert isinstance(size, int) or (isinstance(size, Iterable) and
                                          len(size) == 2)
         self.size = size
         self.interpolation = interpolation
 
     def _apply_image(self, img):
-        return F.resize(img, self.size, self.interpolation, self.backend)
+        return F.resize(img, self.size, self.interpolation)
 
 
 class RandomResizedCrop(BaseTransform):
@@ -426,8 +423,6 @@ class RandomResizedCrop(BaseTransform):
             - "bicubic": cv2.INTER_CUBIC, 
             - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
 
     Examples:
     
@@ -451,9 +446,8 @@ class RandomResizedCrop(BaseTransform):
                  scale=(0.08, 1.0),
                  ratio=(3. / 4, 4. / 3),
                  interpolation='bilinear',
-                 keys=None,
-                 backend='pil'):
-        super(RandomResizedCrop, self).__init__(keys, backend)
+                 keys=None):
+        super(RandomResizedCrop, self).__init__(keys)
         if isinstance(size, int):
             self.size = (size, size)
         else:
@@ -500,9 +494,8 @@ class RandomResizedCrop(BaseTransform):
     def _apply_image(self, img):
         i, j, h, w = self._get_param(img)
 
-        cropped_img = F.crop(img, i, j, h, w, self.backend)
-        return F.resize(cropped_img, self.size, self.interpolation,
-                        self.backend)
+        cropped_img = F.crop(img, i, j, h, w)
+        return F.resize(cropped_img, self.size, self.interpolation)
 
 
 class CenterCrop(BaseTransform):
@@ -511,8 +504,7 @@ class CenterCrop(BaseTransform):
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -529,15 +521,15 @@ class CenterCrop(BaseTransform):
             print(fake_img.size)
     """
 
-    def __init__(self, size, keys=None, backend='pil'):
-        super(CenterCrop, self).__init__(keys, backend)
+    def __init__(self, size, keys=None):
+        super(CenterCrop, self).__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
             self.size = size
 
     def _apply_image(self, img):
-        return F.center_crop(img, self.size, self.backend)
+        return F.center_crop(img, self.size)
 
 
 class RandomHorizontalFlip(BaseTransform):
@@ -546,8 +538,7 @@ class RandomHorizontalFlip(BaseTransform):
     Args:
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -564,13 +555,13 @@ class RandomHorizontalFlip(BaseTransform):
             print(fake_img.size)
     """
 
-    def __init__(self, prob=0.5, keys=None, backend='pil'):
-        super(RandomHorizontalFlip, self).__init__(keys, backend)
+    def __init__(self, prob=0.5, keys=None):
+        super(RandomHorizontalFlip, self).__init__(keys)
         self.prob = prob
 
     def _apply_image(self, img):
         if random.random() < self.prob:
-            return F.hflip(img, self.backend)
+            return F.hflip(img)
         return img
 
 
@@ -580,8 +571,6 @@ class RandomVerticalFlip(BaseTransform):
     Args:
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
 
     Examples:
     
@@ -600,13 +589,13 @@ class RandomVerticalFlip(BaseTransform):
 
     """
 
-    def __init__(self, prob=0.5, keys=None, backend='pil'):
-        super(RandomVerticalFlip, self).__init__(keys, backend)
+    def __init__(self, prob=0.5, keys=None):
+        super(RandomVerticalFlip, self).__init__(keys)
         self.prob = prob
 
     def _apply_image(self, img):
         if random.random() < self.prob:
-            return F.vflip(img, self.backend)
+            return F.vflip(img)
         return img
 
 
@@ -623,8 +612,6 @@ class Normalize(BaseTransform):
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
         
     Examples:
     
@@ -651,9 +638,8 @@ class Normalize(BaseTransform):
                  std=1.0,
                  data_format='CHW',
                  to_rgb=False,
-                 keys=None,
-                 backend='pil'):
-        super(Normalize, self).__init__(keys, backend)
+                 keys=None):
+        super(Normalize, self).__init__(keys)
         if isinstance(mean, numbers.Number):
             mean = [mean, mean, mean]
 
@@ -715,8 +701,7 @@ class BrightnessTransform(BaseTransform):
         value (float): How much to adjust the brightness. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -733,8 +718,8 @@ class BrightnessTransform(BaseTransform):
             
     """
 
-    def __init__(self, value, keys=None, backend='pil'):
-        super(BrightnessTransform, self).__init__(keys, backend)
+    def __init__(self, value, keys=None):
+        super(BrightnessTransform, self).__init__(keys)
         self.value = _check_input(value, 'brightness')
 
     def _apply_image(self, img):
@@ -742,7 +727,7 @@ class BrightnessTransform(BaseTransform):
             return img
 
         brightness_factor = random.uniform(self.value[0], self.value[1])
-        return F.adjust_brightness(img, brightness_factor, self.backend)
+        return F.adjust_brightness(img, brightness_factor)
 
 
 class ContrastTransform(BaseTransform):
@@ -752,8 +737,7 @@ class ContrastTransform(BaseTransform):
         value (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -770,8 +754,8 @@ class ContrastTransform(BaseTransform):
 
     """
 
-    def __init__(self, value, keys=None, backend='pil'):
-        super(ContrastTransform, self).__init__(keys, backend)
+    def __init__(self, value, keys=None):
+        super(ContrastTransform, self).__init__(keys)
         if value < 0:
             raise ValueError("contrast value should be non-negative")
         self.value = _check_input(value, 'contrast')
@@ -781,7 +765,7 @@ class ContrastTransform(BaseTransform):
             return img
 
         contrast_factor = random.uniform(self.value[0], self.value[1])
-        return F.adjust_contrast(img, contrast_factor, self.backend)
+        return F.adjust_contrast(img, contrast_factor)
 
 
 class SaturationTransform(BaseTransform):
@@ -791,8 +775,7 @@ class SaturationTransform(BaseTransform):
         value (float): How much to adjust the saturation. Can be any
             non negative number. 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -809,8 +792,8 @@ class SaturationTransform(BaseTransform):
 
     """
 
-    def __init__(self, value, keys=None, backend='pil'):
-        super(SaturationTransform, self).__init__(keys, backend)
+    def __init__(self, value, keys=None):
+        super(SaturationTransform, self).__init__(keys)
         self.value = _check_input(value, 'saturation')
 
     def _apply_image(self, img):
@@ -818,7 +801,7 @@ class SaturationTransform(BaseTransform):
             return img
 
         saturation_factor = random.uniform(self.value[0], self.value[1])
-        return F.adjust_saturation(img, saturation_factor, self.backend)
+        return F.adjust_saturation(img, saturation_factor)
 
 
 class HueTransform(BaseTransform):
@@ -828,8 +811,7 @@ class HueTransform(BaseTransform):
         value (float): How much to adjust the hue. Can be any number
             between 0 and 0.5, 0 gives the original image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -846,8 +828,8 @@ class HueTransform(BaseTransform):
 
     """
 
-    def __init__(self, value, keys=None, backend='pil'):
-        super(HueTransform, self).__init__(keys, backend)
+    def __init__(self, value, keys=None):
+        super(HueTransform, self).__init__(keys)
         self.value = _check_input(
             value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False)
 
@@ -856,7 +838,7 @@ class HueTransform(BaseTransform):
             return img
 
         hue_factor = random.uniform(self.value[0], self.value[1])
-        return F.adjust_hue(img, hue_factor, self.backend)
+        return F.adjust_hue(img, hue_factor)
 
 
 class ColorJitter(BaseTransform):
@@ -872,8 +854,7 @@ class ColorJitter(BaseTransform):
         hue: How much to jitter hue.
             Chosen uniformly from [-hue, hue]. Should have 0<= hue <= 0.5.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+
     Examples:
     
         .. code-block:: python
@@ -890,14 +871,9 @@ class ColorJitter(BaseTransform):
 
     """
 
-    def __init__(self,
-                 brightness=0,
-                 contrast=0,
-                 saturation=0,
-                 hue=0,
-                 keys=None,
-                 backend='pil'):
-        super(ColorJitter, self).__init__(keys, backend)
+    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0,
+                 keys=None):
+        super(ColorJitter, self).__init__(keys)
         self.brightness = brightness
         self.contrast = contrast
         self.saturation = saturation
@@ -915,19 +891,16 @@ class ColorJitter(BaseTransform):
         transforms = []
 
         if brightness is not None:
-            transforms.append(
-                BrightnessTransform(brightness, self.keys, self.backend))
+            transforms.append(BrightnessTransform(brightness, self.keys))
 
         if contrast is not None:
-            transforms.append(
-                ContrastTransform(contrast, self.keys, self.backend))
+            transforms.append(ContrastTransform(contrast, self.keys))
 
         if saturation is not None:
-            transforms.append(
-                SaturationTransform(saturation, self.keys, self.backend))
+            transforms.append(SaturationTransform(saturation, self.keys))
 
         if hue is not None:
-            transforms.append(HueTransform(hue, self.keys, self.backend))
+            transforms.append(HueTransform(hue, self.keys))
 
         random.shuffle(transforms)
         transform = Compose(transforms)
@@ -960,8 +933,7 @@ class RandomCrop(BaseTransform):
         pad_if_needed (boolean|optional): It will pad the image if smaller than the
             desired size to avoid raising an exception. Default: False.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+        
     Examples:
     
         .. code-block:: python
@@ -984,9 +956,8 @@ class RandomCrop(BaseTransform):
                  pad_if_needed=False,
                  fill=0,
                  padding_mode='constant',
-                 keys=None,
-                 backend='pil'):
-        super(RandomCrop, self).__init__(keys, backend)
+                 keys=None):
+        super(RandomCrop, self).__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
@@ -1024,23 +995,22 @@ class RandomCrop(BaseTransform):
             PIL Image: Cropped image.
         """
         if self.padding is not None:
-            img = F.pad(img, self.padding, self.fill, self.padding_mode,
-                        self.backend)
+            img = F.pad(img, self.padding, self.fill, self.padding_mode)
 
         w, h = _get_image_size(img)
 
         # pad the width if needed
         if self.pad_if_needed and w < self.size[1]:
             img = F.pad(img, (self.size[1] - w, 0), self.fill,
-                        self.padding_mode, self.backend)
+                        self.padding_mode)
         # pad the height if needed
         if self.pad_if_needed and h < self.size[0]:
             img = F.pad(img, (0, self.size[0] - h), self.fill,
-                        self.padding_mode, self.backend)
+                        self.padding_mode)
 
         i, j, h, w = self._get_param(img, self.size)
 
-        return F.crop(img, i, j, h, w, self.backend)
+        return F.crop(img, i, j, h, w)
 
 
 class Pad(BaseTransform):
@@ -1065,8 +1035,7 @@ class Pad(BaseTransform):
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode 
             will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+        
     Examples:
     
         .. code-block:: python
@@ -1083,12 +1052,7 @@ class Pad(BaseTransform):
             print(fake_img.size)
     """
 
-    def __init__(self,
-                 padding,
-                 fill=0,
-                 padding_mode='constant',
-                 keys=None,
-                 backend='pil'):
+    def __init__(self, padding, fill=0, padding_mode='constant', keys=None):
         assert isinstance(padding, (numbers.Number, list, tuple))
         assert isinstance(fill, (numbers.Number, str, list, tuple))
         assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric']
@@ -1103,7 +1067,7 @@ class Pad(BaseTransform):
                 "Padding must be an int or a 2, or 4 element tuple, not a " +
                 "{} element tuple".format(len(padding)))
 
-        super(Pad, self).__init__(keys, backend)
+        super(Pad, self).__init__(keys)
         self.padding = padding
         self.fill = fill
         self.padding_mode = padding_mode
@@ -1116,8 +1080,7 @@ class Pad(BaseTransform):
         Returns:
             PIL Image: Padded image.
         """
-        return F.pad(img, self.padding, self.fill, self.padding_mode,
-                     self.backend)
+        return F.pad(img, self.padding, self.fill, self.padding_mode)
 
 
 class RandomRotation(BaseTransform):
@@ -1146,8 +1109,7 @@ class RandomRotation(BaseTransform):
             Origin is the upper left corner.
             Default is the center of the image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+        
     Examples:
     
         .. code-block:: python
@@ -1170,8 +1132,7 @@ class RandomRotation(BaseTransform):
                  expand=False,
                  center=None,
                  fill=0,
-                 keys=None,
-                 backend='pil'):
+                 keys=None):
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
                 raise ValueError(
@@ -1183,7 +1144,7 @@ class RandomRotation(BaseTransform):
                     "If degrees is a sequence, it must be of len 2.")
             self.degrees = degrees
 
-        super(RandomRotation, self).__init__(keys, backend)
+        super(RandomRotation, self).__init__(keys)
         self.resample = resample
         self.expand = expand
         self.center = center
@@ -1206,7 +1167,7 @@ class RandomRotation(BaseTransform):
         angle = self._get_param(self.degrees)
 
         return F.rotate(img, angle, self.resample, self.expand, self.center,
-                        self.fill, self.backend)
+                        self.fill)
 
 
 class Grayscale(BaseTransform):
@@ -1215,8 +1176,7 @@ class Grayscale(BaseTransform):
     Args:
         num_output_channels (int): (1 or 3) number of channels desired for output image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
+        
     Returns:
         CV Image: Grayscale version of the input.
         - If output_channels == 1 : returned image is single channel
@@ -1238,8 +1198,8 @@ class Grayscale(BaseTransform):
             print(np.array(fake_img).shape)
     """
 
-    def __init__(self, num_output_channels=1, keys=None, backend='pil'):
-        super(Grayscale, self).__init__(keys, backend)
+    def __init__(self, num_output_channels=1, keys=None):
+        super(Grayscale, self).__init__(keys)
         self.num_output_channels = num_output_channels
 
     def _apply_image(self, img):
@@ -1250,4 +1210,4 @@ class Grayscale(BaseTransform):
         Returns:
             PIL Image: Randomly grayscaled image.
         """
-        return F.to_grayscale(img, self.num_output_channels, self.backend)
+        return F.to_grayscale(img, self.num_output_channels)

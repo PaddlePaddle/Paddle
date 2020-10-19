@@ -24,3 +24,26 @@ from .datasets import *
 __all__ = models.__all__ \
         + transforms.__all__ \
         + datasets.__all__
+
+_image_backend = 'pil'
+
+
+def set_image_backend(backend):
+    """
+    Specifies the package used to load images.
+
+    Args:
+        backend (str): Name of the image backend. one of {'pil', 'cv2'}.
+    """
+    global _image_backend
+    if backend not in ['pil', 'cv2']:
+        raise ValueError("Invalid backend '{}'. Options are 'pil' and 'cv2'"
+                         .format(backend))
+    _image_backend = backend
+
+
+def get_image_backend():
+    """
+    Gets the name of the package used to load images
+    """
+    return _image_backend
