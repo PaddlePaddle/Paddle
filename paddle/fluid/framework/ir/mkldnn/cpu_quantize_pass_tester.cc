@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -23,10 +23,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
-           const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, bool use_mkldnn,
-           const std::string& mkldnn_data_type = "float32") {
+OpDesc* SetOp(ProgramDesc* prog, const std::string& type,
+              const std::string& name, const std::vector<std::string>& inputs,
+              const std::vector<std::string>& outputs, bool use_mkldnn,
+              const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -101,7 +101,17 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_data", 1.0f);
     op->SetAttr("Shift_data", 0.0f);
     op->SetAttr("Weight_scale", std::vector<float>{1.0f});
+  } else if (type == "multi_gru") {
+    op->SetInput("X", {inputs[0]});
+    op->SetInput("Bias", {inputs[1]});
+    op->SetInput("WeightX", {inputs[2]});
+    op->SetInput("WeightH", {inputs[3]});
+    op->SetOutput("Hidden", {outputs[0]});
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+    op->SetAttr("Scale_data", 1.0f);
+    op->SetAttr("Shift_data", 0.0f);
   }
+  return op;
 }
 
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
@@ -112,7 +122,7 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
 }
 
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
-                 const std::initializer_list<std::string> variable_names,
+                 const std::vector<std::string> variable_names,
                  int* original_nodes_num, int* current_nodes_num,
                  std::string var_without_scale = "",
                  std::string var_signed = "") {
@@ -402,7 +412,7 @@ TEST(CpuQuantizePass, transpose) {
 static const std::initializer_list<std::string> variable_names_fusion_gru = {
     "x", "wx", "wh", "b", "h"};
 
-// x->Fusion_gru->h
+// (x, wx, wh, b)->Fusion_gru->h
 ProgramDesc BuildProgramDescFusionGru() {
   ProgramDesc prog;
   for (auto& v : variable_names_transpose) {
@@ -460,7 +470,7 @@ void MainTestFusionGru(const ProgramDesc& prog, int gru_count, int quant_count,
 }
 
 TEST(CpuQuantizePass, fusion_gru) {
-  // x->Fusion_gru->h
+  // (x, wx, wh, b)->Fusion_gru->h
   int gru_count = 1;
   int quant_count = 1;
   int dequant_count = 0;
@@ -468,6 +478,128 @@ TEST(CpuQuantizePass, fusion_gru) {
   int added_nodes_count = 1 + 1 + 0 + 0;
   MainTestFusionGru(BuildProgramDescFusionGru(), gru_count, quant_count,
                     dequant_count, added_nodes_count, 2. * 127, 128.);
+}
+
+const std::vector<std::string> churn_out_vars(ProgramDesc* prog,
+                                              const std::string& prefix,
+                                              int number) {
+  auto v = std::vector<std::string>();
+  for (int i = 0; i < number; ++i) {
+    auto name = prefix + std::to_string(i);
+    prog->MutableBlock(0)->Var(name);
+    v.push_back(name);
+  }
+  return v;
+}
+
+void create_vars(ProgramDesc* prog,
+                 const std::initializer_list<std::string>& names) {
+  for (auto name : names) prog->MutableBlock(0)->Var(name);
+}
+
+void SetMultiGruOp(ProgramDesc* prog, const std::string x,
+                   const std::vector<std::string> wx,
+                   const std::vector<std::string> wh,
+                   const std::vector<std::string> b, const std::string h,
+                   int layers) {
+  auto* op = prog->MutableBlock(0)->AppendOp();
+  op->SetType("multi_gru");
+  op->SetInput("X", {x});
+  op->SetInput("WeightX", wx);
+  op->SetInput("WeightH", wh);
+  op->SetInput("Bias", b);
+  op->SetOutput("Hidden", {h});
+  op->SetAttr("layers", layers);
+  op->SetAttr("origin_mode", false);
+  op->SetAttr("use_mkldnn", true);
+  op->SetAttr("name", std::string("Multi_gru"));
+  op->SetAttr("mkldnn_data_type", std::string("int8"));
+  op->SetAttr("Scale_data", 1.0f);
+  op->SetAttr("Shift_data", 0.0f);
+}
+
+void MainTestMultiGru(int layers) {
+  ProgramDesc prog;
+
+  // Create variables
+  create_vars(&prog, {"x", "h"});
+  const std::vector<std::string> wx = churn_out_vars(&prog, "wx", 2 * layers);
+  const std::vector<std::string> wh = churn_out_vars(&prog, "wh", 2 * layers);
+  const std::vector<std::string> b = churn_out_vars(&prog, "b", 2 * layers);
+
+  std::vector<std::string> all_vars;
+  all_vars.reserve(wx.size() + wh.size() + b.size() + 2);
+  all_vars.insert(all_vars.end(), wx.begin(), wx.end());
+  all_vars.insert(all_vars.end(), wh.begin(), wh.end());
+  all_vars.insert(all_vars.end(), b.begin(), b.end());
+  all_vars.push_back("x");
+  all_vars.push_back("h");
+
+  // Prepare program descriptor
+  SetMultiGruOp(&prog, "x", wx, wh, b, "h", layers);
+
+  // Prepare and run the pass
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, all_vars, &original_nodes_num, &current_nodes_num);
+
+  // Verify graph after quantization
+  float scale = 2 * 127;
+  float shift = 128;
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int multi_gru_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "multi_gru") {
+        multi_gru_nodes_count++;
+
+        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_data")), scale)
+            << "Scale_data for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Shift_data")), shift)
+            << "Shift_data for node '" + op_name + "'.";
+        EXPECT_EQ(op->Input("Scale_weights").size(), 2u * layers)
+            << "Scale_weights for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(bool, op->GetAttr("force_fp32_output")), true)
+            << "force_fp32_output for node '" + op_name + "'.";
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+
+  int multi_gru_count = 1;
+  int quant_count = 1;
+  int quant_out_count = 1;
+  int dequant_count = 0;
+  int dequant_out_count = 0;
+  int scale_weights_count = 2 * layers;
+  int added_nodes_count = quant_count + quant_out_count + scale_weights_count +
+                          dequant_count + dequant_out_count;
+
+  EXPECT_EQ(multi_gru_nodes_count, multi_gru_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, multi_gru_1) {
+  int layers = 1;
+  MainTestMultiGru(layers);
+}
+
+TEST(CpuQuantizePass, multi_gru_2) {
+  int layers = 2;
+  MainTestMultiGru(layers);
+}
+
+TEST(CpuQuantizePass, multi_gru_3) {
+  int layers = 3;
+  MainTestMultiGru(layers);
 }
 
 static const std::initializer_list<std::string> variable_names_reshape = {

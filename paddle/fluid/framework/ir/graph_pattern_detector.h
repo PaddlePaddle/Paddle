@@ -1420,6 +1420,88 @@ struct FusionGru : public PatternBase {
   PATTERN_DECL_NODE(out);
 };
 
+// bidirectional fusion_gru op
+// Forward pass for fusion_gru.
+// fusion_gru out is a result of the operator.
+struct FusionGru2 : public PatternBase {
+  FusionGru2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fusion_gru2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(op);
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(wh1);
+  PATTERN_DECL_NODE(wh2);
+  PATTERN_DECL_NODE(wx1);
+  PATTERN_DECL_NODE(wx2);
+  PATTERN_DECL_NODE(out);
+};
+
+// two concatenated fusion_gru ops
+// Forward pass for fusion of two concatenated fusion_gru ops.
+// concat_out is a result of the operator().
+struct TwoFusionGruConcat : public PatternBase {
+  TwoFusionGruConcat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bi_fusion_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wh1);
+  PATTERN_DECL_NODE(wh2);
+  PATTERN_DECL_NODE(wx1);
+  PATTERN_DECL_NODE(wx2);
+  PATTERN_DECL_NODE(b1);
+  PATTERN_DECL_NODE(b2);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(h2);
+  PATTERN_DECL_NODE(concat);
+  PATTERN_DECL_NODE(out);
+};
+
+// two subsequent bi_fusion_gru ops
+// Forward pass for fusion of two subsequent fusion_gru ops.
+// Hidden of the last fusion_gru op is a result of the operator().
+struct MultiGruSeq : public PatternBase {
+  MultiGruSeq(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru_seq") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(wx11);
+  PATTERN_DECL_NODE(wx12);
+  PATTERN_DECL_NODE(wh11);
+  PATTERN_DECL_NODE(wh12);
+  PATTERN_DECL_NODE(b11);
+  PATTERN_DECL_NODE(b12);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wx21);
+  PATTERN_DECL_NODE(wx22);
+  PATTERN_DECL_NODE(wh21);
+  PATTERN_DECL_NODE(wh22);
+  PATTERN_DECL_NODE(b21);
+  PATTERN_DECL_NODE(b22);
+  PATTERN_DECL_NODE(h2);
+};
+
+// multi_gru op
+// Quantization pass for multi_gru op.
+// Hidden of the multi_gru op is a result of the operator().
+struct MultiGru : public PatternBase {
+  MultiGru(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru);
+  PATTERN_DECL_NODE(wx);
+  PATTERN_DECL_NODE(wh);
+  PATTERN_DECL_NODE(h);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
