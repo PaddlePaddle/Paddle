@@ -304,11 +304,8 @@ class ToTensor(BaseTransform):
     In the other cases, tensors are returned without scaling.
 
     Args:
-        size (int|list|tuple): Desired output size. If size is a sequence like
-            (h, w), output size will be matched to this. If size is an int,
-            smaller edge of the image will be matched to this number.
-            i.e, if height > width, then image will be rescaled to
-            (size * height / width, size)
+        data_format (str, optional): Data format of input img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
         
     Examples:
