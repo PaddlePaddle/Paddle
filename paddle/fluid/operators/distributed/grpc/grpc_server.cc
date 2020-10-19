@@ -454,8 +454,8 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(), true));
+    request_.reset(new GRPCMultiVariableResponse(
+        request_handler->scope(), request_handler->dev_ctx(), true));
 
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
@@ -469,27 +469,39 @@ class RequestSendAndRecv final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
-    std::string in_var_name = request_->Varname();
-    std::string out_var_name = request_->OutVarname();
-    std::string table_name = request_->TableName();
-    int trainer_id = request_->GetTrainerId();
+    multi_msg_ = request_->GetMultiVariableMessage();
+    std::string message_name = request_->message_name();
+    std::vector<std::string> in_var_names(request_->send_var_names_size());
+    std::vector<std::string> out_var_names(request_->recv_var_names_size());
 
-    VLOG(4) << "RequestSendAndRecv, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
-    auto scope = request_->GetMutableLocalScope();
-    auto invar = scope->FindVar(in_var_name);
-    framework::Variable* outvar = nullptr;
-    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
-                             out_var_name, table_name);
-    SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
-                          &reply_);
-    Finish(reply_, &responder_);
+    for (int in_var_index = 0; in_var_index < request_->send_var_names_size();
+         ++in_var_index) {
+      in_var_names[in_var_index] = request_->send_var_names(in_var_index);
+    }
+
+    for (int out_var_index = 0; out_var_index < request_->recv_var_names_size();
+         ++out_var_index) {
+      out_var_names[out_var_index] = request_->recv_var_names(out_var_index);
+    }
+
+    VLOG(4) << "RequestSendAndRecv, message_name: " << message_name;
+    int trainer_id = 0;
+    DeserializeFromMultiVarMsg(multi_msg_, *request_handler_->dev_ctx(), scope,
+                               trainer_id);
+    request_handler_->Handle(in_var_names, scope, invar, &outvar, trainer_id,
+                             out_var_names);
+    SerializeToByteBuffer(message_name, in_var_names, out_var_names,
+                          *request_handler_->dev_ctx(), scope, &reply_)
+        Finish(reply_, &responder_);
   }
 
  protected:
-  std::shared_ptr<GRPCVariableResponse> request_;
-  ::grpc::ByteBuffer reply_;
+  std::shared_ptr<GRPCMultiVariableResponse> request_;
+  sendrecv::MultiVariableMessage multi_msg_;
+  sendrecv::MultiVariableMessage reply_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+  framework::Scope* scope_;
+  platform::DeviceContext* ctx_;
 };
 
 void AsyncGRPCServer::WaitServerReady() {

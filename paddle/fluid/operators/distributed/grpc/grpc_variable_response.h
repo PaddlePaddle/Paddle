@@ -62,6 +62,42 @@ class GRPCVariableResponse : public VariableResponse {
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
 };
 
+class GRPCMultiVariableResponse {
+ public:
+  GRPCMultiVariableResponse(const framework::Scope* scope,
+                            const platform::DeviceContext* dev_ctx,
+                            bool create_scope = false) {
+    if (create_scope) {
+      local_scope_ = scope->NewTmpScope().release();
+    }
+  }
+
+  virtual ~GRPCMultiVariableResponse() {
+    if (local_scope_) {
+      delete local_scope_;
+      local_scope_ = nullptr;
+    }
+  }
+
+  int Parse(Source* source, const sendrecv::MultiVariableMessage) {
+    meta_ = meta;
+    return 0;
+  }
+
+  inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
+  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
+  inline sendrecv::MultiVariableMessage GetMultiVariableMessage() const {
+    return meta_;
+  }
+
+ protected:
+  const framework::Scope* scope_;
+  const platform::DeviceContext* dev_ctx_;
+  bool create_scope_ = false;
+  framework::Scope* local_scope_ = nullptr;
+  sendrecv::MultiVariableMessage meta_;
+}
+
 };  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

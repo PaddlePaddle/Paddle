@@ -135,12 +135,11 @@ void ProcGetResponse(const VarHandle& var_h,
 }
 
 void ProcGetMultiVarResponse(const VarHandle& var_h,
-                             const ::grpc::ByteBuffer& ret_msg) {
+                             const sendrecv::MultiVariableMessage& multi_msg) {
   VLOG(4) << "ProcGetRecvResponse";
-  framework::Variable* outvar = nullptr;
   int trainer_id;
-  DeserializeRecvFromByteBuffer(ret_msg, *var_h.ctx(), var_h.scope(), &outvar,
-                                &trainer_id);
+  DeserializeFromMultiVarMsg(multi_msg, *var_h.ctx(), var_h.scope(),
+                             &trainer_id);
 }
 
 template <typename T>
@@ -513,8 +512,7 @@ VarHandlePtr AsyncSendAndRecv(const std::string& ep,
   const auto channel = GetChannel(ep_val);
   const std::string method = kSendAndRecvRPC;
 
-  VLOG(4) << "GRPCClient::SendAndRecv Begin ,Send_var_name: "
-          << send_var_name_val << " Recv_var_name: " << recv_var_name_val;
+  VLOG(4) << "GRPCClient::SendAndRecv Begin, message_name: " << message_name;
   int retry_times_ = 0;
 
   while (true) {

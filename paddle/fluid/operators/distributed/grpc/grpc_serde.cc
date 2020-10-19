@@ -156,12 +156,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   msg->Swap(&tmp);
 }
 
-MultiVarMsg SerializeToByteBuffer(
-    const std::string& message_name,
-    const std::vector<std::string>& send_var_name_val,
-    const std::vector<std::string>& recv_var_name_val,
-    const platform::DeviceContext& ctx, const framework::Scope* scope,
-    MultiVarMsg* request, const int trainer_id = 0) {
+void SerializeToByteBuffer(const std::string& message_name,
+                           const std::vector<std::string>& send_var_name_val,
+                           const std::vector<std::string>& recv_var_name_val,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope* scope, MultiVarMsg* request,
+                           const int trainer_id = 0) {
   // 1. message_name
   request.set_message_name(message_name);
 
@@ -182,8 +182,6 @@ MultiVarMsg SerializeToByteBuffer(
     SerializeLodTensorToVarMsg(send_var_name, scope, ctx, trainer_id,
                                send_var_msg);
   }
-
-  return request;
 }
 
 void SerializeLodTensorToVarMsg(const std::string& var_name,
@@ -266,6 +264,56 @@ void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
       platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
   *var = resp.GetRecvVar();
   *trainer_id = resp.GetTrainerId();
+}
+
+void DeserializeFromMultiVarMsg(const sendrecv::MultiVariableMessage& multi_msg,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope* scope,
+                                int* trainer_id) {
+  for (int recv_var_index = 0; recv_var_index < multi_msg.send_var_names_size();
+       ++recv_var_index) {
+    DeserializeFromVarMsg(&multi_msg.var_messages(recv_var_index), ctx, scope,
+                          trainer_id);
+  }
+}
+
+void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope* scope, int* trainer_id) {
+  auto* var = scope->FindVar(msg.varname());
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  *trainer_id = msg.GetTrainerId();
+
+  std::vector<int> vec_dim;
+  for (auto& x : msg.dims()) {
+    vec_dim.push_back(x);
+  }
+  tensor->Resize(make_ddim(vec_dim));
+
+  framework::LoD lod;
+  for (int i = 0; i < msg.lod_level(); ++i) {
+    framework::Vector<size_t> v;
+    for (int j = 0; j < msg.lod(i).lod_data_size(); ++j) {
+      v.push_back(msg.lod(i).lod_data(j));
+    }
+    lod.push_back(v);
+  }
+  tensor->set_lod(lod);
+
+  void* tensor_data = tensor->mutable_data(place, ToVarType(msg.data_type()));
+#ifdef PADDLE_WITH_CUDA
+  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
+               tensor_data, platform::CPUPlace(), msg.data().data(),
+               tensor->numel() * SizeOfType(tensor->type()))
+#endif
+#ifdef PADDLE_WITH_XPU
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
+                   platform::CPUPlace(), msg.data().data(),
+                   tensor->numel() * SizeOfType(tensor->type()));
+#else
+  memcpy(tensor_data, msg.data().data(),
+         tensor->numel() * SizeOfType(tensor->type()));
+#endif
 }
 
 }  // namespace distributed
