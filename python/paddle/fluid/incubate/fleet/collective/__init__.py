@@ -506,18 +506,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
 
-        if isinstance(self._optimizer, fluid.optimizer.Optimizer):
-            optimize_ops, param_grads = self._optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
-        if isinstance(self._optimizer, paddle.optimizer.Optimizer):
-            optimize_ops, param_grads = self._optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameters=parameter_list,
-                no_grad_set=no_grad_set)
+        optimize_ops, param_grads = self._optimizer.minimize(
+            loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         fleet._origin_program = main_program.clone(for_test=False)
         fleet._transpiled_program = main_program
