@@ -18,7 +18,7 @@ import paddle
 import copy
 
 np.random.seed(10)
-paddle.manual_seed(10)
+paddle.seed(10)
 
 
 class TestNormalAPI(unittest.TestCase):

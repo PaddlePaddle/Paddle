@@ -426,7 +426,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
 
-            paddle.manual_seed(123123143)
+            paddle.seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -445,7 +445,7 @@ class TestGeneratorSeed(unittest.TestCase):
     def test_gen_TruncatedNormal_initializer(self):
         fluid.disable_dygraph()
 
-        gen = paddle.manual_seed(123123143)
+        gen = paddle.seed(123123143)
         cur_state = gen.get_state()
 
         startup_program = fluid.Program()

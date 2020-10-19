@@ -214,7 +214,7 @@ def train(to_static):
     """
     paddle.disable_static(place)
     np.random.seed(SEED)
-    paddle.manual_seed(SEED)
+    paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
 
     train_reader = paddle.batch(

@@ -109,7 +109,7 @@ def _manual_program_seed(seed):
     """
     Sets global seed for generating random numbers.
   
-    NOTE(zhiqiu): This is the original implemention of manual_seed. Keeps it temporally 
+    NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
 
     Args:

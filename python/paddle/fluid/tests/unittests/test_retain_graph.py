@@ -20,7 +20,7 @@ import unittest
 paddle.disable_static()
 SEED = 2020
 np.random.seed(SEED)
-paddle.manual_seed(SEED)
+paddle.seed(SEED)
 
 
 class Generator(fluid.dygraph.Layer):
