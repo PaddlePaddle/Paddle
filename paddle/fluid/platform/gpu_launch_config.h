@@ -30,9 +30,9 @@ namespace platform {
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 
 struct GpuLaunchConfig {
-  dim3 theory_thread_count = dim3(0, 0, 0);
-  dim3 thread_per_block = dim3(0, 0, 0);
-  dim3 block_per_grid = dim3(0, 0, 0);
+  dim3 theory_thread_count = dim3(1, 1, 1);
+  dim3 thread_per_block = dim3(1, 1, 1);
+  dim3 block_per_grid = dim3(1, 1, 1);
 };
 
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
