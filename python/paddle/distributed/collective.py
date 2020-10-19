@@ -36,7 +36,15 @@ __all__ = [
 
 
 class ReduceOp:
-    """Reduce Operation"""
+    """
+    Specify the type of operation used for element-wise reductions.
+    It should be one of the following values:
+
+        ReduceOp.SUM:
+        ReduceOp.MAX:
+        ReduceOp.MIN:
+        ReduceOp.PROD:     
+    """
     SUM = 0
     MAX = 1
     MIN = 2
