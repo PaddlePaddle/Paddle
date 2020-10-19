@@ -30,10 +30,12 @@ class TestSimpleRNN(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = place
 
     def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
         rnn1 = SimpleRNN(
             16, 32, 2, time_major=self.time_major, direction=self.direction)
 
@@ -48,7 +50,6 @@ class TestSimpleRNN(unittest.TestCase):
                     time_major=self.time_major,
                     direction=self.direction)
 
-        place = self.place
         exe = paddle.static.Executor(place)
         scope = paddle.fluid.Scope()
         with paddle.static.scope_guard(scope):
@@ -172,10 +173,12 @@ class TestGRU(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = place
 
     def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
         rnn1 = GRU(16,
                    32,
                    2,
@@ -192,7 +195,6 @@ class TestGRU(unittest.TestCase):
                                      time_major=self.time_major,
                                      direction=self.direction)
 
-        place = self.place
         exe = paddle.static.Executor(place)
         scope = paddle.fluid.Scope()
         with paddle.static.scope_guard(scope):
@@ -316,10 +318,12 @@ class TestLSTM(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = place
 
     def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
         rnn1 = LSTM(
             16, 32, 2, time_major=self.time_major, direction=self.direction)
 
@@ -334,7 +338,6 @@ class TestLSTM(unittest.TestCase):
                     time_major=self.time_major,
                     direction=self.direction)
 
-        place = self.place
         exe = paddle.static.Executor(place)
         scope = paddle.fluid.Scope()
         with paddle.static.scope_guard(scope):
