@@ -40,13 +40,13 @@ class ReduceOp:
     Specify the type of operation used for element-wise reductions.
     It should be one of the following values:
 
-        ReduceOp.SUM:
+        ReduceOp.SUM
 
-        ReduceOp.MAX:
+        ReduceOp.MAX
 
-        ReduceOp.MIN:
+        ReduceOp.MIN
 
-        ReduceOp.PROD:     
+        ReduceOp.PROD
     """
     SUM = 0
     MAX = 1
