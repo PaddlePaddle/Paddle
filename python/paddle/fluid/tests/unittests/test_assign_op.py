@@ -101,14 +101,27 @@ class TestAssignOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.assign, x5)
 
 
-class TestAssignOpHapi(unittest.TestCase):
+class TestAssignOpHapiDygraph(unittest.TestCase):
     def test_assign_Hapi(self):
         paddle.disable_static()
         array = np.random.random(size=(100, 10)).astype('float32')
         data = paddle.to_tensor(array)
         result1 = paddle.assign(data)
         self.assertTrue(np.allclose(result1.numpy(), array))
-        # self.assertTrue(np.allclose(res[1], ones / 1000.0))
+
+
+class TestAssignOpHapiStatic(unittest.TestCase):
+    def test_assign_Hapi(self):
+        paddle.enable_static()
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x2 = fluid.layers.data(name='x2', shape=[100, 10], dtype="float64")
+            result2 = paddle.assign(x2)
+        exe = fluid.Executor()
+        feed_x = np.random.random(size=(100, 10)).astype('float64')
+        res = exe.run(main_program, feed={'x2': feed_x}, fetch_list=[result2])
+        self.assertTrue(np.allclose(res, feed_x))
 
 
 class TestAssignOpErrorHapi(unittest.TestCase):
