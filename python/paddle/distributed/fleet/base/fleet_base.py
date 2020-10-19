@@ -186,6 +186,15 @@ class Fleet(object):
         fleet.util._set_role_maker(self._role_maker)
 
         self.strategy_compiler = StrategyCompiler()
+
+        if self._role_maker._is_non_distributed() and self._is_collective:
+            if paddle.fluid.core.is_compiled_with_cuda():
+                gpus_num = paddle.fluid.core.get_cuda_device_count()
+                if gpus_num != 1:
+                    raise ValueError(
+                        "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
+                    )
+
         if paddle.fluid.framework.in_dygraph_mode():
             if self.worker_num() == 1:
                 return
@@ -569,8 +578,6 @@ class Fleet(object):
 
         """
         self.user_defined_optimizer = optimizer
-        if paddle.fluid.framework.in_dygraph_mode():
-            return self
 
         if strategy == None:
             strategy = DistributedStrategy()
