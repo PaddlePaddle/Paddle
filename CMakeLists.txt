@@ -267,7 +267,7 @@ if(NOT WIN32 AND NOT WITH_LITE AND WITH_GPU)
     add_definitions(-DPADDLE_CUDA_KERNEL_CHECK)
     set(USE_PADDLE_CUDA_KERNEL_CHECK ON CACHE BOOL "Enable the new method of reporting cuda errors" FORCE)
 else()
-    set(USE_PADDLE_CUDA_KERNEL_CHECK OFF CACHE BOOL "Disable the new method of reporting cuda errors" FORCE)
+    set(USE_PADDLE_CUDA_KERNEL_CHECK ON CACHE BOOL "Disable the new method of reporting cuda errors" FORCE)
 endif()
 
 add_subdirectory(paddle)

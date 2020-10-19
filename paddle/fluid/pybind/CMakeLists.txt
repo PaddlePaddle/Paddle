@@ -70,6 +70,7 @@ if(WITH_PYTHON)
   endif(WITH_NCCL)
 
   add_executable(op_function_generator op_function_generator.cc)
+  set_target_properties(op_function_generator PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
