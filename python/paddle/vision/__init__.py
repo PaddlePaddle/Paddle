@@ -23,7 +23,6 @@ from .datasets import *
 
 from . import utils
 from .utils import *
-from .utils import _image_backend
 
 __all__ = models.__all__ \
         + transforms.__all__ \
