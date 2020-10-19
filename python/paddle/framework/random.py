@@ -16,10 +16,10 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-__all__ = ['manual_seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
+__all__ = ['seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
 
 
-def manual_seed(seed):
+def seed(seed):
     """
 
     Sets the seed for global default generator, which manages the random number generation.
@@ -34,7 +34,7 @@ def manual_seed(seed):
         .. code-block:: python
 
             import paddle
-            gen = paddle.manual_seed(102)
+            gen = paddle.seed(102)
 
     """
     #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade

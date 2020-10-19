@@ -306,7 +306,7 @@ class MyDataset(Dataset):
 
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):

@@ -221,7 +221,7 @@ from .tensor.search import sort  #DEFINE_ALIAS
 
 from .tensor.to_string import set_printoptions
 
-from .framework.random import manual_seed  #DEFINE_ALIAS
+from .framework.random import seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
 from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS

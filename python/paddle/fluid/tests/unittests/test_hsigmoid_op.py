@@ -269,7 +269,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
 
     def training_test(self, is_sparse):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            paddle.manual_seed(1)
+            paddle.seed(1)
             start_up = fluid.default_startup_program()
             x = np.arange(6).reshape(6)
             path_table = np.array([(1, 2, -1), (1, 2, -1)]).astype('int64')

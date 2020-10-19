@@ -37,7 +37,7 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
                                   use_cuda=True,
                                   use_mem_opt=False,
                                   iter_num=5):
-        paddle.manual_seed(100)
+        paddle.seed(100)
         paddle.framework.random._manual_program_seed(100)
         prog = Program()
         startup_prog = Program()
