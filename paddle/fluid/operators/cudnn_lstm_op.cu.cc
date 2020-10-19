@@ -162,7 +162,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
           BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
       if (gen_cuda->GetIsInitPy() && seed == 0) {
-        // If perform `seed` in python and inner seed is not specified
+        // If perform `manual_seed` in python and inner seed is not specified
         // (equals 0), use global generator generated seed.
         seed = static_cast<int>(gen_cuda->Random64());
       } else if (seed == 0) {

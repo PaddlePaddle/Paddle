@@ -26,7 +26,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
-void VarConv2DOpMaker::Make() {
+void VarConv2dOpMaker::Make() {
   AddInput("X",
            "X (LoDTensor, default LoDTensor<float>) Input variable which "
            "should contain lod information.");
@@ -57,25 +57,25 @@ void VarConv2DOpMaker::Make() {
   )DOC");
 }
 
-void VarConv2DOP::InferShape(framework::InferShapeContext* ctx) const {
+void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("X"), true,
-      platform::errors::NotFound("X(Input) of VarConv2DOP is not found."));
+      platform::errors::NotFound("X(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("W"), true,
-      platform::errors::NotFound("W(Input) of VarConv2DOP is not found."));
+      platform::errors::NotFound("W(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("ROW"), true,
-      platform::errors::NotFound("Input(ROW) of VarConv2DOP is not found."));
+      platform::errors::NotFound("Input(ROW) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("COLUMN"), true,
-      platform::errors::NotFound("Input(COLUMN) of VarConv2DOP is not found."));
+      platform::errors::NotFound("Input(COLUMN) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("Out"), true,
-      platform::errors::NotFound("Out(Output) of VarConv2DOP is not found."));
+      platform::errors::NotFound("Out(Output) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("Col"), true,
-      platform::errors::NotFound("Col(Output) of VarConv2DOP is not found."));
+      platform::errors::NotFound("Col(Output) of VarConv2dOP is not found."));
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(
@@ -114,7 +114,7 @@ void VarConv2DOP::InferShape(framework::InferShapeContext* ctx) const {
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(
         !x_lod.empty(), true,
-        platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2DOP "
+        platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2dOP "
                                           "does not contain LoD information."));
 
     PADDLE_ENFORCE_GE(x_lod.size(), 1,
@@ -131,7 +131,7 @@ void VarConv2DOP::InferShape(framework::InferShapeContext* ctx) const {
     const auto& row_lod = row_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(!row_lod.empty(), true,
                       platform::errors::InvalidArgument(
-                          "The Input(ROW) Tensor of VarConv2DOP does not "
+                          "The Input(ROW) Tensor of VarConv2dOP does not "
                           "contain LoD information."));
 
     framework::Variable* col_var =
@@ -139,7 +139,7 @@ void VarConv2DOP::InferShape(framework::InferShapeContext* ctx) const {
     const auto& col_lod = col_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(!col_lod.empty(), true,
                       platform::errors::InvalidArgument(
-                          "The Input(COLUMN) Tensor of VarConv2DOP does not "
+                          "The Input(COLUMN) Tensor of VarConv2dOP does not "
                           "contain LoD information."));
   } else {
     std::vector<int64_t> out_dims_vec{-1};
@@ -152,7 +152,7 @@ void VarConv2DOP::InferShape(framework::InferShapeContext* ctx) const {
 }
 
 template <typename DeviceContext, typename T>
-class CPUVarConv2DOPKernel : public framework::OpKernel<T> {
+class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
  public:
   void Im2Col(const framework::ExecutionContext& ctx, const LoDTensor& input,
               LoDTensor* col) const {
@@ -315,7 +315,7 @@ class CPUVarConv2DOPKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class VarConv2DGradMaker : public framework::SingleGradOpMaker<T> {
+class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -335,7 +335,7 @@ class VarConv2DGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-void VarConv2DOpGrad::InferShape(framework::InferShapeContext* ctx) const {
+void VarConv2dOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                     platform::errors::NotFound(
                         "Input(X) of SequencePadGradOp is not found."));
@@ -356,7 +356,7 @@ void VarConv2DOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 }
 
 template <typename DeviceContext, typename T>
-class CPUVarConv2DOPGradKernel : public framework::OpKernel<T> {
+class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
  public:
   void Im2ColGrad(const framework::ExecutionContext& ctx, T* top_diff) const {
     auto* x = ctx.Input<LoDTensor>("X");
@@ -474,17 +474,17 @@ class CPUVarConv2DOPGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 namespace frm = paddle::framework;
-REGISTER_OPERATOR(var_conv_2d, ops::VarConv2DOP, ops::VarConv2DOpMaker,
-                  ops::VarConv2DGradMaker<paddle::framework::OpDesc>,
-                  ops::VarConv2DGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2DOpGrad);
+REGISTER_OPERATOR(var_conv_2d, ops::VarConv2dOP, ops::VarConv2dOpMaker,
+                  ops::VarConv2dGradMaker<paddle::framework::OpDesc>,
+                  ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
 
 REGISTER_OP_CPU_KERNEL(var_conv_2d,
-                       ops::CPUVarConv2DOPKernel<plt::CPUDeviceContext, float>);
-//     ops::CPUVarConv2DOPKernel<plt::CPUDeviceContext,
+                       ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext, float>);
+//     ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext,
 //                                       double>
 REGISTER_OP_CPU_KERNEL(
     var_conv_2d_grad,
-    ops::CPUVarConv2DOPGradKernel<plt::CPUDeviceContext, float>);
-//     ops::CPUVarConv2DOPGradKernel<plt::CPUDeviceContext,
+    ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext, float>);
+//     ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext,
 //                                           double>

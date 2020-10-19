@@ -29,7 +29,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "number of channels, H and W is the height and width of feature.");
     AddInput(
         "Indices",
-        "(Tensor) The input tensor of the indices given out by MaxPool2D. "
+        "(Tensor) The input tensor of the indices given out by MaxPool2d. "
         "The format of input tensor is NCHW. Where N is batch size, C is the "
         "number of channels, H and W is the height and width of feature.");
     AddOutput("Out",

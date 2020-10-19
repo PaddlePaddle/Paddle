@@ -53,13 +53,13 @@ class SppKernel : public framework::OpKernel<T> {
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
       if (pooling_type == "max") {
-        math::Pool2DFunctor<DeviceContext, math::MaxPool<T>, T> pool_forward;
+        math::Pool2dFunctor<DeviceContext, math::MaxPool<T>, T> pool_forward;
         math::MaxPool<T> max_process;
         pool_forward(context.template device_context<DeviceContext>(), *in_x,
                      kernel_size, strides, paddings, max_process, true, false,
                      &out_level);
       } else if (pooling_type == "avg") {
-        math::Pool2DFunctor<DeviceContext, math::AvgPool<T>, T> pool_forward;
+        math::Pool2dFunctor<DeviceContext, math::AvgPool<T>, T> pool_forward;
         math::AvgPool<T> avg_process;
         pool_forward(context.template device_context<DeviceContext>(), *in_x,
                      kernel_size, strides, paddings, avg_process, true, false,
@@ -146,12 +146,12 @@ class SppGradKernel : public framework::OpKernel<T> {
       outgrad_level.Resize(out_shape);
       // pooling backward
       if (pooling_type == "max") {
-        math::MaxPool2DGradFunctor<DeviceContext, T> pool2d_backward;
+        math::MaxPool2dGradFunctor<DeviceContext, T> pool2d_backward;
         pool2d_backward(context.template device_context<DeviceContext>(), *in_x,
                         *&out_level, *&outgrad_level, kernel_size, strides,
                         paddings, in_x_grad);
       } else if (pooling_type == "avg") {
-        math::Pool2DGradFunctor<DeviceContext, math::AvgPoolGrad<T>, T>
+        math::Pool2dGradFunctor<DeviceContext, math::AvgPoolGrad<T>, T>
             pool_backward;
         math::AvgPoolGrad<T> avg_process;
         pool_backward(context.template device_context<DeviceContext>(), *in_x,

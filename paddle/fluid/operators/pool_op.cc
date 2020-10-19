@@ -246,7 +246,7 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
                                  tensor.place(), tensor.layout());
 }
 
-void Pool2DOpMaker::Make() {
+void Pool2dOpMaker::Make() {
   AddInput(
       "X",
       "(Tensor) The input tensor of pooling operator. "
@@ -445,7 +445,7 @@ class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
   }
 };
 
-void Pool3DOpMaker::Make() {
+void Pool3dOpMaker::Make() {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW or NDHWC, where N is batch "
@@ -649,7 +649,7 @@ Example:
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    pool2d, ops::PoolOp, ops::Pool2DOpMaker, ops::PoolOpInferVarType,
+    pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
@@ -662,7 +662,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(
-    pool3d, ops::PoolOp, ops::Pool3DOpMaker, ops::PoolOpInferVarType,
+    pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);

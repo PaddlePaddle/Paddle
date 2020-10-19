@@ -56,12 +56,12 @@ class PoolOpGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
-class Pool2DOpMaker : public framework::OpProtoAndCheckerMaker {
+class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
 };
 
-class Pool3DOpMaker : public framework::OpProtoAndCheckerMaker {
+class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
 };
@@ -168,7 +168,7 @@ class PoolKernel : public framework::OpKernel<T> {
     switch (ksize.size()) {
       case 2: {
         if (pooling_type == "max") {
-          paddle::operators::math::Pool2DFunctor<
+          paddle::operators::math::Pool2dFunctor<
               DeviceContext, paddle::operators::math::MaxPool<T>, T>
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
@@ -176,7 +176,7 @@ class PoolKernel : public framework::OpKernel<T> {
                          pool_process, true, false, out);
 
         } else if (pooling_type == "avg") {
-          paddle::operators::math::Pool2DFunctor<
+          paddle::operators::math::Pool2dFunctor<
               DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool2d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
@@ -186,7 +186,7 @@ class PoolKernel : public framework::OpKernel<T> {
       } break;
       case 3: {
         if (pooling_type == "max") {
-          paddle::operators::math::Pool3DFunctor<
+          paddle::operators::math::Pool3dFunctor<
               DeviceContext, paddle::operators::math::MaxPool<T>, T>
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
@@ -194,7 +194,7 @@ class PoolKernel : public framework::OpKernel<T> {
                          pool_process, true, false, out);
 
         } else if (pooling_type == "avg") {
-          paddle::operators::math::Pool3DFunctor<
+          paddle::operators::math::Pool3dFunctor<
               DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
@@ -262,12 +262,12 @@ class PoolGradKernel : public framework::OpKernel<T> {
       switch (ksize.size()) {
         case 2: {
           if (pooling_type == "max") {
-            paddle::operators::math::MaxPool2DGradFunctor<DeviceContext, T>
+            paddle::operators::math::MaxPool2dGradFunctor<DeviceContext, T>
                 pool2d_backward;
             pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
                             paddings, data_format, in_x_grad);
           } else if (pooling_type == "avg") {
-            paddle::operators::math::Pool2DGradFunctor<
+            paddle::operators::math::Pool2dGradFunctor<
                 DeviceContext, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
@@ -278,12 +278,12 @@ class PoolGradKernel : public framework::OpKernel<T> {
         } break;
         case 3: {
           if (pooling_type == "max") {
-            paddle::operators::math::MaxPool3DGradFunctor<DeviceContext, T>
+            paddle::operators::math::MaxPool3dGradFunctor<DeviceContext, T>
                 pool3d_backward;
             pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
                             paddings, data_format, in_x_grad);
           } else if (pooling_type == "avg") {
-            paddle::operators::math::Pool3DGradFunctor<
+            paddle::operators::math::Pool3dGradFunctor<
                 DeviceContext, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
