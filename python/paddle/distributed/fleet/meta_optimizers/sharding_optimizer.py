@@ -443,6 +443,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             ):
                 continue
             block._remove_op(idx)
+            block._remove_var(output_name)
 
         block._sync_with_cpp()
         update_loss_scaling_op_idx = -1
@@ -570,6 +571,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                     inputs={'X': sum_res},
                     outputs={'Out': sum_res},
                     attrs={OP_ROLE_KEY: OpRole.Optimize})
+
+        for var_name in deperated_vars:
+            block._remove_var(var_name)
         block._sync_with_cpp()
         return
 
@@ -978,13 +982,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._fuse_broadcast_MB_bytes = self.user_defined_strategy.sharding_configs[
             "fuse_broadcast_MB_bytes"]
 
-        print("doing sharding optimize...")
+        print("doing sharding inner_opt optimize...")
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
+        print("doing sharding optimize...")
         if startup_program is None:
             startup_program = default_startup_program()
         main_block = loss.block
