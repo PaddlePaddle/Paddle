@@ -1064,10 +1064,7 @@ class Fleet(object):
 
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
             default_program = paddle.static.default_main_program()
 
