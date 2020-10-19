@@ -895,7 +895,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_server.endpoint.split(":")[0],
                 "PADDLE_WITH_GLOO": "1",
-                "PADDLE_GLOO_RENDEZVOUS": "2",
+                "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
             }
@@ -959,7 +959,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
                 "PADDLE_WITH_GLOO": "1",
-                "PADDLE_GLOO_RENDEZVOUS": "2",
+                "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",
                 "FLAGS_selected_xpus": "0",
@@ -1028,7 +1028,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_heter_worker.endpoint.split(":")[0],
                 "PADDLE_WITH_GLOO": "1",
-                "PADDLE_GLOO_RENDEZVOUS": "2",
+                "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",
                 "FLAGS_selected_xpus": "0",

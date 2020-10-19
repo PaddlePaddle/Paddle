@@ -398,12 +398,13 @@ class RequestCheckpointNotify final : public RequestBase {
     std::string checkpoint_notify = request_->Varname();
     std::string checkpoint_dir = request_->OutVarname();
     int trainer_id = request_->GetTrainerId();
+    std::string table_name = request_->TableName();
 
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                             trainer_id, checkpoint_dir);
+                             trainer_id, checkpoint_dir, table_name);
     Finish(reply_, &responder_);
   }
 

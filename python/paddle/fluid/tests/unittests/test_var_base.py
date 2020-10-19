@@ -55,6 +55,15 @@ class TestVarBase(unittest.TestCase):
                     np.array_equal(x.numpy(), np.array([1.2]).astype(
                         'float32')))
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+                clone_x = x.clone()
+                self.assertTrue(
+                    np.array_equal(clone_x.numpy(),
+                                   np.array([1.2]).astype('float32')))
+                self.assertEqual(clone_x.dtype, core.VarDesc.VarType.FP32)
+                y = clone_x**2
+                y.backward()
+                self.assertTrue(
+                    np.array_equal(x.grad, np.array([2.4]).astype('float32')))
 
                 # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
@@ -405,6 +414,7 @@ class TestVarBase(unittest.TestCase):
         self.assertListEqual(list(var_base.shape), list(static_var.shape))
 
     def test_tensor_str(self):
+        paddle.enable_static()
         paddle.disable_static(paddle.CPUPlace())
         paddle.manual_seed(10)
         a = paddle.rand([10, 20])
