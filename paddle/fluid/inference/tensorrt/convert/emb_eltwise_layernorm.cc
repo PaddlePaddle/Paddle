@@ -91,16 +91,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-#if CUDA_VERSION < 10000
-      if (with_fp16) {
-        with_fp16 = false;
-        LOG(WARNING)
-            << "You are running the Ernie(Bert) model in fp16 mode while the "
-               "Cuda Version is less than 10.0, which EmbEltwiseLayerNorm "
-               "Plugin's fp16 not "
-               "supported. So fp32 will be chosen actually.";
-      }
-#endif
       auto plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
           input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
           eps, with_fp16);

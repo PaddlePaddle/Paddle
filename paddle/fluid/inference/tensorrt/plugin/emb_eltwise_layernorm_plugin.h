@@ -108,18 +108,22 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
         own_host_buff_(false) {
     with_fp16_ = with_fp16;
     if (with_fp16_) {
-      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
 #if CUDA_VERSION >= 10000
+      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
 #else
-      PADDLE_THROW(platform::errors::Fatal(
-          "The Ernie(Bert) tensorRT plugin should be "
-          "complied with CUDA version >= 10.0 when running with fp16. "
-          "Please recomplie it or try to use fp32 by set "
-          "config.SetTRTDynamicShapeInfo(min_input_shape, "
-          "max_input_shape, opt_input_shape, true"));
+      with_fp16_ = false;
+      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
+          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
+          hidden_size_, eps_);
+      LOG(WARNING)
+          << "You are running the Ernie(Bert) model in fp16 mode while the "
+             "Cuda Version is less than 10.0, which EmbEltwiseLayerNorm "
+             "Plugin's fp16 not "
+             "supported. So fp32 will be chosen actually.";
 #endif
     } else {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
