@@ -471,7 +471,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
 
-        gen.manual_seed(123123143)
+        gen.seed(123123143)
         with fluid.program_guard(train_program, startup_program):
             exe.run(startup_program)
             out2 = exe.run(train_program,
