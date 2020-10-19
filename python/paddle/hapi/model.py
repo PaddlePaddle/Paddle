@@ -454,8 +454,9 @@ class StaticGraphAdapter(object):
                 rets.insert(i, feed[name])
 
         # step learning rate scheduler on each batch end
-        if isinstance(self.model._optimizer._learning_rate,
-                      paddle.optimizer.lr.LRScheduler):
+        if self.model._optimizer and \
+                isinstance(self.model._optimizer._learning_rate,
+                           paddle.optimizer.lr.LRScheduler):
             self.model._optimizer._learning_rate.step()
 
         # LoDTensor cannot be fetch as numpy directly
@@ -659,8 +660,9 @@ class DynamicGraphAdapter(object):
         self.model.network.clear_gradients()
 
         # step learning rate scheduler on each batch end
-        if isinstance(self.model._optimizer._learning_rate,
-                      paddle.optimizer.lr.LRScheduler):
+        if self.model._optimizer and \
+                isinstance(self.model._optimizer._learning_rate,
+                           paddle.optimizer.lr.LRScheduler):
             self.model._optimizer._learning_rate.step()
 
         metrics = []
