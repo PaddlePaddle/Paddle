@@ -94,6 +94,29 @@ REGISTER_ERROR(External, EXTERNAL)
 
 #undef REGISTER_ERROR
 
+#define REGISTER_EXCEPTION(EXCEPTION, ...)                                  \
+  struct EXCEPTION : public std::exception {                                \
+    std::string err_str_;                                                   \
+    explicit EXCEPTION(const std::string& str) { err_str_ = str; }          \
+    const char* what() const noexcept override { return err_str_.c_str(); } \
+  };
+
+// Extend Exceptions
+REGISTER_EXCEPTION(InvalidArgumentError)
+REGISTER_EXCEPTION(NotFoundError)
+REGISTER_EXCEPTION(OutOfRangeError)
+REGISTER_EXCEPTION(AlreadyExistsError)
+REGISTER_EXCEPTION(ResourceExhaustedError)
+REGISTER_EXCEPTION(PreconditionNotMetError)
+REGISTER_EXCEPTION(PermissionDeniedError)
+REGISTER_EXCEPTION(ExecutionTimeoutError)
+REGISTER_EXCEPTION(UnimplementedError)
+REGISTER_EXCEPTION(UnavailableError)
+REGISTER_EXCEPTION(FatalError)
+REGISTER_EXCEPTION(ExternalError)
+
+#undef REGISTER_EXCEPTION
+
 }  // namespace errors
 }  // namespace platform
 }  // namespace paddle

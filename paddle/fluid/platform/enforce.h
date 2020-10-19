@@ -239,7 +239,7 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-inline std::string GetCurrentTraceBackString() {
+inline std::string GetFormatTraceBackString() {
   std::ostringstream sout;
 
   sout << "\n\n--------------------------------------\n";
@@ -275,8 +275,10 @@ template <typename StrType>
 inline std::string GetErrorSumaryString(StrType&& what, const char* file,
                                         int line) {
   std::ostringstream sout;
-  sout << "\n----------------------\nError Message "
-          "Summary:\n----------------------\n";
+  if (FLAGS_call_stack_level > 1) {
+    sout << "\n----------------------\nError Message "
+            "Summary:\n----------------------\n";
+  }
   sout << string::Sprintf("%s (at %s:%d)", std::forward<StrType>(what), file,
                           line)
        << std::endl;
@@ -288,7 +290,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
   if (FLAGS_call_stack_level > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
+    return GetFormatTraceBackString() + GetErrorSumaryString(what, file, line);
   } else {
     return GetErrorSumaryString(what, file, line);
   }
@@ -301,12 +303,12 @@ inline void throw_on_error(bool stat, const std::string& msg) {
 }
 
 // Note: This Macro can only be used within enforce.h
-#define __THROW_ERROR_INTERNAL__(...)                                \
-  do {                                                               \
-    HANDLE_THE_ERROR                                                 \
-    throw ::paddle::platform::EnforceNotMet(                         \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                             \
+#define __THROW_ERROR_INTERNAL__(CODE, ...)                                \
+  do {                                                                     \
+    HANDLE_THE_ERROR                                                       \
+    throw ::paddle::platform::EnforceNotMet(                               \
+        CODE, ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                   \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
@@ -323,11 +325,36 @@ struct EnforceNotMet : public std::exception {
   EnforceNotMet(const std::string& str, const char* file, int line)
       : err_str_(GetTraceBackString(str, file, line)) {}
 
+  EnforceNotMet(const error::Code code, const std::string& str,
+                const char* file, int line)
+      : code_(code) {
+    if (FLAGS_call_stack_level > 1) {
+      // error type + error message
+      err_str_ = GetTraceBackString(str, file, line);
+    } else {
+      // only error message
+      err_str_ = GetTraceBackString(str, file, line);
+    }
+  }
+
   EnforceNotMet(const platform::ErrorSummary& error, const char* file, int line)
-      : err_str_(GetTraceBackString(error.ToString(), file, line)) {}
+      : code_(error.code()) {
+    if (FLAGS_call_stack_level > 1) {
+      // error type + error message
+      err_str_ = GetTraceBackString(error.ToString(), file, line);
+    } else {
+      // only error message
+      err_str_ = GetTraceBackString(error.error_message(), file, line);
+    }
+  }
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
+  error::Code code() const { return code_; }
+
+  // Used to determine the final type of exception thrown
+  error::Code code_ = error::LEGACY;
+  // Error message
   std::string err_str_;
 };
 
@@ -384,40 +411,42 @@ struct EnforceNotMet : public std::exception {
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                          \
-  do {                                                               \
-    if (UNLIKELY(nullptr == (__VAL))) {                              \
-      __THROW_ERROR_INTERNAL__(                                      \
-          "%s\n  [Hint: " #__VAL " should not be null.]",            \
-          ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString()); \
-    }                                                                \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                    \
+  do {                                                                         \
+    if (UNLIKELY(nullptr == (__VAL))) {                                        \
+      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__);        \
+      __THROW_ERROR_INTERNAL__(__summary__.code(),                             \
+                               "%s\n  [Hint: " #__VAL " should not be null.]", \
+                               __summary__.error_message());                   \
+    }                                                                          \
   } while (0)
 
-#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
-  do {                                                                         \
-    auto __val1 = (__VAL1);                                                    \
-    auto __val2 = (__VAL2);                                                    \
-    using __TYPE1__ = decltype(__val1);                                        \
-    using __TYPE2__ = decltype(__val2);                                        \
-    using __COMMON_TYPE1__ =                                                   \
-        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;        \
-    using __COMMON_TYPE2__ =                                                   \
-        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;        \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
-        static_cast<__COMMON_TYPE2__>(__val2));                                \
-    if (UNLIKELY(!__is_not_error)) {                                           \
-      constexpr bool __kCanToString__ =                                        \
-          ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
-          ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      __THROW_ERROR_INTERNAL__(                                                \
-          "%s\n  [Hint: Expected %s " #__CMP                                   \
-          " %s, but received %s " #__INV_CMP " %s.]",                          \
-          ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), #__VAL1,   \
-          #__VAL2, ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL1, __val1),            \
-          ::paddle::platform::details::BinaryCompareMessageConverter<          \
-              __kCanToString__>::Convert(#__VAL2, __val2));                    \
-    }                                                                          \
+#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)    \
+  do {                                                                    \
+    auto __val1 = (__VAL1);                                               \
+    auto __val2 = (__VAL2);                                               \
+    using __TYPE1__ = decltype(__val1);                                   \
+    using __TYPE2__ = decltype(__val2);                                   \
+    using __COMMON_TYPE1__ =                                              \
+        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;   \
+    using __COMMON_TYPE2__ =                                              \
+        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;   \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(   \
+        static_cast<__COMMON_TYPE2__>(__val2));                           \
+    if (UNLIKELY(!__is_not_error)) {                                      \
+      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__);   \
+      constexpr bool __kCanToString__ =                                   \
+          ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&  \
+          ::paddle::platform::details::CanToString<__TYPE2__>::kValue;    \
+      __THROW_ERROR_INTERNAL__(                                           \
+          __summary__.code(), "%s\n  [Hint: Expected %s " #__CMP          \
+                              " %s, but received %s " #__INV_CMP " %s.]", \
+          __summary__.error_message(), #__VAL1, #__VAL2,                  \
+          ::paddle::platform::details::BinaryCompareMessageConverter<     \
+              __kCanToString__>::Convert(#__VAL1, __val1),                \
+          ::paddle::platform::details::BinaryCompareMessageConverter<     \
+              __kCanToString__>::Convert(#__VAL2, __val2));               \
+    }                                                                     \
   } while (0)
 
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
@@ -458,26 +487,27 @@ struct EnforceNotMet : public std::exception {
  * Examples:
  *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
  */
-#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
-  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
-    auto* __ptr = (__PTR);                                                  \
-    if (UNLIKELY(nullptr == __ptr)) {                                       \
-      __THROW_ERROR_INTERNAL__(                                             \
-          "%s\n  [Hint: pointer " #__PTR " should not be null.]",           \
-          paddle::platform::errors::NotFound(                               \
-              "Unable to get %s data of %s %s in operator %s. "             \
-              "Possible reasons are:\n"                                     \
-              "  1. The %s is not the %s of operator %s;\n"                 \
-              "  2. The %s has no corresponding variable passed in;\n"      \
-              "  3. The %s corresponding variable is not initialized.",     \
-              paddle::platform::demangle(                                   \
-                  typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
-                      .name()),                                             \
-              __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME, \
-              __NAME)                                                       \
-              .ToString());                                                 \
-    }                                                                       \
-    return *__ptr;                                                          \
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
+    auto* __ptr = (__PTR);                                              \
+    if (UNLIKELY(nullptr == __ptr)) {                                   \
+      auto __summary__ = paddle::platform::errors::NotFound(            \
+          "Unable to get %s data of %s %s in operator %s. "             \
+          "Possible reasons are:\n"                                     \
+          "  1. The %s is not the %s of operator %s;\n"                 \
+          "  2. The %s has no corresponding variable passed in;\n"      \
+          "  3. The %s corresponding variable is not initialized.",     \
+          paddle::platform::demangle(                                   \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                  .name()),                                             \
+          __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME, \
+          __NAME);                                                      \
+      __THROW_ERROR_INTERNAL__(__summary__.code(),                      \
+                               "%s\n  [Hint: pointer " #__PTR           \
+                               " should not be null.]",                 \
+                               __summary__.error_message());            \
+    }                                                                   \
+    return *__ptr;                                                      \
   })())
 
 /*
