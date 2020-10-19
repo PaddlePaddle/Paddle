@@ -113,15 +113,13 @@ class Compose(object):
 
     def __call__(self, data):
         for f in self.transforms:
-            # try:
-            data = f(data)
-            if data is None:
-                print('deubgggggggg:', f)
-            # except Exception as e:
-            #     stack_info = traceback.format_exc()
-            #     print("fail to perform transform [{}] with error: "
-            #           "{} and stack:\n{}".format(f, e, str(stack_info)))
-            #     raise e
+            try:
+                data = f(data)
+            except Exception as e:
+                stack_info = traceback.format_exc()
+                print("fail to perform transform [{}] with error: "
+                      "{} and stack:\n{}".format(f, e, str(stack_info)))
+                raise e
         return data
 
     def __repr__(self):

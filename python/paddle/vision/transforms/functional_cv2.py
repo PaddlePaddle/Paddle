@@ -15,14 +15,13 @@
 from __future__ import division
 
 import sys
-import math
-from PIL import Image, ImageOps, ImageEnhance
+import numbers
+import warnings
+import collections
 
 import numpy as np
 from numpy import sin, cos, tan
-import numbers
-import collections
-import warnings
+
 import paddle
 from paddle.utils import try_import
 
@@ -278,10 +277,10 @@ def hflip(img):
 
 
 def vflip(img):
-    """Vertically flips the given PIL Image or np.array.
+    """Vertically flips the given np.array.
 
     Args:
-        img (PIL.Image|np.array): Image to be flipped.
+        img (np.array): Image to be flipped.
 
     Returns:
         np.array:  Vertically flipped image.
@@ -299,7 +298,7 @@ def adjust_brightness(img, brightness_factor):
     """Adjusts brightness of an image.
 
     Args:
-        img (np.array): PIL Image to be adjusted.
+        img (np.array): Image to be adjusted.
         brightness_factor (float):  How much to adjust the brightness. Can be
             any non negative number. 0 gives a black image, 1 gives the
             original image while 2 increases the brightness by a factor of 2.
@@ -323,7 +322,7 @@ def adjust_contrast(img, contrast_factor):
     """Adjusts contrast of an image.
 
     Args:
-        img (np.array): PIL Image to be adjusted.
+        img (np.array): Image to be adjusted.
         contrast_factor (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives a solid gray image, 1 gives the
             original image while 2 increases the contrast by a factor of 2.
@@ -346,7 +345,7 @@ def adjust_saturation(img, saturation_factor):
     """Adjusts color saturation of an image.
 
     Args:
-        img (np.array): PIL Image to be adjusted.
+        img (np.array): Image to be adjusted.
         saturation_factor (float):  How much to adjust the saturation. 0 will
             give a black and white image, 1 will give the original image while
             2 will enhance the saturation by a factor of 2.
@@ -378,7 +377,7 @@ def adjust_hue(img, hue_factor):
     interval `[-0.5, 0.5]`.
 
     Args:
-        img (np.array): PIL Image to be adjusted.
+        img (np.array): Image to be adjusted.
         hue_factor (float):  How much to shift the hue channel. Should be in
             [-0.5, 0.5]. 0.5 and -0.5 give complete reversal of hue channel in
             HSV space in positive and negative direction respectively.

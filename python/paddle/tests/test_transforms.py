@@ -299,6 +299,39 @@ class TestFunctional(unittest.TestCase):
                 'uint8'))
             F.resize(fake_img, '1')
 
+        with self.assertRaises(TypeError):
+            F.resize(1, 1)
+
+        with self.assertRaises(TypeError):
+            F.pad(1, 1)
+
+        with self.assertRaises(TypeError):
+            F.crop(1, 1, 1, 1, 1)
+
+        with self.assertRaises(TypeError):
+            F.hflip(1)
+
+        with self.assertRaises(TypeError):
+            F.vflip(1)
+
+        with self.assertRaises(TypeError):
+            F.adjust_brightness(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.adjust_contrast(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.adjust_hue(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.adjust_saturation(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.rotate(1, 0.1)
+
+        with self.assertRaises(TypeError):
+            F.to_grayscale(1)
+
     def test_normalize(self):
         np_img = (np.random.rand(28, 24, 3)).astype('uint8')
         pil_img = Image.fromarray(np_img)

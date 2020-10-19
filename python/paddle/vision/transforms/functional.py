@@ -16,18 +16,13 @@ from __future__ import division
 
 import sys
 import math
-from PIL import Image, ImageOps, ImageEnhance
-
-try:
-    import cv2
-except ImportError:
-    cv2 = None
+import numbers
+import warnings
+import collections
 
 import numpy as np
+from PIL import Image
 from numpy import sin, cos, tan
-import numbers
-import collections
-import warnings
 import paddle
 
 if sys.version_info < (3, 3):
@@ -46,31 +41,6 @@ __all__ = [
     'crop', 'center_crop', 'adjust_brightness', 'adjust_contrast', 'adjust_hue',
     'to_grayscale', 'normalize'
 ]
-
-_pil_interp_from_str = {
-    'nearest': Image.NEAREST,
-    'bilinear': Image.BILINEAR,
-    'bicubic': Image.BICUBIC,
-    'box': Image.BOX,
-    'lanczos': Image.LANCZOS,
-    'hamming': Image.HAMMING
-}
-
-if cv2 is not None:
-    _cv2_interp_from_str = {
-        'nearest': cv2.INTER_NEAREST,
-        'bilinear': cv2.INTER_LINEAR,
-        'area': cv2.INTER_AREA,
-        'bicubic': cv2.INTER_CUBIC,
-        'lanczos': cv2.INTER_LANCZOS4
-    }
-
-    _cv2_pad_from_str = {
-        'constant': cv2.BORDER_CONSTANT,
-        'edge': cv2.BORDER_REPLICATE,
-        'reflect': cv2.BORDER_REFLECT_101,
-        'symmetric': cv2.BORDER_REFLECT
-    }
 
 
 def _is_pil_image(img):
@@ -96,7 +66,7 @@ def to_tensor(pic, data_format='CHW'):
             'CHW'. Default: 'CHW'.
 
     Returns:
-        Tensor: Converted image.
+        Tensor: Converted image. Data format is same as input img.
 
     Examples:
         .. code-block:: python
@@ -238,7 +208,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
 
 def crop(img, top, left, height, width):
-    """Crops the given PIL Image.
+    """Crops the given Image.
 
     Args:
         img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left 
@@ -278,7 +248,7 @@ def crop(img, top, left, height, width):
 
 
 def center_crop(img, output_size):
-    """Crops the given PIL Image and resize it to desired size.
+    """Crops the given Image and resize it to desired size.
 
         Args:
             img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
@@ -314,7 +284,7 @@ def center_crop(img, output_size):
 
 
 def hflip(img, backend='pil'):
-    """Horizontally flips the given PIL Image or np.array.
+    """Horizontally flips the given Image or np.array.
 
     Args:
         img (PIL.Image|np.array): Image to be flipped.
@@ -351,7 +321,7 @@ def hflip(img, backend='pil'):
 
 
 def vflip(img):
-    """Vertically flips the given PIL Image or np.array.
+    """Vertically flips the given Image or np.array.
 
     Args:
         img (PIL.Image|np.array): Image to be flipped.
@@ -389,8 +359,8 @@ def adjust_brightness(img, brightness_factor):
     """Adjusts brightness of an Image.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
-        brightness_factor (float):  How much to adjust the brightness. Can be
+        img (PIL.Image|np.array): Image to be adjusted.
+        brightness_factor (float): How much to adjust the brightness. Can be
             any non negative number. 0 gives a black image, 1 gives the
             original image while 2 increases the brightness by a factor of 2.
 
@@ -426,7 +396,7 @@ def adjust_contrast(img, contrast_factor):
     """Adjusts contrast of an Image.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
+        img (PIL.Image|np.array): Image to be adjusted.
         contrast_factor (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives a solid gray image, 1 gives the
             original image while 2 increases the contrast by a factor of 2.
@@ -463,7 +433,7 @@ def adjust_saturation(img, saturation_factor):
     """Adjusts color saturation of an image.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
+        img (PIL.Image|np.array): Image to be adjusted.
         saturation_factor (float):  How much to adjust the saturation. 0 will
             give a black and white image, 1 will give the original image while
             2 will enhance the saturation by a factor of 2.
@@ -508,7 +478,7 @@ def adjust_hue(img, hue_factor):
     interval `[-0.5, 0.5]`.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
+        img (PIL.Image|np.array): Image to be adjusted.
         hue_factor (float):  How much to shift the hue channel. Should be in
             [-0.5, 0.5]. 0.5 and -0.5 give complete reversal of hue channel in
             HSV space in positive and negative direction respectively.
@@ -648,13 +618,13 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (PIL.Image|np.array|paddle.Tensor): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of input img, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         to_rgb (bool, optional): Whether to convert to rgb. If input is tensor, 
             this option will be igored. Default: False.
 
     Returns:
-        Tensor: Normalized mage.
+        Tensor: Normalized mage. Data format is same as input img.
     
     Examples:
         .. code-block:: python

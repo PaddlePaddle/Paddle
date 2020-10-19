@@ -16,13 +16,13 @@ from __future__ import division
 
 import sys
 import math
+import numbers
+import warnings
+import collections
 from PIL import Image, ImageOps, ImageEnhance
 
 import numpy as np
 from numpy import sin, cos, tan
-import numbers
-import collections
-import warnings
 import paddle
 
 if sys.version_info < (3, 3):
@@ -48,26 +48,12 @@ def to_tensor(pic, data_format='CHW'):
     See ``ToTensor`` for more details.
 
     Args:
-        pic (PIL.Image|np.ndarray): Image to be converted to tensor.
+        pic (PIL.Image): Image to be converted to tensor.
         data_format (str, optional): Data format of img, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
 
     Returns:
         Tensor: Converted image.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            tensor = F.to_tensor(fake_img)
-            print(tensor.shape)
 
     """
 
@@ -112,7 +98,7 @@ def resize(img, size, interpolation='bilinear'):
     Resizes the image to given size
 
     Args:
-        input (PIL.Image|np.ndarray): Image to be resized.
+        input (PIL.Image): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
         interpolation (int|str, optional): Interpolation method. when use pil backend, 
             support method are as following: 
@@ -126,22 +112,6 @@ def resize(img, size, interpolation='bilinear'):
     Returns:
         PIL.Image: Resized image.
 
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.resize(fake_img, 224)
-            print(converted_img.size)
-
-            converted_img = F.resize(fake_img, (200, 150))
-            print(converted_img.size)
     """
 
     if not (isinstance(size, int) or
@@ -169,7 +139,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Pads the given PIL.Image on all sides with specified padding mode and fill value.
 
     Args:
-        img (PIL.Image|np.array): Image to be padded.
+        img (PIL.Image): Image to be padded.
         padding (int|list|tuple): Padding on each border. If a single int is provided this
             is used to pad all borders. If tuple of length 2 is provided this is the padding
             on left/right and top/bottom respectively. If a tuple of length 4 is provided
@@ -197,22 +167,6 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Returns:
         PIL.Image: Padded image.
 
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            padded_img = F.pad(fake_img, padding=1)
-            print(padded_img.size)
-
-            padded_img = F.pad(fake_img, padding=(2, 1))
-            print(padded_img.size)
     """
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
@@ -288,20 +242,6 @@ def crop(img, top, left, height, width):
     Returns:
         PIL.Image: Cropped image.
 
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            cropped_img = F.crop(fake_img, 56, 150, 200, 100)
-            print(cropped_img.size)
-
     """
     return img.crop((left, top, left + width, top + height))
 
@@ -310,27 +250,13 @@ def center_crop(img, output_size):
     """Crops the given PIL Image and resize it to desired size.
 
         Args:
-            img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
+            img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
             backend (str, optional): The image proccess backend type. Options are `pil`, `cv2`. Default: 'pil'. 
         
         Returns:
             PIL.Image: Cropped image.
-
-        Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            cropped_img = F.center_crop(fake_img, (150, 100))
-            print(cropped_img.size)
 
         """
 
@@ -353,47 +279,19 @@ def hflip(img):
     Returns:
         PIL.Image:  Horizontall flipped image.
 
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            flpped_img = F.hflip(fake_img)
-            print(flpped_img.size)
-
     """
 
     return img.transpose(Image.FLIP_LEFT_RIGHT)
 
 
 def vflip(img):
-    """Vertically flips the given PIL Image or np.array.
+    """Vertically flips the given PIL Image.
 
     Args:
-        img (PIL.Image|np.array): Image to be flipped.
+        img (PIL.Image): Image to be flipped.
 
     Returns:
         PIL.Image:  Vertically flipped image.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            flpped_img = F.vflip(fake_img)
-            print(flpped_img.size)
 
     """
 
@@ -410,21 +308,7 @@ def adjust_brightness(img, brightness_factor):
             original image while 2 increases the brightness by a factor of 2.
 
     Returns:
-        PIL.Image or np.array: Brightness adjusted image.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_brightness(fake_img, 0.4)
-            print(converted_img.size)
+        PIL.Image: Brightness adjusted image.
 
     """
 
@@ -437,27 +321,13 @@ def adjust_contrast(img, contrast_factor):
     """Adjusts contrast of an Image.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
+        img (PIL.Image): PIL Image to be adjusted.
         contrast_factor (float): How much to adjust the contrast. Can be any
             non negative number. 0 gives a solid gray image, 1 gives the
             original image while 2 increases the contrast by a factor of 2.
 
     Returns:
         PIL.Image: Contrast adjusted image.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_contrast(fake_img, 0.4)
-            print(converted_img.size)
 
     """
 
@@ -470,27 +340,13 @@ def adjust_saturation(img, saturation_factor):
     """Adjusts color saturation of an image.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
+        img (PIL.Image): PIL Image to be adjusted.
         saturation_factor (float):  How much to adjust the saturation. 0 will
             give a black and white image, 1 will give the original image while
             2 will enhance the saturation by a factor of 2.
 
     Returns:
         PIL.Image: Saturation adjusted image.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_saturation(fake_img, 0.4)
-            print(converted_img.size)
 
     """
 
@@ -510,7 +366,7 @@ def adjust_hue(img, hue_factor):
     interval `[-0.5, 0.5]`.
 
     Args:
-        img (PIL.Image|np.array): PIL Image to be adjusted.
+        img (PIL.Image): PIL Image to be adjusted.
         hue_factor (float):  How much to shift the hue channel. Should be in
             [-0.5, 0.5]. 0.5 and -0.5 give complete reversal of hue channel in
             HSV space in positive and negative direction respectively.
@@ -519,20 +375,6 @@ def adjust_hue(img, hue_factor):
 
     Returns:
         PIL.Image: Hue adjusted image.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_hue(fake_img, 0.4)
-            print(converted_img.size)
 
     """
     if not (-0.5 <= hue_factor <= 0.5):
@@ -557,7 +399,6 @@ def adjust_hue(img, hue_factor):
 def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
     """Rotates the image by angle.
 
-
     Args:
         img (PIL.Image): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
@@ -580,20 +421,6 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
     Returns:
         PIL.Image: Rotated image.
 
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            rotated_img = F.rotate(fake_img, 90)
-            print(rotated_img.size)
-
     """
 
     if isinstance(fill, int):
@@ -615,20 +442,6 @@ def to_grayscale(img, num_output_channels=1):
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
-    
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            gray_img = F.to_grayscale(fake_img)
-            print(gray_img.size)
 
     """
 
