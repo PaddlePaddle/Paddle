@@ -21,7 +21,7 @@ import numpy as np
 from PIL import Image
 
 import paddle
-from paddle.vision import get_image_backend, set_image_backend
+from paddle.vision import get_image_backend, set_image_backend, image_load
 from paddle.vision.datasets import DatasetFolder
 from paddle.vision.transforms import transforms
 import paddle.vision.transforms.functional as F
@@ -335,6 +335,9 @@ class TestFunctional(unittest.TestCase):
         with self.assertRaises(ValueError):
             set_image_backend(1)
 
+        with self.assertRaises(ValueError):
+            image_load('tmp.jpg', backend=1)
+
     def test_normalize(self):
         np_img = (np.random.rand(28, 24, 3)).astype('uint8')
         pil_img = Image.fromarray(np_img)
@@ -415,6 +418,25 @@ class TestFunctional(unittest.TestCase):
 
         pil_img = Image.fromarray(np_img).convert('YCbCr')
         pil_tensor = F.to_tensor(pil_img)
+
+    def test_image_load(self):
+        fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype(
+            'uint8'))
+
+        path = 'temp.jpg'
+        fake_img.save(path)
+
+        set_image_backend('pil')
+
+        pil_img = image_load(path).convert('RGB')
+
+        print(type(pil_img))
+
+        set_image_backend('cv2')
+
+        np_img = image_load(path)
+
+        os.remove(path)
 
 
 if __name__ == '__main__':

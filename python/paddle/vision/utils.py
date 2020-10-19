@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['set_image_backend', 'get_image_backend']
+from PIL import Image
+from paddle.utils import try_import
+
+__all__ = ['set_image_backend', 'get_image_backend', 'image_load']
 
 _image_backend = 'pil'
 
@@ -102,3 +105,57 @@ def get_image_backend():
 
     """
     return _image_backend
+
+
+def image_load(path, backend=None):
+    """Load an image.
+
+    Args:
+        path (str): Path of the image.
+        backend (str, optional): The image decoding backend type. Options are
+            `cv2`, `pil`, `None`. If backend is None, the global _imread_backend 
+            specified by ``paddle.vision.set_image_backend`` will be used. Default: None.
+
+    Returns:
+        PIL.Image or np.array: Loaded image.
+
+    Examples:
+    
+        .. code-block:: python
+
+            from PIL import Image
+            from paddle.vision import image_load, set_image_backend
+
+            fake_img = Image.fromarray((np.random.random((32, 32, 3)) * 255).astype('uint8'))
+
+            path = 'temp.png'
+            fake_img.save(path)
+
+            set_image_backend('pil')
+            
+            pil_img = image_load(path).convert('RGB')
+
+            # should be PIL.Image.Image
+            print(type(pil_img))
+
+            # use opencv as backend
+            # set_image_backend('cv2')
+
+            # np_img = image_load(path)
+            # # should get numpy.ndarray
+            # print(type(np_img))
+    
+    """
+
+    if backend is None:
+        backend = _image_backend
+    if backend not in ['pil', 'cv2']:
+        raise ValueError(
+            "Expected backend are one of ['pil', 'cv2'], but got {}"
+            .format(backend))
+
+    if backend == 'pil':
+        return Image.open(path)
+    else:
+        cv2 = try_import('cv2')
+        return cv2.imread(path)
