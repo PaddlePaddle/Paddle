@@ -36,6 +36,10 @@ static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
     TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
+  if (platform::is_xpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
   return tensor_data[0];
 }
 
