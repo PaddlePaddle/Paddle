@@ -20,13 +20,12 @@ import paddle
 DELTA = 0.00001
 
 
-class Test_is_tensor_op(unittest.TestCase):
+class TestIsTensorApi(unittest.TestCase):
     def test_is_tensor_real(self, dtype="float32"):
         """Test is_tensor api with a real tensor
         """
         x = paddle.rand([3, 2, 4], dtype=dtype)
-        res_expect = True
-        self.assertEqual(paddle.is_tensor(x), res_expect)
+        self.assertTrue(paddle.is_tensor(x))
 
     def test_is_tensor_complex(self, dtype="float32"):
         """Test is_tensor api with a complex tensor
@@ -34,22 +33,19 @@ class Test_is_tensor_op(unittest.TestCase):
         r = paddle.to_tensor(1)
         i = paddle.to_tensor(2)
         x = paddle.ComplexTensor(r, i)
-        res_expect = True
-        self.assertEqual(paddle.is_tensor(x), res_expect)
+        self.assertTrue(paddle.is_tensor(x))
 
     def test_is_tensor_list(self, dtype="float32"):
         """Test is_tensor api with a list
         """
         x = [1, 2, 3]
-        res_expect = False
-        self.assertEqual(paddle.is_tensor(x), res_expect)
+        self.assertFalse(paddle.is_tensor(x))
 
     def test_is_tensor_number(self, dtype="float32"):
         """Test is_tensor api with a number
         """
         x = 5
-        res_expect = False
-        self.assertEqual(paddle.is_tensor(x), res_expect)
+        self.assertFalse(paddle.is_tensor(x))
 
 
 if __name__ == '__main__':

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from . import to_tensor
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
@@ -20,6 +19,8 @@ from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
 from ..fluid.framework import in_dygraph_mode
 from paddle.common_ops_import import *
+from ..framework import VarBase as Tensor
+from ..framework import ComplexVariable as ComplexTensor
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
@@ -385,7 +386,7 @@ def is_tensor(x):
         x (object): Object to test.
 
     Returns:
-        Tensor: A boolean value. True if 'x' is a paddle.Tensor or a paddle.ComplexTensor.
+        A boolean value. True if 'x' is a paddle.Tensor or a paddle.ComplexTensor, otherwise False.
 
     Examples:
         .. code-block:: python
@@ -405,4 +406,4 @@ def is_tensor(x):
             print(check)  #False
             
     """
-    return isinstance(x, paddle.Tensor) or isinstance(x, paddle.ComplexTensor)
+    return isinstance(x, Tensor) or isinstance(x, ComplexTensor)
