@@ -543,13 +543,16 @@ def assign(input, output=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy as np
-          data = fluid.layers.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result1 = fluid.layers.create_tensor(dtype='float64')
-          fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.nn.functional.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.nn.functional.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.nn.functional.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
