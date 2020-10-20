@@ -74,7 +74,7 @@ set(SHARED_INFERENCE_SRCS
 # Create shared inference library defaultly
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
       DEPS ${fluid_modules} analysis_predictor)
-
+set_target_properties(paddle_fluid_shared PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
 if(WIN32)

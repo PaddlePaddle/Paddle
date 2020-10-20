@@ -27,6 +27,7 @@ function(train_test TARGET_NAME)
         endif()
         set_tests_properties(test_train_${TARGET_NAME}${arg}
                 PROPERTIES FIXTURES_REQUIRED test_${TARGET_NAME}_infer_model)
+        set_target_properties(test_train_${TARGET_NAME}${arg} PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
         if(NOT WIN32 AND NOT APPLE)
             set_tests_properties(test_train_${TARGET_NAME}${arg}
                     PROPERTIES TIMEOUT 150)

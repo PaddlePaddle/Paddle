@@ -4,7 +4,7 @@ if(WITH_GPU)
   proto_library(cuda_error_proto SRCS cuda_error.proto)
   if(USE_PADDLE_CUDA_KERNEL_CHECK)
     nv_library(cuda_enforce SRCS cuda_enforce.cu cuda_enforce.cuh DEPS enforce)
-    target_compile_options(cuda_enforce PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--relocatable-device-code=true -dc>)
+    target_compile_options(cuda_enforce PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-dc>)
   endif(USE_PADDLE_CUDA_KERNEL_CHECK)
 endif(WITH_GPU)
 
