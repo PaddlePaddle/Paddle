@@ -29,7 +29,7 @@ RUN apt-get update && \
     python-matplotlib \
     automake locales clang-format swig  \
     liblapack-dev liblapacke-dev \
-    net-tools libtool module-init-tools && \
+    net-tools libtool module-init-tools shellcheck && \
     apt-get clean -y
 
 # Downgrade gcc&&g++

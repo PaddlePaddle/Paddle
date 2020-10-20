@@ -316,23 +316,6 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
-    def test_pad2d(self):
-        with self.static_graph():
-            t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
-            ret = layers.pad2d(t, paddings=[1, 1, 1, 1])
-            static_ret = self.get_static_graph_result(
-                feed={'t': np.ones(
-                    [3, 3, 5, 5], dtype='float32')},
-                fetch_list=[ret])[0]
-
-        with self.dynamic_graph():
-            t = np.ones([3, 3, 5, 5], dtype='float32')
-            my_pad2d = paddle.nn.Pad2D(paddings=1)
-            dy_ret = my_pad2d(base.to_variable(t))
-            dy_ret_value = dy_ret.numpy()
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-
     def test_matmul(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
@@ -1369,7 +1352,7 @@ class TestLayer(LayerTest):
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
-            instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -1380,7 +1363,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -1388,7 +1371,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
