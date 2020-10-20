@@ -1668,6 +1668,9 @@ function main() {
         tar_fluid_lib
         test_fluid_lib
         ;;
+      build_inference_lib)
+        cmake_gen ${PYTHON_ABI:-""}
+        gen_fluid_lib ${parallel_number}
       check_style)
         check_style
         ;;
