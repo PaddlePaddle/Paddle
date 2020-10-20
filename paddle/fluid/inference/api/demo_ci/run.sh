@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set -x
 PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
@@ -8,6 +23,7 @@ TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/Tensor
 TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
 MSVC_STATIC_CRT=$7
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
+gcc_v=`gcc -dumpversion` # retrieve gcc version
 
 cd `dirname $0`
 current_dir=`pwd`
@@ -120,6 +136,9 @@ for WITH_STATIC_LIB in ON OFF; do
     word2vec_model=$DATA_DIR'/word2vec/word2vec.inference.model'
     if [ -d $word2vec_model ]; then
       for use_gpu in $use_gpu_list; do
+          if [[ "${gcc_v}" == "8.2.0" ]]; then
+            export LD_LIBRARY_PATH=/usr/lib64:${LD_LIBRARY_PATH};
+          fi
         ./simple_on_word2vec \
           --dirname=$DATA_DIR/word2vec/word2vec.inference.model \
           --use_gpu=$use_gpu
