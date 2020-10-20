@@ -429,6 +429,7 @@ class TestCUDNNLstmOp(OpTest):
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.is_bidirec = False
+        self.is_test = False
         self.set_attrs()
 
         direction_num = 2 if self.is_bidirec else 1
@@ -545,6 +546,13 @@ class TestCUDNNLstmCpu4(TestCUDNNLstmCpu):
 
 class TestCUDNNLstmCpu5(TestCUDNNLstmCpu):
     def set_attrs(self):
+        self.is_bidirec = True
+        self.num_layers = 2
+
+
+class TestCUDNNLstmCpu6(TestCUDNNLstmCpu):
+    def set_attrs(self):
+        self.is_test = True
         self.is_bidirec = True
         self.num_layers = 2
 
