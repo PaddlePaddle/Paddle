@@ -25,11 +25,12 @@ import static_mode_white_list
 
 
 def main():
-    # paddle.enable_static()
     sys.path.append(os.getcwd())
     some_test_failed = False
     for module_name in sys.argv[1:]:
+        flag_need_static_mode = False
         if module_name in static_mode_white_list.STATIC_MODE_TESTING_LIST:
+            flag_need_static_mode = True
             paddle.enable_static()
         buffer = cStringIO()
         main = fluid.Program()
@@ -49,7 +50,8 @@ def main():
                             'failed\n',
                             buffer.getvalue(),
                             file=sys.stderr)
-    paddle.disable_static()
+        if flag_need_static_mode:
+            paddle.disable_static()
 
     if some_test_failed:
         exit(1)
