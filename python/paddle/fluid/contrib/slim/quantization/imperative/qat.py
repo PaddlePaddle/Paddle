@@ -22,7 +22,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
 from paddle.fluid.io import load_inference_model, save_inference_model
-from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
+from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
@@ -145,7 +145,8 @@ class ImperativeQuantAware(object):
             'LeakyReLU': LeakyReLU,
             'ReLU6': ReLU6,
             'Softmax': Softmax,
-            'Tanh': Tanh
+            'Tanh': Tanh,
+            'Swish': Swish
         }
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
@@ -197,7 +198,8 @@ class ImperativeQuantAware(object):
             sys.exit(-1)
         no_weight_layer = [
             'QuantizedPool2D', 'QuantizedReLU', 'QuantizedLeakyReLU',
-            'QuantizedReLU6', 'QuantizedSoftmax', 'QuantizedTanh'
+            'QuantizedReLU6', 'QuantizedSoftmax', 'QuantizedTanh',
+            'QuantizedSwish'
         ]
         if quantized_counterpart[index] in no_weight_layer:
             quant_layer_class_name = 'QuantizedNoweightLayer'
