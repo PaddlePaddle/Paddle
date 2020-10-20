@@ -21,13 +21,16 @@ import paddle
 import paddle.fluid as fluid
 import importlib
 from six.moves import cStringIO
+import static_mode_white_list
 
 
 def main():
-    paddle.enable_static()
+    # paddle.enable_static()
     sys.path.append(os.getcwd())
     some_test_failed = False
     for module_name in sys.argv[1:]:
+        if module_name in static_mode_white_list.STATIC_MODE_TESTING_LIST:
+            paddle.enable_static()
         buffer = cStringIO()
         main = fluid.Program()
         startup = fluid.Program()
