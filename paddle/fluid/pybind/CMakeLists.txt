@@ -162,5 +162,6 @@ if(WITH_PYTHON)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
+  set_target_properties(paddle_pybind PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
   add_dependencies(paddle_pybind op_function_generator)
 endif(WITH_PYTHON)
