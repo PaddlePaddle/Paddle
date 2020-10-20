@@ -222,19 +222,20 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
 
   if (platform::is_cpu_place(tensor->place())) {
     memcpy(data_ptr, tensor->data<void>(),
-           tensor->numel() * SizeOfType(tensor->type()));
+           tensor->numel() * framework::SizeOfType(tensor->type()));
   } else {
 #ifdef PADDLE_WITH_CUDA
     memory::Copy(platform::CPUPlace(), data_ptr,
                  BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
                  tensor->data<void>(),
-                 tensor->numel() * SizeOfType(tensor->type()), nullptr);
+                 tensor->numel() * framework::SizeOfType(tensor->type()),
+                 nullptr);
 #endif
 #ifdef PADDLE_WITH_XPU
     memory::Copy(platform::CPUPlace(), data_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
                  tensor->data<void>(),
-                 tensor->numel() * SizeOfType(tensor->type()));
+                 tensor->numel() * framework::SizeOfType(tensor->type()));
 #endif
   }
 }
@@ -252,7 +253,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
   *trainer_id = resp.GetTrainerId();
 }
 
-void DeserializeFromMultiVarMsg(const sendrecv::MultiVariableMessage& multi_msg,
+void DeserializeFromMultiVarMsg(const MultiVarMsg& multi_msg,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope* scope,
                                 int* trainer_id) {

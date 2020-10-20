@@ -135,7 +135,7 @@ void ProcGetResponse(const VarHandle& var_h,
 }
 
 void ProcGetMultiVarResponse(const VarHandle& var_h,
-                             const sendrecv::MultiVariableMessage& multi_msg) {
+                             const MultiVarMsg& multi_msg) {
   VLOG(4) << "ProcGetRecvResponse";
   int trainer_id;
   DeserializeFromMultiVarMsg(multi_msg, *var_h.ctx(), var_h.scope(),
@@ -520,7 +520,7 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(
     s->RecvPrepare(recv_var_name_val);
 
     framework::AsyncIO([&] {
-      sendrecv::MultiVariableMessage request;
+      MultiVarMsg request;
       SerializeToMultiVarMsg(message_name_val, send_var_name_val,
                              recv_var_name_val, *p_ctx, p_scope, &request,
                              trainer_id_);

@@ -64,7 +64,7 @@ namespace distributed {
 
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 void ProcGetMultiVarResponse(const VarHandle& var_h,
-                             const sendrecv::MultiVariableMessage& multi_msg);
+                             const MultiVarMsg& multi_msg);
 
 class BaseProcessor {
  public:
@@ -126,8 +126,7 @@ class SendProcessor : public BaseProcessor {
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestGetCallBack;
 
-typedef std::function<void(const VarHandle&,
-                           const sendrecv::MultiVariableMessage&)>
+typedef std::function<void(const VarHandle&, const MultiVarMsg&)>
     RequestMulitVarMsgGetCallBack;
 
 class GetProcessor : public BaseProcessor {
@@ -167,7 +166,7 @@ class SendAndRecvProcessor : public BaseProcessor {
     recv_var_names_ = recv_var_name;
   }
 
-  sendrecv::MultiVariableMessage reply_;
+  MultiVarMsg reply_;
   std::vector<std::string> recv_var_names_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
   RequestMulitVarMsgGetCallBack response_call_back_ = ProcGetMultiVarResponse;

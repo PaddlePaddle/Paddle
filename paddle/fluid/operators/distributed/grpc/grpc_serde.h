@@ -72,11 +72,11 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const framework::Scope* scope,
                                framework::Variable** var, int* trainer_id);
 
-void DeserializeFromMultiVarMsg(const sendrecv::MultiVariableMessage& multi_msg,
+void DeserializeFromMultiVarMsg(const MultiVarMsg& multi_msg,
                                 const platform::DeviceContext& ctx,
                                 const framework::Scope* scope, int* trainer_id);
 
-void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
+void DeserializeFromVarMsg(const VarMsg& msg,
                            const platform::DeviceContext& ctx,
                            const framework::Scope* scope, int* trainer_id);
 

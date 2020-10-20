@@ -44,6 +44,9 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+using VarMsg = sendrecv::VariableMessage;
+using MultiVarMsg = sendrecv::MultiVariableMessage;
+
 class GRPCVariableResponse : public VariableResponse {
  public:
   GRPCVariableResponse(const framework::Scope* scope,
@@ -60,48 +63,6 @@ class GRPCVariableResponse : public VariableResponse {
   // -1: unkown error.
   // other: number of error field.
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
-};
-
-class GRPCMultiVariableResponse {
- public:
-  GRPCMultiVariableResponse(const framework::Scope* scope,
-                            const platform::DeviceContext* dev_ctx,
-                            bool create_scope = false) {
-    if (create_scope) {
-      local_scope_ = scope->NewTmpScope().release();
-    }
-  }
-
-  virtual ~GRPCMultiVariableResponse() {
-    if (local_scope_) {
-      delete local_scope_;
-      local_scope_ = nullptr;
-    }
-  }
-
-  int Parse(Source* source, const sendrecv::MultiVariableMessage meta) {
-    meta_ = meta;
-    return 0;
-  }
-  inline const framework::Scope& GetScope() const {
-    if (create_scope_) {
-      return *local_scope_;
-    }
-    return *scope_;
-  }
-
-  inline const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
-
-  inline sendrecv::MultiVariableMessage GetMultiVariableMessage() const {
-    return meta_;
-  }
-
- protected:
-  const framework::Scope* scope_;
-  const platform::DeviceContext* dev_ctx_;
-  bool create_scope_ = false;
-  framework::Scope* local_scope_ = nullptr;
-  sendrecv::MultiVariableMessage meta_;
 };
 
 };  // namespace distributed

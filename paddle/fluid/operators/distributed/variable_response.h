@@ -92,6 +92,10 @@ class VariableResponse {
     return Parse(source);
   }
 
+  int Parse(Source* source, const sendrecv::MultiVariableMessage& meta) {
+    multi_meta_ = meta;
+    return 0;
+  }
   // return:
   // 0:ok.
   // -1: unkown error.
@@ -103,6 +107,10 @@ class VariableResponse {
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
+
+  inline sendrecv::MultiVariableMessage GetMultiVariableMessage() const {
+    return multi_meta_;
+  }
 
   // should call parse first.
   framework::Variable* GetVar() {
@@ -148,6 +156,7 @@ class VariableResponse {
   framework::Scope* local_scope_ = nullptr;
 
   sendrecv::VariableMessage meta_;
+  sendrecv::MultiVariableMessage multi_meta_;
 };
 
 };  // namespace distributed

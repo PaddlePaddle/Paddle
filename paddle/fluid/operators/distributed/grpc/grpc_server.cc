@@ -454,8 +454,8 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new GRPCMultiVariableResponse(
-        request_handler->scope(), request_handler->dev_ctx(), true));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
 
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
@@ -488,24 +488,28 @@ class RequestSendAndRecv final : public RequestBase {
 
     VLOG(4) << "RequestSendAndRecv, message_name: " << message_name;
     int trainer_id = 0;
-    DeserializeFromMultiVarMsg(multi_msg_, &(request_->dev_ctx()),
-                               request_->GetScope(), trainer_id);
+    DeserializeFromMultiVarMsg(multi_msg_, *request_handler_->dev_ctx(),
+                               request_->GetMutableLocalScope(), &trainer_id);
     request_handler_->SetMultiVarNames(in_var_names, out_var_names);
-    framework::Variable* fake_in_var;
-    framework::Variable* fake_out_var;
-    request_handler_->Handle(message_name, request_->GetScope(), fake_in_var,
-                             fake_out_var, trainer_id);
-    SerializeToByteBuffer(message_name, in_var_names, out_var_names,
-                          *request_handler_->dev_ctx(), request_->GetScope(),
-                          &reply_);
-    Finish(reply_, &responder_);
+    framework::Variable* fake_in_var = nullptr;
+    framework::Variable* fake_out_var = nullptr;
+    request_handler_->Handle(message_name, request_->GetMutableLocalScope(),
+                             fake_in_var, &fake_out_var, trainer_id);
+    SerializeToMultiVarMsg(
+        message_name, in_var_names, out_var_names, *request_handler_->dev_ctx(),
+        request_->GetMutableLocalScope(), &reply_, trainer_id);
+
+    std::lock_guard<std::mutex> l(status_mu_);
+    status_ = FINISH;
+    responder_.Finish(reply_, ::grpc::Status::OK,
+                      reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
   }
 
  protected:
-  std::shared_ptr<GRPCMultiVariableResponse> request_;
-  sendrecv::MultiVariableMessage multi_msg_;
-  sendrecv::MultiVariableMessage reply_;
-  ServerAsyncResponseWriter<sendrecv::MultiVariableMessage> responder_;
+  std::shared_ptr<GRPCVariableResponse> request_;
+  MultiVarMsg multi_msg_;
+  MultiVarMsg reply_;
+  ServerAsyncResponseWriter<MultiVarMsg> responder_;
 };
 
 void AsyncGRPCServer::WaitServerReady() {
