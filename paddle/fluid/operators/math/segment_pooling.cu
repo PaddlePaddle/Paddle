@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
+#include <algorithm>
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -100,7 +99,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
-    h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
+    h.calculate(stripe_index, &segment_offset, &dim_index_base, &actual_height);
 
     T minmax = pool.initial();
     Index first_segment_id = segment_ids[dim_index_base];
@@ -154,7 +153,7 @@ __global__ void SegmentIndexGradKernel(const Index* segment_ids, const T* input,
                                        T* in_grad, Helper h) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
-    h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
+    h.calculate(stripe_index, &segment_offset, &dim_index_base, &actual_height);
 
     for (Index j = 0; j < actual_height; j++) {
       Index current_segment_id = segment_ids[dim_index_base + j];
@@ -217,11 +216,11 @@ class ArrangeHelper {
     total_stripe_count = inner_dim_size * input_outer_dim_num_stripe;
   }
 
-  DEVICE inline void calculate(T stripe_index, T& segment_offset,
-                               T& dim_index_base, T& actual_height) {
-    segment_offset = stripe_index % inner_dim_size;
-    dim_index_base = stripe_index / inner_dim_size * DimTileSize;
-    actual_height = min(DimTileSize, input_length_size - dim_index_base);
+  DEVICE inline void calculate(T stripe_index, T* segment_offset,
+                               T* dim_index_base, T* actual_height) {
+    *segment_offset = stripe_index % inner_dim_size;
+    *dim_index_base = stripe_index / inner_dim_size * DimTileSize;
+    *actual_height = min(DimTileSize, input_length_size - *dim_index_base);
   }
 };
 

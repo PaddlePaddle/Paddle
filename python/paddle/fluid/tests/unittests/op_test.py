@@ -26,6 +26,7 @@ import itertools
 import collections
 from collections import defaultdict
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
@@ -217,6 +218,9 @@ class OpTest(unittest.TestCase):
                     return False
             return True
 
+        def is_xpu_op_test():
+            return hasattr(cls, "use_xpu") and cls.use_xpu == True
+
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
@@ -239,6 +243,7 @@ class OpTest(unittest.TestCase):
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
+                and not is_xpu_op_test() \
                 and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
@@ -335,6 +340,11 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
+
+        if (hasattr(self, "use_xpu") and self.use_xpu == True) or \
+            (hasattr(self, "attrs") and "use_xpu" in self.attrs and \
+                    self.attrs["use_xpu"] == True):
+            self.__class__.use_xpu = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
@@ -932,6 +942,8 @@ class OpTest(unittest.TestCase):
         need_run_ops = self._get_need_run_ops(op_desc)
 
         res = {}
+        if hasattr(self, 'attrs') and bool(self.attrs.get('use_xpu', False)):
+            return
         for op_desc, father_op_desc in reversed(need_run_ops):
             # The first one is the forward op
             has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
@@ -1122,8 +1134,10 @@ class OpTest(unittest.TestCase):
             )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
-        self.check_inplace_output_with_place(
-            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
+        # Currently not support ParallelExecutor on XPUPlace.
+        if not paddle.is_compiled_with_xpu():
+            self.check_inplace_output_with_place(
+                place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
         if check_dygraph:
             return outs, dygraph_outs, fetch_list
@@ -1202,6 +1216,11 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
+
+        if (hasattr(self, "use_xpu") and self.use_xpu == True) or \
+            (hasattr(self, "attrs") and "use_xpu" in self.attrs and \
+                    self.attrs["use_xpu"] == True):
+            self.__class__.use_xpu = True
 
         places = self._get_places()
         for place in places:

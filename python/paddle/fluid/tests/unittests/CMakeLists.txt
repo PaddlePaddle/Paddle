@@ -15,6 +15,12 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+list(APPEND DIST_TEST_OPS test_collective_reduce_api)
+list(APPEND DIST_TEST_OPS test_collective_scatter_api)
+list(APPEND DIST_TEST_OPS test_collective_barrier_api)
+list(APPEND DIST_TEST_OPS test_collective_allreduce_api)
+list(APPEND DIST_TEST_OPS test_collective_broadcast_api)
+list(APPEND DIST_TEST_OPS test_collective_allgather_api)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -62,12 +68,6 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter)
-    LIST(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
-    LIST(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
-    LIST(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
-    LIST(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
-    LIST(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
-    LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -129,6 +129,8 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_base_single)
+
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
@@ -335,6 +337,7 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_isolated_var)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -531,20 +534,24 @@ if(NOT WIN32)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint1 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint3 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint_multiple START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_auto_checkpoint_dist_basic START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_hdfs1 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_hdfs2 START_BASH dist_test.sh TIMEOUT 140)
-    bash_test_modules(test_hdfs3 START_BASH dist_test.sh TIMEOUT 140)
+    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 140 LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint1 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint3 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint_multiple START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_auto_checkpoint_dist_basic START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_hdfs1 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_hdfs2 START_BASH dist_test.sh TIMEOUT 140   LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+    bash_test_modules(test_hdfs3 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 endif()
 
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
+
+if (WITH_XPU)
+    add_subdirectory(xpu)
+endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
@@ -562,12 +569,12 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op
         test_dataloader_keep_order
         test_dataloader_unkeep_order
-        test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
-
+# disable test_parallel_executor_fetch_isolated_var
+# set_tests_properties(test_parallel_executor_fetch_isolated_var PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu

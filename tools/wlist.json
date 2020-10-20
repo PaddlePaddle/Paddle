@@ -24,6 +24,8 @@
         }
     ],
     "wlist_temp_api":[
+        "LRScheduler",
+        "ReduceOnPlateau",
         "append_LARS",
         "BuildStrategy.debug_graphviz_path",
         "BuildStrategy.enable_sequential_execution",
@@ -251,9 +253,10 @@
         "BilinearTensorProduct",
         "GroupNorm",
         "SpectralNorm",
-        "TreeConv",
+        "TreeConv"
+    ],
+    "wlist_temp":[
         "prroi_pool",
-        "to_tensor",
         "ChunkEvaluator",
         "EditDistance",
         "ErrorClipByValue",
@@ -278,7 +281,6 @@
         "thresholded_relu",
         "group_norm",
         "random_crop",
-        "py_func",
         "row_conv",
         "hard_shrink",
         "ssd_loss",
@@ -406,7 +408,9 @@
         "TransformerDecoder.prepare_incremental_cache",
         "LinearChainCRF.forward",
         "CRFDecoding.forward",
-        "SequenceTagging.forward"
+        "SequenceTagging.forward",
+        "XPUPlace",
+        "is_compiled_with_xpu"
     ],
     "gpu_not_white":[
         "deformable_conv",

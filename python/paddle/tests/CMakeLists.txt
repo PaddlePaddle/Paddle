@@ -39,3 +39,5 @@ foreach(src ${DIST_TEST_OPS})
     message(STATUS ${src})
     py_dist_test(${src} SRCS ${src}.py)
 endforeach()
+
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
