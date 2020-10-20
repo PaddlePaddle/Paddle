@@ -295,15 +295,20 @@ void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
            tensor->numel() * framework::SizeOfType(tensor->type()));
   } else {
 #ifdef PADDLE_WITH_CUDA
+    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
                  platform::CPUPlace(), msg.serialized().data(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()));
+                 tensor->numel() * framework::SizeOfType(tensor->type()),
+                 gpu_dev_ctx.stream());
+#else
+    PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
+                             "Paddle is not compiled with GPU!"));
 #endif
-#ifdef PADDLE_WITH_XPU
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
-                 platform::CPUPlace(), msg.serialized().data(),
-                 tensor->numel() * framework::SizeOfType(tensor->type()));
-#endif
+    // #ifdef PADDLE_WITH_XPU
+    //   memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
+    //                platform::CPUPlace(), msg.serialized().data(),
+    //                tensor->numel() * framework::SizeOfType(tensor->type()));
+    // #endif
   }
 }
 

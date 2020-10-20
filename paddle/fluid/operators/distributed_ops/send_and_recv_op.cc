@@ -35,8 +35,9 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& scope = ctx.scope();
     const auto& place = ctx.GetPlace();
-    auto send_var_name = ctx.Attr<std::string>("send_var_name");
-    auto recv_var_name = ctx.Attr<std::string>("recv_var_name");
+    auto message_name = ctx.Attr<std::string>("message_name");
+    auto send_var_name = ctx.Attr<std::vector<std::string>>("send_var_name");
+    auto recv_var_name = ctx.Attr<std::vector<std::string>>("recv_var_name");
     auto epmap = ctx.Attr<std::string>("endpoint");
     auto trainer_id = ctx.Attr<int>("trainer_id");
 
@@ -45,10 +46,19 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-    VLOG(3) << "SendAndRecvOp Send_var_name: " << send_var_name
-            << " Recv_var_name: " << recv_var_name;
+    VLOG(3) << "SendAndRecvOp message_name: " << message_name;
+
+    /*
+    VarHandlePtr GRPCClient::AsyncSendAndRecv(
+                      const std::string& ep, const platform::DeviceContext& ctx,
+                      const framework::Scope& scope, const std::string&
+    message_name,
+                      const std::vector<std::string>& send_var_name,
+                      const std::vector<std::string>& recv_var_name, int64_t
+    time_out)
+    */
     distributed::VarHandlePtr rets = rpc_client->AsyncSendAndRecv(
-        epmap, context, scope, send_var_name, recv_var_name);
+        epmap, context, scope, message_name, send_var_name, recv_var_name);
     rets->Wait();
   }
 };
@@ -71,10 +81,9 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "Tensor Input variable to be sent").AsDuplicable();
     AddOutput("Out", "Tensor Output varibale to be recv").AsDuplicable();
-    AddAttr<std::string>("send_var_name", "Send Tensor's name")
-        .SetDefault(std::string(""));
-    AddAttr<std::string>("recv_var_name", "Recv Tensor's name")
-        .SetDefault(std::string(""));
+    AddAttr<std::string>("message_name", "");
+    AddAttr<std::vector<std::string>>("send_var_name", "Send Tensor's name");
+    AddAttr<std::vector<std::string>>("recv_var_name", "Recv Tensor's name");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::string>("endpoint", "Server endpoint")
         .SetDefault({"127.0.0.1:6164"});

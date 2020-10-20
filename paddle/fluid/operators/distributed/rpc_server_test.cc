@@ -64,8 +64,8 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   out1.SetShape({1, 10});
 
   auto& out2 = *root_block->Var("res2");
-  out1.SetType(framework::proto::VarType::LOD_TENSOR);
-  out1.SetShape({1, 10});
+  out2.SetType(framework::proto::VarType::LOD_TENSOR);
+  out2.SetShape({1, 10});
 
   return block;
 }
@@ -80,17 +80,17 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto ids_var = scope->Var("ids");
   ids_var->GetMutable<framework::LoDTensor>();
 
-  auto x_var = scope->Var("x1");
-  x_var->GetMutable<framework::LoDTensor>();
+  auto x_var1 = scope->Var("x1");
+  x_var1->GetMutable<framework::LoDTensor>();
 
-  auto res_var = scope->Var("res1");
-  res_var->GetMutable<framework::LoDTensor>();
+  auto res_var1 = scope->Var("res1");
+  res_var1->GetMutable<framework::LoDTensor>();
 
-  auto x_var = scope->Var("x2");
-  x_var->GetMutable<framework::LoDTensor>();
+  auto x_var2 = scope->Var("x2");
+  x_var2->GetMutable<framework::LoDTensor>();
 
-  auto res_var = scope->Var("res2");
-  res_var->GetMutable<framework::LoDTensor>();
+  auto res_var2 = scope->Var("res2");
+  res_var2->GetMutable<framework::LoDTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
@@ -101,15 +101,15 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
-  auto x_var = scope->Var("x1")->GetMutable<framework::LoDTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
-  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+  auto x_var1 = scope->Var("x1")->GetMutable<framework::LoDTensor>();
+  float* x_ptr1 =
+      x_var1->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr1[i] = 1.0;
 
-  auto x_var = scope->Var("x2")->GetMutable<framework::LoDTensor>();
-  float* x_ptr =
-      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
-  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+  auto x_var2 = scope->Var("x2")->GetMutable<framework::LoDTensor>();
+  float* x_ptr2 =
+      x_var2->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr2[i] = 1.0;
 }
 
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
@@ -257,21 +257,21 @@ TEST(SENDANDRECV, CPU) {
   client->Wait();
 
   // check res1
-  auto var = scope.Var(recv_var_name[0]);
-  auto value = var->GetMutable<framework::LoDTensor>();
-  auto ptr = value->mutable_data<float>(place);
+  auto var1 = scope.Var(recv_var_name[0]);
+  auto value1 = var1->GetMutable<framework::LoDTensor>();
+  auto ptr1 = value1->mutable_data<float>(place);
 
   for (int64_t i = 0; i < rows_numel; ++i) {
-    EXPECT_EQ(ptr[i], 0.5);
+    EXPECT_EQ(ptr1[i], 0.5);
   }
 
   // check res2
-  auto var = scope.Var(recv_var_name[1]);
-  auto value = var->GetMutable<framework::LoDTensor>();
-  auto ptr = value->mutable_data<float>(place);
+  auto var2 = scope.Var(recv_var_name[1]);
+  auto value2 = var2->GetMutable<framework::LoDTensor>();
+  auto ptr2 = value2->mutable_data<float>(place);
 
   for (int64_t i = 0; i < rows_numel; ++i) {
-    EXPECT_EQ(ptr[i], 2.0);
+    EXPECT_EQ(ptr2[i], 2.0);
   }
 
   g_rpc_service->ShutDown();
