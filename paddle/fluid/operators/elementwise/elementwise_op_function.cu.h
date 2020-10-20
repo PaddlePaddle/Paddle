@@ -96,7 +96,12 @@ struct DivRangeFunctor<
     T, typename std::enable_if<std::is_integral<T>::value>::type> {
   DivRangeFunctor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {}
   inline HOSTDEVICE void operator()(size_t id) const {
-    PADDLE_ENFORCE(y_[id] != 0, DIV_ERROR_INFO);
+    PADDLE_ENFORCE(y_[id] != 0,
+#ifdef __CUDA_ARCH__
+                   DIV_ERROR_INFO);
+#else
+                   platform::errors::InvalidArgument(DIV_ERROR_INFO));
+#endif
     z_[id] = x_[id] / y_[id];
   }
   const T* x_;
