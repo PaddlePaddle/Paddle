@@ -23,6 +23,8 @@ import os
 
 batch_size = 32
 
+np.random.seed(10)
+
 feed_dict = {
     'image': np.random.random([batch_size, 784]).astype('float32'),
     'label': np.random.random_integers(
