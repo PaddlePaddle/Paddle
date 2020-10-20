@@ -63,9 +63,9 @@ void SerializeToMultiVarMsg(const std::string& message_name,
                             const int trainer_id = 0);
 
 void SerializeLodTensorToVarMsg(const std::string& var_name,
-                                const framework::Scope& scope,
+                                const framework::Scope* scope,
                                 const platform::DeviceContext& ctx,
-                                const int trainer_id, VariableMessage* var_msg);
+                                const int trainer_id, VarMsg* var_msg);
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,

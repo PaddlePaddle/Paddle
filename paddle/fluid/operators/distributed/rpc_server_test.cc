@@ -47,15 +47,25 @@ framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
   auto* block = program->AppendBlock(*root_block);
 
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("scale");
-  op->SetInput("X", {"x"});
-  op->SetOutput("Out", {"res"});
-  op->SetAttr("scale", 0.5f);
+  framework::OpDesc* op1 = block->AppendOp();
+  op1->SetType("scale");
+  op1->SetInput("X", {"x1"});
+  op1->SetOutput("Out", {"res1"});
+  op1->SetAttr("scale", 0.5f);
 
-  auto& out = *root_block->Var("res");
-  out.SetType(framework::proto::VarType::LOD_TENSOR);
-  out.SetShape({1, 10});
+  framework::OpDesc* op2 = block->AppendOp();
+  op2->SetType("scale");
+  op2->SetInput("X", {"x2"});
+  op2->SetOutput("Out", {"res2"});
+  op2->SetAttr("scale", 2.0f);
+
+  auto& out1 = *root_block->Var("res1");
+  out1.SetType(framework::proto::VarType::LOD_TENSOR);
+  out1.SetShape({1, 10});
+
+  auto& out2 = *root_block->Var("res2");
+  out1.SetType(framework::proto::VarType::LOD_TENSOR);
+  out1.SetShape({1, 10});
 
   return block;
 }
@@ -70,10 +80,16 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto ids_var = scope->Var("ids");
   ids_var->GetMutable<framework::LoDTensor>();
 
-  auto x_var = scope->Var("x");
+  auto x_var = scope->Var("x1");
   x_var->GetMutable<framework::LoDTensor>();
 
-  auto res_var = scope->Var("res");
+  auto res_var = scope->Var("res1");
+  res_var->GetMutable<framework::LoDTensor>();
+
+  auto x_var = scope->Var("x2");
+  x_var->GetMutable<framework::LoDTensor>();
+
+  auto res_var = scope->Var("res2");
   res_var->GetMutable<framework::LoDTensor>();
 }
 
@@ -85,7 +101,12 @@ void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
       ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x1")->GetMutable<framework::LoDTensor>();
+  float* x_ptr =
+      x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
+
+  auto x_var = scope->Var("x2")->GetMutable<framework::LoDTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
@@ -142,7 +163,7 @@ void StartSendAndRecvServer(const std::string& rpc_name) {
   framework::Executor exe(place);
   platform::CPUDeviceContext ctx(place);
   auto block = AppendSendAndRecvBlock(&program);
-  std::string in_var_name("x");
+  std::string message_name("send_recv_test");
   std::vector<int> prefetch_block_ids{block->ID()};
   auto prepared = exe.Prepare(program, prefetch_block_ids);
   InitTensorsOnServer(&scope, &place, 10);
@@ -150,7 +171,7 @@ void StartSendAndRecvServer(const std::string& rpc_name) {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       grad_to_prepared_ctx;
-  grad_to_prepared_ctx[in_var_name] = prepared[0];
+  grad_to_prepared_ctx[message_name] = prepared[0];
 
   g_req_handler->SetProgram(&program);
   g_req_handler->SetGradToPreparedCtx(&grad_to_prepared_ctx);
@@ -217,18 +238,42 @@ TEST(SENDANDRECV, CPU) {
   // create var on local scope
   int64_t rows_numel = 10;
   InitTensorsOnClient(&scope, &place, rows_numel);
-  std::string in_var_name("x");
-  std::string out_var_name("res");
+  std::string message_name("send_recv_test");
+  std::vector<std::string> send_var_name = {"x1", "x2"};
+  std::vector<std::string> recv_var_name = {"res1", "res2"};
 
-  client->AsyncSendAndRecv(ep, ctx, scope, in_var_name, out_var_name);
+  /*
+  VarHandlePtr AsyncSendAndRecv(const std::string& ep,
+                              const platform::DeviceContext& ctx,
+                              const framework::Scope& scope,
+                              const std::string& message_name,
+                              const std::vector<std::string>& send_var_name,
+                              const std::vector<std::string>& recv_var_name,
+                              int64_t time_out = FLAGS_rpc_deadline)
+  */
+
+  client->AsyncSendAndRecv(ep, ctx, scope, message_name, send_var_name,
+                           recv_var_name);
   client->Wait();
-  auto var = scope.Var(out_var_name);
+
+  // check res1
+  auto var = scope.Var(recv_var_name[0]);
   auto value = var->GetMutable<framework::LoDTensor>();
   auto ptr = value->mutable_data<float>(place);
 
   for (int64_t i = 0; i < rows_numel; ++i) {
     EXPECT_EQ(ptr[i], 0.5);
   }
+
+  // check res2
+  auto var = scope.Var(recv_var_name[1]);
+  auto value = var->GetMutable<framework::LoDTensor>();
+  auto ptr = value->mutable_data<float>(place);
+
+  for (int64_t i = 0; i < rows_numel; ++i) {
+    EXPECT_EQ(ptr[i], 2.0);
+  }
+
   g_rpc_service->ShutDown();
   server_thread.join();
   LOG(INFO) << "begin reset";

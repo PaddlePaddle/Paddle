@@ -201,6 +201,13 @@ class RequestHandler {
     lr_decay_prepared_ctx_ = g;
   }
 
+  // for send&recv
+  void SetMultiVarNames(const std::vector<std::string>& in_var_names,
+                        const std::vector<std::string>& out_var_names) {
+    in_var_names_ = in_var_names;
+    out_var_names_ = out_var_names;
+  }
+
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
   // Get attributes.
@@ -254,6 +261,10 @@ class RequestHandler {
   // used for lr decay
   std::shared_ptr<framework::ExecutorPrepareContext> lr_decay_prepared_ctx_;
   RPCServer* rpc_server_;
+
+  // used for send&recv
+  std::vector<std::string> in_var_names_ = {};
+  std::vector<std::string> out_var_names_ = {};
 };
 
 }  // namespace distributed

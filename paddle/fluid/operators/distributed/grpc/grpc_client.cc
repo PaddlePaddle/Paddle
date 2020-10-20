@@ -494,44 +494,41 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   return h;
 }
 
-VarHandlePtr AsyncSendAndRecv(const std::string& ep,
-                              const platform::DeviceContext& ctx,
-                              const framework::Scope& scope,
-                              const std::string& message_name,
-                              const std::vector<std::string>& send_var_name,
-                              const std::vector<std::string>& recv_var_name,
-                              int64_t time_out = FLAGS_rpc_deadline) {
+VarHandlePtr GRPCClient::AsyncSendAndRecv(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& message_name,
+    const std::vector<std::string>& send_var_name,
+    const std::vector<std::string>& recv_var_name, int64_t time_out) {
   const std::string ep_val = ep;
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
-  const std::string message_name = message_name;
+  const std::string message_name_val = message_name;
   const std::vector<std::string> send_var_name_val = send_var_name;
   const std::vector<std::string> recv_var_name_val = recv_var_name;
 
   const auto channel = GetChannel(ep_val);
   const std::string method = kSendAndRecvRPC;
 
-  VLOG(4) << "GRPCClient::SendAndRecv Begin, message_name: " << message_name;
+  VLOG(4) << "GRPCClient::SendAndRecv Begin, message_name: "
+          << message_name_val;
   int retry_times_ = 0;
 
   while (true) {
     SendAndRecvProcessor* s = new SendAndRecvProcessor(channel);
-    VarHandlePtr h(new VarHandle(ep, method, message_name, p_ctx, p_scope));
+    VarHandlePtr h(new VarHandle(ep, method, message_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
-    s->Recvprepare(recv_var_name_val);
+    s->RecvPrepare(recv_var_name_val);
 
-  framework:
-    AsyncIO([&] {
+    framework::AsyncIO([&] {
       sendrecv::MultiVariableMessage request;
-      SerializeToMultiVarMsg(message_name, send_var_name_val, recv_var_name_val,
-                             *p_ctx, *p_scope, &request, trainer_id_);
+      SerializeToMultiVarMsg(message_name_val, send_var_name_val,
+                             recv_var_name_val, *p_ctx, p_scope, &request,
+                             trainer_id_);
 
       VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
-      s->response_call_back_ = ProcGetMultiVarResponse;
-
-      auto call = s->stub_->PrepareAsyncSendAndRecvVariableRaw(
-          s->context_.get(), request, &cq_);
+      auto call =
+          s->stub_->AsyncSendAndRecvVariable(s->context_.get(), request, &cq_);
       call->StartCall();
       call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 

@@ -161,7 +161,7 @@ void SerializeToMultiVarMsg(const std::string& message_name,
                             const std::vector<std::string>& recv_var_name_val,
                             const platform::DeviceContext& ctx,
                             const framework::Scope* scope, MultiVarMsg* request,
-                            const int trainer_id = 0) {
+                            const int trainer_id) {
   // 1. message_name
   request->set_message_name(message_name);
 
@@ -177,7 +177,7 @@ void SerializeToMultiVarMsg(const std::string& message_name,
 
   // 4. VarMessage
   for (auto& send_var_name : send_var_name_val) {
-    auto* send_var_msg = request->add_vars();
+    auto* send_var_msg = request->add_var_messages();
     // Todo: support selectedRows(MrChengmo)
     SerializeLodTensorToVarMsg(send_var_name, scope, ctx, trainer_id,
                                send_var_msg);
@@ -185,21 +185,20 @@ void SerializeToMultiVarMsg(const std::string& message_name,
 }
 
 void SerializeLodTensorToVarMsg(const std::string& var_name,
-                                const framework::Scope& scope,
+                                const framework::Scope* scope,
                                 const platform::DeviceContext& ctx,
-                                const int trainer_id,
-                                VariableMessage* var_msg) {
-  framework::Variable* var = scope->FindVar(varname);
+                                const int trainer_id, VarMsg* var_msg) {
+  framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
     // throw error
     return;
   }
 
-  framework::LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   var_msg->set_varname(var_name);
   var_msg->set_trainer_id(trainer_id);
   var_msg->set_type(::sendrecv::LOD_TENSOR);
-  var_msg->set_data_type(static_cast<VarMsg::Type>(tensor.type()));
+  var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
 
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
@@ -209,16 +208,16 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
   if (lod.size() > 0) {
     var_msg->set_lod_level(lod.size());
     for (auto& each : lod) {
-      VariableMessage::LodData* lod_inner = var_msg->add_lod();
+      VarMsg::LodData* lod_inner = var_msg->add_lod();
       for (auto& d : each) {
         lod_inner->add_lod_data(d);
       }
     }
   }
 
-  auto* var_data = var_msg->mutable_data();
+  auto* var_data = var_msg->mutable_serialized();
   var_data->clear();
-  var_data->resize(tensor->numel() * SizeOfType(tensor->type()));
+  var_data->resize(tensor->numel() * framework::SizeOfType(tensor->type()));
   char* data_ptr = const_cast<char*>(var_data->data());
 
   if (platform::is_cpu_place(tensor->place())) {
@@ -259,7 +258,7 @@ void DeserializeFromMultiVarMsg(const sendrecv::MultiVariableMessage& multi_msg,
                                 int* trainer_id) {
   for (int recv_var_index = 0; recv_var_index < multi_msg.send_var_names_size();
        ++recv_var_index) {
-    DeserializeFromVarMsg(&multi_msg.var_messages(recv_var_index), ctx, scope,
+    DeserializeFromVarMsg(multi_msg.var_messages(recv_var_index), ctx, scope,
                           trainer_id);
   }
 }
@@ -269,13 +268,15 @@ void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
                            const framework::Scope* scope, int* trainer_id) {
   auto* var = scope->FindVar(msg.varname());
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-  *trainer_id = msg.GetTrainerId();
+  const auto place = tensor->place();
+
+  *trainer_id = msg.trainer_id();
 
   std::vector<int> vec_dim;
   for (auto& x : msg.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(make_ddim(vec_dim));
+  tensor->Resize(framework::make_ddim(vec_dim));
 
   framework::LoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
@@ -289,17 +290,17 @@ void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
 
   void* tensor_data = tensor->mutable_data(place, ToVarType(msg.data_type()));
 #ifdef PADDLE_WITH_CUDA
-  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
-               tensor_data, platform::CPUPlace(), msg.data().data(),
-               tensor->numel() * SizeOfType(tensor->type()))
+  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
+               platform::CPUPlace(), msg.serialized().data(),
+               tensor->numel() * framework::SizeOfType(tensor->type()));
 #endif
 #ifdef PADDLE_WITH_XPU
-      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
-                   platform::CPUPlace(), msg.data().data(),
-                   tensor->numel() * SizeOfType(tensor->type()));
+  memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
+               platform::CPUPlace(), msg.serialized().data(),
+               tensor->numel() * framework::SizeOfType(tensor->type()));
 #else
-  memcpy(tensor_data, msg.data().data(),
-         tensor->numel() * SizeOfType(tensor->type()));
+  memcpy(tensor_data, msg.serialized().data(),
+         tensor->numel() * framework::SizeOfType(tensor->type()));
 #endif
 }
 

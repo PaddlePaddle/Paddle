@@ -466,42 +466,46 @@ class RequestSendAndRecv final : public RequestBase {
   }
 
   virtual ~RequestSendAndRecv() {}
-  std::string GetReqName() override { return request_->Varname(); }
+  std::string GetReqName() override {
+    return request_->GetMultiVariableMessage().message_name();
+  }
 
   void Process() override {
     multi_msg_ = request_->GetMultiVariableMessage();
-    std::string message_name = request_->message_name();
-    std::vector<std::string> in_var_names(request_->send_var_names_size());
-    std::vector<std::string> out_var_names(request_->recv_var_names_size());
+    std::string message_name = multi_msg_.message_name();
+    std::vector<std::string> in_var_names(multi_msg_.send_var_names_size());
+    std::vector<std::string> out_var_names(multi_msg_.recv_var_names_size());
 
-    for (int in_var_index = 0; in_var_index < request_->send_var_names_size();
+    for (int in_var_index = 0; in_var_index < multi_msg_.send_var_names_size();
          ++in_var_index) {
-      in_var_names[in_var_index] = request_->send_var_names(in_var_index);
+      in_var_names[in_var_index] = multi_msg_.send_var_names(in_var_index);
     }
 
-    for (int out_var_index = 0; out_var_index < request_->recv_var_names_size();
-         ++out_var_index) {
-      out_var_names[out_var_index] = request_->recv_var_names(out_var_index);
+    for (int out_var_index = 0;
+         out_var_index < multi_msg_.recv_var_names_size(); ++out_var_index) {
+      out_var_names[out_var_index] = multi_msg_.recv_var_names(out_var_index);
     }
 
     VLOG(4) << "RequestSendAndRecv, message_name: " << message_name;
     int trainer_id = 0;
-    DeserializeFromMultiVarMsg(multi_msg_, *request_handler_->dev_ctx(), scope,
-                               trainer_id);
+    DeserializeFromMultiVarMsg(multi_msg_, &(request_->dev_ctx()),
+                               request_->GetScope(), trainer_id);
     request_handler_->SetMultiVarNames(in_var_names, out_var_names);
-    request_handler_->Handle(message_name, scope, nullptr, nullptr, trainer_id);
+    framework::Variable* fake_in_var;
+    framework::Variable* fake_out_var;
+    request_handler_->Handle(message_name, request_->GetScope(), fake_in_var,
+                             fake_out_var, trainer_id);
     SerializeToByteBuffer(message_name, in_var_names, out_var_names,
-                          *request_handler_->dev_ctx(), scope, &reply_)
-        Finish(reply_, &responder_);
+                          *request_handler_->dev_ctx(), request_->GetScope(),
+                          &reply_);
+    Finish(reply_, &responder_);
   }
 
  protected:
   std::shared_ptr<GRPCMultiVariableResponse> request_;
   sendrecv::MultiVariableMessage multi_msg_;
   sendrecv::MultiVariableMessage reply_;
-  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
-  framework::Scope* scope_;
-  platform::DeviceContext* ctx_;
+  ServerAsyncResponseWriter<sendrecv::MultiVariableMessage> responder_;
 };
 
 void AsyncGRPCServer::WaitServerReady() {

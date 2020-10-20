@@ -63,8 +63,8 @@ namespace operators {
 namespace distributed {
 
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
-
-void ProcGetRecvResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
+void ProcGetMultiVarResponse(const VarHandle& var_h,
+                             const sendrecv::MultiVariableMessage& multi_msg);
 
 class BaseProcessor {
  public:
@@ -126,6 +126,10 @@ class SendProcessor : public BaseProcessor {
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestGetCallBack;
 
+typedef std::function<void(const VarHandle&,
+                           const sendrecv::MultiVariableMessage&)>
+    RequestMulitVarMsgGetCallBack;
+
 class GetProcessor : public BaseProcessor {
  public:
   explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
@@ -166,7 +170,7 @@ class SendAndRecvProcessor : public BaseProcessor {
   sendrecv::MultiVariableMessage reply_;
   std::vector<std::string> recv_var_names_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
-  RequestGetCallBack response_call_back_ = ProcGetResponse;
+  RequestMulitVarMsgGetCallBack response_call_back_ = ProcGetMultiVarResponse;
 };
 
 class BatchBarrierProcessor : public BaseProcessor {

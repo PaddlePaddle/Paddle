@@ -79,13 +79,19 @@ class GRPCMultiVariableResponse {
     }
   }
 
-  int Parse(Source* source, const sendrecv::MultiVariableMessage) {
+  int Parse(Source* source, const sendrecv::MultiVariableMessage meta) {
     meta_ = meta;
     return 0;
   }
+  inline const framework::Scope& GetScope() const {
+    if (create_scope_) {
+      return *local_scope_;
+    }
+    return *scope_;
+  }
 
-  inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
-  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
+  inline const platform::DeviceContext* dev_ctx() { return dev_ctx_; }
+
   inline sendrecv::MultiVariableMessage GetMultiVariableMessage() const {
     return meta_;
   }
@@ -96,7 +102,7 @@ class GRPCMultiVariableResponse {
   bool create_scope_ = false;
   framework::Scope* local_scope_ = nullptr;
   sendrecv::MultiVariableMessage meta_;
-}
+};
 
 };  // namespace distributed
 };  // namespace operators
