@@ -20,33 +20,24 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+/* Paddle Exception mapping rules:
+ *   - InvalidArgumentError -> ValueError
+ *   - NotFoundError -> RuntimeError
+ *   - OutOfRangeError -> IndexError
+ *   - AlreadyExistsError -> RuntimeError
+ *   - ResourceExhaustedError -> MemoryError
+ *   - PreconditionNotMetError -> RuntimeError
+ *   - PermissionDeniedError -> RuntimeError
+ *   - ExecutionTimeoutError -> RuntimeError
+ *   - UnimplementedError -> NotImplementedError
+ *   - UnavailableError -> RuntimeError
+ *   - FatalError -> SystemError
+ *   - ExternalError -> EnvironmentError
+ */
+
 void BindException(pybind11::module* m) {
   static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
-  static pybind11::exception<platform::EnforceNotMet> ex_base(*m, "Error");
-  static pybind11::exception<platform::errors::InvalidArgumentError>
-      ex_invalid_argument(*m, "InvalidArgumentError");
-  static pybind11::exception<platform::errors::NotFoundError> ex_not_found(
-      *m, "NotFoundError");
-  static pybind11::exception<platform::errors::OutOfRangeError> ex_out_of_range(
-      *m, "OutOfRangeError");
-  static pybind11::exception<platform::errors::AlreadyExistsError>
-      ex_already_exists(*m, "AlreadyExistsError");
-  static pybind11::exception<platform::errors::ResourceExhaustedError>
-      ex_resource_exhausted(*m, "ResourceExhaustedError");
-  static pybind11::exception<platform::errors::PreconditionNotMetError>
-      ex_precondition_not_met(*m, "PreconditionNotMetError");
-  static pybind11::exception<platform::errors::PermissionDeniedError>
-      ex_premission_denied(*m, "PermissionDeniedError");
-  static pybind11::exception<platform::errors::ExecutionTimeoutError>
-      ex_execution_timeout(*m, "ExecutionTimeoutError");
-  static pybind11::exception<platform::errors::UnimplementedError>
-      ex_unimplemented(*m, "UnimplementedError");
-  static pybind11::exception<platform::errors::UnavailableError> ex_unavailable(
-      *m, "UnavailableError");
-  static pybind11::exception<platform::errors::FatalError> ex_fatal(
-      *m, "FatalError");
-  static pybind11::exception<platform::errors::ExternalError> ex_external(
-      *m, "ExternalError");
+  static pybind11::exception<platform::EnforceNotMet> ex_base(*m, "BaseError");
   pybind11::register_exception_translator([](std::exception_ptr p) {
     try {
       if (p) std::rethrow_exception(p);
@@ -55,40 +46,30 @@ void BindException(pybind11::module* m) {
     } catch (const platform::EnforceNotMet& e) {
       switch (e.code()) {
         case paddle::platform::error::INVALID_ARGUMENT:
-          ex_invalid_argument(e.what());
+          PyErr_SetString(PyExc_ValueError, e.what());
           break;
         case paddle::platform::error::NOT_FOUND:
-          ex_not_found(e.what());
+        case paddle::platform::error::ALREADY_EXISTS:
+        case paddle::platform::error::PRECONDITION_NOT_MET:
+        case paddle::platform::error::PERMISSION_DENIED:
+        case paddle::platform::error::EXECUTION_TIMEOUT:
+        case paddle::platform::error::UNAVAILABLE:
+          PyErr_SetString(PyExc_RuntimeError, e.what());
           break;
         case paddle::platform::error::OUT_OF_RANGE:
-          ex_out_of_range(e.what());
-          break;
-        case paddle::platform::error::ALREADY_EXISTS:
-          ex_already_exists(e.what());
+          PyErr_SetString(PyExc_IndexError, e.what());
           break;
         case paddle::platform::error::RESOURCE_EXHAUSTED:
-          ex_resource_exhausted(e.what());
-          break;
-        case paddle::platform::error::PRECONDITION_NOT_MET:
-          ex_precondition_not_met(e.what());
-          break;
-        case paddle::platform::error::PERMISSION_DENIED:
-          ex_premission_denied(e.what());
-          break;
-        case paddle::platform::error::EXECUTION_TIMEOUT:
-          ex_execution_timeout(e.what());
+          PyErr_SetString(PyExc_MemoryError, e.what());
           break;
         case paddle::platform::error::UNIMPLEMENTED:
-          ex_unimplemented(e.what());
-          break;
-        case paddle::platform::error::UNAVAILABLE:
-          ex_unavailable(e.what());
+          PyErr_SetString(PyExc_NotImplementedError, e.what());
           break;
         case paddle::platform::error::FATAL:
-          ex_fatal(e.what());
+          PyErr_SetString(PyExc_SystemError, e.what());
           break;
         case paddle::platform::error::EXTERNAL:
-          ex_external(e.what());
+          PyErr_SetString(PyExc_EnvironmentError, e.what());
           break;
         default:
           ex_base(e.what());

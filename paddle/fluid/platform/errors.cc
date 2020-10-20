@@ -24,43 +24,43 @@ typedef ::paddle::platform::error::Code Code;
 std::string error_name(Code code) {
   switch (code) {
     case paddle::platform::error::LEGACY:
-      return "Error";
+      return "Unknown";
       break;
     case paddle::platform::error::INVALID_ARGUMENT:
-      return "InvalidArgumentError";
+      return "InvalidArgument";
       break;
     case paddle::platform::error::NOT_FOUND:
-      return "NotFoundError";
+      return "NotFound";
       break;
     case paddle::platform::error::OUT_OF_RANGE:
-      return "OutOfRangeError";
+      return "OutOfRange";
       break;
     case paddle::platform::error::ALREADY_EXISTS:
-      return "AlreadyExistsError";
+      return "AlreadyExists";
       break;
     case paddle::platform::error::RESOURCE_EXHAUSTED:
-      return "ResourceExhaustedError";
+      return "ResourceExhausted";
       break;
     case paddle::platform::error::PRECONDITION_NOT_MET:
-      return "PreconditionNotMetError";
+      return "PreconditionNotMet";
       break;
     case paddle::platform::error::PERMISSION_DENIED:
-      return "PermissionDeniedError";
+      return "PermissionDenied";
       break;
     case paddle::platform::error::EXECUTION_TIMEOUT:
-      return "ExecutionTimeoutError";
+      return "ExecutionTimeout";
       break;
     case paddle::platform::error::UNIMPLEMENTED:
-      return "UnimplementedError";
+      return "Unimplemented";
       break;
     case paddle::platform::error::UNAVAILABLE:
-      return "UnavailableError";
+      return "Unavailable";
       break;
     case paddle::platform::error::FATAL:
-      return "FatalError";
+      return "Fatal";
       break;
     case paddle::platform::error::EXTERNAL:
-      return "ExternalError";
+      return "External";
       break;
     default:
       throw std::invalid_argument("The error type is undefined.");
@@ -68,9 +68,14 @@ std::string error_name(Code code) {
   }
 }
 
-std::string ErrorSummary::ToString() const {
-  std::string result(error_name(code()));
-  result += ": ";
+std::string ErrorSummary::error_message_with_subtype() const {
+  std::string result = "(" + error_name(code()) + ") ";
+  result += error_message();
+  return result;
+}
+
+std::string ErrorSummary::to_string() const {
+  std::string result = error_name(code()) + "Error: ";
   result += error_message();
   return result;
 }
