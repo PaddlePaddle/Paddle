@@ -1103,10 +1103,10 @@ class SyncBatchNorm(_BatchNormBase):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            layer_output = SyncBatchNorm(
-                layer._num_features, layer._momentum, layer._epsilon,
-                layer._weight_attr, layer._bias_attr, layer._data_format,
-                layer._name)
+            layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
+                                         layer._epsilon, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():

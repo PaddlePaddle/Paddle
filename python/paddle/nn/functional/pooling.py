@@ -230,8 +230,8 @@ def avg_pool1d(x,
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'strides', stride, 'paddings', padding, 'padding_algorithm',
             padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', not exclusive,
-            'data_format', data_format)
+            'use_mkldnn', False, 'exclusive', not exclusive, 'data_format',
+            data_format)
         return squeeze(output, [2])
 
     op_type = 'pool2d'
@@ -338,8 +338,8 @@ def avg_pool2d(x,
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'padding_algorithm', padding_algorithm, 'strides', stride,
             'paddings', padding, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', not exclusive,
-            'data_format', data_format)
+            'use_mkldnn', False, 'exclusive', not exclusive, 'data_format',
+            data_format)
         if divisor_override is None:
             return output
         else:
@@ -452,8 +452,8 @@ def avg_pool3d(x,
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides', stride,
             'paddings', padding, 'global_pooling', False, 'padding_algorithm',
             padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', not exclusive,
-            'data_format', data_format)
+            'use_mkldnn', False, 'exclusive', not exclusive, 'data_format',
+            data_format)
         if divisor_override is None:
             return output
         else:
@@ -570,9 +570,9 @@ def max_pool1d(x,
                 padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
                 'use_mkldnn', False, 'exclusive', True, 'data_format',
                 data_format)
-            return (squeeze(pool_out[0], [2]), squeeze(
-                pool_out[1],
-                [2])) if return_mask else squeeze(pool_out[0], [2])
+            return (squeeze(pool_out[0], [2]),
+                    squeeze(pool_out[1],
+                            [2])) if return_mask else squeeze(pool_out[0], [2])
         else:
             pool_out = core.ops.pool2d(
                 x, 'pooling_type', 'max', 'ksize', kernel_size,
