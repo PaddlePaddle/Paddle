@@ -31,6 +31,7 @@ __all__ = [
     'all_gather',
     'scatter',
     'barrier',
+    'gather',
     'ReduceOp',
 ]
 
@@ -480,3 +481,74 @@ def barrier(group=0):
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
         attrs={'ring_id': group})
+
+def gather(tensor, tensor_list=None, dst=0, group=0):
+    """
+
+    Gather a list of tensors from all participators.
+
+    Args:
+        tensor (Tensor): Input Tensor. Its data type
+            should be float16, float32, float64, int32 or int64.
+        tensor_list (list): A list of Tensors to gather. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32 or int64.
+        dst (int): The destination rank id.
+        group (int): The id of the process group to work on.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                np_data1 = np.array([7, 8, 9])
+                np_data2 = np.array([10, 11, 12])
+            else:
+                np_data1 = np.array([1, 2, 3])
+                np_data2 = np.array([4, 5, 6])
+            data1 = paddle.to_tensor(np_data1)
+            data2 = paddle.to_tensor(np_data2)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                paddle.distributed.gather(data1, dst=1)
+            else:
+                paddle.distributed.gather(data1, tensor_list=[data1, data2], dst=1)
+            out = data2.numpy()
+    """
+    op_type = 'gather_v2'
+    global _default_group
+    rank = _default_group.rank
+    nranks = _default_group.nranks
+    if rank == dst:
+        tensor_list = []
+        for _ in range(nranks):
+            tensor_list.append(tensor)
+    temp = paddle.concat(tensor_list, axis=0)
+    if in_dygraph_mode():
+        return core.ops.gather_v2(temp, tensor, 'use_calc_stream', True,
+                                  'ring_id', group, 'nranks',
+                                  _default_group.nranks, 'root', dst)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'gather')
+    if not isinstance(group, int) or not isinstance(src, int):
+        raise ValueError("Both the type of 'src' and 'group' for gather "
+                         "should be int.")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [temp]},
+        attrs={
+            'ring_id': group,
+            'root': dst,
+            'use_calc_stream': True,
+            'nranks': nranks,
+        })
+
