@@ -32,7 +32,7 @@ class TestManualSeed(unittest.TestCase):
         x1 = fluid.layers.gaussian_random([10], dtype="float32")
         gen.set_state(st1)
         x2 = fluid.layers.gaussian_random([10], dtype="float32")
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x3 = fluid.layers.gaussian_random([10], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()

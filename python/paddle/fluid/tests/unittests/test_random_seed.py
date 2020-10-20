@@ -79,7 +79,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
             #gen.set_state(cur_state)
-            gen.seed(123123143)
+            gen.manual_seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -103,7 +103,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0)
         y = fluid.layers.dropout(x, 0.5)
-        gen.seed(111111111)
+        gen.manual_seed(111111111)
         #gen.set_state(st)
         x1 = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0)
@@ -131,7 +131,7 @@ class TestGeneratorSeed(unittest.TestCase):
             exe.run(startup_program)
             out1 = exe.run(train_program, feed={}, fetch_list=[y_1])
             #gen.set_state(cur_state)
-            gen.seed(123123143)
+            gen.manual_seed(123123143)
             out2 = exe.run(train_program, feed={}, fetch_list=[y_1])
         out1_np = np.array(out1[0])
         out2_np = np.array(out2[0])
@@ -150,7 +150,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x1 = fluid.layers.gaussian_random([10], dtype="float32")
         gen.set_state(st1)
         x2 = fluid.layers.gaussian_random([10], dtype="float32")
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x3 = fluid.layers.gaussian_random([10], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -181,7 +181,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
             #gen.set_state(cur_state)
-            gen.seed(123123143)
+            gen.manual_seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -209,7 +209,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x1 = paddle.randint(low=10, shape=[10], dtype="int32")
         gen.set_state(st1)
         x2 = paddle.randint(low=10, shape=[10], dtype="int32")
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x3 = paddle.randint(low=10, shape=[10], dtype="int32")
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -240,7 +240,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
             #gen.set_state(cur_state)
-            gen.seed(123123143)
+            gen.manual_seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -265,7 +265,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x1 = paddle.randint(low=1)
         gen.set_state(st1)
         x2 = paddle.randint(low=1)
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x3 = paddle.randint(low=1)
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -294,7 +294,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
             #gen.set_state(cur_state)
-            gen.seed(123123143)
+            gen.manual_seed(123123143)
             out2 = exe.run(train_program,
                            feed={},
                            fetch_list=[result_1, result_2])
@@ -321,7 +321,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x1 = paddle.randperm(10)
         gen.set_state(st1)
         x2 = paddle.randperm(10)
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x3 = paddle.randperm(10)
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -375,7 +375,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x = fluid.layers.uniform_random(
             [10, 10], dtype="float32", min=0.0, max=1.0)
         y = fluid.layers.sampling_id(x)
@@ -390,7 +390,7 @@ class TestGeneratorSeed(unittest.TestCase):
             [10, 10], dtype="float32", min=0.0, max=1.0)
         y2 = fluid.layers.sampling_id(x)
 
-        gen.seed(12312321111)
+        gen.manual_seed(12312321111)
         x3 = fluid.layers.uniform_random(
             [10, 10], dtype="float32", min=0.0, max=1.0)
         y3 = fluid.layers.sampling_id(x)
@@ -471,7 +471,7 @@ class TestGeneratorSeed(unittest.TestCase):
                            feed={},
                            fetch_list=[result_1, result_2])
 
-        gen.seed(123123143)
+        gen.manual_seed(123123143)
         with fluid.program_guard(train_program, startup_program):
             exe.run(startup_program)
             out2 = exe.run(train_program,

@@ -35,7 +35,7 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen.seed(111111111)
+        gen.manual_seed(111111111)
         st = paddle.get_cuda_rng_state()
 
         x = fluid.layers.uniform_random(

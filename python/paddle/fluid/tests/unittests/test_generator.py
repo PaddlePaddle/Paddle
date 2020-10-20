@@ -29,9 +29,9 @@ class TestGenerator(unittest.TestCase):
     def test_basic_generator(self):
         """Test basic generator."""
         gen = generator.Generator()
-        gen.seed(123123143)
+        gen.manual_seed(123123143)
         s = gen.initial_seed()
-        s = gen.seed()
+        s = gen.manual_seed()
         st = gen.get_state()
         gen.set_state(st)
         gen.random()
