@@ -66,8 +66,8 @@ from .logic import logical_not  #DEFINE_ALIAS
 from .logic import logical_or  #DEFINE_ALIAS
 from .logic import logical_xor  #DEFINE_ALIAS
 from .logic import not_equal  #DEFINE_ALIAS
-# from .logic import reduce_all  #DEFINE_ALIAS
-# from .logic import reduce_any  #DEFINE_ALIAS
+from .logic import all  #DEFINE_ALIAS
+from .logic import any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
 from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
