@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
+
 #include <algorithm>
 #include <utility>
+
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -56,10 +58,20 @@ void FusedAllReduceOpHandle::RunImpl() {
   size_t place_num = places_.size();
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), place_num * num_of_all_reduce_,
-      "The NoDummyInputSize should be equal to the number of places.");
+      platform::errors::PreconditionNotMet(
+          "The number of input variable handles should be equal to the number "
+          "of places plus the number of all reduce handles, "
+          "but got the number of input variable handles is %d, the "
+          "number of places is %d, and the number of all reduce handles "
+          "is %d.",
+          in_var_handles.size(), place_num, num_of_all_reduce_));
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
-      "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+      platform::errors::PreconditionNotMet(
+          "The number of input variable handles should be equal to the number "
+          "of output variable handles, but got the number of input variable "
+          "handles is %d, and the number of  output variable handles is %d.",
+          in_var_handles.size(), out_var_handles.size()));
 
   // Note: some gradient op doesn't have CUDAKernel, so the gradients of
   // those op are in CPUPlace, in this case, the all reduce should not be fused.
@@ -106,7 +118,13 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
       dtype = ele_dtype;
     }
 
-    PADDLE_ENFORCE_EQ(ele_dtype, dtype);
+    PADDLE_ENFORCE_EQ(
+        ele_dtype, dtype,
+        platform::errors::InvalidArgument(
+            "The DataType of grad tensors of fused_all_reduce_op_handle  "
+            "must be consistent. The current dtype is %s, but the "
+            "previous dtype is %s.",
+            DataTypeToString(ele_dtype), DataTypeToString(dtype)));
 
     // Check whether the address space is contiguous.
     std::sort(
@@ -130,16 +148,29 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
           "input[%d] address: 0X%02x. The offset: %d",
           k - 1, g_tensor.at(k - 1).first, cur_address, g_tensor.at(k).first, k,
           next_address, k, infer_next_address, offset);
-      PADDLE_ENFORCE_EQ(infer_next_address, next_address,
-                        "The address is not consistent.");
+      PADDLE_ENFORCE_EQ(
+          infer_next_address, next_address,
+          platform::errors::InvalidArgument(
+              "The infered address of the next tensor should be equal to the "
+              "real address of the next tensor. But got infered address is %p "
+              "and real address is %p.",
+              infer_next_address, next_address));
     }
   }
 
   if (!FLAGS_skip_fused_all_reduce_check) {
     for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
       for (size_t j = 1; j < num_of_all_reduce_; ++j) {
-        PADDLE_ENFORCE_EQ(grads_tensor.at(0).at(j).first,
-                          grads_tensor.at(scope_idx).at(j).first);
+        PADDLE_ENFORCE_EQ(
+            grads_tensor.at(0).at(j).first,
+            grads_tensor.at(scope_idx).at(j).first,
+            platform::errors::InvalidArgument(
+                "The variable name of grad tensors of "
+                "fused_all_reduce_op_handle  "
+                "must be consistent. The current name is %s, but the "
+                "previous name is %s.",
+                grads_tensor.at(0).at(j).first,
+                grads_tensor.at(scope_idx).at(j).first));
       }
     }
   }
@@ -167,7 +198,9 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
     for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
       auto var_name = in_var_handles[j]->name();
       auto var = local_scope->FindVar(var_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::NotFound(
+                   "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<LoDTensor>();
       if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
@@ -185,14 +218,24 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
   size_t place_num = places_.size();
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
     auto var_name = in_var_handles[j]->name();
-    PADDLE_ENFORCE_EQ(var_name, out_var_handles[j]->name());
+    PADDLE_ENFORCE_EQ(
+        var_name, out_var_handles[j]->name(),
+        platform::errors::InvalidArgument(
+            "The name of input variable should be equal "
+            "to the name of output variable. But got the name of input "
+            "variable is %s and the name of output variable is %s.",
+            var_name, out_var_handles[j]->name()));
     auto var = local_scope->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound(
+                 "The variable '%s' is not found in local scope.", var_name));
     auto &lod_tensor = var->Get<LoDTensor>();
 
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
-        true, "%s(%d) is not in the right place.", var_name, scope_idx);
+        true, platform::errors::InvalidArgument(
+                  "The variable '%s' at scope %d is not in the right place.",
+                  var_name, scope_idx));
     grad_tensor->emplace_back(std::make_pair(var_name, &lod_tensor));
   }
 }
@@ -204,16 +247,26 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
   size_t size_of_dtype = 0;
   for (size_t i = 0; i < grad_tensor.size(); ++i) {
     // Get dtype
-    auto ele_type = grad_tensor.at(i).second->type();
+    auto ele_dtype = grad_tensor.at(i).second->type();
     if (i == 0) {
-      *dtype = ele_type;
-      size_of_dtype = framework::SizeOfType(ele_type);
+      *dtype = ele_dtype;
+      size_of_dtype = framework::SizeOfType(ele_dtype);
     }
-    PADDLE_ENFORCE_EQ(ele_type, *dtype);
+    PADDLE_ENFORCE_EQ(
+        ele_dtype, *dtype,
+        platform::errors::InvalidArgument(
+            "The DataType of grad tensors of fused_all_reduce_op_handle  "
+            "must be consistent. The current dtype is %s, but the "
+            "previous dtype is %s.",
+            DataTypeToString(ele_dtype), DataTypeToString(*dtype)));
 
     // Get element number
     int64_t len = grad_tensor.at(i).second->numel();
-    PADDLE_ENFORCE_GT(len, 0);
+    PADDLE_ENFORCE_GT(
+        len, 0, platform::errors::InvalidArgument(
+                    "The size of grad tensors of fused_all_reduce_op_handle  "
+                    "must be > 0, but got %d.",
+                    len));
     *numel +=
         platform::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
   }

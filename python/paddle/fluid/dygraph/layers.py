@@ -29,6 +29,9 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _current_expected_place as _get_device
 
 __all__ = ['Layer']
 
@@ -59,10 +62,6 @@ class HookRemoveHelper(object):
 
 class Layer(core.Layer):
     """
-    :alias_main: paddle.nn.Layer
-	:alias: paddle.nn.Layer
-	:old_api: paddle.fluid.dygraph.layers.Layer
-
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
@@ -71,16 +70,16 @@ class Layer(core.Layer):
             can be "my_layer_0.w_n", where "w" is the parameter
             base name and "n" is an unique suffix auto-generated.
             If None, prefix name will be snake cased class name. Default: None.
-        dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
+        dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                Default: ``core.VarDesc.VarType.FP32``
+                Default: "float32"
     
     Returns:
         None
     """
 
-    def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+    def __init__(self, name_scope=None, dtype="float32"):
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
@@ -88,6 +87,7 @@ class Layer(core.Layer):
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
+        self._init_in_dynamic_mode = framework.in_dygraph_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -106,6 +106,30 @@ class Layer(core.Layer):
 
         Returns:
             None
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'float32')
+                mylayer = MyLayer()
+                mylayer.eval()  # set mylayer._dropout to eval mode
+                out = mylayer(x)
+                mylayer.train()  # set mylayer._dropout to train mode
+                out = mylayer(x)
+
         """
         # global setting
         framework._dygraph_tracer().train_mode()
@@ -121,6 +145,29 @@ class Layer(core.Layer):
 
         Returns:
             None
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'float32')
+                mylayer = MyLayer()
+                mylayer.eval()  # set mylayer._dropout to eval mode
+                out = mylayer(x)
+                print(out)
+
         """
         # global setting
         framework._dygraph_tracer().eval_mode()
@@ -129,11 +176,65 @@ class Layer(core.Layer):
         for layer in self.sublayers():
             layer.eval()
 
+    def apply(self, fn):
+        """
+        Applies ``fn`` recursively to every sublayer (as returned by ``.sublayers()``)
+        as well as self. Typical use includes initializing the parameters of a model.
+
+        Parameters:
+            fn (function): a function to be applied to each sublayer
+
+        Returns:
+            Layer: self
+
+        Example::
+            .. code-block:: python
+
+              import paddle
+              import paddle.nn as nn
+
+              net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+
+              def init_weights(layer):
+                  if type(layer) == nn.Linear:
+                      print('before init weight:', layer.weight.numpy())
+                      new_weight = paddle.full(shape=layer.weight.shape, dtype=layer.weight.dtype, fill_value=0.9)
+                      layer.weight.set_value(new_weight)
+                      print('after init weight:', layer.weight.numpy())
+
+              net.apply(init_weights)
+
+              print(net.state_dict())
+        """
+        for layer in self.children():
+            layer.apply(fn)
+
+        fn(self)
+
+        return self
+
     def full_name(self):
         """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
 
         Returns:
             str: full name of this layer.
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+
+                class LinearNet(paddle.nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__(name_scope = "demo_linear_net")
+                        self._linear = paddle.nn.Linear(1, 1)
+
+                    def forward(self, x):
+                        return self._linear(x)
+
+                linear_net = LinearNet()
+                print(linear_net.full_name())   # demo_linear_net_0
+
         """
         return self._full_name
 
@@ -154,34 +255,33 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy as np
+                import paddle
+                import numpy as np
 
-              # the forward_post_hook change the output of the layer: output = output * 2 
-              def forward_post_hook(layer, input, output):
-                  # user can use layer, input and output for information statistis tasks
+                # the forward_post_hook change the output of the layer: output = output * 2
+                def forward_post_hook(layer, input, output):
+                    # user can use layer, input and output for information statistis tasks
 
-                  # change the output 
-                  return output * 2
+                    # change the output
+                    return output * 2
 
-              with fluid.dygraph.guard():
-                  linear = fluid.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
 
-                  # register the hook
-                  forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
-                  
-                  value1 = np.arange(26).reshape(2, 13).astype("float32")
-                  in1 = fluid.dygraph.to_variable(value1)
-                  
-                  out0 = linear(in1)
-                  
-                  # remove the hook
-                  forward_post_hook_handle.remove()
+                # register the hook
+                forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
 
-                  out1 = linear(in1)
+                value1 = np.arange(26).reshape(2, 13).astype("float32")
+                in1 = paddle.to_tensor(value1)
 
-                  # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
-                  assert (out0.numpy() == (out1.numpy()) * 2).any()
+                out0 = linear(in1)
+
+                # remove the hook
+                forward_post_hook_handle.remove()
+
+                out1 = linear(in1)
+
+                # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
+                assert (out0.numpy() == (out1.numpy()) * 2).any()
         """
         hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
@@ -206,36 +306,35 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy as np
+                import paddle
+                import numpy as np
 
-              # the forward_post_hook change the input of the layer: input = input * 2
-              def forward_pre_hook(layer, input):
-                  # user can use layer and input for information statistis tasks
+                # the forward_post_hook change the input of the layer: input = input * 2
+                def forward_pre_hook(layer, input):
+                    # user can use layer and input for information statistis tasks
 
-                  # change the input
-                  input_return = (input[0] * 2)
-                  return input_return
+                    # change the input
+                    input_return = (input[0] * 2)
+                    return input_return
 
-              with fluid.dygraph.guard():
-                  linear = fluid.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
 
-                  # register the hook
-                  forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
+                # register the hook
+                forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
 
-                  value0 = np.arange(26).reshape(2, 13).astype("float32")
-                  in0 = fluid.dygraph.to_variable(value0)
-                  out0 = linear(in0)
+                value0 = np.arange(26).reshape(2, 13).astype("float32")
+                in0 = paddle.to_tensor(value0)
+                out0 = linear(in0)
 
-                  # remove the hook
-                  forward_pre_hook_handle.remove()
+                # remove the hook
+                forward_pre_hook_handle.remove()
 
-                  value1 = value0 * 2
-                  in1 = fluid.dygraph.to_variable(value1)
-                  out1 = linear(in1)
+                value1 = value0 * 2
+                in1 = paddle.to_tensor(value1)
+                out1 = linear(in1)
 
-                  # hook change the linear's input to input * 2, so out0 is equal to out1.
-                  assert (out0.numpy() == out1.numpy()).any()
+                # hook change the linear's input to input * 2, so out0 is equal to out1.
+                assert (out0.numpy() == out1.numpy()).any()
         """
         hook_remove_helper = HookRemoveHelper(self._forward_pre_hooks)
         self._forward_pre_hooks[hook_remove_helper._hook_id] = hook
@@ -244,24 +343,44 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype='float32',
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
         
         Parameters:
             shape(list): Shape of the parameter.
-            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`. Default: None.
-            dtype(str or core.VarDesc.VarType or str, optional): Data type of this parameter.
+            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
+            dtype(str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
             is_bias(bool, optional): if this is a bias parameter. Default: False.
             default_initializer(Initializer, optional): the default initializer for this parameter.
-                If set None, default initializer will be set to :ref:`api_fluid_initializer_XavierInitializer` and :ref:`api_fluid_initializer_ConstantInitializer`
+                If set None, default initializer will be set to paddle.nn.initializer.Xavier and paddle.nn.initializer.Constant
                 for non-bias and bias parameter, respectively. Default: None.
 
         Returns:
-            :ref:`api_guide_Variable_en` : created parameter.
+            :Tensor, created parameter.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        w_tmp = self.create_parameter([1,1])
+                        self.add_parameter("w_tmp", w_tmp)
+
+                    def forward(self, input):
+                        return self._linear(input)
+
+                mylayer = MyLayer()
+                for name, param in mylayer.named_parameters():
+                    print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
+
         """
         temp_attr = copy.deepcopy(attr)
         if isinstance(temp_attr, six.string_types) and temp_attr == "":
@@ -270,24 +389,40 @@ class Layer(core.Layer):
                                              default_initializer)
 
     # TODO: Add more parameter list when we need them
-    def create_variable(self,
-                        name=None,
-                        persistable=None,
-                        dtype=None,
-                        type=core.VarDesc.VarType.LOD_TENSOR):
+    def create_variable(self, name=None, persistable=None, dtype=None):
         """Create Variable for this layer.
 
         Parameters:
             name(str, optional): name of the variable. Please refer to :ref:`api_guide_Name` . Default: None
             persistable(bool, optional): if set this variable persistable. Default: False
-            dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
+            dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be ``core.VarDesc.VarType.FP32``. Default: None
-            type(core.VarDesc.VarType, optional): type of the variable. No need to set this parameter. Default: ``core.VarDesc.VarType.LOD_TENSOR``
+                If set None, it will be "float32". Default: None
 
         Returns:
-            :ref:`api_guide_Variable_en` : created Variable.
+            Tensor, created Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLinear(paddle.nn.Layer):
+                    def __init__(self,
+                                in_features,
+                                out_features):
+                        super(MyLinear, self).__init__()
+                        self.linear = paddle.nn.Linear( 10, 10)
+                            
+                        self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                    
+                    def forward(self, input):
+                        out = self.linear(input)
+                        paddle.assign( out, self.back_var)
+                        
+                        return out
+
         """
         if name is not None:
             var_name = ".".join([self._full_name, name])
@@ -296,7 +431,10 @@ class Layer(core.Layer):
                 [self._full_name, "_generated_var"]))
 
         return self._helper.main_program.current_block().create_var(
-            name=var_name, persistable=persistable, dtype=dtype, type=type)
+            name=var_name,
+            persistable=persistable,
+            dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR)
 
     def parameters(self, include_sublayers=True):
         """Returns a list of all Parameters from current layer and its sub-layers.
@@ -305,7 +443,16 @@ class Layer(core.Layer):
             include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from sublayers. Default: True
 
         Returns:
-            list of :ref:`api_guide_Variable_en` : a list of Parameters.
+            list of Tensor : a list of Parameters.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+
+            linear = paddle.nn.Linear(1,1)
+            print(linear.parameters())  # print linear_0.w_0 and linear_0.b_0
+
         """
         ret = [
             param
@@ -313,6 +460,56 @@ class Layer(core.Layer):
                 include_sublayers=include_sublayers)
         ]
         return ret
+
+    def children(self):
+        """Returns an iterator over immediate children layers.
+
+        Yields:
+            Layer: a child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                linear1 = paddle.nn.Linear(10, 3)
+                linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(linear1, linear2)
+
+                layer_list = list(model.children())
+
+                print(layer_list)   # [<paddle.nn.layer.common.Linear object at 0x7f7b8113f830>, <paddle.nn.layer.common.Linear object at 0x7f7b8113f950>]
+
+        """
+        for _, layer in self.named_children():
+            yield layer
+
+    def named_children(self):
+        """Returns an iterator over immediate children layers, yielding both
+        the name of the layer as well as the layer itself.
+
+        Yields:
+            (string, Layer): Tuple containing a name and child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                linear1 = paddle.nn.Linear(10, 3)
+                linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(linear1, linear2)
+                for prefix, layer in model.named_children():
+                    print(prefix, layer)
+                    # ('0', <paddle.nn.layer.common.Linear object at 0x7fb61ed85830>)
+                    # ('1', <paddle.nn.layer.common.Linear object at 0x7fb61ed85950>)
+
+        """
+        memo = set()
+        for name, layer in self._sub_layers.items():
+            if layer is not None and layer not in memo:
+                memo.add(layer)
+                yield name, layer
 
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.
@@ -322,6 +519,26 @@ class Layer(core.Layer):
 
         Returns:
             list of Layer : a list of sub layers.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                mylayer = MyLayer()
+                print(mylayer.sublayers())  # [<paddle.nn.layer.common.Linear object at 0x7f44b58977d0>, <paddle.nn.layer.common.Dropout object at 0x7f44b58978f0>]
+
         """
         ret = [
             layer
@@ -345,14 +562,13 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    fc2 = fluid.Linear(3, 10, bias_attr=False)
-                    model = fluid.dygraph.Sequential(fc1, fc2)
-                    for name, param in model.named_parameters():
-                        print(name, param)
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(fc1, fc2)
+                for name, param in model.named_parameters():
+                    print(name, param)
 
         """
         params_set = set()
@@ -390,14 +606,13 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    fc2 = fluid.Linear(3, 10, bias_attr=False)
-                    model = fluid.dygraph.Sequential(fc1, fc2)
-                    for prefix, layer in model.named_sublayers():
-                        print(prefix, layer)
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(fc1, fc2)
+                for prefix, layer in model.named_sublayers():
+                    print(prefix, layer)
 
         """
         if layers_set is None:
@@ -417,11 +632,11 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
-    def register_buffer(self, name, variable, persistable=True):
+    def register_buffer(self, name, tensor, persistable=True):
         """
-        Registers a variable as buffer into the layer.
+        Registers a tensor as buffer into the layer.
 
-        `buffer` is a non-parameteric variable and will not be updated by optimizer,
+        `buffer` is a non-trainable tensor and will not be updated by optimizer,
         but is necessary for evaluation and inference. For example, the mean and variance in BatchNorm layers.
         The registered buffer is persistable by default, and will be saved into
         `state_dict` alongside parameters. If set persistable=False, it registers
@@ -432,7 +647,7 @@ class Layer(core.Layer):
         Parameters:
             name (string): name of the buffer. The buffer can be accessed
                 from this layer using the given name
-            variable (Variable): the variable to be registered as buffer.
+            tensor (Tensor): the tensor to be registered as buffer.
             persistable (bool): whether the buffer is part of this layer's
                 state_dict.
 
@@ -443,16 +658,15 @@ class Layer(core.Layer):
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    linear = fluid.Linear(10, 3)
-                    value = np.array([0]).astype("float32")
-                    buffer = fluid.dygraph.to_variable(value)
-                    linear.register_buffer("buf_name", buffer, persistable=True)
-                    
-                    # get the buffer by attribute.
-                    print(linear.buf_name)
+                linear = paddle.nn.Linear(10, 3)
+                value = np.array([0]).astype("float32")
+                buffer = paddle.to_tensor(value)
+                linear.register_buffer("buf_name", buffer, persistable=True)
+
+                # get the buffer by attribute.
+                print(linear.buf_name)
 
         """
 
@@ -464,17 +678,20 @@ class Layer(core.Layer):
                 "The name of buffer should be a string, but received {}.".
                 format(type(name).__name__))
         elif '.' in name:
-            raise KeyError("The name of buffer can not contain \".\"")
+            raise KeyError(
+                "The name of buffer can not contain `.`, "
+                "because when you access the newly added buffer in the "
+                "form of `self.**.**`, it will cause AttributeError.")
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif variable is not None and not type(variable) == core.VarBase:
+        elif tensor is not None and not type(tensor) == core.VarBase:
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
-                format(type(variable).__name__))
+                format(type(tensor).__name__))
         else:
-            self._buffers[name] = variable
+            self._buffers[name] = tensor
             if persistable:
                 self._non_persistable_buffer_names_set.discard(name)
             else:
@@ -488,7 +705,21 @@ class Layer(core.Layer):
             include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
 
         Returns:
-            list of :ref:`api_guide_Variable_en` : a list of buffers.
+            list of Tensor : a list of buffers.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+
+                linear = paddle.nn.Linear(10, 3)
+                value = np.array([0]).astype("float32")
+                buffer = paddle.to_tensor(value)
+                linear.register_buffer("buf_name", buffer, persistable=True)
+
+                print(linear.buffers())     # == print([linear.buf_name])
+
         """
         ret = [
             buffer
@@ -499,7 +730,7 @@ class Layer(core.Layer):
 
     def named_buffers(self, prefix='', include_sublayers=True):
         """
-        Returns an iterator over all buffers in the Layer, yielding tuple of name and Variable.
+        Returns an iterator over all buffers in the Layer, yielding tuple of name and Tensor.
 
         Parameters:
             prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
@@ -507,31 +738,30 @@ class Layer(core.Layer):
                 If True, also include the named buffers from sublayers. Default: True.
 
         Yields:
-            (string, Variable): Tuple of name and Variable
+            (string, Tensor): Tuple of name and tensor
 
         Examples:
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    buffer1 = fluid.dygraph.to_variable(np.array([0]).astype("float32"))
-                    # register a variable as buffer by specific `persistable`
-                    fc1.register_buffer("buf_name_1", buffer1, persistable=True)
+                fc1 = paddle.nn.Linear(10, 3)
+                buffer1 = paddle.to_tensor(np.array([0]).astype("float32"))
+                # register a tensor as buffer by specific `persistable`
+                fc1.register_buffer("buf_name_1", buffer1, persistable=True)
 
-                    fc2 = fluid.Linear(3, 10)
-                    buffer2 = fluid.dygraph.to_variable(np.array([1]).astype("float32"))
-                    # register a buffer by assigning an attribute with Variable.
-                    # The `persistable` can only be False by this way.
-                    fc2.buf_name_2 = buffer2
+                fc2 = paddle.nn.Linear(3, 10)
+                buffer2 = paddle.to_tensor(np.array([1]).astype("float32"))
+                # register a buffer by assigning an attribute with Tensor.
+                # The `persistable` can only be False by this way.
+                fc2.buf_name_2 = buffer2
 
-                    model = fluid.dygraph.Sequential(fc1, fc2)
+                model = paddle.nn.Sequential(fc1, fc2)
 
-                    # get all named buffers
-                    for name, buffer in model.named_buffers():
-                        print(name, buffer)
+                # get all named buffers
+                for name, buffer in model.named_buffers():
+                    print(name, buffer)
 
         """
         buffers_set = set()
@@ -558,19 +788,18 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
-                with fluid.dygraph.guard():
-                    value = np.arange(26).reshape(2, 13).astype("float32")
-                    a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
-                    adam = fluid.optimizer.Adam(learning_rate=0.01, 
-                                                parameter_list=linear.parameters())
-                    out = linear(a)
-                    out.backward()
-                    adam.minimize(out)
-                    linear.clear_gradients()
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.to_tensor(value)
+                linear = paddle.nn.Linear(13, 5)
+                adam = paddle.optimizer.Adam(learning_rate=0.01,
+                                            parameters=linear.parameters())
+                out = linear(a)
+                out.backward()
+                adam.step()
+                linear.clear_gradients()
 
         """
         for p in self.parameters():
@@ -630,6 +859,32 @@ class Layer(core.Layer):
             sublayer(Layer): an instance of Layer.
         Returns:
             Layer: the sublayer passed in.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MySequential(paddle.nn.Layer):
+                    def __init__(self, *layers):
+                        super(MySequential, self).__init__()
+                        if len(layers) > 0 and isinstance(layers[0], tuple):
+                            for name, layer in layers:
+                                self.add_sublayer(name, layer)
+                        else:
+                            for idx, layer in enumerate(layers):
+                                self.add_sublayer(str(idx), layer)
+
+                    def forward(self, input):
+                        for layer in self._sub_layers.values():
+                            input = layer(input)
+                        return input
+
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = MySequential(fc1, fc2)
+                for prefix, layer in model.named_sublayers():
+                    print(prefix, layer)
         """
         assert isinstance(sublayer, core.Layer)
 
@@ -646,21 +901,58 @@ class Layer(core.Layer):
             parameter(Parameter): an instance of Parameter.
         Returns:
             Parameter: the parameter passed in.
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        w_tmp = self.create_parameter([1,1])
+                        self.add_parameter("w_tmp", w_tmp)
+
+                    def forward(self, input):
+                        return self._linear(input)
+
+                mylayer = MyLayer()
+                for name, param in mylayer.named_parameters():
+                    print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
+
         """
-        if parameter is None:
-            self._parameters[name] = None
-        elif not isinstance(parameter, framework.Parameter):
+        if '_parameters' not in self.__dict__:
+            raise RuntimeError(
+                "super(YourLayer, self).__init__() should be called firstly.")
+        elif not isinstance(name, six.string_types):
             raise TypeError(
-                "parameter assignment requires Parameter or None, but got '{}'"
-                .format(type(parameter).__name__))
+                "The name of parameter should be a string, but received {}.".
+                format(type(name).__name__))
+        elif '.' in name:
+            raise KeyError(
+                "The name of parameter can not contain `.`, "
+                "because when you access the newly added parameter in the "
+                "form of `self.**.**`, it will cause AttributeError.")
+        elif name == '':
+            raise KeyError("The name of parameter can not be empty.")
+        elif hasattr(self, name) and name not in self._parameters:
+            raise KeyError("The parameter '{}' already exists.".format(name))
+        elif parameter is not None and not isinstance(parameter,
+                                                      framework.Parameter):
+            raise TypeError(
+                "The parameter to be added should be a Parameter, but received {}.".
+                format(type(parameter).__name__))
+        else:
+            if parameter is None:
+                self._parameters[name] = None
 
-        if len(self._loaddict_holder) > 0:
-            assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
-                parameter.name)
+            if len(self._loaddict_holder) > 0:
+                assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
+                    parameter.name)
 
-            parameter.set_value(self._loaddict_holder[parameter.name])
+                parameter.set_value(self._loaddict_holder[parameter.name])
 
-        self._parameters[name] = parameter
+            self._parameters[name] = parameter
         return parameter
 
     def __getattr__(self, name):
@@ -687,7 +979,7 @@ class Layer(core.Layer):
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
             if len(self._loaddict_holder) > 0:
-                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
                     value.name)
 
                 value.set_value(self._loaddict_holder[value.name])
@@ -757,24 +1049,23 @@ class Layer(core.Layer):
         Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
 
         Examples:
-            import paddle.fluid as fluid
-            import numpy as np
+            .. code-block:: python
+                import paddle
+                import numpy as np
 
-            fluid.dygraph.enable_dygraph()
+                class Mylayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(Mylayer, self).__init__()
+                        self.linear1 = paddle.nn.Linear(10, 10)
+                        self.linear2 = paddle.nn.Linear(5, 5)
+                        self.conv2d = paddle.nn.Conv2d(3, 2, 3)
+                        self.embedding = paddle.nn.Embedding(128, 16)
+                        self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
 
-            class Mylayer(fluid.dygraph.Layer):
-                def __init__(self):
-                    super(Mylayer, self).__init__()
-                    self.linear1 = fluid.dygraph.Linear(10, 10)
-                    self.linear2 = fluid.dygraph.Linear(5, 5)
-                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
-                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
-                    self.h_0 = fluid.dygraph.to_variable(np.zeros([10, 10]).astype('float32'))
-
-            mylayer = Mylayer()
-            print(dir(mylayer))
-            # only parts are shown, because of list have too much content
-            # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
+                mylayer = Mylayer()
+                print(dir(mylayer))
+                # only parts are shown, because of list have too much content
+                # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
 
         """
         method = dir(self.__class__)
@@ -804,12 +1095,12 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
+
+                state_dict = emb.state_dict()
+                paddle.save( state_dict, "paddle_dy.pdparams")
 
         '''
 
@@ -833,12 +1124,13 @@ class Layer(core.Layer):
                     destination = destination_temp
         return destination
 
-    def set_dict(self,
-                 stat_dict,
-                 include_sublayers=True,
-                 use_structured_name=True):
+    @framework.deprecate_stat_dict
+    def set_state_dict(self,
+                       state_dict,
+                       include_sublayers=True,
+                       use_structured_name=True):
         '''
-        Set parameters and persistable buffers from stat_dict. All the parameters and buffers will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
@@ -851,72 +1143,63 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
 
-                    emb.set_dict( para_state_dict )
-
-        '''
-        self.load_dict(
-            stat_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
-
-    def load_dict(self,
-                  stat_dict,
-                  include_sublayers=True,
-                  use_structured_name=True):
-        '''
-        Set parameters and persistable buffers from stat_dict. All the parameters and persistabl buffers will be reset by the tensor in the stat_dict
-
-        This api will be Deprecated. Please use set_dict
-
-        Parameters:
-            state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
-                                                  Default: True
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
-
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
-
-                    emb.load_dict( para_state_dict )
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy.pdparams")
+                para_state_dict = paddle.load("paddle_dy.pdparams")
+                emb.set_state_dict(para_state_dict)
 
         '''
 
-        inner_state_dict = self.state_dict()
+        def _check_match(key, param):
+            state = state_dict.get(key, None)
+            if state is None:
+                raise ValueError("{} is not found in the provided dict.".format(
+                    key))
+            if list(state.shape) != list(param.shape):
+                raise ValueError(
+                    "{} receives a shape {}, but the expected shape is {}.".
+                    format(key, list(state.shape), list(param.shape)))
+            return param, state
 
-        for name, param_or_buffer in inner_state_dict.items():
-            key_name = name if use_structured_name else param_or_buffer.name
-            if key_name in stat_dict:
-                param_or_buffer.set_value(stat_dict[key_name])
-            else:
-                raise RuntimeError(
-                    "Parameter or persistable buffer not found, Can't find [ {} ] in stat_dict"
-                    "use_structured_name is set to [{}]".format(
-                        key_name, use_structured_name))
-        unused_para_list = []
-        for k, v in stat_dict.items():
-            if k not in inner_state_dict:
-                unused_para_list.append(k)
-        if len(unused_para_list) > 0:
-            warnings.warn(
-                "Variables [ {} ] are not used, because not included in layers state_dict".
-                format(" ".join(unused_para_list)))
+        matched_param_state = []
+        for key, param in self.state_dict().items():
+            key_name = key if use_structured_name else param.name
+            try:
+                match_res = _check_match(key_name, param)
+                matched_param_state.append(match_res)
+            except ValueError as err:
+                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+
+        if in_dygraph_mode():
+            for param, state in matched_param_state:
+                param.set_value(state)
+        else:
+
+            def _set_var(var, ndarray):
+                t = global_scope().find_var(var.name).get_tensor()
+                p = t._place()
+                if p.is_cpu_place():
+                    place = core.CPUPlace()
+                elif p.is_cuda_pinned_place():
+                    place = core.CUDAPinnedPlace()
+                else:
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.CUDAPlace(p.gpu_device_id())
+                t.set(ndarray, place)
+
+            executor = Executor(_get_device())._default_executor
+            # restore parameter states
+            core._create_loaded_parameter(
+                [param for param, state in matched_param_state],
+                global_scope(), executor)
+            for param, state in matched_param_state:
+                _set_var(param, state)
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict

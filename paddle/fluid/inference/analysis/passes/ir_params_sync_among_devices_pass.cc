@@ -23,8 +23,12 @@ namespace inference {
 namespace analysis {
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
-  PADDLE_ENFORCE(argument->scope_valid());
-  PADDLE_ENFORCE(argument->use_gpu_valid());
+  PADDLE_ENFORCE_EQ(
+      argument->scope_valid(), true,
+      platform::errors::PreconditionNotMet("The scope field should be valid"));
+  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(), true,
+                    platform::errors::PreconditionNotMet(
+                        "The use_gpu field should be valid"));
 
   platform::Place place;
 
@@ -40,7 +44,9 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
 
   LOG(INFO) << "Sync params from CPU to GPU";
 
-  PADDLE_ENFORCE(argument->gpu_device_id_valid());
+  PADDLE_ENFORCE_EQ(argument->gpu_device_id_valid(), true,
+                    platform::errors::PreconditionNotMet(
+                        "The gpu_device_id field should be valid"));
   place = platform::CUDAPlace(argument->gpu_device_id());
 
   auto *scope = argument->scope_ptr();
@@ -56,7 +62,8 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       continue;
     }
     auto *var = scope->FindLocalVar(var_name);
-    PADDLE_ENFORCE(var != nullptr);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
+                                     "The var should not be nullptr"));
     if (var->IsType<framework::LoDTensor>() ||
         var->IsType<framework::Tensor>()) {
       auto *t = var->GetMutable<framework::LoDTensor>();

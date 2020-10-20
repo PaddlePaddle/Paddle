@@ -45,7 +45,9 @@ namespace train {
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  PADDLE_ENFORCE_EQ(
+      fin.is_open(), true,
+      platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -98,7 +100,11 @@ int main(int argc, char* argv[]) {
       file_vec.push_back(filename);
     }
   }
-  PADDLE_ENFORCE_GE(file_vec.size(), 1, "At least one file to train");
+  PADDLE_ENFORCE_GE(
+      file_vec.size(), 1,
+      platform::errors::InvalidArgument(
+          "At least one file to train, but received number of file is %d.",
+          file_vec.size()));
   paddle::framework::InitDevices(false);
   const auto cpu_place = paddle::platform::CPUPlace();
   paddle::framework::Executor executor(cpu_place);
@@ -148,7 +154,9 @@ int main(int argc, char* argv[]) {
     const std::vector<paddle::framework::DataFeed*> readers =
         dataset_ptr->GetReaders();
     PADDLE_ENFORCE_EQ(readers.size(), 1,
-                      "readers num should be equal to thread num");
+                      platform::errors::InvalidArgument(
+                          "Readers num(%d) should be equal to thread num(1).",
+                          readers.size()));
     readers[0]->SetPlace(paddle::platform::CPUPlace());
     const std::vector<std::string>& input_feed_names =
         readers[0]->GetUseSlotAlias();

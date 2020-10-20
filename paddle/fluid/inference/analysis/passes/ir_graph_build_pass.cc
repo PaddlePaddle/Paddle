@@ -31,7 +31,9 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope_valid()) {
     argument->SetScope(new framework::Scope);
   }
-  PADDLE_ENFORCE(argument->use_gpu_valid());
+  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(), true,
+                    platform::errors::PreconditionNotMet(
+                        "The use_gpu field should be valid"));
 
   // The load program should run on the same device with the inference program,
   // so that the parameters will on the same device, or they will keep copying
@@ -51,14 +53,17 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         argument->model_from_memory_valid() && argument->model_from_memory());
     argument->SetMainProgram(program.release());
   } else {
-    PADDLE_THROW(
-        "either model_dir or (program path and parameter path) should be set.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "either model_dir or (program path and parameter path) should be "
+        "set."));
   }
 
   auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   argument->SetMainGraph(graph.release());
   auto *scope_ptr = argument->scope_ptr();
-  PADDLE_ENFORCE(scope_ptr);
+  PADDLE_ENFORCE_NOT_NULL(scope_ptr,
+                          platform::errors::PreconditionNotMet(
+                              "The scope ptr should not be nullptr."));
   argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 }
 

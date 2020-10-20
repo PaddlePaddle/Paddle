@@ -24,6 +24,8 @@ from paddle.fluid.executor import Executor
 import unittest
 import os
 
+paddle.enable_static()
+
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
 hidden_dim = 32

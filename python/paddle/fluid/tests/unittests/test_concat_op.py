@@ -253,24 +253,25 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
     def test_api(self):
-        x_1 = paddle.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
+        x_1 = paddle.fluid.data(
+            shape=[None, 1, 4, 5], dtype='int32', name='x_1')
         paddle.concat([x_1, x_1], 0)
 
         input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
         input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
         x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1_int32 = paddle.fill_constant([1], "int32", 1)
-        positive_1_int64 = paddle.fill_constant([1], "int64", 1)
-        negative_int64 = paddle.fill_constant([1], "int64", -3)
+        positive_1_int32 = paddle.fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int64 = paddle.fluid.layers.fill_constant([1], "int64", 1)
+        negative_int64 = paddle.fluid.layers.fill_constant([1], "int64", -3)
         out_1 = paddle.concat(x=[x_2, x_3], axis=1)
         out_2 = paddle.concat(x=[x_2, x_3], axis=positive_1_int32)
         out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
         out_4 = paddle.concat(x=[x_2, x_3], axis=negative_int64)
 
-        exe = paddle.Executor(place=paddle.CPUPlace())
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
         [res_1, res_2, res_3, res_4] = exe.run(
-            paddle.default_main_program(),
+            paddle.static.default_main_program(),
             feed={"x_1": input_2,
                   "x_2": input_2,
                   "x_3": input_3},
@@ -284,14 +285,15 @@ class TestConcatAPI(unittest.TestCase):
         in1 = np.array([[1, 2, 3], [4, 5, 6]])
         in2 = np.array([[11, 12, 13], [14, 15, 16]])
         in3 = np.array([[21, 22], [23, 24]])
-        with paddle.imperative.guard():
-            x1 = paddle.imperative.to_variable(in1)
-            x2 = paddle.imperative.to_variable(in2)
-            x3 = paddle.imperative.to_variable(in3)
-            out1 = fluid.layers.concat(input=[x1, x2, x3], axis=-1)
-            out2 = paddle.concat(x=[x1, x2], axis=0)
-            np_out1 = np.concatenate([in1, in2, in3], axis=-1)
-            np_out2 = np.concatenate([in1, in2], axis=0)
+        paddle.disable_static()
+        x1 = paddle.to_tensor(in1)
+        x2 = paddle.to_tensor(in2)
+        x3 = paddle.to_tensor(in3)
+        out1 = fluid.layers.concat(input=[x1, x2, x3], axis=-1)
+        out2 = paddle.concat(x=[x1, x2], axis=0)
+        np_out1 = np.concatenate([in1, in2, in3], axis=-1)
+        np_out2 = np.concatenate([in1, in2], axis=0)
+        paddle.enable_static()
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
@@ -304,8 +306,8 @@ class TestConcatAPI(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.concat, [x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
-            x4 = paddle.data(shape=[4], dtype='uint8', name='x4')
-            x5 = paddle.data(shape=[4], dtype='uint8', name='x5')
+            x4 = paddle.fluid.data(shape=[4], dtype='uint8', name='x4')
+            x5 = paddle.fluid.data(shape=[4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
 
             # The type of axis in concat_op should be int or Variable.

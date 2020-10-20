@@ -18,6 +18,9 @@ from test_dist_base import TestDistBase
 
 import os
 import subprocess
+import paddle
+
+paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]
 
 
@@ -39,7 +42,6 @@ class TestDistMnistNCCL2DGC(TestDistBase):
         self._nccl2_mode = True
         self._use_dgc = True
 
-    @unittest.skip(reason="Skip unstable ut")
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
@@ -69,7 +71,6 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
         self._nccl2_mode = True
         self._use_dgc = True
 
-    @unittest.skip(reason="Skip unstable ut")
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():

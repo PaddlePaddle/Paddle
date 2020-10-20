@@ -24,9 +24,10 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dataloader.dataloader_iter import _worker_loop
 
 
 class RandomDataset(Dataset):
@@ -108,6 +109,48 @@ class TestDataLoaderAssert(unittest.TestCase):
                 self.assertTrue(False)
 
 
+class TestDatasetRuntimeError(unittest.TestCase):
+    def test_main(self):
+        dataset = Dataset()
+
+        # __getitem__ not implement
+        try:
+            d = dataset[0]
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        # __len__ not implement
+        try:
+            l = len(dataset)
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        dataset = IterableDataset()
+
+        # __iter__ not implement
+        try:
+            d = iter(dataset)
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        # __getitem__ runtime error
+        try:
+            d = dataset[0]
+            self.assertTrue(False)
+        except RuntimeError:
+            pass
+
+        # __len__ runtime error
+        try:
+            l = len(dataset)
+            self.assertTrue(False)
+        except RuntimeError:
+            pass
+
+
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -143,13 +186,17 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 for i in range(10):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
-                loader._worker_loop(
-                    loader._dataset, indices_queue, loader._data_queue,
-                    loader._workers_done_event, _collate_fn, _init_fn, 0)
+                _worker_loop(loader._dataset, 0, indices_queue,
+                             loader._data_queue, loader._workers_done_event,
+                             _collate_fn, _init_fn, 0, 1,
+                             loader._use_shared_memory)
                 self.assertTrue(False)
         except AssertionError:
             pass
-        except Exception:
+        except Exception as e:
+            print("Exception", e)
+            import sys
+            sys.stdout.flush()
             self.assertTrue(False)
 
     def run_with_worker_done(self, use_shared_memory=True):
@@ -183,9 +230,10 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 loader._workers_done_event.set()
-                loader._worker_loop(
-                    loader._dataset, indices_queue, loader._data_queue,
-                    loader._workers_done_event, _collate_fn, _init_fn, 0)
+                _worker_loop(loader._dataset, 0, indices_queue,
+                             loader._data_queue, loader._workers_done_event,
+                             _collate_fn, _init_fn, 0, 1,
+                             loader._use_shared_memory)
                 self.assertTrue(True)
         except AssertionError:
             pass

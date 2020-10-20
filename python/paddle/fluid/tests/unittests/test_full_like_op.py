@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid.core as core
-from paddle import Program, program_guard
+from paddle.static import program_guard, Program
 import paddle.compat as cpt
 import unittest
 import numpy as np
@@ -31,14 +31,14 @@ class TestFullOp(unittest.TestCase):
         train_program = Program()
         with program_guard(train_program, startup_program):
             fill_value = 2.0
-            input = paddle.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.full_like(input, fill_value)
             output_dtype = paddle.full_like(input, fill_value, dtype='float32')
 
             place = paddle.CPUPlace()
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
@@ -53,12 +53,13 @@ class TestFullOp(unittest.TestCase):
                 msg="full_like output is wrong, out = " + str(out_np))
 
     def test_full_like_imperative(self):
-        with paddle.imperative.guard():
-            input = paddle.arange(6, 10, dtype='float32')
-            out = paddle.full_like(input, fill_value=888.88, dtype='float32')
-            out_numpy = np.random.random((4)).astype("float32")
-            out_numpy.fill(888.88)
-            self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.disable_static()
+        input = paddle.arange(6, 10, dtype='float32')
+        out = paddle.full_like(input, fill_value=888.88, dtype='float32')
+        out_numpy = np.random.random((4)).astype("float32")
+        out_numpy.fill(888.88)
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
 
 
 class TestFullOpError(unittest.TestCase):
@@ -66,7 +67,7 @@ class TestFullOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             #for ci coverage
 
-            input_data = paddle.data(
+            input_data = paddle.fluid.data(
                 name='input', dtype='float32', shape=[2, 3])
             output = paddle.full_like(input_data, 2.0)
 

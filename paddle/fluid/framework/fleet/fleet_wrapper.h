@@ -28,11 +28,18 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -80,6 +87,24 @@ class FleetWrapper {
     pull_local_thread_num_ = thread_num;
   }
 
+#ifdef PADDLE_WITH_PSLIB
+  void HeterPullSparseVars(int workerid, std::shared_ptr<HeterTask> task,
+                           const uint64_t table_id,
+                           const std::vector<std::string>& var_names,
+                           int fea_dim,
+                           const std::vector<std::string>& var_emb_names);
+
+  void HeterPushSparseVars(
+      std::shared_ptr<HeterTask> task, const uint64_t table_id,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const bool use_cvm, const bool dump_slot, const bool no_cvm);
+#endif
+
+  typedef std::function<void(int, int)> HeterCallBackFunc;
+  int RegisterHeterCallback(HeterCallBackFunc handler);
+
   // Pull sparse variables from server in sync mode
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim, var_emb_names
   // Param<out>: fea_values
@@ -118,15 +143,32 @@ class FleetWrapper {
   void PullDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* pull_dense_status);
+      std::vector<::std::future<int32_t>>* pull_dense_status, bool in_cpu);
 
   // push dense parameters(not gradients) to server in sync mode
   void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
                           const std::vector<std::string>& var_names);
 
-  // Push dense variables to server in async mode
-  // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
-  // Param<out>: push_sparse_status
+// Push dense variables to server in async mode
+// Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
+// Param<out>: push_sparse_status
+#ifdef PADDLE_WITH_CUDA
+  void PushDenseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      float scale_datanorm, int batch_size,
+      const paddle::platform::Place& place, cudaStream_t stream,
+      cudaEvent_t event);
+#endif
+#ifdef PADDLE_WITH_XPU
+  void PushDenseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      float scale_datanorm, int batch_size,
+      const paddle::platform::Place& place);
+#endif
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
@@ -245,6 +287,11 @@ class FleetWrapper {
   // save cache model
   // cache model can speed up online predict
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  // save sparse table filtered by user-defined whitelist
+  int32_t SaveWithWhitelist(int table_id, const std::string& path,
+                            const int mode, const std::string& whitelist_path);
+  void LoadWithWhitelist(const uint64_t table_id, const std::string& path,
+                         const int mode);
   // copy feasign key/value from src_table_id to dest_table_id
   int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
   // copy feasign key/value from src_table_id to dest_table_id

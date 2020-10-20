@@ -19,8 +19,10 @@ import six
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from . import framework
 from . import layers
@@ -47,9 +49,8 @@ __all__ = [
     'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
     'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
     'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
-    'RecomputeOptimizer'
+    'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
+    'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
 ]
 
 
@@ -68,14 +69,16 @@ class Optimizer(object):
                  regularization=None,
                  grad_clip=None,
                  name=None):
+        # Because of the loop import, so place it in the function body
+        from paddle.optimizer.lr import LRScheduler
         self._parameter_list = list(
             parameter_list) if parameter_list is not None else None
         self._name = name
         if framework.in_dygraph_mode():
-            if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, LearningRateDecay):
+            if not isinstance(learning_rate,
+                              (float, LearningRateDecay, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or LearningRateDecay, got %s here"
+                    "learning rate should be float or LRScheduler, got %s here"
                     % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
@@ -90,11 +93,11 @@ class Optimizer(object):
                             % regularization.__str__())
                         break
         else:
-            if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, framework.Variable):
+            if not isinstance(learning_rate,
+                              (float, framework.Variable, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or Variable, got %s here" %
-                    type(learning_rate))
+                    "learning rate should be float or LRScheduler, got %s here"
+                    % type(learning_rate))
 
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
@@ -144,11 +147,15 @@ class Optimizer(object):
                     state_dict = adam.state_dict()
 
         '''
+        from paddle.optimizer.lr import LRScheduler
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
+        if isinstance(self._learning_rate, LRScheduler):
+            state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
+            return state_dict
         if isinstance(self._learning_rate, LearningRateDecay):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
 
@@ -164,7 +171,7 @@ class Optimizer(object):
         return state_dict
 
     @framework.dygraph_only
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
@@ -176,22 +183,29 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
+                import paddle.fluid as fluid
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                paddle.disable_static()
 
-                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
-                    state_dict = adam.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
 
-                    para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+                state_dict = emb.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam.set_dict(opti_state_dict)
+                scheduler = paddle.optimizer.lr.NoamDecay(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
+                state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, LearningRateDecay):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
@@ -248,10 +262,37 @@ class Optimizer(object):
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+
     def get_opti_var_name_list(self):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
+            lr_var = self._global_learning_rate()
+            # only create global lr_var once
+            if not isinstance(lr_var, framework.Variable):
+                lr_name = unique_name.generate('learning_rate')
+                self._learning_rate._var_name = lr_name
+                lr_var = self.helper.create_global_variable(
+                    name=lr_name,
+                    shape=[1],
+                    persistable=True,
+                    stop_gradient=True,
+                    dtype='float32' if self._dtype is None else self._dtype)
+                main_prog = framework.default_main_program()
+                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_var = lr_var
+                self._learning_rate_map[framework.default_main_program(
+                )] = lr_var
+
+            lr_value = float(self._learning_rate())
+            self.helper.set_variable_initializer(
+                lr_var, initializer=Constant(value=lr_value))
+            return
+
         if imperative_base.enabled():
             # create learning rate Variable
             if isinstance(self._learning_rate, float):
@@ -690,9 +731,6 @@ class Optimizer(object):
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
-    def _append_dgc_ops(self, param_and_grad):
-        pass
-
     def backward(self,
                  loss,
                  startup_program=None,
@@ -731,8 +769,14 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
+
+            if paddle.distributed.get_world_size() > 1:
+                apply_collective_grads(parameter_list)
+
             params_grads = []
-            for param in self._parameter_list:
+            for param in parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -754,9 +798,6 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
-                # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -899,6 +940,7 @@ class Optimizer(object):
 
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -1521,6 +1563,11 @@ class DGCMomentumOptimizer(Optimizer):
 
     @imperative_base.no_grad
     def apply_gradients(self, params_grads):
+        # Note: since we can't use all_reduce_op now,
+        # dgc_op should be the last op of one grad.
+        # Maybe need a grad allreduce pass.
+        self._append_dgc_ops(params_grads)
+
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
@@ -1566,7 +1613,7 @@ class LarsMomentumOptimizer(Optimizer):
         & local\_learning\_rate = learning\_rate * lars\_coeff * \\
           \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
 
-        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param + epsilon)
 
         & param = param - velocity
 
@@ -1590,7 +1637,9 @@ class LarsMomentumOptimizer(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
-
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
+        epsilon (float, optional): Epsilon to avoid Division by Zero when calculate local lr. Default is 0.
+        
     Examples:
         .. code-block:: python
 
@@ -1621,7 +1670,9 @@ class LarsMomentumOptimizer(Optimizer):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
-                 name=None):
+                 name=None,
+                 exclude_from_weight_decay=None,
+                 epsilon=0):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
@@ -1634,6 +1685,11 @@ class LarsMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
+        self._epsilon = float(epsilon)
+        if exclude_from_weight_decay is None:
+            self._exclude_from_weight_decay = []
+        else:
+            self._exclude_from_weight_decay = exclude_from_weight_decay
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1643,6 +1699,14 @@ class LarsMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        _lars_weight_decay = self._lars_weight_decay
+        param_name = param_and_grad[0].name
+        if len(self._exclude_from_weight_decay) > 0:
+            for name in self._exclude_from_weight_decay:
+                if name in param_name:
+                    _lars_weight_decay = 0.0
+                    break
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
@@ -1662,7 +1726,8 @@ class LarsMomentumOptimizer(Optimizer):
             attrs={
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": self._lars_weight_decay
+                "lars_weight_decay": _lars_weight_decay,
+                "epsilon": self._epsilon
             },
             stop_gradient=True)
 
@@ -3514,8 +3579,10 @@ class ExponentialMovingAverage(object):
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
-                layers.assign(input=ema, output=param)
+                        layers.assign(
+                            output=param, input=ema / (1.0 - decay_pow))
+                    with switch.default():
+                        layers.assign(output=param, input=ema)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -3691,7 +3758,8 @@ class PipelineOptimizer(object):
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        if not isinstance(optimizer, Optimizer):
+        if not isinstance(optimizer, Optimizer) and not isinstance(
+                optimizer, paddle.optimizer.Optimizer):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
                              "Optimizer, but the given type is {}.".format(
@@ -4561,15 +4629,16 @@ class RecomputeOptimizer(Optimizer):
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
-    def load(self, stat_dict):
+    @framework.deprecate_stat_dict
+    def load(self, state_dict):
         """
-	:api_attr: Static Graph
+	    :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
         Args:
-            stat_dict: the dict load by load_persistable method
+            state_dict: the dict load by load_persistable method
 
         Examples:
             .. code-block:: python
@@ -4593,8 +4662,8 @@ class RecomputeOptimizer(Optimizer):
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
-                    stat_dict = {}
-                    sgd.load(stat_dict)
+                    state_dict = {}
+                    sgd.load(state_dict)
                 except NotImplementedError as e:
                     print(cpt.get_exception_message(e))
         """
@@ -4714,10 +4783,6 @@ class RecomputeOptimizer(Optimizer):
 
             params_grads = append_backward(
                 loss, parameter_list, no_grad_set, checkpoints=checkpoint_vars)
-            # Note: since we can't use all_reduce_op now,
-            #  dgc_op should be the last op of one grad.
-            if hasattr(self._optimizer, "_append_dgc_ops"):
-                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4814,29 +4879,35 @@ class LookaheadOptimizer(object):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            import numpy.random as random
 
-	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
-	    loss = fluid.layers.cross_entropy(input=y, label=label)
-	    loss = fluid.layers.mean(x=loss)
-	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
-	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
-                                            alpha=0.5,
-                                            k=5)
-	    optimizer.minimize(loss)
-	    main_program = fluid.default_main_program()
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            paddle.enable_static()
+        
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            y = fluid.layers.fc(input=[x], size=2, act="softmax")
+            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                                alpha=0.5,
+                                                k=5)
+            optimizer.minimize(loss)
+            main_program = fluid.default_main_program()
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
 
-	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
-
-	    step = 0
-            while(step < 10):
-                step += 1
-		exe.run(fluid.default_main_program(),
-            	feed=feeder.feed(batch_data))
+            def train_reader(limit=5):
+                for i in range(limit):
+                    yield random.random([2]).astype('float32'), random.random([1]).astype('int64')
+            
+            feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+            reader = paddle.batch(paddle.reader.shuffle(train_reader, buf_size=50000),batch_size=1)
+            
+            for batch_data in reader():
+                exe.run(fluid.default_main_program(),
+                feed=feeder.feed(batch_data))
 
     """
 
@@ -4930,6 +5001,11 @@ class LookaheadOptimizer(object):
 
             mod = layers.elementwise_mod(step, k)
             with layers.control_flow.Switch() as switch:
+                with switch.case(step == one_var):
+                    for param_name in params:
+                        fast_var = main_block.var(param_name)
+                        slow_var = param_to_slow[param_name]
+                        layers.assign(input=fast_var, output=slow_var)
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)

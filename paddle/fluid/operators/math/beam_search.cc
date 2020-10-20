@@ -13,8 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-#include <algorithm>
-#include <map>
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -87,7 +95,10 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
     if (!framework::CheckLoD(lod)) {
-      PADDLE_THROW("lod %s is not right", framework::LoDToString(lod));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "lod %s is not right in"
+          " beam_search, please check your code.",
+          framework::LoDToString(lod)));
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);

@@ -18,15 +18,22 @@ import ast
 import astor
 import atexit
 import copy
+import collections
 import gast
-import imp
 import inspect
 import os
 import six
 import tempfile
 import textwrap
+import numpy as np
 
 from paddle.fluid import unique_name
+
+# imp is deprecated in python3
+if six.PY2:
+    import imp
+else:
+    from importlib.machinery import SourceFileLoader
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -40,6 +47,77 @@ dygraph_class_to_static_api = {
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+
+# FullArgSpec is valid from Python3. Defined a Namedtuple to
+# to make it available in Python2.
+FullArgSpec = collections.namedtuple('FullArgSpec', [
+    'args', 'varargs', 'varkw', 'defaults', 'kwonlyargs', 'kwonlydefaults',
+    'annotations'
+])
+
+
+def getfullargspec(target):
+    if hasattr(inspect, "getfullargspec"):
+        return inspect.getfullargspec(target)
+    else:
+        argspec = inspect.getargspec(target)
+        return FullArgSpec(
+            args=argspec.args,
+            varargs=argspec.varargs,
+            varkw=argspec.keywords,
+            defaults=argspec.defaults,
+            kwonlyargs=[],
+            kwonlydefaults=None,
+            annotations={})
+
+
+def parse_arg_and_kwargs(function):
+    """
+    Returns full argument names as list. e.g ['x', 'y', 'z']
+    """
+    fullargspec = getfullargspec(function)
+    arg_names = fullargspec.args
+    if arg_names and 'self' == arg_names[0]:
+        arg_names = fullargspec.args[1:]
+
+    # parse default kwargs
+    default_kwargs = {}
+    default_values = fullargspec.defaults
+    if default_values:
+        assert len(default_values) <= len(arg_names)
+        default_kwarg_names = arg_names[-len(default_values):]
+        default_kwargs = dict(zip(default_kwarg_names, default_values))
+
+    return arg_names, default_kwargs
+
+
+def type_name(v):
+    return type(v).__name__
+
+
+def make_hashable(x, error_msg=None):
+    """
+    Makes input `x` hashable.
+
+    For some unhashable objects, such as `dict/list/np.ndarray`,applying hash function by using their values.
+    """
+    if isinstance(x, (tuple, list)):
+        return tuple(map(make_hashable, x))
+
+    try:
+        hash(x)
+    except TypeError:
+        if isinstance(x, np.ndarray):
+            # Note: `tostring()` will return the binary data from np.ndarray that
+            # means different value will lead to different hash code.
+            return hash(x.tostring())
+        elif isinstance(x, dict):
+            return tuple(map(make_hashable, x.values()))
+
+        error_msg = error_msg or "Requires a hashable object."
+        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+
+    return x
 
 
 def _is_api_in_module_helper(obj, module_prefix):
@@ -58,9 +136,12 @@ def is_api_in_module(node, module_prefix):
         #  import_str = "".join(import_statements)
         import paddle
         import paddle.fluid as fluid
-        import paddle.fluid.layers as layers
-        from paddle.fluid.dygraph import to_variable
         import paddle.fluid.dygraph as dygraph
+        import paddle.fluid.layers as layers
+
+        from paddle.fluid.dygraph import to_variable
+        from paddle import to_tensor
+
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
     except NameError:
@@ -68,15 +149,18 @@ def is_api_in_module(node, module_prefix):
 
 
 def is_dygraph_api(node):
+
     # Note: A api in module dygraph_to_static is not a real dygraph api.
     if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
         return False
 
+    # TODO(liym27): A better way to determine whether it is a dygraph api.
+    #  Consider the decorator @dygraph_only
     return is_api_in_module(node, "paddle.fluid.dygraph")
 
 
 def is_paddle_api(node):
-    return is_api_in_module(node, "paddle.fluid")
+    return is_api_in_module(node, "paddle")
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -155,14 +239,6 @@ def _add_keywords_to(node, dygraph_api_name):
     return
 
 
-def is_to_variable(node):
-    assert isinstance(node, gast.Call)
-    if is_dygraph_api(node):
-        api_name = ast_to_source_code(node.func).strip()
-        return api_name.endswith("to_variable")
-    return False
-
-
 def to_static_ast(node, class_node):
     assert isinstance(node, gast.Call)
     assert isinstance(class_node, gast.Call)
@@ -187,29 +263,6 @@ def to_static_ast(node, class_node):
 
     gast.fix_missing_locations(node)
 
-    return node
-
-
-def to_assign_node(node):
-    # Transform dygraph api `fluid.dygraph.to_variable` to static api `fluid.layers.assign`.
-    # NOTE:
-    #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
-    #   but api `assign` only supports {float32, float64, int32, int64, bool};
-    #   2. If the input of api `assign` is numpy.ndarray, its size cannot be greater than 1024 * 1024.
-    assert isinstance(node, gast.Call)
-    assign_api = gast.parse('fluid.layers.assign').body[0].value
-    node.func = assign_api
-
-    if node.args:
-        node.args = [node.args[0]]
-        node.keywords = []
-    else:
-        for idx, kw in enumerate(node.keywords):
-            if kw.arg == 'value':
-                node.keywords[idx].arg = 'input'
-                node.keywords = [node.keywords[idx]]
-                node.args = []
-                break
     return node
 
 
@@ -368,9 +421,15 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     TODO: If only decorate one of inner function instead of decorating the main
     function, the other inner functions are invisible for the decorated function.
     """
+
+    def remove_if_exit(filepath):
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
     source = ast_to_source_code(ast_root)
-    import_fluid = "import paddle.fluid as fluid\n"
+    import_fluid = "import paddle\nimport paddle.fluid as fluid\n"
     source = import_fluid + source
+
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -382,8 +441,13 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         f.write(source)
 
     if delete_on_exit:
-        atexit.register(lambda: os.remove(f.name))
-    module = imp.load_source(module_name, f.name)
+        atexit.register(lambda: remove_if_exit(f.name))
+        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
+
+    if six.PY2:
+        module = imp.load_source(module_name, f.name)
+    else:
+        module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
@@ -404,7 +468,7 @@ def recover_globals_attribute(src_obj, dst_obj):
     src_globals = getattr(src_obj, attr_name, {})
     dst_globals = getattr(dst_obj, attr_name, {})
 
-    for k, v in src_globals.items():
+    for k, v in six.iteritems(src_globals):
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
@@ -858,7 +922,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = fluid.dygraph.dygraph_to_static.convert_operators.convert_len({})'.format(
+        convert_len_node_source_str = '{} = paddle.jit.dy2static.convert_len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
@@ -1045,3 +1109,19 @@ class SplitAssignTransformer(gast.NodeTransformer):
             value_node = target
 
         return new_nodes
+
+
+# NOTE: inspect.unwrap() exits in PY3 but not in PY2.
+def unwrap(func):
+    """
+    Returns the object wrapped by decorators.
+    """
+
+    def _is_wrapped(f):
+        return hasattr(f, '__wrapped__')
+
+    unwrapped_f = func
+    while (_is_wrapped(unwrapped_f)):
+        unwrapped_f = unwrapped_f.__wrapped__
+
+    return unwrapped_f

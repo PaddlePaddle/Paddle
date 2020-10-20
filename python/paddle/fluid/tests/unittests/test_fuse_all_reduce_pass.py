@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from simple_nets import simple_fc_net, fc_with_batchnorm, init_data, bow_net
 from fake_reader import fake_imdb_reader
 from parallel_executor_test_base import TestParallelExecutorBase

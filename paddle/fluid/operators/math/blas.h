@@ -17,6 +17,13 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
@@ -197,6 +204,11 @@ class Blas {
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
+
+  template <typename T>
+  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
+                   int K, T alpha, const T** A, const T** B, T beta, T** C,
+                   int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
   template <typename T>

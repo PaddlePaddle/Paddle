@@ -15,15 +15,26 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <memory>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class SelectedRows;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 DECLARE_int32(rpc_deadline);
 

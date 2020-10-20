@@ -48,20 +48,20 @@ class OperationExpression {
       std::string op_type, const std::vector<int>& input_ids,
       const std::vector<int>& output_ids, std::string rhs_type,
       std::string lhs_type,
-      const std::unordered_map<int, bool>& intermediate_state = {})
+      const std::vector<int>& intermediate_output_ids = {})
       : op_type_(op_type),
         input_ids_(input_ids),
         output_ids_(output_ids),
         rhs_type_(rhs_type),
         lhs_type_(lhs_type),
-        intermediate_state_(intermediate_state) {}
+        intermediate_output_ids_(intermediate_output_ids) {}
 
   std::string GetOpType() const { return op_type_; }
-  std::unordered_map<int, bool> GetIntermediateState() const {
-    return intermediate_state_;
-  }
   std::vector<int> GetInputIds() const { return input_ids_; }
   std::vector<int> GetOutputIds() const { return output_ids_; }
+  std::vector<int> GetIntermediateOutputIds() const {
+    return intermediate_output_ids_;
+  }
   std::string GetRHSType() const { return rhs_type_; }
   std::string GetLHSType() const { return lhs_type_; }
   void SetAttr(AttributeMap attr) { attr_ = attr; }
@@ -84,7 +84,7 @@ class OperationExpression {
   AttributeMap attr_;
   std::string rhs_type_;
   std::string lhs_type_;
-  std::unordered_map<int, bool> intermediate_state_;
+  std::vector<int> intermediate_output_ids_;
 };
 
 class TemplateVariable {

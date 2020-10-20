@@ -36,6 +36,7 @@ from . import core
 from . import unique_name
 import paddle.version as fluid_version
 import warnings
+import functools
 
 __all__ = [
     'Program',
@@ -48,6 +49,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_xpu',
     'Variable',
     'ComplexVariable',
     'load_op_library',
@@ -64,7 +66,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_dygraph_current_expected_place_ = None
+_global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 
@@ -178,27 +180,30 @@ def require_version(min_version, max_version=None):
 
 def in_dygraph_mode():
     """
-    :alias_main: paddle.in_dygraph_mode
-	:alias: paddle.in_dygraph_mode
-	:old_api: paddle.fluid.framework.in_dygraph_mode
 
-    This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
-    and :ref:`api_fluid_dygraph_disable` api .
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API checks whether paddle runs in dynamic graph mode.
+
+    You can turn ON static graph mode by `enable_static <../dygraph/base/disable_dygraph_en.html>`_ ,
+    and turn OFF static graph mode by `disable_static <../dygraph/base/enable_dygraph_en.html>`_  .
 
     Returns:
-        bool: Whether the program is running in dynamic graph mode.
+        bool: Whether paddle runs in dynamic graph mode.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     return _dygraph_tracer_ is not None
 
@@ -215,7 +220,16 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative Mode" % func.__name__
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+def _static_only_(func):
+    def __impl__(*args, **kwargs):
+        assert not in_dygraph_mode(
+        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -237,8 +251,28 @@ def _fake_interface_only_(func):
     return __impl__
 
 
+# NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict) 
+# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without 
+# introducing compatibility issues, add this decorator
+# NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
+# move kwargs to args, which doesn't work in this decorate case
+def deprecate_stat_dict(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if 'stat_dict' in kwargs:
+            warnings.warn(
+                "The argument `stat_dict` has deprecated, please change it to `state_dict`.",
+                DeprecationWarning)
+            kwargs['state_dict'] = kwargs['stat_dict']
+            kwargs.pop('stat_dict')
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
@@ -247,7 +281,36 @@ def _dygraph_tracer():
 
 
 def _current_expected_place():
-    return _dygraph_current_expected_place_
+    global _global_expected_place_
+    if _global_expected_place_ is None:
+        if core.is_compiled_with_cuda():
+            try:
+                device_count = core.get_cuda_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CUDAPlace(0)
+            else:
+                warnings.warn(
+                    "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
+        else:
+            _global_expected_place_ = core.CPUPlace()
+
+    return _global_expected_place_
+
+
+def _set_dygraph_tracer_expected_place(place):
+    global _dygraph_tracer_
+    if _dygraph_tracer_ is not None:
+        _dygraph_tracer_._expected_place = place
+
+
+def _set_expected_place(place):
+    global _global_expected_place_
+    _global_expected_place_ = place
+    _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
@@ -291,17 +354,32 @@ def _cuda_ids():
     return device_ids
 
 
-def is_compiled_with_cuda():
+def is_compiled_with_xpu():
     """
-    Whether this whl package can be used to run the model on GPU.
+    Whether this whl package can be used to run the model on XPU.
 
-    Returns (bool): support gpu or not.
+    Returns (bool): support xpu or not.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            support_gpu = fluid.is_compiled_with_cuda()
+            support_xpu = fluid.is_compiled_with_xpu()
+    """
+    return core.is_compiled_with_xpu()
+
+
+def is_compiled_with_cuda():
+    """
+    Whether this whl package can be used to run the model on GPU.
+
+    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_gpu = paddle.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -312,31 +390,35 @@ def cuda_places(device_ids=None):
         For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
         The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
 
-    This function creates a list of :code:`fluid.CUDAPlace` objects.
+    This function creates a list of :code:`paddle.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
     :code:`FLAGS_selected_gpus` would be checked first. For example, if
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
-    be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    be [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
     gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
 
     If :code:`device_ids` is not None, it should be the device
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
-    [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
+    [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
     
     Parameters:
         device_ids (list or tuple of int, optional): list of GPU device ids.
 
     Returns:
-        list of fluid.CUDAPlace: Created GPU place list.
+        list of paddle.CUDAPlace: Created GPU place list.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            cuda_places = fluid.cuda_places()
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+
+            cuda_places = static.cuda_places()
 
     """
     assert core.is_compiled_with_cuda(), \
@@ -350,7 +432,7 @@ def cuda_places(device_ids=None):
 
 def cpu_places(device_count=None):
     """
-    This function creates a list of :code:`fluid.CPUPlace` objects, and returns the created list.
+    This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
@@ -363,13 +445,17 @@ def cpu_places(device_count=None):
         device_count (int, optional): device number. Default: None.
 
     Returns:
-        list of fluid.CPUPlace: Created list of CPU places.
+        list of paddle.CPUPlace: Created list of CPU places.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            cpu_places = fluid.cpu_places()
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+
+            cpu_places = static.cpu_places()
     """
 
     if device_count is None:
@@ -441,11 +527,12 @@ def name_scope(prefix=None):
     """
     :api_attr: Static Graph
 
-    Generate hierarchical name prefix for the operators.
+    Generate hierarchical name prefix for the operators in Static Graph.
 
     Note: 
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
+        Don't use it in dygraph, since it will cause memory leak.
 
     Args:
         prefix(str, optional): prefix. Default is none.
@@ -453,21 +540,22 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          with fluid.name_scope("s1"):
-             a = fluid.data(name='data', shape=[None, 1], dtype='int32')
+          import paddle
+          paddle.enable_static()
+          with paddle.static.name_scope("s1"):
+             a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
-             with fluid.name_scope("s2"):
+             with paddle.static.name_scope("s2"):
                 c = b * 1
-             with fluid.name_scope("s3"):
+             with paddle.static.name_scope("s3"):
                 d = c / 1
-          with fluid.name_scope("s1"):
-                f = fluid.layers.pow(d, 2.0)
-          with fluid.name_scope("s4"):
+          with paddle.static.name_scope("s1"):
+                f = paddle.tensor.pow(d, 2.0)
+          with paddle.static.name_scope("s4"):
                 g = f - 1
 
           # Op are created in the default main program.  
-          for op in fluid.default_main_program().block(0).ops:
+          for op in paddle.static.default_main_program().block(0).ops:
               # elementwise_add is created in /s1/
               if op.type == 'elementwise_add':
                   assert op.desc.attr("op_namescope") == '/s1/'
@@ -548,7 +636,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
-        return core.VarDesc.VarType.INT16
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        return core.VarDesc.VarType.BF16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
@@ -1071,15 +1161,18 @@ class Variable(object):
         pass
 
     @fake_interface_only
-    def backward(self, backward_strategy=None):
+    def backward(self, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Run backward of current Graph which starts from current Variable
+        Run backward of current Graph which starts from current Tensor.
 
         Args:
-            backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
+            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+                like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
+                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                Defaults to False.
 
         Returns:
             NoneType: None
@@ -1087,23 +1180,21 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import numpy as np
+                import paddle
+                paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
-                        # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
-                        # there is no one need gradient on it.
-                        tmp.stop_gradient=False
-                        inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.to_tensor(x)
+                    # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
+                    # there is no one need gradient on it.
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.add_n(inputs)
+                loss = paddle.sum(ret)
+                loss.backward()
 
         """
         pass
@@ -1135,9 +1226,7 @@ class Variable(object):
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
 
                 # example2: return tuple of ndarray
@@ -1183,9 +1272,7 @@ class Variable(object):
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()
                     print("After clear {}".format(loss2.gradient()))
@@ -1256,7 +1343,9 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
+                paddle.enable_static()
                 cur_program = fluid.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
@@ -1689,33 +1778,39 @@ def get_all_op_protos():
 
 class ComplexVariable(object):
     """
-    The Variable defined on the complex number domain. It contains two common 
-    real number Variables as its members, :attr:`real` and :attr:`imag` 
+    The ComplexTensor defined on the complex number domain. It contains two common 
+    real number Tensor as its members, :attr:`real` and :attr:`imag` 
     holding the real part and imaginary part of complex numbers respectively.
     
     **Notes**:
-        **The constructor of ComplexVariable should not be invoked directly.**
+        **The constructor of ComplexTensor should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexVariable with complex number data.**
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexTensor with complex number data.**
 
     Args:
-        real (Variable): The Variable holding real-part data.
-        imag (Variable): The Variable holding imaginery-part data.
+        real (Tensor): The Tensor holding real-part data.
+        imag (Tensor): The Tensor holding imaginery-part data.
     
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
 
-            a = np.array([1.0+2.0j, 0.2])
-            with fluid.dygraph.guard():
-                var = fluid.dygraph.to_variable(a, name="new_var")
-                print(var.name, var.dtype, var.shape)
-                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L]) 
-                print(var.numpy())
-                # [1. +2.j 0.2+0.j]
+            paddle.enable_imperative()
+            x = paddle.to_tensor([1.0+2.0j, 0.2])
+            print(x.name, x.dtype, x.shape)
+            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, 'complex128', [2L])
+            print(x.numpy())
+            # [1. +2.j 0.2+0.j]
+            print(type(x))
+            # <class 'paddle.ComplexTensor'>
     """
+
+    def __new__(cls, *arg, **kwargs):
+        cls.__module__ = "paddle"
+        cls.__name__ = "ComplexTensor"
+        return super(ComplexVariable, cls).__new__(cls)
 
     def __init__(self, real, imag):
         assert real.shape == imag.shape, "The real part and imaginary part " \
@@ -1763,7 +1858,9 @@ class ComplexVariable(object):
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __str__(self):
-        return "REAL: " + self.real.__str__() + "IMAG: " + self.imag.__str__()
+        return "ComplexTensor[real]: %s\n%s\nComplexTensor[imag]: %s\n%s" % (
+            self.real.name, str(self.real.value().get_tensor()), self.imag.name,
+            str(self.imag.value().get_tensor()))
 
     __repr__ = __str__
 
@@ -1958,7 +2055,7 @@ class Operator(object):
                         in_proto.name)
                     if found:
                         in_args = inputs[in_proto.name]
-                        if not isinstance(in_args, list):
+                        if not isinstance(in_args, (list, tuple)):
                             in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
@@ -2385,11 +2482,28 @@ class Operator(object):
     def _is_optimize_op(self):
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
+            return False
+
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
         if op_role & int(OPTIMIZE):
             return True
-        else:
+
+        return False
+
+    def _is_backward_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+
+        if not self.desc.has_attr(op_maker.kOpRoleAttrName()):
             return False
+
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(BACKWARD):
+            return True
+
+        return False
 
 
 class Block(object):
@@ -3857,7 +3971,7 @@ class IrGraph(object):
 class Program(object):
     """
     Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
-    control flow op like conditional_block, while :ref:`api_fluid_layers_While` is included,
+    control flow op like conditional_block, while :ref:`api_paddle_fluid_layers_While` is included,
     it will contain nested block.
 
     Please reference the
@@ -3874,9 +3988,9 @@ class Program(object):
     backward ops and vars.
 
     **Notes**:
-        **we have** :ref:`api_fluid_default_startup_program` **and** :ref:`api_fluid_default_main_program`
-        **by default, a pair of them will shared the parameters. The** :ref:`api_fluid_default_startup_program` **only run once to initialize parameters,**
-        :ref:`api_fluid_default_main_program` **run in every mini batch and adjust the weights.**
+        **we have** :ref:`api_paddle_fluid_framework_default_startup_program` **and** :ref:`api_paddle_fluid_framework_default_main_program`
+        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_fluid_framework_default_startup_program` **only run once to initialize parameters,**
+        :ref:`api_paddle_fluid_framework_default_main_program` **run in every mini batch and adjust the weights.**
 
     Returns:
         Program: An empty Program.
@@ -3884,14 +3998,17 @@ class Program(object):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-                x = fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-                y = fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-                z = fluid.layers.fc(name="fc", input=x, size=10, act="relu")
+            paddle.enable_static()
+
+            main_program = static.Program()
+            startup_program = static.Program()
+            with static.program_guard(main_program=main_program, startup_program=startup_program):
+                x = static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = static.data(name="y", shape=[-1, 1], dtype='int32')
+                z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
             print("main program is: {}".format(main_program))
             print("start up program is: {}".format(startup_program))
@@ -3942,6 +4059,10 @@ class Program(object):
         # appending gradients times
         self._appending_grad_times = 0
 
+        # identifier for auto checkpoint
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_program__")
+
         # compiled program, i.e. Graph
         self._graph = None
 
@@ -3955,15 +4076,18 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 print(prog.random_seed)
                 ## 0
                 ## the default random seed is 0
 
                 prog.global_seed(102)
-                prog1 = fluid.default_main_program()
+                prog1 = static.default_main_program()
                 print(prog1.random_seed)
                 ## 102
                 ## the random seed is 102
@@ -4156,11 +4280,14 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
-                x = fluid.layers.data(name="X", shape=[2,3], dtype="float32", append_batch_size=False)
-                pred = fluid.layers.fc(x, size=3)
+                paddle.enable_static()
+
+                prog = static.default_main_program()
+                x = static.data(name="X", shape=[2,3], dtype="float32")
+                pred = static.nn.fc(x, size=3)
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
                 prog_string_with_details = prog.to_string(throw_on_error=False, with_details=True)
                 print("program string without detail: {}".format(prog_string))
@@ -4201,17 +4328,15 @@ class Program(object):
 
     def clone(self, for_test=False):
         """
-        **Notes**:
-            **1.** :code:`Program.clone()` **method DOES NOT clone** :ref:`api_fluid_io_DataLoader` .
-
-            **2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize`.
-
-            **3. This API has no effect in Dygraph Mode**
+        .. note:::
+            1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` . 
+            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` . 
+            3. This API has no effect in Dygraph Mode.
 
         Create a new Program with forward content of original one when ``for_test=True``.
         Create a new Program as same as the original one when ``for_test=False``.
 
-        Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
+        Some operators, e.g., :ref:`api_paddle_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
@@ -4225,13 +4350,17 @@ class Program(object):
         For Example:
           ::
 
-            import paddle.fluid as fluid
-            img = fluid.layers.data(name='image', shape=[784])
-            pred = fluid.layers.fc(input=img, size=10, act='relu')
-            loss = fluid.layers.mean(pred)
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            img = static.data(name='image', shape=[None, 784])
+            pred = static.nn.fc(x=img, size=10, actvation='relu')
+            loss = paddle.mean(pred)
             # Here we use clone before Momentum
-            test_program = fluid.default_main_program().clone(for_test=True)
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            test_program = static.default_main_program().clone(for_test=True)
+            optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
             optimizer.minimize(loss)
 
         Args:
@@ -4245,14 +4374,15 @@ class Program(object):
 
         Examples:
 
-        **Notes: The Program's order maybe different after** :code:`clone` **and
-        this will not affect your training or testing progress. In the following
-        example we give you an simple method** :code:`print_prog(program)` **to
-        print Program Descs inorder to make sure you have same print result
-        after** :code:`clone`:
+            .. note::
+                The Program's order maybe different after :code:`clone` and
+                this will not affect your training or testing progress. In the following
+                example we give you an simple method :code:`print_prog(program)` to
+                print Program Descs inorder to make sure you have same print result
+                after :code:`clone`:
+
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import six
 
                 def print_prog(prog):
@@ -4267,11 +4397,16 @@ class Program(object):
                                 print(" [ attrs: {}:   {} ]".format(key, value))
 
 
-        1. To clone a test program, the sample code is:
+            1. To clone a test program, the sample code is:
                 .. code-block:: python
 
-                    import paddle.fluid as fluid
                     import six
+                    import paddle
+                    import paddle.static as static
+                    import paddle.utils as utils
+                    import paddle.nn.functional as F
+
+                    paddle.enable_static()
 
                     def print_prog(prog):
                         for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -4284,20 +4419,20 @@ class Program(object):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
 
-                    train_program = fluid.Program()
-                    startup_program = fluid.Program()
+                    train_program = static.Program()
+                    startup_program = static.Program()
 
                     # startup_program is used to do some parameter init work,
                     # and main program is used to hold the network
-                    with fluid.program_guard(train_program, startup_program):
-                        with fluid.unique_name.guard():
-                            img = fluid.layers.data(name='image', shape=[784])
-                            hidden = fluid.layers.fc(input=img, size=200, act='relu')
-                            hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
-                            loss = fluid.layers.cross_entropy(
-                                                      input=fluid.layers.fc(hidden, size=10, act='softmax'),
-                                        label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-                            avg_loss = fluid.layers.mean(loss)
+                    with static.program_guard(train_program, startup_program):
+                        with utils.unique_name.guard():
+                            img = static.data(name='image', shape=[None, 784])
+                            hidden = static.nn.fc(x=img, size=200, activation='relu')
+                            hidden = F.dropout(hidden, p=0.5)
+                            loss = F.cross_entropy(
+                                input=static.nn.fc(x=hidden, size=10, activation='softmax'),
+                                label=static.data(name='label', shape=[1], dtype='int64'))
+                            avg_loss = paddle.mean(loss)
                             test_program = train_program.clone(for_test=True)
                     print_prog(test_program)
 
@@ -4309,17 +4444,22 @@ class Program(object):
                     # that's why we need to use startup program of train. And for startup program of test, it has nothing,
                     # since it is a new program.
 
-                    with fluid.program_guard(train_program, startup_program):
-                        with fluid.unique_name.guard():
-                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                    with static.program_guard(train_program, startup_program):
+                        with utils.unique_name.guard():
+                            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                             sgd.minimize(avg_loss)
 
 
-        2. The clone method can be avoid if you create program for training and program for testing individually.
+            2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
 
-                    import paddle.fluid as fluid
                     import six
+                    import paddle
+                    import paddle.static as static
+                    import paddle.utils as utils
+                    import paddle.nn.functional as F
+
+                    paddle.enable_static()
 
                     def print_prog(prog):
                         for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -4331,32 +4471,32 @@ class Program(object):
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
-                    
+
                     def network():
-                        img = fluid.layers.data(name='image', shape=[784])
-                        hidden = fluid.layers.fc(input=img, size=200, act='relu')
-                        hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
-                        loss = fluid.layers.cross_entropy(
-                            input=fluid.layers.fc(hidden, size=10, act='softmax'),
-                            label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-                        avg_loss = fluid.layers.mean(loss)
+                        img = static.data(name='image', shape=[None, 784])
+                        hidden = static.nn.fc(x=img, size=200, activation='relu')
+                        hidden = F.dropout(hidden, p=0.5)
+                        loss = F.cross_entropy(
+                            input=static.nn.fc(x=hidden, size=10, activation='softmax'),
+                            label=static.data(name='label', shape=[1], dtype='int64'))
+                        avg_loss = paddle.mean(loss)
                         return avg_loss
 
-                    train_program_2 = fluid.Program()
-                    startup_program_2 = fluid.Program()
-                    test_program_2 = fluid.Program()
-                    with fluid.program_guard(train_program_2, startup_program_2):
-                        with fluid.unique_name.guard():
+                    train_program_2 = static.Program()
+                    startup_program_2 = static.Program()
+                    test_program_2 = static.Program()
+                    with static.program_guard(train_program_2, startup_program_2):
+                        with utils.unique_name.guard():
                             avg_loss = network()
-                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                             sgd.minimize(avg_loss)
                     # the test startup program is not used.
-                    with fluid.program_guard(test_program_2, startup_program_2):
-                        with fluid.unique_name.guard():
+                    with static.program_guard(test_program_2, startup_program_2):
+                        with utils.unique_name.guard():
                             avg_loss = network()
                     print_prog(test_program_2)
 
-        The two code snippets above will generate and print same programs.
+            The two code snippets above will generate and print same programs.
         """
 
         #NOTE(zhiqiu): we sync the original program first, since its program may diff with
@@ -4386,6 +4526,8 @@ class Program(object):
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
+            if hasattr(self, 'lr_sheduler'):
+                p.lr_sheduler = self.lr_sheduler
 
             #NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
@@ -4561,10 +4703,9 @@ class Program(object):
     @staticmethod
     def parse_from_string(binary_str):
         """
-        **Notes**:
-            **1. All information about parameters will be lost after serialization**
-
-            **2. This API has no effect in Dygraph mode**
+        .. note::
+            1. All information about parameters will be lost after serialization; 
+            2. This API has no effect in Dygraph mode.
 
         Deserialize a Program from  `protobuf <https://en.wikipedia.org/wiki/Protocol_Buffers>`_  binary string.
         This method always use to save and load model
@@ -4579,23 +4720,24 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
-                    x = fluid.layers.data(
-                        name='X', shape=[1000, 784], dtype='float32', append_batch_size=False)
+                paddle.enable_static()
 
-                    y = fluid.layers.data(
-                        name='Y', shape=[784, 100], dtype='float32', append_batch_size=False)
+                startup_prog = static.Program()
+                main_prog = static.Program()
+                with static.program_guard(startup_prog, main_prog):
+                    x = static.data(name='X', shape=[1000, 784], dtype='float32')
 
-                    z = fluid.layers.mul(x=x, y=y)
+                    y = static.data(name='Y', shape=[784, 100], dtype='float32')
 
-                    binary_str = fluid.default_main_program().desc.serialize_to_string()
-                    prog_restored = fluid.default_main_program().parse_from_string(binary_str)
+                    z = paddle.matmul(x=x, y=y)
 
-                    print(fluid.default_main_program())
+                    binary_str = static.default_main_program().desc.serialize_to_string()
+                    prog_restored = static.default_main_program().parse_from_string(binary_str)
+
+                    print(static.default_main_program())
                     print(prog_restored)
         """
         p = Program()
@@ -4627,7 +4769,8 @@ class Program(object):
         The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
-        **Notes: It must be set before the operators have been added.**
+        .. note:: 
+            It must be set before the operators have been added.
 
         Returns:
             int64: Random seed in current Program
@@ -4636,18 +4779,22 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
+                import paddle.nn.functional as F
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 random_seed = prog.random_seed
-                x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
+                x_var = static.data(name="X", shape=[3,3], dtype="float32")
                 print(random_seed)
                 ## 0
                 ## the default random seed is 0
 
                 # Here we need to set random seed before we use fluid.layers.dropout
                 prog.random_seed = 1
-                z_var = fluid.layers.dropout(x_var, 0.7)
+                z_var = F.dropout(x_var, 0.7)
 
                 print(prog.random_seed)
                 ## 1
@@ -4660,7 +4807,8 @@ class Program(object):
         """
         The number of :ref:`api_guide_Block_en`  in this Program.
 
-        **Notes: This API has no effect in Dygraph mode**
+        .. note:: 
+            This API has no effect in Dygraph mode.
 
         Returns:
             int(Platform-dependent size): num of :ref:`api_guide_Block_en`  in current Program
@@ -4669,13 +4817,17 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 num_blocks = prog.num_blocks
                 print(num_blocks)
 
-
+                # print result:
+                # 1
         """
         return self.desc.num_blocks()
 
@@ -4692,8 +4844,8 @@ class Program(object):
 
     def global_block(self):
         """
-        **Notes**:
-            **This API has no effect in Dygraph mode**
+        .. note::
+            This API has no effect in Dygraph mode.
 
         Get the first :ref:`api_guide_Block_en` of this Program.
 
@@ -4704,9 +4856,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 gb_block = prog.global_block()
                 print(gb_block)
 
@@ -4715,8 +4870,8 @@ class Program(object):
 
     def block(self, index):
         """
-        **Notes**:
-            **This API has no effect in Dygraph mode**
+        .. note::
+            This API has no effect in Dygraph mode.
 
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
@@ -4729,9 +4884,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 block_0 = prog.block(0)
                 print(block_0)
         """
@@ -4739,8 +4897,8 @@ class Program(object):
 
     def current_block(self):
         """
-        **Notes**:
-            **This API has no effect in Dygraph mode**
+        .. note::
+            This API has no effect in Dygraph mode.
 
         Get the current  :ref:`api_guide_Block_en` . The :code:`current`  :ref:`api_guide_Block_en`
         is the  :ref:`api_guide_Block_en`  to append operators.
@@ -4751,9 +4909,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 current_blk = prog.current_block()
                 print(current_blk)
         """
@@ -4887,21 +5048,27 @@ class Program(object):
 
     def list_vars(self):
         """
-        Get all :ref:`api_guide_Variable_en` from this Program. A iterable object is returned.
+        Get all Tensors from this Program. A iterable object is returned.
 
         Returns:
-            iterable :ref:`api_guide_Variable_en`: The Generator will yield every variable in this program.
+            iterable Tensors: The Generator will yield every Tensor in this program.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
-                img = fluid.layers.data(name='img', shape=[1,28,28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[128,1], dtype='int64')
+                paddle.enable_static()
+
+                prog = static.default_main_program()
+                img = static.data(name='img', shape=[None, 1,28,28], dtype='float32')
+                label = static.data(name='label', shape=[None,1], dtype='int64')
                 for var in prog.list_vars():
                     print(var)
+                
+                # var img : fluid.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
+                # var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -4917,13 +5084,16 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                program = fluid.default_main_program()
-                data = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
-                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+                paddle.enable_static()
+
+                program = static.default_main_program()
+                data = static.data(name='x', shape=[None, 13], dtype='float32')
+                hidden = static.nn.fc(x=data, size=10)
+                loss = paddle.mean(hidden)
+                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
                 for param in program.all_parameters():
                     print(param)
@@ -4931,30 +5101,8 @@ class Program(object):
                 # Here will print all parameters in current program, in this example,
                 # the result is like:
                 #
-                # name: "fc_0.w_0"
-                # type {
-                #   type: LOD_TENSOR
-                #   lod_tensor {
-                #     tensor {
-                #       data_type: FP32
-                #       dims: 13
-                #       dims: 10
-                #     }
-                #   }
-                # }
-                # persistable: true
-                #
-                # name: "fc_0.b_0"
-                # type {
-                # type: LOD_TENSOR
-                # lod_tensor {
-                #     tensor {
-                #       data_type: FP32
-                #       dims: 10
-                #     }
-                #   }
-                # }
-                # persistable: true
+                # persist trainable param fc_0.w_0 : fluid.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
+                # persist trainable param fc_0.b_0 : fluid.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
                 #
                 # Here print(param) will print out all the properties of a parameter,
                 # including name, type and persistable, you can access to specific
@@ -4987,6 +5135,8 @@ class Parameter(Variable):
             be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
+        need_clip (bool): Whether the parameter gradient need to be cliped 
+            in optimizer. Default is True.
     """
 
     def __init__(self,
@@ -5026,6 +5176,8 @@ class Parameter(Variable):
 
         self.do_model_average = kwargs.get('do_model_average', None)
 
+        self.need_clip = kwargs.get('need_clip', True)
+
         self.is_distributed = False
 
     def __str__(self):
@@ -5058,7 +5210,7 @@ class Parameter(Variable):
         if with_details:
             res_str = Variable.to_string(self, throw_on_error, True)
             additional_attr = ("trainable", "optimize_attr", "regularizer",
-                               "do_model_average")
+                               "do_model_average", "need_clip")
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          cpt.to_text(getattr(self, attr_name)))
@@ -5071,12 +5223,13 @@ class Parameter(Variable):
 
 class ParamBase(core.VarBase):
     """
-    ParamBase is derived from VarBase( Which is the Variable in Dygraph Mode ). A ParamBase is a persistable
-    VarBase, and will be updated by optimizers after each iteration.
+    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode). 
+    A ParamBase is a persistable Tensor, and will be updated by optimizers 
+    after each iteration.
     The training of a neural network is essentially the updating of
     its ParamBase.
 
-    Relative to a general Variable, a ParamBase has several its own
+    Relative to a general Tensor, a ParamBase has several its own
     member variables:
 
     Args:
@@ -5089,6 +5242,8 @@ class ParamBase(core.VarBase):
             be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
+        need_clip (bool): Whether the parameter gradient need to be cliped 
+            in optimizer. Default is True.
     """
 
     @dygraph_only
@@ -5128,6 +5283,8 @@ class ParamBase(core.VarBase):
 
         self.do_model_average = kwargs.get('do_model_average', None)
 
+        self.need_clip = kwargs.get('need_clip', True)
+
         self.is_distributed = False
         # self.block = default_main_program().global_block()
 
@@ -5154,7 +5311,7 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.enable_imperative()
+                paddle.disable_static()
                 conv = paddle.nn.Conv2D(3, 3, 5)
                 print(conv.weight)
                 # Parameter: conv2d_0.w_0
@@ -5163,13 +5320,10 @@ class ParamBase(core.VarBase):
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [...] 
-                paddle.disable_imperative()
+                paddle.enable_static()
         """
-        tensor = self.value().get_tensor()
-        if tensor._is_initialized():
-            return 'Parameter: %s\n%s' % (self.name, str(tensor))
-        else:
-            return 'Parameter: %s, not initialized' % (self.name)
+        return "Parameter containing:\n{tensor}".format(
+            tensor=super(ParamBase, self).__str__())
 
     __repr__ = __str__
 
@@ -5183,32 +5337,32 @@ def default_startup_program():
     """
     Get default/global startup program.
 
-    The layer function in :ref:`api_fluid_layers` will create parameters, :ref:`api_paddle_data_reader_reader` ,
-    `NCCL <https://developer.nvidia.com/nccl>`_ handles as global variables. The :code:`startup_program` will
-    initialize them by the OPs in startup  :ref:`api_fluid_Program` . The  :ref:`api_fluid_layers`  function will
-    append these initialization operators into startup program.
+    The :code:`paddle.nn` function will append the initialization operators into startup program.
+    The :code:`startup_program` will initialize the parameters by the OPs. 
+  
+    This method will return the default or the current startup program. Users can use
+    :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
 
-    This method will return the :code:`default` or the :code:`current` startup
-    program. Users can use  :ref:`api_fluid_program_guard`  to switch :ref:`api_fluid_Program` .
+    Returns:
+        Program: current default startup program.
 
-    Returns: current default startup :ref:`api_fluid_Program`
-
-    Returns type: :ref:`api_fluid_Program`
+    Returns type: 
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-                x = fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-                y = fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-                z = fluid.layers.fc(name="fc", input=x, size=10, act="relu")
+            paddle.enable_static()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
+                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
+                z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
-                print("main program is: {}".format(fluid.default_main_program()))
-                print("start up program is: {}".format(fluid.default_startup_program()))
+                print("main program is: {}".format(paddle.static.default_main_program()))
+                print("start up program is: {}".format(paddle.static.default_startup_program()))
     """
     return _startup_program_
 
@@ -5216,52 +5370,53 @@ def default_startup_program():
 def default_main_program():
     """
     This API can be used to get ``default main program`` which store the 
-    descriptions of ``op`` and ``variable``.
+    descriptions of Ops and tensors.
     
-    For example ``z = fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
-    ``op`` and a new ``z`` ``variable``, and they will be recorded in ``default main program`` 
+    For example ``z = paddle.fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
-    The ``default_main_program`` is the default value for ``Program`` parameter in 
-    a lot of ``fluid`` APIs. For example, the :code:`Executor.run()` will execute the
+    The ``default main program`` is the default value for ``Program`` parameter in 
+    a lot of APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
-    If you want to replace the ``default main program``, you can use :ref:`api_fluid_program_guard`
+    If you want to switch the ``default main program``, you can use :ref:`api_paddle_fluid_framework_program_guard` .
     
     Returns:
-        :ref:`api_fluid_Program`: a ``Program`` which holding the descriptions of ops and variables in the network.
+        Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
     Examples:
         ..  code-block:: python
 
-            import paddle.fluid as fluid
-
+            import paddle
+            
+            paddle.enable_static()
             # Sample Network:
-            data = fluid.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            data = paddle.static.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             
-            conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
-            bn1 = fluid.layers.batch_norm(conv1, act='relu')
-            pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
-            conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
-            bn2 = fluid.layers.batch_norm(conv2, act='relu')
-            pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
+            conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
+            bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
+            pool1 = paddle.fluid.layers.pool2d(bn1, 2, 'max', 2)
+            conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
+            bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
+            pool2 = paddle.fluid.layers.pool2d(bn2, 2, 'max', 2)
             
-            fc1 = fluid.layers.fc(pool2, size=50, act='relu')
-            fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
+            fc1 = paddle.static.nn.fc(x=pool2, size=50, activation='relu')
+            fc2 = paddle.static.nn.fc(x=fc1, size=102, activation='softmax')
             
-            loss = fluid.layers.cross_entropy(input=fc2, label=label)
-            loss = fluid.layers.mean(loss)
-            opt = fluid.optimizer.Momentum(
+            loss = paddle.nn.functional.loss.cross_entropy(input=fc2, label=label)
+            loss = paddle.mean(loss)
+            opt = paddle.optimizer.Momentum(
                 learning_rate=0.1,
                 momentum=0.9,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                weight_decay=paddle.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
             #print the number of blocks in the program, 1 in this case
-            print(fluid.default_main_program().num_blocks)
+            print(paddle.static.default_main_program().num_blocks) #[1]
 
             #print the description of variable 'image'
-            print(fluid.default_main_program().blocks[0].var('image'))
+            print(paddle.static.default_main_program())
 
     """
     return _main_program_
@@ -5303,13 +5458,13 @@ def program_guard(main_program, startup_program=None):
     """
     :api_attr: Static Graph
 
-    Change the global main program and startup program with `"with"` statement.
-    Layer functions in the Python `"with"` block will append operators and
-    variables to the new main programs.
+    Change the global main program and startup program with ``with`` statement.
+    Layer functions in the Python ``with`` block will append operators and
+    Tensors to the new main programs.
 
     Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program, optional): New startup program inside `"with"` 
+        main_program(Program): New main program inside ``with`` statement.
+        startup_program(Program, optional): New startup program inside ``with`` 
             statement. :code:`None` means not changing startup program, 
             default_startup_program is still used.
             Default: None.
@@ -5317,13 +5472,14 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
        
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         startup_program = fluid.Program()
-         with fluid.program_guard(main_program, startup_program):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-             hidden = fluid.layers.fc(input=data, size=10, act='relu')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(main_program, startup_program):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+              hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
@@ -5331,20 +5487,22 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         # does not care about startup program. Just pass a temporary value.
-         with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          # does not care about startup program. Just pass a temporary value.
+          with paddle.static.program_guard(main_program, paddle.static.Program()):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
     from .data_feeder import check_type
-    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
+    check_type(main_program, 'main_program', Program,
+               'paddle.static.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
-                   'fluid.program_guard')
+                   'paddle.static.program_guard')
         startup_program = switch_startup_program(startup_program)
     try:
         yield
@@ -5390,14 +5548,14 @@ def _dygraph_guard(tracer):
 
 @signature_safe_contextmanager
 def _dygraph_place_guard(place):
-    global _dygraph_current_expected_place_
-    tmp_place = _dygraph_current_expected_place_
-    _dygraph_current_expected_place_ = place
+    global _global_expected_place_
+    tmp_place = _global_expected_place_
+    _global_expected_place_ = place
 
     try:
         yield
     finally:
-        _dygraph_current_expected_place_ = tmp_place
+        _global_expected_place_ = tmp_place
 
 
 def load_op_library(lib_filename):

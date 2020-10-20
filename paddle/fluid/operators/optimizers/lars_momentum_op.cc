@@ -48,6 +48,9 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("lars_weight_decay",
                    "(float, default 0.0005) LARS weight decay")
         .SetDefault(0.0005);
+    AddAttr<float>("epsilon",
+                   "(float, default 0.0) epsilon to avoid Division by Zero.")
+        .SetDefault(0.0);
 
     AddComment(R"DOC(
 Lars Momentum Optimizer.

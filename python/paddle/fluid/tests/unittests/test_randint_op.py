@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 from paddle.fluid import core
-from paddle import Program, program_guard
+from paddle.static import program_guard, Program
 
 
 def output_hist(out):
@@ -58,6 +58,11 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
             self.assertRaises(ValueError, paddle.randint, 5, 5)
             self.assertRaises(ValueError, paddle.randint, -5)
+            self.assertRaises(TypeError, paddle.randint, 5, shape=['2'])
+            shape_tensor = paddle.static.data('X', [1])
+            self.assertRaises(TypeError, paddle.randint, 5, shape=shape_tensor)
+            self.assertRaises(
+                TypeError, paddle.randint, 5, shape=[shape_tensor])
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -120,19 +125,19 @@ class TestRandintAPI(unittest.TestCase):
             out3 = paddle.randint(
                 low=-100, high=100, shape=(32, 32, 3), dtype='int64')
             # shape is a tensorlist and dtype is 'float32'
-            dim_1 = paddle.fill_constant([1], "int64", 32)
-            dim_2 = paddle.fill_constant([1], "int32", 50)
+            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 32)
+            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
             out4 = paddle.randint(
                 low=-100, high=100, shape=[dim_1, 5, dim_2], dtype='int32')
             # shape is a tensor and dtype is 'float64'
-            var_shape = paddle.nn.data(
+            var_shape = paddle.static.data(
                 name='var_shape', shape=[2], dtype="int64")
             out5 = paddle.randint(
                 low=1, high=1000, shape=var_shape, dtype='int64')
 
             place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             outs = exe.run(
                 feed={'var_shape': np.array([100, 100]).astype('int64')},
                 fetch_list=[out1, out2, out3, out4, out5])
@@ -141,13 +146,14 @@ class TestRandintAPI(unittest.TestCase):
 class TestRandintImperative(unittest.TestCase):
     def test_api(self):
         n = 10
-        with paddle.imperative.guard():
-            x1 = paddle.randint(n, shape=[10], dtype="int32")
-            x2 = paddle.tensor.randint(n)
-            x3 = paddle.tensor.random.randint(n)
-            for i in [x1, x2, x3]:
-                for j in i.numpy().tolist():
-                    self.assertTrue((j >= 0 and j < n))
+        paddle.disable_static()
+        x1 = paddle.randint(n, shape=[10], dtype="int32")
+        x2 = paddle.tensor.randint(n)
+        x3 = paddle.tensor.random.randint(n)
+        for i in [x1, x2, x3]:
+            for j in i.numpy().tolist():
+                self.assertTrue((j >= 0 and j < n))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

@@ -20,111 +20,165 @@ import numpy as np
 import unittest
 
 
-class TestL1Loss(unittest.TestCase):
-    def test_L1Loss_mean(self):
-        input_np = np.random.random(size=(10, 1)).astype(np.float32)
-        label_np = np.random.random(size=(10, 1)).astype(np.float32)
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        with fluid.program_guard(prog, startup_prog):
-            input = fluid.layers.data(
-                name='input', shape=[10, 1], dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=[10, 1], dtype='float32')
-            l1_loss = paddle.nn.loss.L1Loss()
-            ret = l1_loss(input, label)
+class TestFunctionalL1Loss(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
+        self.label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
-            exe = fluid.Executor(place)
-            static_result = exe.run(
-                prog,
-                feed={"input": input_np,
-                      "label": label_np},
-                fetch_list=[ret])
-
-        with fluid.dygraph.guard():
-            l1_loss = paddle.nn.loss.L1Loss()
-            dy_ret = l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
-            dy_result = dy_ret.numpy()
-
-        expected = np.mean(np.abs(input_np - label_np))
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+    def run_imperative(self):
+        input = paddle.to_tensor(self.input_np)
+        label = paddle.to_tensor(self.label_np)
+        dy_result = paddle.nn.functional.l1_loss(input, label)
+        expected = np.mean(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
-    def test_L1Loss_sum(self):
-        input_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
-        label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        with fluid.program_guard(prog, startup_prog):
-            input = fluid.layers.data(
+        dy_result = paddle.nn.functional.l1_loss(input, label, reduction='sum')
+        expected = np.sum(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        self.assertTrue(dy_result.shape, [1])
+
+        dy_result = paddle.nn.functional.l1_loss(input, label, reduction='none')
+        expected = np.abs(self.input_np - self.label_np)
+        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        self.assertTrue(dy_result.shape, [10, 10, 5])
+
+    def run_static(self, use_gpu=False):
+        input = paddle.fluid.data(name='input', shape=[10, 10, 5], dtype='float32')
+        label = paddle.fluid.data(name='label', shape=[10, 10, 5], dtype='float32')
+        result0 = paddle.nn.functional.l1_loss(input, label)
+        result1 = paddle.nn.functional.l1_loss(input, label, reduction='sum')
+        result2 = paddle.nn.functional.l1_loss(input, label, reduction='none')
+        y = paddle.nn.functional.l1_loss(input, label, name='aaa')
+
+        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        static_result = exe.run(
+            feed={"input": self.input_np,
+                  "label": self.label_np},
+            fetch_list=[result0, result1, result2])
+
+        expected = np.mean(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(static_result[0], expected))
+        expected = np.sum(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(static_result[1], expected))
+        expected = np.abs(self.input_np - self.label_np)
+        self.assertTrue(np.allclose(static_result[2], expected))
+
+        self.assertTrue('aaa' in y.name)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program()):
+            self.run_static()
+
+    def test_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        self.run_imperative()
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program()):
+            self.run_static(use_gpu=True)
+
+    # test case the raise message
+    def test_errors(self):
+        def test_value_error():
+            input = paddle.fluid.data(
                 name='input', shape=[10, 10, 5], dtype='float32')
-            label = fluid.layers.data(
+            label = paddle.fluid.data(
                 name='label', shape=[10, 10, 5], dtype='float32')
-            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
-            ret = l1_loss(input, label)
+            loss = paddle.nn.functional.l1_loss(
+                input, label, reduction='reduce_mean')
 
-            exe = fluid.Executor(place)
-            static_result = exe.run(
-                prog,
-                feed={"input": input_np,
-                      "label": label_np},
-                fetch_list=[ret])
+        self.assertRaises(ValueError, test_value_error)
 
-        with fluid.dygraph.guard():
-            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
-            dy_ret = l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
-            dy_result = dy_ret.numpy()
 
-        expected = np.sum(np.abs(input_np - label_np))
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+class TestClassL1Loss(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
+        self.label_np = np.random.random(size=(10, 10, 5)).astype(np.float32)
+
+    def run_imperative(self):
+        input = paddle.to_tensor(self.input_np)
+        label = paddle.to_tensor(self.label_np)
+        l1_loss = paddle.nn.loss.L1Loss()
+        dy_result = l1_loss(input, label)
+        expected = np.mean(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(dy_result.numpy(), expected))
         self.assertTrue(dy_result.shape, [1])
 
-    def test_L1Loss_none(self):
-        input_np = np.random.random(size=(10, 5)).astype(np.float32)
-        label_np = np.random.random(size=(10, 5)).astype(np.float32)
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        with fluid.program_guard(prog, startup_prog):
-            input = fluid.layers.data(
-                name='input', shape=[10, 5], dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=[10, 5], dtype='float32')
-            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
-            ret = l1_loss(input, label)
+        l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+        dy_result = l1_loss(input, label)
+        expected = np.sum(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        self.assertTrue(dy_result.shape, [1])
 
-            exe = fluid.Executor(place)
-            static_result = exe.run(
-                prog,
-                feed={"input": input_np,
-                      "label": label_np},
-                fetch_list=[ret])
+        l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+        dy_result = l1_loss(input, label)
+        expected = np.abs(self.input_np - self.label_np)
+        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        self.assertTrue(dy_result.shape, [10, 10, 5])
 
-        with fluid.dygraph.guard():
-            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
-            dy_ret = l1_loss(
-                fluid.dygraph.to_variable(input_np),
-                fluid.dygraph.to_variable(label_np))
-            dy_result = dy_ret.numpy()
+    def run_static(self, use_gpu=False):
+        input = paddle.fluid.data(name='input', shape=[10, 10, 5], dtype='float32')
+        label = paddle.fluid.data(name='label', shape=[10, 10, 5], dtype='float32')
+        l1_loss = paddle.nn.loss.L1Loss()
+        result0 = l1_loss(input, label)
+        l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+        result1 = l1_loss(input, label)
+        l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+        result2 = l1_loss(input, label)
+        l1_loss = paddle.nn.loss.L1Loss(name='aaa')
+        result3 = l1_loss(input, label)
 
-        expected = np.abs(input_np - label_np)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(dy_result.shape, input.shape)
+        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        static_result = exe.run(
+            feed={"input": self.input_np,
+                  "label": self.label_np},
+            fetch_list=[result0, result1, result2])
+
+        expected = np.mean(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(static_result[0], expected))
+        expected = np.sum(np.abs(self.input_np - self.label_np))
+        self.assertTrue(np.allclose(static_result[1], expected))
+        expected = np.abs(self.input_np - self.label_np)
+        self.assertTrue(np.allclose(static_result[2], expected))
+        self.assertTrue('aaa' in result3.name)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program()):
+            self.run_static()
+
+    def test_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        self.run_imperative()
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program()):
+            self.run_static(use_gpu=True)
+
+    # test case the raise message
+    def test_errors(self):
+        def test_value_error():
+            loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
+
+        self.assertRaises(ValueError, test_value_error)
 
 
 if __name__ == "__main__":

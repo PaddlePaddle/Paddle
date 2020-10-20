@@ -15,14 +15,17 @@
 import math
 import numpy as np
 import unittest
-
+import paddle
+from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-SEED = 2020
+from predictor_utils import PredictorTools
+
+SEED = 2000
 DATATYPE = 'float32'
 program_translator = ProgramTranslator()
 
@@ -240,7 +243,7 @@ class BMN(fluid.dygraph.Layer):
             param_attr=ParamAttr(name="PEM_2d4_w"),
             bias_attr=ParamAttr(name="PEM_2d4_b"))
 
-    @declarative
+    @to_static
     def forward(self, x):
         # Base Module
         x = self.b_conv1(x)
@@ -419,7 +422,10 @@ class Args(object):
     prop_boundary_ratio = 0.5
     num_sample = 2
     num_sample_perbin = 2
-    infer_dir = './bmn_infer_model'
+    model_save_dir = "./inference"
+    model_save_prefix = "./inference/bmn"
+    model_filename = "bmn" + INFER_MODEL_SUFFIX
+    params_filename = "bmn" + INFER_PARAMS_SUFFIX
     dy_param_path = './bmn_dy_param'
 
 
@@ -558,8 +564,8 @@ def train_bmn(args, place, to_static):
     loss_data = []
 
     with fluid.dygraph.guard(place):
-        fluid.default_main_program().random_seed = SEED
-        fluid.default_startup_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         global local_random
         local_random = np.random.RandomState(SEED)
 
@@ -617,7 +623,7 @@ def train_bmn(args, place, to_static):
 
                 if batch_id == args.train_batch_num:
                     if to_static:
-                        fluid.dygraph.jit.save(bmn, args.infer_dir)
+                        fluid.dygraph.jit.save(bmn, args.model_save_prefix)
                     else:
                         fluid.dygraph.save_dygraph(bmn.state_dict(),
                                                    args.dy_param_path)
@@ -692,13 +698,27 @@ class TestTrain(unittest.TestCase):
             video_data = np.array([item[0] for item in data]).astype(DATATYPE)
             static_pred_res = self.predict_static(video_data)
             dygraph_pred_res = self.predict_dygraph(video_data)
+            dygraph_jit_pred_res = self.predict_dygraph_jit(video_data)
+            predictor_pred_res = self.predict_analysis_inference(video_data)
 
-            for dy_res, st_res in zip(dygraph_pred_res, static_pred_res):
+            for dy_res, st_res, dy_jit_res, predictor_res in zip(
+                    dygraph_pred_res, static_pred_res, dygraph_jit_pred_res,
+                    predictor_pred_res):
                 self.assertTrue(
                     np.allclose(st_res, dy_res),
                     "dygraph_res: {},\n static_res: {}".format(
                         dy_res[~np.isclose(st_res, dy_res)],
                         st_res[~np.isclose(st_res, dy_res)]))
+                self.assertTrue(
+                    np.allclose(st_res, dy_jit_res),
+                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        dy_jit_res[~np.isclose(st_res, dy_jit_res)],
+                        st_res[~np.isclose(st_res, dy_jit_res)]))
+                self.assertTrue(
+                    np.allclose(st_res, predictor_res),
+                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        predictor_res[~np.isclose(st_res, predictor_res)],
+                        st_res[~np.isclose(st_res, predictor_res)]))
             break
 
     def predict_dygraph(self, data):
@@ -718,18 +738,38 @@ class TestTrain(unittest.TestCase):
             return pred_res
 
     def predict_static(self, data):
+        paddle.enable_static()
         exe = fluid.Executor(self.place)
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             self.args.infer_dir,
+             self.args.model_save_dir,
              executor=exe,
-             params_filename=VARIABLE_FILENAME)
+             model_filename=self.args.model_filename,
+             params_filename=self.args.params_filename)
         pred_res = exe.run(inference_program,
                            feed={feed_target_names[0]: data},
                            fetch_list=fetch_targets)
 
         return pred_res
+
+    def predict_dygraph_jit(self, data):
+        with fluid.dygraph.guard(self.place):
+            bmn = fluid.dygraph.jit.load(self.args.model_save_prefix)
+            bmn.eval()
+
+            x = to_variable(data)
+            pred_res = bmn(x)
+            pred_res = [var.numpy() for var in pred_res]
+
+            return pred_res
+
+    def predict_analysis_inference(self, data):
+        output = PredictorTools(self.args.model_save_dir,
+                                self.args.model_filename,
+                                self.args.params_filename, [data])
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

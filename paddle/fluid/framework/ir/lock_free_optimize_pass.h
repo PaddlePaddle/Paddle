@@ -27,6 +27,7 @@ namespace framework {
 namespace ir {
 
 class Node;
+class Graph;
 
 /*
 * Remove the sum op of all gradients of the backward op.

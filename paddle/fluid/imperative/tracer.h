@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "ThreadPool.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
@@ -32,7 +33,7 @@ namespace imperative {
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
-  std::string Generate(std::string key = "eager_tmp") {
+  std::string Generate(std::string key = "dygraph_tmp") {
     return prefix_ + key + "_" + std::to_string(id_++);
   }
 
@@ -83,7 +84,7 @@ class Tracer {
   // name like `tmp_0` in some cases when transform dygraph into static layers.
   // So we modify the default prefix key into `eager_tmp` to distinguish with
   // static graph.
-  std::string GenerateUniqueName(std::string key = "eager_tmp") {
+  std::string GenerateUniqueName(std::string key = "dygraph_tmp") {
     return generator_->Generate(key);
   }
 
@@ -97,6 +98,10 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
+  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+
+  bool IsAutoCastEnabled() const { return enable_autocast_; }
+
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
@@ -104,6 +109,7 @@ class Tracer {
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   bool has_grad_{true};
+  bool enable_autocast_{false};
 };
 
 // To access static variable current_tracer

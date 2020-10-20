@@ -13,14 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
-#include <memory>
-#include <string>
-#include <vector>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/var_type.h"
 
 USE_NO_KERNEL_OP(conditional_block);
 USE_NO_KERNEL_OP(conditional_block_grad);

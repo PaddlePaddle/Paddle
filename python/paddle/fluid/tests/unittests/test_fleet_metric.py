@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import os
 import unittest
-import paddle.fleet.metrics.metric as metric
+import paddle.distributed.fleet.metrics.metric as metric
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
 

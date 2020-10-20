@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 
 namespace platform {

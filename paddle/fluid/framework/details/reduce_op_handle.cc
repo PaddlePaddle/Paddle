@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -116,8 +118,15 @@ void ReduceOpHandle::GatherSelectedRows(
   merged_dev_ctx->Wait();
   scope->EraseVars(std::vector<std::string>{gathered_var_name});
 
-  PADDLE_ENFORCE(client->Gather(vars, &remote, *merged_dev_ctx, scope));
-  PADDLE_ENFORCE(remote.size() == vars.size());
+  PADDLE_ENFORCE_EQ(
+      client->Gather(vars, &remote, *merged_dev_ctx, scope), true,
+      platform::errors::PreconditionNotMet("Gather SelectedRows failed."));
+  PADDLE_ENFORCE_EQ(remote.size(), vars.size(),
+                    platform::errors::PreconditionNotMet(
+                        "The number of remotes should be equal to the number "
+                        "of variables to be gathered, but got the number of "
+                        "remotes is %d and the number of variables is %d.",
+                        remote.size(), vars.size()));
 
   // 4. merged local selected rows.
   std::vector<const SelectedRows *> all;
@@ -151,14 +160,19 @@ void ReduceOpHandle::RunImpl() {
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
-      "The number of output should equal to the number of places.");
+      platform::errors::InvalidArgument(
+          "The number of inputs should equal to the number of places, but got "
+          "the number of inputs is %d and the number of places is %d.",
+          in_var_handles.size(), places_.size()));
 
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
     PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
-                      "The number of output should be one.");
+                      platform::errors::InvalidArgument(
+                          "The number of output should be one, but got %d.",
+                          out_var_handles.size()));
     out_var_handle = out_var_handles.front();
   }
 
@@ -168,7 +182,10 @@ void ReduceOpHandle::RunImpl() {
 
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
-  PADDLE_ENFORCE_NOT_NULL(pre_in_var);
+
+  PADDLE_ENFORCE_NOT_NULL(pre_in_var, platform::errors::NotFound(
+                                          "Variable %s is not found in scope.",
+                                          in_0_handle->name()));
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
@@ -176,21 +193,29 @@ void ReduceOpHandle::RunImpl() {
     in_places.emplace_back(in_handle->place());
     auto in_var =
         var_scopes.at(in_handle->scope_idx())->FindVar(in_handle->name());
-    PADDLE_ENFORCE_NOT_NULL(in_var);
+
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                           in_handle->name()));
+
     VariableVisitor::EnforceShapeAndDTypeEQ(*pre_in_var, *in_var);
   }
 
   auto out_var = var_scopes.at(out_var_handle->scope_idx())
                      ->FindVar(out_var_handle->name());
-  PADDLE_ENFORCE_NOT_NULL(out_var);
+
+  PADDLE_ENFORCE_NOT_NULL(
+      out_var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                          out_var_handle->name()));
 
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
   platform::Place t_out_p;
   if (platform::is_gpu_place(in_p)) {
-    PADDLE_ENFORCE(platform::is_gpu_place(out_var_handle->place()),
-                   "Places of input and output must be all on GPU.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()), true,
+                      platform::errors::PreconditionNotMet(
+                          "Places of input and output must be all on GPU."));
     t_out_p = out_var_handle->place();
   } else {
     t_out_p = platform::CPUPlace();
@@ -229,7 +254,10 @@ void ReduceOpHandle::RunImpl() {
             in_selected_rows, in_places, dev_ctxes_, out_var_handle, t_out_p,
             out_var->GetMutable<framework::SelectedRows>());
       } else {
-        PADDLE_THROW("only support double or float when gather SelectedRows");
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Only support double or float when gather SelectedRows, but got "
+            "%s.",
+            framework::DataTypeToString(in_selected_rows[0]->value().type())));
       }
 #endif
     });
@@ -292,7 +320,7 @@ void ReduceOpHandle::RunImpl() {
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
-              PADDLE_ENFORCE(platform::dynload::ncclReduce(
+              PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
                   buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
                   ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
             });
@@ -306,10 +334,13 @@ void ReduceOpHandle::RunImpl() {
         }
       });
 #else
-      PADDLE_THROW("CUDA is not enabled.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
     } else {
-      PADDLE_THROW("Place should be CPUPlace or CUDAPlace.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The place of tensor should be CPUPlace or CUDAPlace, but got %s.",
+          lod_tensors[0]->place()));
     }
   }
 }

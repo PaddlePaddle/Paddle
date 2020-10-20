@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -24,6 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 void BuildNoCircleGraph(Graph* g) {
   OpDesc op1;

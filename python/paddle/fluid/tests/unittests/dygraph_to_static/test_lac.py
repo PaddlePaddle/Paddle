@@ -21,11 +21,12 @@ import unittest
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
@@ -392,7 +393,10 @@ class Args(object):
     base_learning_rate = 0.01
     bigru_num = 2
     print_steps = 1
-    model_save_dir = "./lac_model"
+    model_save_dir = "./inference"
+    model_save_prefix = "./inference/lac"
+    model_filename = "lac" + INFER_MODEL_SUFFIX
+    params_filename = "lac" + INFER_PARAMS_SUFFIX
     dy_param_path = "./lac_dy_param"
 
 
@@ -446,8 +450,8 @@ def do_train(args, to_static):
     place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
     ) else fluid.CPUPlace()
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         reader = get_random_input_data(args.batch_size, args.vocab_size,
                                        args.num_labels)
@@ -495,13 +499,11 @@ def do_train(args, to_static):
                 step += 1
         # save inference model
         if to_static:
-            configs = fluid.dygraph.jit.SaveLoadConfig()
-            configs.output_spec = [crf_decode]
             fluid.dygraph.jit.save(
                 layer=model,
-                model_path=args.model_save_dir,
+                path=args.model_save_prefix,
                 input_spec=[words, length],
-                configs=configs)
+                output_spec=[crf_decode])
         else:
             fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)
 
@@ -535,9 +537,14 @@ class TestLACModel(unittest.TestCase):
             batch = [np.vstack(var) for var in zip(*batch)]
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
+            dy_jit_pre = self.predict_dygraph_jit(batch)
             self.assertTrue(
                 np.allclose(dy_pre, st_pre),
                 msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
+            self.assertTrue(
+                np.allclose(dy_jit_pre, st_pre),
+                msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre,
+                                                               st_pre))
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
@@ -560,13 +567,15 @@ class TestLACModel(unittest.TestCase):
         LAC model contains h_0 created in `__init__` that is necessary for inferring.
         Load inference model to test it's ok for prediction.
         """
+        paddle.enable_static()
         exe = fluid.Executor(self.place)
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
              self.args.model_save_dir,
              executor=exe,
-             params_filename=VARIABLE_FILENAME)
+             model_filename=self.args.model_filename,
+             params_filename=self.args.params_filename)
 
         words, targets, length = batch
         pred_res = exe.run(
@@ -575,6 +584,16 @@ class TestLACModel(unittest.TestCase):
                   feed_target_names[1]: length},
             fetch_list=fetch_targets)
         return pred_res[0]
+
+    def predict_dygraph_jit(self, batch):
+        words, targets, length = batch
+        with fluid.dygraph.guard(self.place):
+            model = fluid.dygraph.jit.load(self.args.model_save_prefix)
+            model.eval()
+
+            pred_res = model(to_variable(words), to_variable(length))
+
+            return pred_res.numpy()
 
 
 if __name__ == "__main__":

@@ -19,6 +19,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
+struct VarHandleBase;
+
 ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
                                          platform::Place place,
                                          size_t scope_idx)

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -22,6 +23,8 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+class Graph;
+
 class MatmulTransposeReshapeMKLDNNPass : public FusePassBase {
  public:
   virtual ~MatmulTransposeReshapeMKLDNNPass() {}
@@ -30,6 +33,6 @@ class MatmulTransposeReshapeMKLDNNPass : public FusePassBase {
   void ApplyImpl(Graph* graph) const override;
   const std::string name_scope_{"matmul_transpose_reshape_fuse"};
 };
-}
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

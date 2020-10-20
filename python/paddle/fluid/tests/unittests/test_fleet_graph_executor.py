@@ -14,6 +14,8 @@
 
 import unittest
 import paddle
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 from launch_function_helper import launch_func
 
@@ -39,8 +41,6 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         }
 
         def node_func():
-            import paddle.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             input_x = paddle.fluid.layers.data(
@@ -57,7 +57,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 input=prediction, label=input_y)
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
-            strategy = paddle.fleet.DistributedStrategy()
+            strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
@@ -76,7 +76,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                         2, size=(128, 1)).astype('int64')
                 }
 
-            for i in range(10):
+            for i in range(5):
                 cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
                 print("cost of step[{}] = {}".format(i, cost_val))
 

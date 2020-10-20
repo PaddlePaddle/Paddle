@@ -26,13 +26,13 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.reader
-from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
     program_guard, dygraph_not_support
+from paddle.reader import cache, map_readers, buffered, compose, chain, shuffle, \
+    ComposeNotAligned, firstn, xmap_readers, multiprocess_reader
 from .wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
@@ -62,7 +62,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
-] + reader.__all__ + paddle.reader.__all__
+] + reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -1346,7 +1346,7 @@ def save_inference_model(dirname,
         append_fetch_ops(main_program, fetch_var_names)
 
         main_program.desc._set_version()
-        paddle.fluid.core.save_op_compatible_info(main_program.desc)
+        paddle.fluid.core.save_op_version_info(main_program.desc)
         with open(model_basename, "wb") as f:
             f.write(main_program.desc.serialize_to_string())
     else:
@@ -1669,9 +1669,6 @@ def _load_persistable_nodes(executor, dirname, graph):
 def save(program, model_path):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.save
-	:alias: paddle.save,paddle.tensor.save,paddle.tensor.io.save
-	:old_api: paddle.fluid.save
 
     This function save parameters, optimizer information and network description to  model_path.
 
@@ -1723,7 +1720,7 @@ def save(program, model_path):
     main_program = program.clone()
     program.desc.flush()
     main_program.desc._set_version()
-    paddle.fluid.core.save_op_compatible_info(program.desc)
+    paddle.fluid.core.save_op_version_info(program.desc)
 
     with open(model_path + ".pdmodel", "wb") as f:
         f.write(program.desc.serialize_to_string())
@@ -1733,9 +1730,6 @@ def save(program, model_path):
 def load(program, model_path, executor=None, var_list=None):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.load
-	:alias: paddle.load,paddle.tensor.load,paddle.tensor.io.load
-	:old_api: paddle.fluid.io.load
 
     This function get parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.

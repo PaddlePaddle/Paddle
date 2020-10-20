@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .plot import Ploter
 from .profiler import ProfilerOptions
 from .profiler import Profiler
 from .profiler import get_profiler
+from .deprecated import deprecated
+from .lazy_import import try_import
+from .install_check import run_check
+from ..fluid.framework import unique_name
+from ..fluid.framework import load_op_library
+from ..fluid.framework import require_version
 
-__all__ = ['dump_config', 'Ploter']
+from . import download
+
+__all__ = ['dump_config', 'deprecated', 'download', 'run_check']
 
 #TODO: define new api under this directory
-# __all__ = ['unique_name',
-#            'load_op_library',
-#            'require_version']
+__all__ += ['unique_name', 'load_op_library', 'require_version']

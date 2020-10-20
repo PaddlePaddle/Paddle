@@ -40,18 +40,11 @@ class TestCloudRoleMaker(unittest.TestCase):
             from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
             from paddle.fluid.incubate.fleet.base.role_maker import \
                 GeneralRoleMaker
-            from paddle.fluid.incubate.fleet.utils.http_server import KVHandler
-            from paddle.fluid.incubate.fleet.utils.http_server import KVServer
-            from paddle.fluid.incubate.fleet.utils.http_server import \
-                KVHTTPServer
+            from paddle.distributed.fleet.utils.http_server import KVHandler
+            from paddle.distributed.fleet.utils.http_server import KVServer
+            from paddle.distributed.fleet.utils.http_server import KVHTTPServer
         except:
             print("warning: no fleet, skip test_pslib_4")
-            return
-
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_pslib_4")
             return
 
         class FakeStream():
@@ -189,7 +182,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         h.log_message("666")
         s.get_deleted_size("haha")
         s1 = TmpS()
-        s1.shoud_stop()
+        s1.should_stop()
 
 
 if __name__ == "__main__":

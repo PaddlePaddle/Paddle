@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import six
 import copy
 from collections import defaultdict
 
@@ -230,7 +231,7 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _update_name_ids(self, new_name_ids):
-        for name_id, ctxs in new_name_ids.items():
+        for name_id, ctxs in six.iteritems(new_name_ids):
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 
@@ -250,7 +251,7 @@ def parse_cond_args(var_ids_dict, return_ids=None, ctx=gast.Load):
     """
 
     name_ids = [
-        var_id for var_id, var_ctx in var_ids_dict.items()
+        var_id for var_id, var_ctx in six.iteritems(var_ids_dict)
         if isinstance(var_ctx[0], ctx)
     ]
     if return_ids:
@@ -309,8 +310,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
-        q = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        z = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+        q = paddle.jit.dy2static.data_layer_not_check(name='q', shape=[-1], dtype='float32')
+        z = paddle.jit.dy2static.data_layer_not_check(name='z', shape=[-1], dtype='float32')
 
         def true_func(x, y, q):
             x = x+1
@@ -341,7 +342,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     def _vars_with_store(ids_dict):
         vars = []
-        for k, ctxs in ids_dict.items():
+        for k, ctxs in six.iteritems(ids_dict):
             if _is_return_var(ctxs):
                 vars.append(k)
         return vars
@@ -353,7 +354,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     def _vars_loaded_before_store(ids_dict):
         new_dict = defaultdict(list)
-        for k, ctxs in ids_dict.items():
+        for k, ctxs in six.iteritems(ids_dict):
             for ctx in ctxs:
                 if isinstance(ctx, gast.Load):
                     new_dict[k].append(ctx)
@@ -459,7 +460,7 @@ def create_convert_ifelse_node(return_name_ids,
                                false_func,
                                is_if_expr=False):
     """
-    Create `fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
+    Create `paddle.jit.dy2static.convert_ifelse(
             pred, true_fn, false_fn, true_args, false_args, return_vars)`
     to replace original `python if/else` statement.
     """
@@ -490,7 +491,7 @@ def create_convert_ifelse_node(return_name_ids,
     return_vars = create_name_nodes(return_name_ids)
 
     convert_ifelse_layer = gast.parse(
-        'fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse('
+        'paddle.jit.dy2static.convert_ifelse('
         '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'.
         format(
             pred=ast_to_source_code(pred),

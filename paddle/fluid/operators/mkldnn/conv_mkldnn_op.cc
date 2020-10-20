@@ -12,11 +12,15 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <unordered_map>
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -51,12 +55,12 @@ inline MKLDNNMemoryFormat GetWeightsFormat(const MKLDNNMemoryFormat format,
   }
 }
 
-static mkldnn::memory::data_type GetDstType(bool is_int8,
+static mkldnn::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
                                             bool force_fp32_output,
                                             std::string fuse_activation,
                                             bool fuse_residual_conn,
                                             const Tensor* residual_param) {
-  auto dst_dt = mkldnn::memory::data_type::f32;  // uint8_t, int8_t, float
+  auto dst_dt = mkldnn::memory::data_type::f32;
   if (is_int8) {
     dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")
                  ? mkldnn::memory::data_type::u8
@@ -68,11 +72,18 @@ static mkldnn::memory::data_type GetDstType(bool is_int8,
       auto residual_dt = framework::ToMKLDNNDataType(residual_param->type());
       if (dst_dt != residual_dt) dst_dt = residual_dt;
     }
+  } else {
+    if (!force_fp32_output && is_bfloat16) {
+      dst_dt = mkldnn::memory::data_type::bf16;
+      if (fuse_residual_conn && residual_param) {
+        dst_dt = framework::ToMKLDNNDataType(residual_param->type());
+      }
+    }
   }
   return dst_dt;
 }
 
-template <typename T>
+template <typename T, typename K, typename T_out>
 class ConvMKLDNNHandlerT
     : public platform::MKLDNNHandlerT<T, mkldnn::convolution_forward> {
  public:
@@ -182,13 +193,8 @@ class ConvMKLDNNHandlerT
                                data_dims, strides, ksize);
       const bool is_conv3d = strides.size() == 3U;
 
-      PADDLE_ENFORCE_EQ(
-          is_conv3d
-              ? dilations.size() == 3 && dilations[0] == 1 &&
-                    dilations[1] == 1 && dilations[2] == 1
-              : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-          true, platform::errors::Unimplemented(
-                    "Dilation in oneDNN convolution is not implemented yet"));
+      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                     [](int64_t i) { return i - 1; });
 
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
@@ -199,6 +205,7 @@ class ConvMKLDNNHandlerT
 
       const mkldnn::memory::dims stride_dims = strides;
       const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+      const mkldnn::memory::dims dilations_dims = dilations;
 
       /* create memory descriptor for convolution without specified format
        * ('any') which lets a primitive (convolution in this case) choose
@@ -220,14 +227,17 @@ class ConvMKLDNNHandlerT
               src_tz.size(), chosen_memory_format);
         }
       }
+      auto data_type = mkldnn::memory::data_type::f32;
+      if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
+          std::is_same<T_out, platform::bfloat16>::value)
+        data_type = mkldnn::memory::data_type::bf16;
 
-      const auto src_md = platform::MKLDNNMemDesc(
-          src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      const auto weights_md =
-          platform::MKLDNNMemDesc(weights_tz, platform::MKLDNNGetDataType<T>(),
-                                  MKLDNNMemoryFormat::any);
+      const auto src_md =
+          platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+      const auto weights_md = platform::MKLDNNMemDesc(weights_tz, data_type,
+                                                      MKLDNNMemoryFormat::any);
       const auto dst_md = platform::MKLDNNMemDesc(
-          dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+          dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
 
       const auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                          : mkldnn::prop_kind::forward_training;
@@ -237,18 +247,18 @@ class ConvMKLDNNHandlerT
 
       if (bias) {
         auto bias_tz = framework::vectorize(bias->dims());
-        auto bias_md = platform::MKLDNNMemDesc(
-            bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
+        auto bias_md =
+            platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, bias_md, dst_md, stride_dims,
+            src_md, weights_md, bias_md, dst_md, stride_dims, dilations_dims,
             mkldnn_paddings[0], mkldnn_paddings[1]);
       } else {
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
-            src_md, weights_md, dst_md, stride_dims, mkldnn_paddings[0],
-            mkldnn_paddings[1]);
+            src_md, weights_md, dst_md, stride_dims, dilations_dims,
+            mkldnn_paddings[0], mkldnn_paddings[1]);
       }
     }
   }
@@ -313,29 +323,29 @@ class ConvMKLDNNHandlerT
     if (is_test && weights_mem_p) {
       return weights_mem_p;
     } else {
-      const T* filter_data = filter->data<T>();
+      const K* filter_data = filter->data<K>();
       auto weights_tz = framework::vectorize(filter->dims());
       GetWeightsTz(weights_tz, groups);
 
       auto user_src_md = platform::MKLDNNMemDesc(
-          weights_tz, platform::MKLDNNGetDataType<T>(),
+          weights_tz, platform::MKLDNNGetDataType<K>(),
           GetWeightsFormat(filter->format(), groups, is_conv3d));
 
       return this->AcquireMemoryWithReorder(
           user_src_md, this->fwd_pd_->weights_desc(),
-          to_void_cast<T>(filter_data), "@weights_mem_p", is_test);
+          to_void_cast<K>(filter_data), "@weights_mem_p", is_test);
     }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
       const framework::Tensor* bias, const bool is_test) {
-    const T* bias_data = bias->data<T>();
+    const K* bias_data = bias->data<K>();
     auto user_bias_md = platform::MKLDNNMemDesc(
-        framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<T>(),
+        framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
         MKLDNNMemoryFormat::x);
 
     return this->AcquireMemoryWithReorder(
-        user_bias_md, this->fwd_pd_->bias_desc(), to_void_cast<T>(bias_data),
+        user_bias_md, this->fwd_pd_->bias_desc(), to_void_cast<K>(bias_data),
         "@bias_mem_p", is_test);
   }
 
@@ -358,14 +368,14 @@ class ConvMKLDNNHandlerT
     if (residual_param->format() !=
         platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc())) {
       auto residual_memory_p = this->AcquireResidualMemory(residual_param);
-      dst_memory_p = this->AcquireDstMemory(output);
+      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
       this->AcquireReorder(residual_memory_p, dst_memory_p, "@residual_dst");
     } else {
       // Changing ShareDataWith to TensorCopy results in performance drop
       // on ResNet architectures
       // (https://github.com/PaddlePaddle/Paddle/issues/22964)
       output->ShareDataWith(*residual_param);
-      dst_memory_p = this->AcquireDstMemory(output);
+      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
     }
     return dst_memory_p;
   }
@@ -380,15 +390,21 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                           "Operator DNNL Conv must use CPUPlace"));
     bool is_INT8 =
         std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+    bool is_BFLOAT16 = ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16";
+    auto residual_param = ctx.Input<Tensor>("ResidualData");
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    auto dst_dt =
+        GetDstType(is_INT8, is_BFLOAT16, force_fp32_output, fuse_activation,
+                   fuse_residual_conn, residual_param);
     if (!is_INT8) {
-      ComputeFP32(ctx);
+      if (dst_dt == mkldnn::memory::data_type::f32) {
+        ComputeFP32<float>(ctx);
+      } else if (dst_dt == mkldnn::memory::data_type::bf16) {
+        ComputeFP32<platform::bfloat16>(ctx);
+      }
     } else {
-      std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
-      bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      auto residual_param = ctx.Input<Tensor>("ResidualData");
-      auto dst_dt = GetDstType(true, force_fp32_output, fuse_activation,
-                               fuse_residual_conn, residual_param);
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeINT8<float>(ctx);
       } else if (dst_dt == mkldnn::memory::data_type::u8) {
@@ -399,6 +415,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
   }
 
+  template <typename T_out>
   void ComputeFP32(const paddle::framework::ExecutionContext& ctx) const {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
@@ -414,7 +431,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    ConvMKLDNNHandlerT<T> handler(
+    ConvMKLDNNHandlerT<T, K, T_out> handler(
         ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), input, filter, bias,
         output, ctx.InputName("Input") + ctx.InputName("Filter"));
 
@@ -429,7 +446,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       dst_memory_p =
           handler.AcquireDstMemoryWithResidual(output, residual_param);
     } else {
-      dst_memory_p = handler.AcquireDstMemory(output);
+      dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
     }
 
     auto conv_p = handler.AcquireForwardPrimitive();
@@ -560,7 +577,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       PADDLE_ENFORCE_EQ(
           !fuse_residual_conn || !force_fp32_output, true,
-          "residual fusion does not support force output with fp32");
+          platform::errors::Unimplemented(
+              "residual fusion does not support force output with fp32"));
 
       auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
 
@@ -597,9 +615,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bool is_conv3d = strides.size() == 3U;
 
       PADDLE_ENFORCE_NE(is_conv3d, true,
-                        platform::errors::InvalidArgument(
-                            "int8 does not support conv3d currently, should "
-                            "set param is_conv3d as False"));
+                        platform::errors::Unimplemented(
+                            "int8 does not support conv3d currently"));
 
       auto input_dims = input->dims();
       auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
@@ -619,12 +636,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       GetWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
 
-      PADDLE_ENFORCE_EQ(
-          is_conv3d
-              ? dilations.size() == 3 && dilations[0] == 1 &&
-                    dilations[1] == 1 && dilations[2] == 1
-              : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-          true, "dilation in convolution is not implemented yet");
+      std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                     [](int64_t i) { return i - 1; });
 
       const K* filter_data = filter->data<K>();
       auto scale_in_data = ctx.Attr<float>("Scale_in");
@@ -687,13 +700,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
                                                MKLDNNMemoryFormat::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
-            src_md, weights_md, bias_md, dst_md, strides, paddings,
+            src_md, weights_md, bias_md, dst_md, strides, dilations, paddings,
             mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
             fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       } else {
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
-            src_md, weights_md, boost::none, dst_md, strides, paddings,
-            mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
+            src_md, weights_md, boost::none, dst_md, strides, dilations,
+            paddings, mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
             fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       }
 
@@ -886,7 +899,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
             "The output_grad tensor's layout should be %d, but got %d.",
             DataLayout::kMKLDNN, output_grad->layout()));
     PADDLE_ENFORCE_NE(output_grad->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for output_grad tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for output_grad tensor"));
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
@@ -995,11 +1009,14 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                           "Fail to find conv_pd in device context"));
 
     auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
-
+    std::transform(dilations.begin(), dilations.end(), dilations.begin(),
+                   [](int64_t i) { return i - 1; });
+    const mkldnn::memory::dims dilations_dims = dilations;
     // create backward convolution weights primitive descriptor
     auto conv_bwd_weights_desc = mkldnn::convolution_backward_weights::desc(
         mkldnn::algorithm::convolution_direct, src_md, diff_weights_md,
-        diff_dst_md, strides, mkldnn_paddings[0], mkldnn_paddings[1]);
+        diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
 
     auto conv_bwd_weights_pd =
         std::make_shared<mkldnn::convolution_backward_weights::primitive_desc>(
@@ -1008,7 +1025,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // create backward convolution data primitive descriptor
     auto conv_bwd_data_desc = mkldnn::convolution_backward_data::desc(
         mkldnn::algorithm::convolution_direct, diff_src_md, weights_md,
-        diff_dst_md, strides, mkldnn_paddings[0], mkldnn_paddings[1]);
+        diff_dst_md, strides, dilations_dims, mkldnn_paddings[0],
+        mkldnn_paddings[1]);
 
     auto conv_bwd_data_pd =
         std::make_shared<mkldnn::convolution_backward_data::primitive_desc>(
@@ -1051,7 +1069,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       astream.wait();
 
       filter_grad->set_layout(DataLayout::kMKLDNN);
-      filter_grad->set_format(GetMKLDNNFormat(*diff_weights_memory_p));
+      // in OneDNN groups in convolution are treated as separate dimension
+      // which is not the case in paddlepaddle
+      auto filter_fmt = GetMKLDNNFormat(*diff_weights_memory_p);
+      filter_grad->set_format(platform::MKLDNNFormatForSize(
+          g > 1 ? weights_tz.size() - 1 : weights_tz.size(), filter_fmt));
     }
     if (input_grad) {
       auto weights_memory_p = handler.AcquireWeightsMemoryFromDataPrimitive(
@@ -1090,6 +1112,10 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
                                     ops::ConvMKLDNNOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    conv2d, MKLDNN, ::paddle::platform::CPUPlace, BF16, ops::kConvMKLDNNFP32,
+    ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, U8,

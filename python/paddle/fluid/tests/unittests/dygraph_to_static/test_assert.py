@@ -17,12 +17,13 @@ from __future__ import print_function
 import numpy
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 
 
-@declarative
+@paddle.jit.to_static
 def dyfunc_assert_variable(x):
     x_v = fluid.dygraph.to_variable(x)
     assert x_v
