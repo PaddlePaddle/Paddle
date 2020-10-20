@@ -103,8 +103,8 @@ from .tensor.logic import logical_not  #DEFINE_ALIAS
 from .tensor.logic import logical_or  #DEFINE_ALIAS
 from .tensor.logic import logical_xor  #DEFINE_ALIAS
 from .tensor.logic import not_equal  #DEFINE_ALIAS
-# from .tensor.logic import reduce_all  #DEFINE_ALIAS
-# from .tensor.logic import reduce_any  #DEFINE_ALIAS
+from .tensor.logic import all  #DEFINE_ALIAS
+from .tensor.logic import any  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
 from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
