@@ -106,6 +106,8 @@ def simple_img_conv_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             img = fluid.data(name='img', shape=[100, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.simple_img_conv_pool(input=img,
                                                         filter_size=5,
@@ -198,6 +200,9 @@ def img_conv_group(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
@@ -300,6 +305,8 @@ def sequence_conv_pool(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
@@ -356,6 +363,9 @@ def glu(input, dim=-1):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             data = fluid.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
@@ -435,7 +445,9 @@ def scaled_dot_product_attention(queries,
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            import paddle
+            paddle.enable_static()
+            
             queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
             keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
             values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")

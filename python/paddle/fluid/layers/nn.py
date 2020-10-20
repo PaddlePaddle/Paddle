@@ -4177,6 +4177,8 @@ def conv3d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
