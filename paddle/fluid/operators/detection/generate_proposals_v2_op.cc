@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ using LoDTensor = framework::LoDTensor;
 
 static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
-class GenerateProposalsOp : public framework::OperatorWithKernel {
+class GenerateProposalsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -43,8 +43,8 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
         ctx->HasInput("BboxDeltas"), true,
         platform::errors::NotFound("Input(BboxDeltas) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ImInfo"), true,
-        platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
+        ctx->HasInput("ImShape"), true,
+        platform::errors::NotFound("Input(ImShape) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Anchors"), true,
         platform::errors::NotFound("Input(Anchors) shouldn't be null."));
@@ -200,12 +200,12 @@ static inline Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox,
 }
 
 template <typename T>
-class GenerateProposalsKernel : public framework::OpKernel<T> {
+class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
-    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto *im_shape = context.Input<Tensor>("ImShape");
     auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
                                    "Anchors", "GenerateProposals");
     auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
@@ -259,7 +259,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
+      Tensor im_shape_slice = im_shape->Slice(i, i + 1);
       Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
       Tensor scores_slice = scores_swap.Slice(i, i + 1);
 
@@ -267,7 +267,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
       std::pair<Tensor, Tensor> tensor_pair =
-          ProposalForOneImage(dev_ctx, im_info_slice, anchors, variances,
+          ProposalForOneImage(dev_ctx, im_shape_slice, anchors, variances,
                               bbox_deltas_slice, scores_slice, pre_nms_top_n,
                               post_nms_top_n, nms_thresh, min_size, eta);
       Tensor &proposals = tensor_pair.first;
@@ -295,7 +295,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(
-      const platform::CPUDeviceContext &ctx, const Tensor &im_info_slice,
+      const platform::CPUDeviceContext &ctx, const Tensor &im_shape_slice,
       const Tensor &anchors, const Tensor &variances,
       const Tensor &bbox_deltas_slice,  // [M, 4]
       const Tensor &scores_slice,       // [N, 1]
@@ -337,10 +337,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
-    ClipTiledBoxes<T>(ctx, im_info_slice, proposals, &proposals, false);
+    ClipTiledBoxes<T>(ctx, im_shape_slice, proposals, &proposals, false);
 
     Tensor keep;
-    FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
+    FilterBoxes<T>(ctx, &proposals, min_size, im_shape_slice, false, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
       math::SetConstant<platform::CPUDeviceContext, T> set_zero;
@@ -376,7 +376,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
   }
 };
 
-class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
+class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Scores",
@@ -386,9 +386,9 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("BboxDeltas",
              "(Tensor) Bounding box deltas from conv is in "
              "shape (N, 4*A, H, W).");
-    AddInput("ImInfo",
-             "(Tensor) Information for image reshape is in shape (N, 3), "
-             "in format (height, width, scale)");
+    AddInput("ImShape",
+             "(Tensor) Image shape in shape (N, 2), "
+             "in format (height, width)");
     AddInput("Anchors",
              "(Tensor) Bounding box anchors from anchor_generator_op "
              "is in shape (A, H, W, 4).");
@@ -413,8 +413,9 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
                    "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddComment(R"DOC(
-This operator Generate bounding box proposals for Faster RCNN.
-The propoasls are generated for a list of images based on image
+This operator is the second version of generate_proposals op to generate 
+bounding box proposals for Faster RCNN.
+The proposals are generated for a list of images based on image
 score 'Scores', bounding box regression result 'BboxDeltas' as
 well as predefined bounding box shapes 'anchors'. Greedy
 non-maximum suppression is applied to generate the final bounding
@@ -429,16 +430,10 @@ boxes.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    generate_proposals, ops::GenerateProposalsOp, ops::GenerateProposalsOpMaker,
+    generate_proposals_v2, ops::GenerateProposalsV2Op,
+    ops::GenerateProposalsV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
-                       ops::GenerateProposalsKernel<double>);
-REGISTER_OP_VERSION(generate_proposals)
-    .AddCheckpoint(
-        R"ROC(
-              Upgrade generate_proposals add a new output [RpnRoisNum])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewOutput(
-            "RpnRoisNum",
-            "The number of Rpn RoIs in each image. RpnRoisNum is "
-            "dispensable."));
+REGISTER_OP_CPU_KERNEL(generate_proposals_v2,
+                       ops::GenerateProposalsV2Kernel<float>,
+                       ops::GenerateProposalsV2Kernel<double>);

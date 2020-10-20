@@ -125,17 +125,30 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
   }
 }
 
+static void AppendProposals(framework::Tensor* dst, int64_t offset,
+                            const framework::Tensor& src) {
+  auto* out_data = dst->data<void>();
+  auto* to_add_data = src.data<void>();
+  size_t size_of_t = framework::SizeOfType(src.type());
+  offset *= size_of_t;
+  std::memcpy(
+      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),
+      to_add_data, src.numel() * size_of_t);
+}
+
 template <class T>
 void ClipTiledBoxes(const platform::DeviceContext& ctx,
                     const framework::Tensor& im_info,
                     const framework::Tensor& input_boxes,
-                    framework::Tensor* out) {
+                    framework::Tensor* out, bool is_scale = true) {
   T* out_data = out->mutable_data<T>(ctx.GetPlace());
   const T* im_info_data = im_info.data<T>();
   const T* input_boxes_data = input_boxes.data<T>();
   T zero(0);
-  T im_w = round(im_info_data[1] / im_info_data[2]);
-  T im_h = round(im_info_data[0] / im_info_data[2]);
+  T im_w =
+      is_scale ? round(im_info_data[1] / im_info_data[2]) : im_info_data[1];
+  T im_h =
+      is_scale ? round(im_info_data[0] / im_info_data[2]) : im_info_data[0];
   for (int64_t i = 0; i < input_boxes.numel(); ++i) {
     if (i % 4 == 0) {
       out_data[i] = std::max(std::min(input_boxes_data[i], im_w - 1), zero);
@@ -147,6 +160,39 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
       out_data[i] = std::max(std::min(input_boxes_data[i], im_h - 1), zero);
     }
   }
+}
+
+// Filter the box with small area
+template <class T>
+void FilterBoxes(const platform::DeviceContext& ctx,
+                 const framework::Tensor* boxes, float min_size,
+                 const framework::Tensor& im_info, bool is_scale,
+                 framework::Tensor* keep) {
+  const T* im_info_data = im_info.data<T>();
+  const T* boxes_data = boxes->data<T>();
+  keep->Resize({boxes->dims()[0]});
+  min_size = std::max(min_size, 1.0f);
+  int* keep_data = keep->mutable_data<int>(ctx.GetPlace());
+
+  int keep_len = 0;
+  for (int i = 0; i < boxes->dims()[0]; ++i) {
+    T ws = boxes_data[4 * i + 2] - boxes_data[4 * i] + 1;
+    T hs = boxes_data[4 * i + 3] - boxes_data[4 * i + 1] + 1;
+    T x_ctr = boxes_data[4 * i] + ws / 2;
+    T y_ctr = boxes_data[4 * i + 1] + hs / 2;
+
+    if (is_scale) {
+      ws = (boxes_data[4 * i + 2] - boxes_data[4 * i]) / im_info_data[2] + 1;
+      hs =
+          (boxes_data[4 * i + 3] - boxes_data[4 * i + 1]) / im_info_data[2] + 1;
+    }
+
+    if (ws >= min_size && hs >= min_size && x_ctr <= im_info_data[1] &&
+        y_ctr <= im_info_data[0]) {
+      keep_data[keep_len++] = i;
+    }
+  }
+  keep->Resize({keep_len});
 }
 
 }  // namespace operators
