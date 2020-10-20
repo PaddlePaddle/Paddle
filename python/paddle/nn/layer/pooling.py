@@ -912,8 +912,8 @@ class AdaptiveMaxPool1d(layers.Layer):
         self.name = name
 
     def forward(self, input):
-        return F.adaptive_max_pool1d(input, self.output_size,
-                                     self.return_mask, self.name)
+        return F.adaptive_max_pool1d(input, self.output_size, self.return_mask,
+                                     self.name)
 
 
 class AdaptiveMaxPool2d(layers.Layer):

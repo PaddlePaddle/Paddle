@@ -148,11 +148,7 @@ class TestPool1d_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
             result = F.avg_pool1d(
-                input,
-                kernel_size=2,
-                stride=2,
-                padding=[1],
-                exclusive=True)
+                input, kernel_size=2, stride=2, padding=[1], exclusive=True)
 
             result_np = avg_pool1D_forward_naive(
                 input_np, ksize=[2], strides=[2], paddings=[1], exclusive=False)
