@@ -234,6 +234,7 @@ def greater_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.disable_static()
@@ -265,6 +266,7 @@ def greater_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.disable_static()
@@ -297,6 +299,7 @@ def less_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.disable_static()
@@ -329,6 +332,7 @@ def less_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.disable_static()
