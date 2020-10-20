@@ -72,7 +72,7 @@ class AMPOptimizer(MetaOptimizerBase):
             "incr_every_n_steps": 1000,
             "decr_every_n_nan_or_inf": 2,
             "incr_ratio": 2.0,
-            "decr_ratio": 8.0,
+            "decr_ratio": 0.8,
             "use_dynamic_loss_scaling": True
         }
 

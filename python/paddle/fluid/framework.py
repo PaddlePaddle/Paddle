@@ -543,7 +543,7 @@ def name_scope(prefix=None):
           import paddle
           paddle.enable_static()
           with paddle.static.name_scope("s1"):
-             a = paddle.fluid.data(name='data', shape=[None, 1], dtype='int32')
+             a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
              with paddle.static.name_scope("s2"):
                 c = b * 1
@@ -1192,8 +1192,8 @@ class Variable(object):
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
                     inputs.append(tmp)
-                ret = paddle.sums(inputs)
-                loss = paddle.fluid.layers.reduce_sum(ret)
+                ret = paddle.add_n(inputs)
+                loss = paddle.sum(ret)
                 loss.backward()
 
         """
@@ -5357,8 +5357,8 @@ def default_startup_program():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = paddle.fluid.data(name="x", shape=[-1, 784], dtype='float32')
-                y = paddle.fluid.data(name="y", shape=[-1, 1], dtype='int32')
+                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
                 z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
                 print("main program is: {}".format(paddle.static.default_main_program()))
@@ -5391,8 +5391,8 @@ def default_main_program():
             
             paddle.enable_static()
             # Sample Network:
-            data = paddle.fluid.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = paddle.fluid.data(name='label', shape=[None, 1], dtype='int64')
+            data = paddle.static.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             
             conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
             bn1 = paddle.static.nn.batch_norm(conv1, act='relu')

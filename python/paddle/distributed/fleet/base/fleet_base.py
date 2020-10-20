@@ -925,6 +925,24 @@ class Fleet(object):
         else:
             return self._context["valid_strategy"]
 
+    def _get_applied_meta_list(self):
+        if "applied_meta_list" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before _get_applied_meta_list called"
+            )
+            return []
+        else:
+            return self._context["applied_meta_list"]
+
+    def _get_applied_graph_list(self):
+        if "applied_graph_list" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before _get_applied_graph_list called"
+            )
+            return []
+        else:
+            return self._context["applied_graph_list"]
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -1043,6 +1061,12 @@ class Fleet(object):
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
 
+        applied_meta_list = self.strategy_compiler._get_applied_meta_list()
+        applied_graph_list = self.strategy_compiler._get_applied_graph_list()
+
+        context['applied_meta_list'] = applied_meta_list
+        context['applied_graph_list'] = applied_graph_list
+
         self._context = context
 
         self.valid_strategy = valid_strategy
@@ -1060,17 +1084,11 @@ class Fleet(object):
                     loss_name=loss.name, share_vars_from=None)
             loss.block.program._graph = compiled_program
             return self.user_defined_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
             default_program = paddle.static.default_main_program()
 
@@ -1079,20 +1097,14 @@ class Fleet(object):
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
             optimize_ops, params_grads = graph_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
             # if a graph optimizer takes effect, mostly
             # optimizers_ops and params_grads are None

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/stack_op.h"
+#include <string>
 #ifdef PADDLE_WITH_XPU
 
 namespace paddle {
@@ -45,8 +46,15 @@ class StackXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     void* x_datas_host = std::malloc(n * sizeof(void*));
     void* x_datas_device = nullptr;
-    PADDLE_ENFORCE(xpu_malloc(reinterpret_cast<void**>(&x_datas_device),
-                              n * sizeof(void*)) == XPU_SUCCESS);
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&x_datas_device),
+                                 n * sizeof(void*)),
+                      XPU_SUCCESS,
+                      platform::errors::ResourceExhausted(
+                          "\n\nOut of memory error on XPU, Cannot"
+                          "allocate %s memory on XPU. \n\nPlease "
+                          "check whether there is any other process "
+                          "using XPU.\n",
+                          string::HumanReadableSize(n * sizeof(void*))));
     for (auto i = 0; i < n; ++i) {
       ((const void**)x_datas_host)[i] = x[i]->data<T>();
     }
@@ -55,9 +63,12 @@ class StackXPUKernel : public framework::OpKernel<T> {
                  n * sizeof(void*));
     int r = xpu::stack_forward<float>(dev_ctx.x_context(), pre, post, n,
                                       x_datas_device, y_data);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument(
-                          "There are stack XPU kernel error raised!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "The stack XPU API return wrong value[%d], please check "
+            "where Baidu Kunlun Card is properly installed.",
+            r));
     dev_ctx.Wait();
     std::free(x_datas_host);
     xpu_free(x_datas_device);
