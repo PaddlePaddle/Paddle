@@ -21,6 +21,10 @@ from .transforms import *
 from . import datasets
 from .datasets import *
 
+from . import image
+from .image import *
+
 __all__ = models.__all__ \
         + transforms.__all__ \
-        + datasets.__all__
+        + datasets.__all__ \
+        + image.__all__

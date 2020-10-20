@@ -228,6 +228,22 @@ class TestWithStride(TestConv2dInt8Op):
         self.scale_in_eltwise = 0.5
 
 
+class TestWithDilations(TestConv2dInt8Op):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [2, 2]
+        self.input_size = [2, 3, 10, 10]
+        self.input_residual_size = [2, 6, 8, 8]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.scale_in = 1.0
+        self.scale_out = 0.8
+        self.scale_weights = [10.0]
+        self.scale_in_eltwise = 0.5
+
+
 class TestWith1x1(TestConv2dInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -343,6 +359,7 @@ def create_test_int8_class(parent):
 create_test_int8_class(TestConv2dInt8Op)
 create_test_int8_class(TestWithPad)
 create_test_int8_class(TestWithStride)
+create_test_int8_class(TestWithDilations)
 create_test_int8_class(TestWithGroup)
 create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)

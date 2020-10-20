@@ -21,8 +21,11 @@ import sys
 import warnings
 from functools import partial, reduce
 
+import numpy as np
 import paddle
+import paddle.fluid as fluid
 from paddle import framework
+from paddle.device import get_device, get_cudnn_version
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.fluid.dygraph import Layer, LayerList
@@ -48,7 +51,7 @@ def split_states(states, bidirectional=False, state_components=1):
     Split states of RNN network into possibly nested list or tuple of
     states of each RNN cells of the RNN network.
 
-    Arguments:
+    Parameters:
         states (Tensor|tuple|list): the concatenated states for RNN network.
             When `state_components` is 1, states in a Tensor with shape
             `(L*D, N, C)` where `L` is the number of layers of the RNN 
@@ -101,7 +104,7 @@ def concat_states(states, bidirectional=False, state_components=1):
     Concatenate a possibly nested list or tuple of RNN cell states into a 
     compact form.
 
-    Arguments:
+    Parameters:
         states (list|tuple): a possibly nested list or tuple of RNN cell 
             states. 
             If `bidirectional` is True, it can be indexed twice to get an 
@@ -135,7 +138,7 @@ def concat_states(states, bidirectional=False, state_components=1):
         componnets = []
         for i in range(state_components):
             componnets.append(states[i::state_components])
-        return [paddle.stack(item) for item in componnets]
+        return tuple([paddle.stack(item) for item in componnets])
 
 
 class RNNCellBase(Layer):
@@ -154,13 +157,14 @@ class RNNCellBase(Layer):
         r"""
         Generate initialized states according to provided shape, data type and
         value.
-        Arguments:
+
+        Parameters:
             batch_ref (Tensor): A tensor, which shape would be used to 
                 determine the batch size, which is used to generate initial 
                 states. For `batch_ref`'s shape d, `d[batch_dim_idx]` is 
                 treated as batch size.
             shape (list|tuple, optional): A (possibly nested structure of) shape[s], 
-                where a shape is a list/tuple of integer). `-1` (for batch size) 
+                where a shape is a list/tuple of integer. `-1` (for batch size) 
                 will be automatically prepended if a shape does not starts with 
                 it. If None, property `state_shape` will be used. Defaults to 
                 None.
@@ -174,6 +178,7 @@ class RNNCellBase(Layer):
                 Defaults to 0.
             batch_dim_idx (int, optional): An integer indicating which 
                 dimension of the of `batch_ref` represents batch. Defaults to 0.
+                
         Returns:
             init_states (Tensor|tuple|list): tensor of the provided shape and 
                 dtype, or list of tensors that each satisfies the requirements,
@@ -268,16 +273,17 @@ class SimpleRNNCell(RNNCellBase):
     The formula used is as follows:
 
     .. math::
-        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`act` is for :attr:`activation` , and * is the elemetwise
     multiplication operator.
 
     Please refer to `Finding Structure in Time 
     <https://crl.ucsd.edu/~elman/Papers/fsit.pdf>`_ for more details.
     
-    Arguments:
+    Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         activation (str, optional): The activation in the SimpleRNN cell. 
@@ -288,12 +294,12 @@ class SimpleRNNCell(RNNCellBase):
             `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Parameters:
+    Attributes:
         weight_ih (Parameter): shape (hidden_size, input_size), input to hidden 
             weight, corresponding to :math:`W_{ih}` in the formula.
         weight_hh (Parameter): shape (hidden_size, hidden_size), hidden to 
@@ -329,13 +335,15 @@ class SimpleRNNCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
 
             cell = paddle.nn.SimpleRNNCell(16, 32)
             y, h = cell(x, prev_h)
+            print(y.shape)
+
+            #[4,32]
 
     """
 
@@ -407,20 +415,26 @@ class LSTMCell(RNNCellBase):
 
     .. math::
         i_{t} & = \sigma(W_{ii}x_{t} + b_{ii} + W_{hi}h_{t-1} + b_{hi})
+
         f_{t} & = \sigma(W_{if}x_{t} + b_{if} + W_{hf}h_{t-1} + b_{hf})
+
         o_{t} & = \sigma(W_{io}x_{t} + b_{io} + W_{ho}h_{t-1} + b_{ho})
-        \\widetilde{c}_{t} & = \\tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
-        c_{t} & = f_{t} \* c{t-1} + i{t} \* \\widetile{c}_{t}
-        h_{t} & = o_{t} \* \\tanh(c_{t})
+
+        \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
+
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
+
+        h_{t} & = o_{t} * \tanh(c_{t})
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
     <http://proceedings.mlr.press/v37/jozefowicz15.pdf>`_ for more details.
 
-    Arguments:
+    Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for 
@@ -429,12 +443,12 @@ class LSTMCell(RNNCellBase):
             `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Parameters:
+    Attributes:
         weight_ih (Parameter): shape (4 * hidden_size, input_size), input to 
             hidden weight, which corresponds to the concatenation of
              :math:`W_{ii}, W_{if}, W_{ig}, W_{io}` in the formula.
@@ -462,7 +476,7 @@ class LSTMCell(RNNCellBase):
             corresponding to :math:`h_{t}` in the formula.
         states (tuple): a tuple of two tensors, each of shape 
             `[batch_size, hidden_size]`, the new hidden states,
-            corresponding to :math:`h_{t}, c{t}` in the formula.
+            corresponding to :math:`h_{t}, c_{t}` in the formula.
 
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by 
@@ -475,7 +489,6 @@ class LSTMCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
@@ -483,6 +496,14 @@ class LSTMCell(RNNCellBase):
 
             cell = paddle.nn.LSTMCell(16, 32)
             y, (h, c) = cell(x, (prev_h, prev_c))
+
+            print(y.shape)
+            print(h.shape)
+            print(c.shape)
+
+            #[4,32]
+            #[4,32]
+            #[4,32]
 
     """
 
@@ -559,15 +580,19 @@ class GRUCell(RNNCellBase):
 
     The formula for GRU used is as follows:
 
-    .. math::
+    ..  math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
-        z_{t} & = \sigma(W_{iz)x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
-        \\widetilde{h}_{t} & = \\tanh(W_{ic)x_{t} + b_{ic} + r_{t} \* (W_{hc}x_{t} + b{hc}))
-        h_{t} & = z_{t} \* h_{t-1} + (1 - z_{t}) \* \\widetilde{h}_{t}
+
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
+
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
+
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
     Please refer to `An Empirical Exploration of Recurrent Network Architectures
@@ -582,12 +607,12 @@ class GRUCell(RNNCellBase):
             `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih`. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Parameters:
+    Attributes:
         weight_ih (Parameter): shape (3 * hidden_size, input_size), input to 
             hidden weight, which corresponds to the concatenation of
              :math:`W_{ir}, W_{iz}, W_{ic}` in the formula.
@@ -625,13 +650,18 @@ class GRUCell(RNNCellBase):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             x = paddle.randn((4, 16))
             prev_h = paddle.randn((4, 32))
 
             cell = paddle.nn.GRUCell(16, 32)
             y, h = cell(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,32]
+            #[4,32]
 
     """
 
@@ -707,7 +737,7 @@ class RNN(Layer):
     It performs :code:`cell.forward()` repeatedly until reaches to the maximum 
     length of `inputs`.
 
-    Arguments:
+    Parameters:
         cell(RNNCellBase): An instance of `RNNCellBase`.
         is_reverse (bool, optional): Indicate whether to calculate in the reverse
             order of input sequences. Defaults to False.
@@ -717,8 +747,8 @@ class RNN(Layer):
     Inputs:
         inputs (Tensor): A (possibly nested structure of) tensor[s]. The input 
             sequences. 
-            If time major is True, the shape is `[batch_size, time_steps, input_size]`
-            If time major is False, the shape is [time_steps, batch_size, input_size]`
+            If time major is False, the shape is `[batch_size, time_steps, input_size]`
+            If time major is True, the shape is `[time_steps, batch_size, input_size]`
             where `input_size` is the input size of the cell.
         initial_states (Tensor|list|tuple, optional): Tensor of a possibly 
             nested structure of tensors, representing the initial state for 
@@ -753,7 +783,6 @@ class RNN(Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             inputs = paddle.rand((4, 23, 16))
             prev_h = paddle.randn((4, 32))
@@ -761,6 +790,12 @@ class RNN(Layer):
             cell = paddle.nn.SimpleRNNCell(16, 32)
             rnn = paddle.nn.RNN(cell)
             outputs, final_states = rnn(inputs, prev_h)
+
+            print(outputs.shape)
+            print(final_states.shape)
+
+            #[4,23,32]
+            #[4,32]
 
     """
 
@@ -778,19 +813,14 @@ class RNN(Layer):
                 initial_states=None,
                 sequence_length=None,
                 **kwargs):
-        if initial_states is None:
-            initial_states = self.cell.get_initial_states(
-                batch_ref=inputs,
-                dtype=inputs.dtype,
-                batch_dim_idx=self.batch_index)
-
-        final_outputs, final_states = F.rnn(self.cell,
-                                            inputs,
-                                            initial_states=initial_states,
-                                            sequence_length=sequence_length,
-                                            time_major=self.time_major,
-                                            is_reverse=self.is_reverse,
-                                            **kwargs)
+        final_outputs, final_states = paddle.fluid.layers.rnn(
+            self.cell,
+            inputs,
+            initial_states=initial_states,
+            sequence_length=sequence_length,
+            time_major=self.time_major,
+            is_reverse=self.is_reverse,
+            **kwargs)
         return final_outputs, final_states
 
 
@@ -801,7 +831,7 @@ class BiRNN(Layer):
     backward RNN with coresponding cells separately and concats the outputs 
     along the last axis.
 
-    Arguments:
+    Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
         time_major (bool): Whether the first dimension of the input means the
@@ -847,7 +877,6 @@ class BiRNN(Layer):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             cell_fw = paddle.nn.LSTMCell(16, 32)
             cell_bw = paddle.nn.LSTMCell(16, 32)
@@ -855,6 +884,12 @@ class BiRNN(Layer):
 
             inputs = paddle.rand((2, 23, 16))
             outputs, final_states = rnn(inputs)
+
+            print(outputs.shape)
+            print(final_states[0][0].shape,len(final_states),len(final_states[0]))
+
+            #[4,23,64]
+            #[2,32] 2 2
 
     """
 
@@ -880,20 +915,194 @@ class BiRNN(Layer):
         if isinstance(initial_states, (list, tuple)):
             assert len(initial_states) == 2, \
                 "length of initial_states should be 2 when it is a list/tuple"
-        else:
-            initial_states = [initial_states, initial_states]
 
-        outputs, final_states = F.birnn(self.cell_fw, self.cell_bw, inputs,
-                                        initial_states, sequence_length,
-                                        self.time_major, **kwargs)
+        outputs, final_states = paddle.fluid.layers.birnn(
+            self.cell_fw, self.cell_bw, inputs, initial_states, sequence_length,
+            self.time_major, **kwargs)
         return outputs, final_states
 
 
-class RNNMixin(LayerList):
+class RNNBase(LayerList):
     r"""
-    A Mixin class for RNN networks. It provides `forward` method for SimpleRNN,
-    LSTM and GRU.
+    RNNBase class for RNN networks. It provides `forward`, `flatten_parameters`
+    and other common methods for SimpleRNN, LSTM and GRU.
     """
+
+    def __init__(self,
+                 mode,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 time_major=False,
+                 dropout=0.,
+                 weight_ih_attr=None,
+                 weight_hh_attr=None,
+                 bias_ih_attr=None,
+                 bias_hh_attr=None):
+        super(RNNBase, self).__init__()
+        self.mode = mode
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.dropout = dropout
+        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.time_major = time_major
+        self.num_layers = num_layers
+        self.state_components = 2 if mode == "LSTM" else 1
+
+        kwargs = {
+            "weight_ih_attr": weight_ih_attr,
+            "weight_hh_attr": weight_hh_attr,
+            "bias_ih_attr": bias_ih_attr,
+            "bias_hh_attr": bias_hh_attr
+        }
+
+        if mode == "LSTM":
+            rnn_cls = LSTMCell
+        elif mode == "GRU":
+            rnn_cls = GRUCell
+        else:
+            rnn_cls = SimpleRNNCell
+            kwargs["activation"] = self.activation
+
+        if direction in ["forward", "backward"]:
+            is_reverse = direction == "backward"
+            cell = rnn_cls(input_size, hidden_size, **kwargs)
+            self.append(RNN(cell, is_reverse, time_major))
+            for i in range(1, num_layers):
+                cell = rnn_cls(hidden_size, hidden_size, **kwargs)
+                self.append(RNN(cell, is_reverse, time_major))
+        elif direction == "bidirectional":
+            cell_fw = rnn_cls(input_size, hidden_size, **kwargs)
+            cell_bw = rnn_cls(input_size, hidden_size, **kwargs)
+            self.append(BiRNN(cell_fw, cell_bw, time_major))
+            for i in range(1, num_layers):
+                cell_fw = rnn_cls(2 * hidden_size, hidden_size, **kwargs)
+                cell_bw = rnn_cls(2 * hidden_size, hidden_size, **kwargs)
+                self.append(BiRNN(cell_fw, cell_bw, time_major))
+        else:
+            raise ValueError(
+                "direction should be forward, backward or bidirectional, "
+                "received direction = {}".format(direction))
+
+        self.could_use_cudnn = get_device().startswith(
+            "gpu:") and get_cudnn_version()
+        self.could_use_cudnn &= direction != "backward"
+        self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
+            2 if direction == "bidirectional" else 1)
+        self.could_use_cudnn &= mode == "LSTM"  # currently only support LSTM
+
+        # Expose params as RNN's attribute, which can make it compatible when
+        # replacing small ops composed rnn with cpp rnn kernel.
+        # Moreover, `jit.to_static` assumes params are added by current layer
+        # and wouldn't include sublayer's params in current layer, which also
+        # requires these params are added to current layer for `jit.save`.
+        param_names = []
+        for layer in range(self.num_layers):
+            for direction in range(self.num_directions):
+                suffix = '_reverse' if direction == 1 else ''
+                param_names.extend(['weight_ih_l{}{}', 'weight_hh_l{}{}'])
+                if bias_ih_attr != False: param_names.append('bias_ih_l{}{}')
+                if bias_hh_attr != False: param_names.append('bias_hh_l{}{}')
+                param_names = [x.format(layer, suffix) for x in param_names]
+        for name, param in zip(param_names, self.parameters()):
+            setattr(self, name, param)
+
+        self.flatten_parameters()
+
+    def flatten_parameters(self):
+        """
+        Resets parameter data pointer to address in continuous memory block for
+        cudnn usage.
+        """
+        if self.could_use_cudnn:
+            # layer.parameters() is depth first and ordered
+            # for i in layer: for j in direct: w_ih, w_hh, b_ih, b_hh
+            # need to reorganize to cudnn param layout:
+            # all bias following all weights
+            params = self.parameters(include_sublayers=False)
+            shape = [np.prod(param.shape) for param in params]
+            self._all_weights = [None] * len(params)
+            for i, param in enumerate(params):
+                offset = 0 if i % 4 < 2 else (2 * self.num_layers *
+                                              self.num_directions)
+                layer_idx = i // 4
+                self._all_weights[offset + layer_idx * 2 + i % 2] = param
+            # Wrap using a list to avoid registed into params and saving, maybe
+            # need a better way to handle this later. Use `create_parameter` to
+            # add both to main_program and startup_program for static-graph.
+            # Use Constant initializer to avoid make effect on random generator.
+            self._flat_weight = [
+                self.create_parameter(
+                    shape=[np.sum(shape)],
+                    dtype=params[0].dtype,
+                    default_initializer=I.Constant(0.0))
+            ]
+            # dropout state may also can be hided and avoid saving
+            # should dropout state be persistable for static-graph
+            self._dropout_state = self.create_variable(
+                dtype=fluid.core.VarDesc.VarType.UINT8)
+            # for static-graph, append coalesce_tensor into startup program
+            with fluid.program_guard(fluid.default_startup_program(),
+                                     fluid.default_startup_program()):
+                with framework.no_grad():
+                    self._helper.append_op(
+                        type="coalesce_tensor",
+                        inputs={"Input": self._all_weights},
+                        outputs={
+                            "Output": self._all_weights,
+                            "FusedOutput": self._flat_weight
+                        },
+                        attrs={
+                            "copy_data": True,
+                            "use_align": False,
+                            "dtype": params[0].dtype
+                        })
+
+    def _cudnn_impl(self, inputs, initial_states, sequence_length):
+        if not self.time_major:
+            inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
+        # unify LSTM/GRU/SimpleRNN later, currently only support LSTM
+        # TODO(guosheng): use `core.ops.cudnn_lstm` in dygraph mode if support
+        # specify output, since `dropout_state` should be a persistable tensor
+        # rather than a temporary on.
+        out = self._helper.create_variable_for_type_inference(inputs.dtype)
+        last_h = self._helper.create_variable_for_type_inference(inputs.dtype)
+        last_c = self._helper.create_variable_for_type_inference(inputs.dtype)
+        reserve = self._helper.create_variable_for_type_inference(
+            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+        inputs = {
+            'Input': inputs,
+            # 'W': self._flat_weight,  # would be unused_var
+            'WeightList': self._all_weights,
+            'InitH': initial_states[0],
+            'InitC': initial_states[1],
+            'SequenceLength': sequence_length
+        }
+        attrs = {
+            'dropout_prob': self.dropout,
+            'is_bidirec': self.num_directions == 2,
+            'input_size': self.input_size,
+            'hidden_size': self.hidden_size,
+            'num_layers': self.num_layers,
+            'is_test': not self.training
+        }
+
+        outputs = {
+            'Out': out,
+            'LastH': last_h,
+            'LastC': last_c,
+            'Reserve': reserve,
+            'StateOut': self._dropout_state,
+        }
+
+        self._helper.append_op(
+            type="cudnn_lstm", inputs=inputs, outputs=outputs, attrs=attrs)
+        out = paddle.tensor.transpose(out,
+                                      [1, 0, 2]) if not self.time_major else out
+        states = (last_h, last_c)
+        return out, states
 
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
@@ -910,6 +1119,10 @@ class RNNMixin(LayerList):
                         inputs, state_shape, dtype, 0, batch_index, 1)
                     for _ in range(self.state_components)
                 ])
+
+        if self.could_use_cudnn:
+            # Add CPU kernel and dispatch in backend later
+            return self._cudnn_impl(inputs, initial_states, sequence_length)
 
         states = split_states(initial_states, self.num_directions == 2,
                               self.state_components)
@@ -931,7 +1144,7 @@ class RNNMixin(LayerList):
         return outputs, final_states
 
 
-class SimpleRNN(RNNMixin):
+class SimpleRNN(RNNBase):
     r"""
     Multilayer Elman network(SimpleRNN). It takes input sequences and initial 
     states as inputs, and returns the output sequences and the final states.
@@ -944,31 +1157,35 @@ class SimpleRNN(RNNMixin):
 
     .. math::
 
-        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`act` is for :attr:`activation` , and * is the elemetwise
     multiplication operator.
 
-    Arguments:
+    Using key word arguments to construct is recommended.
+
+    Parameters:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        activation (str, optional): The activation in each SimpleRNN cell. It can be 
-            `tanh` or `relu`. Defaults to `tanh`.
         direction (str, optional): The direction of the network. It can be "forward", 
-            "backward" and "bidirectional". Defaults to "forward".
-        dropout (float, optional): The droput probability. Dropout is applied to the 
-            input of each layer except for the first layer. Defaults to 0.
+            "backward" and "bidirectional". When "bidirectional", the way to merge
+            outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
+        dropout (float, optional): The droput probability. Dropout is applied to the 
+            input of each layer except for the first layer. Defaults to 0.
+        activation (str, optional): The activation in each SimpleRNN cell. It can be 
+            `tanh` or `relu`. Defaults to `tanh`.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Defaults to None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
             `weight_hh` of each cell. Defaults to None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih` of each cells. Defaults to None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Defaults to None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -978,7 +1195,7 @@ class SimpleRNN(RNNMixin):
             If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
             else, the shape is `[batch_size, time_steps, hidden_size]`.
         initial_states (Tensor, optional): the initial state. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            `[num_layers * num_directions, batch_size, hidden_size]`. 
             If initial_state is not given, zero initial states are used.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
             or int32. The valid lengths of input sequences. Defaults to None.
@@ -996,16 +1213,26 @@ class SimpleRNN(RNNMixin):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
         final_states (Tensor): final states. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`.
+            `[num_layers * num_directions, batch_size, hidden_size]`.
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
+
+    Attributes:
+        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
+            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
+            the shape is `[hidden_size, num_directions * hidden_size]`.
+        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
+            with shape `[hidden_size, hidden_size]`.
+        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.SimpleRNN(16, 32, 2)
 
@@ -1013,65 +1240,40 @@ class SimpleRNN(RNNMixin):
             prev_h = paddle.randn((2, 4, 32))
             y, h = rnn(x, prev_h)
 
+            print(y.shape)
+            print(h.shape)
+
+            #[4,23,32]
+            #[2,4,32]
+
     """
 
     def __init__(self,
                  input_size,
                  hidden_size,
                  num_layers=1,
-                 activation="tanh",
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
+                 activation="tanh",
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(SimpleRNN, self).__init__()
-
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
-            cell = SimpleRNNCell(input_size, hidden_size, activation,
-                                 weight_ih_attr, weight_hh_attr, bias_ih_attr,
-                                 bias_hh_attr)
-            self.append(RNN(cell, is_reverse, time_major))
-            for i in range(1, num_layers):
-                cell = SimpleRNNCell(hidden_size, hidden_size, activation,
-                                     weight_ih_attr, weight_hh_attr,
-                                     bias_ih_attr, bias_hh_attr)
-                self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
-            cell_fw = SimpleRNNCell(input_size, hidden_size, activation,
-                                    weight_ih_attr, weight_hh_attr,
-                                    bias_ih_attr, bias_hh_attr)
-            cell_bw = SimpleRNNCell(input_size, hidden_size, activation,
-                                    weight_ih_attr, weight_hh_attr,
-                                    bias_ih_attr, bias_hh_attr)
-            self.append(BiRNN(cell_fw, cell_bw, time_major))
-            for i in range(1, num_layers):
-                cell_fw = SimpleRNNCell(
-                    2 * hidden_size, hidden_size, activation, weight_ih_attr,
-                    weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                cell_bw = SimpleRNNCell(
-                    2 * hidden_size, hidden_size, activation, weight_ih_attr,
-                    weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(BiRNN(cell_fw, cell_bw, time_major))
+        if activation == "tanh":
+            mode = "RNN_TANH"
+        elif activation == "relu":
+            mode = "RNN_RELU"
         else:
-            raise ValueError(
-                "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
-
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
-        self.time_major = time_major
-        self.num_layers = num_layers
-        self.state_components = 1
+            raise ValueError("Unknown activation '{}'".format(activation))
+        self.activation = activation
+        super(SimpleRNN, self).__init__(
+            mode, input_size, hidden_size, num_layers, direction, time_major,
+            dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
-class LSTM(RNNMixin):
+class LSTM(RNNBase):
     r"""
     Multilayer LSTM. It takes a sequence and an initial state as inputs, and 
     returns the output sequences and the final states.
@@ -1085,33 +1287,42 @@ class LSTM(RNNMixin):
     .. math::
 
         i_{t} & = \sigma(W_{ii}x_{t} + b_{ii} + W_{hi}h_{t-1} + b_{hi})
+
         f_{t} & = \sigma(W_{if}x_{t} + b_{if} + W_{hf}h_{t-1} + b_{hf})
+
         o_{t} & = \sigma(W_{io}x_{t} + b_{io} + W_{ho}h_{t-1} + b_{ho})
-        \\widetilde{c}_{t} & = \\tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
-        c_{t} & = f_{t} \* c{t-1} + i{t} \* \\widetile{c}_{t}
-        h_{t} & = o_{t} \* \\tanh(c_{t})
+
+        \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
+
+        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
+
+        h_{t} & = o_{t} * \tanh(c_{t})
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
-    Arguments:
+    Using key word arguments to construct is recommended.
+
+    Parameters:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be 
-            "forward", "backward" and "bidirectional". Defaults to "forward".
-        dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+        direction (str, optional): The direction of the network. It can be "forward", 
+            "backward" and "bidirectional". When "bidirectional", the way to merge
+            outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
+        dropout (float, optional): The droput probability. Dropout is applied 
+            to the input of each layer except for the first layer. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
             `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih` of each cells. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1121,7 +1332,7 @@ class LSTM(RNNMixin):
             If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
             else, the shape is `[batch_size, time_steps, hidden_size]`.
         initial_states (tuple, optional): the initial state, a tuple of (h, c), 
-            the shape of each is `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. 
             If initial_state is not given, zero initial states are used.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
             or int32. The valid lengths of input sequences. Defaults to None.
@@ -1138,18 +1349,28 @@ class LSTM(RNNMixin):
             `[batch_size, time_steps, num_directions * hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1. 
-        final_states (Tensor): the final state, a tuple of two tensors, h and c. 
+        final_states (tuple): the final state, a tuple of two tensors, h and c. 
             The shape of each is 
-            `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            `[num_layers * num_directions, batch_size, hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
+
+    Attributes:
+        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
+            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
+            the shape is `[hidden_size, num_directions * hidden_size]`.
+        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
+            with shape `[hidden_size, hidden_size]`.
+        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
 
     Examples:
     
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.LSTM(16, 32, 2)
 
@@ -1158,6 +1379,14 @@ class LSTM(RNNMixin):
             prev_c = paddle.randn((2, 4, 32))
             y, (h, c) = rnn(x, (prev_h, prev_c))
 
+            print(y.shape)
+            print(h.shape)
+            print(c.shape)
+
+            #[4,23,32]
+            #[2,4,32]
+            #[2,4,32]
+
     """
 
     def __init__(self,
@@ -1165,51 +1394,19 @@ class LSTM(RNNMixin):
                  hidden_size,
                  num_layers=1,
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(LSTM, self).__init__()
-
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
-            cell = LSTMCell(input_size, hidden_size, weight_ih_attr,
-                            weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(RNN(cell, is_reverse, time_major))
-            for i in range(1, num_layers):
-                cell = LSTMCell(hidden_size, hidden_size, weight_ih_attr,
-                                weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
-            cell_fw = LSTMCell(input_size, hidden_size, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            cell_bw = LSTMCell(input_size, hidden_size, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(BiRNN(cell_fw, cell_bw, time_major))
-            for i in range(1, num_layers):
-                cell_fw = LSTMCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                   weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                cell_bw = LSTMCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                   weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(BiRNN(cell_fw, cell_bw, time_major))
-        else:
-            raise ValueError(
-                "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
-
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
-        self.time_major = time_major
-        self.num_layers = num_layers
-        self.state_components = 2
+        super(LSTM, self).__init__(
+            "LSTM", input_size, hidden_size, num_layers, direction, time_major,
+            dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
-class GRU(RNNMixin):
+class GRU(RNNBase):
     r"""
     Multilayer GRU. It takes input sequencse and initial states as inputs, and 
     returns the output sequences and the final states.
@@ -1223,31 +1420,38 @@ class GRU(RNNMixin):
     .. math::
 
         r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t} + b_{hr})
-        z_{t} & = \sigma(W_{iz)x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
-        \\widetilde{h}_{t} & = \\tanh(W_{ic)x_{t} + b_{ic} + r_{t} \* (W_{hc}x_{t} + b{hc}))
-        h_{t} & = z_{t} \* h_{t-1} + (1 - z_{t}) \* \\widetilde{h}_{t}
+
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t} + b_{hz})
+
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t} + b_{hc}))
+
+        h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
+
         y_{t} & = h_{t}
 
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`\sigma` is the sigmoid fucntion, and * is the elemetwise 
     multiplication operator.
 
-    Arguments:
+    Using key word arguments to construct is recommended.
+
+    Parameters:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be 
-            "forward", "backward" and "bidirectional". Defaults to "forward".
-        dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+        direction (str, optional): The direction of the network. It can be "forward",
+            "backward" and "bidirectional". When "bidirectional", the way to merge
+            outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
+        dropout (float, optional): The droput probability. Dropout is applied 
+            to the input of each layer except for the first layer. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
             `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_ih` of each cells. Default: None.
-        bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
+        bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
             `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1257,7 +1461,7 @@ class GRU(RNNMixin):
             If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
             else, the shape is `[batch_size, time_steps, hidden_size]`.
         initial_states (Tensor, optional): the initial state. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            `[num_layers * num_directions, batch_size, hidden_size]`. 
             If initial_state is not given, zero initial states are used. 
             Defaults to None.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
@@ -1276,22 +1480,38 @@ class GRU(RNNMixin):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
         final_states (Tensor): final states. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`.
+            `[num_layers * num_directions, batch_size, hidden_size]`.
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
+
+    Attributes:
+        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
+            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
+            the shape is `[hidden_size, num_directions * hidden_size]`.
+        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
+            with shape `[hidden_size, hidden_size]`.
+        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
+        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
+            with shape `[hidden_size]`.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             rnn = paddle.nn.GRU(16, 32, 2)
 
             x = paddle.randn((4, 23, 16))
             prev_h = paddle.randn((2, 4, 32))
             y, h = rnn(x, prev_h)
+
+            print(y.shape)
+            print(h.shape)
+
+            #[4,23,32]
+            #[2,4,32]
 
     """
 
@@ -1300,45 +1520,13 @@ class GRU(RNNMixin):
                  hidden_size,
                  num_layers=1,
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(GRU, self).__init__()
-
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
-            cell = GRUCell(input_size, hidden_size, weight_ih_attr,
-                           weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(RNN(cell, is_reverse, time_major))
-            for i in range(1, num_layers):
-                cell = GRUCell(hidden_size, hidden_size, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
-            cell_fw = GRUCell(input_size, hidden_size, weight_ih_attr,
-                              weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            cell_bw = GRUCell(input_size, hidden_size, weight_ih_attr,
-                              weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(BiRNN(cell_fw, cell_bw, time_major))
-            for i in range(1, num_layers):
-                cell_fw = GRUCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                  weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                cell_bw = GRUCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                  weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(BiRNN(cell_fw, cell_bw, time_major))
-        else:
-            raise ValueError(
-                "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
-
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
-        self.time_major = time_major
-        self.num_layers = num_layers
-        self.state_components = 1
+        super(GRU, self).__init__(
+            "GRU", input_size, hidden_size, num_layers, direction, time_major,
+            dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
