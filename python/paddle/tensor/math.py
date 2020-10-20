@@ -21,7 +21,7 @@ from paddle.common_ops_import import *
 from paddle.tensor import cast
 import paddle
 from ..fluid import layers
-from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
+from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
@@ -1935,3 +1935,201 @@ def increment(x, value=1.0, name=None):
         outputs={'Out': [x]},
         attrs={'step': float(value)})
     return x
+
+
+def all(x, axis=None, keepdim=False, name=None):
+    """
+    Computes the the ``logical and`` of tensor elements over the given dimension.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be `bool`.
+        axis (int|list|tuple, optional): The dimensions along which the ``logical and`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor variable with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Raises:
+        ValueError: If the data type of `x` is not bool.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+            
+            # set as static mode
+            paddle.disable_static()
+            
+            # x is a bool Tensor variable with following elements:
+            #    [[True, False]
+            #     [True, True]]
+            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            print(x)
+            x = layers.cast(x, 'bool')
+            
+            # result should be False
+            out = paddle.all(x)
+            print(out)
+            
+            # result should be [True, False]
+            out = paddle.all(x, dim=0)
+            print(out)
+            
+            # keep_dim=False, result should be [False, True], out.shape should be (2,)
+            out = paddle.all(x, dim=-1)
+            print(out)
+            
+            # keep_dim=True, result should be [[False], [True]], out.shape should be (2,1)
+            out = paddle.all(x, dim=1, keep_dim=True)
+            out1 = layers.cast(out, 'int32')
+            print(out1)
+            
+    """
+    if axis is not None and not isinstance(axis, (list, tuple)):
+        axis = [axis]
+
+    if not axis:
+        reduce_all_flag = True
+    else:
+        if len(axis) == len(x.shape):
+            reduce_all_flag = True
+        else:
+            reduce_all_flag = False
+
+    attrs = {
+        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'keep_dim': keepdim,
+        'reduce_all': reduce_all_flag
+    }
+    dtype_flag = False
+
+
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return core.ops.reduce_all(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+    check_variable_and_dtype(x, 'x', ['bool'], 'all')
+
+
+    check_type(axis, 'axis', (int, list, tuple, type(None)), 'all')
+
+    helper = LayerHelper('all', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='reduce_all',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
+def any(x, axis=None, keepdim=False, name=None):
+    """
+    Computes the the ``logical or`` of tensor elements over the given dimension.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be `bool`.
+        axis (int|list|tuple, optional): The dimensions along which the ``logical or`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor variable with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Raises:
+        ValueError: If the data type of `x` is not bool.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            import numpy as np
+            
+            # set as static mode
+            paddle.disable_static()
+            
+            # x is a bool Tensor variable with following elements:
+            #    [[True, False]
+            #     [False, False]]
+            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            print(x)
+            x = layers.cast(x, 'bool')
+            
+            # result should be True
+            out = layers.reduce_any(x)
+            print(out)
+            
+            # result should be [True, False]
+            out = layers.reduce_any(x, dim=0)
+            print(out)
+            
+            # keep_dim=False, result should be [True, False], out.shape should be (2,)
+            out = layers.reduce_any(x, dim=-1)
+            print(out)
+            
+            # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
+            out = .reduce_any(x, dim=1, keep_dim=True)
+            out1 = layers.cast(out, 'int32')
+            print(out1)
+            
+    """
+    if axis is not None and not isinstance(axis, (list, tuple)):
+        axis = [axis]
+
+    if not axis:
+        reduce_all_flag = True
+    else:
+        if len(axis) == len(x.shape):
+            reduce_all_flag = True
+        else:
+            reduce_all_flag = False
+
+    attrs = {
+        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'keep_dim': keepdim,
+        'reduce_all': reduce_all_flag
+    }
+    dtype_flag = False
+
+
+    if in_dygraph_mode():
+        axis = axis if axis != None and axis != [] else [0]
+        return core.ops.reduce_any(x, 'dim', axis, 'keep_dim', keepdim,
+                                       'reduce_all', reduce_all_flag)
+    check_variable_and_dtype(x, 'x', ['bool'], 'any')
+
+
+    check_type(axis, 'axis', (int, list, tuple, type(None)), 'any')
+
+    helper = LayerHelper('any', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='reduce_any',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out

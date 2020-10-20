@@ -45,8 +45,6 @@ __all__ = [
     'logical_xor',
     'not_equal',
     'allclose',
-    'all',
-    'any',
     #       'isnan'
 ]
 
@@ -375,107 +373,4 @@ def not_equal(x, y, name=None):
             print(result1.numpy())  # result1 = [False True True]
     """
     out = fluid.layers.not_equal(x, y, name=name, cond=None)
-    return out
-
-
-@templatedoc()
-def all(x, dim=None, keep_dim=False, name=None):
-    """
-	:alias_main: paddle.all
-	:alias: paddle.all, paddle.tensor.all, paddle.tensor.logic.all
-
-    This layer computes the ``logical and`` of tensor elements over the given dimension, and output the result.
-    **NOTICE**: The output of this OP has no gradient.
-
-    Args:
-        x(Tensor): The input Tensor's type should be `bool`.
-        dim (list|int|optional): The dimension along which the logical and is computed.
-            If :attr:`None`, compute the logical and over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`. The default value is None.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true. The default value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: the data type is bool. The result of this op is stop_gradient.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle.fluid.layers as layers
-          import numpy as np
-
-          # x is a bool Tensor variable with following elements:
-          #    [[True, False]
-          #     [True, True]]
-          x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
-          x = layers.cast(x, 'bool')
-
-          out = layers.reduce_all(x)  # False
-          out = layers.reduce_all(x, dim=0)  # [True, False]
-          out = layers.reduce_all(x, dim=-1)  # [False, True]
-          # keep_dim=False, x.shape=(2,2), out.shape=(2,)
-
-          out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
-          # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
-          
-    """
-    out = fluid.layers.reduce_all(x, dim=dim, keep_dim=keep_dim, name=name)
-    return out
-
-
-@templatedoc()
-def any(x, dim=None, keep_dim=False, name=None):
-    """
-	:alias_main: paddle.any
-	:alias: paddle.any, paddle.tensor.any, paddle.tensor.logic.any
-
-    This layer computes the ``logical any`` of tensor elements over the given dimension, and output the result.
-    **NOTICE**: The output of this OP has no gradient.
-
-    Args:
-        x(Tensor): The input Tensor's type should be `bool`.
-        dim (list|int|optional): The dimension along which the logical and is computed.
-            If :attr:`None`, compute the logical and over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`. The default value is None.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true. The default value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: the data type is bool. The result of this op is stop_gradient.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle.fluid.layers as layers
-          import numpy as np
-
-          # x is a bool Tensor variable with following elements:
-          #    [[True, False]
-          #     [False, False]]
-          x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
-          x = layers.cast(x, 'bool')
-
-          out = layers.reduce_any(x)  # True
-          out = layers.reduce_any(x, dim=0)  # [True, False]
-          out = layers.reduce_any(x, dim=-1)  # [True, False]
-          # keep_dim=False, x.shape=(2,2), out.shape=(2,)
-
-          out = layers.reduce_any(x, dim=1,
-                                     keep_dim=True)  # [[True], [False]]
-          # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
-
-    """
-    out = fluid.layers.reduce_all(x, dim=dim, keep_dim=keep_dim, name=name)
     return out
