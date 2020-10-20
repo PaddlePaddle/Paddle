@@ -104,7 +104,7 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   struct hostent *hp;
   if ((hp = gethostbyname(host.c_str())) == NULL) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Fail to get host by name %s to MKLDNN format.", host));
+        "Fail to get host by name %s.", host));
   }
   int i = 0;
   while (hp->h_addr_list[i] != NULL) {
