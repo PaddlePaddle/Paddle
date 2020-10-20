@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {

@@ -87,8 +87,9 @@ class MishCUDAKernel : public framework::OpKernel<T> {
 
     const int numel = x->numel();
 
-    platform::GpuLaunchConfig config = platform::getGpuLaunchConfig(numel, ctx);
-    KeMishFw<T><<<config.blocks, config.threads, 0,
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), numel);
+    KeMishFw<T><<<config.block_per_grid, config.thread_per_block, 0,
                   ctx.cuda_device_context().stream()>>>(x_data, out_data, numel,
                                                         threshold);
   }
@@ -108,8 +109,9 @@ class MishFP32CUDAKernel : public framework::OpKernel<float> {
 
     const int numel = x->numel();
 
-    platform::GpuLaunchConfig config = platform::getGpuLaunchConfig(numel, ctx);
-    KeMishFwFP32<<<config.blocks, config.threads, 0,
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), numel);
+    KeMishFwFP32<<<config.block_per_grid, config.thread_per_block, 0,
                    ctx.cuda_device_context().stream()>>>(x_data, out_data,
                                                          numel, threshold);
   }
@@ -131,8 +133,9 @@ class MishGradCUDAKernel : public framework::OpKernel<T> {
 
     const int numel = x->numel();
 
-    platform::GpuLaunchConfig config = platform::getGpuLaunchConfig(numel, ctx);
-    KeMishBw<T><<<config.blocks, config.threads, 0,
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), numel);
+    KeMishBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                   ctx.cuda_device_context().stream()>>>(
         x_data, dout_data, dx_data, numel, threshold);
   }
@@ -154,8 +157,9 @@ class MishGradFP32CUDAKernel : public framework::OpKernel<float> {
 
     const int numel = x->numel();
 
-    platform::GpuLaunchConfig config = platform::getGpuLaunchConfig(numel, ctx);
-    KeMishBwFP32<<<config.blocks, config.threads, 0,
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), numel);
+    KeMishBwFP32<<<config.block_per_grid, config.thread_per_block, 0,
                    ctx.cuda_device_context().stream()>>>(
         x_data, dout_data, dx_data, numel, threshold);
   }
