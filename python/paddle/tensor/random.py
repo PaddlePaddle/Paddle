@@ -380,7 +380,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Examples:
+
     ::
+
         Input:
           shape = [1, 2]
         Output:
