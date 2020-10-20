@@ -14,9 +14,8 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'create_parameter', 'ParamAttr',
-    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace', 'get_default_dtype',
-    'set_default_dtype'
+    'create_parameter', 'ParamAttr', 'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace',
+    'get_default_dtype', 'set_default_dtype'
 ]
 
 __all__ += [
