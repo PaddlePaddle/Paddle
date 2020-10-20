@@ -14,6 +14,7 @@
 from ..optimizer import Optimizer
 from ..regularizer import L1DecayRegularizer
 from ..regularizer import L2DecayRegularizer
+from ..regularizer import append_regularization_ops
 from .. import framework
 from .. import core
 from ..framework import program_guard
@@ -79,7 +80,7 @@ class Momentum(Optimizer):
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
-                moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+                moment_optimizer = fluid.contrib.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
                 moment_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -133,10 +134,12 @@ class Momentum(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
-                                     velocity_acc, lr, param_and_grad[0],
-                                     velocity_acc, 'mu', self._momentum,
-                                     'use_nesterov', self._use_nesterov)
+            _, _ = core.ops.momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                param_and_grad[0], velocity_acc, 'mu', self._momentum,
+                'use_nesterov', self._use_nesterov, 'regularization_method',
+                self._regularization_method, 'regularization_coeff',
+                self._regularization_coeff)
             return None
 
         attrs = {
@@ -197,6 +200,11 @@ class Momentum(Optimizer):
         else:
             params_grads = append_gradient_clip_ops(params_grads)
 
+        # Add regularization if any none L2DecayRegularizer
+        if (not isinstance(self.regularization, L2DecayRegularizer)):
+            params_grads = append_regularization_ops(params_grads,
+                                                     self.regularization)
+
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
@@ -217,6 +225,12 @@ class Momentum(Optimizer):
                                framework.default_startup_program()):
                 if self._grad_clip is not None:
                     params_grads = self._grad_clip(params_grads)
+
+                # Add regularization if any none L2DecayRegularizer
+                if (not isinstance(self.regularization, L2DecayRegularizer)):
+                    params_grads = append_regularization_ops(
+                        params_grads, self.regularization)
+
                 optimize_ops = self._create_optimization_pass(params_grads)
         else:
             program = loss.block.program

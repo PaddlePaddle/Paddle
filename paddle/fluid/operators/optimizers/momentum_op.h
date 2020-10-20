@@ -104,16 +104,6 @@ class MomentumOp : public framework::OperatorWithKernel {
               param_dim, ctx->GetInputDim("Velocity")));
     }
 
-    std::string regularization_method =
-        ctx->Attrs().Get<std::string>("regularization_method");
-    if (regularization_method != "" || !regularization_method.empty()) {
-      PADDLE_ENFORCE_EQ("l2_decay", regularization_method,
-                        platform::errors::InvalidArgument(
-                            "if regularization_method is not null, "
-                            "it should be %s, but received %s",
-                            regularization_method));
-    }
-
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);
   }
@@ -418,6 +408,14 @@ class MomentumOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     std::string regularization_method =
         ctx.Attr<std::string>("regularization_method");
+    if (regularization_method != "" || !regularization_method.empty()) {
+      PADDLE_ENFORCE_EQ("l2_decay", regularization_method,
+                        platform::errors::InvalidArgument(
+                            "if regularization_method is not null, "
+                            "it should be %s, but received %s",
+                            regularization_method));
+    }
+
     T regularization_coeff =
         static_cast<T>(ctx.Attr<float>("regularization_coeff"));
     RegularizationFlag regularization_flag{

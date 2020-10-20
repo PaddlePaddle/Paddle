@@ -145,9 +145,11 @@ class TestLarsMomentumOp(OpTest):
         self.check_output()
 
 
-class TestSparseMomentumOp(unittest.TestCase):
+class __TestSparseMomentumOpCommon(unittest.TestCase):
     def setUp(self):
         self.use_nesterov = False
+        self.regularization_method = ""
+        self.regularization_coeff = 1.0
 
     def check_with_place(self, place):
         self.init_kernel()
@@ -158,6 +160,8 @@ class TestSparseMomentumOp(unittest.TestCase):
         row_numel = 12
         mu = 1.0
         use_nesterov = self.use_nesterov
+        regularization_method = self.regularization_method
+        regularization_coeff = self.regularization_coeff
 
         # create and initialize Param Variable
         param = scope.var('Param').get_tensor()
@@ -199,7 +203,9 @@ class TestSparseMomentumOp(unittest.TestCase):
             VelocityOut='VelocityOut',
             LearningRate='LearningRate',
             mu=mu,
-            use_nesterov=use_nesterov)
+            use_nesterov=use_nesterov,
+            regularization_method=regularization_method,
+            regularization_coeff=regularization_coeff)
         op.run(scope, place)
 
         # get and compare result
@@ -211,13 +217,28 @@ class TestSparseMomentumOp(unittest.TestCase):
         _grad_np_array = np.full((height, row_numel), 0.0).astype("float32")
         for i in range(len(rows)):
             _grad_np_array[rows[i]] = grad_np_array[i]
-        _velocity_out = mu * velocity_np_array + _grad_np_array
-        _param = param_array
-        if use_nesterov:
-            _param_out = _param - (_grad_np_array + _velocity_out * mu
-                                   ) * lr_array
+
+        if regularization_method == "l2_decay":
+            _param = param_array
+
+            _param_decay = regularization_coeff * _param
+            _grad_np_array_new = _grad_np_array + _param_decay
+            _grad_np_array = _grad_np_array_new
+
+            _velocity_out = mu * velocity_np_array + _grad_np_array
+            if use_nesterov:
+                _param_out = _param - (_grad_np_array + _velocity_out * mu
+                                       ) * lr_array
+            else:
+                _param_out = _param - lr_array * _velocity_out
         else:
-            _param_out = _param - lr_array * _velocity_out
+            _velocity_out = mu * velocity_np_array + _grad_np_array
+            _param = param_array
+            if use_nesterov:
+                _param_out = _param - (_grad_np_array + _velocity_out * mu
+                                       ) * lr_array
+            else:
+                _param_out = _param - lr_array * _velocity_out
         self.assertTrue((_velocity_out == velocity_out_np_array).all())
         self.assertTrue((_param_out == param_out_np_array).all())
 
@@ -230,6 +251,10 @@ class TestSparseMomentumOp(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
+
+
+class TestSparseMomentumOp(__TestSparseMomentumOpCommon):
+    pass
 
 
 class TestSparseMomentumOp2(TestSparseMomentumOp):
@@ -349,101 +374,11 @@ class TestMomentumOpWithDecay2(TestMomentumOpWithDecay):
         self.use_nesterov = False
 
 
-class TestSparseMomentumOpWithDecay(unittest.TestCase):
+class TestSparseMomentumOpWithDecay(__TestSparseMomentumOpCommon):
     def setUp(self):
         self.use_nesterov = False
-
-    def check_with_place(self, place):
-        self.init_kernel()
-        scope = core.Scope()
-        # create and initialize Grad Variable
-        height = 10
-        rows = [0, 4, 7]
-        row_numel = 12
-        mu = 1.0
-        use_nesterov = self.use_nesterov
-        regularization_method = 'l2_decay'
-        regularization_coeff = 0.9
-
-        # create and initialize Param Variable
-        param = scope.var('Param').get_tensor()
-        param_array = np.full((height, row_numel), 5.0).astype("float32")
-        param.set(param_array, place)
-        param_out = scope.var("ParamOut").get_tensor()
-        param_out_array = np.full((height, row_numel), 0.0).astype("float32")
-        param_out.set(param_out_array, place)
-
-        grad_selected_rows = scope.var('Grad').get_selected_rows()
-        grad_selected_rows.set_height(height)
-        grad_selected_rows.set_rows(rows)
-        grad_np_array = np.ones((len(rows), row_numel)).astype("float32")
-        grad_np_array[0, 0] = 2.0
-        grad_np_array[2, 8] = 4.0
-        grad_tensor = grad_selected_rows.get_tensor()
-        grad_tensor.set(grad_np_array, place)
-
-        velocity = scope.var('Velocity').get_tensor()
-        velocity_np_array = np.ones((height, row_numel)).astype("float32")
-        velocity.set(velocity_np_array, place)
-        velocity_out = scope.var('VelocityOut').get_tensor()
-        velocity_out_np_array = np.full((height, row_numel),
-                                        0.0).astype("float32")
-        velocity_out.set(velocity_out_np_array, place)
-
-        # create and initialize LeraningRate Variable
-        lr = scope.var('LearningRate').get_tensor()
-        lr_array = np.full((1), 2.0).astype("float32")
-        lr.set(lr_array, place)
-
-        # create and run operator
-        op = Operator(
-            "momentum",
-            Param='Param',
-            Grad='Grad',
-            Velocity='Velocity',
-            ParamOut='ParamOut',
-            VelocityOut='VelocityOut',
-            LearningRate='LearningRate',
-            mu=mu,
-            use_nesterov=use_nesterov,
-            regularization_method=regularization_method,
-            regularization_coeff=regularization_coeff)
-        op.run(scope, place)
-
-        # get and compare result
-        param_out_np_array = np.array(param_out)
-        velocity_out_np_array = np.array(velocity_out)
-
-        # TODO(dzh): add a more suitable general numpy interface
-        # for sparse update.
-        _grad_np_array = np.full((height, row_numel), 0.0).astype("float32")
-        for i in range(len(rows)):
-            _grad_np_array[rows[i]] = grad_np_array[i]
-
-        _param = param_array
-
-        _param_decay = regularization_coeff * _param
-        _grad_np_array_new = _grad_np_array + _param_decay
-        _grad_np_array = _grad_np_array_new
-
-        _velocity_out = mu * velocity_np_array + _grad_np_array
-        if use_nesterov:
-            _param_out = _param - (_grad_np_array + _velocity_out * mu
-                                   ) * lr_array
-        else:
-            _param_out = _param - lr_array * _velocity_out
-        self.assertTrue((_velocity_out == velocity_out_np_array).all())
-        self.assertTrue((_param_out == param_out_np_array).all())
-
-    def init_kernel(self):
-        pass
-
-    def test_sparse_momentum(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
-            self.check_with_place(place)
+        self.regularization_method = 'l2_decay'
+        self.regularization_coeff = 0.9
 
 
 class TestSparseMomentumOpWithDecay2(TestSparseMomentumOpWithDecay):
@@ -505,16 +440,12 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
         inp = paddle.to_tensor(inp)
         out = linear(inp)
         loss = paddle.mean(out)
-        # print('===line 506=== loss: ', loss)
-        # This can be any optimizer supported by dygraph.
         momentum.minimize(loss)
-        # print('===line 509=== loss: ', loss)
         return loss
 
     def test_vs(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(2, 2)
-        # This can be any optimizer supported by dygraph.
         momentum_old = paddle.fluid.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
@@ -523,7 +454,6 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
                 regularization_coeff=0.1))
         loss_old = self.__get_loss(momentum=momentum_old)
         loss_old = loss_old.numpy()
-        # print('===line 523=== loss_old: ', loss_old)
 
         momentum_new = paddle.fluid.contrib.optimizer.Momentum(
             learning_rate=0.01,
@@ -533,7 +463,6 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
                 regularization_coeff=0.1))
         loss_new = self.__get_loss(momentum=momentum_new)
         loss_new = loss_new.numpy()
-        # print('===line 534=== loss_new: ', loss_new)
 
 
 if __name__ == "__main__":
