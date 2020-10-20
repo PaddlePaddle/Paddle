@@ -488,8 +488,8 @@ class RequestSendAndRecv final : public RequestBase {
     int trainer_id = 0;
     DeserializeFromMultiVarMsg(multi_msg_, *request_handler_->dev_ctx(), scope,
                                trainer_id);
-    request_handler_->Handle(in_var_names, scope, invar, &outvar, trainer_id,
-                             out_var_names);
+    request_handler_->SetMultiVarNames(in_var_names, out_var_names);
+    request_handler_->Handle(message_name, scope, nullptr, nullptr, trainer_id);
     SerializeToByteBuffer(message_name, in_var_names, out_var_names,
                           *request_handler_->dev_ctx(), scope, &reply_)
         Finish(reply_, &responder_);

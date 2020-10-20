@@ -345,7 +345,9 @@ bool RequestSendAndRecvHandler::Handle(const std::string &varname,
           << " , trainer_id:  " << trainer_id;
 
   executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(), Scope);
-  *outvar = Scope->FindVar(out_var_name);
+  for (auto &out_var_name : out_var_names_) {
+    Scope->FindVar(out_var_name);
+  }
   return true;
 }
 

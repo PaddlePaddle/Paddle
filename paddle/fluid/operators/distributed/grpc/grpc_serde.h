@@ -55,12 +55,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const std::string& table_name = std::string());
 
 // for SendAndRecv of MultiVarMessage
-void SerializeToByteBuffer(const std::string& message_name,
-                           const std::vector<std::string>& send_var_name_val,
-                           const std::vector<std::string>& recv_var_name_val,
-                           const platform::DeviceContext& ctx,
-                           const framework::Scope* scope,
-                           ::grpc::ByteBuffer* buf, const int trainer_id = 0);
+void SerializeToMultiVarMsg(const std::string& message_name,
+                            const std::vector<std::string>& send_var_name_val,
+                            const std::vector<std::string>& recv_var_name_val,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope* scope, MultiVarMsg* request,
+                            const int trainer_id = 0);
 
 void SerializeLodTensorToVarMsg(const std::string& var_name,
                                 const framework::Scope& scope,
@@ -72,10 +72,13 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const framework::Scope* scope,
                                framework::Variable** var, int* trainer_id);
 
-void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
-                                   const platform::DeviceContext& ctx,
-                                   const framework::Scope* scope,
-                                   framework::Variable** var, int* trainer_id);
+void DeserializeFromMultiVarMsg(const sendrecv::MultiVariableMessage& multi_msg,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope* scope, int* trainer_id);
+
+void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope* scope, int* trainer_id);
 
 }  // namespace distributed
 }  // namespace operators

@@ -187,10 +187,21 @@ class RequestSendAndRecvHandler final : public RequestHandler {
   explicit RequestSendAndRecvHandler(int distributed_mode)
       : RequestHandler(distributed_mode) {}
   virtual ~RequestSendAndRecvHandler() {}
+
   bool Handle(const std::string& varname, framework::Scope* Scope,
               framework::Variable* var, framework::Variable** outvar,
               const int trainer_id, const std::string& out_var_name = "",
               const std::string& table_name = "") override;
+
+  void SetMultiVarNames(const std::vector<std::string>& in_var_names,
+                        const std::vector<std::string>& out_var_names) {
+    in_var_names_ = in_var_names;
+    out_var_names_ = out_var_names;
+  }
+
+ protected:
+  std::vector<std::string> in_var_names_ = {};
+  std::vector<std::string> out_var_names_ = {};
 };
 
 }  // namespace distributed

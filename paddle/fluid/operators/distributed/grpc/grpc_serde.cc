@@ -156,28 +156,28 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   msg->Swap(&tmp);
 }
 
-void SerializeToByteBuffer(const std::string& message_name,
-                           const std::vector<std::string>& send_var_name_val,
-                           const std::vector<std::string>& recv_var_name_val,
-                           const platform::DeviceContext& ctx,
-                           const framework::Scope* scope, MultiVarMsg* request,
-                           const int trainer_id = 0) {
+void SerializeToMultiVarMsg(const std::string& message_name,
+                            const std::vector<std::string>& send_var_name_val,
+                            const std::vector<std::string>& recv_var_name_val,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope* scope, MultiVarMsg* request,
+                            const int trainer_id = 0) {
   // 1. message_name
-  request.set_message_name(message_name);
+  request->set_message_name(message_name);
 
   // 2. send_var_names
   for (auto& send_var_name : send_var_name_val) {
-    request.add_send_var_names(send_var_name);
+    request->add_send_var_names(send_var_name);
   }
 
   // 3. recv_var_names
   for (auto& recv_var_name : recv_var_name_val) {
-    request.add_recv_var_names(recv_var_name);
+    request->add_recv_var_names(recv_var_name);
   }
 
   // 4. VarMessage
   for (auto& send_var_name : send_var_name_val) {
-    auto* send_var_msg = request.add_vars();
+    auto* send_var_msg = request->add_vars();
     // Todo: support selectedRows(MrChengmo)
     SerializeLodTensorToVarMsg(send_var_name, scope, ctx, trainer_id,
                                send_var_msg);
@@ -189,13 +189,13 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
                                 const platform::DeviceContext& ctx,
                                 const int trainer_id,
                                 VariableMessage* var_msg) {
-  Variable* var = scope->FindVar(varname);
+  framework::Variable* var = scope->FindVar(varname);
   if (var == nullptr) {
     // throw error
     return;
   }
 
-  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  framework::LoDTensor* tensor = var->GetMutable<LoDTensor>();
   var_msg->set_varname(var_name);
   var_msg->set_trainer_id(trainer_id);
   var_msg->set_type(::sendrecv::LOD_TENSOR);
@@ -250,19 +250,6 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
       resp.Parse(msg), 0,
       platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
   *var = resp.GetVar();
-  *trainer_id = resp.GetTrainerId();
-}
-
-void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
-                                   const platform::DeviceContext& ctx,
-                                   const framework::Scope* scope,
-                                   framework::Variable** var, int* trainer_id) {
-  platform::RecordRPCEvent record_event("deserial");
-  operators::distributed::GRPCVariableResponse resp(scope, &ctx);
-  PADDLE_ENFORCE_EQ(
-      resp.Parse(msg), 0,
-      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
-  *var = resp.GetRecvVar();
   *trainer_id = resp.GetTrainerId();
 }
 
