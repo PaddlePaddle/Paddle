@@ -97,6 +97,18 @@ class ShardingOptimizer(MetaOptimizerBase):
         print("startup_block remove ops and vars")
         self._prune_startup_program(startup_block)
 
+        import os
+        if not os.path.isdir("debug_program"):
+            os.mkdir("debug_program")
+
+        with open("debug_program/main_program.txt.%d" %
+                  (int(os.environ.get('FLAGS_selected_gpus', 0))), 'w') as f:
+            f.write(str(fluid.default_main_program()))
+
+        with open("debug_program/startup_program.txt.%d" %
+                  (int(os.environ.get('FLAGS_selected_gpus', 0))), 'w') as f:
+            f.write(str(fluid.default_startup_program()))
+
         # check op dependecy for broadcast
         check_broadcast(main_block)
         check_allreduce_sum(main_block)
@@ -133,6 +145,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
+        print("self._broadcast_vars")
+        print(self._broadcast_vars)
         for op_idx, op in reversed(list(enumerate(block.ops))):
             if int(op.attr('op_role')) != int(OpRole.Optimize):
                 last_backward_op_idx = op_idx + 1
@@ -148,10 +162,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                 segment = ProgramSegment(block)
                 segment._end_idx = op_idx + 1
 
+            print("-" * 20)
+            print(op.type, segment._param_mem)
             # find broadcast vars
             for input_name in op.desc.input_arg_names():
+                print(input_name)
                 if input_name not in self._broadcast_vars:
                     continue
+                    print("var in _broadcast_vars")
                 if input_name in segment._param2broadcast:
                     # skip broadcast because it reuse the old broadcast var
                     broadcast_name = segment._param2broadcast[input_name]
@@ -166,8 +184,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                     segment._fill_constant_vars.append(broadcast_var_name)
                 segment._param2broadcast[input_name] = broadcast_var_name
                 segment._broadcast_vars.append(
-                    broadcast_var_name,
-                    self._device_variables.device(input_name))
+                    (broadcast_var_name,
+                     self._device_variables.device(input_name)))
                 segment._param_mem += get_var_size(
                     self._main_program.global_block().var(input_name))
 
@@ -357,7 +375,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         _add_broadcast_allreduce
         """
         ring_id = -1
-
+        print("len(self._segments)")
+        print(len(self._segments))
         if len(self._segments) < 1:
             return
 
@@ -366,6 +385,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                                  self._nrings,
                                  self._segments[-1]._allreduce_vars)
             insert_allreduce_ops(block, self._segments[-1]._end_idx,
+                                 self._nrings,
                                  self._segments[-1]._allreduce_vars)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
@@ -403,7 +423,8 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step1: remove cast ops
             block._sync_with_cpp()
-            segment._end_idx += remove_cast_op(block, self._params, segment, 0)
+            segment._end_idx += FP16Utils.remove_cast_op(block, self._params,
+                                                         segment, 0)
 
             # step2: add Sync ops
             comm_dep_vars = allreduce_vars + [x[0] for x in broadcast_vars]
@@ -429,10 +450,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_cast_ops(block, segment._end_idx, cast_ops)
 
             # step5: add broadcast ops
-            insert_broadcast_ops(block, segment._start_idx, broadcast_vars)
+            insert_broadcast_ops(block, segment._start_idx, self._nrings,
+                                 broadcast_vars)
 
             # step6: add all_reduce ops
-            insert_allreduce_ops(block, segment._start_idx, allreduce_vars)
+            insert_allreduce_ops(block, segment._start_idx, self._nrings,
+                                 allreduce_vars)
 
             block._sync_with_cpp()
 
@@ -441,6 +464,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 block, self._segments[0]._start_idx, self._nrings,
                 [x[0] for x in self._segments[0]._broadcast_vars])
             insert_broadcast_ops(block, self._segments[0]._start_idx,
+                                 self._nrings,
                                  self._segments[0]._broadcast_vars)
 
         fill_constant_vars = reduce(

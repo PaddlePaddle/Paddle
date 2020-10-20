@@ -82,7 +82,7 @@ class FP16Utils(object):
         for op_idx in reversed(
                 range(offset + segment._start_idx, offset + segment._end_idx)):
             op = block.ops[op_idx]
-            if is_fp16_cast_op(block, op, params):
+            if FP16Utils.is_fp16_cast_op(block, op, params):
                 block._remove_op(op_idx)
                 inserted_op_num -= 1
         block._sync_with_cpp()
@@ -96,13 +96,13 @@ class DeviceVariables(object):
         self.worker_num = -1
         self.param2device = {}
 
-    def setup(self, params, worker_idx, worker_num):
+    def setup(self, params_grads, worker_idx, worker_num):
         # param names of all devices
-        self.params = params
+        self.params = set([x[0].name for x in params_grads])
         # _param(str) -> device_id(int) 
         self.worker_idx = worker_idx
         self.worker_num = worker_num
-        self.param2device = self._split_params(self.params, worker_idx,
+        self.param2device = self._split_params(params_grads, worker_idx,
                                                worker_num)
 
     def _split_params(self, params_grads, worker_idx, worker_num):
@@ -149,9 +149,8 @@ class DeviceVariables(object):
                 return self.param2device[base_name]
         return -1
 
-    def find_broadcast_params(
-            self,
-            block, ):
+    def find_broadcast_params(self, block):
+        print("----find_broadcast_params-----")
         broadcast_vars = set([])
         fp16_params = set([])
         fp16_to_fp32 = {}
@@ -165,8 +164,11 @@ class DeviceVariables(object):
                     param_usage[input_name] += 1
 
         for op in block.ops:
+            print("-" * 20)
+            print(op.type)
             if not FP16Utils.is_fp16_cast_op(block, op, self.params):
                 continue
+            print("is_fp16_cast_op")
             input_name = op.input_arg_names[0]
             output_name = op.output_arg_names[0]
             broadcast_vars.add(output_name)
