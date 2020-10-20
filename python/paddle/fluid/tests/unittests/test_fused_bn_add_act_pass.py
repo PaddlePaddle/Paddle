@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+paddle.enable_static()
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -166,9 +167,13 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         # build_fused_program
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        x, y, loss = self.build_fused_program(main_program, startup_program,
-                                              use_cuda)
+        x, y, loss = self.build_origin_program(main_program, startup_program,
+                                               use_cuda)
         feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+        build_strategy_fused = fluid.BuildStrategy()
+        build_strategy_fused.fuse_bn_add_act_ops = True
+        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy_fused)
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size)
         exe = fluid.Executor(place)
@@ -178,17 +183,17 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             exe.run(startup_program)
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(main_program,
+                loss_v = exe.run(binary_fused,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
 
         # build_origin_program
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        x, y, loss = self.build_origin_program(main_program, startup_program,
-                                               use_cuda)
-        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+        # close fused_bn_act_ops
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.fuse_bn_add_act_ops = False
+        binary = fluid.CompiledProgram(main_program).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy)
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size)
         loss_vals = []
@@ -197,7 +202,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             exe.run(startup_program)
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(main_program,
+                loss_v = exe.run(binary,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
                 loss_vals.append(loss_v[0][0])

@@ -685,6 +685,74 @@ struct BatchNormActOneDNN : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+// The following pattern is used to fuse batch_norm, elewise_add, and act
+// formula: act(bn(x) + z)
+// op: batch_norm + elewise_add + act
+struct BatchNormAddAct : public PatternBase {
+  BatchNormAddAct(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_add_act") {}
+
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(batch_norm);
+  PATTERN_DECL_NODE(elewise_add);
+  PATTERN_DECL_NODE(act);
+  // declare variable node's name
+  // BN inputs
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_variance);
+  PATTERN_DECL_NODE(bn_mean);
+  // BN outputs
+  PATTERN_DECL_NODE(bn_mean_out);
+  PATTERN_DECL_NODE(bn_variance_out);
+  PATTERN_DECL_NODE(bn_saved_variance);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_reserve_space);
+  PATTERN_DECL_NODE(bn_out);
+  // Elewise_Add input
+  PATTERN_DECL_NODE(elewise_add_in);
+  // Elewise_Add output
+  PATTERN_DECL_NODE(elewise_add_out);
+  // ACT output
+  PATTERN_DECL_NODE(act_out);
+};
+
+// the backward of act(bn(x) + z)
+// op: batch_norm_grad + elewise_add_grad + act_grad
+struct BatchNormAddActGrad : public PatternBase {
+  BatchNormAddActGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_add_act_grad") {}
+
+  // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
+  // elewise_add_grad: in["Out@GRAD"], out["X@GRAD", "Y@GRAD"]
+  // bn_grad: in["X", "Z", "Y@GRAD", "Scale", "Bias", "SavedMean",
+  // "SavedVariance",
+  // "ReserveSpace"],
+  // out["X@GRAD", "Z@GRAD", "Scale@GRAD", "Bias@GRAD"]
+  PDNode* operator()(PDNode* x, std::unordered_set<std::string> act_grad_types);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(act_grad);
+  PATTERN_DECL_NODE(elewise_add_grad);
+  PATTERN_DECL_NODE(batch_norm_grad);
+  // declare variable node's name
+  PATTERN_DECL_NODE(act_out);
+  PATTERN_DECL_NODE(d_itermediate_out1);
+  PATTERN_DECL_NODE(d_elewise_add_in);
+  PATTERN_DECL_NODE(d_itermediate_out2);
+  PATTERN_DECL_NODE(bn_x);
+  PATTERN_DECL_NODE(bn_scale);
+  PATTERN_DECL_NODE(bn_bias);
+  PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(bn_saved_variance);
+  PATTERN_DECL_NODE(bn_reserve_space);
+  PATTERN_DECL_NODE(d_bn_x);
+  PATTERN_DECL_NODE(d_bn_scale);
+  PATTERN_DECL_NODE(d_bn_bias);
+};
+
 // The following patterns are used to fuse elewise_add and act
 // formula: act(ele_add(x, y))
 // op: elementwise_add + act
