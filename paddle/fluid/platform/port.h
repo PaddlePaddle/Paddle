@@ -56,7 +56,11 @@ static void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
   HMODULE hModule = LoadLibrary(file_name.c_str());
   if (!hModule) {
-    throw std::runtime_error(file_name + " not found.");
+    if (flag) {
+      throw std::runtime_error(file_name + " not found.");
+    } else {
+      return nullptr;
+    }
   }
   return reinterpret_cast<void *>(hModule);
 }
