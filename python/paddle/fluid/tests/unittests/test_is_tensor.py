@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,12 +24,14 @@ class TestIsTensorApi(unittest.TestCase):
     def test_is_tensor_real(self, dtype="float32"):
         """Test is_tensor api with a real tensor
         """
+        paddle.disable_static()
         x = paddle.rand([3, 2, 4], dtype=dtype)
         self.assertTrue(paddle.is_tensor(x))
 
     def test_is_tensor_complex(self, dtype="float32"):
         """Test is_tensor api with a complex tensor
         """
+        paddle.disable_static()
         r = paddle.to_tensor(1)
         i = paddle.to_tensor(2)
         x = paddle.ComplexTensor(r, i)
@@ -38,12 +40,14 @@ class TestIsTensorApi(unittest.TestCase):
     def test_is_tensor_list(self, dtype="float32"):
         """Test is_tensor api with a list
         """
+        paddle.disable_static()
         x = [1, 2, 3]
         self.assertFalse(paddle.is_tensor(x))
 
     def test_is_tensor_number(self, dtype="float32"):
         """Test is_tensor api with a number
         """
+        paddle.disable_static()
         x = 5
         self.assertFalse(paddle.is_tensor(x))
 
