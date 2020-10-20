@@ -85,6 +85,15 @@ class VOC2012(Dataset):
                  download=True):
         assert mode.lower() in ['train', 'valid', 'test'], \
             "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
+
         self.flag = MODE_FLAG_MAP[mode.lower()]
 
         self.data_file = data_file
@@ -126,11 +135,18 @@ class VOC2012(Dataset):
         label = self.data_tar.extractfile(self.name2mem[label_file]).read()
         data = Image.open(io.BytesIO(data))
         label = Image.open(io.BytesIO(label))
-        data = np.array(data)
-        label = np.array(label)
+
+        if self.backend == 'cv2':
+            data = np.array(data)
+            label = np.array(label)
+
         if self.transform is not None:
             data = self.transform(data)
-        return data.astype(self.dtype), label.astype(self.dtype)
+
+        if self.backend == 'cv2':
+            return data.astype(self.dtype), label.astype(self.dtype)
+
+        return data, label.astype(self.dtype)
 
     def __len__(self):
         return len(self.data)

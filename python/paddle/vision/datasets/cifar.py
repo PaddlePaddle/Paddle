@@ -17,6 +17,7 @@ from __future__ import print_function
 import tarfile
 import numpy as np
 import six
+from PIL import Image
 from six.moves import cPickle as pickle
 
 import paddle
@@ -96,10 +97,19 @@ class Cifar10(Dataset):
                  data_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'test', 'train', 'test'], \
             "mode should be 'train10', 'test10', 'train100' or 'test100', but got {}".format(mode)
         self.mode = mode.lower()
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
 
         self._init_url_md5_flag()
 
@@ -142,10 +152,13 @@ class Cifar10(Dataset):
 
     def __getitem__(self, idx):
         image, label = self.data[idx]
-        image = np.reshape(image, [3, 32, 32])
+        # image = np.reshape(image, [3, 32, 32])
+        if self.backend == 'pil':
+            image = Image.fromarray(image)
         if self.transform is not None:
             image = self.transform(image)
-        return image.astype(self.dtype), np.array(label).astype('int64')
+        return image, np.array(label).astype('int64')
+        # return image.astype(self.dtype), np.array(label).astype('int64')
 
     def __len__(self):
         return len(self.data)

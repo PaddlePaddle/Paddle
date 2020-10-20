@@ -80,6 +80,15 @@ class Flowers(Dataset):
                  download=True):
         assert mode.lower() in ['train', 'valid', 'test'], \
                 "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
+
         self.flag = MODE_FLAG_MAP[mode.lower()]
 
         self.data_file = data_file
@@ -122,12 +131,19 @@ class Flowers(Dataset):
         img_name = "jpg/image_%05d.jpg" % index
         img_ele = self.name2mem[img_name]
         image = self.data_tar.extractfile(img_ele).read()
-        image = np.array(Image.open(io.BytesIO(image)))
+
+        if self.backend == 'pil':
+            image = Image.open(io.BytesIO(image))
+        elif self.backend == 'cv2':
+            image = np.array(Image.open(io.BytesIO(image)))
 
         if self.transform is not None:
             image = self.transform(image)
 
+        if self.backend == 'pil':
+            return image, label.astype('int64')
         return image.astype(self.dtype), label.astype('int64')
+        # return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
         return len(self.indexes)

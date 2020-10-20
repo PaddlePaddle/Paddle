@@ -18,6 +18,7 @@ import os
 import gzip
 import struct
 import numpy as np
+from PIL import Image
 
 import paddle
 from paddle.io import Dataset
@@ -74,6 +75,15 @@ class MNIST(Dataset):
                  download=True):
         assert mode.lower() in ['train', 'test'], \
                 "mode should be 'train' or 'test', but got {}".format(mode)
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
+
         self.mode = mode.lower()
         self.image_path = image_path
         if self.image_path is None:
@@ -145,7 +155,10 @@ class MNIST(Dataset):
 
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]
-        image = np.reshape(image, [1, 28, 28])
+        # image = np.reshape(image, [1, 28, 28])
+        if self.backend == 'pil':
+            image = Image.fromarray(image)
+
         if self.transform is not None:
             image = self.transform(image)
         return image.astype(self.dtype), label.astype('int64')
