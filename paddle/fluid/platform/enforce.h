@@ -330,7 +330,8 @@ struct EnforceNotMet : public std::exception {
       : code_(code) {
     if (FLAGS_call_stack_level > 1) {
       // error type + error message
-      err_str_ = GetTraceBackString(str, file, line);
+      err_str_ =
+          GetTraceBackString(ErrorSummary(code, str).ToString(), file, line);
     } else {
       // only error message
       err_str_ = GetTraceBackString(str, file, line);
@@ -379,21 +380,16 @@ struct EnforceNotMet : public std::exception {
     }                                                                        \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                                         \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
-      try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
-            __cond__,                                                     \
-            ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString());    \
-      } catch (...) {                                                     \
-        HANDLE_THE_ERROR                                                  \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                                __FILE__, __LINE__);      \
-        END_HANDLE_THE_ERROR                                              \
-      }                                                                   \
-    }                                                                     \
+#define PADDLE_ENFORCE(COND, ...)                                       \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {             \
+      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__); \
+      __THROW_ERROR_INTERNAL__(__summary__.code(),                      \
+                               "%s\n  [Hint: The condition " #COND      \
+                               " should be true.]",                     \
+                               __summary__.error_message());            \
+    }                                                                   \
   } while (0)
 #endif
 

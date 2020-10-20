@@ -57,6 +57,39 @@ void BindException(pybind11::module* m) {
         case paddle::platform::error::INVALID_ARGUMENT:
           ex_invalid_argument(e.what());
           break;
+        case paddle::platform::error::NOT_FOUND:
+          ex_not_found(e.what());
+          break;
+        case paddle::platform::error::OUT_OF_RANGE:
+          ex_out_of_range(e.what());
+          break;
+        case paddle::platform::error::ALREADY_EXISTS:
+          ex_already_exists(e.what());
+          break;
+        case paddle::platform::error::RESOURCE_EXHAUSTED:
+          ex_resource_exhausted(e.what());
+          break;
+        case paddle::platform::error::PRECONDITION_NOT_MET:
+          ex_precondition_not_met(e.what());
+          break;
+        case paddle::platform::error::PERMISSION_DENIED:
+          ex_premission_denied(e.what());
+          break;
+        case paddle::platform::error::EXECUTION_TIMEOUT:
+          ex_execution_timeout(e.what());
+          break;
+        case paddle::platform::error::UNIMPLEMENTED:
+          ex_unimplemented(e.what());
+          break;
+        case paddle::platform::error::UNAVAILABLE:
+          ex_unavailable(e.what());
+          break;
+        case paddle::platform::error::FATAL:
+          ex_fatal(e.what());
+          break;
+        case paddle::platform::error::EXTERNAL:
+          ex_external(e.what());
+          break;
         default:
           ex_base(e.what());
           break;

@@ -35,17 +35,31 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   }
 
   std::ostringstream sout;
-  // Step 1. Construct python call stack string
-  if (callstack) {
-    sout << "\n\n  Compile Traceback (most recent call last):";
-    for (auto &line : *callstack) {
-      sout << "\n  " << line;
+  if (FLAGS_call_stack_level > 1) {
+    // Step 1. Construct python call stack string
+    if (callstack) {
+      sout << "\n\n  Compile Traceback (most recent call last):";
+      for (auto &line : *callstack) {
+        sout << "\n  " << line;
+      }
     }
+    // Step 2. Construct final call stack & append error op name
+    sout << exception->err_str_;
+    sout << "  [operator < " << type << " > error]";
+    exception->err_str_ = sout.str();
+  } else {
+    // Step 1. Construct error summary with op hint
+    sout << exception->err_str_;
+    sout << "  [operator < " << type << " > error]";
+    // Step 2. Construct python call stack string
+    if (callstack) {
+      sout << "\n\n  Compile Traceback (most recent call last):";
+      for (auto &line : *callstack) {
+        sout << "\n  " << line;
+      }
+    }
+    exception->err_str_ = sout.str();
   }
-  // Step 2. Construct final call stack & append error op name
-  sout << exception->err_str_;
-  sout << "  [operator < " << type << " > error]";
-  exception->err_str_ = sout.str();
 }
 
 void AppendErrorOpHint(const std::string &type,
