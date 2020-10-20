@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -45,15 +47,22 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (str_value.empty()) {
       value = static_cast<T>(float_value);
     } else {
-      std::stringstream convert_stream(str_value);
-      if (std::is_same<int64_t, T>::value) {
-        int64_t tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+      // handle NaN/Inf first, which cannot be read from stream.
+      if (str_value == "inf") {
+        value = static_cast<T>(std::numeric_limits<double>::infinity());
+      } else if (str_value == "nan") {
+        value = static_cast<T>(std::numeric_limits<double>::quiet_NaN());
       } else {
-        double tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+        std::stringstream convert_stream(str_value);
+        if (std::is_same<int64_t, T>::value) {
+          int64_t tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        } else {
+          double tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        }
       }
     }
     if (ctx.HasInput("ValueTensor")) {
