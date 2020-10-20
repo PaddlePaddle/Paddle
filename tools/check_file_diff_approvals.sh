@@ -299,7 +299,7 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 # Get the list of PR authors with unresolved unit test issues
-pip install PyGithub
+python -m pip install PyGithub
 # For getting PR related data
 wget https://sys-p0.bj.bcebos.com/blk/block.txt --no-check-certificate
 wget https://sys-p0.bj.bcebos.com/bk-ci/bk.txt --no-check-certificate
