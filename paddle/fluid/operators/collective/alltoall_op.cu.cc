@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +34,10 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        ring_id, 0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();

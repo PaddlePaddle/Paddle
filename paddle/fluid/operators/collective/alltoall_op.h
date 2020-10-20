@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/gather.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 

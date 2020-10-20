@@ -33,6 +33,10 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int rid = ctx.Attr<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        rid, 0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for send_v2 op must be non-negative.", rid));
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
@@ -45,6 +49,10 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     int peer = ctx.Attr<int>("peer");
+    PADDLE_ENFORCE_GE(
+        peer, 0,
+        platform::errors::InvalidArgument(
+            "The peer (%d) for send_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_LT(
         peer, comm->nranks(),
         platform::errors::InvalidArgument("The value of peer (%d) you set must "

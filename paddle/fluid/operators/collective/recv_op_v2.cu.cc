@@ -35,15 +35,23 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
     auto out_dims = out->dims();
-    // Recv the number of element to receive first
+    // Recv the number of elements to receive first
     int numel = 0;
     int *numel_ptr = nullptr;
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&numel_ptr, sizeof(int)));
 
     int rid = ctx.Attr<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        rid, 0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for recv_v2 op must be non-negative.", rid));
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     int peer = ctx.Attr<int>("peer");
+    PADDLE_ENFORCE_GE(
+        peer, 0,
+        platform::errors::InvalidArgument(
+            "The peer (%d) for recv_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_LT(
         peer, comm->nranks(),
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
