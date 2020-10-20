@@ -115,7 +115,7 @@ struct Generator {
   bool is_init_py_ = false;
 };
 
-// The DefaultCPUGenerator is used in seed()
+// The DefaultCPUGenerator is used in manual_seed()
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
 // If op seed is set or global is not set, the OpDefaultCPUEngine is used.

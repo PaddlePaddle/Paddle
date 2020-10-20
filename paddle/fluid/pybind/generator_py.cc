@@ -46,7 +46,7 @@ void BindGenerator(py::module* m_ptr) {
            })
       .def("get_state", &framework::Generator::GetState)
       .def("set_state", &framework::Generator::SetState)
-      .def("seed",
+      .def("manual_seed",
            [](std::shared_ptr<framework::Generator>& self, uint64_t seed) {
              self->SetCurrentSeed(seed);
              return self;
