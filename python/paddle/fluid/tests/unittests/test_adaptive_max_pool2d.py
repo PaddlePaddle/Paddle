@@ -150,7 +150,7 @@ class TestAdaptiveMaxPool2dAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x_np)
 
             out_1 = paddle.nn.functional.adaptive_max_pool2d(
-                x=x, return_indices=False, output_size=[3, 3])
+                x=x, return_mask=False, output_size=[3, 3])
 
             out_2 = paddle.nn.functional.adaptive_max_pool2d(x=x, output_size=5)
 
