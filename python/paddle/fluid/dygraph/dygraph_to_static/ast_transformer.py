@@ -47,6 +47,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
     Main class to transform Dygraph to Static Graph
     """
 
+    def __init__(self):
+        self.translator_logger = logging_utils.TranslatorLogger()
+
     def get_static_ast(self, root):
         # save root for some analysis may need global AST
         self.root = root
@@ -55,7 +58,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         )
         self.decorate_func_name = None
         self.transfer_from_node_type(self.static_analysis_root)
-        self.translator_logger = logging_utils.TranslatorLogger()
         return self.static_analysis_root
 
     def _apply(self, transformer, node_wrapper, log_level):
