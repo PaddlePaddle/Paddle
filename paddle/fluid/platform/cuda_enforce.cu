@@ -58,5 +58,6 @@ void get_msg_from_cuda(char* msg, char* file, int* line) {
   snprintf(file, __LEN_ERROR_MSG, temp._file);
   *line = temp._line;
 }
+
 #endif  // PADDLE_CUDA_KERNEL_CHECK
 #endif  // PADDLE_WITH_CUDA
