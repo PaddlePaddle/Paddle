@@ -32,8 +32,8 @@ limitations under the License. */
 #define __h2div h2div
 #endif
 
-#define DIV_ERROR_INFO                                                     \
-  "InvalidArgumentError: Integer division by zero encountered in divide. " \
+#define DIV_ERROR_INFO                               \
+  "Integer division by zero encountered in divide. " \
   "Please check.\n"
 namespace paddle {
 namespace operators {
@@ -63,7 +63,12 @@ template <typename T>
 struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    PADDLE_ENFORCE(b != 0,
+#ifdef __CUDA_ARCH__
+                   DIV_ERROR_INFO);
+#else
+                   platform::errors::InvalidArgument(DIV_ERROR_INFO));
+#endif
     return a / b;
   }
 };

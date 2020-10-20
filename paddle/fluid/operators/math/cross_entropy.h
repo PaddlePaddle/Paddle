@@ -26,7 +26,12 @@ template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
     PADDLE_ENFORCE(std::is_floating_point<T>::value,
+#ifdef __CUDA_ARCH__
                    "TolerableValue should be float in cross_entropy.");
+#else
+                   platform::errors::InvalidArgument(
+                       "TolerableValue should be float in cross_entropy."));
+#endif
     const T kApproInf = 1e20;
 
     if (x == INFINITY) return kApproInf;
