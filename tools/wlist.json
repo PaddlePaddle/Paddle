@@ -24,6 +24,8 @@
         }
     ],
     "wlist_temp_api":[
+        "LRScheduler",
+        "ReduceOnPlateau",
         "append_LARS",
         "BuildStrategy.debug_graphviz_path",
         "BuildStrategy.enable_sequential_execution",
@@ -279,7 +281,6 @@
         "thresholded_relu",
         "group_norm",
         "random_crop",
-        "py_func",
         "row_conv",
         "hard_shrink",
         "ssd_loss",

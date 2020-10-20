@@ -19,14 +19,8 @@ import numpy as np
 import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
-
-
-def conv2d_forward_refer(input, filter, group, conv_param):
-    out, in_n, out_h, out_w, out_c = conv2d_forward_naive(input, filter, group,
-                                                          conv_param)
-    return out
 
 
 def conv2d_residual_naive(out, residual):
@@ -35,6 +29,8 @@ def conv2d_residual_naive(out, residual):
     return out
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestConv2dBf16Op(TestConv2dOp):
     def setUp(self):
         self.op_type = "conv2d"
@@ -42,9 +38,9 @@ class TestConv2dBf16Op(TestConv2dOp):
         self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = True
+        self._cpu_only = True
         self.weight_type = np.float32
         self.input_type = np.float32
-        self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.init_group()
@@ -166,6 +162,21 @@ class TestWithStride(TestConv2dBf16Op):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]
         self.input_residual_size = [2, 6, 3, 3]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+    def init_data_type(self):
+        self.input_type = np.uint16
+
+
+class TestWithDilations(TestConv2dBf16Op):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [2, 2]
+        self.input_size = [2, 3, 10, 10]
+        self.input_residual_size = [2, 6, 8, 8]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # TODO: define the common classes to build a neural network
+import paddle
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
-from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
@@ -27,18 +27,9 @@ __all__ = [
     'Embedding',
     'Linear',
     'Upsample',
+    'Pad1D',
     'Pad2D',
-    'UpsamplingNearest2d',
-    'UpsamplingBilinear2d',
-    'ReflectionPad1d',
-    'ReplicationPad1d',
-    'ConstantPad1d',
-    'ReflectionPad2d',
-    'ReplicationPad2d',
-    'ConstantPad2d',
-    'ZeroPad2d',
-    'ConstantPad3d',
-    'ReplicationPad3d',
+    'Pad3D',
     'CosineSimilarity',
     'Dropout',
     'Dropout2d',
@@ -50,56 +41,74 @@ __all__ = [
 
 class Linear(layers.Layer):
     """
-    
-    Fully-connected linear transformation layer:
+
+    Fully-connected linear transformation layer. For each input :math:`X` ,
+    the equation is:
 
     .. math::
 
-        Out = {XW + b}
+        Out = XW + b
 
-    where :math:`X` is the input Tensor, :math:`W` and :math:`b` are weight and bias respectively.
+    where :math:`W` is the weight and :math:`b` is the bias.
 
-    Linear layer takes only one ``Tensor`` input.
-    The Linear layer multiplies input tensor with weight matrix and
-    produces an output Tensor of shape [N, *, `output_dim`],
-    where N is batch size and `*` means any number of additional dimensions.
-    If ``bias_attr`` is not None, a bias variable will be created and added to the output.
+    Linear layer takes only one multi-dimensional tensor as input with the
+    shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
+    number of additional dimensions. It multiplies input tensor with the weight
+    (a 2-D tensor of shape :math:`[in\_features, out\_features]` ) and produces
+    an output tensor of shape :math:`[batch\_size, *, out\_features]` .
+    If :math:`bias\_attr` is not False, the bias (a 1-D tensor of
+    shape :math:`[out\_features]` ) will be created and added to the output.
 
     Parameters:
-        in_features(int): The number of input units in this layer.
-        out_features(int): The number of output units in this layer.
-        weight_attr(ParamAttr or list of ParamAttr, optional): The parameter attribute for learnable
-            weights(Parameter) of this layer. Default: None.
-        bias_attr(ParamAttr or list of ParamAttr, optional): The attribute for the bias
-            of this layer. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
+        in_features (int): The number of input units.
+        out_features (int): The number of output units.
+        weight_attr (ParamAttr, optional): The attribute for the learnable
+            weight of this layer. The default value is None and the weight will be
+            initialized to zero. For detailed information, please refer to
+            paddle.ParamAttr.
+        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+            of this layer. If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to paddle.ParamAttr. The default value is None and the bias will be
+            initialized to zero.
+        name (str, optional): Normally there is no need for user to set this parameter.
+            For detailed information, please refer to :ref:`api_guide_Name` .
 
-    Attributes:
-        **weight** (Parameter): the learnable weights of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weight of this layer.
 
-        **bias** (Parameter or None): the learnable bias of this layer.
+        **bias** (Parameter): the learnable bias of this layer.
 
-    Returns:
-        None
+    Shape:
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` .
 
     Examples:
         .. code-block:: python
 
           import paddle
-          from paddle import nn
-          import numpy as np
 
-          data = np.ones((3,1,2), np.float32)
-          place = paddle.CPUPlace()
-          paddle.disable_static(place)
-          data = paddle.to_tensor(data)
-          weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
-          trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
-          bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
-          trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
-          linear = nn.Linear(2,2,weight_attr=weight_attr, bias_attr=bias_attr)
-          res = linear(data)  # [3 3 3 3 3 3]
+          # Define the linear layer.
+          weight_attr = paddle.ParamAttr(
+              name="weight",
+              initializer=paddle.nn.initializer.Constant(value=0.5))
+          bias_attr = paddle.ParamAttr(
+              name="bias",
+              initializer=paddle.nn.initializer.Constant(value=1.0))
+          linear = paddle.nn.Linear(2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
+          # linear.weight: [[0.5 0.5 0.5 0.5]
+          #                 [0.5 0.5 0.5 0.5]]
+          # linear.bias: [1. 1. 1. 1.]
+
+          x = paddle.randn((3, 2), dtype="float32")
+          # x: [[-0.32342386 -1.200079  ]
+          #     [ 0.7979031  -0.90978354]
+          #     [ 0.40597573  1.8095392 ]]
+          y = linear(x)
+          # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
+          #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
+          #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
 
     def __init__(self,
@@ -369,256 +378,6 @@ class Upsample(layers.Layer):
             name=self.name)
 
         return out
-
-
-class UpsamplingNearest2d(layers.Layer):
-    """
-    This op upsamples a batch of images, using nearest neighbours' pixel values.
-    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
-    where in_w is width of the input tensor, in_h is the height of the input tensor.
-    And the upsampling only applies on the two dimensions(height and width).
-
-    Nearest neighbor interpolation is to perform nearest neighbor interpolation
-    in both the 3rd dimension(in height direction) and the 4th dimension(in width
-    direction) on input tensor.
-    
-    For details of nearest neighbor interpolation, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
-        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
-             least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.
-             Has to match input size if it is either a list or a tuple or a Tensor.
-             Default: None.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-    Returns:
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: 'nearest' only support 4-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        ValueError: data_format can only be 'NCHW', 'NHWC'.
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.UpsamplingNearest2d(size=[12,12])
-
-            input = paddle.to_tensor(input_data)
-            output = upsample_out(x=input)
-            print(output.shape)
-            # [2L, 3L, 12L, 12L]
-
-    """
-
-    def __init__(self,
-                 size=None,
-                 scale_factor=None,
-                 data_format='NCHW',
-                 name=None):
-        super(UpsamplingNearest2d, self).__init__()
-        self.size = size
-        self.scale_factor = scale_factor
-        self.data_format = data_format
-        self.name = name
-
-    def forward(self, x):
-        out = F.interpolate(
-            x,
-            size=self.size,
-            scale_factor=self.scale_factor,
-            mode='nearest',
-            align_corners=False,
-            align_mode=0,
-            data_format=self.data_format,
-            name=self.name)
-
-        return out
-
-
-class UpsamplingBilinear2d(layers.Layer):
-    """
-    This op upsamples a batch of images, using bilinear' pixel values.
-    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
-    where in_w is width of the input tensor, in_h is the height of the input tensor.
-    And the upsampling only applies on the two dimensions(height and width).
-
-    Bilinear interpolation is an extension of linear interpolation for
-    interpolating functions of two variables (e.g. H-direction and
-    W-direction in this op) on a rectilinear 2D grid. The key idea is
-    to perform linear interpolation first in one direction, and then
-    again in the other direction.
-    
-    For details of bilinear interpolation, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
-        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
-        size (list|tuple|Tensor|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D Tensor. 
-             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
-             If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
-             least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.
-             Has to match input size if it is either a list or a tuple or a Tensor.
-             Default: None.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-    Returns:
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: 'bilinear' only support 4-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        ValueError: data_format can only be 'NCHW', 'NHWC'.
-    Examples:
-        .. code-block:: python
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.UpsamplingBilinear2d(size=[12,12])
-
-            input = paddle.to_tensor(input_data)
-            output = upsample_out(x=input)
-            print(output.shape)
-            # [2L, 3L, 12L, 12L]
-    """
-
-    def __init__(self,
-                 size=None,
-                 scale_factor=None,
-                 data_format='NCHW',
-                 name=None):
-        super(UpsamplingBilinear2d, self).__init__()
-        self.size = size
-        self.scale_factor = scale_factor
-        self.data_format = data_format
-        self.name = name
-
-    def forward(self, x):
-        out = F.interpolate(
-            x,
-            size=self.size,
-            scale_factor=self.scale_factor,
-            mode='bilinear',
-            align_corners=True,
-            align_mode=0,
-            data_format=self.data_format,
-            name=self.name)
-
-        return out
-
-
-class Pad2D(layers.Layer):
-    """
-        :alias_main: paddle.nn.Pad2D
-        :alias: paddle.nn.Pad2D,paddle.nn.layer.Pad2D,paddle.nn.layer.common.Pad2D
-    This interface is used to construct a callable object of the ``Pad2D``  class.
-    The Pad2D layer pads the input tensor boundaries according to 'paddings' and 'mode'.
-    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
-    than height-1. And the width dimension has the same condition.
-    Parameters:
-        paddings (int | List[int32]): The padding size. If padding is a int, uses the same
-            padding in all boundaries, if padding is a List, it must contain four integers,
-            (padding_top, padding_bottom, padding_left, padding_right).
-            Default is [0, 0, 0, 0].
-        mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
-        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
-        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-        	When in 'edge' mode, uses input boundaries to pad the input tensor.
-        	Default is 'constant'
-        pad_value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
-        data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
-                           the input data.
-                           Default is  "NCHW"
-    Returns:
-        None
-    Examples:
-        .. code-block:: text
-            Input = [[[[1., 2., 3.],
-                       [4., 5., 6.]]]]
-            Case 0:
-                paddings = [0, 1, 2, 3],
-                mode = 'constant'
-                pad_value = 0
-                Out = [[[[0., 0., 1., 2., 3., 0., 0., 0.],
-                         [0., 0., 4., 5., 6., 0., 0., 0.],
-                         [0., 0., 0., 0., 0., 0., 0., 0.]]]]
-            Case 1:
-                paddings = [0, 1, 2, 1],
-                mode = 'reflect'
-                Out = [[[[3., 2., 1., 2., 3., 2.],
-                         [6., 5., 4., 5., 6., 5.],
-                         [3., 2., 1., 2., 3., 2.]]]]
-            Case 2:
-                paddings = [0, 1, 2, 1],
-                mode = 'edge'
-                Out = [[[[1., 1., 1., 2., 3., 3.],
-                         [4., 4., 4., 5., 6., 6.],
-                         [4., 4., 4., 5., 6., 6.]]]]
-    Code Examples:
-        .. code-block:: python
-            import paddle.fluid as fluid
-            import paddle.nn as nn
-            import numpy as np
-            data = np.ones((2, 2, 2, 2)).astype('float32')
-            my_pad = nn.Pad2D(paddings=[1, 1, 1, 1])
-            with fluid.dygraph.guard():
-                data = fluid.dygraph.to_variable(data)
-                result = my_pad(data)
-    """
-
-    def __init__(self,
-                 paddings=0,
-                 mode='constant',
-                 pad_value=0.0,
-                 data_format="NCHW"):
-        super(Pad2D, self).__init__()
-        self._mode = mode
-        self._pad_value = pad_value
-        self._data_format = data_format
-        self._paddings = [paddings] * 4 if isinstance(paddings,
-                                                      int) else paddings
-
-    def forward(self, input):
-        return F.pad2d(
-            input,
-            paddings=self._paddings,
-            mode=self._mode,
-            pad_value=self._pad_value,
-            data_format=self._data_format)
 
 
 class Bilinear(layers.Layer):
@@ -944,132 +703,21 @@ class AlphaDropout(layers.Layer):
         return out
 
 
-class ReflectionPad1d(layers.Layer):
+class Pad1D(layers.Layer):
     """
-    This interface is used to construct a callable object of the ``ReflectionPad1d`` class.
-    Uses reflection of the input boundaries to pad the input tensor.
+    This interface is used to construct a callable object of the ``Pad1D`` class.
+    Pad tensor according to 'pad', 'mode' and 'value'.
+    If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
-        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
-           Default is  "NCL"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: text
-
-            x = [[[1., 2., 3.],
-                  [4., 5., 6.]]]
-            padding = [1, 2],
-            Out = [[[2. 1. 2. 3. 2. 1.]
-                    [5. 4. 5. 6. 5. 4.]]]
-
-    Code Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_shape = (1, 2, 3)
-            pad = [1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReflectionPad1d(padding=pad)
-            data = paddle.to_tensor(data)
-            result = my_pad(data)
-            print(result.numpy())
-            # [[[2. 1. 2. 3. 2. 1.]
-            #   [5. 4. 5. 6. 5. 4.]]]
-    """
-
-    def __init__(self, padding, data_format="NCL", name=None):
-        super(ReflectionPad1d, self).__init__()
-        self._mode = "reflect"
-        self._data_format = data_format
-        self._pad = padding
-        self._name = name
-
-    def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     data_format=self._data_format,
-                     name=self._name)
-
-
-class ReplicationPad1d(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``ReplicationPad1d`` class.
-    Uses input boundaries to pad the input tensor.
-
-    Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right).
-        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
-           Default is  "NCL"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: text
-
-            x = [[[1., 2., 3.],
-                  [4., 5., 6.]]]
-            padding = [1, 2],
-            Out = [[[2. 1. 2. 3. 2. 1.]
-                    [5. 4. 5. 6. 5. 4.]]]
-
-    Code Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_shape = (1, 2, 3)
-            pad = [1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad1d(padding=pad)
-            data = paddle.to_tensor(data)
-            result = my_pad(data)
-            print(result.numpy())
-            # [[[1. 1. 2. 3. 3. 3.]
-            #   [1. 4. 5. 6. 6. 6.]]]
-    """
-
-    def __init__(self, padding, data_format="NCL", name=None):
-        super(ReplicationPad1d, self).__init__()
-        self._mode = "replicate"
-        self._data_format = data_format
-        self._pad = padding
-        self._name = name
-
-    def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     data_format=self._data_format,
-                     name=self._name)
-
-
-class ConstantPad1d(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``ConstantPad1d`` class.
-    Uses a constant value to pad the input tensor.
-
-    Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right).
+        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+            When in 'constant' mode, this op uses a constant value to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+            Default is 'constant'.
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
            Default is  "NCL"
@@ -1085,6 +733,7 @@ class ConstantPad1d(layers.Layer):
             x = [[[1., 2., 3.],
                   [4., 5., 6.]]]
             padding = [1, 2],
+            mode = "constant"
             value = 0.0
             Out = [[[0. 1. 2. 3. 0. 0.]
                     [0. 4. 5. 6. 0. 0.]]]
@@ -1099,21 +748,26 @@ class ConstantPad1d(layers.Layer):
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ConstantPad1d(padding=pad)
-            data = paddle.to_tensor(data)
+            mode = "constant"
+            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result.numpy())
             # [[[0. 1. 2. 3. 0. 0.]
             #   [0. 4. 5. 6. 0. 0.]]]
     """
 
-    def __init__(self, padding, value=0.0, data_format="NCL", name=None):
-        super(ConstantPad1d, self).__init__()
-        self._mode = "constant"
-        self._data_format = data_format
+    def __init__(self,
+                 padding,
+                 mode='constant',
+                 value=0.0,
+                 data_format="NCL",
+                 name=None):
+        super(Pad1D, self).__init__()
         self._pad = padding
+        self._mode = mode
         self._value = value
+        self._data_format = data_format
         self._name = name
 
     def forward(self, x):
@@ -1125,14 +779,22 @@ class ConstantPad1d(layers.Layer):
                      name=self._name)
 
 
-class ConstantPad2d(layers.Layer):
+class Pad2D(layers.Layer):
     """
-    This interface is used to construct a callable object of the ``ConstantPad2d`` class.
-    Uses a constant value to pad the input tensor.
+    This interface is used to construct a callable object of the ``Pad2D`` class.
+    Pad tensor according to 'pad', 'mode' and 'value'.
+    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    than width-1. The height dimension has the same condition.
 
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+            When in 'constant' mode, this op uses a constant value to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+            Default is 'constant'.
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
            Default is  "NCHW"
@@ -1148,6 +810,7 @@ class ConstantPad2d(layers.Layer):
             x = [[[[1., 2., 3.],
                    [4., 5., 6.]]]]
             padding = [1, 1, 0, 0]
+            mode = "constant"
             value = 0.0
             Out = [[[[0. 1. 2. 3. 0.]
                      [0. 4. 5. 6. 0.]]]]
@@ -1159,12 +822,11 @@ class ConstantPad2d(layers.Layer):
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ConstantPad2d(padding=pad)
-            data = paddle.to_tensor(data)
+            mode = "constant"
+            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result.numpy())
             # [[[[0. 0. 0. 0.]
@@ -1174,12 +836,17 @@ class ConstantPad2d(layers.Layer):
             #    [0. 0. 0. 0.]]]]
     """
 
-    def __init__(self, padding, value=0.0, data_format="NCHW", name=None):
-        super(ConstantPad2d, self).__init__()
-        self._mode = "constant"
-        self._data_format = data_format
+    def __init__(self,
+                 padding,
+                 mode='constant',
+                 value=0.0,
+                 data_format="NCHW",
+                 name=None):
+        super(Pad2D, self).__init__()
         self._pad = padding
+        self._mode = mode
         self._value = value
+        self._data_format = data_format
         self._name = name
 
     def forward(self, x):
@@ -1191,202 +858,22 @@ class ConstantPad2d(layers.Layer):
                      name=self._name)
 
 
-class ZeroPad2d(layers.Layer):
+class Pad3D(layers.Layer):
     """
-    This interface is used to construct a callable object of the ``ZeroPad2d`` class.
-    Uses 0 to pad the input tensor.
-
-    Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
-        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: text
-
-            x = [[[[1., 2., 3.],
-                   [4., 5., 6.]]]]
-            padding = [1, 1, 0, 0]
-            Out = [[[[0. 1. 2. 3. 0.]
-                     [0. 4. 5. 6. 0.]]]]
-
-    Code Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_shape = (1, 1, 2, 3)
-            pad = [1, 0, 1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ZeroPad2d(padding=pad)
-            data = paddle.to_tensor(data)
-            result = my_pad(data)
-            print(result.numpy())
-            # [[[[0. 0. 0. 0.]
-            #    [0. 1. 2. 3.]
-            #    [0. 4. 5. 6.]
-            #    [0. 0. 0. 0.]
-            #    [0. 0. 0. 0.]]]]
-    """
-
-    def __init__(self, padding, data_format="NCHW", name=None):
-        super(ZeroPad2d, self).__init__()
-        self._mode = "constant"
-        self._data_format = data_format
-        self._pad = padding
-        self._name = name
-
-    def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     data_format=self._data_format,
-                     name=self._name)
-
-
-class ReplicationPad2d(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``ReplicationPad2d`` class.
-    Uses input boundaries to pad the input tensor.
-
-    Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
-        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: text
-
-            x = [[[[1., 2., 3.],
-                   [4., 5., 6.]]]]
-            padding = [1, 1, 0, 0]
-            Out = [[[[1. 1. 2. 3. 3.]
-                     [4. 4. 5. 6. 6.]]]]
-
-    Code Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_shape = (1, 1, 2, 3)
-            pad = [1, 0, 1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad2d(padding=pad)
-            data = paddle.to_tensor(data)
-            result = my_pad(data)
-            print(result.numpy())
-            # [[[[1. 1. 2. 3.]
-            #    [1. 1. 2. 3.]
-            #    [4. 4. 5. 6.]
-            #    [4. 4. 5. 6.]
-            #    [4. 4. 5. 6.]]]]
-    """
-
-    def __init__(self, padding, data_format="NCHW", name=None):
-        super(ReplicationPad2d, self).__init__()
-        self._mode = "replicate"
-        self._data_format = data_format
-        self._pad = padding
-        self._name = name
-
-    def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     data_format=self._data_format,
-                     name=self._name)
-
-
-class ReflectionPad2d(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``ReflectionPad2d`` class.
-    Uses reflection of the input boundaries to pad the input tensor.
-
-    Parameters:
-        padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
-        data_format (str): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: text
-
-            x = [[[[1., 2., 3.],
-                   [4., 5., 6.]]]]
-            padding = [1, 1, 0, 0]
-            Out = [[[[2. 1. 2. 3. 2.]
-                     [5. 4. 5. 6. 5.]]]]
-
-    Code Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_shape = (1, 1, 4, 3)
-            pad = [1, 0, 1, 2]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReflectionPad2d(padding=pad)
-            data = paddle.to_tensor(data)
-            result = my_pad(data)
-            print(result.numpy())
-            # [[[[ 5.  4.  5.  6.]
-            #    [ 2.  1.  2.  3.]
-            #    [ 5.  4.  5.  6.]
-            #    [ 8.  7.  8.  9.]
-            #    [11. 10. 11. 12.]
-            #    [ 8.  7.  8.  9.]
-            #    [ 5.  4.  5.  6.]]]]
-    """
-
-    def __init__(self, padding, data_format="NCHW", name=None):
-        super(ReflectionPad2d, self).__init__()
-        self._mode = "reflect"
-        self._data_format = data_format
-        self._pad = padding
-        self._name = name
-
-    def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     data_format=self._data_format,
-                     name=self._name)
-
-
-class ConstantPad3d(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``ConstantPad3d`` class.
-    Uses a constant value to pad the input tensor.
+    This interface is used to construct a callable object of the ``Pad3D`` class.
+    Pad tensor according to 'pad', 'mode' and 'value'.
+    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    than width-1. The height and depth dimension has the same condition.
 
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
+        mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
+            When in 'constant' mode, this op uses a constant value to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+            Default is 'constant'.
         value (float32): The value to fill the padded areas. Default is 0.0
         data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"
@@ -1402,6 +889,7 @@ class ConstantPad3d(layers.Layer):
             x = [[[[[1., 2., 3.],
                     [4., 5., 6.]]]]]
             padding = [1, 2, 0, 0, 0, 0]
+            mode = "constant"
             value = 0.0
             Out = [[[[[0. 1. 2. 3. 0. 0.]
                       [0. 4. 5. 6. 0. 0.]]]]]
@@ -1412,13 +900,11 @@ class ConstantPad3d(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
-
             input_shape = (1, 1, 1, 2, 3)
             pad = [1, 0, 1, 2, 0, 0]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ConstantPad3d(padding=pad)
-            data = paddle.to_tensor(data)
+            mode = "constant"
+            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
             print(result.numpy())
             # [[[[[0. 0. 0. 0.]
@@ -1428,12 +914,17 @@ class ConstantPad3d(layers.Layer):
             #     [0. 0. 0. 0.]]]]]
     """
 
-    def __init__(self, padding, value=0.0, data_format="NCDHW", name=None):
-        super(ConstantPad3d, self).__init__()
-        self._mode = "constant"
-        self._data_format = data_format
+    def __init__(self,
+                 padding,
+                 mode='constant',
+                 value=0.0,
+                 data_format="NCDHW",
+                 name=None):
+        super(Pad3D, self).__init__()
         self._pad = padding
+        self._mode = mode
         self._value = value
+        self._data_format = data_format
         self._name = name
 
     def forward(self, x):
@@ -1441,68 +932,6 @@ class ConstantPad3d(layers.Layer):
                      pad=self._pad,
                      mode=self._mode,
                      value=self._value,
-                     data_format=self._data_format,
-                     name=self._name)
-
-
-class ReplicationPad3d(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``ReplicationPad3d`` class.
-    Uses input boundaries to pad the input tensor.
-
-    Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
-           Default is  "NCDHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: text
-
-            x = [[[[[1., 2., 3.],
-                    [4., 5., 6.]]]]]
-            padding = [1, 2, 0, 0, 0, 0]
-            Out = [[[[[1. 1. 2. 3. 3. 3.]
-                      [4. 4. 5. 6. 6. 6.]]]]]
-
-    Code Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import numpy as np
-            paddle.disable_static()
-
-            input_shape = (1, 1, 1, 2, 3)
-            pad = [1, 0, 1, 2, 0, 0]
-            data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
-            my_pad = nn.ReplicationPad3d(padding=pad)
-            data = paddle.to_tensor(data)
-            result = my_pad(data)
-            print(result.numpy())
-            # [[[[[1. 1. 2. 3.]
-            #     [1. 1. 2. 3.]
-            #     [4. 4. 5. 6.]
-            #     [4. 4. 5. 6.]
-            #     [4. 4. 5. 6.]]]]]
-    """
-
-    def __init__(self, padding, data_format="NCDHW", name=None):
-        super(ReplicationPad3d, self).__init__()
-        self._mode = "replicate"
-        self._data_format = data_format
-        self._pad = padding
-        self._name = name
-
-    def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
                      data_format=self._data_format,
                      name=self._name)
 

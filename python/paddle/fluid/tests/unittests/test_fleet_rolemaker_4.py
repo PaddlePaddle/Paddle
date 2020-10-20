@@ -47,12 +47,6 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("warning: no fleet, skip test_pslib_4")
             return
 
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_pslib_4")
-            return
-
         class FakeStream():
             """
             it is a fake stream only for test.
