@@ -1671,6 +1671,7 @@ function main() {
       build_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib ${parallel_number}
+        ;;
       check_style)
         check_style
         ;;
