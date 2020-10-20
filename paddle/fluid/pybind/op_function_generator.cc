@@ -99,6 +99,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
+    {"assign_value", {"Out"}},
     {"matmul", {"Out"}},
     {"c_broadcast", {"Out"}},
     {"c_allreduce_sum", {"Out"}},

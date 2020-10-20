@@ -1138,19 +1138,13 @@ def assign(x, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
-    helper = LayerHelper('assign', **locals())
-    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
-    if isinstance(x, Variable):
-        check_dtype(
-            x.dtype, 'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'assign', '(When the type of input in assign is Variable.)')
-        if output is None:
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
-    elif isinstance(x, numpy.ndarray):
+
+    def get_attrs(x):
         dtype = convert_np_dtype_to_dtype_(x.dtype)
+        attrs = {
+            'dtype': dtype,
+            'shape': list(x.shape),
+        }
         if dtype == VarDesc.VarType.BOOL:
             value_name = "bool_values"
             values = [bool(v) for v in x.flat]
@@ -1168,16 +1162,39 @@ def assign(x, output=None):
                 "When the type of 'x' in assign is numpy.ndarray, "
                 "the data type of 'x' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
+        attrs[value_name] = values
+        return attrs
+
+    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    if in_dygraph_mode():
+        if isinstance(x, Variable):
+            return core.ops.assign(x)
+        else:
+            attrs = get_attrs(x)
+            attrs_ = []
+            for k, v in attrs.items():
+                attrs_.append(k)
+                attrs_.append(v)
+            core.ops.assign_value(output, *attrs_)
+            return output
+    helper = LayerHelper('assign', **locals())
+
+    if isinstance(x, Variable):
+        check_dtype(
+            x.dtype, 'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+            'assign', '(When the type of input in assign is Variable.)')
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+    elif isinstance(x, numpy.ndarray):
         if x.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
         if output is None:
             output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='assign_value',
-            outputs={'Out': [output]},
-            attrs={'dtype': dtype,
-                   'shape': list(x.shape),
-                   value_name: values})
+            type='assign_value', outputs={'Out': [output]}, attrs=get_attrs(x))
 
     return output
