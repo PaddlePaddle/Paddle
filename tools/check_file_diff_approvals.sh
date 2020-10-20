@@ -33,8 +33,8 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/ir/node.h"
            "paddle/fluid/framework/ir/graph.h"
            "paddle/fluid/framework/framework.proto"
-	    "python/paddle/distributed/__init"
-	    "python/paddle/distributed/fleet/__init__.py"
+           "python/paddle/distributed/__init"
+           "python/paddle/distributed/fleet/__init__.py"
            "python/requirements.txt"
            "python/paddle/fluid/__init__.py"
            "python/paddle/fluid/compiler.py"
@@ -143,9 +143,12 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ]; then
 	      echo_line="You must have one RD (zhouwei25 (Recommend), luotao1) approval for ${API_FILE} changes, which manages all Paddle CI task on Windows.\n"
 	      check_approval 1 52485244 6836917
+      elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
+          echo_line="You must have one RD (Xreki,luotao1,zhhsplendid) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
+          check_approval 1 12538138 6836917 7913861
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
-          check_approval 1 3048612 46782768 12538138 6836917
+          check_approval 1 46782768 12538138 6836917
       fi
   fi
 done
@@ -154,7 +157,7 @@ FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
 HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER |grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1) approval for the usage (either add or delete) of const_cast.\n"
-    check_approval 1 3048612 46782768 12538138 6836917
+    check_approval 1 46782768 12538138 6836917
 fi
 
 HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "boost::get" || true`
@@ -193,7 +196,8 @@ if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 6836917 47554610 22561442
 fi
 
-ALL_PADDLE_CHECK=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true`
+ALL_ADDED_LINES=`git diff -U0 upstream/$BRANCH |grep "^+" || true`
+ALL_PADDLE_CHECK=`echo $ALL_ADDED_LINES |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true`
 VALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
 INVALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" |grep -vxF "$VALID_PADDLE_CHECK" || true`
 if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then

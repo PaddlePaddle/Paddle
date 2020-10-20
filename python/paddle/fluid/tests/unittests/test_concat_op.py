@@ -253,7 +253,8 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
     def test_api(self):
-        x_1 = paddle.fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
+        x_1 = paddle.fluid.data(
+            shape=[None, 1, 4, 5], dtype='int32', name='x_1')
         paddle.concat([x_1, x_1], 0)
 
         input_2 = np.random.random([2, 1, 4, 5]).astype("int32")

@@ -34,6 +34,8 @@ __all__ = [
 
 fleet = Fleet()
 _final_strategy = fleet._final_strategy
+_get_applied_meta_list = fleet._get_applied_meta_list
+_get_applied_graph_list = fleet._get_applied_graph_list
 init = fleet.init
 is_first_worker = fleet.is_first_worker
 worker_index = fleet.worker_index
