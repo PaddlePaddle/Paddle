@@ -20,7 +20,7 @@
 
 #include<cuda.h>
 #include<stdio.h>
-
+  
 #define __LEN_ERROR_MSG 128
 
 #define PADDLE_ENFORCE_CHECK_CUDA_KERNEL()                          \
