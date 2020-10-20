@@ -290,19 +290,21 @@ void DeserializeFromVarMsg(const sendrecv::VariableMessage& msg,
   tensor->set_lod(lod);
 
   void* tensor_data = tensor->mutable_data(place, ToVarType(msg.data_type()));
+  if (platform::is_cpu_place(tensor->place())) {
+    memcpy(tensor_data, msg.serialized().data(),
+           tensor->numel() * framework::SizeOfType(tensor->type()));
+  } else {
 #ifdef PADDLE_WITH_CUDA
-  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
-               platform::CPUPlace(), msg.serialized().data(),
-               tensor->numel() * framework::SizeOfType(tensor->type()));
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
+                 platform::CPUPlace(), msg.serialized().data(),
+                 tensor->numel() * framework::SizeOfType(tensor->type()));
 #endif
 #ifdef PADDLE_WITH_XPU
-  memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
-               platform::CPUPlace(), msg.serialized().data(),
-               tensor->numel() * framework::SizeOfType(tensor->type()));
-#else
-  memcpy(tensor_data, msg.serialized().data(),
-         tensor->numel() * framework::SizeOfType(tensor->type()));
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
+                 platform::CPUPlace(), msg.serialized().data(),
+                 tensor->numel() * framework::SizeOfType(tensor->type()));
 #endif
+  }
 }
 
 }  // namespace distributed
