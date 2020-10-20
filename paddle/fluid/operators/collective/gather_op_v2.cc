@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@ class GatherOpV2 : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CGather");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CGather");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GatherV2");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GatherV2");
     int root_id = ctx->Attrs().Get<int>("root");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     int nranks = ctx->Attrs().Get<int>("nranks");
     PADDLE_ENFORCE_GE(nranks, 2,
                       platform::errors::InvalidArgument(
                           "The number of ranks (%d) must be greater than 1 "
-                          "to use collective op (gather_op_v2).",
+                          "to use the collective op gather_op_v2.",
                           nranks));
     PADDLE_ENFORCE_GE(
         root_id, 0,

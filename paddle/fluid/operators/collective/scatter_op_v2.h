@@ -38,15 +38,20 @@ class ScatterOpV2CPUKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     auto root_id = ctx.Attr<int>("root");
+    int nranks = ctx.Attr<int>("nranks");
 
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
+    PADDLE_ENFORCE_EQ(nranks, gloo->Size(),
+                      platform::errors::InvalidArgument(
+                          "The number of ranks (%d) you set must "
+                          "be equal to gloo->Size() (%d).",
+                          nranks, gloo->Size()));
 
     int64_t send_numel = out->numel();
-    auto nranks = gloo->Size();
     auto rank = gloo->Rank();
     T* recv_buff = out->data<T>();
     gloo::ScatterOptions opts(gloo->GetContext());

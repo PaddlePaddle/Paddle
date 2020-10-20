@@ -27,6 +27,7 @@ class ScatterOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
+#if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
@@ -47,6 +48,11 @@ class ScatterOpV2CUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The root_id (%d) for c_scatter_op must be non-negative.",
             root_id));
+    PADDLE_ENFORCE_LT(root_id, nranks,
+                      platform::errors::InvalidArgument(
+                          "The root_id (%d) for scatter_op_v2 must be less "
+                          "than the number of ranks (%d).",
+                          root_id, nranks));
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
@@ -80,6 +86,10 @@ class ScatterOpV2CUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
         recv_buf, send_numel, dtype, root_id, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+#endif
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));

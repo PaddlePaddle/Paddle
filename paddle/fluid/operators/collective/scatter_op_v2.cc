@@ -22,8 +22,8 @@ class ScatterOpV2 : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CScatter");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CScatter");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ScatterV2");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ScatterV2");
     int root_id = ctx->Attrs().Get<int>("root");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     int nranks = ctx->Attrs().Get<int>("nranks");

@@ -51,12 +51,21 @@ class GatherOpV2CPUKernel : public framework::OpKernel<T> {
                           "The number of ranks (%d) you set must "
                           "be equal to gloo->Size() (%d).",
                           nranks, gloo->Size()));
+    PADDLE_ENFORCE_GE(
+        root_id, 0,
+        platform::errors::InvalidArgument(
+            "The root_id (%d) for gather_op_v2 must be non-negative.",
+            root_id));
+    PADDLE_ENFORCE_LT(
+        root_id, nranks,
+        platform::errors::InvalidArgument(
+            "The root_id (%d) for gather_op_v2 must be less than nranks (%d).",
+            root_id, nranks));
     int64_t send_numel = in->numel();
     int64_t recv_numel = out->numel();
     auto in_dim = x->dims();
     auto out_dim = framework::DDim(in_dim);
     out_dim[0] *= nranks;
-    auto nranks = gloo->Size();
     auto rank = gloo->Rank();
     gloo::GatherOptions opts(gloo->GetContext());
     if (root_id == rank) {

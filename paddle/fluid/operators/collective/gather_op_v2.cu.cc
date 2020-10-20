@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
+#if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int send_numel = x->numel();
@@ -47,6 +48,11 @@ class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The root_id (%d) for gather_op_v2 must be non-negative.",
             root_id));
+    PADDLE_ENFORCE_LT(
+        root_id, nranks,
+        platform::errors::InvalidArgument(
+            "The root_id (%d) for gather_op_v2 must be less than nranks (%d).",
+            root_id, nranks));
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
@@ -78,6 +84,10 @@ class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
       }
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+#endif
 #else
     PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
