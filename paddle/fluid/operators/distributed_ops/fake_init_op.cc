@@ -43,9 +43,9 @@ class FakeInitOp : public framework::OperatorBase {
       tensor = out_var.GetMutable<framework::SelectedRows>()->mutable_value();
       tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "fake init op's output only"
-          "supports SelectedRows and LoDTensor");
+          "supports SelectedRows and LoDTensor"));
     }
   }
 };

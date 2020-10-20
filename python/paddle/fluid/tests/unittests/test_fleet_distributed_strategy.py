@@ -86,6 +86,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.localsgd_configs["k_steps"], 4)
         self.assertEqual(strategy.localsgd_configs["begin_step"], 120)
 
+    def test_adaptive_localsgd_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {"init_k_steps": 1, "begin_step": 120}
+        strategy.adaptive_localsgd_configs = configs
+        self.assertEqual(strategy.adaptive_localsgd_configs["init_k_steps"], 1)
+        self.assertEqual(strategy.adaptive_localsgd_configs["begin_step"], 120)
+
     def test_dgc(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.dgc = True
@@ -94,6 +101,16 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.dgc, False)
         strategy.dgc = "True"
         self.assertEqual(strategy.dgc, False)
+
+    def test_fp16_allreduce(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.fp16_allreduce = True
+        self.assertEqual(strategy.fp16_allreduce, True)
+        strategy.fp16_allreduce = False
+        self.assertEqual(strategy.fp16_allreduce, False)
+        with self.assertRaises(TypeError):
+            strategy.fp16_allreduce = "True"
+        self.assertEqual(strategy.fp16_allreduce, False)
 
     def test_sync_nccl_allreduce(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

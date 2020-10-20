@@ -26,7 +26,7 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   if (x->type() == framework::proto::VarType::INT32) {
     auto* data = x->data<int>();
     framework::Tensor cpu_attr_tensor;
-    if (platform::is_gpu_place(x->place())) {
+    if (!platform::is_cpu_place(x->place())) {
       TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
@@ -34,14 +34,16 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   } else if (x->type() == framework::proto::VarType::INT64) {
     auto* data = x->data<int64_t>();
     framework::Tensor cpu_attr_tensor;
-    if (platform::is_gpu_place(x->place())) {
+    if (!platform::is_cpu_place(x->place())) {
       TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
     vec_new_data = std::vector<T>(data, data + x->numel());
   } else {
-    PADDLE_THROW("The dtype of Tensor must be int32 or int64.");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The dtype of Tensor must be int32 or int64, but received: %s",
+        x->type()));
   }
   return vec_new_data;
 }
@@ -53,13 +55,14 @@ inline std::vector<T> GetDataFromTensorList(
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "ShapeError: The shape of Tensor in list must be [1]. "
-                      "But received the shape "
-                      "is [%s]",
-                      tensor->dims());
+                      platform::errors::InvalidArgument(
+                          "The shape of Tensor in list must be [1]. "
+                          "But received its shape "
+                          "is [%s]",
+                          tensor->dims()));
 
     if (tensor->type() == framework::proto::VarType::INT32) {
-      if (platform::is_gpu_place(tensor->place())) {
+      if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
@@ -67,7 +70,7 @@ inline std::vector<T> GetDataFromTensorList(
         vec_new_data.push_back(static_cast<T>(*tensor->data<int>()));
       }
     } else if (tensor->type() == framework::proto::VarType::INT64) {
-      if (platform::is_gpu_place(tensor->place())) {
+      if (!platform::is_cpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         // NOTE: Converting int64 to int32 may cause data overflow.
@@ -76,7 +79,10 @@ inline std::vector<T> GetDataFromTensorList(
         vec_new_data.push_back(static_cast<T>(*tensor->data<int64_t>()));
       }
     } else {
-      PADDLE_THROW("The dtype of Tensor in list must be int32 or int64.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The dtype of Tensor in list must be int32 or int64, but received: "
+          "%s",
+          tensor->type()));
     }
   }
   return vec_new_data;

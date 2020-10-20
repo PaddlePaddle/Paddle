@@ -33,10 +33,10 @@ namespace math {
 class Sampler {
  public:
   explicit Sampler(int64_t range, unsigned int seed = 0UL) : range_(range) {
-    PADDLE_ENFORCE_GT(range, 0, platform::errors::InvalidArgument(
-                                    "Range should be"
-                                    " greater than 0, but recevied %d.",
-                                    range));
+    PADDLE_ENFORCE_GT(
+        range, 0,
+        platform::errors::InvalidArgument(
+            "Range should be greater than 0, but recevied %d.", range));
     if (seed == 0) {
       std::random_device r;
       seed_ = r();

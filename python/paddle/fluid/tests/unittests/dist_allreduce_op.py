@@ -30,6 +30,8 @@ import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
+paddle.enable_static()
+
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 

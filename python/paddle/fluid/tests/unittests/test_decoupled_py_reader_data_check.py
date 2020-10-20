@@ -37,7 +37,7 @@ class TestClass(unittest.TestCase):
                     low=0, high=9, size=label_shape).astype('int64')
                 yield img, label
 
-        reader = fluid.io.cache(fake_reader)
+        reader = paddle.reader.cache(fake_reader)
         batch_reader = fluid.io.batch(reader, batch_size=batch_size)
 
         places = [fluid.CPUPlace()]

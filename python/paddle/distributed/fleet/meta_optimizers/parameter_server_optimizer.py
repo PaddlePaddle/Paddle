@@ -74,6 +74,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = worker.delet_extra_optimizes_pass(_startup,
                                                          compiled_config)
 
+            compiled_config.set_origin_ps_main_program(_main)
+            compiled_config.set_origin_ps_startup_program(_startup)
             # for heter program
             if self.role_maker._is_heter_parameter_server_mode:
                 from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
@@ -91,6 +93,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
+            compiled_config.set_origin_ps_main_program(_main)
+            compiled_config.set_origin_ps_startup_program(_startup)
 
         return _main, _startup
 
@@ -239,10 +243,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                      strategy, self.role_maker)
         compiled_config.strategy = strategy
 
-        if self.role_maker.is_worker() or self.role_maker._is_heter_worker():
+        if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
-        elif self.role_maker.is_server():
+        elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
                 compiled_config)
 

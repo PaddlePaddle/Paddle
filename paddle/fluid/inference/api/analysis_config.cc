@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
+struct MkldnnQuantizerConfig;
+
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
@@ -125,6 +125,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   CP_MEMBER(mkldnn_cache_capacity_);
+  // Bfloat16 related.
+  CP_MEMBER(use_mkldnn_bfloat16_);
+  CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -230,7 +233,8 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
-                          "MkldnnQuantizer was not enabled yet.");
+                          platform::errors::PreconditionNotMet(
+                              "MkldnnQuantizer was not enabled yet."));
   return mkldnn_quantizer_config_.get();
 }
 
@@ -416,6 +420,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
+  for (auto &item : bfloat16_enabled_op_types_) ss << item;
+  ss << ";";
   ss << model_from_memory_;
 
   ss << with_profile_;

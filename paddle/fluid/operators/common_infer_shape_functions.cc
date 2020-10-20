@@ -13,9 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-
 #include <algorithm>
 #include <vector>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+}  // namespace framework
+}  // namespace paddle
 
 // This file almostly contains all the infershape functions that are used in
 // operators.

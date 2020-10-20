@@ -37,7 +37,11 @@ def get_cluster_from_args(selected_gpus):
     free_ports = find_free_ports(len(selected_gpus))
     if free_ports is not None:
         free_ports = list(free_ports)
-    return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
+
+    trainer_endpoints = []
+    for ip in node_ips:
+        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+    return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
 
 
 def get_gpus(selected_gpus):

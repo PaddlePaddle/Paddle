@@ -14,9 +14,10 @@
 
 import os
 import sys
-import cv2
 
+import paddle
 from paddle.io import Dataset
+from paddle.utils import try_import
 
 __all__ = ["DatasetFolder", "ImageFolder"]
 
@@ -143,6 +144,8 @@ class DatasetFolder(Dataset):
         self.samples = samples
         self.targets = [s[1] for s in samples]
 
+        self.dtype = paddle.get_default_dtype()
+
     def _find_classes(self, dir):
         """
         Finds the class folders in a dataset.
@@ -191,6 +194,7 @@ IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif',
 
 
 def cv2_loader(path):
+    cv2 = try_import('cv2')
     return cv2.imread(path)
 
 

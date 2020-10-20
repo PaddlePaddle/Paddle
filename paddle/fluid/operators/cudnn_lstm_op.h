@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -174,14 +175,12 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
   }
 }
 template <typename T>
-std::vector<TensorList> parameter_split(
-    const Tensor* weight, const int& gate_num, const int& layers_num,
-    const int& input_size, const int& hidden_size, const int& is_bidirec) {
+void parameter_split(const Tensor* weight, const int& gate_num,
+                     const int& layers_num, const int& input_size,
+                     const int& hidden_size, const int& is_bidirec,
+                     std::vector<TensorList>* params_vec) {
   // if the weight of RNN is flatten, we need to convert the
   // the flattened weight to single split tensor
-  std::vector<TensorList> params_vec;
-  params_vec.reserve(layers_num);
-
   const auto& weight_numel = weight->numel();
   // resize the weight tensor, could slice tensor directly
   const auto& mem_block_size = gate_num * hidden_size;
@@ -238,9 +237,39 @@ std::vector<TensorList> parameter_split(
         tensor_list.emplace_back(tmp_tensor);
       }
     }
-    params_vec.emplace_back(tensor_list);
+    params_vec->emplace_back(tensor_list);
   }
-  return params_vec;
+}
+
+void reset_parameter_vector(const std::vector<const Tensor*>& raw_params_vec,
+                            const int& num_layers, const int& gate_num,
+                            const bool& is_bidirec,
+                            std::vector<TensorList>* params_vec) {
+  // the parameter raw seuquence is [FWhi, FWhh, BWhi, BWhh] * num_layers
+  // + [FBhi, FBhh, BBhi, BBhh] * num_layers, we will reset the parameter to
+  // ([FWhi, FWhh, FBhi, FBhh] + [BWhi, BWhh, BBhi, BBhh]) * num_layers
+  const int& direction_num = is_bidirec ? 2 : 1;
+  const int& layer_weight_size = 4 * direction_num;
+  const int& all_weight_size = num_layers * layer_weight_size;
+  const int& bias_start_idx = all_weight_size / 2;
+  for (int i = 0; i < num_layers; i++) {
+    TensorList tensor_list;
+    tensor_list.reserve(layer_weight_size);
+    for (int j = 0; j < layer_weight_size; j++) {
+      Tensor tensor_holder;
+      tensor_list.emplace_back(tensor_holder);
+    }
+    for (int j = 0; j < layer_weight_size; j++) {
+      int k = j % 4;
+      const int& section = j / 4;
+      int tensor_idx = i * 2 * direction_num + section * 2 + k % 2;
+      if (k >= 2) {
+        tensor_idx += bias_start_idx;
+      }
+      tensor_list[j].ShareDataWith(*raw_params_vec[tensor_idx]);
+    }
+    params_vec->emplace_back(tensor_list);
+  }
 }
 
 template <typename T>
@@ -304,7 +333,7 @@ struct LSTMCell : Cell<T> {
     T cell_clip = 0.0;
     math::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
         *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
-        cell_act, cand_act);
+        cell_act, cand_act, false);
     framework::TensorCopy(*output, device_ctx->GetPlace(), *device_ctx, last_h);
     // Print3DTensor<T>(last_h, "last_h");
   }
@@ -321,14 +350,8 @@ struct Layer {
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     const int& hidden_size = weight.dims()[0];
-    VLOG(0) << "=============================";
-    VLOG(0) << "cache_input num: " << cache_input->numel();
-    VLOG(0) << "dims: " << input->dims()[0] << ", " << input->dims()[1] << ", "
-            << hidden_size;
-    VLOG(0) << "=============================";
     cache_input->Resize(framework::make_ddim(
         {input->dims()[0], input->dims()[1], hidden_size}));
-    //    cache_input->mutable_data<T>(context.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
     auto mat_dim_a = math::CreateMatrixDescriptor(input->dims(), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(weight.dims(), 0, true);
@@ -349,9 +372,9 @@ struct Layer {
     eigen_in = eigen_in +
                eigen_bias_ih.broadcast(Eigen::DSizes<int, 2>(row_num, 1)) +
                eigen_bias_hh.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
-    //    Print3DTensor<T>(input, "preprocess_input");
-    //    Print2DTensor<T>(&weight, "preprocess_weight");
-    //    Print3DTensor<T>(cache_input, "preprocess_output");
+    Print3DTensor<T>(input, "preprocess_input");
+    Print2DTensor<T>(&weight, "preprocess_weight");
+    Print3DTensor<T>(cache_input, "preprocess_output");
   }
 
   void postprocess(const framework::ExecutionContext& context, Tensor* output,
@@ -407,12 +430,9 @@ struct SingleLayer : Layer<T> {
     // first step, we could calcalute the W_ih * input + Bias_ih to more faster
     const int& time_step = input->dims()[0];
     // vec[0] is parameter of w_hi, vec[2] is bias of b_hi
-    // Tensor input_w;
-    // this->preprocess(context, input, vec[0], vec[2], vec[3], &input_w);
     this->preprocess(context, input, vec[0], vec[2], vec[3], gate_value);
     VLOG(2) << "output shape: " << output->dims();
 
-    // auto input_tensors = Unbind(input_w);
     auto input_tensors = Unbind(*gate_value);
     auto output_tensors = Unbind(*output);
     TensorList mask_tensor_list;
@@ -432,11 +452,8 @@ struct SingleLayer : Layer<T> {
     // define the init_h holder for the swap
     bool has_allocate_mem = false;
     Tensor* init_h_holder = nullptr;  // = &init_h[layer_idx];
-    //    Tensor* init_c_holder = nullptr;  // = &init_c[layer_idx];
     Tensor init_h_temp;
-    //    Tensor init_c_temp;
     Tensor* last_h_holder = &last_h[layer_idx];
-    //    Tensor* last_c_holder = &last_c[layer_idx];
     cell_value->Resize({time_step, cell_value->numel() / time_step});
     auto cell_value_tensors = Unbind(*cell_value);
     for (int i = 0; i < time_step; i++) {
@@ -446,19 +463,11 @@ struct SingleLayer : Layer<T> {
           init_h_temp.Resize(init_h[layer_idx].dims());
           init_h_temp.mutable_data<T>(context.GetPlace());
           init_h_holder = &init_h_temp;
-          //          init_c_temp.Resize(init_c[layer_idx].dims());
-          //          init_c_temp.mutable_data<T>(context.GetPlace());
-          //          init_c_holder = &init_c_temp;
           has_allocate_mem = true;
         }
         SwapPoniter(&init_h_holder, &last_h_holder);
-        //        SwapPoniter(&init_c_holder, &last_c_holder);
       }
       if (i == 0) {
-        //        cell_(&dev_ctx, &input_tensors[i], &vec[1],
-        //        &init_h[layer_idx],
-        //              &init_c[layer_idx], last_h_holder, last_c_holder,
-        //              &output_tensors[i]);
         cell_(&dev_ctx, &input_tensors[i], &vec[1], &init_h[layer_idx],
               &init_c[layer_idx], last_h_holder, &cell_value_tensors[i],
               &output_tensors[i]);
@@ -482,8 +491,6 @@ struct SingleLayer : Layer<T> {
     if (time_step % 2 == 0) {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
                             &last_h[layer_idx]);
-      //      framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
-      //                            &last_c[layer_idx]);
     }
     framework::TensorCopy(cell_value_tensors[time_step - 1], context.GetPlace(),
                           dev_ctx, &last_c[layer_idx]);
@@ -559,28 +566,16 @@ struct BidirLayer : Layer<T> {
           forward_init_h_temp.Resize(init_h[2 * layer_idx].dims());
           forward_init_h_temp.mutable_data<T>(context.GetPlace());
           forward_init_h_holder = &forward_init_h_temp;
-          //          forward_init_c_temp.Resize(init_c[2 * layer_idx].dims());
-          //          forward_init_c_temp.mutable_data<T>(context.GetPlace());
-          //          forward_init_c_holder = &forward_init_c_temp;
           has_forward_allocate_mem = true;
         }
         SwapPoniter(&forward_init_h_holder, &forward_last_h_holder);
-        //        SwapPoniter(&forward_init_c_holder, &forward_last_c_holder);
       }
       if (i == 0) {
-        //        cell_(&dev_ctx, &forward_input_tensors[i], &vec[1],
-        //              &init_h[2 * layer_idx], &init_c[2 * layer_idx],
-        //              &last_h[2 * layer_idx], &last_c[2 * layer_idx],
-        //              &forward_output_tensors[i]);
         cell_(&dev_ctx, &forward_input_tensors[i], &vec[1],
               &init_h[2 * layer_idx], &init_c[2 * layer_idx],
               &last_h[2 * layer_idx], &forward_cell_value_tensors[i],
               &forward_output_tensors[i]);
       } else {
-        //        cell_(&dev_ctx, &forward_input_tensors[i], &vec[1],
-        //              forward_init_h_holder, forward_init_c_holder,
-        //              forward_last_h_holder, forward_last_c_holder,
-        //              &forward_output_tensors[i]);
         cell_(&dev_ctx, &forward_input_tensors[i], &vec[1],
               forward_init_h_holder, &forward_cell_value_tensors[i - 1],
               forward_last_h_holder, &forward_cell_value_tensors[i],
@@ -628,12 +623,8 @@ struct BidirLayer : Layer<T> {
         {time_step, backward_cell_value.numel() / time_step});
     auto backward_cell_value_tensors = Unbind(backward_cell_value);
     Tensor* backward_init_h_holder = nullptr;  // = &init_h[2*layer_idx + 1];
-    //    Tensor* backward_init_c_holder = nullptr;  // = &init_c[2*layer_idx +
-    //    1];
     Tensor backward_init_h_temp;
-    //    Tensor backward_init_c_temp;
     Tensor* backward_last_h_holder = &last_h[2 * layer_idx + 1];
-    //    Tensor* backward_last_c_holder = &last_c[2 * layer_idx + 1];
     for (int i = 0; i < time_step; i++) {
       backward_cell_value_tensors[i].Resize(init_c[2 * layer_idx + 1].dims());
       if (i > 0) {
@@ -641,29 +632,16 @@ struct BidirLayer : Layer<T> {
           backward_init_h_temp.Resize(init_h[2 * layer_idx + 1].dims());
           backward_init_h_temp.mutable_data<T>(context.GetPlace());
           backward_init_h_holder = &backward_init_h_temp;
-          //          backward_init_c_temp.Resize(init_c[2 * layer_idx +
-          //          1].dims());
-          //          backward_init_c_temp.mutable_data<T>(context.GetPlace());
-          //          backward_init_c_holder = &backward_init_c_temp;
           has_backward_allocate_mem = true;
         }
         SwapPoniter(&backward_init_h_holder, &backward_last_h_holder);
-        //        SwapPoniter(&backward_init_c_holder, &backward_last_c_holder);
       }
       if (i == 0) {
-        //        cell_(&dev_ctx, &backward_input_tensors[i], &vec[5],
-        //              &init_h[2 * layer_idx + 1], &init_c[2 * layer_idx + 1],
-        //              &last_h[2 * layer_idx + 1], &last_c[2 * layer_idx + 1],
-        //              &backward_output_tensors[i]);
         cell_(&dev_ctx, &backward_input_tensors[i], &vec[5],
               &init_h[2 * layer_idx + 1], &init_c[2 * layer_idx + 1],
               &last_h[2 * layer_idx + 1], &backward_cell_value_tensors[i],
               &backward_output_tensors[i]);
       } else {
-        //        cell_(&dev_ctx, &backward_input_tensors[i], &vec[5],
-        //              backward_init_h_holder, backward_init_c_holder,
-        //              backward_last_h_holder, backward_last_c_holder,
-        //              &backward_output_tensors[i]);
         cell_(&dev_ctx, &backward_input_tensors[i], &vec[5],
               backward_init_h_holder, &backward_cell_value_tensors[i - 1],
               backward_last_h_holder, &backward_cell_value_tensors[i],
@@ -693,18 +671,10 @@ struct BidirLayer : Layer<T> {
           *forward_last_h_holder, context.GetPlace(),
           context.template device_context<platform::CPUDeviceContext>(),
           &last_h[2 * layer_idx]);
-      //      framework::TensorCopy(
-      //          *forward_last_c_holder, context.GetPlace(),
-      //          context.template device_context<platform::CPUDeviceContext>(),
-      //          &last_c[2 * layer_idx]);
       framework::TensorCopy(
           *backward_last_h_holder, context.GetPlace(),
           context.template device_context<platform::CPUDeviceContext>(),
           &last_h[2 * layer_idx + 1]);
-      //      framework::TensorCopy(
-      //          *backward_last_c_holder, context.GetPlace(),
-      //          context.template device_context<platform::CPUDeviceContext>(),
-      //          &last_c[2 * layer_idx + 1]);
     }
     framework::TensorCopy(forward_cell_value_tensors[time_step - 1],
                           context.GetPlace(), dev_ctx, &last_c[2 * layer_idx]);
@@ -745,10 +715,11 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
 template <typename CellType, template <typename, typename> class SingleLayerT,
           template <typename, typename> class BidirLayerT, typename T>
 void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
-             const Tensor* weight, const Tensor* init_h, const Tensor* init_c,
-             const Tensor* sequence_length, Tensor* last_h, Tensor* last_c,
-             Tensor* output, Tensor* dropout_mask, const int& num_layers,
-             const int& gate_num, const int& input_size, const int& hidden_size,
+             const std::vector<const Tensor*> weight_list, const Tensor* init_h,
+             const Tensor* init_c, const Tensor* sequence_length,
+             Tensor* last_h, Tensor* last_c, Tensor* output,
+             Tensor* dropout_mask, const int& num_layers, const int& gate_num,
+             const int& input_size, const int& hidden_size,
              const bool& is_bidirec, const std::string& cell_type,
              const float& dropout_prob, const bool& is_test, const int& seed,
              Tensor* reserve_data) {
@@ -769,9 +740,11 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
                         " num_layers:%d, dim:%d",
                         num_layers, init_h_dims[0]));
   CellType cell;
-  // const int& init_offset = init_h->numel() / num_layers;
-  const std::vector<TensorList>& parameter_lists = parameter_split<T>(
-      weight, gate_num, num_layers, input_size, hidden_size, is_bidirec);
+
+  std::vector<TensorList> parameter_lists;
+  parameter_lists.reserve(num_layers);
+  reset_parameter_vector(weight_list, num_layers, gate_num, is_bidirec,
+                         &parameter_lists);
 
   Tensor gate_data;
   Tensor cell_data;
@@ -808,8 +781,8 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
                                         dropout_prob, seed,
                                         true /*upscale_in_train*/, is_test);
-        //        Print3DTensor<T>(input_holder, "input_holder after dropout");
-        //        Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
+        Print3DTensor<T>(input_holder, "input_holder after dropout");
+        Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
       }
     }
     if (is_bidirec) {
@@ -858,9 +831,9 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     const int& seed = ctx.Attr<int>("seed");
     // get the input and weight tensor for the cacluate rnn cell
     auto* input = ctx.Input<Tensor>("Input");
-    auto* weight = ctx.Input<Tensor>("W");
     auto* init_h = ctx.Input<Tensor>("InitH");
     auto* init_c = ctx.Input<Tensor>("InitC");
+    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
     const Tensor* sequence_length = nullptr;
@@ -884,9 +857,10 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     int gate_num = 4;
     if (cell_type == "lstm") {
       RnnFunc<LSTMCell<T>, SingleLayer, BidirLayer, T>(
-          ctx, input, weight, init_h, init_c, sequence_length, last_h, last_c,
-          output, dropout_mask, num_layers, gate_num, input_size, hidden_size,
-          is_bidirec, cell_type, dropout_prob, is_test, seed, reserve_data);
+          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
+          last_c, output, dropout_mask, num_layers, gate_num, input_size,
+          hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
+          reserve_data);
     } else if (cell_type == "gru") {
       gate_num = 3;
       // run gru

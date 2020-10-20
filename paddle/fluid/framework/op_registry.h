@@ -37,6 +37,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 class Registrar {
  public:

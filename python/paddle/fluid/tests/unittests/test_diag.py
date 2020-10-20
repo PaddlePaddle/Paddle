@@ -119,6 +119,16 @@ class TestDiagV2API(unittest.TestCase):
             (n, n)) + np.diag(self.input_np3, self.offset) - np.diag(
                 self.padding_value * np.ones(n))
 
+        self.input_np4 = np.random.random(size=(2000, 2000)).astype(np.float32)
+        self.expected6 = np.diag(self.input_np4)
+        self.expected7 = np.diag(self.input_np4, k=1)
+        self.expected8 = np.diag(self.input_np4, k=-1)
+
+        self.input_np5 = np.random.random(size=(2000)).astype(np.float32)
+        self.expected9 = np.diag(self.input_np5)
+        self.expected10 = np.diag(self.input_np5, k=1)
+        self.expected11 = np.diag(self.input_np5, k=-1)
+
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = paddle.diag(x)
@@ -141,10 +151,32 @@ class TestDiagV2API(unittest.TestCase):
         y = paddle.diag(x, padding_value=-8)
         self.assertTrue(np.allclose(y.numpy(), self.expected5))
 
+        x = paddle.to_tensor(self.input_np4)
+        y = paddle.diag(x)
+        self.assertTrue(np.allclose(y.numpy(), self.expected6))
+
+        y = paddle.diag(x, offset=1)
+        self.assertTrue(np.allclose(y.numpy(), self.expected7))
+
+        y = paddle.diag(x, offset=-1)
+        self.assertTrue(np.allclose(y.numpy(), self.expected8))
+
+        x = paddle.to_tensor(self.input_np5)
+        y = paddle.diag(x)
+        self.assertTrue(np.allclose(y.numpy(), self.expected9))
+
+        y = paddle.diag(x, offset=1)
+        self.assertTrue(np.allclose(y.numpy(), self.expected10))
+
+        y = paddle.diag(x, offset=-1)
+        self.assertTrue(np.allclose(y.numpy(), self.expected11))
+
     def run_static(self, use_gpu=False):
-        x = paddle.data(name='input', shape=[10, 10], dtype='float32')
-        x2 = paddle.data(name='input2', shape=[100], dtype='float64')
-        x3 = paddle.data(name='input3', shape=[100], dtype='int64')
+        x = paddle.fluid.data(name='input', shape=[10, 10], dtype='float32')
+        x2 = paddle.fluid.data(name='input2', shape=[100], dtype='float64')
+        x3 = paddle.fluid.data(name='input3', shape=[100], dtype='int64')
+        x4 = paddle.fluid.data(name='input4', shape=[2000, 2000], dtype='float32')
+        x5 = paddle.fluid.data(name='input5', shape=[2000], dtype='float32')
         result0 = paddle.diag(x)
         result1 = paddle.diag(x, offset=1)
         result2 = paddle.diag(x, offset=-1)
@@ -152,17 +184,28 @@ class TestDiagV2API(unittest.TestCase):
         result4 = paddle.diag(x2, padding_value=8)
         result5 = paddle.diag(x3, padding_value=8.0)
         result6 = paddle.diag(x3, padding_value=-8)
+        result7 = paddle.diag(x4)
+        result8 = paddle.diag(x4, offset=1)
+        result9 = paddle.diag(x4, offset=-1)
+        result10 = paddle.diag(x5)
+        result11 = paddle.diag(x5, offset=1)
+        result12 = paddle.diag(x5, offset=-1)
 
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        res0, res1, res2, res4, res5, res6 = exe.run(
+        res0, res1, res2, res4, res5, res6, res7, res8, res9, res10, res11, res12 = exe.run(
             feed={
                 "input": self.input_np,
                 "input2": self.input_np2,
-                'input3': self.input_np3
+                'input3': self.input_np3,
+                'input4': self.input_np4,
+                'input5': self.input_np5
             },
-            fetch_list=[result0, result1, result2, result4, result5, result6])
+            fetch_list=[
+                result0, result1, result2, result4, result5, result6, result7,
+                result8, result9, result10, result11, result12
+            ])
 
         self.assertTrue(np.allclose(res0, self.expected0))
         self.assertTrue(np.allclose(res1, self.expected1))
@@ -171,6 +214,12 @@ class TestDiagV2API(unittest.TestCase):
         self.assertTrue(np.allclose(res4, self.expected3))
         self.assertTrue(np.allclose(res5, self.expected4))
         self.assertTrue(np.allclose(res6, self.expected5))
+        self.assertTrue(np.allclose(res7, self.expected6))
+        self.assertTrue(np.allclose(res8, self.expected7))
+        self.assertTrue(np.allclose(res9, self.expected8))
+        self.assertTrue(np.allclose(res10, self.expected9))
+        self.assertTrue(np.allclose(res11, self.expected10))
+        self.assertTrue(np.allclose(res12, self.expected11))
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())

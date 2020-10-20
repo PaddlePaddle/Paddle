@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -34,8 +35,18 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+namespace plugin {
+class PluginTensorRT;
+}  // namespace plugin
 
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
@@ -94,6 +105,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
 }  // NOLINT
 
 class TRTInt8Calibrator;
+
 /*
  * TensorRT Engine.
  *

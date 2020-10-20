@@ -24,6 +24,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/platform/device_context.h"
 
+namespace paddle {
+namespace framework {
+class OpInfoMap;
+}  // namespace framework
+namespace platform {
+class DeviceContextPool;
+}  // namespace platform
+}  // namespace paddle
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -15,6 +15,7 @@
 import paddle
 paddle.set_default_dtype("float64")
 from paddle.fluid.layers import sequence_mask
+paddle.enable_static()
 
 import numpy as np
 import unittest
@@ -81,10 +82,10 @@ class TestSimpleRNN(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
-                init_h = paddle.data(
+                init_h = paddle.fluid.data(
                     "init_h", [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data, init_h)
@@ -112,7 +113,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data)
@@ -142,10 +143,10 @@ class TestSimpleRNN(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
-                seq_len = paddle.data("seq_len", [-1], dtype="int64")
+                seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
                 mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
@@ -227,10 +228,10 @@ class TestGRU(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
-                init_h = paddle.data(
+                init_h = paddle.fluid.data(
                     "init_h", [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data, init_h)
@@ -258,7 +259,7 @@ class TestGRU(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
                 y, h = rnn2(x_data)
@@ -288,10 +289,10 @@ class TestGRU(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
-                seq_len = paddle.data("seq_len", [-1], dtype="int64")
+                seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
                 mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
@@ -370,13 +371,13 @@ class TestLSTM(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
-                init_h = paddle.data(
+                init_h = paddle.fluid.data(
                     "init_h", [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype())
-                init_c = paddle.data(
+                init_c = paddle.fluid.data(
                     "init_c", [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype())
                 y, (h, c) = rnn2(x_data, (init_h, init_c))
@@ -405,7 +406,7 @@ class TestLSTM(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
                 y, (h, c) = rnn2(x_data)
@@ -436,10 +437,10 @@ class TestLSTM(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.data(
+                x_data = paddle.fluid.data(
                     "input", [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype())
-                seq_len = paddle.data("seq_len", [-1], dtype="int64")
+                seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
                 mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])

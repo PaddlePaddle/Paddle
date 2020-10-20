@@ -24,6 +24,9 @@ import numpy as np
 from unittests.test_imperative_base import new_program_scope
 from paddle.fluid.dygraph import base
 from paddle.fluid import core
+import paddle
+
+paddle.enable_static()
 
 
 class LayerTest(unittest.TestCase):

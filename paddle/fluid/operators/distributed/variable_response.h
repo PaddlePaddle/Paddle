@@ -16,16 +16,32 @@
 
 #include <string>
 
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/var_type.h"
-
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
+
+namespace google {
+namespace protobuf {
+namespace io {
+class CodedInputStream;
+class ZeroCopyInputStream;
+}  // namespace io
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 DECLARE_string(rpc_server_profile_path);
 

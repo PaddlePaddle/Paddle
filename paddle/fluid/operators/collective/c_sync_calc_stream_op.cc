@@ -11,19 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#if defined(PADDLE_WITH_NCCL)
-#include <nccl.h>
-#endif
-
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -38,14 +34,16 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "Sync stream op can run on gpu place only for now.");
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

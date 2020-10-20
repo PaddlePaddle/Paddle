@@ -13,8 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/lstm_compute.h"
+
 #include "paddle/fluid/operators/math/detail/lstm_cpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/lstm_kernel.h"
+
+namespace paddle {
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -26,10 +33,12 @@ struct LstmUnitFunctor<platform::CPUDeviceContext, T> {
                       LstmMetaValue<T> value, int frame_size, int batch_size,
                       T cell_clip, const detail::ActivationType& gate_act,
                       const detail::ActivationType& cell_act,
-                      const detail::ActivationType& cand_act) {
+                      const detail::ActivationType& cand_act,
+                      bool old_api_version = true) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
-                               cell_clip, cand_act, gate_act, cell_act);
+                               cell_clip, cand_act, gate_act, cell_act,
+                               old_api_version);
       value.gate_value += frame_size * 4;
       value.state_value += frame_size;
       value.state_active_value += frame_size;

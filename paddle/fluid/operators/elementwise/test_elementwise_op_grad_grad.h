@@ -92,7 +92,9 @@ class TestElementwiseOpGradGrad {
         auto dst_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
-        PADDLE_THROW("Not compiled with cuda");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Check your paddle version, current version is not compiled with "
+            "cuda"));
 #endif
       }
     }
@@ -107,7 +109,10 @@ class TestElementwiseOpGradGrad {
     op->Run(scope_, place_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
     framework::LoDTensor cpu_out;
-    PADDLE_ENFORCE_EQ(scope_.kids().empty(), true, "scope has child scopes");
+    PADDLE_ENFORCE_EQ(scope_.kids().empty(), true,
+                      platform::errors::InvalidArgument(
+                          "The scope can not have the child scopes,"
+                          "please check your code."));
 
     // get outputs from scope and compare them with expected_outs
     bool all_equal = true;

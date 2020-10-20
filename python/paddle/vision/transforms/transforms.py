@@ -17,7 +17,6 @@ from __future__ import division
 import math
 import sys
 import random
-import cv2
 
 import numpy as np
 import numbers
@@ -26,6 +25,7 @@ import collections
 import warnings
 import traceback
 
+from paddle.utils import try_import
 from . import functional as F
 
 if sys.version_info < (3, 3):
@@ -214,7 +214,16 @@ class Resize(object):
             smaller edge of the image will be matched to this number.
             i.e, if height > width, then image will be rescaled to
             (size * height / width, size)
-        interpolation (int): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
     
@@ -232,7 +241,7 @@ class Resize(object):
             print(fake_img.shape)
     """
 
-    def __init__(self, size, interpolation=cv2.INTER_LINEAR):
+    def __init__(self, size, interpolation=1):
         assert isinstance(size, int) or (isinstance(size, Iterable) and
                                          len(size) == 2)
         self.size = size
@@ -252,6 +261,16 @@ class RandomResizedCrop(object):
         output_size (int|list|tuple): Target size of output image, with (height, width) shape.
         scale (list|tuple): Range of size of the origin size cropped. Default: (0.08, 1.0)
         ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
     
@@ -273,7 +292,7 @@ class RandomResizedCrop(object):
                  output_size,
                  scale=(0.08, 1.0),
                  ratio=(3. / 4, 4. / 3),
-                 interpolation=cv2.INTER_LINEAR):
+                 interpolation=1):
         if isinstance(output_size, int):
             self.output_size = (output_size, output_size)
         else:
@@ -328,7 +347,16 @@ class CenterCropResize(object):
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
         crop_padding (int): Center crop with the padding. Default: 32.
-        interpolation (int): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
     
@@ -346,7 +374,7 @@ class CenterCropResize(object):
             print(fake_img.shape)
     """
 
-    def __init__(self, size, crop_padding=32, interpolation=cv2.INTER_LINEAR):
+    def __init__(self, size, crop_padding=32, interpolation=1):
         if isinstance(size, int):
             self.size = (size, size)
         else:
@@ -661,6 +689,7 @@ class ContrastTransform(object):
         if self.value == 0:
             return img
 
+        cv2 = try_import('cv2')
         dtype = img.dtype
         img = img.astype(np.float32)
         alpha = np.random.uniform(max(0, 1 - self.value), 1 + self.value)
@@ -700,6 +729,8 @@ class SaturationTransform(object):
     def __call__(self, img):
         if self.value == 0:
             return img
+
+        cv2 = try_import('cv2')
 
         dtype = img.dtype
         img = img.astype(np.float32)
@@ -742,6 +773,7 @@ class HueTransform(object):
         if self.value == 0:
             return img
 
+        cv2 = try_import('cv2')
         dtype = img.dtype
         img = img.astype(np.uint8)
         hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
@@ -1036,7 +1068,16 @@ class RandomRotate(object):
         degrees (sequence or float or int): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees) clockwise order.
-        interpolation (int|optional): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
         expand (bool|optional): Optional expansion flag. Default: False.
             If true, expands the output to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
@@ -1061,11 +1102,7 @@ class RandomRotate(object):
             print(fake_img.shape)
     """
 
-    def __init__(self,
-                 degrees,
-                 interpolation=cv2.INTER_LINEAR,
-                 expand=False,
-                 center=None):
+    def __init__(self, degrees, interpolation=1, expand=False, center=None):
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
                 raise ValueError(

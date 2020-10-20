@@ -26,4 +26,8 @@ if(WITH_GPU)
     set(CMAKE_CUDA_FLAGS_MINSIZEREL "-O1 -DNDEBUG")
 endif()
 
+if(WIN32)
+    set(WIN_PROPS ${CMAKE_SOURCE_DIR}/cmake/paddle_win.props)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Os -DNDEBUG")
+endif()
 

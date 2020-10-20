@@ -52,18 +52,17 @@ class TestDatasetWithStat(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
-            "InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset._set_batch_size(32)
+        dataset._set_thread(3)
         dataset.set_filelist([
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
         ])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
+        dataset._set_pipe_command("cat")
+        dataset._set_use_var(slots_vars)
         dataset.load_into_memory()
-        dataset.set_fea_eval(1, True)
+        dataset._set_fea_eval(1, True)
         dataset.slots_shuffle(["slot1"])
 
         exe = fluid.Executor(fluid.CPUPlace())

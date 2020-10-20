@@ -38,6 +38,7 @@ set(PYBIND_SRCS
   imperative.cc
   ir.cc
   inference_api.cc
+  compatible.cc
   generator_py.cc)
 
 if(WITH_GLOO)

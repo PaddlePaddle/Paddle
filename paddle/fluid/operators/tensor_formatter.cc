@@ -12,10 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/fluid/operators/tensor_formatter.h"
 #include <algorithm>
 #include <string>
-
-#include "paddle/fluid/operators/tensor_formatter.h"
 
 namespace paddle {
 namespace operators {

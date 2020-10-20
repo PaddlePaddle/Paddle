@@ -31,6 +31,10 @@ class DGCOptimizer(MetaOptimizerBase):
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
         opt = self.inner_opt
+
+        if not self.role_maker._is_collective:
+            return
+
         if not isinstance(opt, Momentum):
             return
 
@@ -47,7 +51,7 @@ class DGCOptimizer(MetaOptimizerBase):
             sparsity=configs['sparsity'],
             parameter_list=opt._parameter_list,
             use_nesterov=opt._use_nesterov,
-            num_trainers=self.role_maker.worker_num(),
+            num_trainers=self.role_maker._worker_num(),
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
             name=opt._name)
@@ -60,7 +64,7 @@ class DGCOptimizer(MetaOptimizerBase):
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn("dgc only works on Momentum optimizer")
                 return False
-            if self.role_maker.worker_num() <= 1:
+            if self.role_maker._worker_num() <= 1:
                 logging.warn("dgc only works on multi cards")
                 return False
 
@@ -84,6 +88,13 @@ class DGCOptimizer(MetaOptimizerBase):
                  callbacks=None):
         return self.dgc_opt.backward(loss, startup_program, parameter_list,
                                      no_grad_set, callbacks)
+
+    def apply_gradients(self, params_grads):
+        return self.dgc_opt.apply_gradients(params_grads=params_grads)
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        return self.dgc_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

@@ -14,9 +14,6 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#include <string>
-#include <vector>
-
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 
 namespace paddle {

@@ -15,11 +15,8 @@
 from __future__ import division
 from __future__ import print_function
 
-import math
-import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph.container import Sequential
+import paddle
+import paddle.nn as nn
 
 from paddle.utils.download import get_weights_path_from_url
 
@@ -29,143 +26,129 @@ __all__ = [
 
 model_urls = {
     'resnet18': ('https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
-                 '0ba53eea9bc970962d0ef96f7b94057e'),
+                 'cf548f46534aa3560945be4b95cd11c4'),
     'resnet34': ('https://paddle-hapi.bj.bcebos.com/models/resnet34.pdparams',
-                 '46bc9f7c3dd2e55b7866285bee91eff3'),
+                 '8d2275cf8706028345f78ac0e1d31969'),
     'resnet50': ('https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams',
-                 '5ce890a9ad386df17cf7fe2313dca0a1'),
+                 'ca6f485ee1ab0492d38f323885b0ad80'),
     'resnet101': ('https://paddle-hapi.bj.bcebos.com/models/resnet101.pdparams',
-                  'fb07a451df331e4b0bb861ed97c3a9b9'),
+                  '02f35f034ca3858e1e54d4036443c92d'),
     'resnet152': ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
-                  'f9c700f26d3644bb76ad2226ed5f5713'),
+                  '7ad16a2f1e7333859ff986138630fd7a'),
 }
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 stride=1,
-                 groups=1,
-                 act=None):
-        super(ConvBNLayer, self).__init__()
-
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=stride,
-            padding=(filter_size - 1) // 2,
-            groups=groups,
-            act=None,
-            bias_attr=False)
-
-        self._batch_norm = BatchNorm(num_filters, act=act)
-
-    def forward(self, inputs):
-        x = self._conv(inputs)
-        x = self._batch_norm(x)
-
-        return x
-
-
-class BasicBlock(fluid.dygraph.Layer):
-    """residual block of resnet18 and resnet34
-    """
+class BasicBlock(nn.Layer):
     expansion = 1
 
-    def __init__(self, num_channels, num_filters, stride, shortcut=True):
+    def __init__(self,
+                 inplanes,
+                 planes,
+                 stride=1,
+                 downsample=None,
+                 groups=1,
+                 base_width=64,
+                 dilation=1,
+                 norm_layer=None):
         super(BasicBlock, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
 
-        self.conv0 = ConvBNLayer(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=3,
-            act='relu')
-        self.conv1 = ConvBNLayer(
-            num_channels=num_filters,
-            num_filters=num_filters,
-            filter_size=3,
-            stride=stride,
-            act='relu')
+        if dilation > 1:
+            raise NotImplementedError(
+                "Dilation > 1 not supported in BasicBlock")
 
-        if not shortcut:
-            self.short = ConvBNLayer(
-                num_channels=num_channels,
-                num_filters=num_filters,
-                filter_size=1,
-                stride=stride)
+        self.conv1 = nn.Conv2d(
+            inplanes, planes, 3, padding=1, stride=stride, bias_attr=False)
+        self.bn1 = norm_layer(planes)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv2d(planes, planes, 3, padding=1, bias_attr=False)
+        self.bn2 = norm_layer(planes)
+        self.downsample = downsample
+        self.stride = stride
 
-        self.shortcut = shortcut
+    def forward(self, x):
+        identity = x
 
-    def forward(self, inputs):
-        y = self.conv0(inputs)
-        conv1 = self.conv1(y)
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
 
-        if self.shortcut:
-            short = inputs
-        else:
-            short = self.short(inputs)
+        out = self.conv2(out)
+        out = self.bn2(out)
 
-        y = short + conv1
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
-        return fluid.layers.relu(y)
+        out += identity
+        out = self.relu(out)
+
+        return out
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
-    """residual block of resnet50, resnet101 amd resnet152
-    """
+class BottleneckBlock(nn.Layer):
 
     expansion = 4
 
-    def __init__(self, num_channels, num_filters, stride, shortcut=True):
+    def __init__(self,
+                 inplanes,
+                 planes,
+                 stride=1,
+                 downsample=None,
+                 groups=1,
+                 base_width=64,
+                 dilation=1,
+                 norm_layer=None):
         super(BottleneckBlock, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        width = int(planes * (base_width / 64.)) * groups
 
-        self.conv0 = ConvBNLayer(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=1,
-            act='relu')
-        self.conv1 = ConvBNLayer(
-            num_channels=num_filters,
-            num_filters=num_filters,
-            filter_size=3,
+        self.conv1 = nn.Conv2d(inplanes, width, 1, bias_attr=False)
+        self.bn1 = norm_layer(width)
+
+        self.conv2 = nn.Conv2d(
+            width,
+            width,
+            3,
+            padding=dilation,
             stride=stride,
-            act='relu')
-        self.conv2 = ConvBNLayer(
-            num_channels=num_filters,
-            num_filters=num_filters * self.expansion,
-            filter_size=1,
-            act=None)
+            groups=groups,
+            dilation=dilation,
+            bias_attr=False)
+        self.bn2 = norm_layer(width)
 
-        if not shortcut:
-            self.short = ConvBNLayer(
-                num_channels=num_channels,
-                num_filters=num_filters * self.expansion,
-                filter_size=1,
-                stride=stride)
+        self.conv3 = nn.Conv2d(
+            width, planes * self.expansion, 1, bias_attr=False)
+        self.bn3 = norm_layer(planes * self.expansion)
+        self.relu = nn.ReLU()
+        self.downsample = downsample
+        self.stride = stride
 
-        self.shortcut = shortcut
+    def forward(self, x):
+        identity = x
 
-        self._num_channels_out = num_filters * self.expansion
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
 
-    def forward(self, inputs):
-        x = self.conv0(inputs)
-        conv1 = self.conv1(x)
-        conv2 = self.conv2(conv1)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
 
-        if self.shortcut:
-            short = inputs
-        else:
-            short = self.short(inputs)
+        out = self.conv3(out)
+        out = self.bn3(out)
 
-        x = fluid.layers.elementwise_add(x=short, y=conv2)
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
-        return fluid.layers.relu(x)
+        out += identity
+        out = self.relu(out)
+
+        return out
 
 
-class ResNet(fluid.dygraph.Layer):
+class ResNet(nn.Layer):
     """ResNet model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
@@ -175,7 +158,6 @@ class ResNet(fluid.dygraph.Layer):
         num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
-        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
 
     Examples:
         .. code-block:: python
@@ -189,82 +171,87 @@ class ResNet(fluid.dygraph.Layer):
 
     """
 
-    def __init__(self,
-                 Block,
-                 depth=50,
-                 num_classes=1000,
-                 with_pool=True,
-                 classifier_activation='softmax'):
+    def __init__(self, block, depth, num_classes=1000, with_pool=True):
         super(ResNet, self).__init__()
-
-        self.num_classes = num_classes
-        self.with_pool = with_pool
-
-        layer_config = {
+        layer_cfg = {
             18: [2, 2, 2, 2],
             34: [3, 4, 6, 3],
             50: [3, 4, 6, 3],
             101: [3, 4, 23, 3],
-            152: [3, 8, 36, 3],
+            152: [3, 8, 36, 3]
         }
-        assert depth in layer_config.keys(), \
-            "supported depth are {} but input layer is {}".format(
-                layer_config.keys(), depth)
+        layers = layer_cfg[depth]
+        self.num_classes = num_classes
+        self.with_pool = with_pool
+        self._norm_layer = nn.BatchNorm2d
 
-        layers = layer_config[depth]
+        self.inplanes = 64
+        self.dilation = 1
 
-        in_channels = 64
-        out_channels = [64, 128, 256, 512]
-
-        self.conv = ConvBNLayer(
-            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
-        self.pool = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
-
-        self.layers = []
-        for idx, num_blocks in enumerate(layers):
-            blocks = []
-            shortcut = False
-            for b in range(num_blocks):
-                if b == 1:
-                    in_channels = out_channels[idx] * Block.expansion
-                block = Block(
-                    num_channels=in_channels,
-                    num_filters=out_channels[idx],
-                    stride=2 if b == 0 and idx != 0 else 1,
-                    shortcut=shortcut)
-                blocks.append(block)
-                shortcut = True
-            layer = self.add_sublayer("layer_{}".format(idx),
-                                      Sequential(*blocks))
-            self.layers.append(layer)
-
+        self.conv1 = nn.Conv2d(
+            3,
+            self.inplanes,
+            kernel_size=7,
+            stride=2,
+            padding=3,
+            bias_attr=False)
+        self.bn1 = self._norm_layer(self.inplanes)
+        self.relu = nn.ReLU()
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         if with_pool:
-            self.global_pool = Pool2D(
-                pool_size=7, pool_type='avg', global_pooling=True)
+            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         if num_classes > 0:
-            stdv = 1.0 / math.sqrt(out_channels[-1] * Block.expansion * 1.0)
-            self.fc_input_dim = out_channels[-1] * Block.expansion * 1 * 1
-            self.fc = Linear(
-                self.fc_input_dim,
-                num_classes,
-                act=classifier_activation,
-                param_attr=fluid.param_attr.ParamAttr(
-                    initializer=fluid.initializer.Uniform(-stdv, stdv)))
+            self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-    def forward(self, inputs):
-        x = self.conv(inputs)
-        x = self.pool(x)
-        for layer in self.layers:
-            x = layer(x)
+    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+        norm_layer = self._norm_layer
+        downsample = None
+        previous_dilation = self.dilation
+        if dilate:
+            self.dilation *= stride
+            stride = 1
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    1,
+                    stride=stride,
+                    bias_attr=False),
+                norm_layer(planes * block.expansion), )
 
-        if self.with_pool:
-            x = self.global_pool(x)
+        layers = []
+        layers.append(
+            block(self.inplanes, planes, stride, downsample, 1, 64,
+                  previous_dilation, norm_layer))
+        self.inplanes = planes * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, norm_layer=norm_layer))
 
-        if self.num_classes > -1:
-            x = fluid.layers.reshape(x, shape=[-1, self.fc_input_dim])
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        if self.with_pool > 0:
+            x = self.avgpool(x)
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
             x = self.fc(x)
+
         return x
 
 
@@ -275,9 +262,8 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-        assert weight_path.endswith(
-            '.pdparams'), "suffix of weight must be .pdparams"
-        param, _ = fluid.load_dygraph(weight_path)
+
+        param = paddle.load(weight_path)
         model.set_dict(param)
 
     return model

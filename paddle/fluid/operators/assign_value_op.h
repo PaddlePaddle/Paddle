@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -76,7 +77,10 @@ class AssignValueKernel : public framework::OpKernel<T> {
         value_name = "int64_values";
         break;
       default:
-        PADDLE_THROW("Unsupported dtype for assign_value_op: %d", dtype);
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported data type(code %d) for AssignValue operator, only "
+            "supports bool, int32, float32 and int64.",
+            dtype));
         break;
     }
     CopyVecotorToTensor<T>(value_name, out, ctx);

@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"
-#include <memory>
+
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
@@ -707,3 +708,13 @@ REGISTER_PASS(multihead_matmul_fuse_pass,
 
 REGISTER_PASS(multihead_matmul_fuse_pass_v2,
               paddle::framework::ir::MultiHeadMatmulV2FusePass);
+REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v2)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0)
+            .EQ("scale", 0)
+            .EQ("matmul", 0)
+            .EQ("softmax", 0));

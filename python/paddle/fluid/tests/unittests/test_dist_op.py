@@ -19,6 +19,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+paddle.enable_static()
+
 
 def dist(x, y, p):
     if p == 0.:

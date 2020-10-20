@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
+
 #include <algorithm>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
@@ -20,6 +21,7 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
@@ -45,7 +47,7 @@ TEST(RetryAllocator, RetryAllocator) {
 
   size_t thread_num = 4;
   size_t sleep_time = 40;
-  size_t extra_time = 10;
+  size_t extra_time = 20;
 
   // Reserve to perform more tests in the future
   std::vector<std::shared_ptr<Allocator>> allocators;

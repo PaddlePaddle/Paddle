@@ -592,7 +592,7 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
         cfg = Config(place)
 
         dataset = create_mnist_dataset(cfg)
-        dataset = fluid.io.cache(dataset)
+        dataset = paddle.reader.cache(dataset)
 
         static_graph_model = StaticGraphTrainModel(cfg)
         static_loss = []

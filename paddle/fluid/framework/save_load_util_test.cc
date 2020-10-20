@@ -13,12 +13,9 @@
 // limitations under the License.
 #include <stdlib.h>
 #include <time.h>
-#include <iostream>
-#include <memory>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/save_load_util.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

@@ -26,7 +26,7 @@ def stable_softmax(x):
     return exps / np.sum(exps)
 
 
-def log_softmax(x, axis=-1):
+def log_softmax(x, axis=1):
     softmax_out = np.apply_along_axis(stable_softmax, axis, x)
     return np.log(softmax_out)
 

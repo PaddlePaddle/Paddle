@@ -24,10 +24,22 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/port.h"
 
-#include "paddle/fluid/operators/distributed/distributed_pb.h"
+namespace grpc {
+class ByteBuffer;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

@@ -61,8 +61,8 @@ class ApiMinimumTest(unittest.TestCase):
     def test_dynamic_api(self):
         paddle.disable_static()
         np_x = np.array([10, 10]).astype('float64')
-        x = paddle.to_variable(self.input_x)
-        y = paddle.to_variable(self.input_y)
+        x = paddle.to_tensor(self.input_x)
+        y = paddle.to_tensor(self.input_y)
         z = paddle.minimum(x, y)
         np_z = z.numpy()
         z_expected = np.array(np.minimum(self.input_x, self.input_y))
@@ -73,8 +73,8 @@ class ApiMinimumTest(unittest.TestCase):
         np_x = np.random.rand(5, 4, 3, 2).astype("float64")
         np_y = np.random.rand(4, 3).astype("float64")
 
-        x = paddle.to_variable(self.input_x)
-        y = paddle.to_variable(self.input_y)
+        x = paddle.to_tensor(self.input_x)
+        y = paddle.to_tensor(self.input_y)
         result_1 = paddle.minimum(x, y, axis=1)
         result_2 = paddle.minimum(x, y, axis=-2)
         self.assertEqual((result_1.numpy() == result_2.numpy()).all(), True)

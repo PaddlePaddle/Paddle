@@ -18,7 +18,7 @@ SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 set(WARPCTC_REPOSITORY  https://github.com/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         fc7f226b93758216a03b1be9d24593a12819b984)
+set(WARPCTC_TAG         95a461eddeabd51099ef059dcfada1117eb1bfb8)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -44,8 +44,9 @@ ExternalProject_Add(
     "${WARPCTC_DOWNLOAD_CMD}"
     PREFIX          ${WARPCTC_PREFIX_DIR}
     SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
-    UPDATE_COMMAND  ""
+    #UPDATE_COMMAND  ""
     PATCH_COMMAND   ""
+    BUILD_ALWAYS    1
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}

@@ -20,21 +20,54 @@ import math
 
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import random
+random.seed(2)
+np.set_printoptions(threshold=np.inf)
+paddle.enable_static()
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
 EXP_MAX_INPUT = 40.0
 
 
-def calcluate_parameter_size(input_size, hidden_size, layers_num, is_bidirec):
+def create_parameter(std, size, dtype):
+    return np.random.uniform(low=-std, high=std, size=size).astype(dtype)
+
+
+def create_parameter_for_rnn(input_size, hidden_size, dtype, num_layers,
+                             is_bidirec):
+    flat_w = []
+    std = 1.0 / math.sqrt(hidden_size)
+    frame_size = 4 * hidden_size
     direction_num = 2 if is_bidirec else 1
-    weigth_size = direction_num * 4 * (
-        hidden_size * input_size + hidden_size * hidden_size + max(
-            0, layers_num - 1) * ((direction_num + 1) * hidden_size *
-                                  hidden_size) + layers_num * 2 * hidden_size)
-    return weigth_size
+    for i in range(0, num_layers):
+        for j in range(0, 2 * direction_num):
+            if i == 0:
+                if j % 2 == 0:
+                    flat_w.append(("{}.weigth_{}".format(i, j),
+                                   create_parameter(std, (frame_size,
+                                                          input_size), dtype)))
+                else:
+                    flat_w.append(("{}.weigth_{}".format(i, j),
+                                   create_parameter(std, (frame_size,
+                                                          hidden_size), dtype)))
+            else:
+                if j % 2 == 0:
+                    flat_w.append(
+                        ("{}.weigth_{}".format(i, j), create_parameter(std, (
+                            frame_size, hidden_size * direction_num), dtype)))
+                else:
+                    flat_w.append(("{}.weigth_{}".format(i, j),
+                                   create_parameter(std, (frame_size,
+                                                          hidden_size), dtype)))
+    for i in range(0, num_layers):
+        for j in range(0, 2 * direction_num):
+            flat_w.append(("{}.bias_{}".format(i, j),
+                           create_parameter(std, (frame_size), dtype)))
+    return flat_w
 
 
 class LayerMixin(object):
@@ -54,22 +87,26 @@ class LayerListMixin(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 weight_ih,
+                 weight_hh,
+                 bias_ih,
+                 bias_hh,
+                 bias=True):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
         self.dtype = np.float64
         self.parameters = dict()
-        std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = np.ones(
-            (4 * hidden_size, input_size), dtype=self.dtype)
-        self.weight_hh = np.ones((4 * hidden_size,
-                                  hidden_size)).astype(self.dtype)
+        self.weight_ih = weight_ih
+        self.weight_hh = weight_hh
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
-            self.bias_ih = np.ones((4 * hidden_size)).astype(self.dtype)
-            self.bias_hh = np.ones((4 * hidden_size)).astype(self.dtype)
+            self.bias_ih = bias_ih
+            self.bias_hh = bias_hh
             self.parameters['bias_ih'] = self.bias_ih
             self.parameters['bias_hh'] = self.bias_hh
         else:
@@ -327,23 +364,39 @@ class LSTM(RNNMixin):
                  num_layers=1,
                  direction="forward",
                  dropout=0.,
-                 time_major=False):
+                 time_major=False,
+                 flat_w=None):
         super(LSTM, self).__init__()
-
+        weight_len = len(flat_w)
         if direction in ["forward", "backward"]:
             is_reverse = direction == "backward"
-            cell = LSTMCell(input_size, hidden_size)
+            cell = LSTMCell(input_size, hidden_size, flat_w[0][1], flat_w[1][1],
+                            flat_w[weight_len //
+                                   2][1], flat_w[weight_len // 2 + 1][1])
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
-                cell = LSTMCell(hidden_size, hidden_size)
+                cell = LSTMCell(hidden_size, hidden_size, flat_w[i * 2][1],
+                                flat_w[i * 2 + 1][1],
+                                flat_w[weight_len // 2 + i * 2][1],
+                                flat_w[weight_len // 2 + i * 2 + 1][1])
                 self.append(RNN(cell, is_reverse, time_major))
         elif direction == "bidirectional":
-            cell_fw = LSTMCell(input_size, hidden_size)
-            cell_bw = LSTMCell(input_size, hidden_size)
+            cell_fw = LSTMCell(input_size, hidden_size, flat_w[0][1],
+                               flat_w[1][1], flat_w[weight_len // 2][1],
+                               flat_w[weight_len // 2 + 1][1])
+            cell_bw = LSTMCell(input_size, hidden_size, flat_w[2][1],
+                               flat_w[3][1], flat_w[weight_len // 2 + 2][1],
+                               flat_w[weight_len // 2 + 3][1])
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
-                cell_fw = LSTMCell(2 * hidden_size, hidden_size)
-                cell_bw = LSTMCell(2 * hidden_size, hidden_size)
+                cell_fw = LSTMCell(2 * hidden_size, hidden_size,
+                                   flat_w[i * 4][1], flat_w[i * 4 + 1][1],
+                                   flat_w[weight_len // 2 + i * 4][1],
+                                   flat_w[weight_len // 2 + i * 4 + 1][1])
+                cell_bw = LSTMCell(2 * hidden_size, hidden_size,
+                                   flat_w[i * 4 + 2][1], flat_w[i * 4 + 3][1],
+                                   flat_w[weight_len // 2 + i * 4 + 2][1],
+                                   flat_w[weight_len // 2 + i * 4 + 3][1])
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
@@ -362,14 +415,20 @@ class LSTM(RNNMixin):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
-    #TODO(GaoWei8): Need to satisfy the result through the new interface
+    def get_weight_names(self):
+        weight_names = []
+        for i in range(2 * self.num_layers):
+            weight_names.append('weight{}'.format(i))
+        for i in range(2 * self.num_layers):
+            weight_names.append('bias{}'.format(i))
+        return weight_names
+
     def setUp(self):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
         self.is_bidirec = False
-
         self.set_attrs()
 
         direction_num = 2 if self.is_bidirec else 1
@@ -378,9 +437,6 @@ class TestCUDNNLstmOp(OpTest):
         batch_size = 5
         input_size = 21
         hidden_size = 21
-
-        weight_size = calcluate_parameter_size(input_size, hidden_size,
-                                               self.num_layers, self.is_bidirec)
 
         input = np.random.uniform(
             low=-0.1, high=0.1,
@@ -391,17 +447,19 @@ class TestCUDNNLstmOp(OpTest):
             input[9][3:][:] = 0
             input[8][4:][:] = 0
 
+        flat_w = create_parameter_for_rnn(input_size, hidden_size, self.dtype,
+                                          self.num_layers, self.is_bidirec)
         rnn1 = LSTM(
             input_size,
             hidden_size,
-            self.num_layers,
+            num_layers=self.num_layers,
             time_major=True,
-            direction=direction)
+            direction=direction,
+            flat_w=flat_w)
 
         output, (last_hidden, last_cell) = rnn1(
             input, sequence_length=self.sequence_length)
 
-        flat_w = np.ones((weight_size)).astype(self.dtype)
         init_h = np.zeros((self.num_layers * direction_num, batch_size,
                            hidden_size)).astype(self.dtype)
         init_c = np.zeros((self.num_layers * direction_num, batch_size,
@@ -410,17 +468,17 @@ class TestCUDNNLstmOp(OpTest):
 
         self.inputs = {
             'Input': input,
-            'W': flat_w,
+            'WeightList': flat_w,
             'InitH': init_h,
             'InitC': init_c,
+            'SequenceLength': self.sequence_length
         }
-        if self.sequence_length is not None:
+        if self.sequence_length is None:
             self.inputs = {
                 'Input': input,
-                'W': flat_w,
+                'WeightList': flat_w,
                 'InitH': init_h,
                 'InitC': init_c,
-                'SequenceLength': self.sequence_length
             }
         self.attrs = {
             'dropout_prob': 0.0,
@@ -437,42 +495,40 @@ class TestCUDNNLstmOp(OpTest):
             'StateOut': state_out
         }
 
+    def test_output_with_place(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, no_check_set=['Reserve', 'StateOut'])
+
     def set_attrs(self):
         pass
 
-    #def test_output_with_place(self):
-    #    place = core.CUDAPlace(0)
-    #    self.check_output_with_place(
-    #        place, no_check_set=['Reserve', 'StateOut'])
-
-
     #def test_grad_with_place(self):
-    #    pass
-    #    place = core.CUDAPlace(0)
-    #    self.check_grad_with_place(place,
-    #                               set(['Input', 'W', 'InitH', 'InitC']),
-    #                              ['Out', 'LastH', 'LastC'])
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestCUDNNLstmOp2(TestCUDNNLstmOp):
-    def set_attrs(self):
-        self.num_layers = 2
+    #    place = core.CPUPlace()
+    #    var_name_list = self.get_weight_names()
+    #    for var_name in var_name_list:
+    #        self.check_grad_with_place(
+    #            place,
+    #            set(['Input', var_name, 'InitH', 'InitC']),
+    #            ['Out', 'LastH', 'LastC'])
 
 
 class TestCUDNNLstmCpu(TestCUDNNLstmOp):
     def test_output_with_place(self):
         place = core.CPUPlace()
         self.check_output_with_place(
-            place, no_check_set=['Reserve', 'StateOut', 'LastC'])
+            place, no_check_set=['Reserve', 'StateOut'])
 
-    def test_grad_with_place(self):
-        pass
+
+class TestCUDNNLstmCpu1(TestCUDNNLstmCpu):
+    def set_attrs(self):
+        self.sequence_length = None
 
 
 class TestCUDNNLstmCpu2(TestCUDNNLstmCpu):
     def set_attrs(self):
         self.sequence_length = None
-        self.num_layers = 2
+        self.is_bidirec = True
 
 
 class TestCUDNNLstmCpu3(TestCUDNNLstmCpu):
@@ -482,24 +538,17 @@ class TestCUDNNLstmCpu3(TestCUDNNLstmCpu):
 
 class TestCUDNNLstmCpu4(TestCUDNNLstmCpu):
     def set_attrs(self):
-        self.sequence_length = None
         self.is_bidirec = True
+        self.num_layers = 2
+        self.sequence_length = None
 
 
 class TestCUDNNLstmCpu5(TestCUDNNLstmCpu):
     def set_attrs(self):
         self.is_bidirec = True
         self.num_layers = 2
-        self.sequence_length = None
 
 
-class TestCUDNNLstmCpu6(TestCUDNNLstmCpu):
-    def set_attrs(self):
-        self.is_bidirec = True
-        self.num_layers = 2
-
-
-"""
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
@@ -519,6 +568,36 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                                       'float64', 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
+                                              dropout_prob, False)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        exe.run(fluid.default_startup_program())
+        input_i = np.random.uniform(
+            low=-0.1, high=0.1, size=(seq_len, batch_size,
+                                      hidden_size)).astype("float64")
+        out = exe.run(fluid.default_main_program(),
+                      feed={'input': input_i},
+                      fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNlstmAPI(unittest.TestCase):
+    def test_lstm(self):
+        seq_len = 20
+        batch_size = 5
+        hidden_size = 20
+        dropout_prob = 0.0
+        num_layers = 2
+        input = fluid.data(
+            name='input',
+            shape=[seq_len, batch_size, hidden_size],
+            dtype='float64')
+        init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
+                                      'float64', 0.0)
+        init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
+                                      'float64', 0.0)
+        rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
+                                              hidden_size, num_layers,
                                               dropout_prob, False, True)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
@@ -528,7 +607,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
-"""
+
 
 if __name__ == '__main__':
     unittest.main()

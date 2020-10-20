@@ -26,8 +26,7 @@ import paddle.fluid as fluid
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_pslib
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
-from . import hdfs
-from .hdfs import *
+from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 from . import utils
 
 __all__ = ["FleetUtil"]

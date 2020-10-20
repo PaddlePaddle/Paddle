@@ -14,9 +14,6 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 
