@@ -30,7 +30,7 @@ class LRScheduler(object):
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
 
-    User can import it by ``form paddle.optimizer.lr import LRScheduler`` ,
+    User can import it by ``from paddle.optimizer.lr import LRScheduler`` ,
 
     then overload it for your subclass and have a custom implementation of ``get_lr()`` .
 
@@ -50,7 +50,7 @@ class LRScheduler(object):
         .. code-block:: python
             
             import paddle
-            form paddle.optimizer.lr import LRScheduler
+            from paddle.optimizer.lr import LRScheduler
 
             class StepDecay(LRScheduler):
                 def __init__(self,
