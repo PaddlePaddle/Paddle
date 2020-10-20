@@ -536,7 +536,9 @@ class Conv2D(_ConvNd):
 
           import paddle
           import paddle.nn as nn
-
+          
+          paddle.disable_static()
+          
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
           
           conv = nn.Conv2D(4, 6, (3, 3))
@@ -701,6 +703,8 @@ class Conv2DTranspose(_ConvNd):
 
           import paddle
           import paddle.nn as nn
+          
+          paddle.disable_static()
 
           x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
@@ -853,6 +857,8 @@ class Conv3D(_ConvNd):
 
           import paddle
           import paddle.nn as nn
+          
+          paddle.disable_static()
 
           x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
           
@@ -1035,6 +1041,8 @@ class Conv3DTranspose(_ConvNd):
 
           import paddle
           import paddle.nn as nn
+          
+          paddle.disable_static()
 
           x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
           
