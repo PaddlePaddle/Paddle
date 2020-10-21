@@ -149,16 +149,19 @@ class TestWeightDecay(unittest.TestCase):
 
             avg_cost = model(data, label, self.word_dict_len)
 
+            optimizer = fluid.optimizer.Adam(learning_rate=self.learning_rate)
+
+            params_grads = optimizer.backward(avg_cost)
+
             param_list = [(var, var * self.learning_rate)
                           for var in main_prog.block(0).all_parameters()]
 
-            optimizer = fluid.optimizer.Adam(learning_rate=self.learning_rate)
-
-            optimizer.minimize(avg_cost)
             for params in param_list:
                 updated_p = fluid.layers.elementwise_sub(
                     x=params[0], y=params[1])
                 fluid.layers.assign(input=updated_p, output=params[0])
+
+            optimizer.apply_optimize(avg_cost, startup_prog, params_grads)
 
             param_sum = self.run_program(place, [data, label])
         return param_sum
