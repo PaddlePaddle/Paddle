@@ -894,8 +894,9 @@ class Model(object):
         Run one training step on a batch of data.
 
         Args:
-            inputs (list): A list of numpy.ndarray, each is a batch of
-                input data.
+            inputs (numpy.ndarray|Tensor|list): It could be a numpy array or 
+                paddle.Tensor, or a list of arrays or tensors (in case the 
+                model has multiple inputs).
             labels (list): A list of numpy.ndarray, each is a batch of
                 input label. If has no labels, set None. Default is None.
 
@@ -941,8 +942,9 @@ class Model(object):
         Run one evaluating step on a batch of data.
 
         Args:
-            inputs (list): A list of numpy.ndarray, each is a batch of
-                input data.
+            inputs (numpy.ndarray|Tensor|list): It could be a numpy array or 
+                paddle.Tensor, or a list of arrays or tensors (in case the 
+                model has multiple inputs).
             labels (list): A list of numpy.ndarray, each is a batch of
                 input label. If has no labels, set None. Default is None.
 
@@ -989,7 +991,9 @@ class Model(object):
         Run one predicting step on a batch of data.
 
         Args:
-            inputs (numpy.ndarray|Tensor|list): A batch of input data.
+            inputs (numpy.ndarray|Tensor|list): It could be a numpy array or 
+                paddle.Tensor, or a list of arrays or tensors (in case the 
+                model has multiple inputs).
 
         Returns:
             A list of numpy.ndarray of predictions, that is the outputs
