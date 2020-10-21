@@ -155,13 +155,9 @@ class TestPool1D_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-<<<<<<< HEAD
-            avg_pool1d_dg = paddle.nn.AvgPool1d(
-                kernel_size=2, stride=None, padding=1, exclusive=True)
-=======
             avg_pool1d_dg = paddle.nn.AvgPool1D(
-                kernel_size=2, stride=None, padding=1, count_include_pad=True)
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
+                kernel_size=2, stride=None, padding=1, exclusive=True)
+
             result = avg_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 

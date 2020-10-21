@@ -377,13 +377,8 @@ class MaxPool1D(layers.Layer):
           pool_out = MaxPool1D(data)
           # pool_out shape: [1, 3, 16]
 
-<<<<<<< HEAD
-          MaxPool1d = nn.MaxPool1d(kernel_size=2, stride=2, padding=0, return_mask=True)
-          pool_out, indices = MaxPool1d(data)
-=======
-          MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_indices=True)
+          MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
           pool_out, indices = MaxPool1D(data)
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
           # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
 
     """
@@ -478,15 +473,9 @@ class MaxPool2D(layers.Layer):
           output = MaxPool2D(input)
           # output.shape [1, 3, 16, 16]
 
-<<<<<<< HEAD
           # for return_mask=True
-          MaxPool2d = nn.MaxPool2d(kernel_size=2,stride=2, padding=0, return_mask=True)
-          output, max_indices = MaxPool2d(input)
-=======
-          # for return_indices=True
-          MaxPool2D = nn.MaxPool2D(kernel_size=2,stride=2, padding=0, return_indices=True)
+          MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
           output, max_indices = MaxPool2D(input)
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
           # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
 
@@ -575,15 +564,9 @@ class MaxPool3D(layers.Layer):
           output = MaxPool3D(input)
           # output.shape [1, 2, 3, 16, 16]
 
-<<<<<<< HEAD
           # for return_mask=True
-          MaxPool3d = nn.MaxPool3d(kernel_size=2,stride=2, padding=0, return_mask=True)
-          output, max_indices = MaxPool3d(input)
-=======
-          # for return_indices=True
-          MaxPool3D = nn.MaxPool3D(kernel_size=2,stride=2, padding=0, return_indices=True)
+          MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
           output, max_indices = MaxPool3D(input)
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
           # output.shape [1, 2, 3, 16, 16], max_indices.shape [1, 2, 3, 16, 16],
     """
 
@@ -915,26 +898,15 @@ class AdaptiveMaxPool1D(layers.Layer):
           pool_out = AdaptiveMaxPool1D(data)
           # pool_out shape: [1, 3, 16]
 
-<<<<<<< HEAD
           # for return_mask = true
-          AdaptiveMaxPool1d = nn.AdaptiveMaxPool1d(output_size=16, return_mask=True)
-          pool_out, indices = AdaptiveMaxPool1d(data)
-=======
-          # for return_indices = true
-          AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_indices=True)
+          AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
           pool_out, indices = AdaptiveMaxPool1D(data)
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
           # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
 
     """
 
-<<<<<<< HEAD
     def __init__(self, output_size, return_mask=False, name=None):
-        super(AdaptiveMaxPool1d, self).__init__()
-=======
-    def __init__(self, output_size, return_indices=False, name=None):
         super(AdaptiveMaxPool1D, self).__init__()
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
         self.output_size = output_size
         self.return_mask = return_mask
         self.name = name
@@ -993,21 +965,12 @@ class AdaptiveMaxPool2D(layers.Layer):
             paddle.disable_static()
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
-<<<<<<< HEAD
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=3, return_mask=True)
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
             pool_out, indices = adaptive_max_pool(x = x)
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
-        super(AdaptiveMaxPool2d, self).__init__()
-=======
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_indices=True)
-            pool_out, indices = adaptive_max_pool(x = x)
-    """
-
-    def __init__(self, output_size, return_indices=False, name=None):
         super(AdaptiveMaxPool2D, self).__init__()
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
@@ -1077,23 +1040,14 @@ class AdaptiveMaxPool3D(layers.Layer):
             pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)
             out = pool(x)
             # out shape: [2, 3, 4, 4, 4]
-<<<<<<< HEAD
-            pool = paddle.nn.AdaptiveMaxPool3d(output_size=3, return_mask=True)
-=======
-            pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_indices=True)
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
+            pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             out, indices = pool(x)
             # out shape: [2, 3, 4, 4, 4], indices shape: [2, 3, 4, 4, 4]
 
     """
 
-<<<<<<< HEAD
     def __init__(self, output_size, return_mask=False, name=None):
-        super(AdaptiveMaxPool3d, self).__init__()
-=======
-    def __init__(self, output_size, return_indices=False, name=None):
         super(AdaptiveMaxPool3D, self).__init__()
->>>>>>> 7c1aa0d69dd21d7db98b1c46873f3a028e344e95
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name

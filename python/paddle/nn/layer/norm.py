@@ -54,17 +54,17 @@ from ...fluid.dygraph.base import no_grad
 from .. import functional as F
 
 __all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1d',
-    'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d', 'InstanceNorm2d',
-    'InstanceNorm3d', 'SyncBatchNorm', 'LocalResponseNorm'
+    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1D',
+    'BatchNorm2D', 'BatchNorm3D', 'InstanceNorm1D', 'InstanceNorm2D',
+    'InstanceNorm3D', 'SyncBatchNorm', 'LocalResponseNorm'
 ]
 
 
 class _InstanceNormBase(layers.Layer):
     """
-    This class is based class for InstanceNorm1d, 2d, 3d. 
+    This class is based class for InstanceNorm1D, 2d, 3d. 
 
-    See InstaceNorm1d, InstanceNorm2d or InstanceNorm3d for more details.
+    See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
     def __init__(self,
@@ -108,7 +108,7 @@ class _InstanceNormBase(layers.Layer):
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
 
-class InstanceNorm1d(_InstanceNormBase):
+class InstanceNorm1D(_InstanceNormBase):
     """
     Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
@@ -167,7 +167,7 @@ class InstanceNorm1d(_InstanceNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm1d(2)
+          instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
           print(instance_norm_out.numpy())
@@ -180,7 +180,7 @@ class InstanceNorm1d(_InstanceNormBase):
                 len(input.shape)))
 
 
-class InstanceNorm2d(_InstanceNormBase):
+class InstanceNorm2D(_InstanceNormBase):
     """
     Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
@@ -239,7 +239,7 @@ class InstanceNorm2d(_InstanceNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm2d(2)
+          instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
           print(instance_norm_out.numpy())
@@ -251,7 +251,7 @@ class InstanceNorm2d(_InstanceNormBase):
                 len(input.shape)))
 
 
-class InstanceNorm3d(_InstanceNormBase):
+class InstanceNorm3D(_InstanceNormBase):
     """
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
@@ -310,7 +310,7 @@ class InstanceNorm3d(_InstanceNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm3d(2)
+          instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
           print(instance_norm_out.numpy())
@@ -648,7 +648,7 @@ class _BatchNormBase(layers.Layer):
             data_format=self._data_format)
 
 
-class BatchNorm1d(_BatchNormBase):
+class BatchNorm1D(_BatchNormBase):
     """
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -718,7 +718,7 @@ class BatchNorm1d(_BatchNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm1d(1)
+          batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
           print(batch_norm_out.numpy())
@@ -739,7 +739,7 @@ class BatchNorm1d(_BatchNormBase):
                 len(input.shape)))
 
 
-class BatchNorm2d(_BatchNormBase):
+class BatchNorm2D(_BatchNormBase):
     """
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -808,7 +808,7 @@ class BatchNorm2d(_BatchNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm2d(1)
+          batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
           print(batch_norm_out.numpy())
@@ -828,7 +828,7 @@ class BatchNorm2d(_BatchNormBase):
                 len(input.shape)))
 
 
-class BatchNorm3d(_BatchNormBase):
+class BatchNorm3D(_BatchNormBase):
     """
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -897,7 +897,7 @@ class BatchNorm3d(_BatchNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm3d(1)
+          batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
           print(batch_norm_out.numpy())
@@ -1097,7 +1097,7 @@ class SyncBatchNorm(_BatchNormBase):
                 import paddle.nn as nn
 
                 paddle.disable_static()
-                model = nn.Sequential(nn.Conv2d(3, 5, 3), nn.BatchNorm2d(5))
+                model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm2D(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
         """

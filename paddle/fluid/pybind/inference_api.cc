@@ -444,6 +444,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
+      .def("enable_xpu", &AnalysisConfig::EnableXpu,
+           py::arg("l3_workspace_size"))
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
       .def("memory_pool_init_size_mb",

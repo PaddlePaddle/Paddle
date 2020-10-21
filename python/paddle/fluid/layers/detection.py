@@ -2601,7 +2601,9 @@ def generate_proposal_labels(rpn_rois,
                              class_nums=None,
                              use_random=True,
                              is_cls_agnostic=False,
-                             is_cascade_rcnn=False):
+                             is_cascade_rcnn=False,
+                             max_overlap=None,
+                             return_max_overlap=False):
     """
 
     **Generate Proposal Labels of Faster-RCNN**
@@ -2638,25 +2640,29 @@ def generate_proposal_labels(rpn_rois,
         use_random(bool): Use random sampling to choose foreground and background boxes.
         is_cls_agnostic(bool): bbox regression use class agnostic simply which only represent fg and bg boxes.
         is_cascade_rcnn(bool): it will filter some bbox crossing the image's boundary when setting True.
+        max_overlap(Variable): Maximum overlap between each proposal box and ground-truth.
+        return_max_overlap(bool): Whether return the maximum overlap between each sampled RoI and ground-truth.
 
     Returns:
         tuple:
-        A tuple with format``(rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights)``.
+        A tuple with format``(rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, max_overlap)``.
 
         - **rois**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4]``. The data type is the same as ``rpn_rois``.
         - **labels_int32**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 1]``. The data type must be int32.
         - **bbox_targets**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The regression targets of all RoIs. The data type is the same as ``rpn_rois``.
         - **bbox_inside_weights**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of foreground boxes' regression loss. The data type is the same as ``rpn_rois``.
         - **bbox_outside_weights**: 2-D LoDTensor with shape ``[batch_size_per_im * batch_size, 4 * class_num]``. The weights of regression loss. The data type is the same as ``rpn_rois``.
-
+        - **max_overlap**: 1-D LoDTensor with shape ``[P]``. P is the number of output ``rois``. The maximum overlap between each sampled RoI and ground-truth.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             rpn_rois = fluid.data(name='rpn_rois', shape=[None, 4], dtype='float32')
-            gt_classes = fluid.data(name='gt_classes', shape=[None, 1], dtype='float32')
-            is_crowd = fluid.data(name='is_crowd', shape=[None, 1], dtype='float32')
+            gt_classes = fluid.data(name='gt_classes', shape=[None, 1], dtype='int32')
+            is_crowd = fluid.data(name='is_crowd', shape=[None, 1], dtype='int32')
             gt_boxes = fluid.data(name='gt_boxes', shape=[None, 4], dtype='float32')
             im_info = fluid.data(name='im_info', shape=[None, 3], dtype='float32')
             rois, labels, bbox, inside_weights, outside_weights = fluid.layers.generate_proposal_labels(
@@ -2673,6 +2679,8 @@ def generate_proposal_labels(rpn_rois,
                              'generate_proposal_labels')
     check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
                              'generate_proposal_labels')
+    if is_cascade_rcnn:
+        assert max_overlap is not None, "Input max_overlap of generate_proposal_labels should not be None if is_cascade_rcnn is True"
 
     rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
     labels_int32 = helper.create_variable_for_type_inference(
@@ -2683,22 +2691,28 @@ def generate_proposal_labels(rpn_rois,
         dtype=rpn_rois.dtype)
     bbox_outside_weights = helper.create_variable_for_type_inference(
         dtype=rpn_rois.dtype)
+    max_overlap_with_gt = helper.create_variable_for_type_inference(
+        dtype=rpn_rois.dtype)
 
+    inputs = {
+        'RpnRois': rpn_rois,
+        'GtClasses': gt_classes,
+        'IsCrowd': is_crowd,
+        'GtBoxes': gt_boxes,
+        'ImInfo': im_info,
+    }
+    if max_overlap is not None:
+        inputs['MaxOverlap'] = max_overlap
     helper.append_op(
         type="generate_proposal_labels",
-        inputs={
-            'RpnRois': rpn_rois,
-            'GtClasses': gt_classes,
-            'IsCrowd': is_crowd,
-            'GtBoxes': gt_boxes,
-            'ImInfo': im_info
-        },
+        inputs=inputs,
         outputs={
             'Rois': rois,
             'LabelsInt32': labels_int32,
             'BboxTargets': bbox_targets,
             'BboxInsideWeights': bbox_inside_weights,
-            'BboxOutsideWeights': bbox_outside_weights
+            'BboxOutsideWeights': bbox_outside_weights,
+            'MaxOverlapWithGT': max_overlap_with_gt
         },
         attrs={
             'batch_size_per_im': batch_size_per_im,
@@ -2718,7 +2732,10 @@ def generate_proposal_labels(rpn_rois,
     bbox_targets.stop_gradient = True
     bbox_inside_weights.stop_gradient = True
     bbox_outside_weights.stop_gradient = True
+    max_overlap_with_gt.stop_gradient = True
 
+    if return_max_overlap:
+        return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, max_overlap_with_gt
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
 

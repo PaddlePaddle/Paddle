@@ -81,29 +81,29 @@ from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import Upsample  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
-from .layer.common import Dropout2d  #DEFINE_ALIAS
-from .layer.common import Dropout3d  #DEFINE_ALIAS
+from .layer.common import Dropout2D  #DEFINE_ALIAS
+from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
 
-from .layer.pooling import AvgPool1d  #DEFINE_ALIAS
-from .layer.pooling import AvgPool2d  #DEFINE_ALIAS
-from .layer.pooling import AvgPool3d  #DEFINE_ALIAS
-from .layer.pooling import MaxPool1d  #DEFINE_ALIAS
-from .layer.pooling import MaxPool2d  #DEFINE_ALIAS
-from .layer.pooling import MaxPool3d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool1D  #DEFINE_ALIAS
+from .layer.pooling import AvgPool2D  #DEFINE_ALIAS
+from .layer.pooling import AvgPool3D  #DEFINE_ALIAS
+from .layer.pooling import MaxPool1D  #DEFINE_ALIAS
+from .layer.pooling import MaxPool2D  #DEFINE_ALIAS
+from .layer.pooling import MaxPool3D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool1D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool2D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool3D  #DEFINE_ALIAS
 
-from .layer.pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
-from .layer.conv import Conv1d  #DEFINE_ALIAS
-from .layer.conv import Conv2d  #DEFINE_ALIAS
-from .layer.conv import Conv3d  #DEFINE_ALIAS
-from .layer.conv import ConvTranspose1d  #DEFINE_ALIAS
-from .layer.conv import ConvTranspose2d  #DEFINE_ALIAS
-from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool1D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool2D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool3D  #DEFINE_ALIAS
+from .layer.conv import Conv1D  #DEFINE_ALIAS
+from .layer.conv import Conv2D  #DEFINE_ALIAS
+from .layer.conv import Conv3D  #DEFINE_ALIAS
+from .layer.conv import Conv1DTranspose  #DEFINE_ALIAS
+from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
+from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
@@ -125,12 +125,12 @@ from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
-from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
-from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
-from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm1D  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm2D  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm3D  #DEFINE_ALIAS
+from .layer.norm import BatchNorm1D  #DEFINE_ALIAS
+from .layer.norm import BatchNorm2D  #DEFINE_ALIAS
+from .layer.norm import BatchNorm3D  #DEFINE_ALIAS
 from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
