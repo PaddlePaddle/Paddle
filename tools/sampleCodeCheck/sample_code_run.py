@@ -1,3 +1,17 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 import os
 import pickle
@@ -13,13 +27,15 @@ class SampleCodeCtx:
         self.end_line = end_line
         self.content = content
         self.file_name = file_name
-    
+
 
 class SampleCodeGenerator:
     def __init__(self, root_path):
         self.code_blocks = []
         # not extract dirs or files
-        self.white_list = ["python/paddle/distributed", "python/paddle/fluid/incubate"]
+        self.white_list = [
+            "python/paddle/distributed", "python/paddle/fluid/incubate"
+        ]
         self.error_blocks = []
         self.root_path = os.path.abspath(root_path)
 
@@ -58,7 +74,7 @@ class SampleCodeGenerator:
             sample_code_begins = self._find_all(srcc, " code-block:: python")
             if len(sample_code_begins) == 0:
                 return
-            
+
             for i in range(0, len(srcls)):
                 if srcls[i].find(".. code-block:: python") != -1:
                     content = ""
@@ -77,7 +93,8 @@ class SampleCodeGenerator:
                         startindent += srcls[start + blank_line][:srcls[
                             start + blank_line].find("import")]
                     else:
-                        startindent += self._check_indent(srcls[start + blank_line])
+                        startindent += self._check_indent(srcls[start +
+                                                                blank_line])
                     content += srcls[start + blank_line][len(startindent):]
                     for j in range(start + blank_line + 1, len(srcls)):
                         # planish a blank line
@@ -87,7 +104,7 @@ class SampleCodeGenerator:
                         if srcls[j].find(" code-block:: python") != -1:
                             break
                         content += srcls[j].replace(startindent, "", 1)
-                    
+
                     ctx = SampleCodeCtx(i, j, content, filename)
                     self.code_blocks.append(ctx)
             return
@@ -98,7 +115,8 @@ class SampleCodeGenerator:
 
         for codes in self.code_blocks:
 
-            fname = codes.file_name.split("/")[-1].split(".py")[0] + ("_{}_{}.py".format(codes.start_line, codes.end_line))
+            fname = codes.file_name.split("/")[-1].split(".py")[0] + (
+                "_{}_{}.py".format(codes.start_line, codes.end_line))
             content = "# -*- coding: utf-8 -*-\n" + codes.content
             #print(codes.file_name)
             #print(content)
@@ -109,7 +127,6 @@ class SampleCodeGenerator:
 
             print("content: \n")
             print(content)
-
 
             tmp_f = open("temp/" + fname, 'w')
             tmp_f.write(content)
@@ -140,10 +157,10 @@ class SampleCodeGenerator:
                         continue
 
                     self.extract_sample_code(file_path)
-        
+
         self.runCodeBlocks()
-        print("total code blocks: %d" %len(self.code_blocks))
-        print("error code blocks: %d" %len(self.error_blocks))
+        print("total code blocks: %d" % len(self.code_blocks))
+        print("error code blocks: %d" % len(self.error_blocks))
 
 
 if __name__ == "__main__":
