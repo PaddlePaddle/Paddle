@@ -19,6 +19,8 @@ from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
 from ..fluid.framework import in_dygraph_mode
 from paddle.common_ops_import import *
+from ..framework import VarBase as Tensor
+from ..framework import ComplexVariable as ComplexTensor
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
@@ -43,6 +45,7 @@ __all__ = [
     'logical_xor',
     'not_equal',
     'allclose',
+    'is_tensor'
     #       'isnan'
 ]
 
@@ -376,3 +379,35 @@ def not_equal(x, y, name=None):
     """
     out = fluid.layers.not_equal(x, y, name=name, cond=None)
     return out
+
+
+def is_tensor(x):
+    """
+
+    This function tests whether input object is a paddle.Tensor or a paddle.ComplexTensor.
+
+    Args:
+        x (object): Object to test.
+
+    Returns:
+        A boolean value. True if 'x' is a paddle.Tensor or a paddle.ComplexTensor, otherwise False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input1 = paddle.rand(shape=[2, 3, 5], dtype='float32')
+            check = paddle.is_tensor(input1)
+            print(check)  #True
+
+            input2 = paddle.ComplexTensor(input1, input1)
+            check = paddle.is_tensor(input2)
+            print(check)  #True
+
+            input3 = [1, 4]
+            check = paddle.is_tensor(input3)
+            print(check)  #False
+            
+    """
+    return isinstance(x, Tensor) or isinstance(x, ComplexTensor)
