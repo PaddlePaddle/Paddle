@@ -106,7 +106,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._prune_main_program(main_block)
         self._prune_startup_program(startup_block)
 
-        # check op dependecy for broadcast
+        # check op dependecy
         check_broadcast(main_block)
         check_allreduce_sum(main_block)
         self._wait()
