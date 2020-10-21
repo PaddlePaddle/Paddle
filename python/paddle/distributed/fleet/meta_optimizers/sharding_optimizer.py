@@ -50,7 +50,7 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
-        if self._role_maker._worker_num() <= 1:
+        if self.role_maker._worker_num() <= 1:
             return False
         return self.user_defined_strategy.sharding
 
@@ -65,7 +65,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self._nrings = self.user_defined_strategy.nccl_comm_num
         self._fuse_broadcast_MB = self.user_defined_strategy.sharding_configs[
-            "fuse_broadcast_MB_bytes"]
+            "fuse_broadcast_MB"]
 
         if self.inner_opt is None:
             raise ValueError(
