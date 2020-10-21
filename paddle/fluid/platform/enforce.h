@@ -342,6 +342,7 @@ struct EnforceNotMet : public std::exception {
 
   void set_except_str(std::string str) { exc_str_ = str; }
 
+ private:
   std::string build_except_str(const ErrorSummary& error, const char* file,
                                int line) {
     full_exc_str_ = GetTraceBackString(error.to_string(), file, line);

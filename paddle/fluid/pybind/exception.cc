@@ -32,7 +32,7 @@ namespace pybind {
  *   - UnimplementedError -> NotImplementedError
  *   - UnavailableError -> RuntimeError
  *   - FatalError -> SystemError
- *   - ExternalError -> EnvironmentError
+ *   - ExternalError -> OSError
  */
 
 void BindException(pybind11::module* m) {
@@ -70,7 +70,7 @@ void BindException(pybind11::module* m) {
           PyErr_SetString(PyExc_SystemError, e.what());
           break;
         case paddle::platform::error::EXTERNAL:
-          PyErr_SetString(PyExc_EnvironmentError, e.what());
+          PyErr_SetString(PyExc_OSError, e.what());
           break;
         default:
           ex_base(e.what());
