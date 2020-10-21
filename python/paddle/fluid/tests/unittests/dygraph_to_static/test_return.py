@@ -190,29 +190,19 @@ class TestReturnBase(unittest.TestCase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_base
 
-    def run_dygraph_mode(self):
-        self.program_translator.enable(False)
+    def _run(self, to_static=False):
+        self.program_translator.enable(to_static)
         with fluid.dygraph.guard():
             res = self.dygraph_func(self.input)
-            if isinstance(res, (tuple)):
-                return tuple(r.numpy() for r in res)
-            elif isinstance(res, core.VarBase):
-                return res.numpy()
-            return res
-
-    def run_static_mode(self):
-        self.program_translator.enable(True)
-        with fluid.dygraph.guard():
-            res = self.dygraph_func(self.input)
-            if isinstance(res, tuple):
+            if isinstance(res, (tuple, list)):
                 return tuple(r.numpy() for r in res)
             elif isinstance(res, core.VarBase):
                 return res.numpy()
             return res
 
     def test_transformed_static_result(self):
-        dygraph_res = self.run_dygraph_mode()
-        static_res = self.run_static_mode()
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
