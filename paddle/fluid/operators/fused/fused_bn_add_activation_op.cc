@@ -142,12 +142,6 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output");
-  AddInput("Mean",
-           "The global mean (for training) or "
-           "estimated mean (for testing)");
-  AddInput("Variance",
-           "The global variance (for training) "
-           "or estimated Variance (for testing)");
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
@@ -192,8 +186,6 @@ void FusedBatchNormAddActGradOp::InferShape(
   // check input
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
                  "FusedBatchNormAddActGradOp");
-  // OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z",
-  //               "FusedBatchNormAddActGradOp");
   OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
                  "FusedBatchNormAddActGradOp");
   OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",

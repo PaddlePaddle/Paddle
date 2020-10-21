@@ -92,13 +92,9 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
-  VLOG(3) << "======detect patterns=======: " << subgraphs.size();
   UniquePatterns(&subgraphs);
-  VLOG(3) << "======unique patterns=======: " << subgraphs.size();
   RemoveOverlappedMatch(&subgraphs);
-  VLOG(3) << "======remove patterns=======: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
-  VLOG(3) << "======validate patterns=======: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
   LOG(INFO) << "---  detected " << subgraphs.size() << " subgraphs";
@@ -1221,11 +1217,6 @@ PDNode *patterns::BatchNormAddAct::operator()(
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
                           ->assert_is_op_input("batch_norm", "Bias");
 
-  auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
-                              ->assert_is_op_input("batch_norm", "Variance");
-  auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
-                          ->assert_is_op_input("batch_norm", "Mean");
-
   auto *bn = pattern->NewNode(batch_norm_repr())
                  ->assert_is_op("batch_norm")
                  ->assert_is_not_op_input("MomentumTensor")
@@ -1270,8 +1261,7 @@ PDNode *patterns::BatchNormAddAct::operator()(
   auto *act_out_var =
       pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
 
-  bn->LinksFrom(
-        {bn_x_var, bn_scale_var, bn_bias_var, bn_variance_var, bn_mean_var})
+  bn->LinksFrom({bn_x_var, bn_scale_var, bn_bias_var})
       .LinksTo({bn_mean_out_var, bn_variance_out_var, bn_saved_variance_var,
                 bn_saved_mean_var, bn_reserve_space, bn_out_var});
   elewise_add->LinksFrom({elewise_add_in_var, bn_out_var})
@@ -1327,8 +1317,7 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   auto *bn_saved_variance_var =
       pattern->NewNode(bn_saved_variance_repr())
           ->assert_is_op_input("batch_norm_grad", "SavedVariance");
-  // ReserveSpace as the output is equal to:
-  // data_layout == 'NHWC' && FLAGS_cudnn_batchnorm_spatial_persistent == true
+
   auto *bn_reserve_space =
       pattern->NewNode(bn_reserve_space_repr())
           ->assert_is_op_input("batch_norm_grad", "ReserveSpace");

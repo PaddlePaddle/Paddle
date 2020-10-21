@@ -702,8 +702,6 @@ struct BatchNormAddAct : public PatternBase {
   // BN inputs
   PATTERN_DECL_NODE(bn_scale);
   PATTERN_DECL_NODE(bn_bias);
-  PATTERN_DECL_NODE(bn_variance);
-  PATTERN_DECL_NODE(bn_mean);
   // BN outputs
   PATTERN_DECL_NODE(bn_mean_out);
   PATTERN_DECL_NODE(bn_variance_out);

@@ -38,11 +38,9 @@ void FuseBatchNormAddActPass::ApplyImpl(ir::Graph *graph) const {
 #ifdef PADDLE_WITH_CUDA
 #if CUDNN_VERSION_MIN(7, 4, 1)
   // forward
-  VLOG(4) << "================forward===============";
   std::unordered_set<std::string> act_types = {"relu"};
   graph = FuseBatchNormAddAct(graph, act_types);
   // backward
-  VLOG(4) << "================backward===============";
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
   graph = FuseBatchNormAddActGrad(graph, act_grad_types);
 #endif
@@ -77,8 +75,6 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
     // BN inputs
     GET_IR_NODE_FROM_SUBGRAPH(bn_scale, bn_scale, bn_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_bias, bn_bias, bn_add_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_variance, bn_variance, bn_add_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_mean, bn_mean, bn_add_act_pattern);
     // BN outputs
     GET_IR_NODE_FROM_SUBGRAPH(bn_mean_out, bn_mean_out, bn_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_variance_out, bn_variance_out,
@@ -106,8 +102,6 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
     std::string elewise_add_in_n = elewise_add_in->Name();
     std::string bn_scale_n = bn_scale->Name();
     std::string bn_bias_n = bn_bias->Name();
-    std::string bn_variance_n = bn_variance->Name();
-    std::string bn_mean_n = bn_mean->Name();
     std::string bn_mean_out_n = bn_mean_out->Name();
     std::string bn_variance_out_n = bn_variance_out->Name();
     std::string bn_saved_variance_n = bn_saved_variance->Name();
@@ -119,12 +113,11 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
 
     Node *fused_bn_add_act_node = CreateFusedBatchNormAddActNode(
         g, act, elewise_add, batch_norm, bn_x_n, elewise_add_in_n, bn_scale_n,
-        bn_bias_n, bn_variance_n, bn_mean_n, bn_mean_out_n, bn_variance_out_n,
-        bn_saved_variance_n, bn_saved_mean_n, bn_reserve_space_n, act_out_n);
+        bn_bias_n, bn_mean_out_n, bn_variance_out_n, bn_saved_variance_n,
+        bn_saved_mean_n, bn_reserve_space_n, act_out_n);
 
     VLOG(4) << "\n\t " << bn_x_n << ", " << bn_scale_n << ", " << bn_bias_n
-            << ", " << bn_variance_n << " and " << bn_mean_n << " -> "
-            << batch_norm->Name() << " -> " << bn_mean_out_n << ", "
+            << " -> " << batch_norm->Name() << " -> " << bn_mean_out_n << ", "
             << bn_variance_out_n << ", " << bn_saved_variance_n << ", "
             << bn_saved_mean_n << ", " << bn_reserve_space_n << " and "
             << bn_out_n << "\n"
@@ -133,8 +126,7 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
             << "\t " << elewise_add_out_n << " -> " << act->Name() << " -> "
             << act_out_n;
 
-    ReLinkNodes(g, bn_out, elewise_add_out, batch_norm, elewise_add, act,
-                fused_bn_add_act_node);
+    ReLinkNodes(g, batch_norm, elewise_add, act, fused_bn_add_act_node);
     found_bn_add_act_count++;
   };
 
@@ -148,7 +140,6 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
     Graph *g, const Node *act, const Node *elewise_add, const Node *bn,
     const std::string &bn_x_n, const std::string &elewise_add_in_n,
     const std::string &bn_scale_n, const std::string &bn_bias_n,
-    const std::string &bn_variance_n, const std::string &bn_mean_n,
     const std::string &bn_mean_out_n, const std::string &bn_variance_out_n,
     const std::string &bn_saved_variance_n, const std::string &bn_saved_mean_n,
     const std::string &bn_reserve_space_n, const std::string &act_out_n) const {
@@ -157,8 +148,6 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
   desc.SetInput("Z", std::vector<std::string>({elewise_add_in_n}));
   desc.SetInput("Scale", std::vector<std::string>({bn_scale_n}));
   desc.SetInput("Bias", std::vector<std::string>({bn_bias_n}));
-  desc.SetInput("Mean", std::vector<std::string>({bn_mean_n}));
-  desc.SetInput("Variance", std::vector<std::string>({bn_variance_n}));
 
   desc.SetOutput("Y", std::vector<std::string>({act_out_n}));
   desc.SetOutput("MeanOut", std::vector<std::string>({bn_mean_out_n}));
@@ -183,10 +172,6 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
 }
 
 // the backward of act(bn(x) + z)
-// act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
-// bn_grad: in["X", "Y@GRAD", "Scale", "Bias", "SavedMean", "SavedVariance",
-// "ReserveSpace"],
-// out["X@GRAD", "Scale@GRAD", "Bias@GRAD"]
 ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
     ir::Graph *graph,
     const std::unordered_set<std::string> &act_grad_types) const {
@@ -291,8 +276,7 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
             << batch_norm_grad->Name() << " -> " << d_bn_x_n << ", "
             << d_bn_scale_n << " and " << d_bn_bias_n;
 
-    ReLinkNodes(g, d_act_x, d_bn_out, act_grad, elewise_add_grad,
-                batch_norm_grad, fused_node);
+    ReLinkNodes(g, act_grad, elewise_add_grad, batch_norm_grad, fused_node);
     found_bn_add_act_count++;
   };
 
@@ -302,27 +286,19 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
   return graph;
 }
 
-void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
-                                          const Node *intermediate_out1,
-                                          const Node *intermediate_out2,
-                                          Node *op_1, Node *op_2, Node *op_3,
+void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph, Node *op_1, Node *op_2,
+                                          Node *op_3,
                                           Node *fused_op) const {  // delete act
-  VLOG(3) << "111111111111: op_1=" << op_1->Name() << "," << op_1->inputs.size()
-          << ", " << op_1->outputs.size();
   // link inputs of op_1 to fused_op
   for (auto &in : op_1->inputs) {
-    VLOG(3) << "in: " << in->Name();
-    for (auto &out : in->outputs) {
-      VLOG(3) << "out: " << out->Name();
-    }
     fused_op->inputs.emplace_back(in);
     in->outputs = this->ReplaceNode(op_1, fused_op, in->outputs);
   }
-  VLOG(3) << "======= satrt 2 =======";
+
   std::unordered_set<const Node *> nodes2delete;
-  // 如果op_1的输出是op_2的输入，那么加入到待删除列表，否则link到fused_op的输出
+  // if the outputs of op_1 are inputs of op_2, add the outputs to nodes2delete
+  // otherwise link the outputs to fused_op
   for (auto &out : op_1->outputs) {
-    // intermediate_out or ctr_var
     auto result_iter =
         std::find_if(op_2->inputs.begin(), op_2->inputs.end(),
                      [&out](const Node *node) -> bool { return node == out; });
@@ -333,10 +309,8 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
       nodes2delete.emplace(out);
     }
   }
-  VLOG(3) << "======= satrt 3 =======";
-
-  VLOG(3) << "111111111111222";
-  // 如果op_2的输出是op_3的输入，那么加入到待删除列表，否则link到fused_op的输出
+  // if the outputs of op_2 are inputs of op_3, add the outputs to nodes2delete
+  // otherwise link the outputs to fused_op
   for (auto &out : op_2->outputs) {
     auto result_iter =
         std::find_if(op_3->inputs.begin(), op_3->inputs.end(),
@@ -348,7 +322,8 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
     }
   }
 
-  // 如果op_2的输入是op_1的输出，则跳过，否则link到fused_op的输入
+  // if the inputs of op_2 are outputs of op_1, skip the inputs
+  // otherwise link the inputs to fused_op
   for (auto &in : op_2->inputs) {
     if (nodes2delete.count(in)) {
       continue;
@@ -357,8 +332,8 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
     in->outputs = this->ReplaceNode(op_2, fused_op, in->outputs);
   }
 
-  VLOG(3) << "111111111111333";
-  // 如果op_3的输入是op_2的输出，则跳过，否则link到fused_op的输入
+  // if the inputs of op_3 are outputs of op_2, skip the inputs
+  // otherwise link the inputs to fused_op
   for (auto &in : op_3->inputs) {
     if (nodes2delete.count(in)) {
       continue;
