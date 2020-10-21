@@ -19,12 +19,12 @@ __all__ = ['GradScaler']
 
 class GradScaler(AmpScaler):
     """
-    GradScaler is used for Auto-Mixed-Precision training/inferring in dynamic graph
-    mode. It controls the scaling of loss, helps avoiding numerical overflow.
+    GradScaler is used for Auto-Mixed-Precision training in dynamic graph mode. 
+    It controls the scaling of loss, helps avoiding numerical overflow.
     The object of this class has two methods `scale()`, `minimize()`.
 
     `scale()` is used to multiply the loss by a scale ratio.
-    `minimize()` is similar as `Optimizer.minimize()`, performs parameters updating.
+    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating.
 
     Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in 
     dynamic graph mode.
@@ -42,7 +42,7 @@ class GradScaler(AmpScaler):
                                     accumulated steps with nan or inf gradients. Default is 2.
         use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
-        An AmpScaler object.
+        An GradScaler object.
 
     Examples:
 
@@ -68,7 +68,7 @@ class GradScaler(AmpScaler):
                  incr_ratio=2.0,
                  decr_ratio=0.5,
                  incr_every_n_steps=1000,
-                 decr_every_n_nan_or_inf=1,
+                 decr_every_n_nan_or_inf=2,
                  use_dynamic_loss_scaling=True):
         super(GradScaler, self).__init__(enable, init_loss_scaling, incr_ratio,
                                          decr_ratio, incr_every_n_steps,
@@ -105,7 +105,7 @@ class GradScaler(AmpScaler):
 
     def minimize(self, optimizer, *args, **kwargs):
         """
-        This function is similar as `Optimizer.minimize()`, which performs parameters updating.
+        This function is similar as `optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
         Otherwise, it first unscales the scaled gradients of parameters, then updates the parameters.
@@ -115,7 +115,7 @@ class GradScaler(AmpScaler):
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
             args:  Arguments, which will be forward to `optimizer.minimize()`.
-            kwargs: Keyword arguments, which will be forward to `Optimizer.minimize()`.
+            kwargs: Keyword arguments, which will be forward to `optimizer.minimize()`.
 
         Examples:
             .. code-block:: python
