@@ -100,7 +100,19 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(port);
 
-  if (inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0) {
+  char *ip = NULL;
+  struct hostent *hp;
+  if ((hp = gethostbyname(host.c_str())) == NULL) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Fail to get host by name %s.", host));
+  }
+  int i = 0;
+  while (hp->h_addr_list[i] != NULL) {
+    ip = inet_ntoa(*(struct in_addr *)hp->h_addr_list[i]);
+    VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
+    break;
+  }
+  if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
     PADDLE_THROW(platform::errors::Unavailable("Open address %s failed.", ep));
   }
 
