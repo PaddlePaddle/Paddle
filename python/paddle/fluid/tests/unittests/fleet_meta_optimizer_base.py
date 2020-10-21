@@ -121,5 +121,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         elif name == "gradient_merge":
             strategy.gradient_merge = True
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
+        elif name == "sharding":
+            strategy.sharding = True
+            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
         else:
             raise NotImplementedError()
