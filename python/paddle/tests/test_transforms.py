@@ -205,6 +205,12 @@ class TestTransformsCV2(unittest.TestCase):
         assert isinstance(tensor, paddle.Tensor)
         np.testing.assert_equal(tensor.shape, (3, 50, 100))
 
+    def test_keys(self):
+        fake_img1 = self.create_image((200, 150, 3))
+        fake_img2 = self.create_image((200, 150, 3))
+        trans_pad = transforms.Pad(10, keys=("image", ))
+        fake_img_padded = trans_pad((fake_img1, fake_img2))
+
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
 
