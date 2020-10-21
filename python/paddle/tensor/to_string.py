@@ -52,7 +52,7 @@ def set_printoptions(precision=None,
 
             import paddle
 
-            paddle.manual_seed(10)
+            paddle.seed(10)
             a = paddle.rand([10, 20])
             paddle.set_printoptions(4, 100, 3)
             print(a)

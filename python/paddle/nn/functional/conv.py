@@ -405,7 +405,7 @@ def conv2d(x,
             points. If dilation is a tuple, it must contain two integers, (dilation_height, 
             dilation_width). Otherwise, dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
-        groups (int): The groups number of the Conv2d Layer. According to grouped
+        groups (int): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -896,7 +896,7 @@ def conv_transpose2d(x,
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -1122,7 +1122,7 @@ def conv3d(x,
             If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
-        groups (int): The groups number of the Conv3d Layer. According to grouped
+        groups (int): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -1340,7 +1340,7 @@ def conv_transpose3d(x,
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
