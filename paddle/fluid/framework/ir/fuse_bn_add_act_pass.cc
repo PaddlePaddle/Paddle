@@ -38,9 +38,11 @@ void FuseBatchNormAddActPass::ApplyImpl(ir::Graph *graph) const {
 #ifdef PADDLE_WITH_CUDA
 #if CUDNN_VERSION_MIN(7, 4, 1)
   // forward
+  VLOG(4) << "================forward===============";
   std::unordered_set<std::string> act_types = {"relu"};
   graph = FuseBatchNormAddAct(graph, act_types);
   // backward
+  VLOG(4) << "================backward===============";
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
   graph = FuseBatchNormAddActGrad(graph, act_grad_types);
 #endif
@@ -112,12 +114,24 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddAct(
     std::string bn_saved_mean_n = bn_saved_mean->Name();
     std::string bn_reserve_space_n = bn_reserve_space->Name();
     std::string bn_out_n = bn_out->Name();
+    std::string elewise_add_out_n = elewise_add_out->Name();
     std::string act_out_n = act_out->Name();
 
     Node *fused_bn_add_act_node = CreateFusedBatchNormAddActNode(
         g, act, elewise_add, batch_norm, bn_x_n, elewise_add_in_n, bn_scale_n,
         bn_bias_n, bn_variance_n, bn_mean_n, bn_mean_out_n, bn_variance_out_n,
         bn_saved_variance_n, bn_saved_mean_n, bn_reserve_space_n, act_out_n);
+
+    VLOG(4) << "\n\t " << bn_x_n << ", " << bn_scale_n << ", " << bn_bias_n
+            << ", " << bn_variance_n << " and " << bn_mean_n << " -> "
+            << batch_norm->Name() << " -> " << bn_mean_out_n << ", "
+            << bn_variance_out_n << ", " << bn_saved_variance_n << ", "
+            << bn_saved_mean_n << ", " << bn_reserve_space_n << " and "
+            << bn_out_n << "\n"
+            << "\t " << bn_out_n << " and " << elewise_add_in_n << " -> "
+            << elewise_add->Name() << " -> " << elewise_add_out_n << "\n"
+            << "\t " << elewise_add_out_n << " -> " << act->Name() << " -> "
+            << act_out_n;
 
     ReLinkNodes(g, bn_out, elewise_add_out, batch_norm, elewise_add, act,
                 fused_bn_add_act_node);
@@ -168,7 +182,7 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
   return fused_bn_add_act_node;
 }
 
-// the backward of act(bn(x))
+// the backward of act(bn(x) + z)
 // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
 // bn_grad: in["X", "Y@GRAD", "Scale", "Bias", "SavedMean", "SavedVariance",
 // "ReserveSpace"],
@@ -268,6 +282,19 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
 
     auto fused_node = g->CreateOpNode(&desc);
 
+    VLOG(4) << act_grad->Name();
+    VLOG(4) << d_itermediate_out1;
+    VLOG(4) << "\n\t " << d_act_out_n << " and " << act_out_n << " -> "
+            << act_grad->Name() << " -> " << d_itermediate_out1 << "\n\t ";
+    VLOG(4) << d_itermediate_out1 << " -> " << elewise_add_grad->Name()
+            << " -> " << d_elewise_add_in_n << "," << d_itermediate_out2
+            << "\n\t ";
+    VLOG(4) << bn_x_n << ", " << d_itermediate_out2 << ", " << bn_scale_n
+            << ", " << bn_bias_n << ", " << bn_saved_mean_n << ", "
+            << bn_saved_variance_n << " and " << bn_reserve_space_n << " -> "
+            << batch_norm_grad->Name() << " -> " << d_bn_x_n << ", "
+            << d_bn_scale_n << " and " << d_bn_bias_n;
+
     ReLinkNodes(g, d_itermediate_out1, d_itermediate_out2, act_grad,
                 elewise_add_grad, batch_norm_grad, fused_node);
     found_bn_add_act_count++;
@@ -284,7 +311,8 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
                                           const Node *intermediate_out2,
                                           Node *op_1, Node *op_2, Node *op_3,
                                           Node *fused_op) const {  // delete act
-  VLOG(3) << "111111111111: op_1=" << op_1->Name();
+  VLOG(3) << "111111111111: op_1=" << op_1->Name() << "," << op_1->inputs.size()
+          << ", " << op_1->outputs.size();
   for (auto &in : op_1->inputs) {
     VLOG(3) << "in: " << in->Name();
     for (auto &out : in->outputs) {
@@ -293,7 +321,7 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
     fused_op->inputs.emplace_back(in);
     in->outputs = this->ReplaceNode(op_1, fused_op, in->outputs);
   }
-
+  VLOG(3) << "======= satrt 2 =======";
   std::unordered_set<const Node *> nodes2delete;
   for (auto &out : op_1->outputs) {
     // intermediate_out or ctr_var
@@ -307,7 +335,7 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
       nodes2delete.emplace(out);
     }
   }
-
+  VLOG(3) << "======= satrt 3 =======";
   // 删除add的输出节点
   for (auto &out : op_2->outputs) {
     nodes2delete.emplace(out);

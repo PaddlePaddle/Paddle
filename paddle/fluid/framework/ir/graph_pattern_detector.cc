@@ -92,9 +92,13 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
+  VLOG(3) << "======detect patterns=======: " << subgraphs.size();
   UniquePatterns(&subgraphs);
+  VLOG(3) << "======unique patterns=======: " << subgraphs.size();
   RemoveOverlappedMatch(&subgraphs);
+  VLOG(3) << "======remove patterns=======: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
+  VLOG(3) << "======validate patterns=======: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
   LOG(INFO) << "---  detected " << subgraphs.size() << " subgraphs";
@@ -1211,10 +1215,12 @@ PDNode *patterns::BatchNormActOneDNN::operator()(const std::string &act_type) {
 PDNode *patterns::BatchNormAddAct::operator()(
     paddle::framework::ir::PDNode *bn_x_var,
     std::unordered_set<std::string> act_types) {
+  bn_x_var->assert_is_op_input("batch_norm", "X");
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->assert_is_op_input("batch_norm", "Scale");
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
                           ->assert_is_op_input("batch_norm", "Bias");
+
   auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
                               ->assert_is_op_input("batch_norm", "Variance");
   auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
@@ -1241,16 +1247,16 @@ PDNode *patterns::BatchNormAddAct::operator()(
   auto *bn_reserve_space =
       pattern->NewNode(bn_reserve_space_repr())
           ->assert_is_op_output("batch_norm", "ReserveSpace");
-  auto *bn_out_var = pattern->NewNode(bn_out_repr())
-                         ->assert_is_op_output("batch_norm", "Y")
-                         ->assert_has_n_outputs(1);
+  auto *bn_out_var =
+      pattern->NewNode(bn_out_repr())->assert_is_op_output("batch_norm", "Y");
 
-  bn_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+  bn_out_var->assert_is_op_input("elementwise_add");
 
   auto *elewise_add =
       pattern->NewNode(elewise_add_repr())->assert_is_op("elementwise_add");
 
-  auto *elewise_add_in_var = pattern->NewNode(elewise_add_in_repr());
+  auto *elewise_add_in_var = pattern->NewNode(elewise_add_in_repr())
+                                 ->assert_is_op_input("elementwise_add");
 
   auto *elewise_add_out_var =
       pattern->NewNode(elewise_add_out_repr())
@@ -1268,7 +1274,7 @@ PDNode *patterns::BatchNormAddAct::operator()(
         {bn_x_var, bn_scale_var, bn_bias_var, bn_variance_var, bn_mean_var})
       .LinksTo({bn_mean_out_var, bn_variance_out_var, bn_saved_variance_var,
                 bn_saved_mean_var, bn_reserve_space, bn_out_var});
-  elewise_add->LinksFrom({bn_out_var, elewise_add_in_var})
+  elewise_add->LinksFrom({elewise_add_in_var, bn_out_var})
       .LinksTo({elewise_add_out_var});
   act->LinksFrom({elewise_add_out_var}).LinksTo({act_out_var});
 
@@ -1291,12 +1297,19 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
                           ->assert_is_ops_input(act_grad_types, "Out");
   auto *d_intermediate_var1 =
       pattern->NewNode(d_itermediate_out1_repr())
-          ->assert_is_ops_output(act_grad_types, GradVarName("X"))
-          ->assert_has_n_outputs(1);
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"));  // d_act_x
 
-  auto *d_elewise_add_in_var = pattern->NewNode(d_elewise_add_in_repr());
+  d_intermediate_var1->assert_is_op_input("elementwise_add_grad");
+
+  auto *d_elewise_add_in_var =
+      pattern->NewNode(d_elewise_add_in_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_1
   auto *d_intermediate_var2 =
-      pattern->NewNode(d_itermediate_out2_repr())->assert_has_n_outputs(1);
+      pattern->NewNode(d_itermediate_out2_repr())
+          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_1
+
+  d_intermediate_var2->assert_is_op_input("batch_norm_grad");
 
   auto *bn_x_var = pattern->NewNode(bn_x_repr())
                        ->assert_is_op_input("batch_norm_grad", "X")

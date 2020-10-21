@@ -142,6 +142,12 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output");
+  AddInput("Mean",
+           "The global mean (for training) or "
+           "estimated mean (for testing)");
+  AddInput("Variance",
+           "The global variance (for training) "
+           "or estimated Variance (for testing)");
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
