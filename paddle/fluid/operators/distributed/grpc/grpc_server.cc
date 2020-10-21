@@ -456,6 +456,7 @@ class RequestSendAndRecv final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
                                             request_handler->dev_ctx(), true));
+    VLOG(4) << "RequestSendAndRecv finish GRPCVariableResponse";
 
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
@@ -463,6 +464,7 @@ class RequestSendAndRecv final : public RequestBase {
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+    VLOG(4) << "RequestSendAndRecv finish RequestAsyncUnary";
   }
 
   virtual ~RequestSendAndRecv() {}
@@ -472,6 +474,7 @@ class RequestSendAndRecv final : public RequestBase {
 
   void Process() override {
     multi_msg_ = request_->GetMultiVariableMessage();
+    VLOG(4) << "RequestSendAndRecv finish GetMultiVariableMessage";
     std::string message_name = multi_msg_.message_name();
     std::vector<std::string> in_var_names(multi_msg_.send_var_names_size());
     std::vector<std::string> out_var_names(multi_msg_.recv_var_names_size());
@@ -490,19 +493,22 @@ class RequestSendAndRecv final : public RequestBase {
     int trainer_id = 0;
     DeserializeFromMultiVarMsg(multi_msg_, *request_handler_->dev_ctx(),
                                request_->GetMutableLocalScope(), &trainer_id);
+    VLOG(4) << "RequestSendAndRecv finish DeserializeFromMultiVarMsg";
     request_handler_->SetMultiVarNames(in_var_names, out_var_names);
     framework::Variable* fake_in_var = nullptr;
     framework::Variable* fake_out_var = nullptr;
     request_handler_->Handle(message_name, request_->GetMutableLocalScope(),
                              fake_in_var, &fake_out_var, trainer_id);
+    VLOG(4) << "RequestSendAndRecv finish Handle";
     SerializeToMultiVarMsg(
         message_name, in_var_names, out_var_names, *request_handler_->dev_ctx(),
         request_->GetMutableLocalScope(), &reply_, trainer_id);
-
+    VLOG(4) << "RequestSendAndRecv finish SerializeToMultiVarMsg";
     std::lock_guard<std::mutex> l(status_mu_);
     status_ = FINISH;
     responder_.Finish(reply_, ::grpc::Status::OK,
                       reinterpret_cast<void*>(static_cast<intptr_t>(req_id_)));
+    VLOG(4) << "RequestSendAndRecv Finish";
   }
 
  protected:

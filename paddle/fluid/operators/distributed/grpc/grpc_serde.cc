@@ -190,8 +190,10 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
                                 const int trainer_id, VarMsg* var_msg) {
   framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
-    // throw error
-    return;
+    PADDLE_ENFORCE_NE(
+        var, nullptr,
+        platform::errors::InvalidArgument(
+            "SerializeLodTensorToVarMsg Didn't find %s", var_name));
   }
 
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();

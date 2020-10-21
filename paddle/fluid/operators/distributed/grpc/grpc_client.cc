@@ -515,23 +515,28 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(
 
   while (true) {
     SendAndRecvProcessor* s = new SendAndRecvProcessor(channel);
+    VLOG(4) << "GRPCClient::SendAndRecv, get SendAndRecvProcessor ";
     VarHandlePtr h(new VarHandle(ep, method, message_name_val, p_ctx, p_scope));
+    VLOG(4) << "GRPCClient::SendAndRecv, get VarHandle ";
     s->Prepare(h, time_out);
     s->RecvPrepare(recv_var_name_val);
+    VLOG(4) << "GRPCClient::SendAndRecv, finish Prepare ";
 
     framework::AsyncIO([&] {
       MultiVarMsg request;
       SerializeToMultiVarMsg(message_name_val, send_var_name_val,
                              recv_var_name_val, *p_ctx, p_scope, &request,
                              trainer_id_);
+      VLOG(4) << "GRPCClient::SendAndRecv, finish SerializeToMultiVarMsg ";
 
       VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
 
       auto call =
           s->stub_->AsyncSendAndRecvVariable(s->context_.get(), request, &cq_);
-      call->StartCall();
+      // call->StartCall();
+      VLOG(4) << "GRPCClient::SendAndRecv, finish AsyncSendAndRecvVariable ";
       call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-
+      VLOG(4) << "GRPCClient::SendAndRecv, Finish ";
       if (UNLIKELY(platform::IsProfileEnabled())) {
         h->Wait();
       }

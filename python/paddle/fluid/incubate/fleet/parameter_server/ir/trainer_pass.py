@@ -15,6 +15,7 @@
 
 from __future__ import print_function
 import six
+import os
 import collections
 import warnings
 import math
@@ -465,55 +466,55 @@ def create_heter_program(program, config, heter_program, heter_ops,
         grad_to_block_id.append(comm_info["block_input_var_name"] + ":" + str(
             heter_block.idx))
 
-        first_op_index = 0
+        # first_op_index = 0
 
-        get_type_var_name = comm_info["input_var_reshape_name"][0].split(
-            ".input_reshape@Heter")[0]
-        get_type_var = heter_block.vars[get_type_var_name]
+        # get_type_var_name = comm_info["input_var_reshape_name"][0].split(
+        #     ".input_reshape@Heter")[0]
+        # get_type_var = heter_block.vars[get_type_var_name]
 
-        # create slice op
-        insert_recv_slice_op(
-            heter_program, heter_block, first_op_index,
-            comm_info["block_input_var_name"],
-            (-1, sum(comm_info["input_var_reshape_dim"])), get_type_var.dtype,
-            get_type_var.type, comm_info["input_var_reshape_name"], [
-                (-1, comm_info["input_var_reshape_dim"][i])
-                for i in range(len(comm_info["input_var_reshape_dim"]))
-            ])
-        first_op_index += len(comm_info["input_var_reshape_dim"])
+        # # create slice op
+        # insert_recv_slice_op(
+        #     heter_program, heter_block, first_op_index,
+        #     comm_info["block_input_var_name"],
+        #     (-1, sum(comm_info["input_var_reshape_dim"])), get_type_var.dtype,
+        #     get_type_var.type, comm_info["input_var_reshape_name"], [
+        #         (-1, comm_info["input_var_reshape_dim"][i])
+        #         for i in range(len(comm_info["input_var_reshape_dim"]))
+        #     ])
+        # first_op_index += len(comm_info["input_var_reshape_dim"])
 
-        heter_program.global_block().create_var(
-            name=comm_info["block_input_var_name"],
-            shape=(-1, sum(comm_info["input_var_reshape_dim"])),
-            dtype=get_type_var.dtype,
-            type=get_type_var.type)
+        # heter_program.global_block().create_var(
+        #     name=comm_info["block_input_var_name"],
+        #     shape=(-1, sum(comm_info["input_var_reshape_dim"])),
+        #     dtype=get_type_var.dtype,
+        #     type=get_type_var.type)
 
-        # create reshape op
-        for i in range(len(comm_info["input_var_reshape_name"])):
-            var_name = entrance_vars[i]
-            insert_reshape_op(
-                heter_program,
-                heter_block,
-                first_op_index,
-                comm_info["input_var_reshape_name"][i],
-                var_name, )
-            first_op_index += 1
+        # # create reshape op
+        # for i in range(len(comm_info["input_var_reshape_name"])):
+        #     var_name = entrance_vars[i]
+        #     insert_reshape_op(
+        #         heter_program,
+        #         heter_block,
+        #         first_op_index,
+        #         comm_info["input_var_reshape_name"][i],
+        #         var_name, )
+        #     first_op_index += 1
 
-        first_op_index = len(heter_block.ops)
+        # first_op_index = len(heter_block.ops)
 
-        # create send reshape op
-        for i in range(len(exit_vars)):
-            insert_reshape_op(heter_program, heter_block, first_op_index,
-                              exit_vars[i],
-                              comm_info["output_var_reshape_name"][i],
-                              [-1, comm_info["output_var_reshape_dim"][i]])
-            first_op_index += 1
+        # # create send reshape op
+        # for i in range(len(exit_vars)):
+        #     insert_reshape_op(heter_program, heter_block, first_op_index,
+        #                       exit_vars[i],
+        #                       comm_info["output_var_reshape_name"][i],
+        #                       [-1, comm_info["output_var_reshape_dim"][i]])
+        #     first_op_index += 1
 
-        # create send concat op
-        insert_send_concat_op(heter_program, heter_block, first_op_index,
-                              comm_info["output_var_reshape_name"],
-                              comm_info["block_output_var_name"],
-                              [-1, sum(comm_info["output_var_reshape_dim"])])
+        # # create send concat op
+        # insert_send_concat_op(heter_program, heter_block, first_op_index,
+        #                       comm_info["output_var_reshape_name"],
+        #                       comm_info["block_output_var_name"],
+        #                       [-1, sum(comm_info["output_var_reshape_dim"])])
         check_op_device(heter_block, current_device)
 
         # add send op
@@ -549,9 +550,9 @@ def create_heter_program(program, config, heter_program, heter_ops,
         "pserver_id": config.get_role_id(),
         "Fanin": config.get_trainers(),
         "distributed_mode": config.get_distributed_mode(),
-        "rpc_get_thread_num": 12,
-        "rpc_send_thread_num": 12,
-        "rpc_prefetch_thread_num": 12
+        "rpc_get_thread_num": int(os.getenv("CPU_NUM", 12)),
+        "rpc_send_thread_num": int(os.getenv("CPU_NUM", 12)),
+        "rpc_prefetch_thread_num": int(os.getenv("CPU_NUM", 12))
     }
 
     # append the listen_and_serv op
@@ -613,90 +614,91 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
     entrance_var = block_var_detail[heter_block_index]["entrance"]
     exit_var = block_var_detail[heter_block_index]["exit"]
 
-    default_device_comm_info = get_communicate_var_info(
-        program, heter_block_index - 1,
-        block_var_detail[heter_block_index - 1]["entrance"],
-        block_var_detail[heter_block_index - 1]["exit"])
+    # default_device_comm_info = get_communicate_var_info(
+    #     program, heter_block_index - 1,
+    #     block_var_detail[heter_block_index - 1]["entrance"],
+    #     block_var_detail[heter_block_index - 1]["exit"])
     comm_info = get_communicate_var_info(program, heter_block_index,
                                          entrance_var, exit_var)
 
-    # create reshape op
-    for i in range(len(entrance_var)):
-        insert_reshape_op(
-            program,
-            program.global_block(), first_op_idx, entrance_var[i],
-            default_device_comm_info["output_var_reshape_name"][i],
-            [-1, default_device_comm_info["output_var_reshape_dim"][i]])
-        first_op_idx += 1
+    # # create reshape op
+    # for i in range(len(entrance_var)):
+    #     insert_reshape_op(
+    #         program,
+    #         program.global_block(), first_op_idx, entrance_var[i],
+    #         default_device_comm_info["output_var_reshape_name"][i],
+    #         [-1, default_device_comm_info["output_var_reshape_dim"][i]])
+    #     first_op_idx += 1
 
-    # create concat op
-    insert_send_concat_op(
-        program,
-        program.global_block(), first_op_idx,
-        default_device_comm_info["output_var_reshape_name"],
-        default_device_comm_info["block_output_var_name"],
-        [-1, sum(default_device_comm_info["output_var_reshape_dim"])])
-    first_op_idx += 1
+    # # create concat op
+    # insert_send_concat_op(
+    #     program,
+    #     program.global_block(), first_op_idx,
+    #     default_device_comm_info["output_var_reshape_name"],
+    #     default_device_comm_info["block_output_var_name"],
+    #     [-1, sum(default_device_comm_info["output_var_reshape_dim"])])
+    # first_op_idx += 1
 
-    # create send op
-    send_input_vars = [
-        program.global_block().vars[default_device_comm_info[
-            "block_output_var_name"]]
-    ]
+    # # create send op
+    # send_input_vars = [
+    #     program.global_block().vars[default_device_comm_info[
+    #         "block_output_var_name"]]
+    # ]
 
-    get_type_var_name = comm_info["output_var_reshape_name"][0].split(
-        ".output_reshape@Heter")[0]
-    get_type_var = program.global_block().vars[get_type_var_name]
+    # get_type_var_name = comm_info["output_var_reshape_name"][0].split(
+    #     ".output_reshape@Heter")[0]
+    # get_type_var = program.global_block().vars[get_type_var_name]
 
-    program.global_block().create_var(
-        name=comm_info["block_output_var_name"],
-        shape=(-1, sum(comm_info["output_var_reshape_dim"])),
-        dtype=get_type_var.dtype,
-        type=get_type_var.type)
+    # program.global_block().create_var(
+    #     name=comm_info["block_output_var_name"],
+    #     shape=(-1, sum(comm_info["output_var_reshape_dim"])),
+    #     dtype=get_type_var.dtype,
+    #     type=get_type_var.type)
 
-    recv_vars = [
-        program.global_block().vars[comm_info["block_output_var_name"]]
-    ]
+    # recv_vars = [
+    #     program.global_block().vars[comm_info["block_output_var_name"]]
+    # ]
 
     program.global_block()._insert_op(
         index=first_op_idx,
         type="send_and_recv",
-        inputs={"X": send_input_vars},
-        outputs={"Out": recv_vars},
+        inputs={"X": program.global_block().vars[entrance_var[0]]},
+        outputs={"Out": program.global_block().vars[exit_var[0]]},
         attrs={
-            "send_var_name": default_device_comm_info["block_output_var_name"],
-            "recv_var_name": comm_info["block_output_var_name"],
+            "send_var_name": entrance_var,
+            "recv_var_name": exit_var,
+            "message_name": comm_info["block_input_var_name"],
             "endpoint": heter_worker_endpoint,
             "trainer_id": config.get_role_id(),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         })
     first_op_idx += 1
 
-    # recv
-    # create slice op
-    insert_recv_slice_op(
-        program,
-        program.global_block(), first_op_idx,
-        comm_info["block_output_var_name"],
-        (-1, sum(comm_info["output_var_reshape_dim"])), get_type_var.dtype,
-        get_type_var.type, comm_info["output_var_reshape_name"], [
-            (-1, comm_info["output_var_reshape_dim"][i])
-            for i in range(len(comm_info["output_var_reshape_dim"]))
-        ])
+    # # recv
+    # # create slice op
+    # insert_recv_slice_op(
+    #     program,
+    #     program.global_block(), first_op_idx,
+    #     comm_info["block_output_var_name"],
+    #     (-1, sum(comm_info["output_var_reshape_dim"])), get_type_var.dtype,
+    #     get_type_var.type, comm_info["output_var_reshape_name"], [
+    #         (-1, comm_info["output_var_reshape_dim"][i])
+    #         for i in range(len(comm_info["output_var_reshape_dim"]))
+    #     ])
 
-    first_op_idx += len(comm_info["output_var_reshape_dim"])
+    # first_op_idx += len(comm_info["output_var_reshape_dim"])
 
-    # create reshape op
-    for i in range(len(comm_info["output_var_reshape_name"])):
-        var_name = comm_info["output_var_reshape_name"][i].split(
-            ".output_reshape@Heter")[0]
-        insert_reshape_op(
-            program,
-            program.global_block(),
-            first_op_idx,
-            comm_info["output_var_reshape_name"][i],
-            var_name, )
-        first_op_idx += 1
+    # # create reshape op
+    # for i in range(len(comm_info["output_var_reshape_name"])):
+    #     var_name = comm_info["output_var_reshape_name"][i].split(
+    #         ".output_reshape@Heter")[0]
+    #     insert_reshape_op(
+    #         program,
+    #         program.global_block(),
+    #         first_op_idx,
+    #         comm_info["output_var_reshape_name"][i],
+    #         var_name, )
+    #     first_op_idx += 1
 
 
 def remove_trainer_send_op(program, config, heter_block_index,
