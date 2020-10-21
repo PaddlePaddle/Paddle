@@ -52,10 +52,12 @@ type %cache_dir%\error_code.txt
 set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir build /s/q
+    goto :mkbuild
 )
 
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
+    git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
     if %ERRORLEVEL% EQU 0 (
         rmdir build /s/q
@@ -64,7 +66,6 @@ if %ERRORLEVEL% EQU 0 (
     git branch last_pr
 ) else (
     rmdir build /s/q
-    git branch -D last_pr
     git branch last_pr
 )
 
@@ -76,8 +77,10 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir build /s/q
+    goto :mkbuild
 )
 
+git diff HEAD origin/develop --stat --name-only
 git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
 if %ERRORLEVEL% EQU 0 (
     rmdir build /s/q
@@ -489,7 +492,6 @@ taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
-taskkill /f /im python.exe  2>NUL
 taskkill /f /im python.exe  2>NUL
 echo 0 > %cache_dir%\error_code.txt
 echo Windows CI run successfully!
