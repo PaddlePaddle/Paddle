@@ -243,5 +243,16 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "alltoall":
+            need_result1 = np.vstack(input1[0:input1.shape[0] // 2],
+                                     input2[0:input2.shape[0] // 2])
+            need_result2 = np.vstack(input1[input1.shape[0] // 2:],
+                                     input2[input2.shape[0] // 2:])
+            self.assertTrue(
+                np.allclose(
+                    tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out, need_result2, rtol=1e-05, atol=1e-05))
         else:
             pass
