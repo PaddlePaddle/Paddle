@@ -57,7 +57,9 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     GET_IR_NODE_FROM_SUBGRAPH(batch_norm, batch_norm, bn_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_act_pattern);
 
+    batch_norm->Op()->SetAttr("use_mkldnn", true);
     batch_norm->Op()->SetAttr("fuse_with_relu", true);
+    batch_norm->Op()->SetAttr("trainable_statistics", false);
     batch_norm->Op()->SetOutput("Y", {act_out->Name()});
 
     IR_OP_VAR_LINK(batch_norm, act_out);
