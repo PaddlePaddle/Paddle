@@ -403,7 +403,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
         with fluid.dygraph.guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             ocr_attention = OCRAttention()
 
@@ -454,7 +454,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

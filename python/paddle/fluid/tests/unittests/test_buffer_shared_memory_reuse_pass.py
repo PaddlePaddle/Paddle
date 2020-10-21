@@ -47,7 +47,7 @@ class InplaceTestBase(unittest.TestCase):
 
     def build_program_and_scope(self):
         self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
-        paddle.manual_seed(1)
+        paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         startup_program = fluid.Program()
         main_program = fluid.Program()

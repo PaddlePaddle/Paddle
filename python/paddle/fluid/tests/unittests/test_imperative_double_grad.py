@@ -311,7 +311,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(123)
+            paddle.seed(123)
             paddle.framework.random._manual_program_seed(123)
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
@@ -328,7 +328,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
             grad_1 = dx[0].numpy()
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(123)
+            paddle.seed(123)
             paddle.framework.random._manual_program_seed(123)
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False

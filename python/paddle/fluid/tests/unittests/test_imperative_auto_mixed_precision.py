@@ -120,7 +120,7 @@ class TestAmpScaler(unittest.TestCase):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
 
         def run_simple_conv(inp_np, use_scaler=True):
-            paddle.manual_seed(10)
+            paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             with fluid.dygraph.guard():
                 model = SimpleConv(
@@ -205,7 +205,7 @@ class TestResnet2(unittest.TestCase):
 
         paddle.disable_static()
 
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         resnet = ResNet(use_cudnn=True)
@@ -282,7 +282,7 @@ class TestResnet(unittest.TestCase):
         batch_num = 1
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet(use_cudnn=True)
