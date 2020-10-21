@@ -158,7 +158,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         return x, y, loss
 
     def check(self, place, use_cuda):
-        paddle.manual_seed(1)
+        paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         iters = 5
         batch_size = 16
