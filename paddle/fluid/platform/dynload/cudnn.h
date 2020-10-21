@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <glog/logging.h>
-
 #include <cudnn.h>
+#include <glog/logging.h>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -95,6 +95,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnGetVersion);                               \
   __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
   __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
+  __macro(cudnnFindConvolutionBackwardFilterAlgorithm);   \
   __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
   __macro(cudnnGetErrorString);                           \
   __macro(cudnnCreateDropoutDescriptor);                  \
@@ -177,7 +178,8 @@ CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnCTCLoss);                                  \
   __macro(cudnnGetConvolutionBackwardDataAlgorithm_v7);   \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm_v7); \
-  __macro(cudnnGetConvolutionForwardAlgorithm_v7);
+  __macro(cudnnGetConvolutionForwardAlgorithm_v7);        \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 

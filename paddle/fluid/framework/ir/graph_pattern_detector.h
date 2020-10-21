@@ -27,10 +27,20 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -1300,6 +1310,21 @@ struct MatmulTransposeReshapePattern : public PatternBase {
   PATTERN_DECL_NODE(reshape_op);
   PATTERN_DECL_NODE(reshape_out);
   PATTERN_DECL_NODE(reshape_out_xshape);
+};
+
+// fusion_gru op
+// Forward pass for fusion_gru.
+// fusion_gru out is a result of the operator.
+struct FusionGru : public PatternBase {
+  FusionGru(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fusion_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(op);
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(weight_h);
+  PATTERN_DECL_NODE(weight_x);
+  PATTERN_DECL_NODE(out);
 };
 
 }  // namespace patterns

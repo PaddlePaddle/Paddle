@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticFunction
 
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -81,14 +81,14 @@ class SimpleNet(Layer):
         return z
 
 
-class TestStaticLayerInstance(unittest.TestCase):
+class TestStaticFunctionInstance(unittest.TestCase):
     def test_instance_same_class(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             net_1 = SimpleNet()
             net_2 = SimpleNet()
 
-            self.assertTrue(isinstance(net_1.forward, StaticLayer))
-            self.assertTrue(isinstance(net_2.forward, StaticLayer))
+            self.assertTrue(isinstance(net_1.forward, StaticFunction))
+            self.assertTrue(isinstance(net_2.forward, StaticFunction))
             self.assertNotEqual(net_1.forward, net_2.forward)
 
             # convert layer into static progam of net_1

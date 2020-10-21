@@ -19,9 +19,8 @@ set(PADDLE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_install_dir" CACHE STRING
 set(PADDLE_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_install_dir" CACHE STRING
   "A path setting paddle inference shared and static libraries")
   
-# TODO(zhaolong)
-# At present, the size of static lib in Windows exceeds the system limit,
-# so the generation of static lib is temporarily turned off.
+# At present, the size of static lib in Windows is very large,
+# so we need to crop the library size.
 if(WIN32)
     #todo: remove the option 
     option(WITH_STATIC_LIB "Compile demo with static/shared library, default use dynamic."   OFF)
@@ -132,7 +131,7 @@ function(copy_part_of_thrid_party TARGET DST)
     if (LITE_BINARY_DIR)
         set(dst_dir "${DST}/third_party/install/lite")
         copy(${TARGET}
-                SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
+                SRCS ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/*
                 DSTS ${dst_dir})
     endif()
 endfunction()
@@ -196,7 +195,11 @@ set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_insta
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
-set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
+if(WIN32)
+  set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.*)
+else(WIN32)
+  set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
+endif(WIN32)
 
 copy(inference_lib_dist
       SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}

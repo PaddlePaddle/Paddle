@@ -4,7 +4,7 @@ endif()
 
 INCLUDE(ExternalProject)
 SET(XPU_PROJECT                 "extern_xpu")
-SET(XPU_URL    "https://kunlun1.su.bcebos.com/xpu.tar.gz" CACHE STRING "" FORCE)
+SET(XPU_URL    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/xpu.tar.gz" CACHE STRING "" FORCE)
 SET(XPU_SOURCE_DIR              "${THIRD_PARTY_PATH}/xpu")
 SET(XPU_DOWNLOAD_DIR            "${XPU_SOURCE_DIR}/src/${XPU_PROJECT}")
 SET(XPU_INSTALL_DIR             "${THIRD_PARTY_PATH}/install/xpu")

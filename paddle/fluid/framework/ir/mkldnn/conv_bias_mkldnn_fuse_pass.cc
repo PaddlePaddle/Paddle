@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
 #include <functional>
-#include <string>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -84,19 +83,6 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     if (fuse_option == DO_NOT_FUSE || fuse_option == FUSE_NATIVE) {
       VLOG(3) << "do not perform " + type() + "+bias fuse";
       return;
-    }
-    if (conv->Op()->HasAttr("dilations")) {
-      auto dilations =
-          BOOST_GET_CONST(std::vector<int>, conv->Op()->GetAttr("dilations"));
-      for (const auto& d : dilations) {
-        if (d != 1) {
-          LOG(WARNING)
-              << "dilation conv not supported in MKLDNN, fuse not apply "
-              << "and set conv attribute use_mkldnn = false";
-          conv->Op()->SetAttr("use_mkldnn", false);
-          return;
-        }
-      }
     }
 
     auto* eltwise_bias_tensor =

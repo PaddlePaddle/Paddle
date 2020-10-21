@@ -25,7 +25,17 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
+
+class ComputationOpHandle;
 
 ComputationOpHandle *GetUniquePendingComputationOpHandle(
     ShareTensorBufferOpHandle *share_tensor_op) {

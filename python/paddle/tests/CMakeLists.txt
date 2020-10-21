@@ -8,10 +8,6 @@ foreach(TEST_OP ${DIST_TEST_OPS})
     list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
-# disable test_pretrained_model and test_vision_models
-list(REMOVE_ITEM TEST_OPS test_pretrained_model)
-list(REMOVE_ITEM TEST_OPS test_vision_models)
-
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
@@ -43,3 +39,5 @@ foreach(src ${DIST_TEST_OPS})
     message(STATUS ${src})
     py_dist_test(${src} SRCS ${src}.py)
 endforeach()
+
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)

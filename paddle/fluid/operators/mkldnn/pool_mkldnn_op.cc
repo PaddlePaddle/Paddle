@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
@@ -126,6 +125,9 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     UpdatePadding(&paddings, global_pooling, 0, padding_algorithm, data_dims,
                   strides, ksize);
+
+    platform::PoolingMKLDNNHandler<T>::ComputeAdaptivePoolParameters(
+        ctx, paddle::framework::vectorize(in_x->dims()), ksize, strides);
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();

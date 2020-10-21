@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -24,12 +25,34 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class PrintOptions {
+ public:
+  static PrintOptions& Instance() {
+    static PrintOptions instance;
+    return instance;
+  }
+  ~PrintOptions() {}
+  PrintOptions(const PrintOptions& o) = delete;
+  const PrintOptions& operator=(const PrintOptions& o) = delete;
+
+  int precision = 8;
+  int threshold = 1000;
+  int edgeitems = 3;
+  int linewidth = 75;
+  bool sci_mode = false;
+
+ private:
+  PrintOptions() {}
+};
+
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
 // be carried out correctly, there is a src_ctx wait operation in TensorCopy.
 // If ctx_place and src_place are the same, src_ctx.Wait() is added
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
+class Tensor;
+
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
 

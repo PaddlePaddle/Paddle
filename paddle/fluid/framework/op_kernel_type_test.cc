@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_kernel_type.h"
+
 #include <gtest/gtest.h>
-#include <iostream>
 
 TEST(OpKernelType, ToString) {
   using OpKernelType = paddle::framework::OpKernelType;

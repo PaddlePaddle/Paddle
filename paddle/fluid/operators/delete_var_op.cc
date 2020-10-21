@@ -13,6 +13,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class DeleteVarOp : public framework::OperatorBase {
  public:

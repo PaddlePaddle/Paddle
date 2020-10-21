@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
+
 #include <cmath>
-#include <functional>
-#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
@@ -24,7 +24,16 @@
 
 namespace paddle {
 namespace framework {
+class LoDTensor;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Node;
 
 #define GET_CONV_BN_NODES(pattern_name)                                    \
   /* OPERATORS */                                                          \

@@ -167,10 +167,10 @@ class DataLoader(object):
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
-        places(list(Place)|tuple(Place)): a list of Place, to put data
-            onto, :attr:`places` must be set in both static graph and 
-            dynamic graph mode, in dynamic graph mode, place number must
-            be 1. Default None.
+        places(list(Place)|tuple(Place)|optional): a list of Place,
+            to put data onto, :attr:`places` can be None, if 
+            :attr:`places` is None, default place(CPUPlace or CUDAPlace(0))
+            will be used. Default None.
         return_list (bool): whether the return value on each device is 
             presented as a list. If :attr:`return_list=False`, the return
             value on each device would be a dict of str -> LoDTensor, where
@@ -215,13 +215,15 @@ class DataLoader(object):
             None.
 
     Returns:
-        DataLoader: an iterable object for data iterating
+        DataLoader: an iterable object for data iterating, each elemnet of the generated data is a Tensor.
 
     Examples:
         
         .. code-block:: python
 
             import numpy as np
+
+            import paddle
             import paddle.fluid as fluid
             from paddle.io import Dataset, BatchSampler, DataLoader
 
@@ -247,10 +249,47 @@ class DataLoader(object):
                 def __len__(self):
                     return self.num_samples
 
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+
             # get places
             places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
 
+            # --------------------- dygraph mode --------------------
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
+                    self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
+
+                def forward(self, image, label=None):
+                    return self.fc(image)
+
+            with fluid.dygraph.guard(places[0]):
+                simple_net = SimpleNet()
+                opt = fluid.optimizer.SGD(learning_rate=1e-3,
+                                          parameter_list=simple_net.parameters())
+
+                loader = DataLoader(dataset,
+                                    batch_size=BATCH_SIZE,
+                                    shuffle=True,
+                                    drop_last=True,
+                                    num_workers=2)
+
+                for e in range(EPOCH_NUM):
+                    for i, (image, label) in enumerate(loader()):
+                        out = simple_net(image)
+                        loss = fluid.layers.cross_entropy(out, label)
+                        avg_loss = fluid.layers.reduce_mean(loss)
+                        avg_loss.backward()
+                        opt.minimize(avg_loss)
+                        simple_net.clear_gradients()
+                        print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
+
+            # -------------------------------------------------------
+
             # -------------------- static graph ---------------------
+
+            paddle.enable_static()
 
             def simple_net(image, label):
                 fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
@@ -270,11 +309,8 @@ class DataLoader(object):
 
             prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
 
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-
             loader = DataLoader(dataset,
                                 feed_list=[image, label],
-                                places=places,
                                 batch_size=BATCH_SIZE, 
                                 shuffle=True,
                                 drop_last=True,
@@ -287,39 +323,6 @@ class DataLoader(object):
 
             # -------------------------------------------------------
                 
-            # --------------------- dygraph mode --------------------
-
-            class SimpleNet(fluid.dygraph.Layer):
-                def __init__(self):
-                    super(SimpleNet, self).__init__()
-                    self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
-
-                def forward(self, image, label=None):
-                    return self.fc(image)
-
-            with fluid.dygraph.guard(places[0]):
-                simple_net = SimpleNet()
-                opt = fluid.optimizer.SGD(learning_rate=1e-3,
-                                          parameter_list=simple_net.parameters())
-
-                loader = DataLoader(dataset,
-                                    places=places[0],
-                                    batch_size=BATCH_SIZE,
-                                    shuffle=True,
-                                    drop_last=True,
-                                    num_workers=2)
-
-                for e in range(EPOCH_NUM):
-                    for i, (image, label) in enumerate(loader()):
-                        out = simple_net(image)
-                        loss = fluid.layers.cross_entropy(out, label)
-                        avg_loss = fluid.layers.reduce_mean(loss)
-                        avg_loss.backward()
-                        opt.minimize(avg_loss)
-                        simple_net.clear_gradients()
-                        print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
-
-            # -------------------------------------------------------
 
     .. note::
         For reading iterable dataset with multiprocess Dataloader,
@@ -356,11 +359,9 @@ class DataLoader(object):
                     "feed_list should be set when return_list=False"
         self.feed_list = feed_list
 
-        assert places is not None, "places cannot be None"
+        if places is None:
+            places = _current_expected_place()
         self.places = _convert_places(places)
-        if in_dygraph_mode():
-            assert len(self.places) == 1, \
-                    "Number of places must be 1 in dygraph mode"
 
         assert num_workers >= 0, "num_workers should be a non-negative value"
         if num_workers > 0 and (sys.platform == 'darwin' or

@@ -30,8 +30,8 @@ class TestRandnOp(unittest.TestCase):
             x1 = paddle.randn(shape, 'float32')
             x2 = paddle.randn(shape, 'float64')
 
-            dim_1 = paddle.fill_constant([1], "int64", 20)
-            dim_2 = paddle.fill_constant([1], "int32", 50)
+            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 20)
+            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
             x3 = paddle.randn([dim_1, dim_2, 784])
 
             var_shape = paddle.static.data('X', [2], 'int32')
@@ -59,11 +59,11 @@ class TestRandnOpForDygraph(unittest.TestCase):
         x1 = paddle.randn(shape, 'float32')
         x2 = paddle.randn(shape, 'float64')
 
-        dim_1 = paddle.fill_constant([1], "int64", 20)
-        dim_2 = paddle.fill_constant([1], "int32", 50)
+        dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 20)
+        dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
         x3 = paddle.randn(shape=[dim_1, dim_2, 784])
 
-        var_shape = paddle.to_variable(np.array(shape))
+        var_shape = paddle.to_tensor(np.array(shape))
         x4 = paddle.randn(var_shape)
 
         for out in [x1, x2, x3, x4]:

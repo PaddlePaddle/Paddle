@@ -24,6 +24,17 @@
 
 namespace paddle {
 namespace framework {
+class Scope;
+class Tensor;
+class Variable;
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 // TODO(zjl): support SelectedRows
@@ -100,13 +111,12 @@ void ShareTensorBufferFunctor::CallOnce() {
     auto *out_var = exec_scope_->FindVar(out_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
         in_var, platform::errors::NotFound(
-                    "The input variable(%s)to be inplaced should not be NULL.",
+                    "The variable(%s) to be inplaced is not found in scope.",
                     in_var_infos_[i]->Name()));
     PADDLE_ENFORCE_NOT_NULL(
-        out_var,
-        platform::errors::NotFound(
-            "The output variable(%s) to be inplaced should not be NULL.",
-            out_var_names_[i]));
+        out_var, platform::errors::NotFound(
+                     "The variable(%s) to be inplaced is not found in scope.",
+                     out_var_names_[i]));
     PADDLE_ENFORCE_NE(
         in_var, out_var,
         platform::errors::PreconditionNotMet(

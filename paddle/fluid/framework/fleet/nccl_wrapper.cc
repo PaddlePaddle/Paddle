@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/fleet/nccl_wrapper.h"
-#include <utility>
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {

@@ -17,8 +17,16 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/variant.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -30,6 +38,7 @@ static constexpr char kX[] = "X";
 static constexpr char kXGRAD[] = "X@GRAD";
 static constexpr char kOutputs[] = "Out";
 static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+static constexpr char kSuffix[] = "@TMP_COPY";
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const framework::ProgramDesc &program, int block_id,
@@ -41,6 +50,9 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const std::vector<framework::OperatorBase *> &while_grad_ops);
 
 bool GetCondData(const framework::LoDTensor &cond);
+
+bool StrInVaraiableNameMap(const std::string &,
+                           const framework::VariableNameMap &);
 
 }  // namespace operators
 }  // namespace paddle

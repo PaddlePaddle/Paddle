@@ -23,7 +23,6 @@ from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
-from .util_factory import UtilFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 
@@ -121,6 +120,7 @@ class Fleet(object):
         self._is_collective = False
         self._runtime_handle = None
         self._util = None
+        self._context = {}
 
     def init(self, role_maker=None, is_collective=False):
         """
@@ -182,8 +182,22 @@ class Fleet(object):
                     format(type(role_maker)))
         self._role_maker._generate_role()
 
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_role_maker(self._role_maker)
+
         self.strategy_compiler = StrategyCompiler()
+
+        if self._role_maker._is_non_distributed() and self._is_collective:
+            if paddle.fluid.core.is_compiled_with_cuda():
+                gpus_num = paddle.fluid.core.get_cuda_device_count()
+                if gpus_num != 1:
+                    raise ValueError(
+                        "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
+                    )
+
         if paddle.fluid.framework.in_dygraph_mode():
+            if self.worker_num() == 1:
+                return
             if parallel_helper._is_parallel_ctx_initialized():
                 warnings.warn(
                     "The dygraph parallel environment has been initialized.")
@@ -232,7 +246,7 @@ class Fleet(object):
 
         Returns:
             int: worker numbers
-
+        
         Examples:
             .. code-block:: python
 
@@ -352,29 +366,6 @@ class Fleet(object):
         """
         return self._role_maker._is_server(
         ) or self._role_maker._is_heter_worker()
-
-    def set_util(self, util):
-        self._util = util
-
-    def util(self):
-        """
-        Utility functions that can be used under certain runtime
-        return util
-
-        Returns:
-            UtilBase: instance of UtilBase, can use distributed ops/tools easily.
-
-        Examples:
-
-            .. code-block:: python
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                util = fleet.util
-                files = ["1.log", "2.log", "3.log", "4.log"]
-                files = util.get_file_shard()
-
-        """
-        return self._util
 
     def barrier_worker(self):
         """
@@ -516,7 +507,7 @@ class Fleet(object):
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self, executor, dirname, main_program=None, mode=1):
         """
 
         saves all persistable variables from :code:`main_program` to
@@ -557,7 +548,8 @@ class Fleet(object):
 
         """
 
-        self._runtime_handle._save_persistables(executor, dirname, main_program)
+        self._runtime_handle._save_persistables(executor, dirname, main_program,
+                                                mode)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -586,13 +578,12 @@ class Fleet(object):
 
         """
         self.user_defined_optimizer = optimizer
-        if paddle.fluid.framework.in_dygraph_mode():
-            return self
 
         if strategy == None:
             strategy = DistributedStrategy()
-        self.user_defined_strategy = strategy
-        self.valid_strategy = None
+
+        self._user_defined_strategy = copy.deepcopy(strategy)
+        self._context = {}
         return self
 
     @dygraph_only
@@ -647,9 +638,7 @@ class Fleet(object):
 
                 print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
@@ -859,9 +848,7 @@ class Fleet(object):
 
                 print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
@@ -920,9 +907,7 @@ class Fleet(object):
 
                 print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
                 loss.backward()
-                dp_layer.apply_collective_grads()
 
                 adam.step()
                 adam.clear_grad()
@@ -930,6 +915,33 @@ class Fleet(object):
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
+
+    def _final_strategy(self):
+        if "valid_strategy" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before this function is called"
+            )
+            return {}
+        else:
+            return self._context["valid_strategy"]
+
+    def _get_applied_meta_list(self):
+        if "applied_meta_list" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before _get_applied_meta_list called"
+            )
+            return []
+        else:
+            return self._context["applied_meta_list"]
+
+    def _get_applied_graph_list(self):
+        if "applied_graph_list" not in self._context:
+            print(
+                "WARNING: You may need to call minimize function before _get_applied_graph_list called"
+            )
+            return []
+        else:
+            return self._context["applied_graph_list"]
 
     def minimize(self,
                  loss,
@@ -980,12 +992,15 @@ class Fleet(object):
                 # for more examples, please reference https://github.com/PaddlePaddle/FleetX
 
         """
+        context = {}
+        context["user_defined_strategy"] = copy.deepcopy(
+            self._user_defined_strategy)
         if paddle.fluid.framework.in_dygraph_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
+            self._context = context
             return target_opt.minimize(loss)
 
-        context = {}
         # cache original feed forward program
         self.origin_main_program = loss.block.program
         context["origin_main_program"] = self.origin_main_program
@@ -1006,17 +1021,19 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
-        context["user_defined_strategy"] = copy.copy(self.user_defined_strategy)
+        context["user_defined_strategy"] = copy.deepcopy(
+            self._user_defined_strategy)
+        copy_user_defined_strategy = copy.deepcopy(self._user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
         # strategy.auto = True
         # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
         # optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        if self.user_defined_strategy._is_strict_auto():
+        if copy_user_defined_strategy._is_strict_auto():
             # turn on all the strategy for each optimizer
             for opt in distributed_optimizer_list:
-                opt._enable_strategy(self.user_defined_strategy, context)
+                opt._enable_strategy(copy_user_defined_strategy, context)
 
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
@@ -1025,7 +1042,7 @@ class Fleet(object):
         for opt in distributed_optimizer_list:
             opt._set_basic_info(loss, self._role_maker,
                                 self.user_defined_optimizer,
-                                self.user_defined_strategy)
+                                copy_user_defined_strategy)
             if opt._can_apply() and not opt._is_graph_out():
                 valid_optimizer_list.append(opt)
             elif opt._can_apply() and opt._is_graph_out():
@@ -1036,13 +1053,21 @@ class Fleet(object):
         meta_optimizer, graph_optimizer = \
             self.strategy_compiler.generate_optimizer(
                 loss, self._role_maker, self.user_defined_optimizer,
-                self.user_defined_strategy, valid_optimizer_list,
+                copy_user_defined_strategy, valid_optimizer_list,
                 valid_graph_optimizer_list)
 
         valid_strategy = self.strategy_compiler._get_valid_strategy(
-            self.user_defined_strategy, can_not_apply_optimizer_list)
+            copy_user_defined_strategy, can_not_apply_optimizer_list)
 
-        context["valid_strategy"] = valid_strategy
+        context["valid_strategy"] = copy.deepcopy(valid_strategy)
+
+        applied_meta_list = self.strategy_compiler._get_applied_meta_list()
+        applied_graph_list = self.strategy_compiler._get_applied_graph_list()
+
+        context['applied_meta_list'] = applied_meta_list
+        context['applied_graph_list'] = applied_graph_list
+
+        self._context = context
 
         self.valid_strategy = valid_strategy
         self.valid_strategy._enable_env()
@@ -1059,17 +1084,11 @@ class Fleet(object):
                     loss_name=loss.name, share_vars_from=None)
             loss.block.program._graph = compiled_program
             return self.user_defined_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
             default_program = paddle.static.default_main_program()
 
@@ -1078,20 +1097,14 @@ class Fleet(object):
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
             optimize_ops, params_grads = graph_optimizer.minimize(
-                loss,
-                startup_program=startup_program,
-                parameter_list=parameter_list,
-                no_grad_set=no_grad_set)
+                loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
             # if a graph optimizer takes effect, mostly
             # optimizers_ops and params_grads are None
@@ -1102,7 +1115,7 @@ class Fleet(object):
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        if self._util is None:
-            self._util = UtilFactory()._create_util(context)
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads

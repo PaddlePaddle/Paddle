@@ -15,7 +15,6 @@
 #pragma once
 
 #include <time.h>
-
 #include <functional>
 #include <memory>
 #include <string>
@@ -32,6 +31,13 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

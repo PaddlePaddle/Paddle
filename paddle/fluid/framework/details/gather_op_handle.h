@@ -26,6 +26,14 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 struct GatherOpHandle : public OpHandleBase {

@@ -14,9 +14,9 @@
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+
+import paddle.nn as nn
+import paddle.nn.functional as F
 
 from paddle.utils.download import get_weights_path_from_url
 
@@ -25,221 +25,166 @@ __all__ = ['MobileNetV2', 'mobilenet_v2']
 model_urls = {
     'mobilenetv2_1.0':
     ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
-     '8ff74f291f72533f2a7956a4efff9d88')
+     '0340af0a901346c8d46f4529882fb63d')
 }
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+def _make_divisible(v, divisor, min_value=None):
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return new_v
+
+
+class ConvBNReLU(nn.Sequential):
     def __init__(self,
-                 num_channels,
-                 filter_size,
-                 num_filters,
+                 in_planes,
+                 out_planes,
+                 kernel_size=3,
+                 stride=1,
+                 groups=1,
+                 norm_layer=nn.BatchNorm2d):
+        padding = (kernel_size - 1) // 2
+
+        super(ConvBNReLU, self).__init__(
+            nn.Conv2d(
+                in_planes,
+                out_planes,
+                kernel_size,
+                stride,
+                padding,
+                groups=groups,
+                bias_attr=False),
+            norm_layer(out_planes),
+            nn.ReLU6())
+
+
+class InvertedResidual(nn.Layer):
+    def __init__(self,
+                 inp,
+                 oup,
                  stride,
-                 padding,
-                 channels=None,
-                 num_groups=1,
-                 use_cudnn=True):
-        super(ConvBNLayer, self).__init__()
+                 expand_ratio,
+                 norm_layer=nn.BatchNorm2d):
+        super(InvertedResidual, self).__init__()
+        self.stride = stride
+        assert stride in [1, 2]
 
-        tmp_param = ParamAttr(name=self.full_name() + "_weights")
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=stride,
-            padding=padding,
-            groups=num_groups,
-            act=None,
-            use_cudnn=use_cudnn,
-            param_attr=tmp_param,
-            bias_attr=False)
+        hidden_dim = int(round(inp * expand_ratio))
+        self.use_res_connect = self.stride == 1 and inp == oup
 
-        self._batch_norm = BatchNorm(
-            num_filters,
-            param_attr=ParamAttr(name=self.full_name() + "_bn" + "_scale"),
-            bias_attr=ParamAttr(name=self.full_name() + "_bn" + "_offset"),
-            moving_mean_name=self.full_name() + "_bn" + '_mean',
-            moving_variance_name=self.full_name() + "_bn" + '_variance')
+        layers = []
+        if expand_ratio != 1:
+            layers.append(
+                ConvBNReLU(
+                    inp, hidden_dim, kernel_size=1, norm_layer=norm_layer))
+        layers.extend([
+            ConvBNReLU(
+                hidden_dim,
+                hidden_dim,
+                stride=stride,
+                groups=hidden_dim,
+                norm_layer=norm_layer),
+            nn.Conv2d(
+                hidden_dim, oup, 1, 1, 0, bias_attr=False),
+            norm_layer(oup),
+        ])
+        self.conv = nn.Sequential(*layers)
 
-    def forward(self, inputs, if_act=True):
-        y = self._conv(inputs)
-        y = self._batch_norm(y)
-        if if_act:
-            y = fluid.layers.relu6(y)
-        return y
-
-
-class InvertedResidualUnit(fluid.dygraph.Layer):
-    def __init__(
-            self,
-            num_channels,
-            num_in_filter,
-            num_filters,
-            stride,
-            filter_size,
-            padding,
-            expansion_factor, ):
-        super(InvertedResidualUnit, self).__init__()
-        num_expfilter = int(round(num_in_filter * expansion_factor))
-        self._expand_conv = ConvBNLayer(
-            num_channels=num_channels,
-            num_filters=num_expfilter,
-            filter_size=1,
-            stride=1,
-            padding=0,
-            num_groups=1)
-
-        self._bottleneck_conv = ConvBNLayer(
-            num_channels=num_expfilter,
-            num_filters=num_expfilter,
-            filter_size=filter_size,
-            stride=stride,
-            padding=padding,
-            num_groups=num_expfilter,
-            use_cudnn=False)
-
-        self._linear_conv = ConvBNLayer(
-            num_channels=num_expfilter,
-            num_filters=num_filters,
-            filter_size=1,
-            stride=1,
-            padding=0,
-            num_groups=1)
-
-    def forward(self, inputs, ifshortcut):
-        y = self._expand_conv(inputs, if_act=True)
-        y = self._bottleneck_conv(y, if_act=True)
-        y = self._linear_conv(y, if_act=False)
-        if ifshortcut:
-            y = fluid.layers.elementwise_add(inputs, y)
-        return y
+    def forward(self, x):
+        if self.use_res_connect:
+            return x + self.conv(x)
+        else:
+            return self.conv(x)
 
 
-class InvresiBlocks(fluid.dygraph.Layer):
-    def __init__(self, in_c, t, c, n, s):
-        super(InvresiBlocks, self).__init__()
+class MobileNetV2(nn.Layer):
+    def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
+        """MobileNetV2 model from
+        `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
 
-        self._first_block = InvertedResidualUnit(
-            num_channels=in_c,
-            num_in_filter=in_c,
-            num_filters=c,
-            stride=s,
-            filter_size=3,
-            padding=1,
-            expansion_factor=t)
+        Args:
+            scale (float): scale of channels in each layer. Default: 1.0.
+            num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                                will not be defined. Default: 1000.
+            with_pool (bool): use pool before the last fc layer or not. Default: True.
 
-        self._inv_blocks = []
-        for i in range(1, n):
-            tmp = self.add_sublayer(
-                sublayer=InvertedResidualUnit(
-                    num_channels=c,
-                    num_in_filter=c,
-                    num_filters=c,
-                    stride=1,
-                    filter_size=3,
-                    padding=1,
-                    expansion_factor=t),
-                name=self.full_name() + "_" + str(i + 1))
-            self._inv_blocks.append(tmp)
+        Examples:
+            .. code-block:: python
 
-    def forward(self, inputs):
-        y = self._first_block(inputs, ifshortcut=False)
-        for inv_block in self._inv_blocks:
-            y = inv_block(y, ifshortcut=True)
-        return y
+                from paddle.vision.models import MobileNetV2
 
-
-class MobileNetV2(fluid.dygraph.Layer):
-    """MobileNetV2 model from
-    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
-
-    Args:
-        scale (float): scale of channels in each layer. Default: 1.0.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
-                            will not be defined. Default: 1000.
-        with_pool (bool): use pool before the last fc layer or not. Default: True.
-        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
-
-    Examples:
-        .. code-block:: python
-
-            from paddle.vision.models import MobileNetV2
-
-            model = MobileNetV2()
-    """
-
-    def __init__(self,
-                 scale=1.0,
-                 num_classes=1000,
-                 with_pool=True,
-                 classifier_activation='softmax'):
+                model = MobileNetV2()
+        """
         super(MobileNetV2, self).__init__()
-        self.scale = scale
         self.num_classes = num_classes
         self.with_pool = with_pool
+        input_channel = 32
+        last_channel = 1280
 
-        bottleneck_params_list = [
-            (1, 16, 1, 1),
-            (6, 24, 2, 2),
-            (6, 32, 3, 2),
-            (6, 64, 4, 2),
-            (6, 96, 3, 1),
-            (6, 160, 3, 2),
-            (6, 320, 1, 1),
+        block = InvertedResidual
+        round_nearest = 8
+        norm_layer = nn.BatchNorm2d
+        inverted_residual_setting = [
+            [1, 16, 1, 1],
+            [6, 24, 2, 2],
+            [6, 32, 3, 2],
+            [6, 64, 4, 2],
+            [6, 96, 3, 1],
+            [6, 160, 3, 2],
+            [6, 320, 1, 1],
         ]
 
-        self._conv1 = ConvBNLayer(
-            num_channels=3,
-            num_filters=int(32 * scale),
-            filter_size=3,
-            stride=2,
-            padding=1)
+        input_channel = _make_divisible(input_channel * scale, round_nearest)
+        self.last_channel = _make_divisible(last_channel * max(1.0, scale),
+                                            round_nearest)
+        features = [
+            ConvBNReLU(
+                3, input_channel, stride=2, norm_layer=norm_layer)
+        ]
 
-        self._invl = []
-        i = 1
-        in_c = int(32 * scale)
-        for layer_setting in bottleneck_params_list:
-            t, c, n, s = layer_setting
-            i += 1
-            tmp = self.add_sublayer(
-                sublayer=InvresiBlocks(
-                    in_c=in_c, t=t, c=int(c * scale), n=n, s=s),
-                name='conv' + str(i))
-            self._invl.append(tmp)
-            in_c = int(c * scale)
+        for t, c, n, s in inverted_residual_setting:
+            output_channel = _make_divisible(c * scale, round_nearest)
+            for i in range(n):
+                stride = s if i == 0 else 1
+                features.append(
+                    block(
+                        input_channel,
+                        output_channel,
+                        stride,
+                        expand_ratio=t,
+                        norm_layer=norm_layer))
+                input_channel = output_channel
 
-        self._out_c = int(1280 * scale) if scale > 1.0 else 1280
-        self._conv9 = ConvBNLayer(
-            num_channels=in_c,
-            num_filters=self._out_c,
-            filter_size=1,
-            stride=1,
-            padding=0)
+        features.append(
+            ConvBNReLU(
+                input_channel,
+                self.last_channel,
+                kernel_size=1,
+                norm_layer=norm_layer))
+
+        self.features = nn.Sequential(*features)
 
         if with_pool:
-            self._pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+            self.pool2d_avg = nn.AdaptiveAvgPool2d(1)
 
-        if num_classes > 0:
-            tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")
-            self._fc = Linear(
-                self._out_c,
-                num_classes,
-                act=classifier_activation,
-                param_attr=tmp_param,
-                bias_attr=ParamAttr(name="fc10_offset"))
+        if self.num_classes > 0:
+            self.classifier = nn.Sequential(
+                nn.Dropout(0.2), nn.Linear(self.last_channel, num_classes))
 
-    def forward(self, inputs):
-        y = self._conv1(inputs, if_act=True)
-        for inv in self._invl:
-            y = inv(y)
-        y = self._conv9(y, if_act=True)
+    def forward(self, x):
+        x = self.features(x)
 
         if self.with_pool:
-            y = self._pool2d_avg(y)
+            x = self.pool2d_avg(x)
+
         if self.num_classes > 0:
-            y = fluid.layers.reshape(y, shape=[-1, self._out_c])
-            y = self._fc(y)
-        return y
+            x = paddle.flatten(x, 1)
+            x = self.classifier(x)
+        return x
 
 
 def _mobilenet(arch, pretrained=False, **kwargs):
@@ -249,9 +194,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-        assert weight_path.endswith(
-            '.pdparams'), "suffix of weight must be .pdparams"
-        param, _ = fluid.load_dygraph(weight_path)
+
+        param = paddle.load(weight_path)
         model.load_dict(param)
 
     return model

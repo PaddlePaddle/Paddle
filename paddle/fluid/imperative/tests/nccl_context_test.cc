@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/nccl_context.h"
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;

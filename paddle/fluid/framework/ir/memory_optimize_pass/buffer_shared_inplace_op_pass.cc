@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string>
+
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -22,12 +23,14 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 class BufferSharedInplaceOpPass : public MemoryReusePass {
  protected:

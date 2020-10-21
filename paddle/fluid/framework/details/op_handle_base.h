@@ -25,9 +25,21 @@
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 class Scope;
+namespace details {
+struct VarHandleBase;
+}  // namespace details
+namespace ir {
+class Node;
+}  // namespace ir
 
 namespace details {
 

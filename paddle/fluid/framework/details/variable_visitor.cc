@@ -15,6 +15,14 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 
 #include "paddle/fluid/framework/selected_rows.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 namespace details {

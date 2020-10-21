@@ -15,8 +15,13 @@
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include <string>
 #include <utility>
-#include <vector>
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

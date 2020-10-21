@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -45,15 +47,22 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (str_value.empty()) {
       value = static_cast<T>(float_value);
     } else {
-      std::stringstream convert_stream(str_value);
-      if (std::is_same<int64_t, T>::value) {
-        int64_t tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+      // handle NaN/Inf first, which cannot be read from stream.
+      if (str_value == "inf") {
+        value = static_cast<T>(std::numeric_limits<double>::infinity());
+      } else if (str_value == "nan") {
+        value = static_cast<T>(std::numeric_limits<double>::quiet_NaN());
       } else {
-        double tmp_value;
-        convert_stream >> tmp_value;
-        value = static_cast<T>(tmp_value);
+        std::stringstream convert_stream(str_value);
+        if (std::is_same<int64_t, T>::value) {
+          int64_t tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        } else {
+          double tmp_value;
+          convert_stream >> tmp_value;
+          value = static_cast<T>(tmp_value);
+        }
       }
     }
     if (ctx.HasInput("ValueTensor")) {
@@ -66,7 +75,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
               value_tensor->numel()));
       const T *tensor_data = value_tensor->data<T>();
       framework::Tensor cpu_tensor;
-      if (platform::is_gpu_place(value_tensor->place())) {
+      auto tmp_place = value_tensor->place();
+      if (platform::is_gpu_place(tmp_place) ||
+          platform::is_xpu_place(tmp_place)) {
         TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
         tensor_data = cpu_tensor.data<T>();
       }
@@ -100,6 +111,14 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
+              tensor, static_cast<T>(value));
+    }
+#endif
+#ifdef PADDLE_WITH_XPU
+    if (!cpu_place) {
+      tensor->mutable_data(ctx.GetPlace(), data_type);
+      math::SetConstant<platform::XPUDeviceContext, T> functor;
+      functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
     }
 #endif

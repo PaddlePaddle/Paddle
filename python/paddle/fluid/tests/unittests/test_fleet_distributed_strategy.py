@@ -102,6 +102,16 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.dgc = "True"
         self.assertEqual(strategy.dgc, False)
 
+    def test_fp16_allreduce(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.fp16_allreduce = True
+        self.assertEqual(strategy.fp16_allreduce, True)
+        strategy.fp16_allreduce = False
+        self.assertEqual(strategy.fp16_allreduce, False)
+        with self.assertRaises(TypeError):
+            strategy.fp16_allreduce = "True"
+        self.assertEqual(strategy.fp16_allreduce, False)
+
     def test_sync_nccl_allreduce(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.sync_nccl_allreduce = True

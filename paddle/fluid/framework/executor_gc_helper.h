@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -26,6 +27,10 @@ namespace paddle {
 namespace framework {
 
 // Result map: op -> variable names that can be deleted after op runs
+class GarbageCollector;
+class OperatorBase;
+class Scope;
+
 std::unordered_map<const OperatorBase *, std::vector<std::string>>
 GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,

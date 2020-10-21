@@ -1,11 +1,31 @@
 {
-    "wlist_file" : [
-        "../python/paddle/fluid/contrib", 
-        "../python/paddle/verison.py",
-        "../python/paddle/fluid/core_avx.py",
-        "../python/paddle/distributed"
+    "wlist_dir":[
+        {
+            "name":"../python/paddle/fluid/contrib",
+            "annotation":""
+        },
+        {
+            "name":"../python/paddle/verison.py",
+            "annotation":""
+        },
+        {
+            "name":"../python/paddle/fluid/core_avx.py",
+            "annotation":""
+        },
+        {
+            "name":"../python/paddle/distributed",
+            "annotation":""
+        }
     ],
-    "wlist_inneed":[
+    "wlist_api":[
+        {
+            "name":"xxxxx",
+            "annotation":"not a real api, just for example"
+        }
+    ],
+    "wlist_temp_api":[
+        "LRScheduler",
+        "ReduceOnPlateau",
         "append_LARS",
         "BuildStrategy.debug_graphviz_path",
         "BuildStrategy.enable_sequential_execution",
@@ -63,9 +83,7 @@
         "cuda_places",
         "CUDAPinnedPlace",
         "CUDAPlace",
-        "Program.parse_from_string"
-    ],
-    "wlist_nosample":[
+        "Program.parse_from_string",
         "Compressor",
         "Compressor.config",
         "Compressor.run",
@@ -159,13 +177,9 @@
         "RNN",
         "BiRNN",
         "RNNCellBase",
-        "RNNCellBase.get_initial_states"
-    ],
-    "wlist_no_op_pass":[
+        "RNNCellBase.get_initial_states",
         "gelu",
-        "erf"
-    ],
-    "wlist_ci_nopass":[
+        "erf",
         "DecodeHelper",
         "DecodeHelper.initialize",
         "DecodeHelper.sample",
@@ -188,9 +202,7 @@
         "SampleEmbeddingHelper",
         "BasicDecoder",
         "lstm",
-        "partial_sum"
-    ],
-    "wlist_nopass":[
+        "partial_sum",
         "StateCell",
         "StateCell.compute_state",
         "TrainingDecoder",
@@ -241,11 +253,10 @@
         "BilinearTensorProduct",
         "GroupNorm",
         "SpectralNorm",
-        "TreeConv",
-        "prroi_pool"
+        "TreeConv"
     ],
     "wlist_temp":[
-        "to_tensor",
+        "prroi_pool",
         "ChunkEvaluator",
         "EditDistance",
         "ErrorClipByValue",
@@ -270,7 +281,6 @@
         "thresholded_relu",
         "group_norm",
         "random_crop",
-        "py_func",
         "row_conv",
         "hard_shrink",
         "ssd_loss",
@@ -322,9 +332,7 @@
         "Conv2DTranspose",
         "QueueDataset.local_shuffle",
         "save_persistables@dygraph/checkpoint.py",
-        "load_persistables@dygraph/checkpoint.py"
-    ],
-    "wlist_ignore":[
+        "load_persistables@dygraph/checkpoint.py",
         "elementwise_pow",
         "WeightedAverage.reset",
         "ChunkEvaluator.eval",
@@ -400,6 +408,16 @@
         "TransformerDecoder.prepare_incremental_cache",
         "LinearChainCRF.forward",
         "CRFDecoding.forward",
-        "SequenceTagging.forward"
+        "SequenceTagging.forward",
+        "XPUPlace",
+        "is_compiled_with_xpu"
+    ],
+    "gpu_not_white":[
+        "deformable_conv",
+        "cuda_places",
+        "CUDAPinnedPlace",
+        "CUDAPlace",
+        "cuda_profiler",
+        "DGCMomentumOptimizer"
     ]
 }

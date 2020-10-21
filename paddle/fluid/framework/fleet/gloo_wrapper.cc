@@ -10,10 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include <thread>  // NOLINT
-#include <vector>
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace gloo {

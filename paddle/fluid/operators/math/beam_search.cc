@@ -13,8 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-#include <algorithm>
-#include <map>
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

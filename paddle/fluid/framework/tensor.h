@@ -20,6 +20,7 @@ limitations under the License. */
 #include <typeindex>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -27,6 +28,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace memory {
+namespace allocation {
+class Allocation;
+}  // namespace allocation
+}  // namespace memory
+}  // namespace paddle
 
 namespace paddle {
 

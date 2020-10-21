@@ -29,7 +29,7 @@ import six
 
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
@@ -65,12 +65,17 @@ def is_unsupported(func):
     Checks whether the func is supported by dygraph to static graph.
     """
 
-    if any(func in m.__dict__.values() for m in BUILTIN_LIKELY_MODULES):
-        translator_logger.log(
-            2,
-            "Whitelist: {} is part of built-in module and does not have to be transformed.".
-            format(func))
-        return True
+    for m in BUILTIN_LIKELY_MODULES:
+        for v in m.__dict__.values():
+            func_in_dict = func == v
+            if isinstance(func_in_dict, (list, numpy.ndarray)):
+                func_in_dict = any(func_in_dict)
+            if func_in_dict:
+                translator_logger.log(
+                    2,
+                    "Whitelist: {} is part of built-in module and does not have to be transformed.".
+                    format(func))
+                return True
 
     if is_paddle_func(func):
         translator_logger.log(
@@ -143,14 +148,14 @@ def convert_call(func):
             #      def foo(x):
             #          return x
             #
-            # `foo` will be converted into a wrapper class, suppose as `StaticLayer`.
-            # And `foo.__globals__['foo']` will still return this `StaticLayer` instead of
-            # `foo` function. So `isinstance(fn, StaticLayer)` is added here. 
+            # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
+            # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
+            # `foo` function. So `isinstance(fn, StaticFunction)` is added here. 
             global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
-                elif isinstance(fn, StaticLayer):
+                elif isinstance(fn, StaticFunction):
                     _, fn = unwrap_decorators(fn)
                     global_functions.add(fn)
 
