@@ -205,7 +205,6 @@ class BreakContinueTransformer(gast.NodeTransformer):
         """
         Judge whether if match the pattern to join `If.test` with `while.test`
         """
-        # return False
         # while/for -> if -> break
         if len(self.ancestor_nodes) < 3 or self.ancestor_nodes[-3] != loop_node:
             return False
@@ -252,36 +251,6 @@ class BreakContinueTransformer(gast.NodeTransformer):
         usually brings very heavy overhead.
         """
         parent_if_node = self.ancestor_nodes[-2]
-
-        cond_var_node = gast.UnaryOp(op=gast.Not(), operand=parent_if_node.test)
-
-        # remove the gast.If containing `break`
-        if hasattr(loop_node, 'body') and parent_if_node in loop_node.body:
-            assert loop_node.body[0] == parent_if_node
-            loop_node.body.pop(0)
-        elif hasattr(loop_node,
-                     'orelse') and parent_if_node in loop_node.orelse:
-            assert loop_node.orelse[0] == parent_if_node
-            loop_node.orelse.pop(0)
-
-        return cond_var_node
-
-    def _break_cond_joiner(self, break_node, loop_node):
-        if len(self.ancestor_nodes) < 3 or self.ancestor[-3] == loop_node:
-            return None
-
-        assert self.ancestor_nodes[-1] == break_node
-        parent_if_node = self.ancestor[-2]
-
-        is_matched = False
-        # while/for -> if -> break
-        if isinstance(parent_node, gast.If):
-            # gast.If only contains `break`
-            is_matched = parent_if_node.body[0] == break_node and len(
-                parent_node.orelse) == 0
-
-        if not is_matched:
-            return None
 
         cond_var_node = gast.UnaryOp(op=gast.Not(), operand=parent_if_node.test)
 
