@@ -769,23 +769,23 @@ class API_TestSumOp(unittest.TestCase):
 
 class TestAllAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(1234)
+        np.random.seed(123)
+        paddle.enable_static()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-            result = paddle.inverse(x=input)
-            input_np = np.random.random([4, 4]).astype("float64")
-            result_np = np.linalg.inv(input_np)
+            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            result = paddle.all(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
+            self.assertTrue(np.allclose(fetches[0], np.all(input_np)))
 
     def test_static(self):
         for place in self.places:
@@ -795,52 +795,52 @@ class TestAllAPI(unittest.TestCase):
         paddle.disable_static()
         for place in self.places:
             with fluid.dygraph.guard(place):
-                x = fluid.layers.assign(
-                    np.array(
-                        [[1, 0], [1, 1]], dtype='int32'))
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool)
+                x = fluid.layers.assign(np_x)
                 x = fluid.layers.cast(x, 'bool')
 
                 out1 = paddle.all(x)
-                res1 = fluid.layers.assign(np.array([0], dtype='int32'))
-                res1 = fluid.layers.cast(res1, 'bool')
-                self.assertTrue(out1, res1)
+                np_out1 = out1.numpy()
+                expect_res1 = np.all(np_x)
+                self.assertTrue((np_out1 == expect_res1).all())
 
                 out2 = paddle.all(x, axis=0)
-                res2 = fluid.layers.assign(np.array([1, 0], dtype='int32'))
-                res2 = fluid.layers.cast(res2, 'bool')
-                self.assertTrue(out2, res2)
+                np_out2 = out2.numpy()
+                expect_res2 = np.all(np_x, axis=0)
+                self.assertTrue((np_out2 == expect_res2).all())
 
                 out3 = paddle.all(x, axis=-1)
-                res3 = fluid.layers.assign(np.array([0, 1], dtype='int32'))
-                res3 = fluid.layers.cast(res3, 'bool')
-                self.assertTrue(out3, res3)
+                np_out3 = out3.numpy()
+                expect_res3 = np.all(np_x, axis=-1)
+                self.assertTrue((np_out3 == expect_res3).all())
 
-                out4 = paddle.all(x, axis=1, keep_dim=True)
-                res4 = fluid.layers.assign(np.array([[0, 1]], dtype='int32'))
-                res4 = fluid.layers.cast(res4, 'bool')
-                self.assertTrue(out4, res4)
+                out4 = paddle.all(x, axis=1, keepdim=True)
+                np_out4 = out4.numpy()
+                expect_res4 = np.all(np_x, axis=1, keepdims=True)
+                self.assertTrue((np_out4 == expect_res4).all())
+
+        paddle.enable_static()
 
 
 class TestAnyAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(1234)
+        np.random.seed(123)
+        paddle.enable_static()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
-        paddle.disable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-            result = paddle.inverse(x=input)
-            input_np = np.random.random([4, 4]).astype("float64")
-            result_np = np.linalg.inv(input_np)
+            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            result = paddle.any(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
+            self.assertTrue(np.allclose(fetches[0], np.any(input_np)))
 
     def test_static(self):
         for place in self.places:
@@ -850,31 +850,34 @@ class TestAnyAPI(unittest.TestCase):
         paddle.disable_static()
         for place in self.places:
             with fluid.dygraph.guard(place):
-                x = fluid.layers.assign(
-                    np.array(
-                        [[1, 0], [1, 1]], dtype='int32'))
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool)
+                x = fluid.layers.assign(np_x)
                 x = fluid.layers.cast(x, 'bool')
 
                 out1 = paddle.any(x)
-                res1 = fluid.layers.assign(np.array([1], dtype='int32'))
-                res1 = fluid.layers.cast(res1, 'bool')
-                self.assertTrue(out1, res1)
+                np_out1 = out1.numpy()
+                expect_res1 = np.any(np_x)
+                self.assertTrue((np_out1 == expect_res1).all())
 
                 out2 = paddle.any(x, axis=0)
-                res2 = fluid.layers.assign(np.array([1, 0], dtype='int32'))
-                res2 = fluid.layers.cast(res2, 'bool')
-                self.assertTrue(out2, res2)
+                np_out2 = out2.numpy()
+                expect_res2 = np.any(np_x, axis=0)
+                self.assertTrue((np_out2 == expect_res2).all())
 
                 out3 = paddle.any(x, axis=-1)
-                res3 = fluid.layers.assign(np.array([1, 0], dtype='int32'))
-                res3 = fluid.layers.cast(res3, 'bool')
-                self.assertTrue(out3, res3)
+                np_out3 = out3.numpy()
+                expect_res3 = np.any(np_x, axis=-1)
+                self.assertTrue((np_out3 == expect_res3).all())
 
-                out4 = paddle.any(x, axis=1, keep_dim=True)
-                res4 = fluid.layers.assign(np.array([[1, 0]], dtype='int32'))
-                res4 = fluid.layers.cast(res4, 'bool')
-                self.assertTrue(out4, res4)
+                out4 = paddle.any(x, axis=1, keepdim=True)
+                np_out4 = out4.numpy()
+                expect_res4 = np.any(np_x, axis=1, keepdims=True)
+                self.assertTrue((np_out4 == expect_res4).all())
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()
