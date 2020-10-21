@@ -235,7 +235,7 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
-        paddle.manual_seed(10)
+        paddle.seed(10)
         op = Operator(
             "uniform_random",
             Out="X",
@@ -256,7 +256,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
     def check_with_place(self, place):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
-        paddle.manual_seed(10)
+        paddle.seed(10)
         op = Operator(
             "uniform_random",
             Out="X",
@@ -277,7 +277,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 class TestUniformRandomOpApi(unittest.TestCase):
     def test_api(self):
-        paddle.manual_seed(10)
+        paddle.seed(10)
         x = fluid.layers.data('x', shape=[16], dtype='float32', lod_level=1)
         y = fluid.layers.fc(x,
                             size=16,
@@ -350,7 +350,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 class TestUniformRandomOp_API_seed(unittest.TestCase):
     def test_attr_tensor_API(self):
         _seed = 10
-        gen = paddle.manual_seed(_seed)
+        gen = paddle.seed(_seed)
         gen._is_init_py = False
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -392,7 +392,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
         out = scope.var("X").get_selected_rows()
         shape_tensor = scope.var("Shape").get_tensor()
         shape_tensor.set(np.array([1000, 784]).astype("int64"), place)
-        paddle.manual_seed(10)
+        paddle.seed(10)
         op = Operator(
             "uniform_random",
             ShapeTensor="Shape",
@@ -426,7 +426,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         shape_1.set(np.array([1000]).astype("int64"), place)
         shape_2 = scope.var("shape2").get_tensor()
         shape_2.set(np.array([784]).astype("int64"), place)
-        paddle.manual_seed(10)
+        paddle.seed(10)
         op = Operator(
             "uniform_random",
             ShapeTensorList=["shape1", "shape2"],

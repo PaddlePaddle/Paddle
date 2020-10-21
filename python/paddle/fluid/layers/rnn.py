@@ -1395,7 +1395,7 @@ def _dynamic_decode_imperative(decoder,
         control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
 
-        control_flow.logical_not(nn.reduce_all(finished), cond)
+        cond = control_flow.logical_not(nn.reduce_all(finished))
         if max_step_num is not None and step_idx > max_step_num:
             break
 

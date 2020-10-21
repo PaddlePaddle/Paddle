@@ -61,11 +61,11 @@ class L1Decay(fluid.regularizer.L1Decay):
             # Example2: set Regularizer in parameters
             # Set L1 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
-            from paddle.nn import Conv2d
+            from paddle.nn import Conv2D
             from paddle import ParamAttr
             from paddle.regularizer import L2Decay
 
-            my_conv2d = Conv2d(
+            my_conv2d = Conv2D(
                     in_channels=10,
                     out_channels=10,
                     kernel_size=1,
@@ -123,11 +123,11 @@ class L2Decay(fluid.regularizer.L2Decay):
             # Example2: set Regularizer in parameters
             # Set L2 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
-            from paddle.nn import Conv2d
+            from paddle.nn import Conv2D
             from paddle import ParamAttr
             from paddle.regularizer import L2Decay
 
-            my_conv2d = Conv2d(
+            my_conv2d = Conv2D(
                     in_channels=10,
                     out_channels=10,
                     kernel_size=1,

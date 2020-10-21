@@ -951,7 +951,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
         with guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
@@ -1035,7 +1035,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             dy_token_num_value = dy_token_num.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,

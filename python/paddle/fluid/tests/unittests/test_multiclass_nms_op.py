@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import copy
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -171,6 +172,9 @@ def lod_multiclass_nms(boxes, scores, background, score_threshold,
     lod = []
     head = 0
     for n in range(len(box_lod[0])):
+        if box_lod[0][n] == 0:
+            lod.append(0)
+            continue
         box = boxes[head:head + box_lod[0][n]]
         score = scores[head:head + box_lod[0][n]]
         offset = head
@@ -357,6 +361,53 @@ class TestMulticlassNMSLoDInput(OpTest):
         self.check_output()
 
 
+class TestMulticlassNMSNoBox(TestMulticlassNMSLoDInput):
+    def setUp(self):
+        self.set_argument()
+        M = 1200
+        C = 21
+        BOX_SIZE = 4
+        box_lod = [[0, 1200, 0]]
+        background = 0
+        nms_threshold = 0.3
+        nms_top_k = 400
+        keep_top_k = 200
+        score_threshold = self.score_threshold
+        normalized = False
+
+        scores = np.random.random((M, C)).astype('float32')
+
+        scores = np.apply_along_axis(softmax, 1, scores)
+
+        boxes = np.random.random((M, C, BOX_SIZE)).astype('float32')
+        boxes[:, :, 0] = boxes[:, :, 0] * 10
+        boxes[:, :, 1] = boxes[:, :, 1] * 10
+        boxes[:, :, 2] = boxes[:, :, 2] * 10 + 10
+        boxes[:, :, 3] = boxes[:, :, 3] * 10 + 10
+
+        det_outs, lod = lod_multiclass_nms(
+            boxes, scores, background, score_threshold, nms_threshold,
+            nms_top_k, keep_top_k, box_lod, normalized)
+        det_outs = np.array(det_outs).astype('float32')
+        nmsed_outs = det_outs[:, :-1].astype('float32') if len(
+            det_outs) else det_outs
+        self.op_type = 'multiclass_nms'
+        self.inputs = {
+            'BBoxes': (boxes, box_lod),
+            'Scores': (scores, box_lod),
+        }
+        self.outputs = {'Out': (nmsed_outs, [lod])}
+        self.attrs = {
+            'background_label': 0,
+            'nms_threshold': nms_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'score_threshold': score_threshold,
+            'nms_eta': 1.0,
+            'normalized': normalized,
+        }
+
+
 class TestIOU(unittest.TestCase):
     def test_iou(self):
         box1 = np.array([4.0, 3.0, 7.0, 5.0]).astype('float32')
@@ -521,4 +572,5 @@ class TestMulticlassNMSError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
