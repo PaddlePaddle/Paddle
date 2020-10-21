@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import models
-from .models import *
+from __future__ import print_function
 
-from . import transforms
-from .transforms import *
+import unittest
+import paddle
 
-from . import datasets
-from .datasets import *
 
-from . import image
-from .image import *
+class TestDygraphModeOfUnittest(unittest.TestCase):
+    def test_dygraph_mode(self):
+        self.assertTrue(paddle.in_dynamic_mode(
+        ), 'Default Mode of Unittest should be dygraph mode, but get static mode.'
+                        )
 
-__all__ = models.__all__ \
-        + transforms.__all__ \
-        + datasets.__all__ \
-        + image.__all__
+
+if __name__ == '__main__':
+    unittest.main()
