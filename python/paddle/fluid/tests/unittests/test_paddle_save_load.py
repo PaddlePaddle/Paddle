@@ -73,7 +73,7 @@ class TestSaveLoad(unittest.TestCase):
         paddle.disable_static()
 
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def build_and_train_model(self):

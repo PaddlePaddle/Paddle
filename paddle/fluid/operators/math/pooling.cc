@@ -52,8 +52,8 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
@@ -133,8 +133,8 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_height * input_width;
       const int output_stride = output_height * output_width;
@@ -272,8 +272,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
@@ -359,8 +359,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_height * input_width;
       const int output_stride = output_height * output_width;
@@ -705,9 +705,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
 
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
@@ -808,9 +808,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_depth * input_height * input_width;
       const int output_stride = output_depth * output_height * output_width;
@@ -998,9 +998,9 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int pd = 0; pd < output_depth; ++pd) {
@@ -1106,9 +1106,9 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_depth * input_height * input_width;
       const int output_stride = output_depth * output_height * output_width;

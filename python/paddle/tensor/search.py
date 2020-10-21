@@ -62,7 +62,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         and with data type int64).
 
     Examples:
+
         .. code-block:: python
+
             import paddle
             
             paddle.disable_static()
@@ -357,6 +359,7 @@ def nonzero(x, as_tuple=False):
     Examples:
     
         .. code-block:: python
+
 
             import paddle
 

@@ -25,7 +25,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2d, Linear, ReLU, Sequential, Softmax
+from paddle.nn import Conv2D, Linear, ReLU, Sequential, Softmax
 
 from paddle import Model
 from paddle.static import InputSpec
@@ -44,11 +44,11 @@ class LeNetDygraph(paddle.nn.Layer):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
-            Conv2d(
+            Conv2D(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
             paddle.fluid.dygraph.Pool2D(2, 'max', 2),
-            Conv2d(
+            Conv2D(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
             paddle.fluid.dygraph.Pool2D(2, 'max', 2))
@@ -142,7 +142,7 @@ class TestModel(unittest.TestCase):
             cls.test_dataset, places=cls.device, batch_size=64)
 
         seed = 333
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         dy_lenet = LeNetDygraph()
@@ -194,7 +194,7 @@ class TestModel(unittest.TestCase):
     def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
@@ -306,7 +306,7 @@ class MyDataset(Dataset):
 
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
