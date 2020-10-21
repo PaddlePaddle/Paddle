@@ -112,7 +112,7 @@ class ProgramDeps(object):
         if self._block.has_var(var_name):
             if var_name not in self._var_to_generate_op or self._var_to_generate_op[
                     var_name] == []:
-                self._block._remove_var(var_name)
+                self._block._remove_var(var_name, sync=False)
 
     def remove_op(self, op_idx):
         # update deps
@@ -121,7 +121,7 @@ class ProgramDeps(object):
             self.crop_input_var_from_op(op_idx, input_name)
         for output_name in op.desc.output_arg_names():
             self.crop_output_var_from_op(op_idx, output_name)
-        self._block._remove_op(op_idx)
+        self._block._remove_op(op_idx, sync=False)
 
     def should_remove_op(self, op_idx):
         op = self._block.ops[op_idx]

@@ -2843,7 +2843,9 @@ class Block(object):
         self._sync_with_cpp()
         return var
 
-    def _remove_var(self, name):
+    def _remove_var(self, name, sync=True):
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -2935,12 +2937,29 @@ class Block(object):
         Returns:
             Operator: the insert Operator.
         """
+        self._sync_with_cpp()
         op_desc = self.desc._insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.insert(index, op)
         return op
 
-    def _remove_op(self, index):
+    def _insert_op_without_sync(self, index, *args, **kwargs):
+        """
+        Insert an Operator according to the giving arguments, 
+        without sync_with_cpp to meke the compilation faster.
+
+        Args:
+            index(int): the place that the operator to insert.
+
+        Returns:
+            Operator: the insert Operator.
+        """
+        op_desc = self.desc._insert_op(index)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        self.ops.insert(index, op)
+        return op
+
+    def _remove_op(self, index, sync=True):
         """
         Remove the specific position operator.
 
@@ -2950,6 +2969,8 @@ class Block(object):
         Returns:
             None
         """
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 

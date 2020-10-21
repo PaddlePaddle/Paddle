@@ -53,7 +53,7 @@ class GradientClipHelper(object):
             if not self._is_gradient_clip_op(op):
                 continue
             if idx in deperate_op_idx:
-                block._remove_op(idx)
+                block._remove_op(idx, sync=False)
                 continue
             reversed_inputs = []
             if op.type == "sum":
@@ -63,21 +63,21 @@ class GradientClipHelper(object):
                 op.desc.set_input("X", reversed_inputs)
                 assert (len(op.desc.output_arg_names()) == 1)
                 sum_res = op.desc.output_arg_names()[0]
-                block._insert_op(
+                block._insert_op_without_sync(
                     idx + 1,
                     type='c_sync_comm_stream',
                     inputs={'X': sum_res},
                     outputs={'Out': sum_res},
                     attrs={'ring_id': 0,
                            OP_ROLE_KEY: OpRole.Optimize})
-                block._insert_op(
+                block._insert_op_without_sync(
                     idx + 1,
                     type='c_allreduce_sum',
                     inputs={'X': sum_res},
                     outputs={'Out': sum_res},
                     attrs={'ring_id': 0,
                            OP_ROLE_KEY: OpRole.Optimize})
-                block._insert_op(
+                block._insert_op_without_sync(
                     idx + 1,
                     type='c_sync_calc_stream',
                     inputs={'X': sum_res},
@@ -85,6 +85,6 @@ class GradientClipHelper(object):
                     attrs={OP_ROLE_KEY: OpRole.Optimize})
 
         for var_name in deperated_vars:
-            block._remove_var(var_name)
+            block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
         return

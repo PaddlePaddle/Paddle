@@ -33,5 +33,5 @@ class WeightDecayHelper(object):
                     "but the {} op does not hold op_role_var".format(op.type))
             op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
             if not shard.has_param(op_role_var[0]):
-                block._remove_op(idx)
+                block._remove_op(idx, sync=False)
         block._sync_with_cpp()

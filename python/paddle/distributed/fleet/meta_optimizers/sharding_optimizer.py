@@ -390,11 +390,11 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if self._shard.has_var(output_name):
                     continue
                 #TODO why do we remove op, when only one var is removed
-                block._remove_op(idx)
+                block._remove_op(idx, sync=False)
                 break
 
         for var_name in list(block.vars.keys()):
             if self._shard.has_var(var_name):
                 continue
-            block._remove_var(var_name)
+            block._remove_var(var_name, sync=False)
         block._sync_with_cpp()

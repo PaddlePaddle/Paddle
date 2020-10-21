@@ -62,7 +62,7 @@ class FP16Utils(object):
                 range(offset + segment._start_idx, offset + segment._end_idx)):
             op = block.ops[op_idx]
             if FP16Utils.is_fp16_cast_op(block, op, params):
-                block._remove_op(op_idx)
+                block._remove_op(op_idx, sync=False)
                 inserted_op_num -= 1
         block._sync_with_cpp()
         return inserted_op_num
@@ -82,8 +82,8 @@ class FP16Utils(object):
                 continue
             if shard.has_param(param_name):
                 continue
-            block._remove_op(idx)
-            block._remove_var(output_name)
+            block._remove_op(idx, sync=False)
+            block._remove_var(output_name, sync=False)
 
         block._sync_with_cpp()
         update_loss_scaling_op_idx = -1
@@ -116,7 +116,7 @@ class FP16Utils(object):
             name=inf_var_name + "@sharding",
             shape=inf_var.shape,
             dtype=inf_var.dtype)
-        block._insert_op(
+        block._insert_op_without_sync(
             update_loss_scaling_op_idx,
             type='cast',
             inputs={'X': inf_var},
@@ -128,7 +128,7 @@ class FP16Utils(object):
             })
         insert_sync_calc_op(block, update_loss_scaling_op_idx + 1,
                             [inf_var_fp32])
-        block._insert_op(
+        block._insert_op_without_sync(
             update_loss_scaling_op_idx + 2,
             type='c_allreduce_max',
             inputs={'X': inf_var_fp32},
@@ -137,7 +137,7 @@ class FP16Utils(object):
                    OP_ROLE_KEY: OpRole.Optimize})
         comm_op_num = insert_sync_comm_ops(
             block, update_loss_scaling_op_idx + 3, nrings, [inf_var_fp32])
-        block._insert_op(
+        block._insert_op_without_sync(
             update_loss_scaling_op_idx + 3 + comm_op_num,
             type='cast',
             inputs={'X': inf_var_fp32},

@@ -131,7 +131,7 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     _insert_sync_calc_op
     """
     op_role = block.ops[insert_idx].attr('op_role')
-    block._insert_op(
+    block._insert_op_without_sync(
         insert_idx,
         type='c_sync_calc_stream',
         inputs={'X': calc_dep_vars},
@@ -146,7 +146,7 @@ def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars):
     """
     op_role = block.ops[insert_idx].attr('op_role')
     for i in range(nrings):
-        block._insert_op(
+        block._insert_op_without_sync(
             insert_idx,
             type='c_sync_comm_stream',
             inputs={'X': comm_dep_vars},
@@ -163,7 +163,7 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
     op_role = block.ops[insert_idx].attr('op_role')
     for broadcast_name in fill_constant_vars:
         broadcast_var = block.var(broadcast_name)
-        block._insert_op(
+        block._insert_op_without_sync(
             insert_idx,
             type="fill_constant",
             outputs={"Out": broadcast_var.name},
@@ -182,7 +182,7 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     """
     op_role = block.ops[insert_idx].attr('op_role')
     for fp16_name, fp32_name in cast_ops.items():
-        block._insert_op(
+        block._insert_op_without_sync(
             insert_idx,
             type="cast",
             inputs={"X": fp32_name},
@@ -202,7 +202,7 @@ def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
     ring_id = -1
     for var in allreduce_vars:
         ring_id = (ring_id + 1) % nrings
-        block._insert_op(
+        block._insert_op_without_sync(
             insert_idx,
             type='c_allreduce_sum',
             inputs={'X': var},
@@ -220,7 +220,7 @@ def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
     op_role = block.ops[insert_idx].attr('op_role')
     for broadcast_name, root_device in broadcast2root:
         ring_id = (ring_id + 1) % nrings
-        block._insert_op(
+        block._insert_op_without_sync(
             insert_idx,
             type='c_broadcast',
             inputs={'X': broadcast_name},
@@ -265,7 +265,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
     for idx, op in reversed(list(enumerate(block.ops))):
         if is_loss_grad_op(op):
             loss_grad_var = block.vars[op.output_arg_names[0]]
-            block._insert_op(
+            block._insert_op_without_sync(
                 idx + 1,
                 type='scale',
                 inputs={'X': loss_grad_var},
