@@ -21,6 +21,7 @@ list(APPEND DIST_TEST_OPS test_collective_barrier_api)
 list(APPEND DIST_TEST_OPS test_collective_allreduce_api)
 list(APPEND DIST_TEST_OPS test_collective_broadcast_api)
 list(APPEND DIST_TEST_OPS test_collective_allgather_api)
+list(APPEND DIST_TEST_OPS test_collective_alltoall_api)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
