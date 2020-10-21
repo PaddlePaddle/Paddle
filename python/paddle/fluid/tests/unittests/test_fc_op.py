@@ -137,7 +137,7 @@ class TestFCOpWithPadding(TestFCOp):
 class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
         def run_program(num_flatten_dims):
-            paddle.manual_seed(SEED)
+            paddle.seed(SEED)
             startup_program = Program()
             main_program = Program()
 

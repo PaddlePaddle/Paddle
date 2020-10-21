@@ -166,7 +166,7 @@ class Conv2DTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.Conv2d(
+        conv = nn.Conv2D(
             self.num_channels,
             self.num_filters,
             self.filter_size,
