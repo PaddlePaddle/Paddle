@@ -25,10 +25,11 @@ namespace math {
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ENFORCE(std::is_floating_point<T>::value,
 #if defined(__CUDA_ARCH__)
+    PADDLE_ENFORCE(std::is_floating_point<T>::value,
                    "TolerableValue should be float in cross_entropy.");
 #else
+    PADDLE_ENFORCE(std::is_floating_point<T>::value,
                    platform::errors::InvalidArgument(
                        "TolerableValue should be float in cross_entropy."));
 #endif
