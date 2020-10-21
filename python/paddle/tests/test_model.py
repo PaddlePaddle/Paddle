@@ -284,6 +284,17 @@ class TestModel(unittest.TestCase):
 
         fluid.disable_dygraph() if dynamic else None
 
+    def test_predict_without_inputs(self):
+        fluid.enable_dygraph(self.device)
+        model = Model(LeNet())
+        model.prepare()
+        model.load(self.weight_path)
+        model._inputs = None
+        output = model.predict(
+            self.test_dataset, batch_size=64, stack_outputs=True)
+        np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
+        fluid.disable_dygraph()
+
 
 class MyModel(paddle.nn.Layer):
     def __init__(self):
