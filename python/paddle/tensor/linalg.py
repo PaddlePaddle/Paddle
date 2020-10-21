@@ -623,7 +623,7 @@ def t(input, name=None):
     Args:
         input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
-        user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
