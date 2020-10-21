@@ -28,7 +28,7 @@ TEST(AnalysisPredictor, use_gpu) {
   AnalysisConfig config;
 #if defined(PADDLE_WITH_CUDA)
   config.EnableUseGpu(100, 0);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(LITE_SUBGRAPH_WITH_XPU)
   config.EnableXpu(100);
 #endif
   config.SetModel(model_dir + "/model", model_dir + "/params");
