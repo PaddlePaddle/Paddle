@@ -261,7 +261,7 @@ class StaticGraphAdapter(object):
         self.mode = 'eval'
         return self._run(inputs, labels)
 
-    def test_batch(self, inputs):
+    def predict_batch(self, inputs):
         self.mode = 'test'
         return self._run(inputs, None)
 
@@ -646,10 +646,10 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -668,7 +668,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -682,7 +682,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -713,7 +713,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -723,7 +723,7 @@ class DynamicGraphAdapter(object):
         else:
             return metrics
 
-    def test_batch(self, inputs):
+    def predict_batch(self, inputs):
         self.model.network.eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
@@ -984,13 +984,12 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    def test_batch(self, inputs):
+    def predict_batch(self, inputs):
         """
-        Run one testing step on a batch of data.
+        Run one predict step on a batch of data.
 
         Args:
-            inputs (list): A list of numpy.ndarray, each is a batch of
-                input data.
+            inputs (numpy.ndarray|Tensor|list): A batch of input data.
 
         Returns:
             A list of numpy.ndarray of predictions, that is the outputs
@@ -1019,10 +1018,10 @@ class Model(object):
               model = paddle.Model(net, input, label)
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
-              out = model.test_batch([data])
+              out = model.predict_batch([data])
               print(out)
         """
-        loss = self._adapter.test_batch(inputs)
+        loss = self._adapter.predict_batch(inputs)
         if fluid.in_dygraph_mode() and self._input_shapes is None:
             self._update_inputs()
         return loss

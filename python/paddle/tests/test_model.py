@@ -370,7 +370,7 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
-            out, = model.test_batch([data])
+            out, = model.predict_batch([data])
 
             np.testing.assert_allclose(out, ref, rtol=1e-6)
             fluid.disable_dygraph() if dynamic else None
@@ -546,7 +546,7 @@ class TestModelFunction(unittest.TestCase):
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
 
             model.save(save_dir, training=False)
-            ori_results = model.test_batch(tensor_img)
+            ori_results = model.predict_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -569,7 +569,7 @@ class TestModelFunction(unittest.TestCase):
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         # without inputs
-        for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
+        for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
@@ -590,7 +590,7 @@ class TestModelFunction(unittest.TestCase):
                 elif initial == "eval_batch":
                     model.eval_batch([img], [label])
                 else:
-                    model.test_batch([img])
+                    model.predict_batch([img])
 
             model.save(save_dir, training=False)
             shutil.rmtree(save_dir)
