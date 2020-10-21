@@ -48,10 +48,15 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._shard = Shard()
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+        if self._role_maker._worker_num() <= 1:
+            return False
         return self.user_defined_strategy.sharding
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.sharding = False
+        dist_strategy.sharding_configs = {}
 
     def minimize_impl(self,
                       loss,
