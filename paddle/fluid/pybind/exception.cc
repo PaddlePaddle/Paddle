@@ -37,7 +37,8 @@ namespace pybind {
 
 void BindException(pybind11::module* m) {
   static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
-  static pybind11::exception<platform::EnforceNotMet> ex_base(*m, "BaseError");
+  static pybind11::exception<platform::EnforceNotMet> ex_base(*m,
+                                                              "EnforceNotMet");
   pybind11::register_exception_translator([](std::exception_ptr p) {
     try {
       if (p) std::rethrow_exception(p);

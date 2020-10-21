@@ -308,47 +308,63 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 /** ENFORCE EXCEPTION AND MACROS **/
 
 struct EnforceNotMet : public std::exception {
+ public:
   EnforceNotMet(std::exception_ptr e, const char* file, int line) {
     try {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
-      err_str_ = GetTraceBackString(e.what(), file, line);
+      exc_str_ = GetTraceBackString(e.what(), file, line);
     }
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {}
+      : exc_str_(GetTraceBackString(str, file, line)) {}
 
   EnforceNotMet(const error::Code code, const std::string& str,
                 const char* file, int line)
       : code_(code) {
-    auto summary = ErrorSummary(code, str);
-    if (FLAGS_call_stack_level > 1) {
-      err_str_ = GetTraceBackString(summary.to_string(), file, line);
-    } else {
-      err_str_ =
-          GetTraceBackString(summary.error_message_with_subtype(), file, line);
-    }
+    auto error = ErrorSummary(code, str);
+    exc_str_ = build_except_str(error, file, line);
   }
 
-  EnforceNotMet(const platform::ErrorSummary& error, const char* file, int line)
+  EnforceNotMet(const ErrorSummary& error, const char* file, int line)
       : code_(error.code()) {
-    if (FLAGS_call_stack_level > 1) {
-      err_str_ = GetTraceBackString(error.to_string(), file, line);
-    } else {
-      err_str_ =
-          GetTraceBackString(error.error_message_with_subtype(), file, line);
-    }
+    exc_str_ = build_except_str(error, file, line);
   }
 
-  const char* what() const noexcept override { return err_str_.c_str(); }
+  const char* what() const noexcept override { return exc_str_.c_str(); }
 
   error::Code code() const { return code_; }
 
+  const std::string& full_except_str() const { return full_exc_str_; }
+
+  const std::string& sub_except_str() const { return sub_exc_str_; }
+
+  void set_except_str(std::string str) { exc_str_ = str; }
+
+  std::string build_except_str(const ErrorSummary& error, const char* file,
+                               int line) {
+    full_exc_str_ = GetTraceBackString(error.to_string(), file, line);
+    sub_exc_str_ =
+        GetTraceBackString(error.error_message_with_subtype(), file, line);
+    if (FLAGS_call_stack_level > 1) {
+      return full_exc_str_;
+    } else {
+      return sub_exc_str_;
+    }
+  }
+
+ private:
   // Used to determine the final type of exception thrown
   error::Code code_ = error::LEGACY;
-  // Error message
-  std::string err_str_;
+  // Error message with internal Error type
+  // like: InvalidArgumentError: ***
+  std::string full_exc_str_;
+  // Error message with subtype in brackets
+  // like: (InvalidArgument) ***
+  std::string sub_exc_str_;
+  // Current error message
+  std::string exc_str_;
 };
 
 #define PADDLE_THROW(...)                                                   \

@@ -34,7 +34,7 @@ class TestCCommInitAllOp(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
-        with self.assertRaises(core.EnforceNotMet):
+        with self.assertRaises(RuntimeError):
             self.exe.run(program)
 
     def test_specifying_devices(self):

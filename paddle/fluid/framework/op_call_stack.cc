@@ -21,6 +21,18 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::string InsertIndentationIntoEachLine(const std::string &str) {
+  std::ostringstream sout;
+  size_t start_pos = 0;
+  size_t end_pos = 0;
+  while ((end_pos = str.find("\n", start_pos)) != std::string::npos) {
+    sout << "    " << str.substr(start_pos, end_pos + 1);
+    start_pos = end_pos + 1;
+  }
+  sout << "    " << str.substr(start_pos, end_pos);
+  return sout.str();
+}
+
 void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
   if (attrs.count("sub_block") != 0) {
@@ -35,39 +47,39 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   }
 
   std::ostringstream sout;
-  if (FLAGS_call_stack_level > 1) {
-    // Step 1. Construct python call stack string
-    if (callstack) {
+  // Step 1. Construct python call stack string
+  if (callstack) {
+    if (FLAGS_call_stack_level > 1) {
       sout << "\n\n  Compile Traceback (most recent call last):";
-      for (auto &line : *callstack) {
-        sout << "\n  " << line;
-      }
+    } else {
+      sout << "In user code:\n";
     }
-    // Step 2. Construct final call stack & append error op name
-    sout << exception->err_str_;
-    sout << "  [operator < " << type << " > error]";
-    exception->err_str_ = sout.str();
-  } else {
-    // Step 1. Construct error summary with op hint
-    sout << exception->err_str_;
-    sout << "  [operator < " << type << " > error]";
-    // Step 2. Construct python call stack string
-    if (callstack) {
-      sout << "\n\n  Compile Traceback (most recent call last):";
-      for (auto &line : *callstack) {
-        sout << "\n  " << line;
-      }
+    for (auto &line : *callstack) {
+      sout << "\n  " << line;
     }
-    exception->err_str_ = sout.str();
   }
+  // Step 2. Construct final call stack & append error op name
+  if (FLAGS_call_stack_level > 1) {
+    sout << exception->full_except_str();
+  } else {
+    // If callstack exists, use err_str_ instead sub_err_str_
+    if (callstack) {
+      sout << "\n\n";
+      sout << InsertIndentationIntoEachLine(exception->full_except_str());
+    } else {
+      sout << exception->sub_except_str();
+    }
+  }
+  sout << "  [operator < " << type << " > error]";
+  exception->set_except_str(sout.str());
 }
 
 void AppendErrorOpHint(const std::string &type,
                        platform::EnforceNotMet *exception) {
   std::ostringstream sout;
-  sout << exception->err_str_;
+  sout << exception->what();
   sout << "  [operator < " << type << " > error]";
-  exception->err_str_ = sout.str();
+  exception->set_except_str(sout.str());
 }
 
 }  // namespace framework
