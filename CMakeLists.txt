@@ -108,7 +108,7 @@ option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
-option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
+option(WITH_DISTRIBUTE  "Compile with distributed support"              ON)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
