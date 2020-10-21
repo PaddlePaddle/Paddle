@@ -119,7 +119,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 b_var = fluid.data(
                     "bias", (self.num_filters, ), dtype=self.dtype)
-                y_var = F.conv_transpose3d(
+                y_var = F.conv3d_transpose(
                     x_var,
                     w_var,
                     None if self.no_bias else b_var,
