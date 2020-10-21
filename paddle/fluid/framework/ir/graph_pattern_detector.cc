@@ -1295,21 +1295,24 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
 
   auto *act_out_var = pattern->NewNode(act_out_repr())
                           ->assert_is_ops_input(act_grad_types, "Out");
-  auto *d_intermediate_var1 =
-      pattern->NewNode(d_itermediate_out1_repr())
-          ->assert_is_ops_output(act_grad_types, GradVarName("X"));  // d_act_x
+  auto *d_act_x_var =
+      pattern->NewNode(d_act_x_repr())
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"))
+          ->assert_has_n_outputs(1);  // d_act_x
 
-  d_intermediate_var1->assert_is_op_input("elementwise_add_grad");
+  d_act_x_var->AsIntermediate()->assert_is_op_input("elementwise_add_grad");
 
   auto *d_elewise_add_in_var =
       pattern->NewNode(d_elewise_add_in_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_1
-  auto *d_intermediate_var2 =
-      pattern->NewNode(d_itermediate_out2_repr())
-          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_1
+          ->assert_is_op_output("elementwise_add_grad",
+                                GradVarName("X"));  // d_add_in_1
+  auto *d_bn_out_var =
+      pattern->NewNode(d_bn_out_repr())
+          ->assert_is_op_output("elementwise_add_grad",
+                                GradVarName("Y"));  // d_add_in_2
 
-  d_intermediate_var2->assert_is_op_input("batch_norm_grad");
+  d_bn_out_var->assert_is_op_input("batch_norm_grad", GradVarName("Y"));
 
   auto *bn_x_var = pattern->NewNode(bn_x_repr())
                        ->assert_is_op_input("batch_norm_grad", "X")
@@ -1342,14 +1345,13 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
           ->assert_is_not_ctrl_var()
           ->assert_is_op_output("batch_norm_grad", GradVarName("Bias"));
 
-  act_grad->LinksFrom({d_act_out_var, act_out_var})
-      .LinksTo({d_intermediate_var1});
+  act_grad->LinksFrom({d_act_out_var, act_out_var}).LinksTo({d_act_x_var});
 
-  elewise_add_grad->LinksFrom({d_intermediate_var1})
-      .LinksTo({d_elewise_add_in_var, d_intermediate_var2});
+  elewise_add_grad->LinksFrom({d_act_x_var})
+      .LinksTo({d_elewise_add_in_var, d_bn_out_var});
 
   bn_grad
-      ->LinksFrom({bn_x_var, d_intermediate_var2, bn_scale_var, bn_bias_var,
+      ->LinksFrom({bn_x_var, d_bn_out_var, bn_scale_var, bn_bias_var,
                    bn_saved_mean_var, bn_saved_variance_var, bn_reserve_space})
       .LinksTo({d_bn_x_var, d_bn_scale_var, d_bn_bias_var});
 

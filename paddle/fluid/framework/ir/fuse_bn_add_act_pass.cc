@@ -168,7 +168,7 @@ Node *FuseBatchNormAddActPass::CreateFusedBatchNormAddActNode(
                  std::vector<std::string>({bn_saved_variance_n}));
   desc.SetOutput("ReserveSpace",
                  std::vector<std::string>({bn_reserve_space_n}));
-  desc.SetType("fused_batch_norm_add_act");
+  desc.SetType("fused_bn_add_activation");
 
   desc.SetAttr("act_type", act->Name());
   // Set attrs
@@ -217,10 +217,8 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
     GET_IR_NODE_FROM_SUBGRAPH(batch_norm_grad, batch_norm_grad,
                               bn_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, bn_add_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(d_itermediate_out1, d_itermediate_out1,
-                              bn_add_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(d_itermediate_out2, d_itermediate_out2,
-                              bn_add_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(d_act_x, d_act_x, bn_add_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(d_bn_out, d_bn_out, bn_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_x, bn_x, bn_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_scale, bn_scale, bn_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_bias, bn_bias, bn_add_act_grad_pattern);
@@ -238,20 +236,21 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
 
     std::string d_act_out_n = subgraph.at(d_act_out)->Name();  // Y@GRAD
     std::string act_out_n = act_out->Name();                   // Y
-    std::string d_itermediate_out1_n = d_itermediate_out1->Name();
+    std::string d_act_x_n = d_act_x->Name();
     std::string bn_x_n = bn_x->Name();
     std::string bn_scale_n = bn_scale->Name();
     std::string bn_bias_n = bn_bias->Name();
     std::string bn_saved_mean_n = bn_saved_mean->Name();
     std::string bn_saved_variance_n = bn_saved_variance->Name();
     std::string bn_reserve_space_n = bn_reserve_space->Name();
+    std::string d_bn_out_n = d_bn_out->Name();
     std::string d_bn_x_n = d_bn_x->Name();
     std::string d_bn_scale_n = d_bn_scale->Name();
     std::string d_bn_bias_n = d_bn_bias->Name();
     std::string d_elewise_add_in_n = d_elewise_add_in->Name();
 
     OpDesc desc;
-    desc.SetType("fused_batch_norm_add_act_grad");
+    desc.SetType("fused_bn_add_activation_grad");
     desc.SetInput("X", {bn_x_n});
     desc.SetInput("Y", std::vector<std::string>({act_out_n}));
     desc.SetInput(GradVarName("Y"), std::vector<std::string>({d_act_out_n}));
@@ -282,21 +281,18 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
 
     auto fused_node = g->CreateOpNode(&desc);
 
-    VLOG(4) << act_grad->Name();
-    VLOG(4) << d_itermediate_out1;
     VLOG(4) << "\n\t " << d_act_out_n << " and " << act_out_n << " -> "
-            << act_grad->Name() << " -> " << d_itermediate_out1 << "\n\t ";
-    VLOG(4) << d_itermediate_out1 << " -> " << elewise_add_grad->Name()
-            << " -> " << d_elewise_add_in_n << "," << d_itermediate_out2
-            << "\n\t ";
-    VLOG(4) << bn_x_n << ", " << d_itermediate_out2 << ", " << bn_scale_n
-            << ", " << bn_bias_n << ", " << bn_saved_mean_n << ", "
+            << act_grad->Name() << " -> " << d_act_x_n << "\n\t ";
+    VLOG(4) << d_act_x_n << " -> " << elewise_add_grad->Name() << " -> "
+            << d_elewise_add_in_n << "," << d_bn_out_n << "\n\t ";
+    VLOG(4) << bn_x_n << ", " << d_bn_out_n << ", " << bn_scale_n << ", "
+            << bn_bias_n << ", " << bn_saved_mean_n << ", "
             << bn_saved_variance_n << " and " << bn_reserve_space_n << " -> "
             << batch_norm_grad->Name() << " -> " << d_bn_x_n << ", "
             << d_bn_scale_n << " and " << d_bn_bias_n;
 
-    ReLinkNodes(g, d_itermediate_out1, d_itermediate_out2, act_grad,
-                elewise_add_grad, batch_norm_grad, fused_node);
+    ReLinkNodes(g, d_act_x, d_bn_out, act_grad, elewise_add_grad,
+                batch_norm_grad, fused_node);
     found_bn_add_act_count++;
   };
 
@@ -313,6 +309,7 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
                                           Node *fused_op) const {  // delete act
   VLOG(3) << "111111111111: op_1=" << op_1->Name() << "," << op_1->inputs.size()
           << ", " << op_1->outputs.size();
+  // link inputs of op_1 to fused_op
   for (auto &in : op_1->inputs) {
     VLOG(3) << "in: " << in->Name();
     for (auto &out : in->outputs) {
@@ -323,6 +320,7 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
   }
   VLOG(3) << "======= satrt 2 =======";
   std::unordered_set<const Node *> nodes2delete;
+  // 如果op_1的输出是op_2的输入，那么加入到待删除列表，否则link到fused_op的输出
   for (auto &out : op_1->outputs) {
     // intermediate_out or ctr_var
     auto result_iter =
@@ -336,16 +334,23 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
     }
   }
   VLOG(3) << "======= satrt 3 =======";
-  // 删除add的输出节点
-  for (auto &out : op_2->outputs) {
-    nodes2delete.emplace(out);
-  }
 
   VLOG(3) << "111111111111222";
-  // 将add的额外输入设置到fuse的输入上
+  // 如果op_2的输出是op_3的输入，那么加入到待删除列表，否则link到fused_op的输出
+  for (auto &out : op_2->outputs) {
+    auto result_iter =
+        std::find_if(op_3->inputs.begin(), op_3->inputs.end(),
+                     [&out](const Node *node) -> bool { return node == out; });
+    if (result_iter == op_3->inputs.end()) {
+      IR_OP_VAR_LINK(fused_op, out);
+    } else {
+      nodes2delete.emplace(out);
+    }
+  }
+
+  // 如果op_2的输入是op_1的输出，则跳过，否则link到fused_op的输入
   for (auto &in : op_2->inputs) {
-    // intermediate_out是否可以不用？
-    if (in == intermediate_out1 || nodes2delete.count(in)) {
+    if (nodes2delete.count(in)) {
       continue;
     }
     fused_op->inputs.emplace_back(in);
@@ -353,10 +358,9 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph,
   }
 
   VLOG(3) << "111111111111333";
-  // 将act的额外输入设置到fuse的输入上
+  // 如果op_3的输入是op_2的输出，则跳过，否则link到fused_op的输入
   for (auto &in : op_3->inputs) {
-    // intermediate_out是否可以不用？
-    if (in == intermediate_out2 || nodes2delete.count(in)) {
+    if (nodes2delete.count(in)) {
       continue;
     }
     fused_op->inputs.emplace_back(in);

@@ -739,9 +739,9 @@ struct BatchNormAddActGrad : public PatternBase {
   PATTERN_DECL_NODE(batch_norm_grad);
   // declare variable node's name
   PATTERN_DECL_NODE(act_out);
-  PATTERN_DECL_NODE(d_itermediate_out1);
+  PATTERN_DECL_NODE(d_act_x);
   PATTERN_DECL_NODE(d_elewise_add_in);
-  PATTERN_DECL_NODE(d_itermediate_out2);
+  PATTERN_DECL_NODE(d_bn_out);
   PATTERN_DECL_NODE(bn_x);
   PATTERN_DECL_NODE(bn_scale);
   PATTERN_DECL_NODE(bn_bias);
