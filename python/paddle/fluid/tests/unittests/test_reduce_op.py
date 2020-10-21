@@ -767,5 +767,135 @@ class API_TestSumOp(unittest.TestCase):
         self.assertTrue((out3 == np.sum(np_x, axis=(0, 1, 2))).all())
 
 
+class TestAllAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(1234)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            result = paddle.inverse(x=input)
+            input_np = np.random.random([4, 4]).astype("float64")
+            result_np = np.linalg.inv(input_np)
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                x = fluid.layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+                x = fluid.layers.cast(x, 'bool')
+
+                out1 = paddle.all(x)
+                res1 = fluid.layers.assign(np.array([0], dtype='int32'))
+                res1 = fluid.layers.cast(res1, 'bool')
+                self.assertTrue(out1, res1)
+
+                out2 = paddle.all(x, axis=0)
+                res2 = fluid.layers.assign(np.array([1, 0], dtype='int32'))
+                res2 = fluid.layers.cast(res2, 'bool')
+                self.assertTrue(out2, res2)
+
+                out3 = paddle.all(x, axis=-1)
+                res3 = fluid.layers.assign(np.array([0, 1], dtype='int32'))
+                res3 = fluid.layers.cast(res3, 'bool')
+                self.assertTrue(out3, res3)
+
+                out4 = paddle.all(x, axis=1, keep_dim=True)
+                res4 = fluid.layers.assign(np.array([[0, 1]], dtype='int32'))
+                res4 = fluid.layers.cast(res4, 'bool')
+                self.assertTrue(out4, res4)
+
+
+class TestAllAPIError(unittest.TestCase):
+    def test_errors(self):
+        input = fluid.layers.assign(np.array([[1, 0], [1, 1]], dtype='float32'))
+        
+        # input must be bool.
+        self.assertRaises(TypeError, paddle.all, input)
+
+        # The data type of input must be bool
+        for dtype in ["bool"]:
+            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
+            self.assertRaises(TypeError, paddle.all, input)
+
+
+class TestAnyAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(1234)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+    
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            result = paddle.inverse(x=input)
+            input_np = np.random.random([4, 4]).astype("float64")
+            result_np = np.linalg.inv(input_np)
+            
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
+    
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+    
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                x = fluid.layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+                x = fluid.layers.cast(x, 'bool')
+                
+                out1 = paddle.any(x)
+                res1 = fluid.layers.assign(np.array([1], dtype='int32'))
+                res1 = fluid.layers.cast(res1, 'bool')
+                self.assertTrue(out1, res1)
+                
+                out2 = paddle.any(x, axis=0)
+                res2 = fluid.layers.assign(np.array([1, 0], dtype='int32'))
+                res2 = fluid.layers.cast(res2, 'bool')
+                self.assertTrue(out2, res2)
+                
+                out3 = paddle.any(x, axis=-1)
+                res3 = fluid.layers.assign(np.array([1, 0], dtype='int32'))
+                res3 = fluid.layers.cast(res3, 'bool')
+                self.assertTrue(out3, res3)
+                
+                out4 = paddle.any(x, axis=1, keep_dim=True)
+                res4 = fluid.layers.assign(np.array([[1, 0]], dtype='int32'))
+                res4 = fluid.layers.cast(res4, 'bool')
+                self.assertTrue(out4, res4)
+
+
+class TestAnyAPIError(unittest.TestCase):
+    def test_errors(self):
+        input = fluid.layers.assign(np.array([[1, 0], [1, 1]], dtype='float32'))
+        
+        # input must be bool.
+        self.assertRaises(TypeError, paddle.all, input)
+        
+        # The data type of input must be bool
+        for dtype in ["bool"]:
+            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
+            self.assertRaises(TypeError, paddle.any, input)
+
+
 if __name__ == '__main__':
     unittest.main()

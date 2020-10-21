@@ -1985,15 +1985,15 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out)
             
             # result should be [True, False]
-            out = paddle.all(x, dim=0)
+            out = paddle.all(x, axis=0)
             print(out)
             
             # keep_dim=False, result should be [False, True], out.shape should be (2,)
-            out = paddle.all(x, dim=-1)
+            out = paddle.all(x, axis=-1)
             print(out)
             
             # keep_dim=True, result should be [[False], [True]], out.shape should be (2,1)
-            out = paddle.all(x, dim=1, keep_dim=True)
+            out = paddle.all(x, axis=1, keep_dim=True)
             out1 = layers.cast(out, 'int32')
             print(out1)
             
@@ -2080,19 +2080,19 @@ def any(x, axis=None, keepdim=False, name=None):
             x = layers.cast(x, 'bool')
             
             # result should be True
-            out = layers.reduce_any(x)
+            out = paddle.any(x)
             print(out)
             
             # result should be [True, False]
-            out = layers.reduce_any(x, dim=0)
+            out = paddle.any(x, axis=0)
             print(out)
             
             # keep_dim=False, result should be [True, False], out.shape should be (2,)
-            out = layers.reduce_any(x, dim=-1)
+            out = paddle.any(x, axis=-1)
             print(out)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out = .reduce_any(x, dim=1, keep_dim=True)
+            out = paddle.any(x, axis=1, keep_dim=True)
             out1 = layers.cast(out, 'int32')
             print(out1)
             
