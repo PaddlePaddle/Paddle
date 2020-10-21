@@ -616,7 +616,9 @@ class DistributedStrategy(object):
         """
         Indicating whether we are using sharding Optimizer for memory
         optimization
+
         Default value: False
+
         Examples:
           .. code-block:: python
             import paddle.fleet as fleet
@@ -637,6 +639,17 @@ class DistributedStrategy(object):
     def sharding_configs(self):
         """
         Set sharding configurations.
+
+        **Note**:
+            fuse_broadcast_MB(float): size of a fused group of broadcasted parameters.
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sharding = True
+            strategy.sharding_configs = {"fuse_broadcast_MB": 32}
         """
         return get_msg_dict(self.strategy.sharding_configs)
 
