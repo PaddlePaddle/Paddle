@@ -290,6 +290,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       } else {
         sdata = scores_data + label * predict_dim;
       }
+
       for (size_t j = 0; j < indices.size(); ++j) {
         int idx = indices[j];
         odata[count * out_dim] = label;  // label
@@ -333,6 +334,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     Tensor boxes_slice, scores_slice;
     int n = score_size == 3 ? batch_size : boxes->lod().back().size() - 1;
     for (int i = 0; i < n; ++i) {
+      std::map<int, std::vector<int>> indices;
       if (score_size == 3) {
         scores_slice = scores->Slice(i, i + 1);
         scores_slice.Resize({score_dims[1], score_dims[2]});
@@ -340,10 +342,14 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         boxes_slice.Resize({score_dims[2], box_dim});
       } else {
         auto boxes_lod = boxes->lod().back();
+        if (boxes_lod[i] == boxes_lod[i + 1]) {
+          all_indices.push_back(indices);
+          batch_starts.push_back(batch_starts.back());
+          continue;
+        }
         scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
         boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
       }
-      std::map<int, std::vector<int>> indices;
       MultiClassNMS(ctx, scores_slice, boxes_slice, score_size, &indices,
                     &num_nmsed_out);
       all_indices.push_back(indices);
@@ -375,12 +381,14 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           }
         } else {
           auto boxes_lod = boxes->lod().back();
+          if (boxes_lod[i] == boxes_lod[i + 1]) continue;
           scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
           boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
           if (return_index) {
             offset = boxes_lod[i] * score_dims[1];
           }
         }
+
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {

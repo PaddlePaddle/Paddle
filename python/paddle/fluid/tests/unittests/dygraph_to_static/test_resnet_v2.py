@@ -66,7 +66,7 @@ class ConvBNLayer(paddle.nn.Layer):
                  act=None):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = paddle.nn.Conv2d(
+        self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
             out_channels=num_filters,
             kernel_size=filter_size,
@@ -214,7 +214,7 @@ def train(to_static):
     """
     paddle.disable_static(place)
     np.random.seed(SEED)
-    paddle.manual_seed(SEED)
+    paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
 
     train_reader = paddle.batch(

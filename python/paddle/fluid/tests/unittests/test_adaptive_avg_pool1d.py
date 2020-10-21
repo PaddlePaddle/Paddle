@@ -72,7 +72,7 @@ def avg_pool1D_forward_naive(x,
     return out
 
 
-class TestPool1d_API(unittest.TestCase):
+class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -89,7 +89,7 @@ class TestPool1d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1d(
+            ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1D(
                 output_size=16)
             result = ada_max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))

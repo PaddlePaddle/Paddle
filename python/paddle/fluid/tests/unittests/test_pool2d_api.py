@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle
 
 
-class TestPool2d_API(unittest.TestCase):
+class TestPool2D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -63,7 +63,7 @@ class TestPool2d_API(unittest.TestCase):
                 pool_type='avg')
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2D(
                 kernel_size=2, stride=2, padding=0)
             result = avg_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -84,7 +84,7 @@ class TestPool2d_API(unittest.TestCase):
                 exclusive=False)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2D(
                 kernel_size=2, stride=2, padding=1, ceil_mode=False)
             result = avg_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -104,7 +104,7 @@ class TestPool2d_API(unittest.TestCase):
                 ceil_mode=True)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2D(
                 kernel_size=2, stride=2, padding=0, ceil_mode=True)
             result = avg_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -144,7 +144,7 @@ class TestPool2d_API(unittest.TestCase):
                 pool_type='max')
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+            max_pool2d_dg = paddle.nn.layer.MaxPool2D(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -188,7 +188,7 @@ class TestPool2d_API(unittest.TestCase):
                 exclusive=False)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+            max_pool2d_dg = paddle.nn.layer.MaxPool2D(
                 kernel_size=2, stride=2, padding=1, ceil_mode=False)
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -208,7 +208,7 @@ class TestPool2d_API(unittest.TestCase):
                 ceil_mode=True)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+            max_pool2d_dg = paddle.nn.layer.MaxPool2D(
                 kernel_size=2, stride=2, padding=0, ceil_mode=True)
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -233,7 +233,7 @@ class TestPool2d_API(unittest.TestCase):
                 padding_algorithm="SAME")
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+            max_pool2d_dg = paddle.nn.layer.MaxPool2D(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -254,7 +254,7 @@ class TestPool2d_API(unittest.TestCase):
                 padding_algorithm="SAME")
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2D(
                 kernel_size=2, stride=2, padding=0)
             result = avg_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -279,7 +279,7 @@ class TestPool2d_API(unittest.TestCase):
                 pool_type='max')
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+            max_pool2d_dg = paddle.nn.layer.MaxPool2D(
                 kernel_size=2, stride=2, padding=0)
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -304,7 +304,7 @@ class TestPool2d_API(unittest.TestCase):
                 pool_type='avg')
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2D(
                 kernel_size=2, stride=2, padding=0)
             result = avg_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -325,7 +325,7 @@ class TestPool2d_API(unittest.TestCase):
             self.check_max_dygraph_nhwc_results(place)
 
 
-class TestPool2dError_API(unittest.TestCase):
+class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
             with fluid.dygraph.guard():

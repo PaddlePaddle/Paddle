@@ -887,10 +887,10 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
   int pixelNum = n * out_cw;
 
   platform::GpuLaunchConfig config =
-      platform::getGpuLaunchConfig(pixelNum, ctx);
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("linear" == interp_method) {
-    KeLinearInterpFw<T><<<config.blocks, config.threads, 0,
+    KeLinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
                           ctx.cuda_device_context().stream()>>>(
         input_data, in_w, in_cw, output_data, out_w, n, out_cw, c, ratio_w,
         align_corners, align_mode, data_layout);
@@ -981,21 +981,22 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   int pixelNum = n * out_chw;
 
   platform::GpuLaunchConfig config =
-      platform::getGpuLaunchConfig(pixelNum, ctx);
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
-    KeNearestNeighborInterpFw<T><<<config.blocks, config.threads, 0,
-                                   ctx.cuda_device_context().stream()>>>(
+    KeNearestNeighborInterpFw<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
-    KeBilinearInterpFw<T><<<config.blocks, config.threads, 0,
+    KeBilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
                             ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpFw<
-        T><<<config.blocks, 512, 0, ctx.cuda_device_context().stream()>>>(
+    KeBicubicInterpFw<T><<<config.block_per_grid, 512, 0,
+                           ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   }
@@ -1097,10 +1098,10 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   int pixelNum = n * out_cdhw;
 
   platform::GpuLaunchConfig config =
-      platform::getGpuLaunchConfig(pixelNum, ctx);
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("trilinear" == interp_method) {
-    KeTrilinearInterpFw<T><<<config.blocks, config.threads, 0,
+    KeTrilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
                              ctx.cuda_device_context().stream()>>>(
         input_data, in_d, in_h, in_w, n, in_cdhw, output_data, out_d, out_h,
         out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
@@ -1176,10 +1177,10 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   int pixelNum = n * out_cw;
 
   platform::GpuLaunchConfig config =
-      platform::getGpuLaunchConfig(pixelNum, ctx);
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("linear" == interp_method) {
-    KeLinearInterpBw<T><<<config.blocks, config.threads, 0,
+    KeLinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                           ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_w, in_cw, output_grad_data, out_w, n, out_cw, c,
         ratio_w, align_corners, align_mode, data_layout);
@@ -1267,22 +1268,23 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   int pixelNum = n * out_chw;
 
   platform::GpuLaunchConfig config =
-      platform::getGpuLaunchConfig(pixelNum, ctx);
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("nearest" == interp_method) {
-    KeNearestNeighborInterpBw<T><<<config.blocks, config.threads, 0,
-                                   ctx.cuda_device_context().stream()>>>(
+    KeNearestNeighborInterpBw<
+        T><<<config.block_per_grid, config.thread_per_block, 0,
+             ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
-    KeBilinearInterpBw<T><<<config.blocks, config.threads, 0,
+    KeBilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                             ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
         data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpBw<
-        T><<<config.blocks, 512, 0, ctx.cuda_device_context().stream()>>>(
+    KeBicubicInterpBw<T><<<config.block_per_grid, 512, 0,
+                           ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   }
@@ -1378,10 +1380,10 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   int pixelNum = n * out_cdhw;
 
   platform::GpuLaunchConfig config =
-      platform::getGpuLaunchConfig(pixelNum, ctx);
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("trilinear" == interp_method) {
-    KeTrilinearInterpBw<T><<<config.blocks, config.threads, 0,
+    KeTrilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
                              ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data, out_d,
         out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
