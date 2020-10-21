@@ -75,9 +75,9 @@ class TestErrorInCompileTime(unittest.TestCase):
 
     def set_message(self):
         self.expected_message = \
-            ['File "{}", line 36, in func_error_in_compile_time'.format(self.filepath),
+            ['File "{}", line 35, in func_error_in_compile_time'.format(self.filepath),
             'inner_func()',
-            'File "{}", line 29, in inner_func'.format(self.filepath),
+            'File "{}", line 28, in inner_func'.format(self.filepath),
             'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
             ]
 
@@ -135,7 +135,7 @@ class TestErrorInCompileTime2(TestErrorInCompileTime):
 
         self.expected_message = \
             [
-             'File "{}", line 47, in func_error_in_compile_time_2'.format(self.filepath),
+             'File "{}", line 46, in func_error_in_compile_time_2'.format(self.filepath),
              'x = fluid.layers.reshape(x, shape=[1, 2])'
              ]
 
@@ -150,7 +150,7 @@ class TestErrorInRuntime(TestErrorInCompileTime):
     def set_message(self):
         self.expected_message = \
             [
-                'File "{}", line 55, in func_error_in_runtime'.format(self.filepath),
+                'File "{}", line 54, in func_error_in_runtime'.format(self.filepath),
                 'x = fluid.layers.reshape(x, shape=[1, two])'
             ]
 
