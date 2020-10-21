@@ -1854,10 +1854,9 @@ class Model(object):
                     logs[k] = v
             else:
                 if self._inputs is not None:
-                    outs = getattr(self,
-                                   mode + '_batch')(data[:len(self._inputs)])
+                    outs = self.predict_batch(data[:len(self._inputs)])
                 else:
-                    outs = getattr(self, mode + '_batch')(data)
+                    outs = self.predict_batch(data)
 
                 outputs.append(outs)
 
