@@ -628,7 +628,7 @@ class ModuleApiTest(unittest.TestCase):
             model.prepare()
             if self.param_states:
                 model.load(self.param_states, optim_state=None)
-            return model.test_batch(self.inputs)
+            return model.predict_batch(self.inputs)
 
     def check_output_with_place(self, place, mode="test"):
         dygraph_output = self._calc_output(place, mode, dygraph=True)
