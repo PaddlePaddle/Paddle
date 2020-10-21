@@ -487,6 +487,7 @@ class TestCUDNNLstmOp(OpTest):
             'input_size': input_size,
             'hidden_size': hidden_size,
             'num_layers': self.num_layers,
+            'is_test': self.is_test,
         }
         self.outputs = {
             'Out': output,
@@ -554,6 +555,12 @@ class TestCUDNNLstmCpu6(TestCUDNNLstmCpu):
     def set_attrs(self):
         self.is_test = True
         self.is_bidirec = True
+        self.num_layers = 2
+
+
+class TestCUDNNLstmCpu7(TestCUDNNLstmCpu):
+    def set_attrs(self):
+        self.is_test = True
         self.num_layers = 2
 
 

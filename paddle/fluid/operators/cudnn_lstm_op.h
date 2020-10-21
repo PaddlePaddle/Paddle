@@ -345,14 +345,14 @@ struct Layer {
   void preprocess(const framework::ExecutionContext& context,
                   const Tensor* input, const Tensor& weight,
                   const Tensor& bias_ih, const Tensor& bias_hh,
-                  Tensor* cache_input) {
+                  Tensor* cache_input, bool is_test) {
     // crate the temp input for the X * W_ih^T + Bias_ih
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     const int& hidden_size = weight.dims()[0];
     cache_input->Resize(framework::make_ddim(
         {input->dims()[0], input->dims()[1], hidden_size}));
-    if (cache_input->numel() == 0) {  // is_test == true
+    if (is_test) {
       cache_input->mutable_data<T>(context.GetPlace());
     }
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
@@ -435,7 +435,8 @@ struct SingleLayer : Layer<T> {
     // first step, we could calcalute the W_ih * input + Bias_ih to more faster
     const int& time_step = input->dims()[0];
     // vec[0] is parameter of w_hi, vec[2] is bias of b_hi
-    this->preprocess(context, input, vec[0], vec[2], vec[3], gate_value);
+    this->preprocess(context, input, vec[0], vec[2], vec[3], gate_value,
+                     is_test);
     VLOG(2) << "output shape: " << output->dims();
 
     auto input_tensors = Unbind(*gate_value);
@@ -579,7 +580,8 @@ struct BidirLayer : Layer<T> {
       cell_value->Resize({2, cell_value->numel() / 2});
       forward_input_w = gate_value->Slice(0, 1);
     }
-    this->preprocess(context, input, vec[0], vec[2], vec[3], &forward_input_w);
+    this->preprocess(context, input, vec[0], vec[2], vec[3], &forward_input_w,
+                     is_test);
     auto forward_input_tensors = Unbind(forward_input_w);
 
     output_vec[0].Resize(
@@ -700,8 +702,12 @@ struct BidirLayer : Layer<T> {
                  backward_output_tensors.end());
 
     // second step, we calcluate the bw_ih * reverse_input + bw_ih
-    Tensor backward_input_w = gate_value->Slice(1, 2);
-    this->preprocess(context, input, vec[4], vec[6], vec[7], &backward_input_w);
+    Tensor backward_input_w;
+    if (!is_test) {
+      backward_input_w = gate_value->Slice(1, 2);
+    }
+    this->preprocess(context, input, vec[4], vec[6], vec[7], &backward_input_w,
+                     is_test);
     auto backward_input_tensors = Unbind(backward_input_w);
     std::reverse(backward_input_tensors.begin(), backward_input_tensors.end());
     Tensor backward_mask_matrix;
