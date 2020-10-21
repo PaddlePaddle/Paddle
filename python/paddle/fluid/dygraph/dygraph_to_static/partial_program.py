@@ -277,7 +277,9 @@ class PartialProgramLayer(layers.Layer):
         for i, idx in enumerate(self._outputs.var_ids):
             flatten_outputs[idx] = out_vars[i]
         outs = self._outputs.restore(flatten_outputs)
-        if outs is not None and len(outs) == 1:
+        if outs is not None:
+            assert isinstance(outs, (list, tuple))
+            # unwrap returned value(s) from list
             outs = outs[0]
 
         return outs

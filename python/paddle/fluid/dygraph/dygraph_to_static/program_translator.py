@@ -607,10 +607,8 @@ class ConcreteProgram(object):
                         raise
 
                 if outputs is not None:
-                    need_wrap_into_list = not isinstance(outputs, (
-                        tuple, list)) or len(outputs) == 1
-                    if need_wrap_into_list:
-                        outputs = [outputs]
+                    # wrap returned value(s) into a list
+                    outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
 
