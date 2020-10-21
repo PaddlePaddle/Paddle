@@ -986,7 +986,7 @@ class Model(object):
 
     def predict_batch(self, inputs):
         """
-        Run one predict step on a batch of data.
+        Run one predicting step on a batch of data.
 
         Args:
             inputs (numpy.ndarray|Tensor|list): A batch of input data.
