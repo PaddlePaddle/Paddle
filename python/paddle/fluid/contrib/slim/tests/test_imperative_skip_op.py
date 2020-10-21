@@ -24,10 +24,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass, QuantizationTransformPass
-from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
