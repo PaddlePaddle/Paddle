@@ -897,8 +897,10 @@ class Model(object):
             inputs (numpy.ndarray|Tensor|list): It could be a numpy array or 
                 paddle.Tensor, or a list of arrays or tensors (in case the 
                 model has multiple inputs).
-            labels (list): A list of numpy.ndarray, each is a batch of
-                input label. If has no labels, set None. Default is None.
+            labels (numpy.ndarray|Tensor|list): It could be a numpy array or 
+                paddle.Tensor, or a list of arrays or tensors (in case the 
+                model has multiple labels). If has no labels, set None. 
+                Default is None.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -945,8 +947,10 @@ class Model(object):
             inputs (numpy.ndarray|Tensor|list): It could be a numpy array or 
                 paddle.Tensor, or a list of arrays or tensors (in case the 
                 model has multiple inputs).
-            labels (list): A list of numpy.ndarray, each is a batch of
-                input label. If has no labels, set None. Default is None.
+            labels (numpy.ndarray|Tensor|list): It could be a numpy array or 
+                paddle.Tensor, or a list of arrays or tensors (in case the 
+                model has multiple labels). If has no labels, set None. 
+                Default is None.
 
         Returns:
             A list of scalar testing loss if the model has no metrics,
