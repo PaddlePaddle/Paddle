@@ -1100,7 +1100,7 @@ def max(x, axis=None, keepdim=False, name=None):
             float64, int32, int64.
         axis(list|int, optional): The axis along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
-             `x` and return a Tensor variable with a single element,
+            `x` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-x.ndim(x), x.ndim(x))`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the
