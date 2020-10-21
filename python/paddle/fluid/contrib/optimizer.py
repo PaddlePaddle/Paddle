@@ -16,7 +16,9 @@ from ..regularizer import L1DecayRegularizer
 from ..regularizer import L2DecayRegularizer
 from .. import core
 from .. import framework
+from ..framework import program_guard
 from .. import unique_name
+from .. import layers
 from ..layer_helper import LayerHelper
 import warnings
 
@@ -103,6 +105,7 @@ class Momentum(Optimizer):
                  regularization=None,
                  grad_clip=None,
                  multi_precision=False,
+                 loss_scaling=1.0,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
@@ -124,6 +127,7 @@ class Momentum(Optimizer):
         if (isinstance(regularization, L2DecayRegularizer)):
             self._regularization_method = "l2_decay"
         self._multi_precision = multi_precision
+        self._loss_scaling = loss_scaling if multi_precision else 1.0
         self._master_weights = {}
 
     def _create_master_weight(self, param):
@@ -213,7 +217,8 @@ class Momentum(Optimizer):
                 'mu', self._momentum, 'use_nesterov', self._use_nesterov,
                 'regularization_method', self._regularization_method,
                 'regularization_coeff', self._regularization_coeff,
-                'multi_precision', find_master)
+                'multi_precision', find_master, 'loss_scaling',
+                self._loss_scaling)
             return None
 
         attrs = {
@@ -221,7 +226,8 @@ class Momentum(Optimizer):
             "use_nesterov": self._use_nesterov,
             "regularization_method": self._regularization_method,
             "regularization_coeff": self._regularization_coeff,
-            "multi_precision": find_master
+            "multi_precision": find_master,
+            "loss_scaling": self._loss_scaling
         }
         inputs = {
             "Param": [param_and_grad[0]],
@@ -247,3 +253,17 @@ class Momentum(Optimizer):
             stop_gradient=True)
 
         return momentum_op
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            scaled_loss = layers.scale(loss, scale=self._loss_scaling)
+        super(Momentum, self).minimize(
+            loss=scaled_loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)

@@ -194,6 +194,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
   const LRType<MT>* lr_;
   const MT* mp_;
   const MT mu_;
+  const MT scaling_;
   const int64_t num_;
   T* p_out_;
   MT* v_out_;
@@ -204,7 +205,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
  public:
   DenseMomentumFunctor(const T* p, const T* g, const MT* v,
                        const LRType<MT>* learning_rate, const MT* mp,
-                       const MT mu, const int64_t num,
+                       const MT mu, const MT scaling, const int64_t num,
                        const RegularizationFlag regularization_flag,
                        const MT regularization_coeff, T* p_out, MT* v_out,
                        MT* mp_out)
@@ -214,6 +215,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
         lr_(learning_rate),
         mp_(mp),
         mu_(mu),
+        scaling_(scaling),
         num_(num),
         p_out_(p_out),
         v_out_(v_out),
@@ -223,7 +225,7 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
     const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
-    MT g = static_cast<MT>(g_[i]);
+    MT g = static_cast<MT>(g_[i]) / scaling_;
     const MT lr = static_cast<MT>(lr_[0]);
     const MT v = v_[i];
 
@@ -251,6 +253,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
   const LRType<MT>* lr_;
   const MT* mp_;
   const MT mu_;
+  const MT scaling_;
   const int64_t num_;
   T* p_out_;
   MT* v_out_;
@@ -261,7 +264,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
  public:
   DenseMomentumFunctor(const T* p, const T* g, const MT* v,
                        const LRType<MT>* learning_rate, const MT* mp,
-                       const MT mu, const int64_t num,
+                       const MT mu, const MT scaling, const int64_t num,
                        const RegularizationFlag regularization_flag,
                        const MT regularization_coeff, T* p_out, MT* v_out,
                        MT* mp_out)
@@ -271,6 +274,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
         lr_(learning_rate),
         mp_(mp),
         mu_(mu),
+        scaling_(scaling),
         num_(num),
         p_out_(p_out),
         v_out_(v_out),
@@ -280,7 +284,7 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
     const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
-    MT g = static_cast<MT>(g_[i]);
+    MT g = static_cast<MT>(g_[i]) / scaling_;
     const MT lr = static_cast<MT>(lr_[0]);
     const MT v = v_[i];
 
@@ -311,6 +315,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
   const LRType<MT>* lr_;
   const MT* mp_;
   const MT mu_;
+  const MT scaling_;
   const int64_t* rows_;
   const int64_t row_numel_;
   const int64_t row_height_;
@@ -323,8 +328,8 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
  public:
   SparseMomentumFunctor(const T* p, const T* g, const MT* v,
                         const LRType<MT>* lr, const MT* mp, const MT mu,
-                        const int64_t* rows, int64_t row_numel,
-                        int64_t row_height,
+                        const MT scaling, const int64_t* rows,
+                        int64_t row_numel, int64_t row_height,
                         const RegularizationFlag regularization_flag,
                         const MT regularization_coeff, T* p_out, MT* v_out,
                         MT* mp_out)
@@ -334,6 +339,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
         lr_(lr),
         mp_(mp),
         mu_(mu),
+        scaling_(scaling),
         rows_(rows),
         row_numel_(row_numel),
         row_height_(row_height),
@@ -347,7 +353,8 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT g = row_idx >= 0
-               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_])
+               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_]) /
+                     scaling_
                : static_cast<MT>(0);
     // put memory access in register
     const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
@@ -378,6 +385,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
   const LRType<MT>* lr_;
   const MT* mp_;
   const MT mu_;
+  const MT scaling_;
   const int64_t* rows_;
   const int64_t row_numel_;
   const int64_t row_height_;
@@ -390,8 +398,8 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
  public:
   SparseMomentumFunctor(const T* p, const T* g, const MT* v,
                         const LRType<MT>* lr, const MT* mp, const MT mu,
-                        const int64_t* rows, int64_t row_numel,
-                        int64_t row_height,
+                        const MT scaling, const int64_t* rows,
+                        int64_t row_numel, int64_t row_height,
                         const RegularizationFlag regularization_flag,
                         const MT regularization_coeff, T* p_out, MT* v_out,
                         MT* mp_out)
@@ -401,6 +409,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
         lr_(lr),
         mp_(mp),
         mu_(mu),
+        scaling_(scaling),
         rows_(rows),
         row_numel_(row_numel),
         row_height_(row_height),
@@ -414,7 +423,8 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
     MT g = row_idx >= 0
-               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_])
+               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_]) /
+                     scaling_
                : static_cast<MT>(0);
     // put memory access in register
     const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
@@ -464,6 +474,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     }
 
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
+    MT loss_scaling = static_cast<MT>(1.0);
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
     auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
@@ -483,6 +494,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
                             "the attr `multi_precision` is true"));
       master_param = ctx.Input<framework::Tensor>("MasterParam");
       master_param_out = ctx.Output<framework::Tensor>("MasterParamOut");
+      loss_scaling = static_cast<MT>(ctx.Attr<float>("loss_scaling"));
     }
 
     param_out->mutable_data<T>(ctx.GetPlace());
@@ -509,8 +521,8 @@ class MomentumOpKernel : public framework::OpKernel<T> {
           DenseMomentumFunctor<T, MT, UseNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<MT>(),
               learning_rate->data<LRType<MT>>(), master_in_data, mu,
-              param->numel(), regularization_flag, regularization_coeff,
-              param_out->mutable_data<T>(ctx.GetPlace()),
+              loss_scaling, param->numel(), regularization_flag,
+              regularization_coeff, param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<MT>(ctx.GetPlace()), master_out_data);
           for_range(functor);
 
@@ -518,8 +530,8 @@ class MomentumOpKernel : public framework::OpKernel<T> {
           DenseMomentumFunctor<T, MT, NoNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<MT>(),
               learning_rate->data<LRType<MT>>(), master_in_data, mu,
-              param->numel(), regularization_flag, regularization_coeff,
-              param_out->mutable_data<T>(ctx.GetPlace()),
+              loss_scaling, param->numel(), regularization_flag,
+              regularization_coeff, param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<MT>(ctx.GetPlace()), master_out_data);
           for_range(functor);
         }
@@ -551,7 +563,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         SparseMomentumFunctor<T, MT, UseNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
             velocity->data<MT>(), learning_rate->data<LRType<MT>>(),
-            master_in_data, mu, rows, row_numel,
+            master_in_data, mu, loss_scaling, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
             regularization_flag, regularization_coeff,
             param_out->mutable_data<T>(ctx.GetPlace()),
@@ -562,7 +574,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         SparseMomentumFunctor<T, MT, NoNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
             velocity->data<MT>(), learning_rate->data<LRType<MT>>(),
-            master_in_data, mu, rows, row_numel,
+            master_in_data, mu, loss_scaling, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
             regularization_flag, regularization_coeff,
             param_out->mutable_data<T>(ctx.GetPlace()),

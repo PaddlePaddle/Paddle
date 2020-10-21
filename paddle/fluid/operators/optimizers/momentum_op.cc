@@ -74,6 +74,7 @@ void MomentumOpMaker::Make() {
                 "(bool, default false) "
                 "Whether to use multi-precision during weight updating.")
       .SetDefault(false);
+  AddAttr<float>("loss_scaling", "(float) loss scaling value");
   AddComment(R"DOC(
 Momentum Optimizer.
 
