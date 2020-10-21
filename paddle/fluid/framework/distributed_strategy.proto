@@ -25,11 +25,7 @@ enum Mode {
 message RecomputeConfig { repeated string checkpoints = 1; }
 
 message ShardingConfig {
-  optional bool amp = 1 [ default = true ];
-  optional int32 nrings = 2 [ default = 3 ];
-  optional float fuse_broadcast_MB_bytes = 3 [ default = 64.0 ];
-  repeated string checkpoints = 4;
-  optional bool allreduce = 5 [ default = false ];
+  optional float fuse_broadcast_MB = 1 [ default = 32.0 ];
 }
 
 message AMPConfig {
