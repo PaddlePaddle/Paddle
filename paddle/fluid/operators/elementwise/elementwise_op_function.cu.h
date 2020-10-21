@@ -64,7 +64,7 @@ struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     PADDLE_ENFORCE(b != 0,
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
                    DIV_ERROR_INFO);
 #else
                    platform::errors::InvalidArgument(DIV_ERROR_INFO));
@@ -97,7 +97,7 @@ struct DivRangeFunctor<
   DivRangeFunctor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {}
   inline HOSTDEVICE void operator()(size_t id) const {
     PADDLE_ENFORCE(y_[id] != 0,
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
                    DIV_ERROR_INFO);
 #else
                    platform::errors::InvalidArgument(DIV_ERROR_INFO));

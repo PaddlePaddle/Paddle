@@ -59,7 +59,7 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
     PADDLE_ENFORCE(x_stride == 1,
                    "When i:%d == rank:%d - 1, x_stride of random_crop_op "
                    "expected to be 1, but got %ld. Please check input "

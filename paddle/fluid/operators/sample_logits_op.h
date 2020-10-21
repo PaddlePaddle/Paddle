@@ -35,7 +35,7 @@ template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
     PADDLE_ENFORCE(std::is_floating_point<T>::value,
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
                    "TolerableValue should be float in sample_logits_op.");
 #else
                    platform::errors::InvalidArgument(

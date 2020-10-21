@@ -169,7 +169,7 @@ struct HardLabelCrossEntropyForwardFunctor {
       // don't update to PADDLE_ENFORCE_GE and PADDLE_ENFORCE_LT cause
       // can't use platform::errors::InvalidArgument in HOSTDEVICE
       PADDLE_ENFORCE(label >= 0 && label < feature_size_,
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__)
                      "Variable value (label) of "
                      "OP(fluid.layers.cross_entropy) expected >= 0 "
                      "and < %ld, but got %ld. Please check label value.",
