@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper
-from .common import is_backward_op
-from .meta_optimizer_base import MetaOptimizerBase
-from paddle.distributed.fleet.meta_optimizers.sharding.sharding_utils import *
 from paddle.fluid import unique_name, core
-
 import paddle.fluid as fluid
 
-import math
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
+from paddle.distributed.fleet.meta_optimizers.common import is_backward_op
+from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
+from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
+from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
+from paddle.distributed.fleet.meta_optimizers.sharding.weight_decay_helper import WeightDecayHelper
+from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper import GradientClipHelper
+from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 
 __all__ = ["ShardingOptimizer"]
 
@@ -42,7 +45,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._broadcast_vars = set([])
         # reduced grads to param name
         self._reduced_grads_to_param = {}
-        self._device_variables = DeviceVariables()
+        self._shard = Shard()
 
     def _can_apply(self):
         return self.user_defined_strategy.sharding
@@ -59,14 +62,12 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._fuse_broadcast_MB = self.user_defined_strategy.sharding_configs[
             "fuse_broadcast_MB_bytes"]
 
-        print("doing sharding inner_opt optimize...")
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
-        print("doing sharding optimize...")
         if startup_program is None:
             startup_program = default_startup_program()
         main_block = loss.block
@@ -81,7 +82,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._split_program(main_block)
 
         # step3: add broadcast and reduce ops
-        print("insert broadcast and allreduce")
         self._add_broadcast_allreduce(main_block)
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
@@ -92,22 +92,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block._sync_with_cpp()
 
         # step5: remove unneeded ops and vars from block
-        print("main_block remove ops and vars")
         self._prune_main_program(main_block)
-        print("startup_block remove ops and vars")
         self._prune_startup_program(startup_block)
-
-        import os
-        if not os.path.isdir("debug_program"):
-            os.mkdir("debug_program")
-
-        with open("debug_program/main_program.txt.%d" %
-                  (int(os.environ.get('FLAGS_selected_gpus', 0))), 'w') as f:
-            f.write(str(fluid.default_main_program()))
-
-        with open("debug_program/startup_program.txt.%d" %
-                  (int(os.environ.get('FLAGS_selected_gpus', 0))), 'w') as f:
-            f.write(str(fluid.default_startup_program()))
 
         # check op dependecy for broadcast
         check_broadcast(main_block)
@@ -131,11 +117,11 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # step 2: split params
         self._params = set([x[0].name for x in params_grads])
-        self._device_variables.setup(params_grads, worker_idx,
-                                     self.role_maker._worker_num())
+        self._shard.setup(params_grads, worker_idx,
+                          self.role_maker._worker_num())
 
         # step 3: get broadcast vars
-        self._broadcast_vars = self._device_variables.find_broadcast_params(
+        self._broadcast_vars = self._shard.find_broadcast_params(
             self._main_program.global_block())
 
     def _wait(self, ):
@@ -145,8 +131,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
-        print("self._broadcast_vars")
-        print(self._broadcast_vars)
         for op_idx, op in reversed(list(enumerate(block.ops))):
             if int(op.attr('op_role')) != int(OpRole.Optimize):
                 last_backward_op_idx = op_idx + 1
@@ -162,30 +146,25 @@ class ShardingOptimizer(MetaOptimizerBase):
                 segment = ProgramSegment(block)
                 segment._end_idx = op_idx + 1
 
-            print("-" * 20)
-            print(op.type, segment._param_mem)
             # find broadcast vars
             for input_name in op.desc.input_arg_names():
-                print(input_name)
                 if input_name not in self._broadcast_vars:
                     continue
-                    print("var in _broadcast_vars")
                 if input_name in segment._param2broadcast:
                     # skip broadcast because it reuse the old broadcast var
                     broadcast_name = segment._param2broadcast[input_name]
                     if input_name != broadcast_name:
                         op._rename_input(input_name, broadcast_name)
                     continue
-                if self._device_variables.has_param(input_name):
+                if self._shard.has_param(input_name):
                     broadcast_var_name = input_name
                 else:
                     broadcast_var_name = unique_name.generate(input_name +
                                                               "@BroadCast")
                     segment._fill_constant_vars.append(broadcast_var_name)
                 segment._param2broadcast[input_name] = broadcast_var_name
-                segment._broadcast_vars.append(
-                    (broadcast_var_name,
-                     self._device_variables.device(input_name)))
+                segment._broadcast_vars.append((broadcast_var_name,
+                                                self._shard.device(input_name)))
                 segment._param_mem += get_var_size(
                     self._main_program.global_block().var(input_name))
 
@@ -206,7 +185,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             if FP16Utils.is_fp16_cast_op(block, op, self._params):
                 fp32_param = op.desc.input_arg_names()[0]
                 fp16_param = op.desc.output_arg_names()[0]
-                if self._device_variables.has_param(fp32_param):
+                if self._shard.has_param(fp32_param):
                     segment._cast_ops[fp16_param] = fp32_param
 
         if segment._param_mem > 0:
@@ -220,10 +199,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         remove ops and vars not needed in this worker
         """
         weightdecay_helper = WeightDecayHelper()
-        weightdecay_helper.prune_weight_decay(block, self._device_variables)
-        self._prune_fp16(block)
+        weightdecay_helper.prune_weight_decay(block, self._shard)
+        FP16Utils.prune_fp16(block, self._shard, self._reduced_grads_to_param,
+                             self._nrings)
         gradientclip_helper = GradientClipHelper()
-        gradientclip_helper.prune_gradient_clip(block, self._device_variables)
+        gradientclip_helper.prune_gradient_clip(block, self._shard)
 
         # build prog deps
         reduced_grads = []
@@ -235,11 +215,12 @@ class ShardingOptimizer(MetaOptimizerBase):
                 output_name = output_names[0]
                 reduced_grads.append(output_name)
 
-        opti_vars = []
+        pruned_opti_vars = []
         for var_name in list(block.vars.keys()):
-            if self._device_variables.has_opt_var(var_name):
-                opti_vars.append(var_name)
-        program_deps = ProgramDeps(block, reduced_grads, opti_vars)
+            if self._shard.is_opti_var(var_name) and \
+              not self._shard.has_opt_var(var_name):
+                pruned_opti_vars.append(var_name)
+        program_deps = ProgramDeps(block, reduced_grads, pruned_opti_vars)
 
         # Init
         for var_name in program_deps._end_vars:
@@ -287,96 +268,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         block._sync_with_cpp()
         return
 
-    def _prune_fp16(self, block):
-        # remove cast
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if not FP16Utils.is_fp32_cast_op(block, op):
-                continue
-            output_name = op.desc.output_arg_names()[0]
-            param_name = output_name.strip("@GRAD")
-            if param_name not in self._params:
-                raise ValueError("Input 'X' of check_finite_and_unscale must"
-                                 "be grads, but {} is not a grad".format(
-                                     input_name))
-            if output_name in self._reduced_grads_to_param:
-                continue
-            if self._device_variables.has_param(param_name):
-                continue
-            block._remove_op(idx)
-            block._remove_var(output_name)
-
-        block._sync_with_cpp()
-        update_loss_scaling_op_idx = -1
-        inf_var_name = ''
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type == "update_loss_scaling":
-                update_loss_scaling_op_idx = idx
-                inf_var_name = op.desc.input('FoundInfinite')[0]
-                op._rename_input(inf_var_name, inf_var_name + "@sharding")
-            if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
-                reversed_x = []
-                for input_name in op.desc.input('X'):
-                    param_name = input_name.strip("@GRAD")
-                    if param_name not in self._params:
-                        raise ValueError(
-                            "Input 'X' of check_finite_and_unscale must"
-                            "be grads, but {} is not a grad".format(input_name))
-                    if self._device_variables.has_param(param_name):
-                        reversed_x.append(input_name)
-                op.desc.set_input('X', reversed_x)
-                op.desc.set_output('Out', reversed_x)
-        if update_loss_scaling_op_idx == -1:
-            return
-        inf_var = block.var(inf_var_name)
-        inf_var_fp32 = block.create_var(
-            name=inf_var_name + "@cast_int32",
-            shape=inf_var.shape,
-            dtype=core.VarDesc.VarType.INT32)
-        inf_var_sharding = block.create_var(
-            name=inf_var_name + "@sharding",
-            shape=inf_var.shape,
-            dtype=inf_var.dtype)
-        block._insert_op(
-            update_loss_scaling_op_idx,
-            type='cast',
-            inputs={'X': inf_var},
-            outputs={'Out': inf_var_fp32},
-            attrs={
-                "in_dtype": inf_var.dtype,
-                "out_dtype": inf_var_fp32.dtype,
-                OP_ROLE_KEY: OpRole.Optimize
-            })
-        insert_sync_calc_op(block, update_loss_scaling_op_idx + 1,
-                            [inf_var_fp32])
-        block._insert_op(
-            update_loss_scaling_op_idx + 2,
-            type='c_allreduce_max',
-            inputs={'X': inf_var_fp32},
-            outputs={'Out': inf_var_fp32},
-            attrs={'ring_id': 0,
-                   OP_ROLE_KEY: OpRole.Optimize})
-        comm_op_num = insert_sync_comm_ops(block,
-                                           update_loss_scaling_op_idx + 3,
-                                           self._nrings, [inf_var_fp32])
-        block._insert_op(
-            update_loss_scaling_op_idx + 3 + comm_op_num,
-            type='cast',
-            inputs={'X': inf_var_fp32},
-            outputs={'Out': inf_var_sharding},
-            attrs={
-                "in_dtype": inf_var_fp32.dtype,
-                "out_dtype": inf_var_sharding.dtype,
-                OP_ROLE_KEY: OpRole.Optimize
-            })
-        block._sync_with_cpp()
-
     def _add_broadcast_allreduce(self, block):
         """
         _add_broadcast_allreduce
         """
         ring_id = -1
-        print("len(self._segments)")
-        print(len(self._segments))
         if len(self._segments) < 1:
             return
 
@@ -389,9 +285,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                                  self._segments[-1]._allreduce_vars)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
-            print("segment_{}: ({}-{})".format(idx, segment._start_idx,
-                                               segment._end_idx))
-
             allreduce_vars = self._segments[
                 idx - 1]._allreduce_vars if idx > 0 else []
             broadcast_vars = self._segments[idx +
@@ -492,21 +385,16 @@ class ShardingOptimizer(MetaOptimizerBase):
         return
 
     def _prune_startup_program(self, block):
-
         for idx, op in reversed(list(enumerate(block.ops))):
             for output_name in op.desc.output_arg_names():
-                if self._device_variables.has_var(output_name):
+                if self._shard.has_var(output_name):
                     continue
                 #TODO why do we remove op, when only one var is removed
-                print("%d: startup_block remove op %s" %
-                      (self.role_maker._worker_index(), op.type))
                 block._remove_op(idx)
                 break
 
         for var_name in list(block.vars.keys()):
-            if self._device_variables.has_var(var_name):
+            if self._shard.has_var(var_name):
                 continue
-            print("%d: startup_block remove var %s" %
-                  (self.role_maker._worker_index(), var_name))
             block._remove_var(var_name)
         block._sync_with_cpp()
