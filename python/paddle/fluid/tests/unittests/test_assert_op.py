@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import unittest
@@ -87,4 +88,5 @@ class TestAssertOp(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

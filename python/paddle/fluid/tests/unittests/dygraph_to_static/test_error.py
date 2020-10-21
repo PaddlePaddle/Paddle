@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.core import EnforceNotMet
 from paddle.fluid.dygraph.dygraph_to_static import error
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import unwrap
 
@@ -130,7 +129,7 @@ class TestErrorInCompileTime2(TestErrorInCompileTime):
         self.func = func_error_in_compile_time_2
 
     def set_exception_type(self):
-        self.exception_type = EnforceNotMet
+        self.exception_type = ValueError
 
     def set_message(self):
 
@@ -146,7 +145,7 @@ class TestErrorInRuntime(TestErrorInCompileTime):
         self.func = func_error_in_runtime
 
     def set_exception_type(self):
-        self.exception_type = EnforceNotMet
+        self.exception_type = ValueError
 
     def set_message(self):
         self.expected_message = \

@@ -194,7 +194,7 @@ class TestMultiplyError(unittest.TestCase):
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[20, 50], dtype=np.float64)
             y = paddle.static.data(name='y', shape=[20], dtype=np.float64)
-            self.assertRaises(fluid.core.EnforceNotMet, tensor.multiply, x, y)
+            self.assertRaises(ValueError, tensor.multiply, x, y)
 
         np.random.seed(7)
         # test dynamic computation graph: dtype can not be int8
@@ -203,21 +203,21 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.int8)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
+        self.assertRaises(RuntimeError, paddle.multiply, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable
         x_data = np.random.rand(200, 5)
         y_data = np.random.rand(200)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
+        self.assertRaises(ValueError, paddle.multiply, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable(python)
         x_data = np.random.rand(200, 5)
         y_data = np.random.rand(200)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
+        self.assertRaises(ValueError, paddle.multiply, x, y)
 
         # test dynamic computation graph: dtype must be same
         x_data = np.random.randn(200).astype(np.int64)

@@ -136,8 +136,7 @@ class TestRetainGraph(unittest.TestCase):
 
     def test_retain(self):
         self.run_retain(need_retain=True)
-        self.assertRaises(
-            fluid.core.EnforceNotMet, self.run_retain, need_retain=False)
+        self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
 
 
 if __name__ == '__main__':
