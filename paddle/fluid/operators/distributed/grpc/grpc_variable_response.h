@@ -65,6 +65,32 @@ class GRPCVariableResponse : public VariableResponse {
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
 };
 
+class GRPCMultiVariableResponseHelper {
+ public:
+  GRPCMultiVariableResponseHelper(const framework::Scope* scope,
+                                  const platform::DeviceContext* dev_ctx,
+                                  bool create_scope = false) {
+    if (create_scope) {
+      local_scope_ = scope->NewTmpScope().release();
+    }
+  }
+
+  ~GRPCMultiVariableResponseHelper() {
+    if (local_scope_) {
+      delete local_scope_;
+      local_scope_ = nullptr;
+    }
+  }
+
+  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
+
+ protected:
+  const framework::Scope* scope_;
+  const platform::DeviceContext* dev_ctx_;
+  bool create_scope_ = false;
+  framework::Scope* local_scope_ = nullptr;
+};
+
 };  // namespace distributed
 };  // namespace operators
 };  // namespace paddle

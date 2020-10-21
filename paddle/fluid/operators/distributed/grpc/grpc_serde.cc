@@ -164,17 +164,17 @@ void SerializeToMultiVarMsg(const std::string& message_name,
                             const int trainer_id) {
   // 1. message_name
   request->set_message_name(message_name);
-
+  VLOG(1) << "SerializeToMultiVarMsg finsh set_message_name";
   // 2. send_var_names
   for (auto& send_var_name : send_var_name_val) {
     request->add_send_var_names(send_var_name);
   }
-
+  VLOG(1) << "SerializeToMultiVarMsg finsh add_send_var_names";
   // 3. recv_var_names
   for (auto& recv_var_name : recv_var_name_val) {
     request->add_recv_var_names(recv_var_name);
   }
-
+  VLOG(1) << "SerializeToMultiVarMsg finsh add_recv_var_names";
   // 4. VarMessage
   for (auto& send_var_name : send_var_name_val) {
     auto* send_var_msg = request->add_var_messages();
@@ -182,6 +182,7 @@ void SerializeToMultiVarMsg(const std::string& message_name,
     SerializeLodTensorToVarMsg(send_var_name, scope, ctx, trainer_id,
                                send_var_msg);
   }
+  VLOG(1) << "SerializeToMultiVarMsg finsh SerializeLodTensorToVarMsg";
 }
 
 void SerializeLodTensorToVarMsg(const std::string& var_name,
@@ -189,23 +190,25 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
                                 const platform::DeviceContext& ctx,
                                 const int trainer_id, VarMsg* var_msg) {
   framework::Variable* var = scope->FindVar(var_name);
-  if (var == nullptr) {
-    PADDLE_ENFORCE_NE(
-        var, nullptr,
-        platform::errors::InvalidArgument(
-            "SerializeLodTensorToVarMsg Didn't find %s", var_name));
-  }
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh FindVar " << var_name;
+  PADDLE_ENFORCE_NE(var, nullptr,
+                    platform::errors::InvalidArgument(
+                        "SerializeLodTensorToVarMsg Didn't find %s", var_name));
 
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh GetMutable";
   var_msg->set_varname(var_name);
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh set_varname";
   var_msg->set_trainer_id(trainer_id);
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh set_trainer_id";
   var_msg->set_type(::sendrecv::LOD_TENSOR);
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh set_type";
   var_msg->set_data_type(static_cast<VarMsg::Type>(tensor->type()));
-
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh set_data_type";
   for (auto& dim : framework::vectorize(tensor->dims())) {
     var_msg->add_dims(dim);
   }
-
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh add_dims";
   const framework::LoD lod = tensor->lod();
   if (lod.size() > 0) {
     var_msg->set_lod_level(lod.size());
@@ -216,15 +219,19 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
       }
     }
   }
-
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh add_lod_data";
   auto* var_data = var_msg->mutable_serialized();
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh mutable_serialized";
   var_data->clear();
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh clear";
   var_data->resize(tensor->numel() * framework::SizeOfType(tensor->type()));
+  VLOG(1) << "SerializeLodTensorToVarMsg finsh resize";
   char* data_ptr = const_cast<char*>(var_data->data());
 
   if (platform::is_cpu_place(tensor->place())) {
     memcpy(data_ptr, tensor->data<void>(),
            tensor->numel() * framework::SizeOfType(tensor->type()));
+    VLOG(1) << "SerializeLodTensorToVarMsg finsh memcpy";
   } else {
 #ifdef PADDLE_WITH_CUDA
     memory::Copy(platform::CPUPlace(), data_ptr,
@@ -232,6 +239,7 @@ void SerializeLodTensorToVarMsg(const std::string& var_name,
                  tensor->data<void>(),
                  tensor->numel() * framework::SizeOfType(tensor->type()),
                  nullptr);
+    VLOG(1) << "SerializeLodTensorToVarMsg finsh memory::Copy";
 #endif
 #ifdef PADDLE_WITH_XPU
     memory::Copy(platform::CPUPlace(), data_ptr,

@@ -533,9 +533,12 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(
 
       auto call =
           s->stub_->AsyncSendAndRecvVariable(s->context_.get(), request, &cq_);
-      // call->StartCall();
-      VLOG(4) << "GRPCClient::SendAndRecv, finish AsyncSendAndRecvVariable ";
       call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+      // MultiVarMsg reply;
+      // auto status = s->stub_->SendAndRecvVariable(s->context_.get(), request,
+      // &reply);
+      // VLOG(4) << "GRPCClient::SendAndRecv, finish SendAndRecvVariable ";
+      // DeserializeFromMultiVarMsg(reply, *p_ctx, p_scope, &trainer_id_);
       VLOG(4) << "GRPCClient::SendAndRecv, Finish ";
       if (UNLIKELY(platform::IsProfileEnabled())) {
         h->Wait();

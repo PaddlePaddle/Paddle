@@ -108,10 +108,6 @@ class VariableResponse {
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
 
-  inline sendrecv::MultiVariableMessage GetMultiVariableMessage() const {
-    return multi_meta_;
-  }
-
   // should call parse first.
   framework::Variable* GetVar() {
     if (create_scope_) {

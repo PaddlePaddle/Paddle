@@ -115,6 +115,77 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   EXPECT_EQ(slr2->height(), 1000);
 }
 
+void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
+                       const platform::DeviceContext& ctx) {
+  // var 1
+  framework::Variable* var1 = scope->Var("x1");
+  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+  tensor1->Resize(framework::make_ddim({512, 8, 4, 2}));
+  framework::LoD lod1;
+  lod1.push_back(framework::Vector<size_t>({1, 3, 8}));
+  tensor1->set_lod(lod1);
+  tensor1->mutable_data<float>(*place);
+  math::set_constant(ctx, tensor1, 31.9);
+
+  // var 2
+  framework::Variable* var2 = scope->Var("x2");
+  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+  tensor2->Resize(framework::make_ddim({1000, 64}));
+  framework::LoD lod2;
+  lod2.push_back(framework::Vector<size_t>({1, 1}));
+  tensor2->set_lod(lod2);
+  tensor2->mutable_data<float>(*place);
+  math::set_constant(ctx, tensor2, 100.0);
+}
+
+void RunMultiLodTensor(platform::Place place) {
+  framework::Scope scope;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& ctx = *pool.Get(place);
+  CreateVarsOnScope(&scope, &place, ctx);
+
+  sendrecv::MultiVariableMessage multi_msg;
+  std::string message_name("se_de_test");
+  std::vector<std::string> send_var_name = {"x1", "x2"};
+  std::vector<std::string> recv_var_name = {};
+  int trainer_id = 0;
+  LOG(INFO) << "begin SerializeToMultiVarMsg";
+  operators::distributed::SerializeToMultiVarMsg(message_name, send_var_name,
+                                                 recv_var_name, ctx, &scope,
+                                                 &multi_msg, trainer_id);
+  EXPECT_GT(multi_msg.ByteSizeLong(), static_cast<size_t>(0));
+
+  // deserialize
+  framework::Scope scope_recv;
+  auto* var1_pre = scope_recv.Var("x1");
+  auto* var2_pre = scope_recv.Var("x2");
+  var1_pre->GetMutable<framework::LoDTensor>()->mutable_data<float>(place);
+  var2_pre->GetMutable<framework::LoDTensor>()->mutable_data<float>(place);
+  LOG(INFO) << "begin DeserializeFromMultiVarMsg";
+  operators::distributed::DeserializeFromMultiVarMsg(multi_msg, ctx,
+                                                     &scope_recv, &trainer_id);
+
+  // check var1
+  framework::Variable* var1 = scope_recv.FindVar("x1");
+  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+  EXPECT_EQ(tensor1->dims(), framework::make_ddim({512, 8, 4, 2}));
+  // EXPECT_EQ(tensor1->lod(), framework::Vector<size_t>({1, 3, 8}));
+  auto* tensor_data1 = const_cast<float*>(tensor1->data<float>());
+  int tensor_numel1 = 512 * 8 * 4 * 2;
+  for (int i = 0; i < tensor_numel1; ++i)
+    EXPECT_FLOAT_EQ(tensor_data1[i], 31.9);
+
+  // check var2
+  framework::Variable* var2 = scope_recv.FindVar("x2");
+  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+  EXPECT_EQ(tensor2->dims(), framework::make_ddim({1000, 64}));
+  // EXPECT_EQ(tensor2->lod(), framework::Vector<size_t>({1, 1}));
+  auto* tensor_data2 = const_cast<float*>(tensor2->data<float>());
+  int tensor_numel2 = 1000 * 64;
+  for (int i = 0; i < tensor_numel2; ++i)
+    EXPECT_FLOAT_EQ(tensor_data2[i], 100.0);
+}
+
 void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // serialize var to ByteBuffer
   framework::Variable var;
@@ -221,4 +292,9 @@ TEST(SelectedRows, Run) {
   platform::CUDAPlace gpu;
   RunSerdeTestSelectedRows(gpu);
 #endif
+}
+
+TEST(MultiLodTensor, Run) {
+  platform::CPUPlace place;
+  RunMultiLodTensor(place);
 }
