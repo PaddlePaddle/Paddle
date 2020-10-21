@@ -38,7 +38,7 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 paddle.enable_static()
 
 
-class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
+class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -46,9 +46,11 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
-            paddle.distributed.all_reduce(tindata)
-            return [tindata]
+            tindata = paddle.split(tindata, 2)
+            tout_data = []
+            paddle.distributed.all_to_all(tindata, tout_data)
+            return tout_data
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllreduceAPI, "allreduce")
+    runtime_main(TestCollectiveAllToAllAPI, "alltoall")

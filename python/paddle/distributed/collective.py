@@ -523,7 +523,8 @@ def all_to_all(in_tensor_list, out_tensor_list, group=0):
     op_type = 'alltoall'
     temp = paddle.concat(in_tensor_list, axis=0)
     helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+    out = helper.create_variable_for_type_inference(
+        dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
         core.ops.c_allgather(temp, out, 'use_calc_stream', True, 'ring_id',
                              group, 'nranks')
@@ -557,3 +558,115 @@ def all_to_all(in_tensor_list, out_tensor_list, group=0):
             })
     global _default_group
     out_tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
+
+
+def send(tensor, dst=0, group=0):
+    """
+
+    Send a tensor to the receiver.
+
+    Args:
+        tensor (Tensor): The Tensor to send. Its data type
+            should be float16, float32, float64, int32 or int64.
+        dst (int): The destination rank id.
+        group (int): The id of the process group to work on.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.disable_static()
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                np_data = np.array([7, 8, 9])
+            else:
+                np_data = np.array([1, 2, 3])
+            data = paddle.to_tensor(np_data1)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                paddle.distributed.send(data, dst=1)
+            else:
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
+    """
+    op_type = 'send_v2'
+    if in_dygraph_mode():
+        return core.ops.send_v2(tensor, 'use_calc_stream', True, 'ring_id',
+                                group, 'peer', dst)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'send')
+    if not isinstance(group, int) or not isinstance(dst, int):
+        raise ValueError("Both the type of 'dst' and 'group' for send "
+                         "should be int.")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        attrs={
+            'ring_id': group,
+            'peer': dst,
+            'use_calc_stream': True,
+        })
+
+
+def recv(tensor, src=0, group=0):
+    """
+
+    Receive a tensor to the sender.
+
+    Args:
+        tensor (Tensor): The Tensor to receive. Its data type
+            should be float16, float32, float64, int32 or int64.
+        src (int): The source rank id.
+        group (int): The id of the process group to work on.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.disable_static()
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                np_data = np.array([7, 8, 9])
+            else:
+                np_data = np.array([1, 2, 3])
+            data = paddle.to_tensor(np_data1)
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                paddle.distributed.send(data, dst=1)
+            else:
+                paddle.distributed.recv(data, src=0)
+            out = data.numpy()
+    """
+    op_type = 'recv_v2'
+    if in_dygraph_mode():
+        return core.ops.recv_v2(tensor, 'use_calc_stream', True, 'ring_id',
+                                group, 'peer', src)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'send')
+    if not isinstance(group, int) or not isinstance(src, int):
+        raise ValueError("Both the type of 'src' and 'group' for send "
+                         "should be int.")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'Out': [tensor]},
+        attrs={
+            'ring_id': group,
+            'peer': src,
+            'use_calc_stream': True,
+        })

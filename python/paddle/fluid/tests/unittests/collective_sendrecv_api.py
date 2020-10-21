@@ -33,10 +33,12 @@ import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
-from test_collective_base import TestCollectiveRunnerBase, runtime_main
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
+paddle.enable_static()
 
 
-class TestCollectiveSendRecv(TestCollectiveRunnerBase):
+class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -46,28 +48,11 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
             if rank == 0:
-                main_prog.global_block().append_op(
-                    type="recv_v2",
-                    outputs={'Out': tindata},
-                    attrs={
-                        'ring_id': ring_id,
-                        'dtype': tindata.dtype,
-                        'out_shape': tindata.shape,
-                        'peer': 1
-                    })
+                paddle.distributed.send(tindata, dst=1)
             else:
-                main_prog.global_block().append_op(
-                    type="send_v2",
-                    inputs={'X': tindata},
-                    attrs={'ring_id': ring_id,
-                           'peer': 0})
-            main_prog.global_block().append_op(
-                type="c_sync_comm_stream",
-                inputs={'X': tindata},
-                outputs={'Out': tindata},
-                attrs={'ring_id': ring_id})
+                paddle.distributed.recv(tindata, src=0)
             return tindata
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveSendRecv, "sendrecv", 0)
+    runtime_main(TestCollectiveSendRecvAPI, "sendrecv")

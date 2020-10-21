@@ -15,16 +15,19 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle
 
-from test_collective_base import TestDistBase
+from test_collective_api_base import TestDistBase
+
+paddle.enable_static()
 
 
-class TestCSendRecvOp(TestDistBase):
+class TestCollectiveSendRecvAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_sendrecv(self):
-        self.check_with_place("collective_sendrecv_op.py", "sendrecv")
+    def test_sendrecv_nccl(self):
+        self.check_with_place("collective_sendrecv_api.py", "sendrecv", "nccl")
 
 
 if __name__ == '__main__':
