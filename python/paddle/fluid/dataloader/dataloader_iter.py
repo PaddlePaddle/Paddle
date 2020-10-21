@@ -341,7 +341,13 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 return self._reader.read_next_var_list()
             else:
                 if self._return_list:
-                    return self._reader.read_next_list()
+                    # static graph organized data on multi-device with list, if
+                    # place number is 1, there is only 1 device, extra the data
+                    # from list for devices to be compatible with dygraph mode
+                    if len(self._places) == 1:
+                        return self._reader.read_next_list()[0]
+                    else:
+                        return self._reader.read_next_list()
                 else:
                     return self._reader.read_next()
         except StopIteration:
