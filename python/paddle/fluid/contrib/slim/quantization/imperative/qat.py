@@ -22,7 +22,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
 from paddle.fluid.io import load_inference_model, save_inference_model
-from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
+from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
@@ -59,7 +59,8 @@ class ImperativeQuantAware(object):
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  moving_rate=0.9,
-                 quantizable_layer_type=['Conv2D', 'Linear']):
+                 quantizable_layer_type=['Conv2D', 'Linear'],
+                 is_calc_out_scale=False):
         """
         The constructor for ImperativeQuantAware.
 
@@ -81,6 +82,10 @@ class ImperativeQuantAware(object):
             quantizable_op_type(list[str]): List the type of layers that will be quantized. 
                 Default is ['Conv2D', 'Linear']. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
+            is_cals_out_scale(bool):Whether calculate the out_scale of the outputs in the Layer 
+                which would use in inference process. Now Supported Layers: BatchNorm, Conv2D, 
+                Conv2DTranspose, LeakyReLU, Linear, PReLU, Pool2D, ReLU, ReLU6, Sigmoid, Softmax, 
+                Tanh.
 
 
         Examples:
@@ -117,6 +122,9 @@ class ImperativeQuantAware(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
+        self._is_calc_out_scale = is_calc_out_scale
+        if is_calc_out_scale:
+            self._out_scale = ImperativeCalcOutScale()
 
         quant_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
@@ -160,6 +168,9 @@ class ImperativeQuantAware(object):
         for name, layer in model.named_sublayers():
             if not isinstance(layer, self._quantizable_layer_type):
                 continue
+            if hasattr(layer, "skip_quant") and layer.skip_quant == True:
+                continue
+
             scopes = name.split('.')
             target = scopes[-1]
             obj = model
@@ -170,6 +181,8 @@ class ImperativeQuantAware(object):
 
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
+        if self._is_calc_out_scale:
+            self._out_scale.calc_out_scale(model)
 
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
@@ -192,47 +205,28 @@ class ImperativeQuantAware(object):
             self._weight_quantize_type, self._activation_quantize_type)
         return quantized_layer
 
+    def save_quantized_model(self, layer, path, input_spec=None, **config):
+        if self._is_calc_out_scale:
+            self._out_scale.save_quantized_model(layer, path, input_spec,
+                                                 **config)
+        else:
+            paddle.jit.save(layer, path, input_spec, **config)
+
 
 class ImperativeCalcOutScale(object):
-    def __init__(self,
-                 moving_rate=0.9,
-                 target_layer_types=[
-                     'BatchNorm', 'Conv2D', 'Conv2DTranspose', 'LeakyReLU',
-                     'Linear', 'PReLU', 'Pool2D', 'ReLU', 'ReLU6', 'Sigmoid',
-                     'Softmax', 'Tanh'
-                 ]):
+    def __init__(self, moving_rate=0.9):
         """
         Add the logic of calculating and setting output quantization scales of some layers.
         These output quantization scales may be used by tensorRT or some other inference engines.
 
         Args:
             moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
-            quantizable_op_type(list[str]): List the type of layers that will be calculated out_scale. 
-                Default is ['Conv2D', 'ReLU', 'PReLU', 'LeakyReLU', 'Linear', 'Sigmoid', 'BatchNorm', 'ReLU6', 'Tanh', 'Softmax', 'Conv2DTranspose']
         """
         super(ImperativeCalcOutScale, self).__init__()
         self._moving_rate = moving_rate
-        self._out_scale_layers_map = {
-            'BatchNorm': BatchNorm,
-            'Conv2D': Conv2D,
-            'Conv2DTranspose': Conv2DTranspose,
-            'LeakyReLU': LeakyReLU,
-            'Linear': Linear,
-            'PReLU': PReLU,
-            'Pool2D': Pool2D,
-            'ReLU': ReLU,
-            'ReLU6': ReLU6,
-            'Sigmoid': Sigmoid,
-            'Softmax': Softmax,
-            'Tanh': Tanh
-        }
-        self._out_scale_layer_type = tuple(
-            self._out_scale_layers_map[layer]
-            if layer in self._out_scale_layers_map else layer
-            for layer in target_layer_types)
-        for layer in self._out_scale_layer_type:
-            assert not isinstance(
-                layer, str), "{} is unspported to be out_scaled.".format(layer)
+        self._out_scale_layer_type_list = (
+            BatchNorm, Conv2D, Conv2DTranspose, LeakyReLU, Linear, PReLU,
+            Pool2D, ReLU, ReLU6, Sigmoid, Softmax, Tanh, Swish)
         self._register_hook_handle_list = []
         self._out_scale_dict = {}
 
@@ -249,7 +243,7 @@ class ImperativeCalcOutScale(object):
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
         for _, layer in model.named_sublayers():
-            if not isinstance(layer, self._out_scale_layer_type):
+            if not isinstance(layer, self._out_scale_layer_type_list):
                 continue
             forward_post_hook_handle = layer.register_forward_post_hook(
                 self._forward_post_hook)

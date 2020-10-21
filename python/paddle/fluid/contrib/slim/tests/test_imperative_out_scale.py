@@ -25,8 +25,8 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import ImperativeCalcOutScale
-from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass
+from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
+from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass, QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
@@ -186,6 +186,8 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=32, drop_last=True)
+        weight_quantize_type = 'abs_max'
+        activation_quant_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
         lr = 0.1
@@ -196,7 +198,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        imperative_out_scale = ImperativeCalcOutScale()
+        imperative_out_scale = ImperativeQuantAware(is_calc_out_scale=True)
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -216,7 +218,7 @@ class TestImperativeOutSclae(unittest.TestCase):
                 fixed_state[name] = value
                 param_init_map[param.name] = value
             lenet.set_dict(fixed_state)
-            imperative_out_scale.calc_out_scale(lenet)
+            imperative_out_scale.quantize(lenet)
             adam = AdamOptimizer(
                 learning_rate=lr, parameter_list=lenet.parameters())
             dynamic_loss_rec = []
@@ -241,8 +243,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
             lenet.eval()
-            op_object_list = (Conv2D, ReLU, ReLU6, LeakyReLU, Sigmoid, Pool2D,
-                              BatchNorm)
 
         path = "./dynamic_outscale_infer_model/lenet"
         dynamic_save_dir = "./dynamic_outscale_infer_model"
@@ -285,8 +285,16 @@ class TestImperativeOutSclae(unittest.TestCase):
             param_tensor.set(param_init_map[param.name], place)
         main_graph = IrGraph(core.Graph(main.desc), for_test=False)
         infer_graph = IrGraph(core.Graph(infer.desc), for_test=True)
-        transform_pass = OutScaleForTrainingPass(scope=scope, place=place)
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quantize_type,
+            quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'])
         transform_pass.apply(main_graph)
+        transform_pass.apply(infer_graph)
+        outscale_pass = OutScaleForTrainingPass(scope=scope, place=place)
+        outscale_pass.apply(main_graph)
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
@@ -361,9 +369,13 @@ class TestImperativeOutSclae(unittest.TestCase):
         dynamic_ops = dynamic_inference_program.global_block().ops
         static_ops = static_inference_program.global_block().ops
 
-        for op in dynamic_ops:
-            if op.type == "flatten2":
+        for op in dynamic_ops[:]:
+            if op.type == "flatten2" or 'fake' in op.type:
                 dynamic_ops.remove(op)
+
+        for op in static_ops[:]:
+            if 'fake' in op.type:
+                static_ops.remove(op)
 
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
