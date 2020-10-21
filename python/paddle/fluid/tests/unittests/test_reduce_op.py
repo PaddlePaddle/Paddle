@@ -819,19 +819,6 @@ class TestAllAPI(unittest.TestCase):
                 self.assertTrue(out4, res4)
 
 
-class TestAllAPIError(unittest.TestCase):
-    def test_errors(self):
-        input = fluid.layers.assign(np.array([[1, 0], [1, 1]], dtype='float32'))
-        
-        # input must be bool.
-        self.assertRaises(TypeError, paddle.all, input)
-
-        # The data type of input must be bool
-        for dtype in ["bool"]:
-            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
-            self.assertRaises(TypeError, paddle.all, input)
-
-
 class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
@@ -840,6 +827,7 @@ class TestAnyAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
     
     def check_static_result(self, place):
+        paddle.disable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[4, 4], dtype="float64")
             result = paddle.inverse(x=input)
@@ -882,19 +870,6 @@ class TestAnyAPI(unittest.TestCase):
                 res4 = fluid.layers.assign(np.array([[1, 0]], dtype='int32'))
                 res4 = fluid.layers.cast(res4, 'bool')
                 self.assertTrue(out4, res4)
-
-
-class TestAnyAPIError(unittest.TestCase):
-    def test_errors(self):
-        input = fluid.layers.assign(np.array([[1, 0], [1, 1]], dtype='float32'))
-        
-        # input must be bool.
-        self.assertRaises(TypeError, paddle.all, input)
-        
-        # The data type of input must be bool
-        for dtype in ["bool"]:
-            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
-            self.assertRaises(TypeError, paddle.any, input)
 
 
 if __name__ == '__main__':
