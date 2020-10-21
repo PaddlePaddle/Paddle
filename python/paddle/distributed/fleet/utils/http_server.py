@@ -36,6 +36,7 @@ def get_logger(name, level, fmt):
     formatter = logging.Formatter(fmt=fmt)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    logger.propagate = False
     return logger
 
 

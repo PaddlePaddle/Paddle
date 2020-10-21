@@ -77,6 +77,7 @@ from .tensor.creation import tril  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
 from .tensor.creation import empty  #DEFINE_ALIAS
 from .tensor.creation import empty_like  #DEFINE_ALIAS
+from .tensor.creation import assign  #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
 from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum        #DEFINE_ALIAS
@@ -107,6 +108,7 @@ from .tensor.logic import not_equal  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
 from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
+from .tensor.logic import is_tensor  #DEFINE_ALIAS
 from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
 from .tensor.manipulation import expand  #DEFINE_ALIAS
@@ -261,7 +263,6 @@ from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
 from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 from .fluid.layers import crop_tensor as crop  #DEFINE_ALIAS
-
 
 from . import jit
 from . import static

@@ -32,8 +32,11 @@ class MeanXPUKernel : public framework::OpKernel<T> {
     const float* x_data = input->data<float>();
     float* y_data = output->data<float>();
     int r = xpu::mean(dev_ctx.x_context(), x_data, y_data, input->numel());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU kernel error, Mean op execution not succeed, error code=%d",
+            r));
   }
 };
 template <typename DeviceContext, typename T>
@@ -49,8 +52,11 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
     float* dx = IG->data<float>();
     const float* dy = OG->data<float>();
     int r = xpu::mean_grad(dev_ctx.x_context(), dx, dy, IG->numel());
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU kernel error. Mean_grad execution not succeed, error code=%d",
+            r));
   }
 };
 
