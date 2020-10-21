@@ -13,13 +13,9 @@
 # limitations under the License.
 
 __all__ = [
-    'Adadelta', 'Adam', 'Adamax', 'AdamW', 'Momentum', 'MomentumOptimizer',
-    'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer', '_LRScheduler', 'NoamLR',
-    'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
-    'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR',
-    'ReduceLROnPlateau', 'CosineAnnealingLR'
+    'Optimizer', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
+    'SGD', 'Momentum', 'lr'
 ]
-
 
 from .optimizer import Optimizer
 from .adagrad import Adagrad
@@ -30,5 +26,4 @@ from .rmsprop import RMSProp
 from .adadelta import Adadelta
 from .sgd import SGD
 from .momentum import Momentum
-
 from . import lr

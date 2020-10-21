@@ -32,7 +32,7 @@ class TestBatchNorm(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             with fluid.dygraph.guard(p):
-                batch_norm1d = paddle.nn.BatchNorm1d(1, name="test")
+                batch_norm1d = paddle.nn.BatchNorm1D(1, name="test")
 
     def test_error(self):
         places = [fluid.CPUPlace()]
@@ -45,32 +45,32 @@ class TestBatchNorm(unittest.TestCase):
 
             def error1d_dataformat():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                batch_norm1d = paddle.nn.BatchNorm1d(1, data_format='NCDHW')
+                batch_norm1d = paddle.nn.BatchNorm1D(1, data_format='NCDHW')
                 batch_norm1d(fluid.dygraph.to_variable(x_data_4))
 
             def error2d_dataformat():
                 x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
-                batch_norm2d = paddle.nn.BatchNorm2d(1, data_format='NCDHW')
+                batch_norm2d = paddle.nn.BatchNorm2D(1, data_format='NCDHW')
                 batch_norm2d(fluid.dygraph.to_variable(x_data_3))
 
             def error3d_dataformat():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                batch_norm3d = paddle.nn.BatchNorm3d(1, data_format='NCL')
+                batch_norm3d = paddle.nn.BatchNorm3D(1, data_format='NCL')
                 batch_norm3d(fluid.dygraph.to_variable(x_data_4))
 
             def error1d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                batch_norm1d = paddle.nn.BatchNorm1d(1)
+                batch_norm1d = paddle.nn.BatchNorm1D(1)
                 batch_norm1d(fluid.dygraph.to_variable(x_data_4))
 
             def error2d():
                 x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
-                batch_norm2d = paddle.nn.BatchNorm2d(1)
+                batch_norm2d = paddle.nn.BatchNorm2D(1)
                 batch_norm2d(fluid.dygraph.to_variable(x_data_3))
 
             def error3d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                batch_norm3d = paddle.nn.BatchNorm3d(1)
+                batch_norm3d = paddle.nn.BatchNorm3D(1)
                 batch_norm3d(fluid.dygraph.to_variable(x_data_4))
 
             with fluid.dygraph.guard(p):
@@ -99,7 +99,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    bn = paddle.nn.BatchNorm2d(shape[1])
+                    bn = paddle.nn.BatchNorm2D(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -120,7 +120,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v4(x):
                 with fluid.dygraph.guard(p):
-                    bn = paddle.nn.BatchNorm2d(
+                    bn = paddle.nn.BatchNorm2D(
                         shape[1], weight_attr=False, bias_attr=False)
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
@@ -155,7 +155,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
-                    bn = paddle.nn.BatchNorm2d(shape[1])
+                    bn = paddle.nn.BatchNorm2D(shape[1])
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = bn(x)
                     exe.run(fluid.default_startup_program())
@@ -183,8 +183,8 @@ class TestBatchNormChannelLast(unittest.TestCase):
         for p in self.places:
             with fluid.dygraph.guard(p):
                 x = paddle.randn([2, 6, 4])
-                net1 = paddle.nn.BatchNorm1d(4, data_format="NLC")
-                net2 = paddle.nn.BatchNorm1d(4)
+                net1 = paddle.nn.BatchNorm1D(4, data_format="NLC")
+                net2 = paddle.nn.BatchNorm1D(4)
                 net2.weight = net1.weight
                 net2.bias = net1.bias
                 y1 = net1(x)
@@ -197,8 +197,8 @@ class TestBatchNormChannelLast(unittest.TestCase):
         for p in self.places:
             with fluid.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 4])
-                net1 = paddle.nn.BatchNorm2d(4, data_format="NHWC")
-                net2 = paddle.nn.BatchNorm2d(4)
+                net1 = paddle.nn.BatchNorm2D(4, data_format="NHWC")
+                net2 = paddle.nn.BatchNorm2D(4)
                 net2.weight = net1.weight
                 net2.bias = net1.bias
                 y1 = net1(x)
@@ -211,8 +211,8 @@ class TestBatchNormChannelLast(unittest.TestCase):
         for p in self.places:
             with fluid.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 6, 4])
-                net1 = paddle.nn.BatchNorm3d(4, data_format="NDHWC")
-                net2 = paddle.nn.BatchNorm3d(4)
+                net1 = paddle.nn.BatchNorm3D(4, data_format="NDHWC")
+                net2 = paddle.nn.BatchNorm3D(4)
                 net2.weight = net1.weight
                 net2.bias = net1.bias
                 y1 = net1(x)

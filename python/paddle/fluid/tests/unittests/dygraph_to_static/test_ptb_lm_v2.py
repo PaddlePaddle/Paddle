@@ -210,7 +210,7 @@ def train(place):
     batch_num = 200
 
     paddle.disable_static(place)
-    paddle.manual_seed(SEED)
+    paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
     ptb_model = PtbModel(
         hidden_size=hidden_size,

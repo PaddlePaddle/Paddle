@@ -277,7 +277,7 @@ class TestLSTM(unittest.TestCase):
 
 def predict_test_util(place, mode):
     place = paddle.set_device(place)
-    paddle.manual_seed(123)
+    paddle.seed(123)
     np.random.seed(123)
 
     class Net(paddle.nn.Layer):

@@ -108,6 +108,7 @@ from .tensor.logic import not_equal  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
 from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
+from .tensor.logic import is_tensor  #DEFINE_ALIAS
 from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
 from .tensor.manipulation import expand  #DEFINE_ALIAS
@@ -221,7 +222,7 @@ from .tensor.search import sort  #DEFINE_ALIAS
 
 from .tensor.to_string import set_printoptions
 
-from .framework.random import manual_seed  #DEFINE_ALIAS
+from .framework.random import seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
 from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS

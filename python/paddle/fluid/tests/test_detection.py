@@ -289,40 +289,39 @@ class TestAnchorGenerator(unittest.TestCase):
 
 
 class TestGenerateProposalLabels(unittest.TestCase):
+    def check_out(self, outs):
+        rois = outs[0]
+        labels_int32 = outs[1]
+        bbox_targets = outs[2]
+        bbox_inside_weights = outs[3]
+        bbox_outside_weights = outs[4]
+        assert rois.shape[1] == 4
+        assert rois.shape[0] == labels_int32.shape[0]
+        assert rois.shape[0] == bbox_targets.shape[0]
+        assert rois.shape[0] == bbox_inside_weights.shape[0]
+        assert rois.shape[0] == bbox_outside_weights.shape[0]
+        assert bbox_targets.shape[1] == 4 * self.class_nums
+        assert bbox_inside_weights.shape[1] == 4 * self.class_nums
+        assert bbox_outside_weights.shape[1] == 4 * self.class_nums
+        if len(outs) == 6:
+            max_overlap_with_gt = outs[5]
+            assert max_overlap_with_gt.shape[0] == rois.shape[0]
+
     def test_generate_proposal_labels(self):
         program = Program()
         with program_guard(program):
-            rpn_rois = layers.data(
-                name='rpn_rois',
-                shape=[4, 4],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False)
-            gt_classes = layers.data(
-                name='gt_classes',
-                shape=[6],
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False)
-            is_crowd = layers.data(
-                name='is_crowd',
-                shape=[6],
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False)
-            gt_boxes = layers.data(
-                name='gt_boxes',
-                shape=[6, 4],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False)
-            im_info = layers.data(
-                name='im_info',
-                shape=[1, 3],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False)
-            class_nums = 5
+            rpn_rois = fluid.data(
+                name='rpn_rois', shape=[4, 4], dtype='float32', lod_level=1)
+            gt_classes = fluid.data(
+                name='gt_classes', shape=[6], dtype='int32', lod_level=1)
+            is_crowd = fluid.data(
+                name='is_crowd', shape=[6], dtype='int32', lod_level=1)
+            gt_boxes = fluid.data(
+                name='gt_boxes', shape=[6, 4], dtype='float32', lod_level=1)
+            im_info = fluid.data(name='im_info', shape=[1, 3], dtype='float32')
+            max_overlap = fluid.data(
+                name='max_overlap', shape=[4], dtype='float32', lod_level=1)
+            self.class_nums = 5
             outs = fluid.layers.generate_proposal_labels(
                 rpn_rois=rpn_rois,
                 gt_classes=gt_classes,
@@ -335,20 +334,27 @@ class TestGenerateProposalLabels(unittest.TestCase):
                 bg_thresh_hi=0.5,
                 bg_thresh_lo=0.0,
                 bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-                class_nums=class_nums)
+                class_nums=self.class_nums)
+            outs_1 = fluid.layers.generate_proposal_labels(
+                rpn_rois=rpn_rois,
+                gt_classes=gt_classes,
+                is_crowd=is_crowd,
+                gt_boxes=gt_boxes,
+                im_info=im_info,
+                batch_size_per_im=2,
+                fg_fraction=0.5,
+                fg_thresh=0.5,
+                bg_thresh_hi=0.5,
+                bg_thresh_lo=0.0,
+                bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+                class_nums=self.class_nums,
+                is_cascade_rcnn=True,
+                max_overlap=max_overlap,
+                return_max_overlap=True)
+
+            self.check_out(outs)
+            self.check_out(outs_1)
             rois = outs[0]
-            labels_int32 = outs[1]
-            bbox_targets = outs[2]
-            bbox_inside_weights = outs[3]
-            bbox_outside_weights = outs[4]
-            assert rois.shape[1] == 4
-            assert rois.shape[0] == labels_int32.shape[0]
-            assert rois.shape[0] == bbox_targets.shape[0]
-            assert rois.shape[0] == bbox_inside_weights.shape[0]
-            assert rois.shape[0] == bbox_outside_weights.shape[0]
-            assert bbox_targets.shape[1] == 4 * class_nums
-            assert bbox_inside_weights.shape[1] == 4 * class_nums
-            assert bbox_outside_weights.shape[1] == 4 * class_nums
 
 
 class TestGenerateMaskLabels(unittest.TestCase):
