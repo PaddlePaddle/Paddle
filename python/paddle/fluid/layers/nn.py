@@ -4717,15 +4717,15 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
-            x = paddle.cast(x, 'bool')
+            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = layers.cast(x, 'bool')
 
-            out = paddle.reduce_all(x)  # False
-            out = paddle.reduce_all(x, dim=0)  # [True, False]
-            out = paddle.reduce_all(x, dim=-1)  # [False, True]
+            out = layers.reduce_all(x)  # False
+            out = layers.reduce_all(x, dim=0)  # [True, False]
+            out = layers.reduce_all(x, dim=-1)  # [False, True]
             # keep_dim=False, x.shape=(2,2), out.shape=(2,)
 
-            out = paddle.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
+            out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
@@ -4777,15 +4777,15 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = paddle.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
-            x = paddle.cast(x, 'bool')
+            x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = layers.cast(x, 'bool')
 
-            out = paddle.reduce_any(x)  # True
-            out = paddle.reduce_any(x, dim=0)  # [True, False]
-            out = paddle.reduce_any(x, dim=-1)  # [True, False]
+            out = layers.reduce_any(x)  # True
+            out = layers.reduce_any(x, dim=0)  # [True, False]
+            out = layers.reduce_any(x, dim=-1)  # [True, False]
             # keep_dim=False, x.shape=(2,2), out.shape=(2,)
 
-            out = paddle.reduce_any(x, dim=1,
+            out = layers.reduce_any(x, dim=1,
                                      keep_dim=True)  # [[True], [False]]
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
