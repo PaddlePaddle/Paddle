@@ -25,13 +25,15 @@ from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper impo
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 
+from functools import reduce
+
 __all__ = ["ShardingOptimizer"]
 
 
 class ShardingOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(ShardingOptimizer, self).__init__(optimizer)
-        self.inner_opt = None
+        self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
             "AMPOptimizer",
@@ -57,6 +59,10 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.sharding = False
         dist_strategy.sharding_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.sharding = True
+        dist_strategy.sharding_configs = {"fuse_broadcast_MB": 32}
 
     def minimize_impl(self,
                       loss,
@@ -365,9 +371,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                                  self._nrings,
                                  self._segments[0]._broadcast_vars)
 
-        fill_constant_vars = reduce(
-            lambda x, y: x._fill_constant_vars + y._fill_constant_vars,
-            self._segments[:2])
+        fill_constant_vars = []
+        for x in self._segments[:2]:
+            fill_constant_vars += x._fill_constant_vars
 
         # Join
         cast_ops = {}
