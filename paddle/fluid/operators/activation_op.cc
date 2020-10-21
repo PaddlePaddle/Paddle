@@ -1342,6 +1342,12 @@ REGISTER_OPERATOR(
                                paddle::imperative::OpBase>,
     ops::ActFwdInplaceInferer);
 
+REGISTER_OPERATOR(log2_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
+
+
 REGISTER_ACTIVATION_CPU_KERNEL(log2, Log2, Log2Functor, Log2GradFunctor);
 /* ========================================================================== */
 
