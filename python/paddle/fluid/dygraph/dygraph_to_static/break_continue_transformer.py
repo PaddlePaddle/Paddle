@@ -141,30 +141,35 @@ class BreakContinueTransformer(gast.NodeTransformer):
         assert loop_node_index != -1, "SyntaxError: 'break' outside loop"
         loop_node = self.ancestor_nodes[loop_node_index]
 
-        # 1. Map the 'break/continue' stmt with an unique boolean variable V.
-        variable_name = unique_name.generate(BREAK_NAME_PREFIX)
+        if self._is_break_cond_pattern(node, loop_node):
+            cond_var_node = self._join_with_while_cond(node, loop_node)
+        else:
+            # 1. Map the 'break/continue' stmt with an unique boolean variable V.
+            variable_name = unique_name.generate(BREAK_NAME_PREFIX)
 
-        # 2. Find the first ancestor block containing this 'break/continue', a
-        # block can be a node containing stmt list. We should remove all stmts
-        # after the 'break/continue' and set the V to True here.
-        first_block_index = self._remove_stmts_after_break_continue(
-            node, variable_name, loop_node_index)
+            # 2. Find the first ancestor block containing this 'break/continue', a
+            # block can be a node containing stmt list. We should remove all stmts
+            # after the 'break/continue' and set the V to True here.
+            first_block_index = self._remove_stmts_after_break_continue(
+                node, variable_name, loop_node_index)
 
-        # 3. Add 'if V' for stmts in ancestor blocks between the first one
-        # (exclusive) and the ancestor loop (inclusive)
-        self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
+            # 3. Add 'if not V' for stmts in ancestor blocks between the first one
+            # (exclusive) and the ancestor loop (inclusive)
+            self._replace_if_stmt(loop_node_index, first_block_index,
+                                  variable_name)
 
-        # 4. For 'break' add break into condition of the loop.
-        assign_false_node = create_fill_constant_node(variable_name, False)
-        self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
+            # 4. For 'break' add break into condition of the loop.
+            assign_false_node = create_fill_constant_node(variable_name, False)
+            self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
-        cond_var_node = gast.UnaryOp(
-            op=gast.Not(),
-            operand=gast.Name(
-                id=variable_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None))
+            cond_var_node = gast.UnaryOp(
+                op=gast.Not(),
+                operand=gast.Name(
+                    id=variable_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None))
+
         if isinstance(loop_node, gast.While):
             loop_node.test = gast.BoolOp(
                 op=gast.And(), values=[loop_node.test, cond_var_node])
@@ -188,13 +193,108 @@ class BreakContinueTransformer(gast.NodeTransformer):
         first_block_index = self._remove_stmts_after_break_continue(
             node, variable_name, loop_node_index)
 
-        # 3. Add 'if V' for stmts in ancestor blocks between the first one
+        # 3. Add 'if not V' for stmts in ancestor blocks between the first one
         # (exclusive) and the ancestor loop (inclusive)
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'continue', set continue to False at the beginning of each loop
         assign_false_node = create_fill_constant_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
+
+    def _is_break_cond_pattern(self, break_node, loop_node):
+        """
+        Judge whether if match the pattern to join `If.test` with `while.test`
+        """
+        # return False
+        # while/for -> if -> break
+        if len(self.ancestor_nodes) < 3 or self.ancestor_nodes[-3] != loop_node:
+            return False
+
+        assert self.ancestor_nodes[-1] == break_node
+        parent_if_node = self.ancestor_nodes[-2]
+
+        is_matched = False
+        if isinstance(parent_if_node, gast.If):
+            # gast.If only contains `break`
+            break_first_in_if = parent_if_node.body[0] == break_node and len(
+                parent_if_node.orelse) == 0
+            # gast.If is first node of loop_node
+            if_first_in_loop = loop_node.body[0] == parent_if_node
+
+            is_matched = if_first_in_loop and break_first_in_if
+
+        return is_matched
+
+    def _join_with_while_cond(self, break_node, loop_node):
+        """
+        In some pattern, the transformed code could be optimized by joining the 
+        If.test with while.test, see following example:
+
+        >>> def foo(x):
+        ...     i = paddle.to_tensor(1, dtype='int32')
+        ...     while i < 10:
+        ...         if x.mean() > 5:
+        ...             break
+        ...         x += i
+        ...         i += 1
+        ...     return x
+
+        The generated code after applying optimization will be:
+        ```
+            def foo(x):
+                i = paddle.to_tensor(1, dtype='int32')
+                while i < 10 and not x.mean() > 5:
+                    x += i
+                    i += 1
+                return x
+        ```
+        It can avoid wrapping all ops after `break` statement into `cond_op` that 
+        usually brings very heavy overhead.
+        """
+        parent_if_node = self.ancestor_nodes[-2]
+
+        cond_var_node = gast.UnaryOp(op=gast.Not(), operand=parent_if_node.test)
+
+        # remove the gast.If containing `break`
+        if hasattr(loop_node, 'body') and parent_if_node in loop_node.body:
+            assert loop_node.body[0] == parent_if_node
+            loop_node.body.pop(0)
+        elif hasattr(loop_node,
+                     'orelse') and parent_if_node in loop_node.orelse:
+            assert loop_node.orelse[0] == parent_if_node
+            loop_node.orelse.pop(0)
+
+        return cond_var_node
+
+    def _break_cond_joiner(self, break_node, loop_node):
+        if len(self.ancestor_nodes) < 3 or self.ancestor[-3] == loop_node:
+            return None
+
+        assert self.ancestor_nodes[-1] == break_node
+        parent_if_node = self.ancestor[-2]
+
+        is_matched = False
+        # while/for -> if -> break
+        if isinstance(parent_node, gast.If):
+            # gast.If only contains `break`
+            is_matched = parent_if_node.body[0] == break_node and len(
+                parent_node.orelse) == 0
+
+        if not is_matched:
+            return None
+
+        cond_var_node = gast.UnaryOp(op=gast.Not(), operand=parent_if_node.test)
+
+        # remove the gast.If containing `break`
+        if hasattr(loop_node, 'body') and parent_if_node in loop_node.body:
+            assert loop_node.body[0] == parent_if_node
+            loop_node.body.pop(0)
+        elif hasattr(loop_node,
+                     'orelse') and parent_if_node in loop_node.orelse:
+            assert loop_node.orelse[0] == parent_if_node
+            loop_node.orelse.pop(0)
+
+        return cond_var_node
 
     def _remove_stmts_after_break_continue(
             self, break_continue_node, break_continue_name, loop_node_index):
