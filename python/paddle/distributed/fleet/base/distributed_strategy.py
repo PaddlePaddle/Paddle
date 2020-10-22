@@ -1073,8 +1073,12 @@ class DistributedStrategy(object):
 
             import paddle
             import paddle.distributed.fleet as fleet
+            paddle.enable_static()
+
             strategy = fleet.DistributedStrategy()
             strategy.auto = True
+            # if set other strategy at the same time, auto will not apply
+            # strategy.amp = True
 
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(optimizer, strategy)
