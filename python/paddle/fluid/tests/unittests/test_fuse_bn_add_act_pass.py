@@ -219,8 +219,9 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         # build_fused_program: use fused_bn_add_act python API
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        x, y, loss = self.build_fused_program(main_program, startup_program,
-                                              use_cuda)
+        place = fluid.CUDAPlace(0)
+        x, y, loss = self.build_fused_program(
+            main_program, startup_program, use_cuda=True)
         feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
         train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=16)
         exe = fluid.Executor(place)
