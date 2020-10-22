@@ -32,8 +32,8 @@ __all__ = [
     'Pad3D',
     'CosineSimilarity',
     'Dropout',
-    'Dropout2d',
-    'Dropout3d',
+    'Dropout2D',
+    'Dropout3D',
     'Bilinear',
     'AlphaDropout',
 ]
@@ -538,12 +538,12 @@ class Dropout(layers.Layer):
         return out
 
 
-class Dropout2d(layers.Layer):
+class Dropout2D(layers.Layer):
     """
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    Dropout2d will help promote independence between feature maps as described in the paper:
+    Dropout2D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
     See ``paddle.nn.functional.dropout2d`` for more details.
@@ -570,7 +570,7 @@ class Dropout2d(layers.Layer):
             paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
-            m = paddle.nn.Dropout2d(p=0.5)
+            m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
@@ -580,7 +580,7 @@ class Dropout2d(layers.Layer):
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
-        super(Dropout2d, self).__init__()
+        super(Dropout2D, self).__init__()
 
         self.p = p
         self.data_format = data_format
@@ -596,12 +596,12 @@ class Dropout2d(layers.Layer):
         return out
 
 
-class Dropout3d(layers.Layer):
+class Dropout3D(layers.Layer):
     """
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    Dropout3d will help promote independence between feature maps as described in the paper:
+    Dropout3D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
     See ``paddle.nn.functional.dropout3d`` for more details.
@@ -628,7 +628,7 @@ class Dropout3d(layers.Layer):
             paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
-            m = paddle.nn.Dropout3d(p=0.5)
+            m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
@@ -638,7 +638,7 @@ class Dropout3d(layers.Layer):
    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
-        super(Dropout3d, self).__init__()
+        super(Dropout3D, self).__init__()
 
         self.p = p
         self.data_format = data_format

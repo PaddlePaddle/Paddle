@@ -606,9 +606,11 @@ class ConcreteProgram(object):
                         error.attach_error_data(e)
                         raise
 
-                if not isinstance(outputs,
-                                  (tuple, list)) and outputs is not None:
-                    outputs = [outputs]
+                if outputs is not None:
+                    need_wrap_into_list = not isinstance(outputs, (
+                        tuple, list)) or len(outputs) == 1
+                    if need_wrap_into_list:
+                        outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
 

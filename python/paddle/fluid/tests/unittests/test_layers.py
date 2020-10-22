@@ -57,7 +57,7 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            paddle.manual_seed(self.seed)
+            paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             yield
 
@@ -77,7 +77,7 @@ class LayerTest(unittest.TestCase):
     def dynamic_graph(self, force_to_use_cpu=False):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
-            paddle.manual_seed(self.seed)
+            paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             yield
 

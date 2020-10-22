@@ -105,7 +105,7 @@ class TestCallbacks(unittest.TestCase):
         self.run_callback()
 
     def test_visualdl_callback(self):
-        # visualdl not support python3
+        # visualdl not support python2
         if sys.version_info < (3, ):
             return
 

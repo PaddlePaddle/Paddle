@@ -139,7 +139,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.ConvTranspose3d(
+        conv = nn.Conv3DTranspose(
             self.num_channels,
             self.num_filters,
             self.filter_size,

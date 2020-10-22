@@ -51,14 +51,14 @@ def summary(net, input_size, dtypes=None):
                     super(LeNet, self).__init__()
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
-                        nn.Conv2d(
+                        nn.Conv2D(
                             1, 6, 3, stride=1, padding=1),
                         nn.ReLU(),
-                        nn.MaxPool2d(2, 2),
-                        nn.Conv2d(
+                        nn.MaxPool2D(2, 2),
+                        nn.Conv2D(
                             6, 16, 5, stride=1, padding=0),
                         nn.ReLU(),
-                        nn.MaxPool2d(2, 2))
+                        nn.MaxPool2D(2, 2))
 
                     if num_classes > 0:
                         self.fc = nn.Sequential(
