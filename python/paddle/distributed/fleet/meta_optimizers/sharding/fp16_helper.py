@@ -22,6 +22,7 @@ class FP16Utils(object):
     def __init__(self):
         pass
 
+    @staticmethod
     def is_fp16_cast_op(block, op, params):
         if op.type != "cast":
             return False
@@ -40,6 +41,7 @@ class FP16Utils(object):
             return False
         return True
 
+    @staticmethod
     def is_fp32_cast_op(block, op):
         if op.type != "cast":
             return False
@@ -56,6 +58,7 @@ class FP16Utils(object):
             return False
         return True
 
+    @staticmethod
     def remove_cast_op(block, params, segment, offset):
         inserted_op_num = 0
         for op_idx in reversed(
@@ -67,6 +70,7 @@ class FP16Utils(object):
         block._sync_with_cpp()
         return inserted_op_num
 
+    @staticmethod
     def prune_fp16(block, shard, reduced_grads_to_param, nrings):
         # remove cast
         for idx, op in reversed(list(enumerate(block.ops))):
