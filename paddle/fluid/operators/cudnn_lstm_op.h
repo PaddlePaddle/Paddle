@@ -848,12 +848,28 @@ struct BidirLayer : Layer<T> {
   CellType cell_;
 };
 
+inline void SplitReserveData(Tensor* reserve_data, Tensor* gate_data,
+                             Tensor* cell_data, Tensor* hidden_data,
+                             int direction_num, int time_step, int input_size,
+                             int hidden_size, int gate_num, int num_layers) {
+  int block_size = direction_num * time_step * input_size * hidden_size;
+  int gate_data_idx = (gate_num - 1) * num_layers;
+  int cell_data_idx = gate_num * num_layers;
+  int hidden_data_idx = gate_num * num_layers + (num_layers - 1);
+  reserve_data->Resize({hidden_data_idx, block_size});
+  *gate_data = reserve_data->Slice(0, gate_data_idx);
+  *cell_data = reserve_data->Slice(gate_data_idx, cell_data_idx);
+  if (num_layers > 1) {
+    *hidden_data = reserve_data->Slice(cell_data_idx, hidden_data_idx);
+  }
+}
+
 template <typename CellType, typename T>
 void AllocateReserveData(const framework::ExecutionContext& ctx,
                          Tensor* reserve_data, Tensor* gate_data,
-                         Tensor* cell_data, const Tensor* input,
-                         bool is_bidirec, int num_layers, int gate_num,
-                         int hidden_size) {
+                         Tensor* cell_data, Tensor* hidden_data,
+                         const Tensor* input, bool is_bidirec, int num_layers,
+                         int gate_num, int hidden_size) {
   if (std::is_same<CellType, LSTMCell<T>>::value) {
     // need to store cell value
     gate_num += 1;
@@ -861,17 +877,21 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
   int direction_num = is_bidirec ? 2 : 1;
   int time_step = input->dims()[0];
   int input_size = input->dims()[1];
-  // gate_data * 4, cell_data
+  // gate_data: 4 * num_layers * block_size
+  // cell_data: num_layers * block_size
+  // hidden_data: (num_layers - 1) * block_size
   VLOG(0) << "===========================";
   VLOG(0) << "gate_num: " << gate_num << ", num_layers: " << num_layers
           << ", direction_num:" << direction_num << ", time_step: " << time_step
           << ", input_size: " << input_size << ", hidden_size:" << hidden_size;
-  reserve_data->Resize({gate_num, num_layers * direction_num * time_step *
-                                      input_size * hidden_size});
-  reserve_data->mutable_data<T>(ctx.GetPlace());
 
-  *gate_data = reserve_data->Slice(0, gate_num - 1);
-  *cell_data = reserve_data->Slice(gate_num - 1, gate_num);
+  int block_size = direction_num * time_step * input_size * hidden_size;
+  int hidden_data_idx = gate_num * num_layers + (num_layers - 1);
+  reserve_data->Resize({hidden_data_idx, block_size});
+  reserve_data->mutable_data<T>(ctx.GetPlace());
+  SplitReserveData(reserve_data, gate_data, cell_data, hidden_data,
+                   direction_num, time_step, input_size, hidden_size, gate_num,
+                   num_layers);
 }
 
 template <typename CellType, template <typename, typename> class SingleLayerT,
@@ -910,13 +930,18 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
 
   Tensor gate_data;
   Tensor cell_data;
+  Tensor hidden_data;
 
   if (!is_test) {
     AllocateReserveData<CellType, T>(ctx, reserve_data, &gate_data, &cell_data,
-                                     input, is_bidirec, num_layers, gate_num,
-                                     hidden_size);
+                                     &hidden_data, input, is_bidirec,
+                                     num_layers, gate_num, hidden_size);
     gate_data.Resize({num_layers, gate_data.numel() / num_layers});
     cell_data.Resize({num_layers, cell_data.numel() / num_layers});
+    if (num_layers > 1) {
+      hidden_data.Resize(
+          {num_layers - 1, hidden_data.numel() / (num_layers - 1)});
+    }
   }
   Tensor* input_holder;
   Tensor* output_holder = output;
@@ -930,10 +955,18 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
 
   Tensor curr_gate_data;
   Tensor curr_cell_data;
+  Tensor curr_hidden_data;
+  Tensor prev_hidden_data;
   for (int i = 0; i < num_layers; i++) {
     if (!is_test) {
       curr_gate_data = gate_data.Slice(i, i + 1);
       curr_cell_data = cell_data.Slice(i, i + 1);
+      output_holder = output;
+      if (i < num_layers - 1 && num_layers > 1) {
+        curr_hidden_data = hidden_data.Slice(i, i + 1);
+        curr_hidden_data.Resize(output->dims());
+        output_holder = &curr_hidden_data;
+      }
     }
     if (i > 0) {
       if (!has_allocate_mem) {
@@ -942,14 +975,24 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
         input_holder = &temp;
         has_allocate_mem = true;
       }
-      SwapPoniter(&output_holder, &input_holder);
+      if (!is_test) {
+        prev_hidden_data = hidden_data.Slice(i - 1, i);
+        framework::TensorCopy(
+            prev_hidden_data, ctx.GetPlace(),
+            ctx.template device_context<platform::CPUDeviceContext>(),
+            input_holder);
+        input_holder->Resize(output->dims());
+        VLOG(0) << "input dims: " << input_holder->dims();
+      } else {
+        SwapPoniter(&output_holder, &input_holder);
+      }
       if (dropout_prob != 0 && (!is_test)) {
         // only train mode just need dropout
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
                                         dropout_prob, seed,
                                         true /*upscale_in_train*/, is_test);
-        Print3DTensor<T>(input_holder, "input_holder after dropout");
-        Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
+        // Print3DTensor<T>(input_holder, "input_holder after dropout");
+        // Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
       }
     }
     if (is_bidirec) {
