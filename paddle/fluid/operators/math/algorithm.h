@@ -41,7 +41,7 @@ HOSTDEVICE inline int64_t BinarySearch(const T *x, int64_t num, const T &val) {
 
 template <typename T>
 HOSTDEVICE inline size_t LowerBound(const T *x, size_t num, const T &val) {
-#if defined(__CUDA_ARCH__)
+#ifdef __CUDA_ARCH__
   // The following code is from
   // https://en.cppreference.com/w/cpp/algorithm/lower_bound
   auto *first = x;
@@ -64,7 +64,7 @@ HOSTDEVICE inline size_t LowerBound(const T *x, size_t num, const T &val) {
 
 template <typename T>
 HOSTDEVICE inline size_t UpperBound(const T *x, size_t num, const T &val) {
-#if defined(__CUDA_ARCH__)
+#ifdef __CUDA_ARCH__
   // The following code is from
   // https://en.cppreference.com/w/cpp/algorithm/upper_bound
   auto *first = x;
