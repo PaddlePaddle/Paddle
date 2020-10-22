@@ -105,7 +105,7 @@ def avg_pool1D_forward_naive(x,
     return out
 
 
-class TestPool1d_API(unittest.TestCase):
+class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -138,7 +138,7 @@ class TestPool1d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool1d_dg = paddle.nn.layer.AvgPool1d(
+            avg_pool1d_dg = paddle.nn.layer.AvgPool1D(
                 kernel_size=2, stride=None, padding=0)
             result = avg_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -159,7 +159,7 @@ class TestPool1d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            avg_pool1d_dg = paddle.nn.AvgPool1d(
+            avg_pool1d_dg = paddle.nn.AvgPool1D(
                 kernel_size=2, stride=None, padding=1, count_include_pad=True)
             result = avg_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -190,7 +190,7 @@ class TestPool1d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool1d_dg = paddle.nn.layer.MaxPool1d(
+            max_pool1d_dg = paddle.nn.layer.MaxPool1D(
                 kernel_size=2, stride=None, padding=0)
             result = max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -207,7 +207,7 @@ class TestPool1d_API(unittest.TestCase):
 
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
-            max_pool1d_dg = paddle.nn.layer.MaxPool1d(
+            max_pool1d_dg = paddle.nn.layer.MaxPool1D(
                 kernel_size=2, stride=None, padding=0)
             result = max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -248,7 +248,7 @@ class TestPool1d_API(unittest.TestCase):
             self.check_max_dygraph_return_index_results(place)
 
 
-class TestPool2dError_API(unittest.TestCase):
+class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
             with fluid.dygraph.guard():

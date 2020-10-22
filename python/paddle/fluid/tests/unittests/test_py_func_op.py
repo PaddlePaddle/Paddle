@@ -147,7 +147,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
     with fluid.program_guard(fluid.Program(), fluid.Program()):
         with fluid.scope_guard(fluid.core.Scope()):
-            gen = paddle.manual_seed(1)
+            gen = paddle.seed(1)
             np.random.seed(1)
             img = fluid.layers.data(name='image', shape=[784], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')

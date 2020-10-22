@@ -193,10 +193,19 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-# lite subgraph compilation depends on CUDNN_ROOT,
-# so include(cudnn) needs to be in front of include(third_party/lite)
-include(cudnn)              # set cudnn libraries, must before configure
-include(third_party)        # download, build, install third_party
+if(WITH_GPU)
+    include(cuda)
+    # lite subgraph compilation depends on CUDNN_ROOT,
+    # so include(cudnn) needs to be in front of include(third_party/lite)
+    include(cudnn)              # set cudnn libraries, must before configure
+    include(tensorrt)
+    # there is no official support of nccl, cupti in windows
+    if(NOT WIN32)
+        include(cupti)
+    endif()
+endif()
+
+include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -209,17 +218,7 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-# there is no official support of nccl, cupti in windows
-if(NOT WIN32)
-    include(cupti)
-endif()
-
 include(flags)              # set paddle compile flags
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-endif()
 
 if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)

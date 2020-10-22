@@ -33,7 +33,7 @@ class TestVisonModels(unittest.TestCase):
         model = paddle.Model(net, input)
         model.prepare()
 
-        model.test_batch(x)
+        model.predict_batch(x)
 
     def test_mobilenetv2_pretrained(self):
         self.models_infer('mobilenet_v2', pretrained=False)
@@ -77,7 +77,7 @@ class TestVisonModels(unittest.TestCase):
         lenet.prepare()
 
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)
-        lenet.test_batch(x)
+        lenet.predict_batch(x)
 
 
 if __name__ == '__main__':

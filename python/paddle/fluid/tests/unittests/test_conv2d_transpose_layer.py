@@ -155,7 +155,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         else:
             output_size = self.output_size
 
-        conv = nn.ConvTranspose2d(
+        conv = nn.Conv2DTranspose(
             self.num_channels,
             self.num_filters,
             self.filter_size,

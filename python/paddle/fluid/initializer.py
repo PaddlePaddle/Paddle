@@ -749,7 +749,7 @@ class BilinearInitializer(Initializer):
                                       regularizer=L2Decay(0.),
                                       initializer=nn.initializer.Bilinear())
             data = paddle.rand([B, 3, H, W], dtype='float32')
-            conv_up = nn.ConvTranspose2d(3,
+            conv_up = nn.Conv2DTranspose(3,
                                          out_channels=C,
                                          kernel_size=2 * factor - factor % 2,
                                          padding=int(

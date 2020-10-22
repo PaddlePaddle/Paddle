@@ -110,7 +110,7 @@ class TestDygraphMultiForward(unittest.TestCase):
         epoch_num = 1
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(SEED)
+            paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             mnist = MNIST()
             sgd = SGDOptimizer(
@@ -143,7 +143,7 @@ class TestDygraphMultiForward(unittest.TestCase):
                             dy_param_init_value[param.name] = param.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(SEED)
+            paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
