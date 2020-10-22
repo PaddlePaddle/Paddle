@@ -1042,9 +1042,12 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       const size_t size = handler.GetDiffWeightsMemorySize();
       filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace(), size);
 
+      // For convoluition with groups write filter grad into
+      // oneDNN buffer and then we reorder it into filter_grad tensor
       auto diff_weights_memory_p =
-          handler.AcquireDiffWeightsMemoryFromWeightsPrimitive(
-              reinterpret_cast<void*>(filter_grad_data));
+          g > 1 ? handler.AcquireDiffWeightsMemoryFromWeightsPrimitive()
+                : handler.AcquireDiffWeightsMemoryFromWeightsPrimitive(
+                      reinterpret_cast<void*>(filter_grad_data));
 
       auto conv_bwd_weights_p = handler.AcquireConvolutionBackwardWeights();
 
@@ -1059,8 +1062,41 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // in OneDNN groups in convolution are treated as separate dimension
       // which is not the case in paddlepaddle
       auto filter_fmt = GetMKLDNNFormat(*diff_weights_memory_p);
-      filter_grad->set_format(platform::MKLDNNFormatForSize(
-          g > 1 ? weights_tz.size() - 1 : weights_tz.size(), filter_fmt));
+
+      // For convolution with groups convert from blocked to NCHW
+      // otherwise there will be problems in next operators working on this data
+      if (g > 1) {
+        memory::data_type in_type = ToMKLDNNDataType(filter_grad.type());
+        mkldnn::memory::format_tag out_format =
+            mkldnn::memory::format_tag::goihw;
+        const std::string key =
+            platform::CreateKey(weights_tz, filter_fmt, out_format, in_type);
+
+        platform::ReorderMKLDNNHandler handler(weights_tz, filter_grad.type(),
+                                               in_type, *dev_ctx, mkldnn_engine,
+                                               key);
+
+        auto reorder_src_memory_p =
+            handler.AcquireSrcMemory(*diff_weights_memory_p, in_data);
+        auto reorder_dst_memory_p =
+            handler.AcquireDstMemory(filter_grad, out_format, place);
+
+        auto reorder_p =
+            handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+
+        mkldnn::stream astream(cpu_engine);
+        reorder_p->execute(astream, *reorder_src_memory_p,
+                           *reorder_dst_memory_p);
+        astream.wait();
+
+        // So here we have a data in goihw , which can be interpreted as OIHW
+        // because filter_grad shape is set for OIHW
+        mkldnn::memory::format_tag target_format =
+            mkldnn::memory::format_tag::oihw;
+        filter_grad->set_format(target_format);
+      } else {
+        filter_grad->set_format(filter_fmt);
+      }
     }
     if (input_grad) {
       auto weights_memory_p = handler.AcquireWeightsMemoryFromDataPrimitive(

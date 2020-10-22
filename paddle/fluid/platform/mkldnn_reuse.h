@@ -1175,6 +1175,12 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
         conv_bwd_weights_pd_->diff_weights_desc(), ptr, "@diff_weights_mem_p");
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemoryFromWeightsPrimitive(
+      void) {
+    return this->AcquireMemoryFromPrimitive(
+        conv_bwd_weights_pd_->diff_weights_desc(), "@diff_weights_mem_p");
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
