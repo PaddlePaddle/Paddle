@@ -255,13 +255,8 @@ class BreakContinueTransformer(gast.NodeTransformer):
         cond_var_node = gast.UnaryOp(op=gast.Not(), operand=parent_if_node.test)
 
         # remove the gast.If containing `break`
-        if hasattr(loop_node, 'body') and parent_if_node in loop_node.body:
-            assert loop_node.body[0] == parent_if_node
-            loop_node.body.pop(0)
-        elif hasattr(loop_node,
-                     'orelse') and parent_if_node in loop_node.orelse:
-            assert loop_node.orelse[0] == parent_if_node
-            loop_node.orelse.pop(0)
+        assert loop_node.body[0] == parent_if_node
+        loop_node.body.pop(0)
 
         return cond_var_node
 
