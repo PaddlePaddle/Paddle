@@ -190,8 +190,6 @@ def _format_tensor(var, sumary, indent=0, max_width=0, signed=False):
 
 
 def to_string(var, prefix='Tensor'):
-    np_var = var.numpy()
-
     indent = len(prefix) + 1
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
@@ -199,6 +197,8 @@ def to_string(var, prefix='Tensor'):
     tensor = var.value().get_tensor()
     if not tensor._is_initialized():
         return "Tensor(Not initialized)"
+
+    np_var = var.numpy()
 
     if len(var.shape) == 0:
         size = 0
