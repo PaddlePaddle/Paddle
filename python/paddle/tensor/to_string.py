@@ -101,7 +101,7 @@ def _to_sumary(var):
         return var
     elif len(var.shape) == 1:
         if var.shape[0] > 2 * edgeitems:
-            return paddle.concat([var[:edgeitems], var[-edgeitems:]])
+            return np.concatenate([var[:edgeitems], var[-edgeitems:]])
         else:
             return var
     else:
@@ -109,12 +109,12 @@ def _to_sumary(var):
         if var.shape[0] > 2 * edgeitems:
             begin = [x for x in var[:edgeitems]]
             end = [x for x in var[-edgeitems:]]
-            return paddle.stack([_to_sumary(x) for x in (begin + end)])
+            return np.stack([_to_sumary(x) for x in (begin + end)])
         else:
-            return paddle.stack([_to_sumary(x) for x in var])
+            return np.stack([_to_sumary(x) for x in var])
 
 
-def _format_item(np_var, max_width=0):
+def _format_item(np_var, max_width=0, signed=False):
     if np_var.dtype == np.float32 or np_var.dtype == np.float64 or np_var.dtype == np.float16:
         if DEFAULT_PRINT_OPTIONS.sci_mode:
             item_str = '{{:.{}e}}'.format(
@@ -128,60 +128,74 @@ def _format_item(np_var, max_width=0):
         item_str = '{}'.format(np_var)
 
     if max_width > len(item_str):
-        return '{indent}{data}'.format(
-            indent=(max_width - len(item_str)) * ' ', data=item_str)
-    else:
+        if signed:  # handle sign character for tenosr with negative item
+            if np_var < 0:
+                return item_str.ljust(max_width)
+            else:
+                return ' ' + item_str.ljust(max_width - 1)
+        else:
+            return item_str.ljust(max_width)
+    else:  # used for _get_max_width
         return item_str
 
 
 def _get_max_width(var):
     max_width = 0
-    for item in list(var.numpy().flatten()):
+    signed = False
+    for item in list(var.flatten()):
+        if (not signed) and (item < 0):
+            signed = True
         item_str = _format_item(item)
         max_width = max(max_width, len(item_str))
-    return max_width
+
+    return max_width, signed
 
 
-def _format_tensor(var, sumary, indent=0):
+def _format_tensor(var, sumary, indent=0, max_width=0, signed=False):
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
-    max_width = _get_max_width(_to_sumary(var))
 
     if len(var.shape) == 0:
         # currently, shape = [], i.e., scaler tensor is not supported.
         # If it is supported, it should be formatted like this.
-        return _format_item(var.numpy().item(0), max_width)
+        return _format_item(var.item(0), max_width, signed)
     elif len(var.shape) == 1:
         if sumary and var.shape[0] > 2 * edgeitems:
             items = [
-                _format_item(item, max_width)
-                for item in list(var.numpy())[:DEFAULT_PRINT_OPTIONS.edgeitems]
+                _format_item(item, max_width, signed)
+                for item in list(var)[:DEFAULT_PRINT_OPTIONS.edgeitems]
             ] + ['...'] + [
-                _format_item(item, max_width)
-                for item in list(var.numpy())[-DEFAULT_PRINT_OPTIONS.edgeitems:]
+                _format_item(item, max_width, signed)
+                for item in list(var)[-DEFAULT_PRINT_OPTIONS.edgeitems:]
             ]
         else:
             items = [
-                _format_item(item, max_width) for item in list(var.numpy())
+                _format_item(item, max_width, signed) for item in list(var)
             ]
-
         s = ', '.join(items)
         return '[' + s + ']'
     else:
         # recursively handle all dimensions
         if sumary and var.shape[0] > 2 * edgeitems:
             vars = [
-                _format_tensor(x, sumary, indent + 1) for x in var[:edgeitems]
+                _format_tensor(x, sumary, indent + 1, max_width, signed)
+                for x in var[:edgeitems]
             ] + ['...'] + [
-                _format_tensor(x, sumary, indent + 1) for x in var[-edgeitems:]
+                _format_tensor(x, sumary, indent + 1, max_width, signed)
+                for x in var[-edgeitems:]
             ]
         else:
-            vars = [_format_tensor(x, sumary, indent + 1) for x in var]
+            vars = [
+                _format_tensor(x, sumary, indent + 1, max_width, signed)
+                for x in var
+            ]
 
         return '[' + (',' + '\n' * (len(var.shape) - 1) + ' ' *
                       (indent + 1)).join(vars) + ']'
 
 
 def to_string(var, prefix='Tensor'):
+    np_var = var.numpy()
+
     indent = len(prefix) + 1
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
@@ -201,7 +215,10 @@ def to_string(var, prefix='Tensor'):
     if size > DEFAULT_PRINT_OPTIONS.threshold:
         sumary = True
 
-    data = _format_tensor(var, sumary, indent=indent)
+    max_width, signed = _get_max_width(_to_sumary(np_var))
+
+    data = _format_tensor(
+        np_var, sumary, indent=indent, max_width=max_width, signed=signed)
 
     return _template.format(
         prefix=prefix,
