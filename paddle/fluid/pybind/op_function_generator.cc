@@ -113,7 +113,6 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_allgather", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
-    {"alltoall", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},

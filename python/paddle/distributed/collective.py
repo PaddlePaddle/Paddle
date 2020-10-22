@@ -31,7 +31,6 @@ __all__ = [
     'all_gather',
     'scatter',
     'barrier',
-    'all_to_all',
     'send',
     'recv',
     'ReduceOp',
@@ -483,81 +482,6 @@ def barrier(group=0):
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
         attrs={'ring_id': group})
-
-
-def all_to_all(in_tensor_list, out_tensor_list, group=0):
-    """
-
-    Scatter tensors in in_tensor_list to all participators and gather the result tensors in out_tensor_list.
-
-    Args:
-        in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
-        out_tensor_list (Tensor): A list of output Tensors. The data type of its elements should be the same as the
-            data type of the input Tensors.
-        group (int): The id of the process group to work on.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            import paddle
-            from paddle.distributed import init_parallel_env
-
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            out_tensor_list = []
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data1 = np.array([[1, 2, 3], [4, 5, 6]])
-                np_data2 = np.array([[7, 8, 9], [10, 11, 12]])
-            else:
-                np_data1 = np.array([[13, 14, 15], [16, 17, 18]])
-                np_data2 = np.array([[19, 20, 21], [22, 23, 24]])
-            data1 = paddle.to_tensor(np_data1)
-            data2 = paddle.to_tensor(np_data2)
-            paddle.distributed.all_to_all([data1, data2], out_tensor_list)
-    """
-    op_type = 'alltoall'
-    temp = paddle.concat(in_tensor_list, axis=0)
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=in_tensor_list[0].dtype)
-    if in_dygraph_mode():
-        core.ops.alltoall(temp, out, 'use_calc_stream', True, 'ring_id', group,
-                          'nranks')
-    else:
-        if not isinstance(in_tensor_list, list):
-            raise ValueError("The type of 'in_tensor_list' for all_to_all "
-                             "should be list.")
-        for elem in in_tensor_list:
-            check_variable_and_dtype(
-                elem, 'in_tensor_list',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'all_to_all')
-        if not isinstance(out_tensor_list, list):
-            raise ValueError("The type of 'out_tensor_list' for all_to_all "
-                             "should be list.")
-        for elem in out_tensor_list:
-            check_variable_and_dtype(
-                elem, 'out_tensor_list',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'all_to_all')
-        if not isinstance(group, int):
-            raise ValueError("The type of 'group' for all_gather "
-                             "should be int.")
-        helper.append_op(
-            type=op_type,
-            inputs={'X': [temp]},
-            outputs={'Out': [out]},
-            attrs={
-                'ring_id': group,
-                'use_calc_stream': True,
-            })
-    global _default_group
-    out_tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
 
 
 def send(tensor, dst=0, group=0):
