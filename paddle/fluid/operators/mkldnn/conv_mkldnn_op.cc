@@ -1066,7 +1066,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
-        memory::data_type in_type = ToMKLDNNDataType(filter_grad->type());
+        memory::data_type in_type = framework::ToMKLDNNDataType(filter_grad->type());
         mkldnn::memory::format_tag out_format =
             mkldnn::memory::format_tag::goihw;
         const std::string key =
