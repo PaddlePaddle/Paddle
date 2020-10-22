@@ -1066,7 +1066,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // For convolution with groups convert from blocked to NCHW
       // otherwise there will be problems in next operators working on this data
       if (g > 1) {
-        memory::data_type in_type = framework::ToMKLDNNDataType(filter_grad->type());
+        memory::data_type in_type =
+            framework::ToMKLDNNDataType(filter_grad->type());
         mkldnn::memory::format_tag out_format =
             mkldnn::memory::format_tag::goihw;
         const std::string key =
@@ -1075,14 +1076,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         platform::ReorderMKLDNNHandler handler(weights_tz, filter_grad->type(),
                                                in_type, dev_ctx, mkldnn_engine,
                                                key);
-
-        auto reorder_src_memory_p =
-            handler.AcquireSrcMemory(*diff_weights_memory_p, in_data);
         auto reorder_dst_memory_p =
-            handler.AcquireDstMemory(filter_grad, out_format, place);
+            handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 
         auto reorder_p =
-            handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+            handler.AcquireReorder(reorder_dst_memory_p, diff_weights_memory_p);
 
         mkldnn::stream astream(cpu_engine);
         reorder_p->execute(astream, *reorder_src_memory_p,
