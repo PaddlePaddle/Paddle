@@ -4,3 +4,5 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
+
+list(REMOVE_ITEM TEST_OPS test_concat_op_xpu)
