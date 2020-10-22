@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+
 paddle.enable_static()
 
 
@@ -164,7 +165,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         iters = 5
         batch_size = 16
 
-        # build_fused_program
+        # build_fused_program: turn on fuse_bn_add_act_ops
         main_program = fluid.Program()
         startup_program = fluid.Program()
         x, y, loss = self.build_origin_program(main_program, startup_program,
@@ -188,8 +189,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
 
-        # build_origin_program
-        # close fused_bn_act_ops
+        # build_origin_program: turn off fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_add_act_ops = False
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
@@ -214,6 +214,24 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def test_fuse_bn_add_act(self):
         place = fluid.CUDAPlace(0)
         self.check(place, use_cuda=True)
+
+    def test_fuse_bn_add_act_API(self):
+        # build_fused_program: use fused_bn_add_act python API
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        x, y, loss = self.build_fused_program(main_program, startup_program,
+                                              use_cuda)
+        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+        train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=16)
+        exe = fluid.Executor(place)
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            exe.run(startup_program)
+            for _ in range(5):
+                data = next(train_reader())
+                loss_v = exe.run(main_program,
+                                 feed=feeder.feed(data),
+                                 fetch_list=[loss])
 
 
 if __name__ == '__main__':

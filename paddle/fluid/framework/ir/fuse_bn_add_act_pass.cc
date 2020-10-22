@@ -296,51 +296,11 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph, Node *op_1, Node *op_2,
   }
 
   std::unordered_set<const Node *> nodes2delete;
-  // if the outputs of op_1 are inputs of op_2, add the outputs to nodes2delete
-  // otherwise link the outputs to fused_op
-  for (auto &out : op_1->outputs) {
-    auto result_iter =
-        std::find_if(op_2->inputs.begin(), op_2->inputs.end(),
-                     [&out](const Node *node) -> bool { return node == out; });
 
-    if (result_iter == op_2->inputs.end()) {
-      IR_OP_VAR_LINK(fused_op, out);
-    } else {
-      nodes2delete.emplace(out);
-    }
-  }
-  // if the outputs of op_2 are inputs of op_3, add the outputs to nodes2delete
-  // otherwise link the outputs to fused_op
-  for (auto &out : op_2->outputs) {
-    auto result_iter =
-        std::find_if(op_3->inputs.begin(), op_3->inputs.end(),
-                     [&out](const Node *node) -> bool { return node == out; });
-    if (result_iter == op_3->inputs.end()) {
-      IR_OP_VAR_LINK(fused_op, out);
-    } else {
-      nodes2delete.emplace(out);
-    }
-  }
-
-  // if the inputs of op_2 are outputs of op_1, skip the inputs
-  // otherwise link the inputs to fused_op
-  for (auto &in : op_2->inputs) {
-    if (nodes2delete.count(in)) {
-      continue;
-    }
-    fused_op->inputs.emplace_back(in);
-    in->outputs = this->ReplaceNode(op_2, fused_op, in->outputs);
-  }
-
-  // if the inputs of op_3 are outputs of op_2, skip the inputs
-  // otherwise link the inputs to fused_op
-  for (auto &in : op_3->inputs) {
-    if (nodes2delete.count(in)) {
-      continue;
-    }
-    fused_op->inputs.emplace_back(in);
-    in->outputs = this->ReplaceNode(op_3, fused_op, in->outputs);
-  }
+  LinkOutputsToFuseOp(op_1, op_2, fused_op, &nodes2delete);
+  LinkOutputsToFuseOp(op_2, op_3, fused_op, &nodes2delete);
+  LinkInputsToFuseOp(op_2, fused_op, &nodes2delete);
+  LinkInputsToFuseOp(op_3, fused_op, &nodes2delete);
 
   for (auto &out : op_3->outputs) {
     IR_OP_VAR_LINK(fused_op, out);
@@ -351,6 +311,39 @@ void FuseBatchNormAddActPass::ReLinkNodes(Graph *graph, Node *op_1, Node *op_2,
   nodes2delete.insert(std::move(op_3));
 
   GraphSafeRemoveNodes(graph, nodes2delete);
+}
+
+void FuseBatchNormAddActPass::LinkOutputsToFuseOp(
+    Node *op_1, Node *op_2, Node *fused_op,
+    std::unordered_set<const Node *> *nodes2delete) const {
+  // if the outputs of op_1 are inputs of op_2, add the outputs to nodes2delete
+  // otherwise link the outputs to fused_op
+  for (auto &out : op_1->outputs) {
+    auto result_iter =
+        std::find_if(op_2->inputs.begin(), op_2->inputs.end(),
+                     [&out](const Node *node) -> bool { return node == out; });
+
+    if (result_iter == op_2->inputs.end()) {
+      IR_OP_VAR_LINK(fused_op, out);
+    } else {
+      nodes2delete->emplace(out);
+    }
+  }
+}
+
+void FuseBatchNormAddActPass::LinkInputsToFuseOp(
+    Node *op, Node *fused_op,
+    std::unordered_set<const Node *> *nodes2delete) const {
+  // if the inputs of the op are outputs of previous op, which means
+  // these inputs have been added to nodes2delete before, skip the inputs,
+  // otherwise link the inputs of the op to fused_op
+  for (auto &in : op->inputs) {
+    if (nodes2delete->count(in)) {
+      continue;
+    }
+    fused_op->inputs.emplace_back(in);
+    in->outputs = this->ReplaceNode(op, fused_op, in->outputs);
+  }
 }
 
 std::vector<Node *> FuseBatchNormAddActPass::ReplaceNode(

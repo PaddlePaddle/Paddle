@@ -48,6 +48,13 @@ class FuseBatchNormAddActPass : public FusePassBase {
       ir::Graph *graph,
       const std::unordered_set<std::string> &act_grad_types) const;
 
+  void LinkOutputsToFuseOp(
+      Node *op_1, Node *op_2, Node *fused_op,
+      std::unordered_set<const Node *> *nodes2delete) const;
+
+  void LinkInputsToFuseOp(Node *op, Node *fused_op,
+                          std::unordered_set<const Node *> *nodes2delete) const;
+
   std::vector<Node *> ReplaceNode(Node *cur_node, Node *new_node,
                                   const std::vector<Node *> &nodes) const;
 
