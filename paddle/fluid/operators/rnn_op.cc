@@ -228,7 +228,7 @@ class RNNGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("PreState"),
-                  this->InputGrad("PreState"));
+                  this->InputGrad("PreState", false));
     op->SetAttrMap(this->Attrs());
   }
 };
