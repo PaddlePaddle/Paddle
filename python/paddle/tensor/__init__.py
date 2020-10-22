@@ -66,8 +66,6 @@ from .logic import logical_not  #DEFINE_ALIAS
 from .logic import logical_or  #DEFINE_ALIAS
 from .logic import logical_xor  #DEFINE_ALIAS
 from .logic import not_equal  #DEFINE_ALIAS
-# from .logic import reduce_all  #DEFINE_ALIAS
-# from .logic import reduce_any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
 from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
@@ -163,6 +161,8 @@ from .math import isfinite  #DEFINE_ALIAS
 from .math import isinf  #DEFINE_ALIAS
 from .math import isnan  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
+from .math import all  #DEFINE_ALIAS
+from .math import any  #DEFINE_ALIAS
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal

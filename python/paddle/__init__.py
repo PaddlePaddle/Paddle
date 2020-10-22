@@ -103,8 +103,6 @@ from .tensor.logic import logical_not  #DEFINE_ALIAS
 from .tensor.logic import logical_or  #DEFINE_ALIAS
 from .tensor.logic import logical_xor  #DEFINE_ALIAS
 from .tensor.logic import not_equal  #DEFINE_ALIAS
-# from .tensor.logic import reduce_all  #DEFINE_ALIAS
-# from .tensor.logic import reduce_any  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
 from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
@@ -161,6 +159,8 @@ from .tensor.math import reciprocal  #DEFINE_ALIAS
 # from .tensor.math import reduce_min  #DEFINE_ALIAS
 # from .tensor.math import reduce_prod  #DEFINE_ALIAS
 # from .tensor.math import reduce_sum  #DEFINE_ALIAS
+from .tensor.math import all  #DEFINE_ALIAS
+from .tensor.math import any  #DEFINE_ALIAS
 from .tensor.math import round  #DEFINE_ALIAS
 from .tensor.math import rsqrt  #DEFINE_ALIAS
 from .tensor.math import scale  #DEFINE_ALIAS
