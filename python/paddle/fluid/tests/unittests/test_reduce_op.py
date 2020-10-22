@@ -767,5 +767,117 @@ class API_TestSumOp(unittest.TestCase):
         self.assertTrue((out3 == np.sum(np_x, axis=(0, 1, 2))).all())
 
 
+class TestAllAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            result = paddle.all(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], np.all(input_np)))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool)
+                x = fluid.layers.assign(np_x)
+                x = fluid.layers.cast(x, 'bool')
+
+                out1 = paddle.all(x)
+                np_out1 = out1.numpy()
+                expect_res1 = np.all(np_x)
+                self.assertTrue((np_out1 == expect_res1).all())
+
+                out2 = paddle.all(x, axis=0)
+                np_out2 = out2.numpy()
+                expect_res2 = np.all(np_x, axis=0)
+                self.assertTrue((np_out2 == expect_res2).all())
+
+                out3 = paddle.all(x, axis=-1)
+                np_out3 = out3.numpy()
+                expect_res3 = np.all(np_x, axis=-1)
+                self.assertTrue((np_out3 == expect_res3).all())
+
+                out4 = paddle.all(x, axis=1, keepdim=True)
+                np_out4 = out4.numpy()
+                expect_res4 = np.all(np_x, axis=1, keepdims=True)
+                self.assertTrue((np_out4 == expect_res4).all())
+
+        paddle.enable_static()
+
+
+class TestAnyAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="bool")
+            result = paddle.any(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
+            self.assertTrue(np.allclose(fetches[0], np.any(input_np)))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool)
+                x = fluid.layers.assign(np_x)
+                x = fluid.layers.cast(x, 'bool')
+
+                out1 = paddle.any(x)
+                np_out1 = out1.numpy()
+                expect_res1 = np.any(np_x)
+                self.assertTrue((np_out1 == expect_res1).all())
+
+                out2 = paddle.any(x, axis=0)
+                np_out2 = out2.numpy()
+                expect_res2 = np.any(np_x, axis=0)
+                self.assertTrue((np_out2 == expect_res2).all())
+
+                out3 = paddle.any(x, axis=-1)
+                np_out3 = out3.numpy()
+                expect_res3 = np.any(np_x, axis=-1)
+                self.assertTrue((np_out3 == expect_res3).all())
+
+                out4 = paddle.any(x, axis=1, keepdim=True)
+                np_out4 = out4.numpy()
+                expect_res4 = np.any(np_x, axis=1, keepdims=True)
+                self.assertTrue((np_out4 == expect_res4).all())
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
+    import paddle
+    paddle.enable_static()
     unittest.main()

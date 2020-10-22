@@ -315,6 +315,8 @@ def fc(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           # when input is single tensor
           data = fluid.data(name="data", shape=[-1, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
@@ -468,6 +470,9 @@ def embedding(input,
 
           import paddle.fluid as fluid
           import numpy as np
+          import paddle
+          paddle.enable_static()
+          
           data = fluid.data(name='x', shape=[None, 1], dtype='int64')
 
           # example 1
@@ -731,6 +736,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
 
             #define net structure, using LodTensor
             train_program = fluid.Program()
@@ -855,6 +862,8 @@ def crf_decoding(input, param_attr, label=None, length=None):
         .. code-block:: python
 
            import paddle.fluid as fluid
+           import paddle
+           paddle.enable_static()
 
            # LoDTensor-based example
            num_labels = 10
@@ -1458,6 +1467,9 @@ def conv2d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
+          
           data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
@@ -1728,6 +1740,8 @@ def conv3d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
@@ -2377,6 +2391,7 @@ def adaptive_pool2d(input,
           #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
           #
           import paddle
+          paddle.enable_static()
           data = paddle.rand(shape=[1,3,32,32])
           pool_out = paddle.fluid.layers.adaptive_pool2d(
                             input=data,
@@ -2531,6 +2546,7 @@ def adaptive_pool3d(input,
           #
 
           import paddle
+          paddle.enable_static()
           data = paddle.rand(shape=[1,3,32,32,32])
           pool_out = paddle.fluid.layers.adaptive_pool3d(
                             input=data,
@@ -2726,6 +2742,8 @@ def batch_norm(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
@@ -2735,6 +2753,8 @@ def batch_norm(input,
             # batch_norm with momentum as Variable
             import paddle.fluid as fluid
             import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+            import paddle
+            paddle.enable_static()
 
             def get_decay_momentum(momentum_init, decay_steps, decay_rate):
                 global_step = lr_scheduler._decay_step_counter()
@@ -3134,6 +3154,8 @@ def instance_norm(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.instance_norm(input=hidden1)
@@ -3269,6 +3291,7 @@ def data_norm(input,
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
 
             x = paddle.randn(shape=[32,100])
             hidden2 = paddle.static.nn.data_norm(input=x)
@@ -3451,6 +3474,8 @@ def layer_norm(input,
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[-1, 32, 32], dtype='float32')
             hidden1 = fluid.layers.layer_norm(input=x, begin_norm_axis=1)
             place = fluid.CPUPlace()
@@ -3566,6 +3591,9 @@ def group_norm(input,
        .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            
             data = fluid.data(name='data', shape=[None, 8, 32, 32], dtype='float32')
             x = fluid.layers.group_norm(input=data, groups=4)
     """
@@ -3887,6 +3915,8 @@ def conv2d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
@@ -4177,6 +4207,8 @@ def conv3d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
           data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
@@ -4659,7 +4691,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
     This OP computes the ``logical and`` of tensor elements over the given dimension, and output the result.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor, the input data type should be `bool`.
+        input (Tensor): the input tensor, it's data type should be `bool`.
         dim (list|int|optional): The dimension along which the logical and is computed.
             If :attr:`None`, compute the logical and over all elements of
             :attr:`input` and return a Tensor variable with a single element,
@@ -4672,11 +4704,12 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
                        will be named automatically. The default value is None.
 
     Returns:
-        Variable, the output data type is bool. : The reduced tensor variable with ``logical and`` in given dims.
+        Tensor, the output data type is bool. : The reduced tensor variable with ``logical and`` in given dims.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
@@ -4684,15 +4717,15 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
-            x = layers.cast(x, 'bool')
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.cast(x, 'bool')
 
-            out = layers.reduce_all(x)  # False
-            out = layers.reduce_all(x, dim=0)  # [True, False]
-            out = layers.reduce_all(x, dim=-1)  # [False, True]
+            out = paddle.reduce_all(x)  # False
+            out = paddle.reduce_all(x, dim=0)  # [True, False]
+            out = paddle.reduce_all(x, dim=-1)  # [False, True]
             # keep_dim=False, x.shape=(2,2), out.shape=(2,)
 
-            out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
+            out = paddle.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
@@ -4719,7 +4752,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
     This OP computes the ``logical or`` of tensor elements over the given dimension, and output the result.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor, the input data type should be `bool`.
+        input (Tensor): the input tensor, it's data type should be `bool`.
         dim (list|int|optional): The dimension along which the logical and is computed.
             If :attr:`None`, compute the logical and over all elements of
             :attr:`input` and return a Tensor variable with a single element,
@@ -4728,14 +4761,15 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true. The default value is False.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable, the output data type is bool. : The reduced tensor variable with ``logical or`` in given dims.
+        Tensor, the output data type is bool. : The reduced tensor variable with ``logical or`` in given dims.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
@@ -4743,15 +4777,15 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # x is a bool Tensor variable with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
-            x = layers.cast(x, 'bool')
+            x = paddle.assign(np.array([[1, 0], [0, 0]], dtype='int32'))
+            x = paddle.cast(x, 'bool')
 
-            out = layers.reduce_any(x)  # True
-            out = layers.reduce_any(x, dim=0)  # [True, False]
-            out = layers.reduce_any(x, dim=-1)  # [True, False]
+            out = paddle.reduce_any(x)  # True
+            out = paddle.reduce_any(x, dim=0)  # [True, False]
+            out = paddle.reduce_any(x, dim=-1)  # [True, False]
             # keep_dim=False, x.shape=(2,2), out.shape=(2,)
 
-            out = layers.reduce_any(x, dim=1,
+            out = paddle.reduce_any(x, dim=1,
                                      keep_dim=True)  # [[True], [False]]
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
@@ -5613,6 +5647,8 @@ def im2sequence(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             data = fluid.data(name='data', shape=[None, 3, 32, 32],
                                      dtype='float32')
             output = fluid.layers.im2sequence(
@@ -5669,6 +5705,8 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     Examples:
         >>>  # for LodTensor inputs
         >>> import paddle.fluid as fluid
+        >>> import paddle
+        >>> paddle.enable_static()
         >>> x = fluid.data(name='x', shape=[9, 16],
         >>>                        dtype='float32', lod_level=1)
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
@@ -5982,6 +6020,8 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         .. code-block:: python
 
            import paddle.fluid as fluid
+           import paddle
+           paddle.enable_static()
            global_step = fluid.layers.autoincreased_step_counter(
                counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
     """
@@ -9730,6 +9770,8 @@ def prelu(x, mode, param_attr=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             from paddle.fluid.param_attr import ParamAttr
             x = fluid.data(name="x", shape=[None,5,10,10], dtype="float32")
             mode = 'channel'
@@ -14307,6 +14349,9 @@ def deformable_conv(input,
           #deformable conv v2:
 
           import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
+          
           C_in, H_in, W_in = 3, 32, 32
           filter_size, deformable_groups = 3, 1
           data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
