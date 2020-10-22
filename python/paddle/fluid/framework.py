@@ -1828,6 +1828,9 @@ class ComplexVariable(object):
             self._dtype = "complex128"
         self._shape = self.real.shape
 
+    def __getitem__(self, idx):
+        return ComplexVariable(self.real[idx], self.imag[idx])
+
     @property
     def dtype(self):
         return self._dtype
