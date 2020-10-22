@@ -1073,7 +1073,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
             platform::CreateKey(weights_tz, filter_fmt, out_format, in_type);
 
         platform::ReorderMKLDNNHandler handler(weights_tz, filter_grad->type(),
-                                               in_type, *dev_ctx, mkldnn_engine,
+                                               in_type, dev_ctx, mkldnn_engine,
                                                key);
 
         auto reorder_src_memory_p =
