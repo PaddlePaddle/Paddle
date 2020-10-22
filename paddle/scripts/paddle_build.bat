@@ -1,6 +1,3 @@
-@ECHO ON
-SETLOCAL
-
 rem Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 rem
 rem Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +16,13 @@ rem =================================================
 rem       Paddle CI Task On Windows Platform
 rem =================================================
 
+@ECHO ON
+SETLOCAL
+
 rem -------clean up environment-----------
 set work_dir=%cd%
-wmic process where name="op_function_generator.exe" call terminate  2>NUL
+taskkill /f /im op_function_generator.exe
+wmic process where name="op_function_generator.exe" call terminate
 
 rem ------initialize common variable------
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
@@ -175,6 +176,7 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
+call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -201,9 +203,8 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
-call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*8/10
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*9/10
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
@@ -248,19 +249,25 @@ echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
 
+setlocal enabledelayedexpansion
+
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
+@ECHO OFF
 tree /F %cd%\paddle_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
+%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do echo "Windows Paddle_Inference Size: %%i"
+for /F %%i in ("%libsize%") do (
+    set /a libsize_m=%%i/1024
+    echo "Windows Paddle_Inference Size: !libsize_m!M"
+)
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
-
+@ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install -U %PADDLE_WHL_FILE_WIN% --user
