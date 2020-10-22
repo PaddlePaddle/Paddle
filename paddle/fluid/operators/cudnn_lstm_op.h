@@ -113,13 +113,25 @@ void create_mask_matrix(const framework::ExecutionContext& context,
 }
 
 template <typename T>
+void dropout_cpu_grad_function_inplace(
+    const framework::ExecutionContext& context, Tensor* grad_x,
+    const Tensor* mask, const float& dropout_prob) {
+  auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                     .eigen_device();
+  auto M = EigenVector<uint8_t>::Flatten(*mask);
+  auto dX = EigenVector<T>::Flatten(*grad_x);
+  if (dropout_prob == 1.0f) {
+    dX.device(place) = static_cast<T>(0) * dX;
+  } else {
+    dX.device(place) = dX * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+  }
+}
+
+template <typename T>
 void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
                                   Tensor* x, Tensor* mask,
                                   const float& dropout_prob,
-                                  const int& seed_number,
-                                  const bool& upscale_in_train,
-                                  const bool& is_test) {
-  VLOG(2) << "dropout_cpu_function_inplace function";
+                                  const int& seed_number, const bool& is_test) {
   auto* x_data = x->data<T>();
   if (!is_test) {
     size_t size = framework::product(x->dims());
@@ -141,9 +153,7 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
           x_data[i] = static_cast<T>(0);
         } else {
           mask_data[i] = 1;
-          if (upscale_in_train) {
-            x_data[i] /= static_cast<T>(1.0f - dropout_prob);
-          }
+          x_data[i] /= static_cast<T>(1.0f - dropout_prob);
         }
       }
       return;
@@ -155,20 +165,10 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     }
     for (size_t i = 0; i < size; ++i) {
       if (mask_data[i] == 1) {
-        if (upscale_in_train) {
-          x_data[i] /= static_cast<T>(1.0f - dropout_prob);
-        }
+        x_data[i] /= static_cast<T>(1.0f - dropout_prob);
       } else {
         x_data[i] = static_cast<T>(0);
       }
-    }
-  } else {
-    if (!upscale_in_train) {
-      auto X = EigenMatrix<T>::Reshape(*x, 1);
-      auto& place =
-          *context.template device_context<platform::CPUDeviceContext>()
-               .eigen_device();
-      X.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }
 }
@@ -771,8 +771,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       if (dropout_prob != 0 && (!is_test)) {
         // only train mode just need dropout
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
-                                        dropout_prob, seed,
-                                        true /*upscale_in_train*/, is_test);
+                                        dropout_prob, seed, is_test);
         Print3DTensor<T>(input_holder, "input_holder after dropout");
         Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
       }
@@ -1168,6 +1167,16 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
             layer_input_grad_holder, &init_h_grad_unbind, &init_c_grad_unbind,
             parameter_lists_grad, i);
     }
+
+    // calcluate the dropout gradient for the layer_input_grad_holder
+    // state_out save in the forward process
+    if (i > 0) {
+      if ((!is_test) && (dropout_prob != 0)) {
+        dropout_cpu_grad_function_inplace<T>(ctx, layer_input_grad_holder,
+                                             state_out, dropout_prob);
+      }
+    }
+
     if (i - 1 == 0) {
       layer_output_grad_holder = input_grad;
     } else {
