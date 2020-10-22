@@ -72,6 +72,7 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
 endif()
 
 #TODO(sunxiaolong01): Fix this unitest failed on GCC8.
