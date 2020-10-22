@@ -38,12 +38,8 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
-  auto *x = gpd.mutable_pattern()
-                ->NewNode("bn_act/x")
-                ->AsInput()
-                ->assert_is_op_input("batch_norm", "X");
   patterns::BatchNormActOneDNN bn_act_pattern(gpd.mutable_pattern(), "bn_act");
-  bn_act_pattern(x, act_type);
+  bn_act_pattern(act_type);
 
   int found_bn_act_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -57,10 +53,36 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     GET_IR_NODE_FROM_SUBGRAPH(batch_norm, batch_norm, bn_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, act, bn_act_pattern);
 
-    batch_norm->Op()->SetAttr("use_mkldnn", true);
-    batch_norm->Op()->SetAttr("fuse_with_relu", true);
-    batch_norm->Op()->SetAttr("trainable_statistics", false);
-    batch_norm->Op()->SetOutput("Y", {act_out->Name()});
+    auto *bn_op = batch_norm->Op();
+
+    if (bn_op->HasAttr("use_mkldnn")) {
+      PADDLE_ENFORCE(
+          BOOST_GET_CONST(bool, bn_op->GetAttr("use_mkldnn")),
+          platform::errors::PreconditionNotMet(
+              "The BatchNorm+Act fusion may happen only when oneDNN library "
+              "is used."));
+    }
+
+    if (bn_op->HasAttr("trainable_statistics")) {
+      PADDLE_ENFORCE(
+          !BOOST_GET_CONST(bool, bn_op->GetAttr("trainable_statistics")),
+          platform::errors::PreconditionNotMet(
+              "The BatchNorm+Act fusion may happen only when mean and variance "
+              "are not calculated by current batch statistics."));
+    }
+
+    if (bn_op->HasAttr("is_test")) {
+      PADDLE_ENFORCE(
+          BOOST_GET_CONST(bool, bn_op->GetAttr("is_test")),
+          platform::errors::PreconditionNotMet(
+              "The BatchNorm+Act fusion may happen only during inference."));
+    }
+
+    bn_op->SetAttr("use_mkldnn", true);
+    bn_op->SetAttr("is_test", true);
+    bn_op->SetAttr("fuse_with_relu", true);
+    bn_op->SetAttr("trainable_statistics", false);
+    bn_op->SetOutput("Y", {act_out->Name()});
 
     IR_OP_VAR_LINK(batch_norm, act_out);
     GraphSafeRemoveNodes(g, {act, bn_out});

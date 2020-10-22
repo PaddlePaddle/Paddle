@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <exception>
 #include <functional>
 #include <iterator>
 #include <string>
@@ -24,6 +25,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -241,7 +243,7 @@ void SetBatchNormAttrs(OpDesc* bn_op, bool is_test = true,
 // - trainable_statistics
 // The test case name would have only attributes with true value in its name.
 
-TEST(FuseBatchNormActOneDNNPass, IsTestTrainableStats) {
+TEST(FuseBatchNormActOneDNNPass, ThrowIsTestTrainableStats) {
   auto prog = BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
@@ -262,21 +264,11 @@ TEST(FuseBatchNormActOneDNNPass, IsTestTrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}});
-
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
+  EXPECT_THROW(RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
-TEST(FuseBatchNormActOneDNNPass, IsTest) {
+TEST(FuseBatchNormActOneDNNPass, FuseIsTest) {
   auto prog =
       BuildProgramDesc({"x", "m", "v", "bn_y", "act_y"}, {"scale", "bias"});
   auto* bn_op = CreateOp(&prog, "batch_norm", {{"X", "x"},
@@ -301,11 +293,13 @@ TEST(FuseBatchNormActOneDNNPass, IsTest) {
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
+      ASSERT_TRUE(op->HasAttr("trainable_statistics"));
+      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("trainable_statistics")));
     }
   }
 }
 
-TEST(FuseBatchNormActOneDNNPass, TrainableStats) {
+TEST(FuseBatchNormActOneDNNPass, ThrowTrainableStats) {
   auto prog = BuildProgramDesc(
       {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
       {"scale", "bias"});
@@ -326,18 +320,8 @@ TEST(FuseBatchNormActOneDNNPass, TrainableStats) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}});
-
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
+  EXPECT_THROW(RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
@@ -361,18 +345,34 @@ TEST(FuseBatchNormActOneDNNPass, AllAttrsFalse) {
   // No fusion in this attribute configuration
   constexpr int removed_nodes_count = 0;
 
-  RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count);
-  AssertOpsCount(graph, {{"batch_norm", 1}, {"relu", 1}});
+  EXPECT_THROW(RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
+}
 
-  for (const auto* node : graph.Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "batch_norm") {
-      const auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_with_relu"));
-      EXPECT_FALSE(BOOST_GET_CONST(bool, op->GetAttr("fuse_with_relu")));
-    }
-  }
+TEST(FuseBatchNormActOneDNNPass, ThrowUseMkldnn) {
+  auto prog = BuildProgramDesc(
+      {"x", "m", "v", "bn_y", "act_y", "m_out", "var_out", "sm", "sv"},
+      {"scale", "bias"});
+  auto* bn_op = CreateOp(&prog, "batch_norm", {{"X", "x"},
+                                               {"Scale", "scale"},
+                                               {"Bias", "bias"},
+                                               {"Mean", "m"},
+                                               {"Variance", "v"}},
+                         {{"Y", "bn_y"},
+                          {"MeanOut", "m_out"},
+                          {"VarianceOut", "var_out"},
+                          {"SavedMean", "sm"},
+                          {"SavedVariance", "sv"}},
+                         false);
+  SetBatchNormAttrs(bn_op, false, false);
+  CreateOp(&prog, "relu", {{"X", "bn_y"}}, {{"Out", "act_y"}}, false);
+
+  Graph graph(prog);
+  // No fusion in this attribute configuration
+  constexpr int removed_nodes_count = 0;
+
+  EXPECT_THROW(RunPassAndAssert(&graph, "x", "act_y", removed_nodes_count),
+               paddle::platform::EnforceNotMet);
 }
 
 }  // namespace ir

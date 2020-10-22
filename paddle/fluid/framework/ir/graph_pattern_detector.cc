@@ -1188,21 +1188,11 @@ PDNode *patterns::BatchNormActGrad::operator()(
   return bn_grad;
 }
 
-PDNode *patterns::BatchNormActOneDNN::operator()(PDNode *bn_x,
-                                                 const std::string &act_type) {
-  auto *bn =
-      pattern->NewNode(batch_norm_repr())
-          ->assert_is_op("batch_norm")
-          ->assert_is_not_op_input("MomentumTensor")
-          ->assert_op_attr<bool>("is_test", true)
-          ->assert_more([](Node *node) {
-            if (node->Op()->HasAttr("trainable_statistics")) {
-              return BOOST_GET_CONST(
-                         bool, node->Op()->GetAttr("trainable_statistics")) ==
-                     false;
-            }
-            return true;
-          });
+PDNode *patterns::BatchNormActOneDNN::operator()(const std::string &act_type) {
+  auto *bn_x = pattern->NewNode(bn_in_repr())
+                   ->AsInput()
+                   ->assert_is_op_input("batch_norm", "X");
+  auto *bn = pattern->NewNode(batch_norm_repr())->assert_is_op("batch_norm");
   auto *bn_out = pattern->NewNode(bn_out_repr())
                      ->assert_is_op_output("batch_norm", "Y")
                      ->assert_is_op_input(act_type);

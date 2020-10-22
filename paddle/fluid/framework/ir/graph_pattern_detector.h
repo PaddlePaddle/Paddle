@@ -675,9 +675,10 @@ struct BatchNormActOneDNN : public PatternBase {
   BatchNormActOneDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "bn_act_onednn") {}
 
-  PDNode* operator()(PDNode* x, const std::string& act_type);
+  PDNode* operator()(const std::string& act_type);
 
   // declare operator node's name
+  PATTERN_DECL_NODE(bn_in);
   PATTERN_DECL_NODE(batch_norm);
   PATTERN_DECL_NODE(act);
   PATTERN_DECL_NODE(bn_out);
