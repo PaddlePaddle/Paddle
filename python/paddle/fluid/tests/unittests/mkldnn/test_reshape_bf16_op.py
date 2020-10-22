@@ -28,6 +28,7 @@ class TestReshapeBf16Op(OpTest):
     def setUp(self):
         self.op_type = "reshape2"
         self.use_mkldnn = True
+        self.mkldnn_data_type = "bfloat16"
         self.init_data()
         self.init_input_data()
 
@@ -35,6 +36,7 @@ class TestReshapeBf16Op(OpTest):
         self.attrs = {
             'shape': self.new_shape,
             'use_mkldnn': self.use_mkldnn,
+            'mkldnn_data_type': self.mkldnn_data_type
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
