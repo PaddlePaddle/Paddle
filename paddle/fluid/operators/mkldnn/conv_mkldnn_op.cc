@@ -1082,7 +1082,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         auto reorder_p =
             handler.AcquireReorder(reorder_dst_memory_p, diff_weights_memory_p);
 
-        mkldnn::stream astream(cpu_engine);
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
