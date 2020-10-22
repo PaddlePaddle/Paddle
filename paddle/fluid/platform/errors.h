@@ -30,8 +30,22 @@ typedef ::paddle::platform::error::Code Code;
 
 class ErrorSummary {
  public:
-  // Note(chenweihang): Only one constructor
-  // No longer supports PADDLE_ENFORCE without type or without error message
+  // Note(chenweihang): Final deprecated constructor
+  //   This constructor is used to be compatible with
+  //   current existing untyped PADDLE_ENFORCE_*
+  //   PADDLE_ENFORCE
+  // Note(chenweihang): Windows openblas need this
+  //   constructor for compiling PADDLE_ENFORCE in *.cu,
+  //   this is a bug cause we can't remove this
+  //   constructor now.
+  template <typename... Args>
+  explicit ErrorSummary(Args... args) {
+    code_ = paddle::platform::error::LEGACY;
+    msg_ = paddle::string::Sprintf(args...);
+  }
+
+  // Note(chenweihang): Only recommended constructor
+  //   No longer supports PADDLE_ENFORCE without type or without error message
   explicit ErrorSummary(Code code, std::string msg) : code_(code), msg_(msg) {}
 
   Code code() const { return code_; }
