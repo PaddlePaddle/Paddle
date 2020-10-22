@@ -526,8 +526,8 @@ def all_to_all(in_tensor_list, out_tensor_list, group=0):
     out = helper.create_variable_for_type_inference(
         dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
-        core.ops.c_allgather(temp, out, 'use_calc_stream', True, 'ring_id',
-                             group, 'nranks')
+        core.ops.alltoall(temp, out, 'use_calc_stream', True, 'ring_id', group,
+                          'nranks')
     else:
         if not isinstance(in_tensor_list, list):
             raise ValueError("The type of 'in_tensor_list' for all_to_all "
@@ -664,7 +664,7 @@ def recv(tensor, src=0, group=0):
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
-        inputs={'Out': [tensor]},
+        outputs={'Out': [tensor]},
         attrs={
             'ring_id': group,
             'peer': src,

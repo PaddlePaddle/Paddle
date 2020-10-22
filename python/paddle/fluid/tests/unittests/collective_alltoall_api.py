@@ -46,7 +46,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
-            tindata = paddle.split(tindata, 2)
+            tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
             paddle.distributed.all_to_all(tindata, tout_data)
             return tout_data
