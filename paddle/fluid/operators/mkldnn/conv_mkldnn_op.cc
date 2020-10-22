@@ -1068,8 +1068,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       if (g > 1) {
         memory::data_type in_type =
             framework::ToMKLDNNDataType(filter_grad->type());
+        // for 3d conv with groups (six dimensional data reorder to goidhw)
+        // for 2d conv with groups (five dimensional data reorder to goihw)
         mkldnn::memory::format_tag out_format =
-            mkldnn::memory::format_tag::goihw;
+            weights_tz->size() == 6 ? mkldnn::memory::format_tag::goidhw
+                                    : mkldnn::memory::format_tag::goihw;
         const std::string key =
             platform::CreateKey(weights_tz, filter_fmt, out_format, in_type);
 
@@ -1087,9 +1090,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         astream.wait();
 
         // So here we have a data in goihw , which can be interpreted as OIHW
-        // because filter_grad shape is set for OIHW
+        // (OIDHW for conv3d)
+        // because filter_grad shape is set for OIHW (OIDHW for conv3d)
         mkldnn::memory::format_tag target_format =
-            mkldnn::memory::format_tag::oihw;
+            weights_tz->size() == 6 ? mkldnn::memory::format_tag::oidhw
+                                    : mkldnn::memory::format_tag::oihw;
         filter_grad->set_format(target_format);
       } else {
         filter_grad->set_format(filter_fmt);
