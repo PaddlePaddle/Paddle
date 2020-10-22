@@ -22,6 +22,8 @@ from inference_pass_test import InferencePassTest
 from paddle import enable_static
 from paddle.fluid.core import PassVersionChecker
 
+enable_static()
+
 
 class BnReluOneDnnFusePassTest(InferencePassTest):
     def setUp(self):
@@ -74,5 +76,4 @@ class BnReluGlobalStatsOneDnnFusePassTest(InferencePassTest):
 
 
 if __name__ == "__main__":
-    enable_static()
     unittest.main()
