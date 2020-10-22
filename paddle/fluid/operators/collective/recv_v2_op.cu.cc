@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/recv_op_v2.h"
+#include "paddle/fluid/operators/collective/recv_v2_op.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -74,7 +74,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
         cudaMemcpy(&numel, numel_ptr, sizeof(int), cudaMemcpyDeviceToHost));
 
     int rest_numel = 1;
-    for (size_t i = 1; i < out_dims.size(); ++i) {
+    for (int i = 1; i < out_dims.size(); ++i) {
       rest_numel = rest_numel * out_dims[i];
     }
     out_dims[0] = numel / rest_numel;

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/recv_op_v2.h"
+#include "paddle/fluid/operators/collective/recv_v2_op.h"
 #include <string>
 
 namespace paddle {
@@ -48,7 +48,7 @@ class RecvOpV2 : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
-        framework::proto::VarType::Type(data_type);
+        framework::proto::VarType::Type(dtype);
     return framework::OpKernelType(type, ctx.GetPlace());
   }
 };
