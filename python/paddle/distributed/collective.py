@@ -522,7 +522,7 @@ def all_to_all(in_tensor_list, out_tensor_list, group=0):
     temp = paddle.concat(in_tensor_list, axis=0)
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=out_tensor_list[0].dtype)
+        dtype=in_tensor_list[0].dtype)
     if in_dygraph_mode():
         core.ops.alltoall(temp, out, 'use_calc_stream', True, 'ring_id', group,
                           'nranks')
