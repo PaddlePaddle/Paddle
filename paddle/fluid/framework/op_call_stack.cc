@@ -33,6 +33,19 @@ std::string InsertIndentationIntoEachLine(const std::string &str) {
   return sout.str();
 }
 
+std::string SimplifyErrorTypeFormat(const std::string &str) {
+  std::ostringstream sout;
+  size_t type_end_pos = str.find(":", 0);
+  if (type_end_pos == std::string::npos) {
+    sout << str;
+  } else {
+    // Remove "Error:", add "()""
+    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
+         << str.substr(type_end_pos + 1);
+  }
+  return sout.str();
+}
+
 void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
   if (attrs.count("sub_block") != 0) {
@@ -60,18 +73,18 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   }
   // Step 2. Construct final call stack & append error op name
   if (FLAGS_call_stack_level > 1) {
-    sout << exception->full_except_str();
+    sout << exception->what();
   } else {
     // If callstack exists, use err_str_ instead sub_err_str_
     if (callstack) {
       sout << "\n\n";
-      sout << InsertIndentationIntoEachLine(exception->full_except_str());
+      sout << InsertIndentationIntoEachLine(exception->what());
     } else {
-      sout << exception->sub_except_str();
+      sout << SimplifyErrorTypeFormat(exception->what());
     }
   }
   sout << "  [operator < " << type << " > error]";
-  exception->set_except_str(sout.str());
+  exception->set_error_str(sout.str());
 }
 
 void AppendErrorOpHint(const std::string &type,
@@ -79,7 +92,7 @@ void AppendErrorOpHint(const std::string &type,
   std::ostringstream sout;
   sout << exception->what();
   sout << "  [operator < " << type << " > error]";
-  exception->set_except_str(sout.str());
+  exception->set_error_str(sout.str());
 }
 
 }  // namespace framework

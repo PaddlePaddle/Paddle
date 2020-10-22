@@ -239,7 +239,7 @@ inline std::string SimplifyDemangleStr(std::string str) {
   return str;
 }
 
-inline std::string GetFormatTraceBackString() {
+inline std::string GetCurrentTraceBackString() {
   std::ostringstream sout;
 
   sout << "\n\n--------------------------------------\n";
@@ -290,7 +290,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
   if (FLAGS_call_stack_level > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetFormatTraceBackString() + GetErrorSumaryString(what, file, line);
+    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
   } else {
     return GetErrorSumaryString(what, file, line);
   }
@@ -298,17 +298,13 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 
 inline bool is_error(bool stat) { return !stat; }
 
-inline void throw_on_error(bool stat, const std::string& msg) {
-  throw std::runtime_error(msg);
-}
-
 // Note: This Macro can only be used within enforce.h
-#define __THROW_ERROR_INTERNAL__(CODE, ...)                                \
-  do {                                                                     \
-    HANDLE_THE_ERROR                                                       \
-    throw ::paddle::platform::EnforceNotMet(                               \
-        CODE, ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                   \
+#define __THROW_ERROR_INTERNAL__(ERROR_SUMMARY)                      \
+  do {                                                               \
+    HANDLE_THE_ERROR                                                 \
+    throw ::paddle::platform::EnforceNotMet(ERROR_SUMMARY, __FILE__, \
+                                            __LINE__);               \
+    END_HANDLE_THE_ERROR                                             \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
@@ -318,65 +314,32 @@ struct EnforceNotMet : public std::exception {
   EnforceNotMet(std::exception_ptr e, const char* file, int line) {
     try {
       std::rethrow_exception(e);
+    } catch (platform::EnforceNotMet& e) {
+      code_ = e.code();
+      err_str_ = GetTraceBackString(e.what(), file, line);
     } catch (std::exception& e) {
-      exc_str_ = GetTraceBackString(e.what(), file, line);
-      full_exc_str_ = exc_str_;
-      sub_exc_str_ = exc_str_;
+      err_str_ = GetTraceBackString(e.what(), file, line);
     }
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
-      : exc_str_(GetTraceBackString(str, file, line)) {
-    full_exc_str_ = exc_str_;
-    sub_exc_str_ = exc_str_;
-  }
-
-  EnforceNotMet(const error::Code code, const std::string& str,
-                const char* file, int line)
-      : code_(code) {
-    auto error = ErrorSummary(code, str);
-    exc_str_ = build_except_str(error, file, line);
-  }
+      : err_str_(GetTraceBackString(str, file, line)) {}
 
   EnforceNotMet(const ErrorSummary& error, const char* file, int line)
-      : code_(error.code()) {
-    exc_str_ = build_except_str(error, file, line);
-  }
+      : code_(error.code()),
+        err_str_(GetTraceBackString(error.to_string(), file, line)) {}
 
-  const char* what() const noexcept override { return exc_str_.c_str(); }
+  const char* what() const noexcept override { return err_str_.c_str(); }
 
   error::Code code() const { return code_; }
 
-  const std::string& full_except_str() const { return full_exc_str_; }
-
-  const std::string& sub_except_str() const { return sub_exc_str_; }
-
-  void set_except_str(std::string str) { exc_str_ = str; }
-
- private:
-  std::string build_except_str(const ErrorSummary& error, const char* file,
-                               int line) {
-    full_exc_str_ = GetTraceBackString(error.to_string(), file, line);
-    sub_exc_str_ =
-        GetTraceBackString(error.error_message_with_subtype(), file, line);
-    if (FLAGS_call_stack_level > 1) {
-      return full_exc_str_;
-    } else {
-      return sub_exc_str_;
-    }
-  }
+  void set_error_str(std::string str) { err_str_ = str; }
 
  private:
   // Used to determine the final type of exception thrown
   error::Code code_ = error::LEGACY;
-  // Error message with internal Error type
-  // like: InvalidArgumentError: ***
-  std::string full_exc_str_;
-  // Error message with subtype in brackets
-  // like: (InvalidArgument) ***
-  std::string sub_exc_str_;
   // Current error message
-  std::string exc_str_;
+  std::string err_str_;
 };
 
 #define PADDLE_THROW(...)                                                   \
@@ -400,21 +363,12 @@ struct EnforceNotMet : public std::exception {
     }                                                                        \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                                         \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
-      try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
-            __cond__,                                                     \
-            ::paddle::platform::ErrorSummary(__VA_ARGS__).to_string());   \
-      } catch (...) {                                                     \
-        HANDLE_THE_ERROR                                                  \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                                __FILE__, __LINE__);      \
-        END_HANDLE_THE_ERROR                                              \
-      }                                                                   \
-    }                                                                     \
+#define PADDLE_ENFORCE(COND, ...)                                              \
+  do {                                                                         \
+    auto __cond__ = (COND);                                                    \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {                    \
+      __THROW_ERROR_INTERNAL__(::paddle::platform::ErrorSummary(__VA_ARGS__)); \
+    }                                                                          \
   } while (0)
 #endif
 
@@ -432,42 +386,46 @@ struct EnforceNotMet : public std::exception {
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                    \
-  do {                                                                         \
-    if (UNLIKELY(nullptr == (__VAL))) {                                        \
-      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__);        \
-      __THROW_ERROR_INTERNAL__(__summary__.code(),                             \
-                               "%s\n  [Hint: " #__VAL " should not be null.]", \
-                               __summary__.error_message());                   \
-    }                                                                          \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                   \
+  do {                                                                        \
+    if (UNLIKELY(nullptr == (__VAL))) {                                       \
+      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__);       \
+      auto __message__ = ::paddle::string::Sprintf(                           \
+          "%s\n  [Hint: " #__VAL " should not be null.]",                     \
+          __summary__.error_message());                                       \
+      __THROW_ERROR_INTERNAL__(                                               \
+          ::paddle::platform::ErrorSummary(__summary__.code(), __message__)); \
+    }                                                                         \
   } while (0)
 
-#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)    \
-  do {                                                                    \
-    auto __val1 = (__VAL1);                                               \
-    auto __val2 = (__VAL2);                                               \
-    using __TYPE1__ = decltype(__val1);                                   \
-    using __TYPE2__ = decltype(__val2);                                   \
-    using __COMMON_TYPE1__ =                                              \
-        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;   \
-    using __COMMON_TYPE2__ =                                              \
-        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;   \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(   \
-        static_cast<__COMMON_TYPE2__>(__val2));                           \
-    if (UNLIKELY(!__is_not_error)) {                                      \
-      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__);   \
-      constexpr bool __kCanToString__ =                                   \
-          ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&  \
-          ::paddle::platform::details::CanToString<__TYPE2__>::kValue;    \
-      __THROW_ERROR_INTERNAL__(                                           \
-          __summary__.code(), "%s\n  [Hint: Expected %s " #__CMP          \
-                              " %s, but received %s " #__INV_CMP " %s.]", \
-          __summary__.error_message(), #__VAL1, #__VAL2,                  \
-          ::paddle::platform::details::BinaryCompareMessageConverter<     \
-              __kCanToString__>::Convert(#__VAL1, __val1),                \
-          ::paddle::platform::details::BinaryCompareMessageConverter<     \
-              __kCanToString__>::Convert(#__VAL2, __val2));               \
-    }                                                                     \
+#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)        \
+  do {                                                                        \
+    auto __val1 = (__VAL1);                                                   \
+    auto __val2 = (__VAL2);                                                   \
+    using __TYPE1__ = decltype(__val1);                                       \
+    using __TYPE2__ = decltype(__val2);                                       \
+    using __COMMON_TYPE1__ =                                                  \
+        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;       \
+    using __COMMON_TYPE2__ =                                                  \
+        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;       \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(       \
+        static_cast<__COMMON_TYPE2__>(__val2));                               \
+    if (UNLIKELY(!__is_not_error)) {                                          \
+      auto __summary__ = ::paddle::platform::ErrorSummary(__VA_ARGS__);       \
+      constexpr bool __kCanToString__ =                                       \
+          ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&      \
+          ::paddle::platform::details::CanToString<__TYPE2__>::kValue;        \
+      auto __message__ = ::paddle::string::Sprintf(                           \
+          "%s\n  [Hint: Expected %s " #__CMP                                  \
+          " %s, but received %s " #__INV_CMP " %s.]",                         \
+          __summary__.error_message(), #__VAL1, #__VAL2,                      \
+          ::paddle::platform::details::BinaryCompareMessageConverter<         \
+              __kCanToString__>::Convert(#__VAL1, __val1),                    \
+          ::paddle::platform::details::BinaryCompareMessageConverter<         \
+              __kCanToString__>::Convert(#__VAL2, __val2));                   \
+      __THROW_ERROR_INTERNAL__(                                               \
+          ::paddle::platform::ErrorSummary(__summary__.code(), __message__)); \
+    }                                                                         \
   } while (0)
 
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
@@ -508,27 +466,28 @@ struct EnforceNotMet : public std::exception {
  * Examples:
  *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
  */
-#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
-  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
-    auto* __ptr = (__PTR);                                              \
-    if (UNLIKELY(nullptr == __ptr)) {                                   \
-      auto __summary__ = paddle::platform::errors::NotFound(            \
-          "Unable to get %s data of %s %s in operator %s. "             \
-          "Possible reasons are:\n"                                     \
-          "  1. The %s is not the %s of operator %s;\n"                 \
-          "  2. The %s has no corresponding variable passed in;\n"      \
-          "  3. The %s corresponding variable is not initialized.",     \
-          paddle::platform::demangle(                                   \
-              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
-                  .name()),                                             \
-          __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME, \
-          __NAME);                                                      \
-      __THROW_ERROR_INTERNAL__(__summary__.code(),                      \
-                               "%s\n  [Hint: pointer " #__PTR           \
-                               " should not be null.]",                 \
-                               __summary__.error_message());            \
-    }                                                                   \
-    return *__ptr;                                                      \
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                     \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {            \
+    auto* __ptr = (__PTR);                                                    \
+    if (UNLIKELY(nullptr == __ptr)) {                                         \
+      auto __summary__ = paddle::platform::errors::NotFound(                  \
+          "Unable to get %s data of %s %s in operator %s. "                   \
+          "Possible reasons are:\n"                                           \
+          "  1. The %s is not the %s of operator %s;\n"                       \
+          "  2. The %s has no corresponding variable passed in;\n"            \
+          "  3. The %s corresponding variable is not initialized.",           \
+          paddle::platform::demangle(                                         \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type)       \
+                  .name()),                                                   \
+          __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME,       \
+          __NAME);                                                            \
+      auto __message__ = ::paddle::string::Sprintf(                           \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",             \
+          __summary__.error_message());                                       \
+      __THROW_ERROR_INTERNAL__(                                               \
+          ::paddle::platform::ErrorSummary(__summary__.code(), __message__)); \
+    }                                                                         \
+    return *__ptr;                                                            \
   })())
 
 /*
@@ -738,10 +697,6 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
   return sout.str();
 }
 
-inline void throw_on_error(cudaError_t e, const std::string& msg) {
-  throw std::runtime_error(msg);
-}
-
 /** curand ERROR **/
 inline bool is_error(curandStatus_t stat) {
   return stat != CURAND_STATUS_SUCCESS;
@@ -785,11 +740,6 @@ inline std::string build_nvidia_error_msg(curandStatus_t stat) {
   return msg + curandGetErrorString(stat) + " ";
 }
 
-inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
-  throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
-                             msg);
-}
-
 /***** CUDNN ERROR *****/
 inline bool is_error(cudnnStatus_t stat) {
   return stat != CUDNN_STATUS_SUCCESS;
@@ -798,10 +748,6 @@ inline bool is_error(cudnnStatus_t stat) {
 inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
   std::string msg(" Cudnn error, ");
   return msg + platform::dynload::cudnnGetErrorString(stat) + " ";
-}
-
-inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
-  throw std::runtime_error(msg);
 }
 
 /***** CUBLAS ERROR *****/
@@ -839,10 +785,6 @@ inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
   return msg + cublasGetErrorString(stat) + " ";
 }
 
-inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
-  throw std::runtime_error(msg);
-}
-
 /***** CUSOLVER ERROR *****/
 inline bool is_error(cusolverStatus_t stat) {
   return stat != CUSOLVER_STATUS_SUCCESS;
@@ -874,23 +816,15 @@ inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
   return msg + cusolverGetErrorString(stat) + " ";
 }
 
-inline void throw_on_error(cusolverStatus_t stat, const std::string& msg) {
-  throw std::runtime_error(msg);
-}
-
 /****** NCCL ERROR ******/
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
 }
 
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
   std::string msg(" Nccl error, ");
   return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
-}
-
-inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
-  throw std::runtime_error(msg);
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
@@ -918,27 +852,18 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 
 }  // namespace details
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                                 \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                      \
-    constexpr auto __success_type__ =                                     \
-        ::paddle::platform::details::CudaStatusType<                      \
-            __CUDA_STATUS_TYPE__>::kSuccess;                              \
-    if (UNLIKELY(__cond__ != __success_type__)) {                         \
-      try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
-            __cond__,                                                     \
-            ::paddle::platform::errors::External(                         \
-                ::paddle::platform::build_nvidia_error_msg(__cond__))     \
-                .to_string());                                            \
-      } catch (...) {                                                     \
-        HANDLE_THE_ERROR                                                  \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                                __FILE__, __LINE__);      \
-        END_HANDLE_THE_ERROR                                              \
-      }                                                                   \
-    }                                                                     \
+#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                        \
+  do {                                                           \
+    auto __cond__ = (COND);                                      \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);             \
+    constexpr auto __success_type__ =                            \
+        ::paddle::platform::details::CudaStatusType<             \
+            __CUDA_STATUS_TYPE__>::kSuccess;                     \
+    if (UNLIKELY(__cond__ != __success_type__)) {                \
+      auto __summary__ = ::paddle::platform::errors::External(   \
+          ::paddle::platform::build_nvidia_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);                     \
+    }                                                            \
   } while (0)
 
 #undef DEFINE_CUDA_STATUS_TYPE
