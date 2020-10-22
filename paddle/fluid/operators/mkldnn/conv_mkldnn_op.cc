@@ -1071,7 +1071,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         // for 3d conv with groups (six dimensional data reorder to goidhw)
         // for 2d conv with groups (five dimensional data reorder to goihw)
         mkldnn::memory::format_tag out_format =
-            weights_tz->size() == 6 ? mkldnn::memory::format_tag::goidhw
+            weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
                                     : mkldnn::memory::format_tag::goihw;
         const std::string key =
             platform::CreateKey(weights_tz, filter_fmt, out_format, in_type);
@@ -1093,7 +1093,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         // (OIDHW for conv3d)
         // because filter_grad shape is set for OIHW (OIDHW for conv3d)
         mkldnn::memory::format_tag target_format =
-            weights_tz->size() == 6 ? mkldnn::memory::format_tag::oidhw
+            weights_tz.size() == 6 ? mkldnn::memory::format_tag::oidhw
                                     : mkldnn::memory::format_tag::oihw;
         filter_grad->set_format(target_format);
       } else {
