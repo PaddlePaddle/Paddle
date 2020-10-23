@@ -236,6 +236,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       num_inputs += 1;
     }
     const int num_bindings = num_inputs + Outputs("Ys").size();
+    // std::cerr << "num bindings: " << num_bindings << std::endl;
     std::vector<void *> buffers(num_bindings);
 
     // Bind input tensor to TRT.
@@ -278,9 +279,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else if (type == framework::proto::VarType::INT32) {
+        buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else {
         PADDLE_THROW(platform::errors::Fatal(
-            "The TRT Engine OP only support float and int64_t input."));
+            "The TRT Engine OP only support float/int32_t/int64_t input."));
       }
     }
 
