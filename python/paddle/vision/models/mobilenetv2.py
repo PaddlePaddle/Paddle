@@ -46,11 +46,11 @@ class ConvBNReLU(nn.Sequential):
                  kernel_size=3,
                  stride=1,
                  groups=1,
-                 norm_layer=nn.BatchNorm2d):
+                 norm_layer=nn.BatchNorm2D):
         padding = (kernel_size - 1) // 2
 
         super(ConvBNReLU, self).__init__(
-            nn.Conv2d(
+            nn.Conv2D(
                 in_planes,
                 out_planes,
                 kernel_size,
@@ -68,7 +68,7 @@ class InvertedResidual(nn.Layer):
                  oup,
                  stride,
                  expand_ratio,
-                 norm_layer=nn.BatchNorm2d):
+                 norm_layer=nn.BatchNorm2D):
         super(InvertedResidual, self).__init__()
         self.stride = stride
         assert stride in [1, 2]
@@ -88,7 +88,7 @@ class InvertedResidual(nn.Layer):
                 stride=stride,
                 groups=hidden_dim,
                 norm_layer=norm_layer),
-            nn.Conv2d(
+            nn.Conv2D(
                 hidden_dim, oup, 1, 1, 0, bias_attr=False),
             norm_layer(oup),
         ])
@@ -127,7 +127,7 @@ class MobileNetV2(nn.Layer):
 
         block = InvertedResidual
         round_nearest = 8
-        norm_layer = nn.BatchNorm2d
+        norm_layer = nn.BatchNorm2D
         inverted_residual_setting = [
             [1, 16, 1, 1],
             [6, 24, 2, 2],
@@ -169,7 +169,7 @@ class MobileNetV2(nn.Layer):
         self.features = nn.Sequential(*features)
 
         if with_pool:
-            self.pool2d_avg = nn.AdaptiveAvgPool2d(1)
+            self.pool2d_avg = nn.AdaptiveAvgPool2D(1)
 
         if self.num_classes > 0:
             self.classifier = nn.Sequential(

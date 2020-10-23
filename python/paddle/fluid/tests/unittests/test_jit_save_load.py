@@ -222,7 +222,7 @@ class TestJitSaveLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save_model(self, model_path=None):
@@ -370,7 +370,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def test_output_spec(self):
@@ -429,7 +429,7 @@ class TestJitMultipleLoading(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         # train and save base model
         self.train_and_save_orig_model()
@@ -457,7 +457,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save(self):
@@ -512,7 +512,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def verify_inference_correctness(self, layer, model_path, with_label=False):
