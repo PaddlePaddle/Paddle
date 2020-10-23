@@ -36,7 +36,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             opt = fluid.optimizer.SGD(learning_rate=0.001)
             opt.minimize(loss)
 
-            batch_size = 32
+            batch_size = 16
             image = np.random.normal(size=(batch_size, 784)).astype('float32')
             label = np.random.randint(0, 10, (batch_size, 1), dtype="int64")
 
