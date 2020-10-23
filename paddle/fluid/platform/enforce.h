@@ -39,7 +39,6 @@ limitations under the License. */
 
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -296,15 +295,28 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   }
 }
 
+inline std::string SimplifyErrorTypeFormat(const std::string& str) {
+  std::ostringstream sout;
+  size_t type_end_pos = str.find(":", 0);
+  if (type_end_pos == std::string::npos) {
+    sout << str;
+  } else {
+    // Remove "Error:", add "()""
+    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
+         << str.substr(type_end_pos + 1);
+  }
+  return sout.str();
+}
+
 inline bool is_error(bool stat) { return !stat; }
 
 // Note: This Macro can only be used within enforce.h
-#define __THROW_ERROR_INTERNAL__(ERROR_SUMMARY)                      \
-  do {                                                               \
-    HANDLE_THE_ERROR                                                 \
-    throw ::paddle::platform::EnforceNotMet(ERROR_SUMMARY, __FILE__, \
-                                            __LINE__);               \
-    END_HANDLE_THE_ERROR                                             \
+#define __THROW_ERROR_INTERNAL__(__ERROR_SUMMARY)                      \
+  do {                                                                 \
+    HANDLE_THE_ERROR                                                   \
+    throw ::paddle::platform::EnforceNotMet(__ERROR_SUMMARY, __FILE__, \
+                                            __LINE__);                 \
+    END_HANDLE_THE_ERROR                                               \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
@@ -317,29 +329,55 @@ struct EnforceNotMet : public std::exception {
     } catch (platform::EnforceNotMet& e) {
       code_ = e.code();
       err_str_ = GetTraceBackString(e.what(), file, line);
+      simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
     } catch (std::exception& e) {
       err_str_ = GetTraceBackString(e.what(), file, line);
+      simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
     }
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {}
+      : err_str_(GetTraceBackString(str, file, line)) {
+    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+  }
 
   EnforceNotMet(const ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
-        err_str_(GetTraceBackString(error.to_string(), file, line)) {}
+        err_str_(GetTraceBackString(error.to_string(), file, line)) {
+    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+  }
 
-  const char* what() const noexcept override { return err_str_.c_str(); }
+  const char* what() const noexcept override {
+    if (FLAGS_call_stack_level > 1) {
+      return err_str_.c_str();
+    } else {
+      return simple_err_str_.c_str();
+    }
+  }
 
   error::Code code() const { return code_; }
 
-  void set_error_str(std::string str) { err_str_ = str; }
+  const std::string& error_str() const { return err_str_; }
+
+  const std::string& simple_error_str() const { return simple_err_str_; }
+
+  void set_error_str(std::string str) {
+    if (FLAGS_call_stack_level > 1) {
+      err_str_ = str;
+    } else {
+      simple_err_str_ = str;
+    }
+  }
 
  private:
   // Used to determine the final type of exception thrown
   error::Code code_ = error::LEGACY;
-  // Current error message
+  // Complete error message
+  // e.g. InvalidArgumentError: ***
   std::string err_str_;
+  // Simple errror message used when no C++ stack and python compile stack
+  // e.g. (InvalidArgument) ***
+  std::string simple_err_str_;
 };
 
 #define PADDLE_THROW(...)                                                   \

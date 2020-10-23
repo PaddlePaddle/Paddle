@@ -33,19 +33,6 @@ std::string InsertIndentationIntoEachLine(const std::string &str) {
   return sout.str();
 }
 
-std::string SimplifyErrorTypeFormat(const std::string &str) {
-  std::ostringstream sout;
-  size_t type_end_pos = str.find(":", 0);
-  if (type_end_pos == std::string::npos) {
-    sout << str;
-  } else {
-    // Remove "Error:", add "()""
-    sout << "(" << str.substr(0, type_end_pos - 5) << ")"
-         << str.substr(type_end_pos + 1);
-  }
-  return sout.str();
-}
-
 void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
                          platform::EnforceNotMet *exception) {
   if (attrs.count("sub_block") != 0) {
@@ -78,9 +65,9 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
     // If callstack exists, use err_str_ instead sub_err_str_
     if (callstack) {
       sout << "\n\n";
-      sout << InsertIndentationIntoEachLine(exception->what());
+      sout << InsertIndentationIntoEachLine(exception->error_str());
     } else {
-      sout << SimplifyErrorTypeFormat(exception->what());
+      sout << exception->simple_error_str();
     }
   }
   sout << "  [operator < " << type << " > error]";

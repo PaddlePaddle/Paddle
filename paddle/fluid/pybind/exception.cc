@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-#include <utility>
-
 #include "paddle/fluid/pybind/exception.h"
 
 namespace paddle {
@@ -37,8 +34,7 @@ namespace pybind {
 
 void BindException(pybind11::module* m) {
   static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
-  static pybind11::exception<platform::EnforceNotMet> ex_base(*m,
-                                                              "EnforceNotMet");
+  static pybind11::exception<platform::EnforceNotMet> exc(*m, "EnforceNotMet");
   pybind11::register_exception_translator([](std::exception_ptr p) {
     try {
       if (p) std::rethrow_exception(p);
@@ -73,7 +69,7 @@ void BindException(pybind11::module* m) {
           PyErr_SetString(PyExc_OSError, e.what());
           break;
         default:
-          ex_base(e.what());
+          exc(e.what());
           break;
       }
     }
