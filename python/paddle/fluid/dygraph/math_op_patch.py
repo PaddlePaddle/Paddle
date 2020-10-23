@@ -18,7 +18,7 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, ComplexVariable
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
-from ...incubate import complex
+import paddle
 
 import numpy as np
 import six
@@ -156,7 +156,7 @@ def monkey_patch_math_varbase():
                     tmp = self
                     self = other_var
                     other_var = tmp
-                math_op = getattr(complex.tensor, op_type)
+                math_op = getattr(paddle.incubate.complex.tensor, op_type)
                 return math_op(self, other_var)
 
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
