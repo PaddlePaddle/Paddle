@@ -71,9 +71,9 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 template <typename T>
 nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                             bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GT(shape.size(), 1UL,
+  PADDLE_ENFORCE_GT(shape.size(), 0UL,
                     platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 2 "
+                        "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
@@ -174,6 +174,9 @@ class TensorRTEngine {
                       "version should be at least 6.";
 #endif
     }
+#ifdef USE_NVINFER_PLUGIN
+    dy::initLibNvInferPlugins(&logger, "");
+#endif
   }
 
   ~TensorRTEngine() {}

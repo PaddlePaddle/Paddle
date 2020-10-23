@@ -30,11 +30,11 @@ namespace tensorrt {
 /*
  * MulOp, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
  */
-class MulOpConverter : public OpConverter {
+class MatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
+    VLOG(3) << "convert a fluid matmul op to tensorrt mul layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -58,4 +58,4 @@ class MulOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);
+REGISTER_TRT_OP_CONVERTER(matmul, MatMulOpConverter);

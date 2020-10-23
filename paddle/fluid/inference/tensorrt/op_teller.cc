@@ -70,6 +70,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "hard_swish"};
   std::unordered_set<std::string> teller_set{
       "mul",
+      "matmul",
       "conv2d",
       "pool2d",
       "relu",
