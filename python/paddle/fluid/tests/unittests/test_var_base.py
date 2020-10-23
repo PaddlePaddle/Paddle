@@ -444,6 +444,40 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
+    def test_tensor_str2(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5111111, 1.0], [0, 0]])
+        a_str = str(a)
+
+        if six.PY2:
+            expected = '''Tensor(shape=[2L, 2L], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[1.5111, 1.    ],
+        [0.    , 0.    ]])'''
+        else:
+            expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[1.5111, 1.    ],
+        [0.    , 0.    ]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str3(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[-1.5111111, 1.0], [0, -0.5]])
+        a_str = str(a)
+
+        if six.PY2:
+            expected = '''Tensor(shape=[2L, 2L], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[-1.5111,  1.    ],
+        [ 0.    , -0.5000]])'''
+        else:
+            expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [[-1.5111,  1.    ],
+        [ 0.    , -0.5000]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
 
 class TestVarBaseSetitem(unittest.TestCase):
     def setUp(self):
