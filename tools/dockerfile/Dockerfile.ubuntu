@@ -232,4 +232,6 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
+RUN apt-get install libprotobuf-dev -y
+
 EXPOSE 22
