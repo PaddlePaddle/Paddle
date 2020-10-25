@@ -14,9 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
-#ifdef USE_NVINFER_PLUGIN
 #include <NvInferPlugin.h>
-#endif
 #if !defined(_WIN32)
 #include <dlfcn.h>
 #endif
@@ -35,11 +33,9 @@ void* GetTensorRtHandle();
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
 
-#ifdef USE_NVINFER_PLUGIN
 void* GetTensorRtPluginHandle();
 extern std::once_flag tensorrt_plugin_dso_flag;
 extern void* tensorrt_plugin_dso_handle;
-#endif
 
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                            \
   struct DynLoad__##__name {                                                  \
@@ -94,9 +90,7 @@ extern void* tensorrt_plugin_dso_handle;
   __macro(initLibNvInferPlugins);
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
-#ifdef USE_NVINFER_PLUGIN
 TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP)
-#endif // end of USE_NVINFER_PLUGIN
 
 #endif // end of NV_TENSORRT_MAJOR
 

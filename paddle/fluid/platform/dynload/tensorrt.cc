@@ -22,18 +22,13 @@ namespace dynload {
 std::once_flag tensorrt_dso_flag;
 void* tensorrt_dso_handle;
 
-#ifdef USE_NVINFER_PLUGIN
 std::once_flag tensorrt_plugin_dso_flag;
 void* tensorrt_plugin_dso_handle;
-#endif
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 TENSORRT_RAND_ROUTINE_EACH(DEFINE_WRAP);
-
-#ifdef USE_NVINFER_PLUGIN
 TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DEFINE_WRAP);
-#endif
 
 void* GetDsoHandle(const std::string& dso_name) {
 #if !defined(_WIN32)
@@ -64,7 +59,6 @@ void* GetTensorRtHandle() {
   return GetDsoHandle(dso_name);
 }
 
-#ifdef USE_NVINFER_PLUGIN
 void* GetTensorRtPluginHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   std::string dso_name = "libnvinfer_plugin.dylib";
@@ -75,7 +69,6 @@ void* GetTensorRtPluginHandle() {
 #endif
   return GetDsoHandle(dso_name);
 }
-#endif
 
 }  // namespace dynload
 }  // namespace platform

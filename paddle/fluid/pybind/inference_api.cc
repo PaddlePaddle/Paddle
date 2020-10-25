@@ -481,6 +481,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("optim_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("disable_trt_plugin_fp16") = false)
+      .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
+      .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
