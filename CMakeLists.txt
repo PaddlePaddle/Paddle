@@ -138,7 +138,6 @@ option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
-option(WITH_NVINFER_PLUGIN   "Use plugins of nvinfer_plugin"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 
 # PY_VERSION
@@ -272,9 +271,6 @@ if(ON_INFER)
     message(STATUS "On inference mode, will take place some specific optimization.")
     include(inference_lib)
     add_definitions(-DPADDLE_ON_INFERENCE)
-    if (WITH_NVINFER_PLUGIN)
-        add_definitions(-DUSE_NVINFER_PLUGIN)
-    endif()
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")

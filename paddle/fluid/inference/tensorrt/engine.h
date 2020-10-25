@@ -174,9 +174,7 @@ class TensorRTEngine {
                       "version should be at least 6.";
 #endif
     }
-#ifdef USE_NVINFER_PLUGIN
     dy::initLibNvInferPlugins(&logger, "");
-#endif
   }
 
   ~TensorRTEngine() {}
@@ -288,6 +286,8 @@ class TensorRTEngine {
     suffix_counter += 1;
   }
 
+  void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
@@ -315,6 +315,7 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  bool use_oss() { return use_oss_; };
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
@@ -350,6 +351,7 @@ class TensorRTEngine {
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
+  bool use_oss_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
