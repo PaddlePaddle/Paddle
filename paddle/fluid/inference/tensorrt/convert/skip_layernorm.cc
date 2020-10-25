@@ -52,45 +52,45 @@ class SkipLayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#ifdef USE_NVINFER_PLUGIN
-      auto creator = GetPluginRegistry()->getPluginCreator(
-          "CustomSkipLayerNormPluginDynamic", "2");
-      assert(creator != nullptr);
-      int type = static_cast<int>((engine_->WithFp16() == 1)
-                                      ? nvinfer1::DataType::kHALF
-                                      : nvinfer1::DataType::kFLOAT);
-      int ld = input1->getDimensions().d[2];  // hidden dimension
-      assert(ld > 0);
+      if (engine_->use_oss()) {
+        auto creator = GetPluginRegistry()->getPluginCreator(
+            "CustomSkipLayerNormPluginDynamic", "2");
+        assert(creator != nullptr);
+        int type = static_cast<int>((engine_->WithFp16() == 1)
+                                        ? nvinfer1::DataType::kHALF
+                                        : nvinfer1::DataType::kFLOAT);
+        int ld = input1->getDimensions().d[2];  // hidden dimension
+        assert(ld > 0);
 
-      const std::vector<nvinfer1::PluginField> fields{
-          {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-          {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
-          {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
-          {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
-      };
-      nvinfer1::PluginFieldCollection* pluginPtr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*pluginPtr) +
-                     fields.size() *
-                         sizeof(nvinfer1::PluginField)));  // remember to free
-      pluginPtr->nbFields = static_cast<int>(fields.size());
-      pluginPtr->fields = fields.data();
+        const std::vector<nvinfer1::PluginField> fields{
+            {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
+            {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
+            {"beta", bias, nvinfer1::PluginFieldType::kFLOAT32, bias_size},
+            {"gamma", scale, nvinfer1::PluginFieldType::kFLOAT32, scale_size},
+        };
+        nvinfer1::PluginFieldCollection* pluginPtr =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(*pluginPtr) +
+                       fields.size() *
+                           sizeof(nvinfer1::PluginField)));  // remember to free
+        pluginPtr->nbFields = static_cast<int>(fields.size());
+        pluginPtr->fields = fields.data();
 
-      auto pluginObj =
-          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
-      auto plugin_layer = engine_->network()->addPluginV2(
-          inputs.data(), inputs.size(), *pluginObj);
+        auto pluginObj =
+            creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+        auto plugin_layer = engine_->network()->addPluginV2(
+            inputs.data(), inputs.size(), *pluginObj);
 
-      assert(plugin_layer != nullptr);
-      layer = plugin_layer;
-#else
-      float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
-      plugin::SkipLayerNormPluginDynamic* plugin =
-          new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
-                                                 scale_size, eps, ban_fp16);
-      layer = engine_->AddPluginV2(inputs.data(), 2, plugin);
-#endif
+        assert(plugin_layer != nullptr);
+        layer = plugin_layer;
+      } else {
+        float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+        bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+        plugin::SkipLayerNormPluginDynamic* plugin =
+            new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
+                                                   scale_size, eps, ban_fp16);
+        layer = engine_->AddPluginV2(inputs.data(), 2, plugin);
+      }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the Ernie(Bert) model in static"
