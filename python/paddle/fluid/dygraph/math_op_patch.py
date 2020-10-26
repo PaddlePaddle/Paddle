@@ -151,11 +151,8 @@ def monkey_patch_math_varbase():
         def __impl__(self, other_var):
             # tensor and ComplexVariable opetator
             if isinstance(other_var, ComplexVariable):
+                # need import paddle in closure
                 import paddle
-                if reverse:
-                    tmp = self
-                    self = other_var
-                    other_var = tmp
                 math_op = getattr(paddle.incubate.complex.tensor, op_type)
                 return math_op(self, other_var)
 

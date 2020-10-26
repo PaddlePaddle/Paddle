@@ -18,21 +18,17 @@ from . import tensor
 
 
 def monkey_patch_math_complex():
+    # complexVariable do not support scaler type now, so here not contains
+    # reverse methods, such as "__radd__", "__rsub__", "__rmul__", "__rdiv__",
+    # "__rtruediv__", "__rmatmul__".
     complex_methods = [
         ('__add__', _binary_creator_('__add__', "elementwise_add", False)),
-        ('__radd__', _binary_creator_('__add__', "elementwise_add", True)),
         ('__sub__', _binary_creator_('__sub__', "elementwise_sub", False)),
-        ('__rsub__', _binary_creator_('__rsub__', "elementwise_sub", True)),
         ('__mul__', _binary_creator_('__mul__', "elementwise_mul", False)),
-        ('__rmul__', _binary_creator_('__rmul__', "elementwise_mul", True)),
         ('__div__', _binary_creator_('__div__', "elementwise_div", False)),
-        ('__rdiv__', _binary_creator_('__rdiv__', "elementwise_div", True)),
         ('__truediv__', _binary_creator_('__truediv__', "elementwise_div",
                                          False)),
-        ('__rtruediv__', _binary_creator_('__rtruediv__', "elementwise_div",
-                                          True)),
         ('__matmul__', _binary_creator_('__matmul__', "matmul", False)),
-        ('__rmatmul__', _binary_creator_('__rmatmul__', "matmul", True)),
     ]
 
     for method in complex_methods:
@@ -47,14 +43,9 @@ def monkey_patch_math_complex():
             setattr(framework.ComplexVariable, method, method_impl)
 
 
-# for binary operator such as elementwise, compare
+# for binary operator such as elementwise
 def _binary_creator_(method_name, op_type, reverse=False):
     def __impl__(self, other_var):
-        if reverse:
-            tmp = self
-            self = other_var
-            other_var = tmp
-
         math_op = getattr(tensor, op_type)
         return math_op(self, other_var)
 
