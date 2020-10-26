@@ -320,7 +320,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableTensorRtOSS();
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  /// \brief A boolean state telling whether to use the TensorRT OSS.
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
