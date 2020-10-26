@@ -91,7 +91,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            self.assertTrue(np.allclose(y1, y2, atol=1e-5))
 
 
 if __name__ == '__main__':
