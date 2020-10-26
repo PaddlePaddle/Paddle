@@ -597,16 +597,9 @@ struct BidirLayer : public Layer<T, CellType> {
                   TensorList last_c, Tensor* output, const int& layer_idx,
                   const int& gate_num, Tensor* gate_value, Tensor* cell_value,
                   Tensor* cell_act_value, bool is_test) {
-    TensorList output_vec;
-    output_vec.reserve(2);
-    output_vec.emplace_back(Tensor());
-    output_vec.emplace_back(Tensor());
-    Tensor forward_input_w;
-    Tensor forward_cell_value;
-    Tensor forward_cell_act_value;
-    Tensor backward_input_w;
-    Tensor backward_cell_value;
-    Tensor backward_cell_act_value;
+    TensorList output_vec(2);
+    Tensor forward_input_w, forward_cell_value, forward_cell_act_value;
+    Tensor backward_input_w, backward_cell_value, backward_cell_act_value;
     int time_step = input->dims()[0];
     int batch_size = input->dims()[1];
     int hidden_size = output->dims()[2];
@@ -646,8 +639,6 @@ struct BidirLayer : public Layer<T, CellType> {
         concat_functor;
     concat_functor(dev_ctx, output_vec, static_cast<int>(2), output);
   }
-
-  //  CellType cell_;
 };
 
 inline void SplitReserveData(Tensor* reserve_data, Tensor* gate_data,
@@ -807,6 +798,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
         // Print3DTensor<uint8_t>(dropout_mask, "dropout mask");
       }
     }
+
     if (is_bidirec) {
       BidirLayerT<T, CellType> layer(cell);
       if (i == 0) {
