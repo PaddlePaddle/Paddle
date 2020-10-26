@@ -149,6 +149,10 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
             plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
         layer = plugin_layer;
         free(plugin_ptr);
+        auto output_name = op_desc.Output("Out")[0];
+        RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm",
+                                 {output_name, std::string("qkv_plugin_mask")},
+                                 test_mode);
       } else {
         bool use_fp16 = engine_->WithFp16();
         float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
@@ -157,6 +161,9 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
             input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
             eps, use_fp16);
         layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
+        auto output_name = op_desc.Output("Out")[0];
+        RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
+                                 test_mode);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -166,10 +173,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           " to set the shape information to run the dynamic shape mode."));
     }
 
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm",
-                             {output_name, std::string("qkv_plugin_mask")},
-                             test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "

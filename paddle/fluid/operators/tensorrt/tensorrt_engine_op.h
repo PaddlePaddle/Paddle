@@ -236,7 +236,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       num_inputs += 1;
     }
     const int num_bindings = num_inputs + Outputs("Ys").size();
-    // std::cerr << "num bindings: " << num_bindings << std::endl;
     std::vector<void *> buffers(num_bindings);
 
     // Bind input tensor to TRT.

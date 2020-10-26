@@ -28,7 +28,7 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * MulOp, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
+ * MatMulOp, IMatrixMultiplyLayer in TRT. This Layer doesn't has weights.
  */
 class MatMulOpConverter : public OpConverter {
  public:
@@ -40,10 +40,13 @@ class MatMulOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
-    // Both the input1 and input2 do not need transpose.
+    
+    bool transpose_X = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
+    bool transpose_Y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
+
     auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), false,
-        *const_cast<nvinfer1::ITensor*>(input2), false);
+        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), transpose_X,
+        *const_cast<nvinfer1::ITensor*>(input2), transpose_Y);
 
     auto output_name = op_desc.Output("Out")[0];
     engine_->SetITensor(output_name, layer->getOutput(0));

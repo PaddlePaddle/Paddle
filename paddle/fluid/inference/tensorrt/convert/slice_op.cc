@@ -78,30 +78,31 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-/*
-#if IS_TRT_VERSION_GE(6000)
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
-      plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
-      layer = engine_->AddPluginV2(&input, 1, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
-*/
-      std::vector<nvinfer1::ITensor*> plugin_inputs;
-      // plugin_inputs.emplace_back(trans_layer->getOutput(0));
-      plugin_inputs.emplace_back(input);
-      plugin_inputs.emplace_back(engine_->GetITensor(
-          engine_->network()->getInput(2)->getName()));  // cu_seqlens,
-                                                         // eval_placeholder_2
+      if (engine_->use_oss() && engine_->with_ernie()) {
+        std::vector<nvinfer1::ITensor*> plugin_inputs;
+        // plugin_inputs.emplace_back(trans_layer->getOutput(0));
+        plugin_inputs.emplace_back(input);
+        plugin_inputs.emplace_back(engine_->GetITensor(
+            engine_->network()->getInput(2)->getName()));  // cu_seqlens,
+                                                           // eval_placeholder_2
 
-      // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
-      plugin::SpecialSlicePluginDynamic* plugin =
-          new plugin::SpecialSlicePluginDynamic();
-      layer = engine_->AddPluginV2(plugin_inputs.data(), plugin_inputs.size(),
-                                   plugin);
+        // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+        plugin::SpecialSlicePluginDynamic* plugin =
+            new plugin::SpecialSlicePluginDynamic();
+        layer = engine_->AddPluginV2(plugin_inputs.data(), plugin_inputs.size(),
+                                     plugin);
+      } else {
+#if IS_TRT_VERSION_GE(6000)
+        bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+        plugin::SlicePluginDynamic* plugin =
+            new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
+        layer = engine_->AddPluginV2(&input, 1, plugin);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "You are running the TRT Dynamic Shape mode, need to confirm that "
+            "your TRT version is no less than 6.0"));
+#endif
+      }
     } else {
       bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SlicePlugin* plugin =
