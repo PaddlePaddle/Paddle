@@ -425,26 +425,7 @@ class Section(DeviceWorker):
                 "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
             )
         cfg.place_id = place_id
-        # for i, program in enumerate(pipeline_opt["section_program_list"]):
-        #     cfg = section_param.section_config.add()
-        #     cfg.program_desc.ParseFromString(program["program"]._get_desc()
-        #                                      .serialize_to_string())
-        #     # TODO: why does not work
-        #     # cfg.program_desc.CopyFrom(program.program._get_desc())
-        #     place = pipeline_opt["place_list"][i]
-        #     place_id = pipeline_opt["place_id_list"][i]
-        #     if isinstance(place, core.CPUPlace):
-        #         cfg.place = cfg.CPUPlace
-        #     elif isinstance(place, core.CUDAPlace):
-        #         cfg.place = cfg.CUDAPlace
-        #     elif isinstance(place, core.CUDAPinnedPlace):
-        #         cfg.place = cfg.CUDAPinnedPlace
-        #     else:
-        #         raise NotImplementedError(
-        #             "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
-        #         )
-        #     cfg.place_id = place_id
-
+        
 
 class DeviceWorkerFactory(object):
     def _create_device_worker(self, worker_type):

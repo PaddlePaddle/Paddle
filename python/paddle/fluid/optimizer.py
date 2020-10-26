@@ -3730,7 +3730,7 @@ class PipelineOptimizer(object):
             "num_microbatches must be a positive value.")
         self._num_microbatches = num_microbatches
         assert start_cpu_core_id >= 0, (
-            "start_cpu_core_id must be a non negative integer.")
+            "start_cpu_core_id must be a non-negative integer.")
         self._start_cpu_core_id = start_cpu_core_id
         self._place_list = None
         op_maker = core.op_proto_and_checker_maker
@@ -3826,8 +3826,8 @@ class PipelineOptimizer(object):
             if device:
                 device_index = int(device.split(":")[1])
             else:
-                device_index = 0
-            if device_index != local_rank: continue
+                device_index = None
+            if device_index != local_rank and device_index: continue
             op_role = op.attr(self._op_role_key)
             op_desc = op.desc
             ap_op = new_startup_program.block(0).desc.append_op()
@@ -3874,7 +3874,7 @@ class PipelineOptimizer(object):
         """
         prev_op = []
         for op in ops:
-            if op.type == 'c_send' or op.type == 'c_recv':
+            if op.type == 'send_v2' or op.type == 'recv_v2':
                 continue
             if op == cur_op:
                 break
@@ -3914,7 +3914,7 @@ class PipelineOptimizer(object):
 
     def _get_data_var_info(self, block):
         """
-        Get all vars whose is_data attribute are true and then rename them.
+        Get info of all vars whose is_data attribute are true.
         """
         # map of data vars to devices that that data on
         data_devices_map = dict()
@@ -3964,7 +3964,7 @@ class PipelineOptimizer(object):
                 dev_index = int(device.split(':')[1])
                 first_block._insert_op(
                     index=insert_index,
-                    type='c_send',
+                    type='send_v2',
                     inputs={'X': first_block.var(var_name)},
                     attrs={
                         self._op_device_key: first_dev_spec,
@@ -3980,8 +3980,8 @@ class PipelineOptimizer(object):
                 source_var = main_program.block(0).var(var_name)
                 new_var = self._create_var(block, source_var, var_name)
                 block._insert_op(
-                    index=0,
-                    type='c_recv',
+                    index=index,
+                    type='recv_v2',
                     outputs={'Out': [new_var]},
                     attrs={
                         'out_shape': new_var.shape,

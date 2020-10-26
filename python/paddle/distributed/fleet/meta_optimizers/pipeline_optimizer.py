@@ -204,7 +204,7 @@ class PipelineOptimizer(MetaOptimizerBase):
 
     def _transpile_main_program(self, loss, node_num, gpus_per_node):
         self._insert_loss_grad_ops(loss, gpus_per_node, node_num)
-        for ring_id in range(1, node_num + 1):
+        for ring_id in range(1, gpus_per_node + 1):
             self._insert_allreduce_ops(ring_id)
 
     def _insert_loss_grad_ops(self, loss, gpus_per_node, node_num):

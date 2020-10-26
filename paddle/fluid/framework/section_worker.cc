@@ -252,7 +252,6 @@ void SectionWorker::TrainFilesWithProfiler() {
             op_min_time[op_idx] = time;
           }
           op_count[op_idx] += 1;
-          op_total_time[op_idx] += time;
 
           std::cout << std::fixed;
           std::cout.precision(0);
@@ -314,7 +313,6 @@ void SectionWorker::TrainFilesWithProfiler() {
           op_min_time[op_idx] = time;
         }
         op_count[op_idx] += 1;
-        op_total_time[op_idx] += time;
 
         std::cout << std::fixed;
         std::cout.precision(0);
@@ -360,7 +358,6 @@ void SectionWorker::TrainFilesWithProfiler() {
         op_min_time[op_idx] = time;
       }
       op_count[op_idx] += 1;
-      op_total_time[op_idx] += time;
 
       std::cout << std::fixed;
       std::cout.precision(0);
