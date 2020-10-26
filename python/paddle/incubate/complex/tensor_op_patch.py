@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
 from ...fluid import framework
 from . import tensor
 
@@ -24,6 +25,8 @@ def monkey_patch_math_complex():
         ('__rsub__', _binary_creator_('__rsub__', "elementwise_sub", True)),
         ('__mul__', _binary_creator_('__mul__', "elementwise_mul", False)),
         ('__rmul__', _binary_creator_('__rmul__', "elementwise_mul", True)),
+        ('__div__', _binary_creator_('__div__', "elementwise_div", False)),
+        ('__rdiv__', _binary_creator_('__rdiv__', "elementwise_div", True)),
         ('__truediv__', _binary_creator_('__truediv__', "elementwise_div",
                                          False)),
         ('__rtruediv__', _binary_creator_('__rtruediv__', "elementwise_div",

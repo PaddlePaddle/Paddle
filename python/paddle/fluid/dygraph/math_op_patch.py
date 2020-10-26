@@ -18,7 +18,6 @@ from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, ComplexVariable
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
-import paddle
 
 import numpy as np
 import six
@@ -152,6 +151,7 @@ def monkey_patch_math_varbase():
         def __impl__(self, other_var):
             # tensor and ComplexVariable opetator
             if isinstance(other_var, ComplexVariable):
+                import paddle
                 if reverse:
                     tmp = self
                     self = other_var

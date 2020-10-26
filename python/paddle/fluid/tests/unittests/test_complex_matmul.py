@@ -39,7 +39,7 @@ class TestComplexMatMulLayer(unittest.TestCase):
             with dg.guard(place):
                 x_var = dg.to_variable(x)
                 y_var = dg.to_variable(y)
-                result = x_var @y_var
+                result = x_var.matmul(y_var)
         np_result = np.matmul(x, y)
         self.assertTrue(np.allclose(result.numpy(), np_result))
 
@@ -67,7 +67,6 @@ class TestComplexMatMulLayer(unittest.TestCase):
             (2, 3, 5, 4)).astype("float32") + 1J * np.random.random(
                 (2, 3, 5, 4)).astype("float32")
         self.compare(x, y)
-        self.compare_op(x, y)
 
 
 if __name__ == '__main__':
