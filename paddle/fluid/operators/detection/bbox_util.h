@@ -125,6 +125,21 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
   }
 }
 
+// Calculate max IoU between each box and ground-truth and
+// each row represents one box
+template <typename T>
+void MaxIoU(const framework::Tensor& iou, framework::Tensor* max_iou) {
+  const T* iou_data = iou.data<T>();
+  int row = iou.dims()[0];
+  int col = iou.dims()[1];
+  T* max_iou_data = max_iou->data<T>();
+  for (int i = 0; i < row; ++i) {
+    const T* v = iou_data + i * col;
+    T max_v = *std::max_element(v, v + col);
+    max_iou_data[i] = max_v;
+  }
+}
+
 static void AppendProposals(framework::Tensor* dst, int64_t offset,
                             const framework::Tensor& src) {
   auto* out_data = dst->data<void>();

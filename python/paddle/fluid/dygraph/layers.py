@@ -1058,7 +1058,7 @@ class Layer(core.Layer):
                         super(Mylayer, self).__init__()
                         self.linear1 = paddle.nn.Linear(10, 10)
                         self.linear2 = paddle.nn.Linear(5, 5)
-                        self.conv2d = paddle.nn.Conv2d(3, 2, 3)
+                        self.conv2d = paddle.nn.Conv2D(3, 2, 3)
                         self.embedding = paddle.nn.Embedding(128, 16)
                         self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
 
