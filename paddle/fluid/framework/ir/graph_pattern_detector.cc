@@ -1280,8 +1280,9 @@ PDNode *patterns::BatchNormAddAct::operator()(
   auto *bn_reserve_space =
       pattern->NewNode(bn_reserve_space_repr())
           ->assert_is_op_output("batch_norm", "ReserveSpace");
-  auto *bn_out_var =
-      pattern->NewNode(bn_out_repr())->assert_is_op_output("batch_norm", "Y");
+  auto *bn_out_var = pattern->NewNode(bn_out_repr())
+                         ->assert_is_op_output("batch_norm", "Y")
+                         ->assert_var_dtype(proto::VarType::FP16);
 
   bn_out_var->assert_is_op_input("elementwise_add");
 
@@ -1289,6 +1290,7 @@ PDNode *patterns::BatchNormAddAct::operator()(
       pattern->NewNode(elewise_add_repr())->assert_is_op("elementwise_add");
 
   auto *elewise_add_in_var = pattern->NewNode(elewise_add_in_repr())
+                                 ->assert_is_not_ctrl_var()
                                  ->assert_is_op_input("elementwise_add")
                                  ->assert_var_dtype(proto::VarType::FP16);
 
@@ -1338,10 +1340,13 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   auto *d_elewise_add_in_var =
       pattern->NewNode(d_elewise_add_in_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_1
+          ->assert_is_op_output("elementwise_add_grad")
+          ->assert_var_dtype(proto::VarType::FP16);  // d_add_in_1
   auto *d_bn_out_var =
       pattern->NewNode(d_bn_out_repr())
-          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_2
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("elementwise_add_grad")
+          ->assert_var_dtype(proto::VarType::FP16);  // d_add_in_2
 
   d_bn_out_var->assert_is_op_input("batch_norm_grad", GradVarName("Y"));
 
@@ -1365,7 +1370,8 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   auto *d_bn_x_var =
       pattern->NewNode(d_bn_x_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("batch_norm_grad", GradVarName("X"));
+          ->assert_is_op_output("batch_norm_grad", GradVarName("X"))
+          ->assert_var_dtype(proto::VarType::FP16);
   auto *d_bn_scale_var =
       pattern->NewNode(d_bn_scale_repr())
           ->assert_is_not_ctrl_var()
