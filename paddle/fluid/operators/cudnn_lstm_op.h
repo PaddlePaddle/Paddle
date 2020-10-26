@@ -1200,13 +1200,12 @@ struct GradLayer {
                    Tensor* input_grad, const TensorList& parameters,
                    const TensorList& grad_parameters) {
     // we get the grad_gate step by step, and need to bradocast the grad to the
-    // grad_Whi
-    // grad_Bias_hi, grad_Bias_hh
+    // grad_w_hi, grad_bias_hi, grad_bias_hh
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
 
-    // calc the gradient for the W_hi
+    // calc the gradient for the w_hi
     auto mat_dim_out_grad =
         math::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
     auto mat_dim_input = math::CreateMatrixDescriptor(input.dims(), 0, false);
@@ -1305,10 +1304,10 @@ struct SingleGradLayer : GradLayer<T> {
     grad_gate_tensor.Resize(gate_tensor_unbind[layer_idx].dims());
     grad_gate_tensor.mutable_data<T>(context.GetPlace());
 
-    Tensor grad_cell_tensor;
-    grad_cell_tensor.Resize(output->dims());
-    grad_cell_tensor.mutable_data(context.GetPlace());
-    zero(device_ctx, &grad_cell_tensor, static_cast<T>(0.0));
+    // Tensor grad_state_tensor;
+    // grad_state_tensor.Resize(output->dims());
+    // grad_state_tensor.mutable_data(context.GetPlace());
+    // zero(device_ctx, &grad_state_tensor, static_cast<T>(0.0));
 
     Tensor weight_grad = weight_list_grad[layer_idx][1];
     weight_grad.mutable_data<T>(context.GetPlace());
@@ -1326,13 +1325,12 @@ struct SingleGradLayer : GradLayer<T> {
     // TODO(wawltor)  this is bug for the gru and rnn
     auto layer_state_tensor = state_tensor_unbind[layer_idx];
     layer_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size * gate_num});
+        {time_step * direction_num, batch_size, hidden_size});
     auto layer_state_tensor_unbind = Unbind(layer_gate_tensor);
-    layer_state_tensor_unbind.emplace_back(*output);
 
     auto layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
     layer_act_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size * gate_num});
+        {time_step * direction_num, batch_size, hidden_size});
     auto layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
 
     Tensor* pre_hidden;
@@ -1354,7 +1352,6 @@ struct SingleGradLayer : GradLayer<T> {
         pre_hidden = &output_tensor_unbind[i - 1];
         pre_state = &layer_state_tensor_unbind[i - 1];
       }
-      // TODO(wawltor) add the rnn cell
       cell_(context, &layer_gate_tensor_unbind[i],
             &layer_state_tensor_unbind[i], &layer_act_state_tensor_unbind[i],
             &(parameter_lists[layer_idx][1]), pre_hidden, pre_state,
@@ -1456,64 +1453,71 @@ struct LSTMGradCell : GradCell<T> {
         &device_ctx, lstm_value, lstm_grad, frame_size, batch_size, cell_clip,
         gate_act, state_act, cand_act);
 
-    blas.MatMul(*grad_gate, false, *weight_hh, true, static_cast<T>(1.0),
+    blas.MatMul(*grad_gate, false, *weight_hh, false, static_cast<T>(1.0),
                 grad_pre_hidden, static_cast<T>(1.0));
 
-    blas.MatMul(*pre_hidden, true, *grad_gate, false, static_cast<T>(1.0),
-                grad_weight_hh, static_cast<T>(1.0));
-    // trans the gradient to Whh, pre_hidden
+    auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    auto mat_dim_b = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+    mat_dim_b.height_ *= mat_dim_a.batch_size_;
+    mat_dim_b.batch_size_ = 0;
+    blas.MatMul(*grad_gate, mat_dim_a, *pre_hidden, mat_dim_b,
+                static_cast<T>(1.0), grad_weight_hh, T(1.0));
   }
 };
 
 template <typename GradCellType,
           template <typename, typename> class SingleGradLayerT,
           template <typename, typename> class BidirGradLayerT, typename T>
-void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
-                 const int& cell_num) {
+void RnnGradFunc(const framework::ExecutionContext& context,
+                 const int& gate_num, const int& cell_num) {
   // get the tensor pointer for the input
-  auto* input = ctx.Input<Tensor>("Input");
-  auto weight_list = ctx.MultiInput<Tensor>("WeightList");
-  auto* init_h = ctx.Input<Tensor>("InitH");
-  auto* init_c = ctx.Input<Tensor>("InitC");
-  auto* reserve_state = ctx.Input<Tensor>("Reserve");
-  auto* state_out = ctx.Input<Tensor>("StateOut");
-  auto* output = ctx.Input<Tensor>("Out");
-  auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* last_h_grad = ctx.Input<Tensor>(framework::GradVarName("LastH"));
-  auto* last_c_grad = ctx.Input<Tensor>(framework::GradVarName("LastC"));
+  auto* input = context.Input<Tensor>("Input");
+  auto weight_list = context.MultiInput<Tensor>("WeightList");
+  auto* init_h = context.Input<Tensor>("InitH");
+  auto* init_c = context.Input<Tensor>("InitC");
+  auto* reserve_state = context.Input<Tensor>("Reserve");
+  auto* state_out = context.Input<Tensor>("StateOut");
+  auto* output = context.Input<Tensor>("Out");
+  auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+  auto* last_h_grad = context.Input<Tensor>(framework::GradVarName("LastH"));
+  auto* last_c_grad = context.Input<Tensor>(framework::GradVarName("LastC"));
 
-  bool has_seq_length = ctx.HasInput("SequenceLength");
+  bool has_seq_length = context.HasInput("SequenceLength");
   const Tensor* sequence_length = nullptr;
   if (has_seq_length) {
-    sequence_length = ctx.Input<Tensor>("SequenceLength");
+    sequence_length = context.Input<Tensor>("SequenceLength");
   }
 
   // get the tensor pointer for the output
-  auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-  auto weight_grad_list =
-      ctx.MultiOutput<framework::Tensor>(framework::GradVarName("WeightList"));
-  auto* init_h_grad = ctx.Output<Tensor>(framework::GradVarName("InitH"));
-  auto* init_c_grad = ctx.Output<Tensor>(framework::GradVarName("InitC"));
+  auto* input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
+  auto weight_grad_list = context.MultiOutput<framework::Tensor>(
+      framework::GradVarName("WeightList"));
+  auto* init_h_grad = context.Output<Tensor>(framework::GradVarName("InitH"));
+  auto* init_c_grad = context.Output<Tensor>(framework::GradVarName("InitC"));
 
   // get the attributes for the calcluate
-  const int& num_layers = ctx.Attr<int>("num_layers");
-  const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
-  const float& dropout_prob = ctx.Attr<float>("dropout_prob");
-  const bool& is_test = ctx.Attr<bool>("is_test");
+  const int& num_layers = context.Attr<int>("num_layers");
+  const bool& is_bidirec = context.Attr<bool>("is_bidirec");
+  const float& dropout_prob = context.Attr<float>("dropout_prob");
+  const bool& is_test = context.Attr<bool>("is_test");
 
   // get the input_size, batch_size, time_step, hidden_size
   const int& time_step = input->dims()[0];
   const int& batch_size = input->dims()[1];
   const int& input_size = input->dims()[2];
-  const int& hidden_size = ctx.Attr<int>("hidden_size");
+  const int& hidden_size = context.Attr<int>("hidden_size");
   const int& direction_num = is_bidirec ? 2 : 1;
 
   // allocate the memory
-  input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
-  if (init_h_grad) init_h_grad->mutable_data<T>(init_h->dims(), ctx.GetPlace());
-  if (init_c_grad) init_c_grad->mutable_data<T>(init_c->dims(), ctx.GetPlace());
+  input_grad->mutable_data<T>(input->dims(), context.GetPlace());
+  if (init_h_grad)
+    init_h_grad->mutable_data<T>(init_h->dims(), context.GetPlace());
+  if (init_c_grad)
+    init_c_grad->mutable_data<T>(init_c->dims(), context.GetPlace());
 
-  // reset the parameter to sorted
+  // reset the parameter to sorted order and allocate the memory
   std::vector<TensorList> parameter_lists;
   parameter_lists.reserve(num_layers);
   reset_parameter_vector(weight_list, num_layers, gate_num, is_bidirec,
@@ -1522,12 +1526,13 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
   parameter_lists_grad.reserve(num_layers);
   reset_parameter_vector(weight_grad_list, num_layers, gate_num, is_bidirec,
                          &parameter_lists_grad);
+  for (int i = 0; i < parameter_lists_grad.size(); i++) {
+    for (int j = 0; i < parameter_lists_grad[i].size(); j++)
+      (parameter_lists_grad[i][j]).mutable_data<T>(context.GetPlace());
+  }
 
   // resolve the state of reverse_state
   const int& block_size = time_step * batch_size * hidden_size * direction_num;
-  // NOTICE *******
-  // reserve_state->Resize(framework::make_ddim({reserve_state->numel()/block_size,
-  //    block_size}));
   Tensor gate_tensor;
   Tensor state_tensor;
   Tensor act_state_tensor;
@@ -1538,20 +1543,20 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
   if (cell_num >= 1) {
     state_tensor = state_tensor.Slice(gate_num * num_layers,
                                       (gate_num + cell_num) * num_layers);
-    act_state_tensor = state_tensor.Slice(
-        gate_num * num_layers, (gate_num + 2 * cell_num) * num_layers);
-    state_tensor = state_tensor.Resize({num_layers, time_step * direction_num,
-                                        batch_size, hidden_size * gate_num});
     act_state_tensor =
-        state_tensor.Resize({num_layers, time_step * direction_num, batch_size,
-                             hidden_size * gate_num});
+        state_tensor.Slice((gate_num + cell_num) * num_layers,
+                           (gate_num + 2 * cell_num) * num_layers);
+    state_tensor = state_tensor.Resize(
+        {num_layers, time_step * direction_num, batch_size, hidden_size});
+    act_state_tensor = state_tensor.Resize(
+        {num_layers, time_step * direction_num, batch_size, hidden_size});
   }
   if (num_layers > 1) {
     hidden_tensor = reserve_state->Slice(
         (gate_num + 2 * cell_num) * num_layers,
         (gate_num + 2 * cell_num) * num_layers + num_layers - 1);
-    hidden_tensor.Resize({num_layers - 1, time_step * direction_num, batch_size,
-                          hidden_size * gate_num});
+    hidden_tensor.Resize(
+        {num_layers - 1, time_step * direction_num, batch_size, hidden_size});
   }
   // unbind
   auto last_h_grad_unbind = Unbind(*last_h_grad);
@@ -1609,7 +1614,7 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
     } else {
       if (i == num_layers - 1) {
         input_grad_temp.Resize(layer_input->dims());
-        input_grad_temp.mutable_data<T>(ctx.GetPlace());
+        input_grad_temp.mutable_data<T>(context.GetPlace());
         layer_input_grad_holder = &input_grad_temp;
       }
     }
@@ -1617,7 +1622,7 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
       BidirGradLayerT<T, GradCellType> layer(cell);
     } else {
       SingleGradLayerT<T, GradCellType> layer(cell);
-      layer(ctx, layer_input, layer_output, init_h_unbind, init_c_unbind,
+      layer(context, layer_input, layer_output, init_h_unbind, init_c_unbind,
             last_h_grad_unbind, last_c_grad_unbind, gate_tensor_unbind,
             state_tensor_unbind, layer_output_grad_holder, parameter_lists,
             sequence_length, layer_input_grad_holder, &init_h_grad_unbind,
@@ -1628,7 +1633,7 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
     // state_out save in the forward process
     if (i > 0) {
       if ((!is_test) && (dropout_prob != 0)) {
-        dropout_cpu_grad_function_inplace<T>(ctx, layer_input_grad_holder,
+        dropout_cpu_grad_function_inplace<T>(context, layer_input_grad_holder,
                                              state_out, dropout_prob);
       }
     }
@@ -1638,8 +1643,9 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
     } else {
       if (!has_allocate_mem) {
         output_grad_temp.Resize(layer_input_grad_holder->dims());
-        output_grad_temp.mutable_data<T>(ctx.GetPlace());
+        output_grad_temp.mutable_data<T>(context.GetPlace());
         layer_output_grad_holder = output_grad_temp;
+        has_allocate_mem = true;
       }
     }
     SwapPoniter(&layer_input_grad_holder, &layer_output_grad_holder);

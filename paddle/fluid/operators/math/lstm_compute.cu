@@ -41,7 +41,8 @@ struct LstmUnitGradFunctor<platform::CUDADeviceContext, T> {
                       int frame_size, int batch_size, T cell_clip,
                       const detail::ActivationType& gate_act,
                       const detail::ActivationType& cell_act,
-                      const detail::ActivationType& cand_act) {
+                      const detail::ActivationType& cand_act,
+                      bool old_api_version = true) {
     detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value, grad,
                               frame_size, batch_size, cell_clip, cand_act,
                               gate_act, cell_act);
