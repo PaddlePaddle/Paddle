@@ -44,6 +44,7 @@ _op_real_in_out_name = {
     "tanh": [["X"], ["Out"]],
     "batch_norm": [["X"], ["Y"]],
     "sigmoid": [["X"], ["Out"]],
+    "swish": [["X"], ["Out"]],
 }
 
 
@@ -82,13 +83,17 @@ class ImperativeQuantAware(object):
             quantizable_op_type(list[str]): List the type of layers that will be quantized. 
                 Default is ['Conv2D', 'Linear']. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
-            is_cals_out_scale(bool):Whether calculate the out_scale of the outputs in the Layer 
+            is_calc_out_scale(bool):Whether calculate the out_scale of the outputs in the Layer 
                 which would use in inference process. Now Supported Layers: BatchNorm, Conv2D, 
                 Conv2DTranspose, LeakyReLU, Linear, PReLU, Pool2D, ReLU, ReLU6, Sigmoid, Softmax, 
-                Tanh.
+                Swish, Tanh.
 
+        Note:
+            If user sets attribute 'skip_quant' to a Layer that support dynamic quantization and sets 
+            it to true, the layer would not be quantized during training. If this attribute is not sets 
+            or the attribute is false, the Layer would be qunatized in training.
 
-        Examples:
+        Examples 1:
         .. code-block:: python
 
             import paddle
@@ -101,22 +106,67 @@ class ImperativeQuantAware(object):
 
             imperative_qat = ImperativeQuantAware(
                 weight_quantize_type='abs_max',
-                activation_quantize_type='moving_average_abs_max')
+                activation_quantize_type='moving_average_abs_max',
+                is_calc_out_scale=True)
             
             # Add the fake quant logical.
             # The original model will be rewrite.
+            # The outscale of outputs in supportted layers would be calculated.
             imperative_qat.quantize(model)
 
             # Fine-tune the quantized model
             # ...
             
             # Save quant model for the inference.
-            paddle.jit.save(
+            imperative_qat.save_quantized_model(
                 layer=model,
                 model_path="./resnet50_qat",
                 input_spec=[
                     paddle.static.InputSpec(
                     shape=[None, 3, 224, 224], dtype='float32')])
+
+        Examples 2:
+        .. code-block:: python
+
+            import paddle
+            from paddle.fluid.contrib.slim.quantization \
+                import ImperativeQuantAware
+
+            class ImperativeModel(paddle.nn.Layer):
+                def __init__(self):
+                    super(ImperativeModel, self).__init__()
+                    # self.linear_0 would skip the quantization.
+                    self.linear_0 = paddle.nn.Linear(784, 400)
+                    self.linear_0.skip_quant = True
+
+                    # self.linear_1 would not skip the quantization.
+                    self.linear_1 = paddle.nn.Linear(400, 10)
+                    self.linear_1.skip_quant = False
+
+                def forward(self, inputs):
+                    x = self.linear_0(inputs)
+                    x = self.linear_1(inputs)
+                    return x
+
+            model = ImperativeModel()
+            imperative_qat = ImperativeQuantAware(
+                weight_quantize_type='abs_max',
+                activation_quantize_type='moving_average_abs_max')
+
+            # Add the fake quant logical.
+            # The original model will be rewrite.
+            #
+            # There is only one Layer(self.linear1) would be added the
+            # fake quant logical.
+            imperative_qat.quantize(model)
+
+            # Fine-tune the quantized model
+            # ...
+
+            # Save quant model for the inference.
+            imperative_qat.save_quantized_model(
+                layer=model,
+                model_path="./imperative_model_qat")
         """
         super(ImperativeQuantAware, self).__init__()
         self._weight_bits = weight_bits
@@ -158,7 +208,8 @@ class ImperativeQuantAware(object):
         """
         According to weights' and activations' quantization types, the model will be added some fake
         quant ops, such as fake_quantize_dequantize_moving_average_abs_max, fake_quantize_dequantize_abs_max
-        and so on.
+        and so on. At the same time, it would judge whether to calculate the output outscale according to the 
+        value of is_calc_out_scale.
 
         Args:
             model(fluid.dygraph.Layer): the model to be quantized.
@@ -181,6 +232,7 @@ class ImperativeQuantAware(object):
 
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
+
         if self._is_calc_out_scale:
             self._out_scale.calc_out_scale(model)
 
