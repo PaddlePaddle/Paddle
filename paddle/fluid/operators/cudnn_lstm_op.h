@@ -934,6 +934,8 @@ struct SingleGradLayer : GradLayer<T> {
     const int& batch_size = input->dims()[1];
     const int& input_size = input->dims()[2];
 
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
+
     const bool& has_sequence_length = sequence_length == nullptr ? false : true;
     Tensor mask_matrix;
     TensorList mask_tensor_list;
@@ -944,56 +946,74 @@ struct SingleGradLayer : GradLayer<T> {
     }
 
     // copy the last_h, last_c for swaping pointer
-    Tensor dynamic_last_h;
-    Tensor dynamic_last_c;
-    dynamic_last_h.Resize(last_h_grad_unbind[layer_idx].dims());
-    dynamic_last_h.mutable_data<T>(context.GetPlace());
-    dynamic_last_c.Resize(last_c_grad_unbind[layer_idx].dims());
-    dynamic_last_c.mutable_data<T>(context.GetPlace());
+    Tensor dynamic_grad_last_h;
+    Tensor dynamic_grad_last_c;
+    dynamic_grad_last_h.Resize(last_h_grad_unbind[layer_idx].dims());
+    dynamic_grad_last_h.mutable_data<T>(context.GetPlace());
+    dynamic_grad_last_c.Resize(last_c_grad_unbind[layer_idx].dims());
+    dynamic_grad_last_c.mutable_data<T>(context.GetPlace());
     framework::TensorCopy(last_h_grad_unbind[layer_idx], context.GetPlace(),
-                          &dynamic_last_h);
+                          &dynamic_grad_last_h);
     framework::TensorCopy(last_c_grad_unbind[layer_idx], context.GetPlace(),
-                          &dynamic_last_c);
+                          &dynamic_grad_last_c);
 
     // if the init_c init_h grad is nullptr, we will create the tensor
-    Tensor dynamic_pre_h;
-    Tensor dynamic_pre_c;
+    Tensor dynamic_grad_pre_h;
+    Tensor dynamic_grad_pre_c;
     if (init_h_grad_unbind->size() > 0) {
-      dynamic_pre_h.ShareDataWith((*init_h_grad_unbind)[layer_idx]);
+      dynamic_grad_pre_h.ShareDataWith((*init_h_grad_unbind)[layer_idx]);
     } else {
-      dynamic_pre_h.Resize(dynamic_last_h.dims());
-      dynamic_pre_h.mutable_data<T>(context.GetPlace());
+      dynamic_grad_pre_h.Resize(dynamic_grad_last_h.dims());
+      dynamic_grad_pre_h.mutable_data<T>(context.GetPlace());
     }
     if (init_c_grad_unbind->size() > 0) {
-      dynamic_pre_c.ShareDataWith((*init_h_grad_unbind)[layer_idx]);
+      dynamic_grad_pre_c.ShareDataWith((*init_h_grad_unbind)[layer_idx]);
     } else {
-      dynamic_pre_c.Resize(dynamic_last_c.dims());
-      dynamic_pre_c.mutable_data<T>(context.GetPlace());
+      dynamic_grad_pre_c.Resize(dynamic_grad_last_c.dims());
+      dynamic_grad_pre_c.mutable_data<T>(context.GetPlace());
     }
 
+    Tensor grad_gate_tensor;
+    grad_gate_tensor.Resize(gate_tensor_unbind[layer_idx].dims());
+    grad_gate_tensor.mutable_data<T>(context.GetPlace());
+
+    Tensor grad_cell_tensor;
+    grad_cell_tensor.Resize(output->dims());
+    grad_cell_tensor.mutable_data(context.GetPlace());
+    zero(device_ctx, &grad_cell_tensor, static_cast<T>(0.0));
+
+    Tensor weight_grad = weight_list_grad[layer_idx];
+    weight_grad.mutable_data<T>(context.GetPlace());
+    zero(device_ctx, &weight_grad, static_cast<T>(0.0));
+
+    // in this section, create the gate_state_grad for the postprocess calculate
     // ubind the output, the output from [time_step, batch_size, hidden_size]
+
     auto output_tensor_unbind = Unbind(*output);
     for (int i = time_step - 1; i >= 0; --i) {
       if (has_sequence_length) {
-        this->mask_preprocess(context, output_tensor_unbind[i], &dynamic_last_h,
-                              &dynamic_last_c, &dynamic_pre_h, &dynamic_pre_c,
+        this->mask_preprocess(context, output_tensor_unbind[i],
+                              &dynamic_grad_last_h, &dynamic_grad_last_c,
+                              &dynamic_grad_pre_h, &dynamic_grad_pre_c,
                               mask_tensor_list[i]);
       } else {
-        this->preprocess(context, output_tensor_unbind[i], &dynamic_last_h);
+        this->preprocess(context, output_tensor_unbind[i],
+                         &dynamic_grad_last_h);
       }
       // TODO(wawltor) add the rnn cell
+      cell_();
 
-      SwapPoniter(&&dynamic_last_h, &&dynamic_pre_h);
-      SwapPoniter(&&dynamic_last_c, &&dynamic_pre_c);
+      SwapPoniter(&&dynamic_grad_last_h, &&dynamic_grad_pre_h);
+      SwapPoniter(&&dynamic_grad_last_c, &&dynamic_grad_pre_c);
     }
 
     // copy the gradient to init_c init_h
     if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
-      framework::TensorCopy(dynamic_last_h, context.GetPlace(),
+      framework::TensorCopy(dynamic_grad_last_h, context.GetPlace(),
                             &((*init_h_grad_unbind)[layer_idx]));
     }
     if ((*init_c_grad_unbind).size() > 0 && time_step % 2 == 0) {
-      framework::TensorCopy(dynamic_last_c, context.GetPlace(),
+      framework::TensorCopy(dynamic_grad_last_c, context.GetPlace(),
                             &((*init_c_grad_unbind)[layer_idx]));
     }
   }
@@ -1027,8 +1047,64 @@ struct GradCell {
 
 template <typename T>
 struct LSTMGradCell : GradCell<T> {
-  virtual void operator()(const Tensor* input) {}
+  void operator()(const framework::ExecutionContext& context,
+                  const Tensor* gate_tensor, const Tensor* cell_tensor,
+                  const Tensor* act_cell_tensor, const Tensor* weight_hh,
+                  const Tensor* grad_hidden, Tensor* state_tensor,
+                  Tensor* grad_cell, Tensor* grad_gate, Tensor* grad_weight_hh,
+                  Tensor* grad_pre_hidden, math::LstmMetaValue<T>* lstm_value,
+                  math::LstmMetaGrad<T>* lstm_grad) {
+    auto& device_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    size_t frame_size = gate_tensor->dims()[2];
+    size_t batch_size = gate_tensor->dims()[1];
+
+    lstm_value.gate_value = gate_tensor->data<T>();
+    lstm_value.state_value = cell_tensor->data<T>();
+    lstm_value.state_active_value = act_cell_tensor->data<T>();
+
+    lstm_grad.state_grad = grad_cell->data<T>();
+    lstm_grad.gate_grad = grad_gate->data<T>();
+    lstm_grad.output_grad = grad_hidden->data<T>();
+
+    lstm_value.output_value = nullptr;
+    lstm_grad.state_active_grad = nullptr;
+
+    auto gate_act = math::detail::GetActivationType(
+        context.Attr<std::string>("gate_activation"));
+    auto cell_act = math::detail::GetActivationType(
+        context.Attr<std::string>("cell_activation"));
+    auto cand_act = math::detail::GetActivationType(
+        context.Attr<std::string>("candidate_activation"));
+
+    T cell_clip = 0.0;
+    math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
+        &device_ctx, lstm_value, lstm_grad, frame_size, batch_size, cell_clip,
+        gate_act, cell_act, cand_act);
+
+    blas.MatMul(*grad_gate, false, *weight_hh, true, static_cast<T>(1.0),
+                grad_pre_hidden, static_cast<T>(1.0));
+
+    // blas.MatMul(, true, *grad_gate, false, static_cast<T>(1.0),
+    //                  grad_weight_hh, static_cast<T>(1.0));
+    // trans the gradient to Whh, pre_hidden
+  }
 };
+
+template <typename T>
+void create_lstm_value(math::LstmMetaValue<T>* lstm_value) {
+  lstm_value->check_ig = nullptr;
+  lstm_value->check_fg = nullptr;
+  lstm_value->check_og = nullptr;
+}
+
+template <typename T>
+void create_lstm_grad_value(math::LstmMetaGrad<T>* lstm_grad_value) {
+  lstm_grad_value->check_ig_grad = nullptr;
+  lstm_grad_value->check_fg_grad = nullptr;
+  lstm_grad_value->check_og_grad = nullptr;
+}
 
 template <typename GradCellType,
           template <typename, typename> class SingleGradLayerT,
