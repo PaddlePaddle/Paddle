@@ -2512,7 +2512,7 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC((bool, optional): fuse_bn_add_act_ops indicate whether
                 to fuse batch_norm, elementwise_add and activation_op,
-                it may make the execution faster. Default is False.
+                it may make the execution faster. Default is True
 
                 Examples:
                     .. code-block:: python

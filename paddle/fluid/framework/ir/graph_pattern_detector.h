@@ -294,6 +294,12 @@ class GraphPatternDetector {
   // Remove duplicate patterns.
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);
 
+  // Sort subgraphs, sort subgraphs by the specified node so that
+  // the removed forward and backward subgraphs are corresponding
+  // when two subgraphs are overlapped. Note: this function is
+  // currently only used for bn_add_act, refer to PR28196 for details.
+  void SortSubgraphs(std::vector<subgraph_t>* subgraphs);
+
   // Remove overlapped match subgraphs, when overlapped, keep the previous one.
   // The intermediate PDNodes will be removed, so can't shared by multiple
   // patterns.

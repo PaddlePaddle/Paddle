@@ -18,14 +18,6 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace paddle {
-namespace framework {
-namespace ir {
-class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -186,7 +178,8 @@ ir::Graph *FuseBatchNormAddActPass::FuseBatchNormAddActGrad(
       gpd.mutable_pattern()
           ->NewNode("bn_add_act_grad/x")
           ->AsInput()
-          ->assert_is_ops_input(act_grad_types, GradVarName("Out"));
+          ->assert_is_ops_input(act_grad_types, GradVarName("Out"))
+          ->assert_var_dtype(proto::VarType::FP16);
   patterns::BatchNormAddActGrad bn_add_act_grad_pattern(gpd.mutable_pattern(),
                                                         "bn_add_act_grad");
   bn_add_act_grad_pattern(d_act_out, act_grad_types);

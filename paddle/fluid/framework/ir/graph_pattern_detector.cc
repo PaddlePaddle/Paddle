@@ -93,6 +93,7 @@ void GraphPatternDetector::operator()(Graph *graph,
 
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
+  SortSubgraphs(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
   ValidateByNodeRole(&subgraphs);
 
@@ -300,6 +301,46 @@ void GraphPatternDetector::UniquePatterns(
     }
   }
   *subgraphs = result;
+}
+
+void GraphPatternDetector::SortSubgraphs(
+    std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
+  if (subgraphs->empty()) return;
+  bool has_bn_add_act = false;
+  for (auto &subgraph : *subgraphs) {
+    for (auto &item : subgraph) {
+      if (item.first->name().find("bn_add_act") != std::string::npos) {
+        has_bn_add_act = true;
+        break;
+      }
+    }
+  }
+  if (!has_bn_add_act) {
+    return;
+  }
+
+  std::sort(
+      subgraphs->begin(), subgraphs->end(),
+      [](const GraphPatternDetector::subgraph_t &a,
+         const GraphPatternDetector::subgraph_t &b) {
+        for (auto &item : a) {
+          if (item.first->name().find("bn_add_act") != std::string::npos &&
+              item.first->name().find("bn_reserve_space") !=
+                  std::string::npos) {
+            auto it_b = b.find(item.first);
+            if (it_b != b.end()) {
+              if (item.second->Name() != it_b->second->Name()) {
+                return item.second->Name() < it_b->second->Name();
+              } else {
+                return false;
+              }
+            } else {
+              return false;
+            }
+          }
+        }
+        return false;
+      });
 }
 
 void GraphPatternDetector::RemoveOverlappedMatch(
@@ -1211,7 +1252,8 @@ PDNode *patterns::BatchNormActOneDNN::operator()(const std::string &act_type) {
 PDNode *patterns::BatchNormAddAct::operator()(
     paddle::framework::ir::PDNode *bn_x_var,
     std::unordered_set<std::string> act_types) {
-  bn_x_var->assert_is_op_input("batch_norm", "X");
+  bn_x_var->assert_is_op_input("batch_norm", "X")
+      ->assert_var_dtype(proto::VarType::FP16);
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->assert_is_op_input("batch_norm", "Scale");
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
@@ -1247,7 +1289,8 @@ PDNode *patterns::BatchNormAddAct::operator()(
       pattern->NewNode(elewise_add_repr())->assert_is_op("elementwise_add");
 
   auto *elewise_add_in_var = pattern->NewNode(elewise_add_in_repr())
-                                 ->assert_is_op_input("elementwise_add");
+                                 ->assert_is_op_input("elementwise_add")
+                                 ->assert_var_dtype(proto::VarType::FP16);
 
   auto *elewise_add_out_var =
       pattern->NewNode(elewise_add_out_repr())
@@ -1295,12 +1338,10 @@ PDNode *patterns::BatchNormAddActGrad::operator()(
   auto *d_elewise_add_in_var =
       pattern->NewNode(d_elewise_add_in_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad",
-                                GradVarName("X"));  // d_add_in_1
+          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_1
   auto *d_bn_out_var =
       pattern->NewNode(d_bn_out_repr())
-          ->assert_is_op_output("elementwise_add_grad",
-                                GradVarName("Y"));  // d_add_in_2
+          ->assert_is_op_output("elementwise_add_grad");  // d_add_in_2
 
   d_bn_out_var->assert_is_op_input("batch_norm_grad", GradVarName("Y"));
 
