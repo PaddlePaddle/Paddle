@@ -1200,6 +1200,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
