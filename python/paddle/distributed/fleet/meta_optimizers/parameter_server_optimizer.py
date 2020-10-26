@@ -17,6 +17,7 @@ from paddle.fluid import core
 import subprocess
 import re
 import platform
+from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
@@ -95,6 +96,17 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = _startup
             compiled_config.set_origin_ps_main_program(_main)
             compiled_config.set_origin_ps_startup_program(_startup)
+
+        launch_barrier = self.user_defined_strategy.a_sync_configs[
+            "launch_barrier"]
+        if launch_barrier:
+            # for trainer wait server ready
+            wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+            # for ps-heter mode, wait heter worker ready
+            if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+            ):
+                wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         return _main, _startup
 

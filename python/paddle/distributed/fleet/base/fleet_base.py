@@ -943,6 +943,44 @@ class Fleet(object):
         else:
             return self._context["applied_graph_list"]
 
+    def _is_heter_worker(self):
+        """
+        Check whether the node is an instance of heter worker.
+
+        Returns:
+            bool: True if this is a node of heter worker,
+                  False if not.
+
+        Examples:
+
+            .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet._is_heter_worker()
+
+        """
+        return self._role_maker._is_heter_worker()
+
+    def _get_heter_worker_endpoints(self, to_string=False):
+        """
+        Get current heter_worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
+
+        Returns:
+            list/string: heter_worker endpoints
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet._get_heter_worker_endpoints()
+
+        """
+        if to_string:
+            return ",".join(self._role_maker._get_heter_worker_endpoints())
+        else:
+            return self._role_maker._get_heter_worker_endpoints()
+
     def minimize(self,
                  loss,
                  startup_program=None,
