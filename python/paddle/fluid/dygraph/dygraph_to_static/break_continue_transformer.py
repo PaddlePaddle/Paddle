@@ -107,6 +107,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
 
     Note: The class is inherited from BaseNodeVisitor instead of NodeTransformer,
           because ancestor nodes will be modified inplace for `Break/Continue` here.
+          In general, we recommend to inheriting NodeTransformer to modify node!
     """
 
     def __init__(self, wrapper_root):
@@ -275,8 +276,18 @@ def _find_ancestor_loop_index(node, ancestor_nodes):
 
 class BreakTransformOptimizer(BaseNodeVisitor):
     """
-    In some pattern, the transformed code could be optimized by joining the 
-    If.test with while.test, see following example:
+    In specific pattern, the transformed code could be optimized by joining the 
+    If.test with while.test. 
+    
+    Currently supported pattern is:
+    ```
+        while cond1:            while cond1 and not cond2:
+            if cond2:    --->       do_something()
+                break
+            do_something()
+    ```
+    
+    See following example:
 
     >>> def foo(x):
     ...     i = paddle.to_tensor(1, dtype='int32')
