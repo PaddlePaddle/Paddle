@@ -1297,8 +1297,52 @@ struct GradCell {
 
 template <typename T>
 struct LSTMGradCell : GradCell<T> {
-  virtual void operator()(const Tensor* input, const Tensor* gate,
-                          const Tensor* cell, const Tensor* cell_pre_act) {}
+  virtual void operator()(const platform::CPUDeviceContext* device_ctx,
+                          const Tensor* input, const Tensor* weight_hh,
+                          const Tensor* gate, const Tensor* cell,
+                          const Tensor* cell_pre_act, const Tensor* hidden,
+                          const Tensor* hidden_g, Tensor* cell_pre,
+                          Tensor* cell_pre_g, Tensor* gate_g, Tensor* cell_g,
+                          Tensor* input_g, Tensor* weight_hh_g) {
+    //
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+
+    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
+    auto cell_act = math::detail::GetActivationType("tanh_v2");
+    auto cand_act = math::detail::GetActivationType("tanh_v2");
+
+    // set lstm and lstm_grad
+    math::LstmMetaValue<T> lstm_value;
+    lstm_value.check_ig = nullptr;
+    lstm_value.check_fg = nullptr;
+    lstm_value.check_og = nullptr;
+    lstm_value.gate_value = gate->data<T>();
+    lstm_value.state_value = cell->data<T>();
+    lstm_value.state_active_value = cell_pre_act->data<T>();
+    lstm_value.prev_state_value = cell_pre ? cell_pre->data<T>() : nullptr;
+
+    // not used in bp
+    lstm_value.output_value = nullptr;
+
+    math::LstmMetaGrad<T> lstm_grad;
+    lstm_grad.check_ig_grad = nullptr;
+    lstm_grad.check_fg_grad = nullptr;
+    lstm_grad.check_og_grad = nullptr;
+    lstm_grad.state_grad = cell_g->data<T>();
+    lstm_grad.gate_grad = gate_g->data<T>();
+    lstm_grad.output_grad = hidden_g->data<T>();
+    lstm_grad.prev_state_grad = cell_pre_g ? cell_pre_g->data<T>() : nullptr;
+    // not used in bp
+    lstm_grad.state_active_grad = nullptr;
+
+    T cell_clip = 0.0;
+    int frame_size = hidden->dims()[2];
+    int batch_size = hidden->dims()[1];
+
+    math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
+        *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
+        cell_act, cand_act);
+  }
 };
 
 template <typename GradCellType,
