@@ -93,6 +93,11 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
         int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+        PADDLE_ENFORCE_EQ(output_fp16, 1,
+            platform::errors::InvalidArgument(
+              "Only Precision::KHalf(fp16) is supported when infering "
+              "ernie(bert) model with config.EnableTensorRtOSS(). "
+              "But Precision::KFloat32 is setted."));
         const std::vector<nvinfer1::PluginField> fields{
             {"bert_embeddings_layernorm_beta", bias,
              nvinfer1::PluginFieldType::kFLOAT32,
