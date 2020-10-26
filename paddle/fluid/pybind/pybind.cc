@@ -1428,6 +1428,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_get_device_id",
            [](platform::CUDAPlace &self) -> int { return self.GetDeviceId(); })
 #endif
+      .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
@@ -1486,6 +1487,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_device_id",
            [](const platform::XPUPlace &self) { return self.GetDeviceId(); })
 #endif
+      .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1507,6 +1509,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
+      .def("__repr__", string::to_string<const platform::CPUPlace &>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
@@ -1543,6 +1546,7 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
+      .def("__repr__", string::to_string<const platform::CUDAPinnedPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -1585,10 +1589,13 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
            })
-      .def("set_place", [](platform::Place &self,
-                           const platform::CUDAPinnedPlace &cuda_pinned_place) {
-        self = cuda_pinned_place;
-      });
+      .def("set_place",
+           [](platform::Place &self,
+              const platform::CUDAPinnedPlace &cuda_pinned_place) {
+             self = cuda_pinned_place;
+           })
+      .def("__repr__", string::to_string<const platform::Place &>)
+      .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static(

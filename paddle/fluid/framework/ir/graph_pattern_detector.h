@@ -664,6 +664,27 @@ struct BatchNormActGrad : public PatternBase {
   PATTERN_DECL_NODE(d_bn_bias);
 };
 
+//
+// \brief   Pattern looking for batch_norm and a directly following activation
+// operator.
+//
+// \note    Currently only ReLU is supported as an activation function.
+//          Formula: act(bn(x))
+//          Op: batch_norm + act
+struct BatchNormActOneDNN : public PatternBase {
+  BatchNormActOneDNN(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bn_act_onednn") {}
+
+  PDNode* operator()(const std::string& act_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(bn_in);
+  PATTERN_DECL_NODE(batch_norm);
+  PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(bn_out);
+  PATTERN_DECL_NODE(act_out);
+};
+
 // The following patterns are used to fuse elewise_add and act
 // formula: act(ele_add(x, y))
 // op: elementwise_add + act

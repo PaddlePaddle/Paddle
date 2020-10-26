@@ -1188,6 +1188,26 @@ PDNode *patterns::BatchNormActGrad::operator()(
   return bn_grad;
 }
 
+PDNode *patterns::BatchNormActOneDNN::operator()(const std::string &act_type) {
+  auto *bn_x = pattern->NewNode(bn_in_repr())
+                   ->AsInput()
+                   ->assert_is_op_input("batch_norm", "X");
+  auto *bn = pattern->NewNode(batch_norm_repr())->assert_is_op("batch_norm");
+  auto *bn_out = pattern->NewNode(bn_out_repr())
+                     ->assert_is_op_output("batch_norm", "Y")
+                     ->assert_is_op_input(act_type);
+  auto *act =
+      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
+  auto *act_out = pattern->NewNode(act_out_repr())
+                      ->assert_is_op_output(act_type, "Out")
+                      ->AsOutput();
+
+  bn->LinksFrom({bn_x}).LinksTo({bn_out});
+  act->LinksFrom({bn_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
 PDNode *patterns::ElewiseAddAct::operator()(
     paddle::framework::ir::PDNode *ele_x_var,
     std::unordered_set<std::string> act_types) {

@@ -64,6 +64,15 @@ class TestVarBase(unittest.TestCase):
                 y.backward()
                 self.assertTrue(
                     np.array_equal(x.grad, np.array([2.4]).astype('float32')))
+                y = x.cpu()
+                self.assertEqual(y.place.__repr__(), "CPUPlace")
+                if core.is_compiled_with_cuda():
+                    y = x.pin_memory()
+                    self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    y = x.cuda(blocking=False)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    y = x.cuda(blocking=True)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
 
                 # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)

@@ -134,7 +134,7 @@ class TestPool2D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
             result = max_pool2d(
-                input, kernel_size=2, stride=2, padding=0, return_indices=False)
+                input, kernel_size=2, stride=2, padding=0, return_mask=False)
 
             result_np = pool2D_forward_naive(
                 input_np,
@@ -159,7 +159,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=2,
                 padding=0,
-                return_indices=False,
+                return_mask=False,
                 data_format="NHWC")
 
             result_np = pool2D_forward_naive(
@@ -222,7 +222,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=None,
                 padding="SAME",
-                return_indices=True)
+                return_mask=True)
 
             result_np = pool2D_forward_naive(
                 input_np,
@@ -269,7 +269,7 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=2,
                 padding=padding,
-                return_indices=False)
+                return_mask=False)
 
             result_np = pool2D_forward_naive(
                 input_np,
@@ -490,7 +490,7 @@ class TestPool2DError_API(unittest.TestCase):
                     padding=0,
                     ceil_mode=False,
                     data_format='NHWC',
-                    return_indices=True)
+                    return_mask=True)
 
         self.assertRaises(ValueError, run9)
 
