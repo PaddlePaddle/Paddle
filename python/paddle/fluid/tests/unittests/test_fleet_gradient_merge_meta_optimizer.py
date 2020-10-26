@@ -32,9 +32,6 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
 
         vars = [x.name for x in train_prog.list_vars()]
-        with open("main_program", 'w') as f:
-            f.write(str(train_prog))
-
         self.assertIn('@GradientMerge', ''.join(vars))
 
     def test_recom_gm_optimizer(self):

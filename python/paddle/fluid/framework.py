@@ -2100,10 +2100,16 @@ class Operator(object):
                             % (out_proto.name, len(out_args)))
                     out_arg_names = []
                     for arg in out_args:
-                        out_arg_names.append(cpt.to_text(arg.name))
+                        if isinstance(arg, six.string_types):
+                            out_arg_names.append(arg)
+                        else:
+                            out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not in_dygraph_mode():
-                            arg.op = self
+                            if isinstance(arg, six.string_types):
+                                block.var(arg).op = self
+                            else:
+                                arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
             if op_attrs is not None:
@@ -2837,8 +2843,9 @@ class Block(object):
         self._sync_with_cpp()
         return var
 
-    def _remove_var(self, name):
-        self._sync_with_cpp()
+    def _remove_var(self, name, sync=True):
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -2936,7 +2943,23 @@ class Block(object):
         self.ops.insert(index, op)
         return op
 
-    def _remove_op(self, index):
+    def _insert_op_without_sync(self, index, *args, **kwargs):
+        """
+        Insert an Operator according to the giving arguments, 
+        without sync_with_cpp to meke the compilation faster.
+
+        Args:
+            index(int): the place that the operator to insert.
+
+        Returns:
+            Operator: the insert Operator.
+        """
+        op_desc = self.desc._insert_op(index)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        self.ops.insert(index, op)
+        return op
+
+    def _remove_op(self, index, sync=True):
         """
         Remove the specific position operator.
 
@@ -2946,7 +2969,8 @@ class Block(object):
         Returns:
             None
         """
-        self._sync_with_cpp()
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 
