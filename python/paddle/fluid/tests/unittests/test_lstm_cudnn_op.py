@@ -415,12 +415,14 @@ class LSTM(RNNMixin):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
-    def get_weight_names(self):
+    def get_weight_names(self, direction_num):
         weight_names = []
         for i in range(2 * self.num_layers):
-            weight_names.append('weight{}'.format(i))
+            for j in range(0, 2 * direction_num):
+                weight_names.append("{}.weigth_{}".format(i, j))
         for i in range(2 * self.num_layers):
-            weight_names.append('bias{}'.format(i))
+            for j in range(0, 2 * direction_num):
+                weight_names.append("{}.bias_{}".format(i, j))
         return weight_names
 
     def setUp(self):
@@ -505,14 +507,15 @@ class TestCUDNNLstmOp(OpTest):
     def set_attrs(self):
         pass
 
-    #def test_grad_with_place(self):
-    #    place = core.CPUPlace()
-    #    var_name_list = self.get_weight_names()
-    #    for var_name in var_name_list:
-    #        self.check_grad_with_place(
-    #            place,
-    #            set(['Input', var_name, 'InitH', 'InitC']),
-    #            ['Out', 'LastH', 'LastC'])
+    def test_grad_with_place(self):
+        place = core.CPUPlace()
+        direction_num = 2 if self.is_bidirec else 1
+        var_name_list = self.get_weight_names(direction_num)
+        for var_name in var_name_list:
+            self.check_grad_with_place(
+                place,
+                set(['Input', var_name, 'InitH', 'InitC']),
+                ['Out', 'LastH', 'LastC'])
 
 
 class TestCUDNNLstmCpu(TestCUDNNLstmOp):
