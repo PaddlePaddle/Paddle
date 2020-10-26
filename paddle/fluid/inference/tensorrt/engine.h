@@ -287,6 +287,7 @@ class TensorRTEngine {
   }
 
   void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+  void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
 
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
@@ -316,6 +317,7 @@ class TensorRTEngine {
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
   bool use_oss() { return use_oss_; };
+  bool with_ernie() { return with_ernie_; };
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
@@ -352,6 +354,7 @@ class TensorRTEngine {
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
   bool use_oss_{false};
+  bool with_ernie_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
