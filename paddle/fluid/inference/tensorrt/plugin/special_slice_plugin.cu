@@ -137,7 +137,7 @@ int SpecialSlicePluginDynamic::enqueue(
 SpecialSlicePluginDynamicCreator::SpecialSlicePluginDynamicCreator() {}
 
 const char* SpecialSlicePluginDynamicCreator::getPluginName() const {
-  return "stack_plugin";
+  return "special_slice_plugin";
 }
 
 const char* SpecialSlicePluginDynamicCreator::getPluginVersion() const {
