@@ -105,4 +105,6 @@ class TestAxis3Case(TestConcatBf16Op):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()
