@@ -340,6 +340,12 @@ class TestFillConstantImperative(unittest.TestCase):
             res = fluid.layers.fill_constant([1], 'float32', np.inf)
             self.assertTrue(np.isinf(res.numpy().item(0)))
 
+    def test_ninf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.NINF)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+            self.assertEqual(np.NINF, res.numpy().item(0))
+
 
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
