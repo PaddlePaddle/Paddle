@@ -83,7 +83,7 @@ class TestPool3D_API(unittest.TestCase):
                 stride=2,
                 padding=1,
                 ceil_mode=False,
-                count_include_pad=True)
+                exclusive=True)
 
             result_np = avg_pool3D_forward_naive(
                 input_np,
@@ -100,7 +100,7 @@ class TestPool3D_API(unittest.TestCase):
                 stride=None,
                 padding=1,
                 ceil_mode=False,
-                count_include_pad=True)
+                exclusive=True)
             result = avg_pool3d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
@@ -175,7 +175,7 @@ class TestPool3D_API(unittest.TestCase):
                 stride=2,
                 padding=0,
                 data_format="NDHWC",
-                return_indices=False)
+                return_mask=False)
 
             result_np = pool3D_forward_naive(
                 input_np,
@@ -239,7 +239,7 @@ class TestPool3D_API(unittest.TestCase):
                 kernel_size=2,
                 stride=None,
                 padding="SAME",
-                return_indices=True)
+                return_mask=True)
 
             result_np = pool3D_forward_naive(
                 input_np,
@@ -467,7 +467,7 @@ class TestPool3DError_API(unittest.TestCase):
                     stride=2,
                     padding=0,
                     data_format='NDHWC',
-                    return_indices=True)
+                    return_mask=True)
 
         self.assertRaises(ValueError, run10)
 

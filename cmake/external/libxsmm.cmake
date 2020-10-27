@@ -24,7 +24,7 @@ SET(LIBXSMM_LIBS        "${LIBXSMM_LIBRARY_DIR}/libxsmm.a"
 ExternalProject_Add(
     extern_libxsmm
     ${SHALLOW_CLONE}
-    GIT_REPOSITORY  "https://github.com/hfp/libxsmm.git"
+    GIT_REPOSITORY  "${GIT_URL}/hfp/libxsmm.git"
     GIT_TAG         "7cc03b5b342fdbc6b6d990b190671c5dbb8489a2"
     PREFIX          ${LIBXSMM_SOURCES_DIR}
     UPDATE_COMMAND  ""

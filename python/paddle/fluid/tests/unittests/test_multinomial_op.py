@@ -186,29 +186,28 @@ class TestMultinomialError(unittest.TestCase):
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=-2)
 
-        self.assertRaises(core.EnforceNotMet, test_num_sample_less_than_0)
+        self.assertRaises(ValueError, test_num_sample_less_than_0)
 
     def test_replacement_False(self):
         def test_samples_larger_than_categories():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=5, replacement=False)
 
-        self.assertRaises(core.EnforceNotMet,
-                          test_samples_larger_than_categories)
+        self.assertRaises(ValueError, test_samples_larger_than_categories)
 
     def test_input_probs_dim(self):
         def test_dim_larger_than_2():
             x = paddle.rand([2, 3, 3])
             paddle.multinomial(x)
 
-        self.assertRaises(core.EnforceNotMet, test_dim_larger_than_2)
+        self.assertRaises(ValueError, test_dim_larger_than_2)
 
         def test_dim_less_than_1():
             x_np = np.random.random([])
             x = paddle.to_tensor(x_np)
             paddle.multinomial(x)
 
-        self.assertRaises(core.EnforceNotMet, test_dim_less_than_1)
+        self.assertRaises(ValueError, test_dim_less_than_1)
 
 
 if __name__ == "__main__":
