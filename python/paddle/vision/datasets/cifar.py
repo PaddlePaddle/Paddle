@@ -77,7 +77,7 @@ class Cifar10(Dataset):
                         nn.Softmax())
 
                 def forward(self, image, label):
-                    image = paddle.reshape(image, (3, -1))
+                    image = paddle.reshape(image, (1, -1))
                     return self.fc(image), label
 
             paddle.disable_static()
@@ -211,7 +211,7 @@ class Cifar100(Cifar10):
                         nn.Softmax())
 
                 def forward(self, image, label):
-                    image = paddle.reshape(image, (3, -1))
+                    image = paddle.reshape(image, (1, -1))
                     return self.fc(image), label
 
             paddle.disable_static()

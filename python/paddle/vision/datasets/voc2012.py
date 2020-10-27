@@ -73,7 +73,7 @@ class VOC2012(Dataset):
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
                                   std=[0.5, 0.5, 0.5],
                                   data_format='HWC')
-            voc2012 = VOC2012(mode='train', transform=normalize)
+            voc2012 = VOC2012(mode='train', transform=normalize, backend='cv2')
 
             for i in range(10):
                 image, label= voc2012[i]

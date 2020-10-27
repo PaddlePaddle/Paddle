@@ -67,7 +67,7 @@ class MNIST(Dataset):
 
             for i in range(len(mnist)):
                 sample = mnist[i]
-                print(sample[0].shape, sample[1])
+                print(sample[0].size, sample[1])
 
     """
 
