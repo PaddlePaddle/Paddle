@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
@@ -285,12 +286,36 @@ struct Cell {
   }
 };
 
+template <typename T, template <typename> class ActivationFunctor>
+struct SimpleRNNCell : Cell<T> {
+  void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
+                  const Tensor* weight_hh, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* last_c_act, Tensor* output) override {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    // convert the batch matmul to matmul, this operator could be speed faster
+    blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
+                input, static_cast<T>(1.0));
+
+    // activate
+    auto hidden = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(input, "Input", "hidden", "Activation"));
+    auto* place = device_ctx->eigen_device();
+    ActivationFunctor<T> functor;
+    functor(*place, hidden, hidden);
+  }
+};
+
 template <typename T>
 struct LSTMCell : Cell<T> {
   void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
                   const Tensor* weight_hh, const Tensor* init_h,
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
-                  Tensor* last_c_act, Tensor* output) {
+                  Tensor* last_c_act, Tensor* output) override {
     VLOG(2) << "Calling LSTM Cell !!!!!";
     VLOG(2) << "input shape: " << input->dims();
     VLOG(2) << "w_hh shape: " << weight_hh->dims();
@@ -308,7 +333,7 @@ struct LSTMCell : Cell<T> {
     mat_dim_a.batch_size_ = 0;
     // convert the batch matmul to matmul, this operator could be speed faster
     blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
-                input, T(1.0));
+                input, static_cast<T>(1.0));
 
     // Print3DTensor<T>(input, "Cell Input after");
 
@@ -881,9 +906,21 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     } else if (cell_type == "gru") {
       gate_num = 3;
       // run gru
-    } else if (cell_type == "rnn") {
+    } else if (cell_type == "rnn_relu") {
       gate_num = 0;
       // run rnn
+      RnnFunc<SimpleRNNCell<T, ReluFunctor>, SingleLayer, BidirLayer, T>(
+          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
+          last_c, output, dropout_mask, num_layers, gate_num, input_size,
+          hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
+          reserve_data);
+    } else if (cell_type == "rnn_tanh") {
+      gate_num = 0;
+      RnnFunc<SimpleRNNCell<T, TanhFunctor>, SingleLayer, BidirLayer, T>(
+          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
+          last_c, output, dropout_mask, num_layers, gate_num, input_size,
+          hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
+          reserve_data);
     }
   }
 };
