@@ -105,7 +105,7 @@ class Momentum(Optimizer):
                  regularization=None,
                  grad_clip=None,
                  multi_precision=False,
-                 loss_scaling=1.0,
+                 rescale_grad=1.0,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
@@ -121,13 +121,15 @@ class Momentum(Optimizer):
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
         self._regularization_method = ""
-        self._regularization_coeff = regularization._regularization_coeff
+        self._regularization_coeff = 0
         if (isinstance(regularization, L1DecayRegularizer)):
             self._regularization_method = "l1_decay"
+            self._regularization_coeff = regularization._regularization_coeff
         if (isinstance(regularization, L2DecayRegularizer)):
             self._regularization_method = "l2_decay"
+            self._regularization_coeff = regularization._regularization_coeff
         self._multi_precision = multi_precision
-        self._loss_scaling = loss_scaling if multi_precision else 1.0
+        self._rescale_grad = rescale_grad
         self._master_weights = {}
 
     def _create_master_weight(self, param):
@@ -217,8 +219,8 @@ class Momentum(Optimizer):
                 'mu', self._momentum, 'use_nesterov', self._use_nesterov,
                 'regularization_method', self._regularization_method,
                 'regularization_coeff', self._regularization_coeff,
-                'multi_precision', find_master, 'loss_scaling',
-                self._loss_scaling)
+                'multi_precision', find_master, 'rescale_grad',
+                self._rescale_grad)
             return None
 
         attrs = {
@@ -227,7 +229,7 @@ class Momentum(Optimizer):
             "regularization_method": self._regularization_method,
             "regularization_coeff": self._regularization_coeff,
             "multi_precision": find_master,
-            "loss_scaling": self._loss_scaling
+            "rescale_grad": self._rescale_grad
         }
         inputs = {
             "Param": [param_and_grad[0]],
@@ -253,17 +255,3 @@ class Momentum(Optimizer):
             stop_gradient=True)
 
         return momentum_op
-
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
-        program = loss.block.program
-        with program_guard(program, startup_program):
-            scaled_loss = layers.scale(loss, scale=self._loss_scaling)
-        super(Momentum, self).minimize(
-            loss=scaled_loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)

@@ -74,7 +74,10 @@ void MomentumOpMaker::Make() {
                 "(bool, default false) "
                 "Whether to use multi-precision during weight updating.")
       .SetDefault(false);
-  AddAttr<float>("loss_scaling", "(float) loss scaling value");
+  AddAttr<float>("rescale_grad",
+                 "(float) Multiply the gradient with `rescale_grad`"
+                 "before updating. Often choose to be `1.0/batch_size`.")
+      .SetDefault(1.0);
   AddComment(R"DOC(
 Momentum Optimizer.
 
