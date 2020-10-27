@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/detection/yolo_box_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-
+#include "paddle/fluid/platform/gpu_launch_config.h"
 namespace paddle {
 namespace operators {
 
@@ -108,11 +108,11 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
     set_zero(dev_ctx, boxes, static_cast<T>(0));
     set_zero(dev_ctx, scores, static_cast<T>(0));
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), n * box_num);
 
-    int grid_dim = (n * box_num + 512 - 1) / 512;
-    grid_dim = grid_dim > 8 ? 8 : grid_dim;
-
-    KeYoloBoxFw<T><<<grid_dim, 512, 0, ctx.cuda_device_context().stream()>>>(
+    KeYoloBoxFw<T><<<config.block_per_grid, config.thread_per_block, 0,
+                     ctx.cuda_device_context().stream()>>>(
         input_data, imgsize_data, boxes_data, scores_data, conf_thresh,
         anchors_data, n, h, w, an_num, class_num, box_num, input_size_h,
         input_size_w, clip_bbox, scale, bias);
