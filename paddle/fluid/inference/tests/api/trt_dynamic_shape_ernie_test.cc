@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-#ifdef USE_NVINFER_PLUGIN
+/*
 void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
@@ -81,7 +81,7 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
 void trt_ernie(bool with_fp16, std::vector<float> result) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
-  SetConfig(&config, model_dir, true /* use_gpu */);
+  SetConfig(&config, model_dir, true);
 
   config.SwitchUseFeedFetchOps(false);
 
@@ -89,11 +89,6 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   int min_seq_len = 1;
   int max_seq_len = 128;
   int opt_seq_len = 64;
-
-  //std::string input_name0 = "eval_placeholder_0";
-  //std::string input_name1 = "eval_placeholder_1";
-  //std::string input_name2 = "eval_placeholder_2";
-  //std::string input_name3 = "eval_placeholder_3";
 
   std::string input_name0 = "read_file_0.tmp_0";
   std::string input_name1 = "read_file_0.tmp_1";
@@ -122,17 +117,18 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
-    std::cout << "fp16 model-------->" << std::endl;
     precision = AnalysisConfig::Precision::kHalf;
+  } else {
   }
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
+  config.EnableTensorRtOSS();
   std::vector<float> out_data;
   run(config, &out_data);
   for (size_t i = 0; i < out_data.size(); i++) {
     std::cout << "predict out : " << out_data[i] << std::endl;
-    //EXPECT_NEAR(result[i], out_data[i], 1e-5);
+    EXPECT_NEAR(result[i], out_data[i], 1e-5);
   }
 }
 
@@ -140,8 +136,7 @@ TEST(AnalysisPredictor, fp16) {
   std::vector<float> result = {0.598336, 0.219558, 0.182106};
   trt_ernie(true, result);
 }
-
-#else
+*/
 
 void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
@@ -212,12 +207,12 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
 
   config.SwitchUseFeedFetchOps(false);
 
-  int batch = 1;
+  int batch = 32;
   int min_seq_len = 1;
   int max_seq_len = 128;
   int opt_seq_len = 128;
 
-  std::vector<int> min_shape = {batch, min_seq_len, 1};
+  std::vector<int> min_shape = {1, min_seq_len, 1};
   std::vector<int> max_shape = {batch, max_seq_len, 1};
   std::vector<int> opt_shape = {batch, opt_seq_len, 1};
   // Set the input's min, max, opt shape
@@ -225,17 +220,17 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
       {"read_file_0.tmp_0", min_shape},
       {"read_file_0.tmp_1", min_shape},
       {"read_file_0.tmp_2", min_shape},
-      {"matmul_0.tmp_0", {batch, min_seq_len, min_seq_len}}};
+      {"read_file_0.tmp_4", min_shape}};
   std::map<std::string, std::vector<int>> max_input_shape = {
       {"read_file_0.tmp_0", max_shape},
       {"read_file_0.tmp_1", max_shape},
       {"read_file_0.tmp_2", max_shape},
-      {"matmul_0.tmp_0", {batch, max_seq_len, max_seq_len}}};
+      {"read_file_0.tmp_4", max_shape}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"read_file_0.tmp_0", opt_shape},
       {"read_file_0.tmp_1", opt_shape},
       {"read_file_0.tmp_2", opt_shape},
-      {"matmul_0.tmp_0", {batch, opt_seq_len, opt_seq_len}}};
+      {"read_file_0.tmp_4", opt_shape}};
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
@@ -246,6 +241,7 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
                                 opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data);
+
   for (size_t i = 0; i < out_data.size(); i++) {
     EXPECT_NEAR(result[i], out_data[i], 1e-5);
   }
@@ -262,8 +258,6 @@ TEST(AnalysisPredictor, fp16) {
   trt_ernie(true, result);
 #endif
 }
-
-#endif // end of USE_NVINFER_PLUGIN
 
 }  // namespace inference
 }  // namespace paddle
