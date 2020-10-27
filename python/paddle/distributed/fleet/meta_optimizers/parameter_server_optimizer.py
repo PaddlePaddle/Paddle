@@ -100,7 +100,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         launch_barrier = self.user_defined_strategy.a_sync_configs[
             "launch_barrier"]
-        launch_barrier_flag = os.getenv("FLAGS_LAUNCH_BARRIER", True)
+        launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
         if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
