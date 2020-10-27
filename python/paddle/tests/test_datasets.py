@@ -117,6 +117,22 @@ class TestMNISTTrain(unittest.TestCase):
             self.assertTrue(label.shape[0] == 1)
             self.assertTrue(0 <= int(label) <= 9)
 
+        # test cv2 backend
+        mnist = MNIST(mode='train', transform=transform, backend='cv2')
+        self.assertTrue(len(mnist) == 60000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+            break
+
+        with self.assertRaises(ValueError):
+            mnist = MNIST(mode='train', transform=transform, backend=1)
+
 
 class TestFlowersTrain(unittest.TestCase):
     def test_main(self):
@@ -161,6 +177,22 @@ class TestFlowersTest(unittest.TestCase):
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
+
+        # test cv2 backend
+        flowers = Flowers(mode='test', backend='cv2')
+        self.assertTrue(len(flowers) == 1020)
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 1020)
+        image, label = flowers[idx]
+
+        self.assertTrue(len(image.shape) == 3)
+        self.assertTrue(image.shape[2] == 3)
+        self.assertTrue(label.shape[0] == 1)
+
+        with self.assertRaises(ValueError):
+            flowers = Flowers(mode='test', backend=1)
 
 
 if __name__ == '__main__':

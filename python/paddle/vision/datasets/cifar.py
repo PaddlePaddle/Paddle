@@ -83,7 +83,8 @@ class Cifar10(Dataset):
             paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                std=[0.5, 0.5, 0.5])
+                                  std=[0.5, 0.5, 0.5],
+                                  data_format='HWC')
             cifar10 = Cifar10(mode='train', transform=normalize)
 
             for i in range(10):
@@ -185,6 +186,10 @@ class Cifar100(Cifar10):
         transform(callable): transform to perform on image, None for on transform.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
+        backend(str, optional): Specifies which type of image be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Returns:
         Dataset: instance of cifar-100 dataset
@@ -212,7 +217,8 @@ class Cifar100(Cifar10):
             paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                std=[0.5, 0.5, 0.5])
+                                  std=[0.5, 0.5, 0.5],
+                                  data_format='HWC')
             cifar100 = Cifar100(mode='train', transform=normalize)
 
             for i in range(10):
@@ -230,8 +236,10 @@ class Cifar100(Cifar10):
                  data_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
-        super(Cifar100, self).__init__(data_file, mode, transform, download)
+                 download=True,
+                 backend=None):
+        super(Cifar100, self).__init__(data_file, mode, transform, download,
+                                       backend)
 
     def _init_url_md5_flag(self):
         self.data_url = CIFAR100_URL

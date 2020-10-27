@@ -51,6 +51,23 @@ class TestCifar10Test(unittest.TestCase):
         self.assertTrue(data.shape[0] == 32)
         self.assertTrue(0 <= int(label) <= 9)
 
+        # test cv2 backend
+        cifar = Cifar10(mode='test', backend='cv2')
+        self.assertTrue(len(cifar) == 10000)
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 10000)
+        data, label = cifar[idx]
+        self.assertTrue(len(data.shape) == 3)
+        self.assertTrue(data.shape[2] == 3)
+        self.assertTrue(data.shape[1] == 32)
+        self.assertTrue(data.shape[0] == 32)
+        self.assertTrue(0 <= int(label) <= 99)
+
+        with self.assertRaises(ValueError):
+            cifar = Cifar10(mode='test', backend=1)
+
 
 class TestCifar100Train(unittest.TestCase):
     def test_main(self):
@@ -84,6 +101,23 @@ class TestCifar100Test(unittest.TestCase):
         self.assertTrue(data.shape[1] == 32)
         self.assertTrue(data.shape[0] == 32)
         self.assertTrue(0 <= int(label) <= 99)
+
+        # test cv2 backend
+        cifar = Cifar100(mode='test', backend='cv2')
+        self.assertTrue(len(cifar) == 10000)
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 10000)
+        data, label = cifar[idx]
+        self.assertTrue(len(data.shape) == 3)
+        self.assertTrue(data.shape[2] == 3)
+        self.assertTrue(data.shape[1] == 32)
+        self.assertTrue(data.shape[0] == 32)
+        self.assertTrue(0 <= int(label) <= 99)
+
+        with self.assertRaises(ValueError):
+            cifar = Cifar100(mode='test', backend=1)
 
 
 if __name__ == '__main__':
