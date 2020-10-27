@@ -207,6 +207,8 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
+RUN apt-get install libprotobuf-dev -y
+
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # So install a newer version here.
@@ -223,5 +225,6 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+
 
 EXPOSE 22
