@@ -417,7 +417,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     
     """
     if in_dygraph_mode():
-        return shape_tensor.numpy().to_list()
+        return shape_tensor.numpy().tolist()
 
     try:
         if shape_tensor.op is not None:
