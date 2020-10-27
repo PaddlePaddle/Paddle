@@ -139,9 +139,6 @@ def monkey_patch_math_varbase():
                 else:
                     other_var = create_scalar(other_var)
 
-            print("lhs_dtype: ", lhs_dtype)
-            print("rhs_dtype: ", other_var.dtype)
-
             if reverse:
                 tmp = self
                 self = other_var

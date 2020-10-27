@@ -155,12 +155,7 @@ class Tensor {
     return type_;
   }
 
-  void set_type(proto::VarType::Type type) {
-    bool valid = IsDataType(type);
-    PADDLE_ENFORCE_EQ(valid, true, platform::errors::InvalidArgument(
-                                       "Unsupported tensor data type."));
-    type_ = type;
-  }
+  void set_promote_type(proto::VarType::Type type) { promote_type_ = type; }
 
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
@@ -253,6 +248,15 @@ class Tensor {
    *          be converted into ScalarTensor and used in the framework.
    */
   bool scalar_ = false;
+
+  /**
+   * @brief   promote type
+   *
+   * @note    Because type may be promoted in runtime, so we record
+   *          the type to be promoted type here, if need to be promoted,
+   *          when call tensor->data(), we cast data to promoted type.
+   */
+  proto::VarType::Type promote_type_ = static_cast<proto::VarType::Type>(-1);
 };
 
 }  // namespace framework

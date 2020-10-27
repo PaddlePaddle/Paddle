@@ -33,13 +33,23 @@ from paddle.fluid import core
 
 
 class TestTensorScalarTypePromotion(unittest.TestCase):
+    def setUp(self):
+        paddle.set_device('cpu')
+
     def test_int32_no_promote(self):
         a = a = paddle.ones([3, 3, 3], dtype='int32')
         b = 1  # int64 in python3
-
         c_add = a + b
+        print(c_add)
         self.assertTrue(np.array_equal(c_add, a + a))
-        self.assertEqual(c_add.dtype, core.VarDesc.VarType.INT32)
+        # self.assertEqual(c_add.dtype, core.VarDesc.VarType.INT32)
+
+    # def test_float32_no_promote(self):
+    #     a = paddle.ones([3, 3, 3], dtype='float32')
+    #     b = 2.0 # double in python3
+    #     c_add = a + b
+    #     print(c_add)
+    #     self.assertEqual(c_add.dtype, core.VarDesc.VarType.FP32)
 
     # def test_int32_promote_to_int64(self):
     #     a = paddle.ones([3, 3, 3], dtype='int32')
@@ -56,11 +66,11 @@ class TestTensorScalarTypePromotion(unittest.TestCase):
     # def test_int32_promote_to_float32(self):
     #     a = paddle.ones([3, 3, 3], dtype='int32')
 
-    # AssertionError: VarType.INT32 != VarType.FP32
-    # b = 1.0
-    # c_add = a + b
-    # print(c_add)
-    # self.assertEqual(c_add.dtype, core.VarDesc.VarType.FP32)
+    #     # AssertionError: VarType.INT32 != VarType.FP32
+    #     b = 1.0
+    #     c_add = a + b
+    #     print(c_add)
+    #     self.assertEqual(c_add.dtype, core.VarDesc.VarType.FP32)
 
     # AssertionError: float value 1.5 cannot convert to integer
     # b = 1.5
@@ -79,7 +89,7 @@ class TestTensorScalarTypePromotion(unittest.TestCase):
     #     b = 1
     #     c_add = a + b
     #     self.assertTrue(np.array_equal(c_add, a + a))
-    #     self.assertEqual(c_add.dtype, core.VarDesc.VarType.FP32) # FP64?
+    #     self.assertEqual(c_add.dtype, core.VarDesc.VarType.FP32)
 
     # def test_int_div_by_int(self):
     #     a = paddle.ones([3, 3, 3], dtype='int32')

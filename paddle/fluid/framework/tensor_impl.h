@@ -20,6 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
 template <typename T>
 inline const T* Tensor::data() const {
   check_memory_size();

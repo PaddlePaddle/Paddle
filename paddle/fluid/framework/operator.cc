@@ -1468,17 +1468,7 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
     const ExecutionContext& ctx, const std::string& name) const {
   // 1. get variable and check
   // only supports signal input var now
-  auto it = ctx.Context().inputs.find(name);
-  PADDLE_ENFORCE_NE(it, ctx.Context().inputs.end(),
-                    platform::errors::NotFound("variable is not found."));
-
-  PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
-      platform::errors::InvalidArgument(
-          "Operator %s's input %s should contain only one variable.", Type(),
-          name));
-
-  Variable* var = it->second.empty() ? nullptr : it->second[0];
+  Variable* var = const_cast<Variable*>(ctx.InputVar(name));
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound(
                "The variable %s is not found when promote types.", name));
@@ -1515,25 +1505,25 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
 //   of calculation.
 //   So here we decide what type we want to use according to the
 //   value of scalar tensor.
-void PythonNumericTypeDemoteCheck(Tensor* t) {
-  if (t->scalar()) {
-    if (t->type() == proto::VarType::INT64) {
-      const int64_t* data = t->data<int64_t>();
-      if (*data > std::numeric_limits<int>::min() &&
-          *data < std::numeric_limits<int>::max()) {
-        t->set_type(proto::VarType::INT32);
-      }
-    } else if (t->type() == proto::VarType::FP64) {
-      const double* data = t->data<double>();
-      if (*data > std::numeric_limits<float>::min() &&
-          *data < std::numeric_limits<float>::max()) {
-        t->set_type(proto::VarType::FP32);
-      }
-    } else {
-      // do nothing
-    }
-  }
-}
+// void PythonNumericTypeDemoteCheck(Tensor* t) {
+//   if (t->scalar()) {
+//     if (t->type() == proto::VarType::INT64) {
+//       const int64_t* data = t->data<int64_t>();
+//       if (*data > std::numeric_limits<int>::min() &&
+//           *data < std::numeric_limits<int>::max()) {
+//         t->set_type(proto::VarType::INT32);
+//       }
+//     } else if (t->type() == proto::VarType::FP64) {
+//       const double* data = t->data<double>();
+//       if (*data > std::numeric_limits<float>::min() &&
+//           *data < std::numeric_limits<float>::max()) {
+//         t->set_type(proto::VarType::FP32);
+//       }
+//     } else {
+//       // do nothing
+//     }
+//   }
+// }
 
 proto::VarType::Type OperatorWithKernel::PromoteVarDataTypes(
     const ExecutionContext& ctx, const std::string& name1,
@@ -1543,8 +1533,8 @@ proto::VarType::Type OperatorWithKernel::PromoteVarDataTypes(
   auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
 
   // python default data type demote
-  PythonNumericTypeDemoteCheck(tensor_a);
-  PythonNumericTypeDemoteCheck(tensor_b);
+  // PythonNumericTypeDemoteCheck(tensor_a);
+  // PythonNumericTypeDemoteCheck(tensor_b);
 
   // 2. Get two input types
   auto type_a = tensor_a->type();

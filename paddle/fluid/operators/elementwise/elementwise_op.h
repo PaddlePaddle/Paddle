@@ -125,7 +125,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(data_type, ctx.GetPlace());
   }
-  s
 };
 
 class ElementwiseOpInferVarType
