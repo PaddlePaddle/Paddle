@@ -17,7 +17,7 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
@@ -378,3 +378,55 @@ def check_shape(shape):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
+
+
+def try_set_static_shape_tensor(tensor, shape):
+    """Try to set static shape of tensor from a shape tensor.
+    
+    For example,
+
+    import paddle
+    paddle.enable_static()
+    data = paddle.fluid.layers.data(name="x", shape=[-1, 2], dtype='float32')
+    shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
+    x = paddle.fluid.layers.uniform_random(shape) 
+    print(x.shape) 
+    # (-1, 2)
+    """
+    if not in_dygraph_mode():
+        # static mode, and shape is not all inferred (contains -1)
+        if -1 in tensor.shape:
+            if isinstance(shape, Variable):
+                shape = try_get_constant_shape_from_tensor(shape)
+                print('shape', shape)
+                tensor.desc.set_shape(shape)
+
+
+def try_get_constant_shape_from_tensor(shape_tensor):
+    """Try to get shape from a tensor with constant value.
+
+    For example,
+    
+    import paddle
+    paddle.enable_static()
+    data = paddle.fluid.layers.data(name="x", shape=[-1, 2], dtype='float32')
+    shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
+    x = paddle.fluid.layers.uniform_random(shape) 
+    print(x.shape) 
+    # (-1, 2)
+    
+    """
+    if in_dygraph_mode():
+        return shape_tensor.shape
+
+    try:
+        if shape_tensor.op is not None:
+            generate_op = shape_tensor.op
+            if generate_op.type == 'shape':
+                print(generate_op.input_names[0])
+                var = shape_tensor.block.vars[generate_op.input_arg_names[0]]
+                return var.shape
+    except:
+        return shape_tensor.shape
+
+    return shape_tensor.shape
