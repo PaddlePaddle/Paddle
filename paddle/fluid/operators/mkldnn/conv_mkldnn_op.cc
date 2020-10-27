@@ -217,13 +217,6 @@ class ConvMKLDNNHandlerT
        */
       auto chosen_memory_format = MKLDNNMemoryFormat::any;
 
-      // Check the format for user's special output
-      if (chosen_memory_format != MKLDNNMemoryFormat::any) {
-        if (is_conv3d) {
-          chosen_memory_format = platform::MKLDNNFormatForSize(
-              src_tz.size(), chosen_memory_format);
-        }
-      }
       auto data_type = mkldnn::memory::data_type::f32;
       if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
           std::is_same<T_out, platform::bfloat16>::value)
