@@ -17,13 +17,14 @@ import unittest
 
 
 class StaticShapeInferrenceTest(unittest.TestCase):
-    def test_check_output(self):
+    def test_static_graph(self):
         paddle.enable_static()
         data = paddle.fluid.layers.data(
             name="x", shape=[-1, 2], dtype='float32')
         shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
         x = paddle.fluid.layers.uniform_random(shape)
         self.assertEqual(x.shape, data.shape)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

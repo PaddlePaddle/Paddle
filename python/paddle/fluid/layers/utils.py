@@ -416,16 +416,15 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     # (-1, 2)
     
     """
-    if in_dygraph_mode():
-        return shape_tensor.numpy().tolist()
+    if not in_dygraph_mode():
+        try:
+            if shape_tensor.op is not None:
+                generate_op = shape_tensor.op
+                if generate_op.type == 'shape':
+                    var = shape_tensor.block.vars[generate_op.input_arg_names[
+                        0]]
+                    return var.shape
+        except:
+            return None
 
-    try:
-        if shape_tensor.op is not None:
-            generate_op = shape_tensor.op
-            if generate_op.type == 'shape':
-                var = shape_tensor.block.vars[generate_op.input_arg_names[0]]
-                return var.shape
-    except:
         return None
-
-    return None
