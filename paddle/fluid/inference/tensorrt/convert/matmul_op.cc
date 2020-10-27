@@ -48,8 +48,35 @@ class MatMulOpConverter : public OpConverter {
         engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), transpose_X,
         *const_cast<nvinfer1::ITensor*>(input2), transpose_Y);
 
+    float alpha = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
     auto output_name = op_desc.Output("Out")[0];
-    engine_->SetITensor(output_name, layer->getOutput(0));
+    if (fabs(alpha - 1.0) < std::numeric_limits<float>::epsilon()) {
+      engine_->SetITensor(output_name, layer->getOutput(0));
+    } else {
+      auto create_weights = [&](float data, std::string type) -> float* {
+        std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+        tmp_tensor->Resize({1});
+        auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+        tmp_data[0] = data;
+        engine_->SetWeights(output_name + "_add_scale_op_" + type,
+                            std::move(tmp_tensor));
+        return tmp_data;
+      };
+      float* alpha_data = create_weights(alpha, "alpha");
+      float* shift_data = create_weights(0.0, "shift");
+      float* power_data = create_weights(1.0, "power");
+      TensorRTEngine::Weight nv_alpha{nvinfer1::DataType::kFLOAT,
+                                      static_cast<void*>(alpha_data), 1};
+      TensorRTEngine::Weight nv_shift{nvinfer1::DataType::kFLOAT,
+                                      static_cast<void*>(shift_data), 1};
+      TensorRTEngine::Weight nv_power{nvinfer1::DataType::kFLOAT,
+                                      static_cast<void*>(power_data), 1};
+      auto* scale_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Scale, *layer->getOutput(0), 
+          nvinfer1::ScaleMode::kUNIFORM,
+          nv_shift.get(), nv_alpha.get(), nv_power.get());
+      engine_->SetITensor(output_name, scale_layer->getOutput(0));
+    }
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.
       engine_->DeclareOutput(output_name);
