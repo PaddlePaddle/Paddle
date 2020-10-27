@@ -17,7 +17,7 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
-setlocal enabledelayedexpansion
+setlocal
 
 rem -------clean up environment-----------
 set work_dir=%cd%
@@ -56,6 +56,7 @@ if %error_code% NEQ 0 (
     goto :mkbuild
 )
 
+setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
@@ -379,8 +380,10 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
+@ECHO OFF
 cd /d %work_dir%\build
-echo set -ex>  check_change_of_unittest.sh
+echo set -e>  check_change_of_unittest.sh
+echo set +x>> check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
 echo GIT_PR_ID=%AGILE_PULL_ID% >>  check_change_of_unittest.sh
 echo BRANCH=%BRANCH%>>  check_change_of_unittest.sh
@@ -425,7 +428,6 @@ echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST
 echo if [ "$unittest_spec_diff" != "" ]; then>>  check_change_of_unittest.sh
 echo     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420>>  check_change_of_unittest.sh
 echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
-echo     set +x>>  check_change_of_unittest.sh
 echo     if [ "$approval_line" != "" ]; then>>  check_change_of_unittest.sh
 echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
 echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
@@ -454,7 +456,6 @@ exit /b 1
 
 
 :timestamp
-echo on
 setlocal enabledelayedexpansion
 set start=%~1
 set dd=%start:~2,2%
