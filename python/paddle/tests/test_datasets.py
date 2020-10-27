@@ -19,6 +19,7 @@ import tempfile
 import shutil
 import cv2
 
+import paddle.vision.transforms as T
 from paddle.vision.datasets import *
 from paddle.dataset.common import _check_exists_and_download
 
@@ -89,7 +90,8 @@ class TestFolderDatasets(unittest.TestCase):
 
 class TestMNISTTest(unittest.TestCase):
     def test_main(self):
-        mnist = MNIST(mode='test')
+        transform = T.Transpose()
+        mnist = MNIST(mode='test', transform=transform)
         self.assertTrue(len(mnist) == 10000)
 
         for i in range(len(mnist)):
@@ -103,7 +105,8 @@ class TestMNISTTest(unittest.TestCase):
 
 class TestMNISTTrain(unittest.TestCase):
     def test_main(self):
-        mnist = MNIST(mode='train')
+        transform = T.Transpose()
+        mnist = MNIST(mode='train', transform=transform)
         self.assertTrue(len(mnist) == 60000)
 
         for i in range(len(mnist)):
@@ -124,6 +127,7 @@ class TestFlowersTrain(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 6149)
         image, label = flowers[idx]
+        image = np.array(image)
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
@@ -138,6 +142,7 @@ class TestFlowersValid(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1020)
         image, label = flowers[idx]
+        image = np.array(image)
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
@@ -152,6 +157,7 @@ class TestFlowersTest(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1020)
         image, label = flowers[idx]
+        image = np.array(image)
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)

@@ -32,6 +32,9 @@ class TestVOC2012Train(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 3)
         image, label = voc2012[idx]
+        image = np.array(image)
+        label = np.array(label)
+
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
 
@@ -45,6 +48,9 @@ class TestVOC2012Valid(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1)
         image, label = voc2012[idx]
+        image = np.array(image)
+        label = np.array(label)
+
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
 
@@ -58,6 +64,9 @@ class TestVOC2012Test(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1)
         image, label = voc2012[idx]
+        image = np.array(image)
+        label = np.array(label)
+
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(len(label.shape) == 2)
 

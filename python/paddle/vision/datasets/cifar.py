@@ -52,6 +52,10 @@ class Cifar10(Dataset):
         transform(callable): transform to perform on image, None for on transform.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
+        backend(str, optional): Specifies which type of image be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Returns:
         Dataset: instance of cifar-10 dataset
@@ -152,13 +156,18 @@ class Cifar10(Dataset):
 
     def __getitem__(self, idx):
         image, label = self.data[idx]
-        # image = np.reshape(image, [3, 32, 32])
+        image = np.reshape(image, [3, 32, 32])
+        image = image.transpose([1, 2, 0])
+
         if self.backend == 'pil':
             image = Image.fromarray(image)
         if self.transform is not None:
             image = self.transform(image)
-        return image, np.array(label).astype('int64')
-        # return image.astype(self.dtype), np.array(label).astype('int64')
+
+        if self.backend == 'pil':
+            return image, np.array(label).astype('int64')
+
+        return image.astype(self.dtype), np.array(label).astype('int64')
 
     def __len__(self):
         return len(self.data)

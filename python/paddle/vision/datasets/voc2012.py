@@ -48,6 +48,10 @@ class VOC2012(Dataset):
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
+        backend(str, optional): Specifies which type of image be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Examples:
 
@@ -82,7 +86,8 @@ class VOC2012(Dataset):
                  data_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'valid', 'test'], \
             "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
 
@@ -146,7 +151,7 @@ class VOC2012(Dataset):
         if self.backend == 'cv2':
             return data.astype(self.dtype), label.astype(self.dtype)
 
-        return data, label.astype(self.dtype)
+        return data, label
 
     def __len__(self):
         return len(self.data)

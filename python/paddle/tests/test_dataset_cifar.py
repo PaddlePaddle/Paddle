@@ -27,10 +27,11 @@ class TestCifar10Train(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 50000)
         data, label = cifar[idx]
+        data = np.array(data)
         self.assertTrue(len(data.shape) == 3)
-        self.assertTrue(data.shape[0] == 3)
+        self.assertTrue(data.shape[2] == 3)
         self.assertTrue(data.shape[1] == 32)
-        self.assertTrue(data.shape[2] == 32)
+        self.assertTrue(data.shape[0] == 32)
         self.assertTrue(0 <= int(label) <= 9)
 
 
@@ -43,10 +44,11 @@ class TestCifar10Test(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 10000)
         data, label = cifar[idx]
+        data = np.array(data)
         self.assertTrue(len(data.shape) == 3)
-        self.assertTrue(data.shape[0] == 3)
+        self.assertTrue(data.shape[2] == 3)
         self.assertTrue(data.shape[1] == 32)
-        self.assertTrue(data.shape[2] == 32)
+        self.assertTrue(data.shape[0] == 32)
         self.assertTrue(0 <= int(label) <= 9)
 
 
@@ -59,10 +61,11 @@ class TestCifar100Train(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 50000)
         data, label = cifar[idx]
+        data = np.array(data)
         self.assertTrue(len(data.shape) == 3)
-        self.assertTrue(data.shape[0] == 3)
+        self.assertTrue(data.shape[2] == 3)
         self.assertTrue(data.shape[1] == 32)
-        self.assertTrue(data.shape[2] == 32)
+        self.assertTrue(data.shape[0] == 32)
         self.assertTrue(0 <= int(label) <= 99)
 
 
@@ -75,10 +78,11 @@ class TestCifar100Test(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 10000)
         data, label = cifar[idx]
+        data = np.array(data)
         self.assertTrue(len(data.shape) == 3)
-        self.assertTrue(data.shape[0] == 3)
+        self.assertTrue(data.shape[2] == 3)
         self.assertTrue(data.shape[1] == 32)
-        self.assertTrue(data.shape[2] == 32)
+        self.assertTrue(data.shape[0] == 32)
         self.assertTrue(0 <= int(label) <= 99)
 
 

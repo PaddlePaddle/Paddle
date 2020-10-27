@@ -56,6 +56,10 @@ class Flowers(Dataset):
         transform(callable): transform to perform on image, None for on transform.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
+        backend(str, optional): Specifies which type of image be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Examples:
         
@@ -77,7 +81,8 @@ class Flowers(Dataset):
                  setid_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'valid', 'test'], \
                 "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
 
@@ -142,8 +147,8 @@ class Flowers(Dataset):
 
         if self.backend == 'pil':
             return image, label.astype('int64')
+
         return image.astype(self.dtype), label.astype('int64')
-        # return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
         return len(self.indexes)
