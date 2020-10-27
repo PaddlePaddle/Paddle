@@ -4155,7 +4155,7 @@ class PipelineOptimizer(object):
                         })
                     extra_index += 1
 
-    def _clear_gradients(self, main_block):
+    def _clear_gradients(self, main_block, dev_spec):
         """
         Clear gradients at the begining of each run of a minibatch.
         """
@@ -4163,6 +4163,7 @@ class PipelineOptimizer(object):
             grad_name = self._append_grad_suffix(param_name)
             grad_var = main_block.vars[grad_name]
             device = self._param_device_map[param_name]
+            if device != dev_spec: continue
             main_block._insert_op(
                 index=0,
                 type='fill_constant',
@@ -4180,8 +4181,7 @@ class PipelineOptimizer(object):
     def _accumulate_gradients(self, block):
         """
         Accumulate the gradients generated in microbatch to the one in mini-batch.
-        We also scale the loss corresponding to number of micro-batches at
-        the same time.
+        We also scale the loss corresponding to number of micro-batches as well.
         """
         for index, op in reversed(enumerate(list(block.ops))):
             offset = index
@@ -4409,7 +4409,7 @@ class PipelineOptimizer(object):
         # Step8: clear gradients before each mini-batch and 
         # accumulate gradients during backward
         self._clear_gradients(program_list[local_rank]['program'].global_block(
-        ))
+        ), device=device_specs[local_rank])
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
 
