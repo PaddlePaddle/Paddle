@@ -16,6 +16,7 @@ from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import core
 import subprocess
 import re
+import os
 import platform
 from ..base.private_helper_function import wait_server_ready
 
@@ -99,7 +100,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         launch_barrier = self.user_defined_strategy.a_sync_configs[
             "launch_barrier"]
-        if launch_barrier:
+        launch_barrier_flag = os.getenv("FLAGS_LAUNCH_BARRIER", True)
+        if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
 

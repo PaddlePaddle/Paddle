@@ -63,5 +63,3 @@ set_lr = fleet.set_lr
 get_lr = fleet.get_lr
 state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
-_is_heter_worker = fleet._is_heter_worker
-_get_heter_worker_endpoints = fleet._get_heter_worker_endpoints
