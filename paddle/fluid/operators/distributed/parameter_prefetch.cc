@@ -39,6 +39,12 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
+}
+
 static void SplitIdsIntoMultipleVarsBySection(
     const std::vector<int64_t> &in_ids,
     const std::vector<std::string> &in_varnames, const int tables,
@@ -110,6 +116,7 @@ void prefetch_core(
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &actual_ctx = *pool.Get(platform::CPUPlace());
 
+  auto split_data_begin = GetCurrentUS();
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   std::vector<std::string> in_var_names;
@@ -125,6 +132,11 @@ void prefetch_core(
                                     is_distributed, local_scope.get(),
                                     &split_ids, &origin_ids);
 
+  auto split_data_end = GetCurrentUS();
+  VLOG(1) << "Parameter Prefech split_data use time "
+          << split_data_end - split_data_begin;
+
+  auto prefetch_data_begin = GetCurrentUS();
   // create output var in local scope
   for (auto &name : out_var_names) {
     local_scope->Var(name)->GetMutable<framework::LoDTensor>();
@@ -146,7 +158,12 @@ void prefetch_core(
     PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
                                                "internal error in RPCClient"));
   }
+  auto prefetch_data_end = GetCurrentUS();
+  VLOG(1) << "Parameter Prefech prefetch_data use time "
+          << prefetch_data_end - prefetch_data_begin << " in_var_names size "
+          << in_var_names.size();
 
+  auto gen_table_begin = GetCurrentUS();
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
     auto &ids_in_this_section = origin_ids[o_idx];
 
@@ -178,6 +195,10 @@ void prefetch_core(
       VLOG(3) << "ids in this section is empty";
     }
   }
+  auto gen_table_end = GetCurrentUS();
+  VLOG(1) << "Parameter Prefech gen_table use time "
+          << gen_table_end - gen_table_begin << " out_var_names size "
+          << out_var_names.size();
 }
 
 void prefetch(const std::string &id_name, const std::string &out_name,
@@ -199,6 +220,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                const std::vector<std::string> &endpoints,
                const framework::ExecutionContext &context,
                const framework::Scope &scope) {
+  auto prepare_data_begin = GetCurrentUS();
   auto vec_dim_1 = 0;
   auto vec_dim_0 = 0;
   framework::Variable *var = scope.FindVar(persistable_var_name);
@@ -250,7 +272,9 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   for (size_t i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
-
+  auto prepare_data_end = GetCurrentUS();
+  VLOG(1) << "Parameter Prefech prepare_data use time "
+          << prepare_data_end - prepare_data_begin;
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
   prefetch_core(ids_union, tables, context, scope, is_distributed,
                 &recved_vec_map);
@@ -261,6 +285,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
     padding_idx = context.Attr<int64_t>("padding_idx");
   }
 
+  auto copy_data_begin = GetCurrentUS();
   for (size_t i = 0; i < out_var_names.size(); i++) {
     std::vector<int64_t> ids = ids_group[i];
     auto ids_size = ids.size();
@@ -283,28 +308,25 @@ void prefetchs(const std::vector<std::string> &id_var_names,
       }
     } else {
 #ifdef PADDLE_WITH_CUDA
+      std::vector<float> ids_value_vec(ids_size * vec_dim_1);
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        auto stream = context.cuda_device_context().stream();
-        if (padding_idx != distributed::kNoPadding && id == padding_idx) {
-          platform::GpuMemsetAsync(out_d + idx * vec_dim_1, 0,
-                                   sizeof(float) * vec_dim_1, stream);
-        } else {
-          auto &cpu_place =
-              BOOST_GET_CONST(platform::CPUPlace,
-                              paddle::platform::CPUDeviceContext().GetPlace());
-          auto &gpu_place =
-              BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
-          memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
-                       &recved_vec_map[id][0], sizeof(float) * vec_dim_1,
-                       stream);
-        }
+        memcpy(&ids_value_vec[idx * vec_dim_1], &recved_vec_map[id][0],
+               sizeof(float) * vec_dim_1);
       }
+      auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
+      auto &cpu_place = BOOST_GET_CONST(
+          platform::CPUPlace, paddle::platform::CPUDeviceContext().GetPlace());
+      memory::Copy(gpu_place, out_d, cpu_place, &ids_value_vec[0],
+                   sizeof(float) * ids_size * vec_dim_1);
 #else
       PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
                                "Paddle is not compiled with GPU!"));
 #endif
     }
+    auto copy_data_end = GetCurrentUS();
+    VLOG(1) << "Parameter Prefech copy_data use time "
+            << copy_data_end - copy_data_begin;
   }
 }
 
