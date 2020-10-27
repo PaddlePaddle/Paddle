@@ -690,6 +690,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                      shape=None,
                      dtype=None,
                      persistable=None,
+                     is_scalar=None,
                      **kwargs):
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -698,7 +699,7 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
     return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
                         list(shape) if shape else [], name, type
                         if type else core.VarDesc.VarType.LOD_TENSOR, True
-                        if persistable else False)
+                        if persistable else False, True if is_scalar else False)
 
 
 class VariableMetaClass(type):

@@ -98,5 +98,73 @@ size_t SizeOfType(proto::VarType::Type type) {
                                                DataTypeToString(type)));
 }
 
+int DataTypeNumAlign(const proto::VarType::Type t) {
+  int cast_type_num = -1;
+  if (t == proto::VarType::UINT8 || t == proto::VarType::INT8 ||
+      t == proto::VarType::BF16) {
+    cast_type_num = static_cast<int>(t) - 13;
+  } else if (t == proto::VarType::BOOL || t == proto::VarType::INT16 ||
+             t == proto::VarType::INT32 || t == proto::VarType::INT64 ||
+             t == proto::VarType::FP16 || t == proto::VarType::FP32 ||
+             t == proto::VarType::FP64) {
+    cast_type_num = static_cast<int>(t);
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Only supports align tensor data type, but received "
+        "proto::VarType::Type(%d) is not a tensor data type.",
+        static_cast<int>(t)));
+  }
+  return cast_type_num;
+}
+
+proto::VarType::Type PromoteTypes(const proto::VarType::Type type_a,
+                                  const proto::VarType::Type type_b) {
+  constexpr auto b1 = proto::VarType::BOOL;   // 0
+  constexpr auto i2 = proto::VarType::INT16;  // 1
+  constexpr auto i4 = proto::VarType::INT32;  // 2
+  constexpr auto i8 = proto::VarType::INT64;  // 3
+  constexpr auto f2 = proto::VarType::FP16;   // 4
+  constexpr auto f4 = proto::VarType::FP32;   // 5
+  constexpr auto f8 = proto::VarType::FP64;   // 6
+
+  constexpr auto u1 = proto::VarType::UINT8;  // 20
+  constexpr auto i1 = proto::VarType::INT8;   // 21
+  constexpr auto bf = proto::VarType::BF16;   // 22
+
+  PADDLE_ENFORCE_EQ(IsDataType(type_a), true,
+                    platform::errors::InvalidArgument(
+                        "Only supports promote tensor data types, but received "
+                        "proto::VarType::Type(%d) is not a tensor data type.",
+                        static_cast<int>(type_a)));
+  PADDLE_ENFORCE_EQ(IsDataType(type_b), true,
+                    platform::errors::InvalidArgument(
+                        "Only supports promote tensor data types, but received "
+                        "proto::VarType::Type(%d) is not a tensor data type.",
+                        static_cast<int>(type_b)));
+
+  if (type_a == type_b) {
+    return type_a;
+  }
+
+  int type_an = DataTypeNumAlign(type_a);
+  int type_bn = DataTypeNumAlign(type_b);
+
+  static constexpr proto::VarType::Type promote_types_table[10][10] = {
+      /*        b1  i2  i4  i8  f2  f4  f8  u1  i1  bf*/
+      /* b1 */ {b1, i2, i4, i8, f2, f4, f8, u1, i1, bf},
+      /* i2 */ {i2, i2, i4, i8, f2, f4, f8, i2, i2, bf},
+      /* i4 */ {i4, i4, i4, i8, f2, f4, f8, i4, i4, bf},
+      /* i8 */ {i8, i8, i8, i8, f2, f4, f8, i8, i8, bf},
+      /* f2 */ {f2, f2, f2, f2, f2, f4, f8, f2, f2, f4},
+      /* f4 */ {f4, f4, f4, f4, f4, f4, f8, f4, f4, f4},
+      /* f8 */ {f8, f8, f8, f8, f8, f8, f8, f8, f8, f8},
+      /* u1 */ {u1, i2, i4, i8, f2, f4, f8, u1, i2, bf},
+      /* i1 */ {i1, i2, i4, i8, f2, f4, f8, i2, i1, bf},
+      /* bf */ {bf, bf, bf, bf, f4, f4, f8, bf, bf, bf},
+  };
+
+  return promote_types_table[type_an][type_bn];
+}
+
 }  // namespace framework
 }  // namespace paddle

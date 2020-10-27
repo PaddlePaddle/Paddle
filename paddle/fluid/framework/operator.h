@@ -499,6 +499,10 @@ class OperatorWithKernel : public OperatorBase {
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
                                            const std::string& name) const;
 
+  proto::VarType::Type PromoteVarDataTypes(const ExecutionContext& ctx,
+                                           const std::string& name1,
+                                           const std::string& name2) const;
+
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
@@ -518,6 +522,10 @@ class OperatorWithKernel : public OperatorBase {
   // indicate kernel DataType by input data. By default all input data must be
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
+  // used for PromoteVarDataTypes
+  Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
+                                   const std::string& name) const;
+
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
                RuntimeContext* runtime_ctx) const;

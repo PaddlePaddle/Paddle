@@ -213,13 +213,14 @@ template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
-    const P &place, bool zero_copy) {
+    const P &place, bool zero_copy, bool is_scalar) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
   self->Resize(framework::make_ddim(dims));
+  self->set_scalar(is_scalar);
 
   if (paddle::platform::is_cpu_place(place)) {
     if (zero_copy) {
@@ -265,32 +266,32 @@ void SetTensorFromPyArrayT(
 
 template <typename P>
 void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
-                          const P &place, bool zero_copy) {
+                          const P &place, bool zero_copy, bool is_scalar) {
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
-    SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<int>>(array)) {
-    SetTensorFromPyArrayT<int, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<int, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    SetTensorFromPyArrayT<int64_t, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<int64_t, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<double>>(array)) {
-    SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-    SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<int16_t>>(array)) {
-    SetTensorFromPyArrayT<int16_t, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<int16_t, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
-    SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
-                                                        zero_copy);
+                                                        zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
     // uint16 is used for casting bfloat16
     SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(self, array, place,
-                                                         zero_copy);
+                                                         zero_copy, is_scalar);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
-    SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
+    SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy, is_scalar);
   } else {
     // obj may be any type, obj.cast<py::array>() may be failed,
     // then the array.dtype will be string of unknown meaning,

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <unordered_set>
@@ -1461,6 +1462,102 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
           "LoDTensorArray.",
           name, Type()));
   return data_type;
+}
+
+Tensor* OperatorWithKernel::GetTensorFormInputSafely(
+    const ExecutionContext& ctx, const std::string& name) const {
+  // 1. get variable and check
+  // only supports signal input var now
+  auto it = ctx.Context().inputs.find(name);
+  PADDLE_ENFORCE_NE(it, ctx.Context().inputs.end(),
+                    platform::errors::NotFound("variable is not found."));
+
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "Operator %s's input %s should contain only one variable.", Type(),
+          name));
+
+  Variable* var = it->second.empty() ? nullptr : it->second[0];
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound(
+               "The variable %s is not found when promote types.", name));
+  // 2. get tensor and check
+  Tensor* t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported input variable type in type promotion."));
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      t, platform::errors::InvalidArgument(
+             "The Tensor of variable %s is nullptr when promote types."));
+  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The Tensor in the %s Op's Input Variable %s(%s) is "
+                        "not initialized.",
+                        Type(), name, ctx.InputName(name)));
+  return t;
+}
+
+// Note(chenweihang): if tensor only contains a scalar value,
+//   it maybe a python original value, such as python3(int) or
+//   python3(float), which actually are int64 of float64 in C++,
+//   but we may not need such high precision values.
+//   If we promote by python numeric type, which may result in
+//   a series of ops that need to be promoted types, which not
+//   only increases the complexity, but also increases the amount
+//   of calculation.
+//   So here we decide what type we want to use according to the
+//   value of scalar tensor.
+void PythonNumericTypeDemoteCheck(Tensor* t) {
+  if (t->scalar()) {
+    if (t->type() == proto::VarType::INT64) {
+      const int64_t* data = t->data<int64_t>();
+      if (*data > std::numeric_limits<int>::min() &&
+          *data < std::numeric_limits<int>::max()) {
+        t->set_type(proto::VarType::INT32);
+      }
+    } else if (t->type() == proto::VarType::FP64) {
+      const double* data = t->data<double>();
+      if (*data > std::numeric_limits<float>::min() &&
+          *data < std::numeric_limits<float>::max()) {
+        t->set_type(proto::VarType::FP32);
+      }
+    } else {
+      // do nothing
+    }
+  }
+}
+
+proto::VarType::Type OperatorWithKernel::PromoteVarDataTypes(
+    const ExecutionContext& ctx, const std::string& name1,
+    const std::string& name2) const {
+  // 1. Get tensor
+  auto* tensor_a = GetTensorFormInputSafely(ctx, name1);
+  auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
+
+  // python default data type demote
+  PythonNumericTypeDemoteCheck(tensor_a);
+  PythonNumericTypeDemoteCheck(tensor_b);
+
+  // 2. Get two input types
+  auto type_a = tensor_a->type();
+  auto type_b = tensor_b->type();
+
+  // 3. Promote types
+  auto target_type = PromoteTypes(type_a, type_b);
+
+  // 4. Update tensor data type
+  tensor_a->set_type(target_type);
+  tensor_b->set_type(target_type);
+
+  return target_type;
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(

@@ -581,13 +581,17 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_clear", &Tensor::clear)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
-           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("is_scalar") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
-           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("is_scalar") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
-           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("is_scalar") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           py::arg("is_scalar") = false,
            R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         

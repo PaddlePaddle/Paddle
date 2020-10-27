@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/memory/memory.h"
@@ -154,6 +155,13 @@ class Tensor {
     return type_;
   }
 
+  void set_type(proto::VarType::Type type) {
+    bool valid = IsDataType(type);
+    PADDLE_ENFORCE_EQ(valid, true, platform::errors::InvalidArgument(
+                                       "Unsupported tensor data type."));
+    type_ = type;
+  }
+
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
 
@@ -190,6 +198,18 @@ class Tensor {
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                            const proto::VarType::Type type);
 
+  bool scalar() const { return scalar_; }
+
+  void set_scalar(bool is_scalar) {
+    PADDLE_ENFORCE_EQ(
+        numel(), 1L,
+        platform::errors::PermissionDenied(
+            "Only tensor with 1 element can be marked as Scalar Tensor, but "
+            "the number of elements of current Tensor is %d.",
+            numel()));
+    scalar_ = is_scalar;
+  }
+
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;
@@ -225,6 +245,14 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
+
+  /**
+   * @brief   A flag used to determine whether it is a Scalar Tensor
+   *
+   * @note    The scalar variables passed in from the python side will
+   *          be converted into ScalarTensor and used in the framework.
+   */
+  bool scalar_ = false;
 };
 
 }  // namespace framework

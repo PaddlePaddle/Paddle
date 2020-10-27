@@ -105,17 +105,27 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    framework::proto::VarType::Type data_type =
+        static_cast<framework::proto::VarType::Type>(-1);
+    if (framework::IsScalarTensor(ctx.Input<Tensor>("X")) ||
+        framework::IsScalarTensor(ctx.Input<Tensor>("Y"))) {
+      data_type = OperatorWithKernel::PromoteVarDataTypes(ctx, "X", "Y");
+    } else {
+      data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    }
+    VLOG(0) << "GetExpectedKernelType: "
+            << framework::DataTypeToString(data_type);
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
+  s
 };
 
 class ElementwiseOpInferVarType

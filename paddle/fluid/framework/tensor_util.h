@@ -217,5 +217,15 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Tensor& t);
+
+inline bool IsScalarTensor(const Tensor* t) {
+  PADDLE_ENFORCE_NOT_NULL(
+      t, platform::errors::InvalidArgument("Input Tensor is null pointer."));
+  PADDLE_ENFORCE_EQ(
+      t->IsInitialized(), true,
+      platform::errors::InvalidArgument("Input Tensor is not initialized."));
+  return t->scalar();
+}
+
 }  // namespace framework
 }  // namespace paddle

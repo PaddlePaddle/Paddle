@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, _current_expected_place
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 
@@ -40,15 +40,18 @@ def monkey_patch_math_varbase():
     """
 
     @no_grad
-    def create_tensor(value, dtype, shape):
-        out = _varbase_creator(dtype=dtype)
-        out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
-                                     'value', value, 'force_cpu', False)
-        out.stop_gradient = True
+    def create_tensor(value, is_scalar=False):
+        out = core.VarBase(
+            value=value,
+            place=_current_expected_place(),
+            persistable=False,
+            zero_copy=True,
+            stop_gradient=True,
+            is_scalar=is_scalar)
         return out
 
-    def create_scalar(value, dtype):
-        return create_tensor(value, dtype, shape=[1])
+    def create_scalar(value):
+        return create_tensor([value], True)
 
     def astype(self, dtype):
         """
@@ -76,9 +79,6 @@ def monkey_patch_math_varbase():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
-
-    def _scalar_elementwise_op_(var, scale, bias):
-        return core.ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -128,53 +128,20 @@ def monkey_patch_math_varbase():
     def _size_(var):
         return np.prod(var.shape)
 
-    def _scalar_add_(var, value):
-        return _scalar_elementwise_op_(var, 1.0, value)
-
-    def _scalar_sub_(var, value):
-        return _scalar_elementwise_op_(var, 1.0, -value)
-
-    def _scalar_rsub_(var, value):
-        return _scalar_elementwise_op_(var, -1.0, value)
-
-    def _scalar_mul_(var, value):
-        return _scalar_elementwise_op_(var, value, 0.0)
-
-    def _scalar_div_(var, value):
-        return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
-
     # for binary operator such as elementwise, compare
-    def _binary_creator_(method_name,
-                         op_type,
-                         reverse=False,
-                         scalar_method=None):
+    def _binary_creator_(method_name, op_type, reverse=False):
         def __impl__(self, other_var):
-            # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
-            # which may lose accuracy. This is a hot fix for release 1.6.
-            if scalar_method is not None and not (
-                    op_type == 'elementwise_div' and
-                    self.dtype in _supported_int_dtype_):
-                if isinstance(other_var, float):
-                    if self.dtype in _supported_int_dtype_:
-                        assert other_var == int(other_var), \
-                            "float value {} cannot convert to integer".format(other_var)
-                    return scalar_method(self, other_var)
-                elif isinstance(other_var, int):
-                    return scalar_method(self, float(other_var))
-
             lhs_dtype = self.dtype
 
             if not isinstance(other_var, core.VarBase):
                 if reverse:
-                    other_var = create_tensor(
-                        other_var, dtype=lhs_dtype, shape=self.shape)
+                    other_var = create_tensor(other_var)
                 else:
-                    # add fill_op 
-                    other_var = create_scalar(value=other_var, dtype=lhs_dtype)
+                    other_var = create_scalar(other_var)
 
-            rhs_dtype = other_var.dtype
-            if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+            print("lhs_dtype: ", lhs_dtype)
+            print("rhs_dtype: ", other_var.dtype)
+
             if reverse:
                 tmp = self
                 self = other_var
@@ -209,43 +176,32 @@ def monkey_patch_math_varbase():
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
         ('size', _size_),
-        ('__add__',
-         _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
+        ('__add__', _binary_creator_('__add__', 'elementwise_add', False)),
         ##  a+b == b+a. Do not need to reverse explicitly
-        ('__radd__',
-         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
-        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
-                                     _scalar_sub_)),
-        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
-                                      _scalar_rsub_)),
-        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
-                                     _scalar_mul_)),
+        ('__radd__', _binary_creator_('__radd__', 'elementwise_add', False)),
+        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False)),
+        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True)),
+        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False)),
         ## a*b == b*a. Do not need to reverse explicitly
-        ('__rmul__',
-         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
-                                     _scalar_div_)),
+        ('__rmul__', _binary_creator_('__rmul__', 'elementwise_mul', False)),
+        ('__div__', _binary_creator_('__div__', 'elementwise_div', False)),
         ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
-                                         False, _scalar_div_)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
-                                      None)),
-        ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
-                                          None)),
-        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
-                                     None)),
-        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
-                                      None)),
+                                         False)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True)),
+        ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div',
+                                          True)),
+        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True)),
         ('__floordiv__', _binary_creator_('__floordiv__',
-                                          'elementwise_floordiv', False, None)),
-        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
-                                     None)),
+                                          'elementwise_floordiv', False)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False)),
         ## for logical compare
-        ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
-        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
-        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
-        ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
-        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('__eq__', _binary_creator_('__eq__', 'equal', False)),
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False)),
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False)),
+        ('__le__', _binary_creator_('__le__', 'less_equal', False)),
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False)),
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False)),
         ('__array_ufunc__', None)
     ]
 
