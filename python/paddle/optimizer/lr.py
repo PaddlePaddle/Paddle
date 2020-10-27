@@ -365,7 +365,6 @@ class PiecewiseDecay(LRScheduler):
             last_epoch=last_epoch, verbose=verbose)
 
     def get_lr(self):
-
         for i in range(len(self.boundaries)):
             if self.last_epoch < self.boundaries[i]:
                 return self.values[i]
@@ -750,14 +749,34 @@ class LinearWarmup(LRScheduler):
             end_lr, start_lr)
         super(LinearWarmup, self).__init__(start_lr, last_epoch, verbose)
 
+    def state_dict(self):
+        """
+        Returns the state of the LinearWarmup scheduler as a :class:`dict`.
+
+        It is a subset of ``self.__dict__`` .
+        """
+        state_dict = super(LinearWarmup, self).state_dict()
+        if isinstance(self.learning_rate, LRScheduler):
+            state_dict["LinearWarmup_LR"] = self.learning_rate.state_dict()
+        return state_dict
+
+    def set_state_dict(self, state_dict):
+        """
+        Loads state_dict for LinearWarmup scheduler.
+        """
+        super(LinearWarmup, self).set_state_dict(state_dict)
+        if isinstance(self.learning_rate, LRScheduler):
+            self.learning_rate.set_state_dict(state_dict["LinearWarmup_LR"])
+
     def get_lr(self):
         if self.last_epoch < self.warmup_steps:
             return (self.end_lr - self.start_lr) * float(
                 self.last_epoch) / float(self.warmup_steps) + self.start_lr
         else:
             if isinstance(self.learning_rate, LRScheduler):
+                lr_value = self.learning_rate()
                 self.learning_rate.step()
-                return self.learning_rate()
+                return lr_value
 
             return self.learning_rate
 
