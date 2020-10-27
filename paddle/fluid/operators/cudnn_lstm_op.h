@@ -393,7 +393,7 @@ struct Layer {
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     blas.MatMul(*input, mat_dim_a, weight, mat_dim_b, static_cast<T>(1.0),
-                cache_input, T(0));
+                cache_input, static_cast<T>(0));
 
     auto eigen_in = framework::EigenMatrix<T>::Reshape(
         *cache_input, cache_input->dims().size() - 1);
@@ -406,9 +406,6 @@ struct Layer {
     eigen_in = eigen_in +
                eigen_bias_ih.broadcast(Eigen::DSizes<int, 2>(row_num, 1)) +
                eigen_bias_hh.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
-    // Print3DTensor<T>(input, "preprocess_input");
-    // Print2DTensor<T>(&weight, "preprocess_weight");
-    // Print3DTensor<T>(cache_input, "preprocess_output");
   }
 
   void postprocess(const framework::ExecutionContext& context, Tensor* output,
@@ -454,7 +451,7 @@ struct Layer {
                const TensorList& vec, const TensorList& init_h,
                const TensorList& init_c, const Tensor* sequence_length,
                TensorList* last_h_ptr, TensorList* last_c_ptr, Tensor* output,
-               int layer_idx, Tensor* input_w, Tensor* cell_value,
+               int layer_idx, Tensor* gate_value, Tensor* cell_value,
                Tensor* cell_act_value, bool is_bidirect, int offset,
                bool is_test) {
     bool is_reverse = false;
@@ -468,8 +465,8 @@ struct Layer {
         context.template device_context<platform::CPUDeviceContext>();
     const int& time_step = input->dims()[0];
     this->preprocess(context, input, vec[0 + offset * 4], vec[2 + offset * 4],
-                     vec[3 + offset * 4], input_w, is_test);
-    auto input_tensors = Unbind(*input_w);
+                     vec[3 + offset * 4], gate_value, is_test);
+    auto input_tensors = Unbind(*gate_value);
     auto output_tensors = Unbind(*output);
     if (is_reverse) {
       std::reverse(input_tensors.begin(), input_tensors.end());
@@ -640,11 +637,12 @@ struct BidirLayer : public Layer<T, CellType> {
       forward_input_w = gate_value->Slice(0, 1);
       backward_input_w = gate_value->Slice(1, 2);
 
-      forward_cell_value = cell_value->Slice(0, 1);
-      backward_cell_value = cell_value->Slice(1, 2);
-
-      forward_cell_act_value = cell_act_value->Slice(0, 1);
-      backward_cell_act_value = cell_act_value->Slice(1, 2);
+      if (cell_value->numel() > 0) /* for lstm and gru */ {
+        forward_cell_value = cell_value->Slice(0, 1);
+        backward_cell_value = cell_value->Slice(1, 2);
+        forward_cell_act_value = cell_act_value->Slice(0, 1);
+        backward_cell_act_value = cell_act_value->Slice(1, 2);
+      }
     }
 
     this->RunIter(context, input, vec, init_h, init_c, sequence_length, &last_h,
@@ -679,9 +677,13 @@ inline void SplitReserveData(Tensor* reserve_data, Tensor* gate_data,
   const int& cell_act_data_idx = (gate_num + 1) * num_layers;
   const int& hidden_data_idx = (gate_num + 1) * num_layers + (num_layers - 1);
   reserve_data->Resize({hidden_data_idx, block_size});
-  *gate_data = reserve_data->Slice(0, gate_data_idx);
-  *cell_data = reserve_data->Slice(gate_data_idx, cell_data_idx);
-  *cell_act_data = reserve_data->Slice(cell_data_idx, cell_act_data_idx);
+  if (gate_data_idx > 0) /** for lstm, gru **/ {
+    *gate_data = reserve_data->Slice(0, gate_data_idx);
+    *cell_data = reserve_data->Slice(gate_data_idx, cell_data_idx);
+    *cell_act_data = reserve_data->Slice(cell_data_idx, cell_act_data_idx);
+  } else /** for simple rnn **/ {
+    *gate_data = reserve_data->Slice(0, cell_act_data_idx);
+  }
 
   if (num_layers > 1) {
     *hidden_data = reserve_data->Slice(cell_act_data_idx, hidden_data_idx);
@@ -788,9 +790,11 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
   Tensor prev_hidden_data;
   for (int i = 0; i < num_layers; i++) {
     if (!is_test) {
+      if (cell_data.numel() > 0) /** for lstm, gru **/ {
+        curr_cell_data = cell_data.Slice(i, i + 1);
+        curr_cell_act_data = cell_act_data.Slice(i, i + 1);
+      }
       curr_gate_data = gate_data.Slice(i, i + 1);
-      curr_cell_data = cell_data.Slice(i, i + 1);
-      curr_cell_act_data = cell_act_data.Slice(i, i + 1);
       output_holder = output;
       if (i < num_layers - 1 && num_layers > 1) {
         curr_hidden_data = hidden_data.Slice(i, i + 1);
