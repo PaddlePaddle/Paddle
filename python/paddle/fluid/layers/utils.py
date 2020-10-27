@@ -398,8 +398,8 @@ def try_set_static_shape_tensor(tensor, shape):
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
                 shape = try_get_constant_shape_from_tensor(shape)
-                print('shape', shape)
-                tensor.desc.set_shape(shape)
+                if shape:
+                    tensor.desc.set_shape(shape)
 
 
 def try_get_constant_shape_from_tensor(shape_tensor):
@@ -417,16 +417,15 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     
     """
     if in_dygraph_mode():
-        return shape_tensor.shape
+        return shape_tensor.numpy().to_list()
 
     try:
         if shape_tensor.op is not None:
             generate_op = shape_tensor.op
             if generate_op.type == 'shape':
-                print(generate_op.input_names[0])
                 var = shape_tensor.block.vars[generate_op.input_arg_names[0]]
                 return var.shape
     except:
-        return shape_tensor.shape
+        return None
 
-    return shape_tensor.shape
+    return None
