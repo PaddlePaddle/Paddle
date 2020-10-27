@@ -251,8 +251,9 @@ if(WITH_ARM)
 endif()
 
 if (WITH_SW)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    # mieee flag solves floating-point exceptions under sw and ALPHA architectures
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -mieee")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -mieee")
     set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_SW=ON" FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_SW=ON." FORCE)
     set(WITH_GPU OFF CACHE STRING "Disable GPU when compiling WITH_SW=ON." FORCE)
