@@ -103,7 +103,7 @@ class TestCollectiveRunnerBase(object):
         nranks = 2
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
-        result = self.get_model(train_prog, startup_prog, rank)
+        result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(
             device_id)  #if args.use_gpu else fluid.CPUPlace()
@@ -258,19 +258,6 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
-        elif col_type == "sendrecv":
-            need_result = input2
-            self.assertTrue(np.allclose(tr0_out, need_result))
-        elif col_type == "gather":
-            need_result = np.vstack((input1, input2))
-            self.assertTrue(np.allclose(tr1_out, need_result))
-        elif col_type == "alltoall":
-            temp11, temp12 = np.split(input1, 2)
-            temp21, temp22 = np.split(input2, 2)
-            need_result1 = np.vstack((temp11, temp21))
-            need_result2 = np.vstack((temp12, temp22))
-            self.assertTrue(np.allclose(tr0_out, need_result1))
-            self.assertTrue(np.allclose(tr1_out, need_result2))
         elif col_type == "reduce_scatter":
             tmp = input1 + input2
             need_result1 = tmp[0:tmp.shape[0] // 2]
