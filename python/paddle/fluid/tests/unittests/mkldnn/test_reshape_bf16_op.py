@@ -20,12 +20,14 @@ import struct
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle import enable_static
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestReshapeBf16Op(OpTest):
     def setUp(self):
+        enable_static()
         self.op_type = "reshape2"
         self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
@@ -57,6 +59,4 @@ class TestReshapeBf16Op(OpTest):
 
 
 if __name__ == '__main__':
-    from paddle import enable_static
-    enable_static()
     unittest.main()
