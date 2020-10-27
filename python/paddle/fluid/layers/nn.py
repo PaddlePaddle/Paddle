@@ -11363,10 +11363,10 @@ def size(input):
     """
 
     if in_dygraph_mode():
-        return core.ops.size(x)
+        return core.ops.size(input)
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        "size")
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], "size")
     helper = LayerHelper('size', **locals())
     out = helper.create_variable_for_type_inference(dtype='int64')
     helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
