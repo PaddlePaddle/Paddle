@@ -80,7 +80,7 @@ class TestInplaceAddto(unittest.TestCase):
     def test_result(self):
         def run_program(enable_addto):
             np.random.seed(10)
-            paddle.manual_seed(10)
+            paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             if fluid.core.is_compiled_with_cuda():
                 fluid.set_flags({"FLAGS_cudnn_deterministic": True})

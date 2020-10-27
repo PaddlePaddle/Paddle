@@ -99,7 +99,7 @@ def adaptive_pool3d_forward(x,
     return out
 
 
-class TestAdaptiveMaxPool3dAPI(unittest.TestCase):
+class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
         self.res_1_np = adaptive_pool3d_forward(
@@ -125,7 +125,8 @@ class TestAdaptiveMaxPool3dAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 5, 7, 7], dtype="float32")
+            x = paddle.fluid.data(
+                name="x", shape=[2, 3, 5, 7, 7], dtype="float32")
 
             out_1 = paddle.nn.functional.adaptive_max_pool3d(
                 x=x, output_size=[3, 3, 3])
@@ -189,7 +190,7 @@ class TestAdaptiveMaxPool3dAPI(unittest.TestCase):
             assert np.allclose(out_5.numpy(), self.res_5_np)
 
 
-class TestAdaptiveMaxPool3dClassAPI(unittest.TestCase):
+class TestAdaptiveMaxPool3DClassAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
         self.res_1_np = adaptive_pool3d_forward(
@@ -215,24 +216,25 @@ class TestAdaptiveMaxPool3dClassAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 5, 7, 7], dtype="float32")
+            x = paddle.fluid.data(
+                name="x", shape=[2, 3, 5, 7, 7], dtype="float32")
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[3, 3, 3])
             out_1 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(output_size=5)
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(output_size=5)
             out_2 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[2, 3, 5])
             out_3 = adaptive_max_pool(x=x)
 
-            #     adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            #     adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
             #         output_size=[3, 3, 3], data_format="NDHWC")
             #     out_4 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[None, 3, None])
             out_5 = adaptive_max_pool(x=x)
 
@@ -259,22 +261,22 @@ class TestAdaptiveMaxPool3dClassAPI(unittest.TestCase):
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[3, 3, 3])
             out_1 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(output_size=5)
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(output_size=5)
             out_2 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[2, 3, 5])
             out_3 = adaptive_max_pool(x=x)
 
-            #     adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            #     adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
             #         output_size=[3, 3, 3], data_format="NDHWC")
             #     out_4 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool3D(
                 output_size=[None, 3, None])
             out_5 = adaptive_max_pool(x=x)
 

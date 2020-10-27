@@ -443,6 +443,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("params_file", &AnalysisConfig::params_file)
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
+      .def("enable_xpu", &AnalysisConfig::EnableXpu,
+           py::arg("l3_workspace_size"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)

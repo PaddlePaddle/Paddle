@@ -30,6 +30,7 @@
 
 :: Echo command is not required.
 @echo off
+cd /d %~dp0%
 
 :: ===== start step 0: wget tool =====
 :: Download wget for windows when there is not wget tool.
@@ -145,7 +146,7 @@ echo Install Visual Studio 2015 ...
 :: /norestart [no restart]
 :: /NoRefresh [no refresh]
 :: /InstallSelectableItems NativeLanguageSupport_Group [select Visual C++ for installing]
-start /wait visual_installer.exe /passive /norestart /NoRefresh /InstallSelectableItems NativeLanguageSupport_Group
+start /wait vs_installer.exe /passive /norestart /NoRefresh /InstallSelectableItems NativeLanguageSupport_Group
 if %errorlevel% == 0 (
   echo Install Visual Studio 2015 success!
 ) else (
@@ -158,7 +159,7 @@ goto :eof
 :: ===== start step 5: CUDA 10 =====
 :cuda10
 echo ">>>>>>>> step [5/7]: CUDA 10.2"
-nvcc --version | findstr /C:"10.2" > nul 2> nul || call :install_cuda
+cmd /C nvcc --version 2> nul | findstr /C:"10.2" > nul 2> nul || call :install_cuda
 goto java-jre
 
 :install_cuda
@@ -178,9 +179,9 @@ del cuda_installer.exe
 echo Download cudnn from "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-10.2-windows10-x64-v7.6.5.32.zip"
 wget -O cudnn-10.2-windows10-x64-v7.6.5.32.zip "https://paddle-ci.gz.bcebos.com/window_requirement/cudnn-10.2-windows10-x64-v7.6.5.32.zip"
 tar xf cudnn-10.2-windows10-x64-v7.6.5.32.zip
-xcopy "cuda\bin\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\bin"
-xcopy "cuda\include\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\include"
-xcopy "cuda\lib\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\lib"
+xcopy /E /Y /R "cuda\bin\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\bin"
+xcopy /E /Y /R "cuda\include\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\include"
+xcopy /E /Y /R "cuda\lib\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.2\lib"
 rd /s /q cuda
 del cudnn-10.2-windows10-x64-v7.6.5.32.zip
 goto :eof
@@ -189,7 +190,7 @@ goto :eof
 :: ===== start step 6: java jre =====
 :java-jre
 echo ">>>>>>>> step [6/7]: java jre"
-java > nul 2> nul || call :install_java
+cmd /C java -version > nul 2> nul || call :install_java
 goto xly-agent
 
 :install_java
@@ -212,5 +213,6 @@ goto :eof
 :xly-agent
 echo ">>>>>>>> step [7/7]: xly agent"
 wget -O agent.jar "https://paddle-ci.gz.bcebos.com/window_requirement/agent.jar"
-goto :eof
 :: ===== end step 8: xly agent =====
+
+pause
