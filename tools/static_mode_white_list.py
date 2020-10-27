@@ -653,4 +653,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_sync_batch_norm_op',
     'test_multiprocess_dataloader_iterable_dataset_static',
     'test_multiprocess_dataloader_static',
+    'test_generate_proposals_v2_op',
 ]

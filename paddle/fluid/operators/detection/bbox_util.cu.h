@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 
+namespace paddle {
+namespace operators {
+
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
@@ -135,9 +138,10 @@ struct BoxDecodeAndClipFunctor {
 };
 
 template <typename T, int BlockSize>
-__global__ void FilterBBoxes(const T *bboxes, const T *im_info,
-                             const T min_size, const int num, int *keep_num,
-                             int *keep, bool is_scale = true) {
+static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
+                                    const T min_size, const int num,
+                                    int *keep_num, int *keep,
+                                    bool is_scale = true) {
   T im_h = im_info[0];
   T im_w = im_info[1];
 
@@ -193,8 +197,9 @@ static __device__ float IoU(const float *a, const float *b) {
   return inter_s / (s_a + s_b - inter_s);
 }
 
-__global__ void NMSKernel(const int n_boxes, const float nms_overlap_thresh,
-                          const float *dev_boxes, uint64_t *dev_mask) {
+static __global__ void NMSKernel(const int n_boxes,
+                                 const float nms_overlap_thresh,
+                                 const float *dev_boxes, uint64_t *dev_mask) {
   const int row_start = blockIdx.y;
   const int col_start = blockIdx.x;
 
@@ -275,3 +280,6 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
                sizeof(int) * num_to_keep, ctx.stream());
   ctx.Wait();
 }
+
+}  // namespace operators
+}  // namespace paddle
