@@ -52,6 +52,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"hierarchical_sigmoid",
      {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
+    {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -77,6 +78,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"distribute_fpn_proposals",
      {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"multiclass_nms3", {"Out", "NmsRoisNum"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
