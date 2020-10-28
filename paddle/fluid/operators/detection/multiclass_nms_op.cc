@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
+inline std::vector<size_t> GetNmsLodFromRoisNum(const Tensor* rois_num) {
   std::vector<size_t> rois_lod;
   auto* rois_num_data = rois_num->data<int>();
   rois_lod.push_back(static_cast<size_t>(0));
@@ -360,7 +360,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       } else {
         std::vector<size_t> boxes_lod;
         if (has_roisnum) {
-          boxes_lod = GetLodFromRoisNum(rois_num);
+          boxes_lod = GetNmsLodFromRoisNum(rois_num);
         } else {
           boxes_lod = boxes->lod().back();
         }
@@ -404,7 +404,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         } else {
           std::vector<size_t> boxes_lod;
           if (has_roisnum) {
-            boxes_lod = GetLodFromRoisNum(rois_num);
+            boxes_lod = GetNmsLodFromRoisNum(rois_num);
           } else {
             boxes_lod = boxes->lod().back();
           }
