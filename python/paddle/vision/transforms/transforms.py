@@ -272,7 +272,7 @@ class BaseTransform(object):
             else:
                 outputs.append(apply_func(inputs[i]))
         if len(inputs) > len(self.keys):
-            outputs.extend(input[len(self.keys):])
+            outputs.extend(inputs[len(self.keys):])
 
         if len(outputs) == 1:
             outputs = outputs[0]

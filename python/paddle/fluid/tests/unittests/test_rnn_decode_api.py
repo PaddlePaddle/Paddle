@@ -617,7 +617,7 @@ class ModuleApiTest(unittest.TestCase):
             fluid.enable_dygraph(place)
         else:
             fluid.disable_dygraph()
-        gen = paddle.manual_seed(self._random_seed)
+        gen = paddle.seed(self._random_seed)
         gen._is_init_py = False
         paddle.framework.random._manual_program_seed(self._random_seed)
         scope = fluid.core.Scope()
@@ -628,7 +628,7 @@ class ModuleApiTest(unittest.TestCase):
             model.prepare()
             if self.param_states:
                 model.load(self.param_states, optim_state=None)
-            return model.test_batch(self.inputs)
+            return model.predict_batch(self.inputs)
 
     def check_output_with_place(self, place, mode="test"):
         dygraph_output = self._calc_output(place, mode, dygraph=True)

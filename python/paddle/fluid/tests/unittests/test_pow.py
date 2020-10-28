@@ -218,8 +218,8 @@ class TestPowerError(unittest.TestCase):
                 np.random.randint(5, 10))
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1] + 1) * 10).astype(np.float64)
-        self.assertRaises(fluid.core.EnforceNotMet, _run_power, DYNAMIC, x, y)
-        self.assertRaises(fluid.core.EnforceNotMet, _run_power, STATIC, x, y)
+        self.assertRaises(ValueError, _run_power, DYNAMIC, x, y)
+        self.assertRaises(ValueError, _run_power, STATIC, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable
         dims = (np.random.randint(1, 10), np.random.randint(5, 10),

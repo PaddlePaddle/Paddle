@@ -25,6 +25,7 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
@@ -397,7 +398,7 @@ def _get_output_vars(outputs, output_spec):
         "Layer.forward method."
     result_list = []
     output_vars_dict = OrderedDict()
-    for var in outputs:
+    for var in flatten(outputs):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:

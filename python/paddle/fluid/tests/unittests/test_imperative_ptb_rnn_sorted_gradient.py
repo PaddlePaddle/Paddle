@@ -45,7 +45,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
 
         with fluid.dygraph.guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             # TODO: marsyang1993 Change seed to
@@ -95,7 +95,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             dy_last_hidden_value = last_hidden.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             ptb_model = PtbModel(
