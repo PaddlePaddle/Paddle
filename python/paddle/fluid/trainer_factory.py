@@ -77,6 +77,8 @@ class TrainerFactory(object):
                     trainer._set_dump_param(opt_info["dump_param"])
                 if opt_info.get("worker_places") is not None:
                     trainer._set_worker_places(opt_info["worker_places"])
+                if opt_info.get("use_ps_gpu") is not None:
+                    trainer._set_use_ps_gpu(opt_info["use_ps_gpu"])
                 if opt_info.get("enable_random_dump") is not None:
                     trainer._set_enable_random_dump(opt_info[
                         "enable_random_dump"])

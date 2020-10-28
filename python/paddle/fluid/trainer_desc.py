@@ -166,6 +166,9 @@ class TrainerDesc(object):
         for place in worker_places:
             self.proto_desc.worker_places.append(place)
 
+    def _set_use_ps_gpu(self, use_ps_gpu=False):
+        self.proto_desc.use_ps_gpu = use_ps_gpu
+
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
 

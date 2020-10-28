@@ -20,6 +20,7 @@ from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_i
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
 from collections import OrderedDict
+import copy
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
 
@@ -314,7 +315,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         sparse_table_to_index = OrderedDict()
         sparse_table_index = 0
-        for loss in losses:
+        for num in range(len(losses)):
+            loss = losses[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program
             params_grads = sorted(
@@ -322,6 +324,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                                no_grad_set),
                 key=lambda x: x[0].name)
 
+            flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
+            if flag_use_ps_gpu:
+                if not isinstance(losses, list):
+                    startup_program = [startup_program]
+                optimizer = copy.deepcopy(self._optimizer)
+                optimize_ops = optimizer.apply_optimize(
+                    loss, startup_program=startup_program[num], params_grads=params_grads)
             # has condition_block op means multi-task 
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
@@ -725,6 +734,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         opt_info["worker_places"] = strategy.get("worker_places", [])
+        opt_info["use_ps_gpu"] = strategy.get("use_ps_gpu", False)
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",

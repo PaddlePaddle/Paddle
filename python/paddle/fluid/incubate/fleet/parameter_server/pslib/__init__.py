@@ -993,6 +993,23 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         raise NotImplementedError()
 
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv('PADDLE_CURRENT_ENDPOINT'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints
+        }
+
     def minimize(self,
                  losses,
                  scopes=None,
@@ -1043,5 +1060,23 @@ class DownpourOptimizer(DistributedOptimizer):
 
         fleet._main_programs = programs
         fleet._scopes = scopes
+        if opt_info["use_ps_gpu"]:
+            from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+            # check start program
+
+            env = self.get_dist_env()
+            if not isinstance(losses, list):
+                startup_programs = [startup_programs]
+            for i in range(0, len(startup_programs)):
+                t = SingleProcessMultiThread()
+                start_program = startup_programs[i]
+                main_program = programs[i]
+                t.transpile(startup_program=start_program,
+                    main_program=main_program,
+                    rank=env["trainer_id"],
+                    endpoints=env["trainer_endpoints"],
+                    current_endpoint=env['current_endpoint'],
+                    wait_port=False)
+
 
         return [optimize_ops, param_grads]
