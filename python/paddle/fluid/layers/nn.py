@@ -15145,6 +15145,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
+    utils.try_set_static_shape_tensor(out, shape)
     return out
 
 
