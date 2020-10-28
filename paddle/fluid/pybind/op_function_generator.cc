@@ -52,6 +52,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"hierarchical_sigmoid",
      {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
+    {"cudnn_lstm", {"Input", "InitH", "InitC", "WeightList", "SequenceLength"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -121,6 +122,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"update_loss_scaling",
      {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"cudnn_lstm", {"StateOut"}},
 };
 
 // clang-format off

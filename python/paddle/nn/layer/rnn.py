@@ -32,6 +32,7 @@ from paddle.fluid.dygraph import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import in_dygraph_mode, core
 
 __all__ = [
     'RNNCellBase',
@@ -985,8 +986,7 @@ class RNNBase(LayerList):
                 "direction should be forward, backward or bidirectional, "
                 "received direction = {}".format(direction))
 
-        self.could_use_cudnn = get_device().startswith(
-            "gpu:") and get_cudnn_version()
+        self.could_use_cudnn = True
         self.could_use_cudnn &= direction != "backward"
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
             2 if direction == "bidirectional" else 1)
@@ -1066,6 +1066,19 @@ class RNNBase(LayerList):
         # TODO(guosheng): use `core.ops.cudnn_lstm` in dygraph mode if support
         # specify output, since `dropout_state` should be a persistable tensor
         # rather than a temporary on.
+        if in_dygraph_mode():
+            reserve, self._dropout_state, out, last_h, last_c = core.ops.cudnn_lstm(
+                inputs, initial_states[0], initial_states[1], self._all_weights,
+                sequence_length, self._dropout_state, 'cell_type', 'lstm',
+                'dropout_prob', self.dropout, 'is_bidirec',
+                self.num_directions == 2, 'input_size', self.input_size,
+                'hidden_size', self.hidden_size, 'num_layers', self.num_layers,
+                'is_test', not self.training)
+            out = paddle.tensor.transpose(
+                out, [1, 0, 2]) if not self.time_major else out
+            states = (last_h, last_c)
+            return out, states
+
         out = self._helper.create_variable_for_type_inference(inputs.dtype)
         last_h = self._helper.create_variable_for_type_inference(inputs.dtype)
         last_c = self._helper.create_variable_for_type_inference(inputs.dtype)

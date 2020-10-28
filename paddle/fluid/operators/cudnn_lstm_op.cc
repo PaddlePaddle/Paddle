@@ -160,7 +160,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) the cell state of the last step"
               "The shape is ( num_layers x batch_size x hidden_size) if "
               "is_bidirec is False"
-              "and When is_bidirect is True, the shape will be (num_layers*2 x "
+              "and When is_bidirec is True, the shape will be (num_layers*2 x "
               "batch_size x hidden_size*2)");
     AddAttr<std::string>("cell_type",
                          "The cell type of RNN, it must be the lstm, rnn, gru")
