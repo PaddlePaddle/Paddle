@@ -436,7 +436,10 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     for idx, op_desc in enumerate(op_descs):
         op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
         )
-        op_device = op_desc.attr(op_device_attr_name)
+        op_deivce = ""
+        if op_desc.has_attr(op_device_attr_name):
+            op_device = op_desc.attr(op_device_attr_name)
+
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
