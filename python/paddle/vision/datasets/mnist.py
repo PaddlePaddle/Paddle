@@ -49,7 +49,7 @@ class MNIST(Dataset):
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
             :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image be returned: 
+        backend(str, optional): Specifies which type of image to be returned: 
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
             default backend is 'pil'. Default: None.
