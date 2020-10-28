@@ -24,11 +24,6 @@ using LoDTensor = framework::LoDTensor;
 inline std::vector<size_t> GetLodFromRoisNum(const Tensor* rois_num) {
   std::vector<size_t> rois_lod;
   auto* rois_num_data = rois_num->data<int>();
-  Tensor cpu_tensor;
-  if (platform::is_gpu_place(rois_num->place())) {
-    TensorCopySync(*rois_num, platform::CPUPlace(), &cpu_tensor);
-    rois_num_data = cpu_tensor.data<int>();
-  }
   rois_lod.push_back(static_cast<size_t>(0));
   for (int i = 0; i < rois_num->numel(); ++i) {
     rois_lod.push_back(rois_lod.back() + static_cast<size_t>(rois_num_data[i]));
@@ -587,14 +582,7 @@ class MultiClassNMS3Op : public MultiClassNMS2Op {
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMS2Op::InferShape(ctx);
 
-    auto box_dims = ctx->GetInputDim("BBoxes");
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
-    if (score_size == 3) {
-      ctx->SetOutputDim("NmsRoisNum", {box_dims[1], 1});
-    } else {
-      ctx->SetOutputDim("NmsRoisNum", {-1, 1});
-    }
+    ctx->SetOutputDim("NmsRoisNum", {-1});
   }
 };
 
