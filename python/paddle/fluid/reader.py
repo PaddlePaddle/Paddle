@@ -18,7 +18,6 @@ import six
 import numpy as np
 import threading
 import paddle
-import paddle.utils.deprecated as deprecated
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
