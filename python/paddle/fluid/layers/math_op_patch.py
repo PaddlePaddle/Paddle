@@ -229,8 +229,8 @@ def monkey_patch_variable():
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
             else:
-                raise TypeError(
-                    "Only supports scalar operations of `int` and `float` now.")
+                # do nothing
+                pass
 
             # 2. scalar method selected
             # here use `scale` replace `elementwise` to get better performance
