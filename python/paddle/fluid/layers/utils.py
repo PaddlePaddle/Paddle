@@ -387,11 +387,12 @@ def try_set_static_shape_tensor(tensor, shape):
 
     import paddle
     paddle.enable_static()
-    data = paddle.fluid.layers.data(name="x", shape=[-1, 2], dtype='float32')
-    shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
-    x = paddle.fluid.layers.uniform_random(shape) 
+    data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
+    shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
+    x = paddle.uniform(shape) 
     print(x.shape) 
     # (-1, 2)
+    
     """
     if not in_dygraph_mode():
         # static mode, and shape is not all inferred (contains -1)
@@ -409,9 +410,9 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     
     import paddle
     paddle.enable_static()
-    data = paddle.fluid.layers.data(name="x", shape=[-1, 2], dtype='float32')
-    shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
-    x = paddle.fluid.layers.uniform_random(shape) 
+    data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
+    shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
+    x = paddle.uniform(shape) 
     print(x.shape) 
     # (-1, 2)
     
