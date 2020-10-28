@@ -233,6 +233,4 @@ class TestMKLDNNDilations(TestConv2DMKLDNNOp):
 
 
 if __name__ == '__main__':
-    from paddle import enable_static
-    enable_static()
     unittest.main()
