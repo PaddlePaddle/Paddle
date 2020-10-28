@@ -427,7 +427,7 @@ class Conv1DTranspose(_ConvNd):
             data_format=data_format)
 
     def forward(self, x, output_size=None):
-        out = F.conv_transpose1d(
+        out = F.conv1d_transpose(
             x,
             self.weight,
             bias=self.bias,
@@ -748,7 +748,7 @@ class Conv2DTranspose(_ConvNd):
         else:
             output_padding = 0
 
-        out = F.conv_transpose2d(
+        out = F.conv2d_transpose(
             x,
             self.weight,
             bias=self.bias,
@@ -954,16 +954,16 @@ class Conv3DTranspose(_ConvNd):
 
     **Note**:
 
-          The conv_transpose3d can be seen as the backward of the conv3d. For conv3d, 
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
           when stride > 1, conv3d maps multiple input shape to the same output shape, 
-          so for conv_transpose3d, when stride > 1, input shape maps multiple output shape.
+          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
           H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
           size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
           the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
           between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
-          conv_transpose3d can compute the kernel size automatically.
+          conv3d_transpose can compute the kernel size automatically.
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -1086,7 +1086,7 @@ class Conv3DTranspose(_ConvNd):
         else:
             output_padding = 0
 
-        out = F.conv_transpose3d(
+        out = F.conv3d_transpose(
             x,
             self.weight,
             bias=self.bias,

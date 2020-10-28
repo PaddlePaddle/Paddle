@@ -75,6 +75,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"unique", {"Out", "Index", "Indices", "Counts"}},
     {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
+    {"matrix_nms", {"Out", "Index", "RoisNum"}},
     {"distribute_fpn_proposals",
      {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
