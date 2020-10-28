@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -447,6 +448,107 @@ struct Layer {
                           Tensor* gate_value, Tensor* cell_value,
                           Tensor* cell_act_value, bool is_test) {}
 
+  void RunTestIter(const framework::ExecutionContext& context,
+                   const Tensor* input, const TensorList& vec,
+                   const TensorList& init_h, const TensorList& init_c,
+                   const Tensor* sequence_length, TensorList* last_h_ptr,
+                   TensorList* last_c_ptr, Tensor* output, int layer_idx,
+                   Tensor* gate_value, Tensor* cell_value,
+                   Tensor* cell_act_value, bool is_bidirect, int offset) {
+    bool is_reverse = false;
+    if (is_bidirect) {
+      layer_idx = 2 * layer_idx + offset;
+      if (offset > 0) {
+        is_reverse = true;
+      }
+    }
+    bool is_lstm = false;
+    if (init_c.size() > 0 && last_c->size() > 0) {
+      is_lstm = true;
+    }
+    auto& dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    const int& time_step = input->dims()[0];
+    this->preprocess(context, input, vec[0 + offset * 4], vec[2 + offset * 4],
+                     vec[3 + offset * 4], gate_value, true);
+    auto input_tensors = Unbind(*gate_value);
+    auto output_tensors = Unbind(*output);
+    if (is_reverse) {
+      std::reverse(input_tensors.begin(), input_tensors.end());
+      std::reverse(output_tensors.begin(), output_tensors.end());
+    }
+    TensorList mask_tensor_list;
+    // construct the mask matrix for the mask
+    bool has_sequence_length = false;
+    if (sequence_length != nullptr) {
+      has_sequence_length = true;
+    }
+    Tensor mask_matrix;
+    if (has_sequence_length) {
+      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+
+      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
+      // Print2DTensor<T>(&mask_matrix, "Mask Matrix");
+      mask_tensor_list = Unbind(mask_matrix);
+    }
+
+    // define the init_h holder for the swap
+    bool has_allocate_mem = false;
+    TensorList last_h = *last_h_ptr;
+    TensorList last_c = *last_c_ptr;
+    TensorList cell_value_tensors;
+    TensorList cell_act_value_tensors;
+
+    Tensor* init_h_holder = nullptr;
+    Tensor init_h_temp;
+    Tensor* last_h_holder = &last_h[layer_idx];
+    Tensor* init_c_holder = nullptr;
+    Tensor init_c_temp;
+    Tensor* last_c_holder = &last_c[layer_idx];
+
+    for (int i = 0; i < time_step; i++) {
+      if (i > 0) {
+        if (!has_allocate_mem) {
+          init_h_temp.Resize(init_h[layer_idx].dims());
+          init_h_temp.mutable_data<T>(context.GetPlace());
+          init_h_holder = &init_h_temp;
+          init_c_temp.Resize(init_c[layer_idx].dims());
+          init_c_temp.mutable_data<T>(context.GetPlace());
+          init_c_holder = &init_c_temp;
+          has_allocate_mem = true;
+        }
+        SwapPoniter(&init_c_holder, &last_c_holder);
+        SwapPoniter(&init_h_holder, &last_h_holder);
+      }
+      if (i == 0) {
+        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
+              &init_h[layer_idx], &init_c[layer_idx], last_h_holder,
+              last_c_holder, nullptr, &output_tensors[i]);
+      } else {
+        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4], init_h_holder,
+              init_c_holder, last_h_holder, last_c_holder, nullptr,
+              &output_tensors[i]);
+      }
+      if (has_sequence_length) {
+        if (i == 0) {
+          this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
+                            &init_c[layer_idx], last_h_holder, last_c_holder,
+                            mask_tensor_list[i]);
+        } else {
+          this->postprocess(context, &output_tensors[i], init_h_holder,
+                            init_c_holder, last_h_holder, last_c_holder,
+                            mask_tensor_list[i]);
+        }
+      }
+    }
+    if (time_step % 2 == 0) {
+      framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
+                            &last_h[layer_idx]);
+      framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
+                            &last_c[layer_idx]);
+    }
+  }
+
   void RunIter(const framework::ExecutionContext& context, const Tensor* input,
                const TensorList& vec, const TensorList& init_h,
                const TensorList& init_c, const Tensor* sequence_length,
@@ -454,12 +556,21 @@ struct Layer {
                int layer_idx, Tensor* gate_value, Tensor* cell_value,
                Tensor* cell_act_value, bool is_bidirect, int offset,
                bool is_test) {
+    if (is_test) {
+      RunTestIter(context, input, vec, init_h, init_c, sequence_length,
+                  last_h_ptr, last_c_ptr, output, layer_idx, gate_value,
+                  cell_value, cell_act_value, is_bidirect, offset);
+    }
     bool is_reverse = false;
     if (is_bidirect) {
       layer_idx = 2 * layer_idx + offset;
       if (offset > 0) {
         is_reverse = true;
       }
+    }
+    bool is_lstm = false;
+    if (init_c.size() > 0 && last_c->size() > 0) {
+      is_lstm = true;
     }
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -501,93 +612,50 @@ struct Layer {
     Tensor init_c_temp;
     Tensor* last_c_holder = &last_c[layer_idx];
 
-    if (!is_test) {
-      cell_value->Resize({time_step, cell_value->numel() / time_step});
-      cell_value_tensors = Unbind(*cell_value);
-      cell_act_value->Resize({time_step, cell_value->numel() / time_step});
-      cell_act_value_tensors = Unbind(*cell_act_value);
-    }
+    cell_value->Resize({time_step, cell_value->numel() / time_step});
+    cell_value_tensors = Unbind(*cell_value);
+    cell_act_value->Resize({time_step, cell_value->numel() / time_step});
+    cell_act_value_tensors = Unbind(*cell_act_value);
     for (int i = 0; i < time_step; i++) {
-      if (!is_test) {
-        cell_value_tensors[i].Resize(init_c[layer_idx].dims());
-        cell_act_value_tensors[i].Resize(init_c[layer_idx].dims());
-      }
+      cell_value_tensors[i].Resize(init_c[layer_idx].dims());
+      cell_act_value_tensors[i].Resize(init_c[layer_idx].dims());
       if (i > 0) {
         if (!has_allocate_mem) {
           init_h_temp.Resize(init_h[layer_idx].dims());
           init_h_temp.mutable_data<T>(context.GetPlace());
           init_h_holder = &init_h_temp;
-          if (is_test) {
-            init_c_temp.Resize(init_c[layer_idx].dims());
-            init_c_temp.mutable_data<T>(context.GetPlace());
-            init_c_holder = &init_c_temp;
-          }
           has_allocate_mem = true;
-        }
-        if (is_test) {
-          SwapPoniter(&init_c_holder, &last_c_holder);
         }
         SwapPoniter(&init_h_holder, &last_h_holder);
       }
       if (i == 0) {
-        if (is_test) {
-          cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-                &init_h[layer_idx], &init_c[layer_idx], last_h_holder,
-                last_c_holder, nullptr, &output_tensors[i]);
-        } else {
-          cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-                &init_h[layer_idx], &init_c[layer_idx], last_h_holder,
-                &cell_value_tensors[i], &cell_act_value_tensors[i],
-                &output_tensors[i]);
-        }
+        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
+              &init_h[layer_idx], &init_c[layer_idx], last_h_holder,
+              &cell_value_tensors[i], &cell_act_value_tensors[i],
+              &output_tensors[i]);
       } else {
-        if (is_test) {
-          cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-                init_h_holder, init_c_holder, last_h_holder, last_c_holder,
-                nullptr, &output_tensors[i]);
-        } else {
-          cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-                init_h_holder, &cell_value_tensors[i - 1], last_h_holder,
-                &cell_value_tensors[i], &cell_act_value_tensors[i],
-                &output_tensors[i]);
-        }
+        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4], init_h_holder,
+              &cell_value_tensors[i - 1], last_h_holder, &cell_value_tensors[i],
+              &cell_act_value_tensors[i], &output_tensors[i]);
       }
       if (has_sequence_length) {
         if (i == 0) {
-          if (is_test) {
-            this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
-                              &init_c[layer_idx], last_h_holder, last_c_holder,
-                              mask_tensor_list[i]);
-          } else {
-            this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
-                              &init_c[layer_idx], last_h_holder,
-                              &cell_value_tensors[i], mask_tensor_list[i]);
-          }
+          this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
+                            &init_c[layer_idx], last_h_holder,
+                            &cell_value_tensors[i], mask_tensor_list[i]);
         } else {
-          if (is_test) {
-            this->postprocess(context, &output_tensors[i], init_h_holder,
-                              init_c_holder, last_h_holder, last_c_holder,
-                              mask_tensor_list[i]);
-          } else {
-            this->postprocess(context, &output_tensors[i], init_h_holder,
-                              &cell_value_tensors[i - 1], last_h_holder,
-                              &cell_value_tensors[i], mask_tensor_list[i]);
-          }
+          this->postprocess(context, &output_tensors[i], init_h_holder,
+                            &cell_value_tensors[i - 1], last_h_holder,
+                            &cell_value_tensors[i], mask_tensor_list[i]);
         }
       }
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
                             &last_h[layer_idx]);
-      if (is_test) {
-        framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
-                              &last_c[layer_idx]);
-      }
     }
-    if (!is_test) {
-      framework::TensorCopy(cell_value_tensors[time_step - 1],
-                            context.GetPlace(), dev_ctx, &last_c[layer_idx]);
-    }
+    framework::TensorCopy(cell_value_tensors[time_step - 1], context.GetPlace(),
+                          dev_ctx, &last_c[layer_idx]);
   }
   // Cell for the rnn module
   CellType cell_;
@@ -721,7 +789,8 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
                    hidden_size, gate_num, num_layers);
 }
 
-template <typename CellType, template <typename, typename> class SingleLayerT,
+template <typename CellType, template <typename, typename> class LayerT,
+          template <typename, typename> class SingleLayerT,
           template <typename, typename> class BidirLayerT, typename T>
 void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const std::vector<const Tensor*> weight_list, const Tensor* init_h,
@@ -733,21 +802,27 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const float& dropout_prob, const bool& is_test, const int& seed,
              Tensor* reserve_data) {
   // check the dim message of init state
+  bool is_lstm = true;
+  if (last_c == nullptr && init_c == nullptr) {
+    is_lstm = false;
+  }
   const int& direction_num = is_bidirec ? 2 : 1;
   const auto& init_h_dims = init_h->dims();
-  const auto& init_c_dims = init_c->dims();
   PADDLE_ENFORCE_EQ(init_h_dims[0], num_layers * direction_num,
                     platform::errors::InvalidArgument(
                         "The num_layers of in RNN layer must be the same as "
                         "first dim of init hidden, but received"
                         " num_layers:%d, dim:%d",
                         num_layers, init_h_dims[0]));
-  PADDLE_ENFORCE_EQ(init_c_dims[0], num_layers * direction_num,
-                    platform::errors::InvalidArgument(
-                        "The num_layers of in RNN layer must be the same as "
-                        "first dim of cell state hidden, but received"
-                        " num_layers:%d, dim:%d",
-                        num_layers, init_h_dims[0]));
+  if (is_lstm) {
+    const auto& init_c_dims = init_c->dims();
+    PADDLE_ENFORCE_EQ(init_c_dims[0], num_layers * direction_num,
+                      platform::errors::InvalidArgument(
+                          "The num_layers of in RNN layer must be the same as "
+                          "first dim of cell state hidden, but received"
+                          " num_layers:%d, dim:%d",
+                          num_layers, init_h_dims[0]));
+  }
   CellType cell;
 
   std::vector<TensorList> parameter_lists;
@@ -755,10 +830,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
   reset_parameter_vector(weight_list, num_layers, gate_num, is_bidirec,
                          &parameter_lists);
 
-  Tensor gate_data;
-  Tensor cell_data;
-  Tensor cell_act_data;
-  Tensor hidden_data;
+  Tensor gate_data, cell_data, cell_act_data, hidden_data;
 
   if (!is_test) {
     AllocateReserveData<CellType, T>(
@@ -779,15 +851,16 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
   bool has_allocate_mem = false;
 
   auto init_h_unbind = Unbind(*init_h);
-  auto init_c_unbind = Unbind(*init_c);
   auto last_h_unbind = Unbind(*last_h);
-  auto last_c_unbind = Unbind(*last_c);
+  TensorList init_c_unbind, last_c_unbind;
+  if (is_lstm) {
+    init_c_unbind = Unbind(*init_c);
+    last_c_unbind = Unbind(*last_c);
+  }
 
-  Tensor curr_gate_data;
-  Tensor curr_cell_data;
-  Tensor curr_cell_act_data;
-  Tensor curr_hidden_data;
-  Tensor prev_hidden_data;
+  Tensor curr_gate_data, curr_cell_data, curr_cell_act_data;
+  Tensor curr_hidden_data, prev_hidden_data;
+
   for (int i = 0; i < num_layers; i++) {
     if (!is_test) {
       if (cell_data.numel() > 0) /** for lstm, gru **/ {
@@ -816,7 +889,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
             ctx.template device_context<platform::CPUDeviceContext>(),
             input_holder);
         input_holder->Resize(output->dims());
-        VLOG(0) << "input dims: " << input_holder->dims();
+
       } else {
         SwapPoniter(&output_holder, &input_holder);
       }
@@ -826,34 +899,22 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
                                         dropout_prob, seed, is_test);
       }
     }
-
-    if (is_bidirec) {
-      BidirLayerT<T, CellType> layer(cell);
-      if (i == 0) {
-        layer(ctx, input, parameter_lists[i], init_h_unbind, init_c_unbind,
-              sequence_length, last_h_unbind, last_c_unbind, output_holder, i,
-              gate_num, &curr_gate_data, &curr_cell_data, &curr_cell_act_data,
-              is_test);
-      } else {
-        layer(ctx, input_holder, parameter_lists[i], init_h_unbind,
-              init_c_unbind, sequence_length, last_h_unbind, last_c_unbind,
-              output_holder, i, gate_num, &curr_gate_data, &curr_cell_data,
-              &curr_cell_act_data, is_test);
-      }
-    } else {
-      SingleLayerT<T, CellType> layer(cell);
-      if (i == 0) {
-        layer(ctx, input, parameter_lists[i], init_h_unbind, init_c_unbind,
-              sequence_length, last_h_unbind, last_c_unbind, output_holder, i,
-              gate_num, &curr_gate_data, &curr_cell_data, &curr_cell_act_data,
-              is_test);
-      } else {
-        layer(ctx, input_holder, parameter_lists[i], init_h_unbind,
-              init_c_unbind, sequence_length, last_h_unbind, last_c_unbind,
-              output_holder, i, gate_num, &curr_gate_data, &curr_cell_data,
-              &curr_cell_act_data, is_test);
-      }
+    const Tensor* input_temp_holder = input;
+    if (i > 0) {
+      input_temp_holder = input_holder;
     }
+    LayerT<T, CellType>* layer;
+    SingleLayerT<T, CellType> slayer(cell);
+    BidirLayerT<T, CellType> blayer(cell);
+    if (is_bidirec) {
+      layer = &blayer;
+    } else {
+      layer = &slayer;
+    }
+    (*layer)(ctx, input_temp_holder, parameter_lists[i], init_h_unbind,
+             init_c_unbind, sequence_length, last_h_unbind, last_c_unbind,
+             output_holder, i, gate_num, &curr_gate_data, &curr_cell_data,
+             &curr_cell_act_data, is_test);
   }
   if (num_layers % 2 == 0) {
     // the final result is in output_holder, must copy the data to output
@@ -898,11 +959,11 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
     last_h->mutable_data<T>(ctx.GetPlace());
-    last_c->mutable_data<T>(ctx.GetPlace());
 
     int gate_num = 4;
     if (cell_type == "lstm") {
-      RnnFunc<LSTMCell<T>, SingleLayer, BidirLayer, T>(
+      last_c->mutable_data<T>(ctx.GetPlace());
+      RnnFunc<LSTMCell<T>, Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
           last_c, output, dropout_mask, num_layers, gate_num, input_size,
           hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
@@ -913,14 +974,18 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     } else if (cell_type == "rnn_relu") {
       gate_num = 0;
       // run rnn
-      RnnFunc<SimpleRNNCell<T, ReluFunctor>, SingleLayer, BidirLayer, T>(
+      last_c = nullptr;
+      init_c = nullptr;
+      RnnFunc<SimpleRNNCell<T, ReluFunctor>, Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
           last_c, output, dropout_mask, num_layers, gate_num, input_size,
           hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
           reserve_data);
     } else if (cell_type == "rnn_tanh") {
       gate_num = 0;
-      RnnFunc<SimpleRNNCell<T, TanhFunctor>, SingleLayer, BidirLayer, T>(
+      last_c = nullptr;
+      init_c = nullptr;
+      RnnFunc<SimpleRNNCell<T, TanhFunctor>, Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
           last_c, output, dropout_mask, num_layers, gate_num, input_size,
           hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,

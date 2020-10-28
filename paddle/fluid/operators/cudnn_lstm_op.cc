@@ -28,18 +28,21 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
 
     OP_INOUT_CHECK(ctx->HasOutput("Reserve"), "Output", "Reserve", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("StateOut"), "Output", "StateOut",
                    "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("LastH"), "Output", "LastH", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
+
+    const std::string& cell_type = ctx->Attrs().Get<std::string>("cell_type");
+    if (cell_type == "lstm") {
+      OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
+      OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
+    }
 
     auto in_dims = ctx->GetInputDim("Input");
     auto init_h_dims = ctx->GetInputDim("InitH");
-    auto init_c_dims = ctx->GetInputDim("InitC");
 
     PADDLE_ENFORCE_EQ(in_dims.size(), 3,
                       platform::errors::InvalidArgument(
@@ -70,20 +73,24 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
             "received in_dims[1] is %d and init_h_dims[1] is %d.",
             in_dims[1], init_h_dims[1]));
 
-    PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
-                      platform::errors::InvalidArgument(
-                          "The InitC dims and InitH "
-                          "dims should be equal. But "
-                          "received init_c_dims is %d and init_h_dims is %d.",
-                          init_c_dims, init_h_dims));
-
+    if (cell_type == "lstm") {
+      auto init_c_dims = ctx->GetInputDim("InitC");
+      PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
+                        platform::errors::InvalidArgument(
+                            "The InitC dims and InitH "
+                            "dims should be equal. But "
+                            "received init_c_dims is %d and init_h_dims is %d.",
+                            init_c_dims, init_h_dims));
+    }
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
     bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
     out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("LastH", init_c_dims);
-    ctx->SetOutputDim("LastC", init_h_dims);
+    ctx->SetOutputDim("LastH", init_h_dims);
+    if (cell_type == "lstm") {
+      ctx->SetOutputDim("LastC", init_h_dims);
+    }
   }
 
  protected:
@@ -119,7 +126,8 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "input. This is a tensor with shape (num_layers x batch_size x "
              "hidden_size)"
              "and When is_bidirec is True, the shape will be (num_layers*2 x "
-             "batch_size x hidden_size)");
+             "batch_size x hidden_size)")
+        .AsDispensable();
     AddInput("W",
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
