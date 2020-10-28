@@ -191,7 +191,6 @@ class ConvMKLDNNHandlerT
 
       UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                                data_dims, strides, ksize);
-      const bool is_conv3d = strides.size() == 3U;
 
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
                      [](int64_t i) { return i - 1; });
