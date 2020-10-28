@@ -72,7 +72,7 @@ class AsyncGRPCServer final : public RPCServer {
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
 
-  std::unique_ptr<GrpcService::AsyncService> service_;
+  std::unique_ptr<grpc_service> service_;
   std::unique_ptr<::grpc::Server> server_;
 
   // condition of the sub program

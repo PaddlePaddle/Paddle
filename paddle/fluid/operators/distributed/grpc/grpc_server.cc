@@ -49,8 +49,7 @@ enum CallStatus { PROCESS = 0, FINISH };
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
 class RequestBase {
  public:
-  explicit RequestBase(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq,
+  explicit RequestBase(grpc_service* service, ::grpc::ServerCompletionQueue* cq,
                        RequestHandler* request_handler, int req_id)
       : service_(service),
         cq_(cq),
@@ -93,7 +92,7 @@ class RequestBase {
  protected:
   mutable std::mutex status_mu_;
   ::grpc::ServerContext ctx_;
-  GrpcService::AsyncService* service_;
+  grpc_service* service_;
   ::grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
   RequestHandler* request_handler_;
@@ -102,8 +101,7 @@ class RequestBase {
 
 class RequestSend final : public RequestBase {
  public:
-  explicit RequestSend(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq,
+  explicit RequestSend(grpc_service* service, ::grpc::ServerCompletionQueue* cq,
                        RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
@@ -138,8 +136,7 @@ class RequestSend final : public RequestBase {
 
 class RequestGet final : public RequestBase {
  public:
-  explicit RequestGet(GrpcService::AsyncService* service,
-                      ::grpc::ServerCompletionQueue* cq,
+  explicit RequestGet(grpc_service* service, ::grpc::ServerCompletionQueue* cq,
                       RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
@@ -187,7 +184,7 @@ class RequestGet final : public RequestBase {
 
 class RequestGetNoBarrier final : public RequestBase {
  public:
-  explicit RequestGetNoBarrier(GrpcService::AsyncService* service,
+  explicit RequestGetNoBarrier(grpc_service* service,
                                ::grpc::ServerCompletionQueue* cq,
                                RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
@@ -232,7 +229,7 @@ class RequestGetNoBarrier final : public RequestBase {
 
 class RequestGetMonomerVariable final : public RequestBase {
  public:
-  explicit RequestGetMonomerVariable(GrpcService::AsyncService* service,
+  explicit RequestGetMonomerVariable(grpc_service* service,
                                      ::grpc::ServerCompletionQueue* cq,
                                      RequestHandler* request_handler,
                                      int req_id, RPCServer* rpc_server)
@@ -279,7 +276,7 @@ class RequestGetMonomerVariable final : public RequestBase {
 
 class RequestGetMonomerBarrier final : public RequestBase {
  public:
-  explicit RequestGetMonomerBarrier(GrpcService::AsyncService* service,
+  explicit RequestGetMonomerBarrier(grpc_service* service,
                                     ::grpc::ServerCompletionQueue* cq,
                                     RequestHandler* request_handler, int req_id,
                                     RPCServer* rpc_server)
@@ -324,7 +321,7 @@ class RequestGetMonomerBarrier final : public RequestBase {
 
 class RequestPrefetch final : public RequestBase {
  public:
-  explicit RequestPrefetch(GrpcService::AsyncService* service,
+  explicit RequestPrefetch(grpc_service* service,
                            ::grpc::ServerCompletionQueue* cq,
                            RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id),
@@ -375,7 +372,7 @@ class RequestPrefetch final : public RequestBase {
 
 class RequestCheckpointNotify final : public RequestBase {
  public:
-  explicit RequestCheckpointNotify(GrpcService::AsyncService* service,
+  explicit RequestCheckpointNotify(grpc_service* service,
                                    ::grpc::ServerCompletionQueue* cq,
                                    RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
@@ -416,7 +413,7 @@ class RequestCheckpointNotify final : public RequestBase {
 
 class RequestNotify final : public RequestBase {
  public:
-  explicit RequestNotify(GrpcService::AsyncService* service,
+  explicit RequestNotify(grpc_service* service,
                          ::grpc::ServerCompletionQueue* cq,
                          RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
@@ -450,7 +447,7 @@ class RequestNotify final : public RequestBase {
 
 class RequestSendAndRecv final : public RequestBase {
  public:
-  explicit RequestSendAndRecv(GrpcService::AsyncService* service,
+  explicit RequestSendAndRecv(grpc_service* service,
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
@@ -539,8 +536,13 @@ class NoReusePortOption : public ::grpc::ServerBuilderOption {
 void AsyncGRPCServer::StartServer() {
   for (int i = 0; i < FLAGS_rpc_retry_bind_port; i++) {
     ::grpc::ServerBuilder builder;
-    std::unique_ptr<GrpcService::AsyncService> service(
-        new GrpcService::AsyncService());
+    if (using_origin_rpc_sevice_) {
+      std::unique_ptr<::grpc::Service> service(
+          new sendrecv::SendRecvService::AsyncService());
+    } else {
+      std::unique_ptr<::grpc::Service> service(new GrpcService::AsyncService());
+    }
+
     builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
                              &selected_port_);
 

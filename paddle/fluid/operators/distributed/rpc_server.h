@@ -117,6 +117,8 @@ class RPCServer {
 
   bool NeedResetAllVars();
 
+  void UsingOriginRpcService() { using_origin_rpc_sevice_ = true; }
+
  protected:
   virtual void ShutDownImpl() = 0;
 
@@ -135,6 +137,7 @@ class RPCServer {
   int selected_port_;
   int client_num_;
   bool need_reset_all_vars_;
+  bool using_origin_rpc_sevice_ = false;
 
   std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
   std::unordered_map<std::string, int> rpc_thread_num_;

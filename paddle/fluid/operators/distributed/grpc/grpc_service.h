@@ -77,6 +77,8 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+using grpc_service = ::grpc::Service;
+
 enum class GrpcMethod {
   kSendVariable,
   kGetVariable,
@@ -121,6 +123,11 @@ inline const char* GrpcMethodName(GrpcMethod id) {
   return nullptr;
 }
 
+// class SendRecvService final {
+//  public:
+//   class Service : public ::grpc::Service {}
+// };
+
 class GrpcService final {
  public:
   class AsyncService : public ::grpc::Service {
@@ -139,25 +146,6 @@ class GrpcService final {
     using ::grpc::Service::RequestAsyncUnary;
   };
 };
-
-// class GrpcService final {
-//  public:
-//   class AsyncService : public sendrecv::Service {
-//    public:
-//     AsyncService() {
-//       for (int i = 0; i < kGrpcNumMethods; ++i) {
-//         AddMethod(new ::grpc::internal::RpcServiceMethod(
-//             GrpcMethodName(static_cast<GrpcMethod>(i)),
-//             ::grpc::internal::RpcMethod::NORMAL_RPC, nullptr));
-//         ::grpc::Service::MarkMethodAsync(i);
-//       }
-//     }
-//     virtual ~AsyncService() {}
-
-//     // Make RequestAsyncUnary public for grpc_call.h
-//     using ::grpc::Service::RequestAsyncUnary;
-//   };
-// };
 
 }  // namespace distributed
 }  // namespace operators
