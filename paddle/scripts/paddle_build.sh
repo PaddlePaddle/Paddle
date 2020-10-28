@@ -522,9 +522,11 @@ function run_mac_test() {
 EOF
         #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac. 
         #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
+        set +x
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
+        set -x
 
         set +ex
         if [ "$1" == "cp27-cp27m" ]; then
@@ -601,8 +603,10 @@ EOF
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
+        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
+        set -x
         if [ "$mactest_error" != 0 ];then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
@@ -1196,6 +1200,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue

@@ -356,7 +356,7 @@ class TestRaiseNoDoubleGradOp(TestCase):
             loss.backward()
 
     def test_raise(self):
-        self.assertRaises(fluid.core.EnforceNotMet, self.raise_no_grad_op)
+        self.assertRaises(RuntimeError, self.raise_no_grad_op)
 
 
 if __name__ == '__main__':

@@ -118,7 +118,10 @@ class TestCholeskySingularAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": input_np},
                                   fetch_list=[result])
-            except fluid.core.EnforceNotMet as ex:
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
                 print("The mat is singular")
                 pass
 
@@ -135,10 +138,14 @@ class TestCholeskySingularAPI(unittest.TestCase):
                 input = fluid.dygraph.to_variable(input_np)
                 try:
                     result = paddle.cholesky(input)
-                except fluid.core.EnforceNotMet as ex:
+                except RuntimeError as ex:
+                    print("The mat is singular")
+                    pass
+                except ValueError as ex:
                     print("The mat is singular")
                     pass
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
