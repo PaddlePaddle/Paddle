@@ -18,6 +18,7 @@ import six
 import numpy as np
 import threading
 import paddle
+import paddle.utils.deprecated as deprecated
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
@@ -153,18 +154,22 @@ class DataLoader(object):
     multi-process workers will be used to load data asynchronously if
     :attr:`num_workers` is set as a positive number.
 
-    DataLoader only supports map-style dataset(can get a sample from
-    dataset with a given index) currently, for a map-style dataset,
-    please see :code:`paddle.io.Dataset`.
+    DataLoader supports map-style dataset and iterable-style dataset.
 
-    batch_sampler please see :code:`paddle.io.BatchSampler`
+    For map-style datast(can get a sample from dataset with a given
+    index), please see :code:`paddle.io.Dataset`.
+
+    For iterable-style datast(get samples from dataset iteratively,
+    like a Python iterator), please see :code:`paddle.io.IterableDataset`.
+
+    For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
             :code:`paddle.io.IterableDataset`.
         feed_list (list(Tensor)|tuple(Tensor)): feed variable list.
-            The variables should be created by :code:`fluid.data()`.
+            The variables should be created by :code:`paddle.static.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
         places(list(Place)|tuple(Place)|optional): a list of Place,
@@ -173,10 +178,10 @@ class DataLoader(object):
             will be used. Default None.
         return_list (bool): whether the return value on each device is 
             presented as a list. If :attr:`return_list=False`, the return
-            value on each device would be a dict of str -> LoDTensor, where
+            value on each device would be a dict of str -> Tensor, where
             the key of the dict is the name of each fed variables. If 
             :attr:`return_list=True`, the return value on each device would
-            be a list(LoDTensor). :attr:`return_list` can only be True
+            be a list(Tensor). :attr:`return_list` can only be True
             in dynamic graph mode. Default False.
         batch_sampler(BatchSampler): an instance of `paddle.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
@@ -224,7 +229,8 @@ class DataLoader(object):
             import numpy as np
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.nn as nn
+            import paddle.nn.functional as F
             from paddle.io import Dataset, BatchSampler, DataLoader
 
             BATCH_NUM = 20
@@ -251,39 +257,35 @@ class DataLoader(object):
 
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
 
-            # get places
-            places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
-
             # --------------------- dygraph mode --------------------
 
-            class SimpleNet(fluid.dygraph.Layer):
+            class SimpleNet(nn.Layer):
                 def __init__(self):
                     super(SimpleNet, self).__init__()
-                    self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
+                    self.fc = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, image, label=None):
                     return self.fc(image)
 
-            with fluid.dygraph.guard(places[0]):
-                simple_net = SimpleNet()
-                opt = fluid.optimizer.SGD(learning_rate=1e-3,
-                                          parameter_list=simple_net.parameters())
+            simple_net = SimpleNet()
+            opt = paddle.optimizer.SGD(learning_rate=1e-3,
+                                      parameters=simple_net.parameters())
 
-                loader = DataLoader(dataset,
-                                    batch_size=BATCH_SIZE,
-                                    shuffle=True,
-                                    drop_last=True,
-                                    num_workers=2)
+            loader = DataLoader(dataset,
+                                batch_size=BATCH_SIZE,
+                                shuffle=True,
+                                drop_last=True,
+                                num_workers=2)
 
-                for e in range(EPOCH_NUM):
-                    for i, (image, label) in enumerate(loader()):
-                        out = simple_net(image)
-                        loss = fluid.layers.cross_entropy(out, label)
-                        avg_loss = fluid.layers.reduce_mean(loss)
-                        avg_loss.backward()
-                        opt.minimize(avg_loss)
-                        simple_net.clear_gradients()
-                        print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
+            for e in range(EPOCH_NUM):
+                for i, (image, label) in enumerate(loader()):
+                    out = simple_net(image)
+                    loss = F.cross_entropy(out, label)
+                    avg_loss = paddle.mean(loss)
+                    avg_loss.backward()
+                    opt.minimize(avg_loss)
+                    simple_net.clear_gradients()
+                    print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
 
             # -------------------------------------------------------
 
@@ -291,23 +293,26 @@ class DataLoader(object):
 
             paddle.enable_static()
 
+            # get places
+            place = paddle.CUDAPlace(0) if USE_GPU else paddle.CPUPlace()
+
             def simple_net(image, label):
-                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
-                cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
-                loss = fluid.layers.reduce_mean(cross_entropy)
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                fc_tmp = paddle.fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
+                cross_entropy = paddle.fluid.layers.softmax_with_cross_entropy(image, label)
+                loss = paddle.fluid.layers.reduce_mean(cross_entropy)
+                sgd = paddle.fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
                 return loss
 
-            image = fluid.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            image = paddle.static.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
             loss = simple_net(image, label)
 
-            exe = fluid.Executor(places[0])
-            exe.run(fluid.default_startup_program())
+            exe = paddle.fluid.Executor(place)
+            exe.run(paddle.fluid.default_startup_program())
 
-            prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
+            prog = paddle.fluid.CompiledProgram(paddle.fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
 
             loader = DataLoader(dataset,
                                 feed_list=[image, label],
@@ -439,6 +444,10 @@ class DataLoader(object):
                        use_multiprocess=False,
                        drop_last=True):
         """
+        .. note::
+          This API will be deprecated in the future, it is recommended to use
+          :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
+
         .. note::
           **The framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
 
@@ -684,6 +693,10 @@ class DataLoader(object):
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
         """
+        .. note::
+          This API will be deprecated in the future, it is recommended to use
+          :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
+
         Create an iterable DataLoader object for loading data from Dataset.    
         Dataset is only supported in Linux system currently.
 
