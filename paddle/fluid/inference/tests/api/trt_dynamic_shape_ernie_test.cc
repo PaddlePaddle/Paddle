@@ -22,6 +22,7 @@ namespace paddle {
 namespace inference {
 
 /*
+//varlen ernie example
 void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
