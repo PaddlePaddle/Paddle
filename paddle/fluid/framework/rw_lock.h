@@ -32,17 +32,21 @@ struct RWLock {
   ~RWLock() { pthread_rwlock_destroy(&lock_); }
 
   inline void RDLock() {
-    PADDLE_ENFORCE_EQ(pthread_rwlock_rdlock(&lock_), 0,
-                      "acquire read lock failed");
+    PADDLE_ENFORCE_EQ(
+        pthread_rwlock_rdlock(&lock_), 0,
+        platform::errors::External("The pthread failed to acquire read lock."));
   }
 
   inline void WRLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_wrlock(&lock_), 0,
-                      "acquire write lock failed");
+                      platform::errors::External(
+                          "The pthread failed to acquire write lock."));
   }
 
   inline void UNLock() {
-    PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_), 0, "unlock failed");
+    PADDLE_ENFORCE_EQ(
+        pthread_rwlock_unlock(&lock_), 0,
+        platform::errors::External("The pthread failed to unlock."));
   }
 
  private:

@@ -15,6 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 template <typename T>

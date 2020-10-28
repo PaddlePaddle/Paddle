@@ -16,7 +16,7 @@
 #define LITE_WITH_CUDA 1
 #endif
 
-#ifdef PADDLE_WITH_XPU
+#ifdef LITE_SUBGRAPH_WITH_XPU
 #define LITE_WITH_XPU 1
 #endif
 
@@ -59,7 +59,7 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
       cfg.cpu_math_library_num_threads);
 #endif
 
-#ifdef PADDLE_WITH_XPU
+#ifdef LITE_SUBGRAPH_WITH_XPU
   lite_cxx_config.set_xpu_workspace_l3_size_per_thread(
       cfg.xpu_l3_workspace_size);
 #endif

@@ -16,10 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3dOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3dOp_2
+from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3DOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3DOp_2
 
 
-class TestMKLDNN(TestConv3dOp):
+class TestMKLDNN(TestConv3DOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -61,7 +61,7 @@ class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
         self.dtype = np.float32
 
 
-class TestConv3dOp_AsyPadding_MKLDNN(TestConv3dOp):
+class TestConv3DOp_AsyPadding_MKLDNN(TestConv3DOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
@@ -72,7 +72,7 @@ class TestConv3dOp_AsyPadding_MKLDNN(TestConv3dOp):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestConv3dOp_Same_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
+class TestConv3DOp_Same_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0, 0]
         self.padding_algorithm = "SAME"
@@ -83,7 +83,7 @@ class TestConv3dOp_Same_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
         self.dtype = np.float32
 
 
-class TestConv3dOp_Valid_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
+class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [1, 1, 1]
         self.padding_algorithm = "VALID"

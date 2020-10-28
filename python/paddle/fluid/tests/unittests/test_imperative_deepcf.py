@@ -206,7 +206,7 @@ class TestDygraphDeepCF(unittest.TestCase):
         else:
             (users_np, items_np, labels_np, num_users, num_items,
              matrix) = get_data()
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
         startup = fluid.Program()
         main = fluid.Program()
@@ -243,7 +243,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('static loss %s\n' % static_loss)
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             deepcf = DeepCF(num_users, num_items, matrix)
@@ -268,7 +268,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             deepcf2 = DeepCF(num_users, num_items, matrix)

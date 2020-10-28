@@ -196,7 +196,6 @@ void SectionWorker::TrainFiles() {
         if (threads_completed) {
           VLOG(3) << "thread " << thread_id_ << " completed.";
           lk.unlock();
-          threads_completed = false;
           return;
         }
         lk.unlock();
@@ -459,7 +458,6 @@ void SectionWorker::TrainFilesWithProfiler() {
                     << ", mean_time: " << op_total_time[i] / op_count[i];
           }
           VLOG(0) << "================================";
-          threads_completed = false;
           return;
         }
         lk.unlock();

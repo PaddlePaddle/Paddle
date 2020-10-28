@@ -23,9 +23,8 @@ class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-// This OP is implemented by trt dynamic shpae plugin.
-// Dynamic shape plugin requires TRT version greater than 6.0.
-#if IS_TRT_VERSION_GE(6000)
+    // This OP is implemented by trt dynamic shpae plugin.
+    // Dynamic shape plugin requires TRT version greater than 6.0.
     VLOG(4) << "convert slice op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -38,27 +37,65 @@ class SliceOpConverter : public OpConverter {
     std::vector<int> ends =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
 
+    PADDLE_ENFORCE_EQ(
+        starts.size(), axes.size(),
+        platform::errors::InvalidArgument(
+            "The size of starts must be equal to the size of axes."));
+    PADDLE_ENFORCE_EQ(
+        ends.size(), axes.size(),
+        platform::errors::InvalidArgument(
+            "The size of ends must be equal to the size of axes."));
+
+    auto input_dims = input->getDimensions();
+    if (!engine_->with_dynamic_shape()) {
+      // notice that input shape is [CHW] without batch axis when input has
+      // static shape
+      for (size_t i = input_dims.nbDims; i > 0; i--) {
+        input_dims.d[i] = input_dims.d[i - 1];
+      }
+      input_dims.d[0] = 1;  // fake batchsize, not useful here
+      for (size_t i = 0; i < axes.size(); i++) {
+        // split on batch is not supported in TensorRT
+        PADDLE_ENFORCE_NE(axes[i], 0, platform::errors::InvalidArgument(
+                                          "Invalid slice axis. Slice on batch "
+                                          "axis is not supported in TensorRT"));
+        if (starts[i] < 0) {
+          starts[i] = std::max(starts[i] + input_dims.d[axes[i]], 0);
+        }
+        if (ends[i] < 0) {
+          ends[i] = std::max(ends[i] + input_dims.d[axes[i]], 0);
+        }
+        ends[i] = std::min(ends[i], input_dims.d[axes[i]]);
+        PADDLE_ENFORCE_GT(
+            ends[i], starts[i],
+            platform::errors::InvalidArgument(
+                "Attr(ends) should be greater than attr(starts) in "
+                "slice op. But received ends = %d, starts = %d.",
+                ends[i], starts[i]));
+      }
+    }
+
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
       bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, ends, ban_fp16);
+          new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
       layer = engine_->AddPluginV2(&input, 1, plugin);
-    } else {
+#else
       PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static"
-          "shape mode, which is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface"
-          " to set the shape information to run the dynamic shape mode."));
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+      plugin::SlicePlugin* plugin =
+          new plugin::SlicePlugin(starts, ends, axes, ban_fp16);
+      layer = engine_->AddPlugin(&input, 1, plugin);
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "You are running the TRT Dynamic Shape mode, need to confirm that "
-        "your TRT version is no less than 6.0"));
-#endif
+    RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
   }
 };
 

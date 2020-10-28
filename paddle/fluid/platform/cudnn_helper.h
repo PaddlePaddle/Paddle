@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
+namespace paddle {
+namespace platform {
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
 DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
@@ -287,11 +293,14 @@ class ScopedTensorDescriptor {
     return descriptor(CudnnDataType<T>::type, dim, stride);
   }
 
+  inline cudnnTensorDescriptor_t desc() { return desc_; }
+
  private:
   cudnnTensorDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
+#if CUDNN_VERSION >= 7201
 class ScopedRNNTensorDescriptor {
  public:
   ScopedRNNTensorDescriptor() {
@@ -329,10 +338,13 @@ class ScopedRNNTensorDescriptor {
                       input_size, time_major, seq_length);
   }
 
+  inline cudnnRNNDataDescriptor_t desc() { return desc_; }
+
  private:
   cudnnRNNDataDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
 };
+#endif
 
 class ScopedDropoutDescriptor {
  public:
@@ -361,6 +373,7 @@ class ScopedDropoutDescriptor {
     }
     return desc_;
   }
+  inline cudnnDropoutDescriptor_t desc() { return desc_; }
 
  private:
   cudnnDropoutDescriptor_t desc_;
@@ -376,7 +389,7 @@ class ScopedRNNDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDescriptor(desc_));
   }
 
-  inline cudnnRNNDescriptor_t descriptor() { return desc_; }
+  inline cudnnRNNDescriptor_t desc() { return desc_; }
 
  private:
   cudnnRNNDescriptor_t desc_;
@@ -419,170 +432,11 @@ class ScopedFilterDescriptor {
                       kernel, groups);
   }
 
+  inline cudnnFilterDescriptor_t desc() { return desc_; }
+
  private:
   cudnnFilterDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedFilterDescriptor);
-};
-
-class ScopedRNNBase {
- public:
-  ScopedRNNBase(int seq_length, int batch_size, int input_size, int hidden_size,
-                int num_layers, float dropout_prob, int seed, int weight_numel,
-                bool initialized, bool is_bidirec)
-      : seq_length_(seq_length),
-        batch_size_(batch_size),
-        input_size_(input_size),
-        hidden_size_(hidden_size),
-        num_layers_(num_layers),
-        dropout_prob_(dropout_prob),
-        seed_(seed),
-        weight_numel_(weight_numel),
-        initialized_(initialized),
-        is_bidirec_(is_bidirec) {}
-
-  template <typename T>
-  void Create(const cudnnHandle_t& handle, const platform::Place& place,
-              std::vector<int> sequence_length, size_t* workspace_size,
-              size_t* reserve_size, framework::Tensor* dropout_state) {
-    int numDirections = is_bidirec_ ? 2 : 1;
-    cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
-
-    // ------------------- cudnn x, y descriptors ---------------------
-    std::vector<int> dims_x = {batch_size_, input_size_, 1};
-    std::vector<int> strides_x = {input_size_, 1, 1};
-
-    std::vector<int> dims_y = {batch_size_, hidden_size_ * numDirections, 1};
-    std::vector<int> strides_y = {hidden_size_ * numDirections, 1, 1};
-
-    for (int i = 0; i < seq_length_; ++i) {
-      x_desc_.emplace_back(x_d.descriptor<T>(dims_x, strides_x));
-      y_desc_.emplace_back(y_d.descriptor<T>(dims_y, strides_y));
-    }
-
-    if (!sequence_length.empty()) {
-      x_seq_desc_ = x_seq_d.descriptor<T>(seq_length_, batch_size_, input_size_,
-                                          true, sequence_length);
-      y_seq_desc_ = y_seq_d.descriptor<T>(seq_length_, batch_size_,
-                                          hidden_size_ * numDirections, true,
-                                          sequence_length);
-    }
-
-    // ------------------- cudnn hx, hy, cx, cy descriptors----------
-    std::vector<int> dims_hx = {num_layers_ * numDirections, batch_size_,
-                                hidden_size_};
-    std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
-
-    hx_desc_ = hx_d.descriptor<T>(dims_hx, strides_hx);
-    cx_desc_ = cx_d.descriptor<T>(dims_hx, strides_hx);
-    hy_desc_ = hy_d.descriptor<T>(dims_hx, strides_hx);
-    cy_desc_ = cy_d.descriptor<T>(dims_hx, strides_hx);
-
-    // ------------------- cudnn dropout descriptors ---------------------
-    size_t state_size;
-    if (!initialized_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
-                                           place);
-    }
-    dropout_desc_ =
-        dropout_d.descriptor(handle, place, initialized_, dropout_prob_,
-                             dropout_state, seed_, state_size);
-
-    // ------------------- cudnn rnn descriptors ---------------------
-    rnn_desc_ = rnn_d.descriptor();
-
-#if CUDNN_VERSION >= 6000
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
-        handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
-        CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        CUDNN_RNN_ALGO_STANDARD, cudnn_type));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
-        rnn_desc_, hidden_size_, num_layers_, dropout_desc_, CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        cudnn_type));
-#endif
-    if (!sequence_length.empty()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
-          rnn_desc_, CUDNN_RNN_PADDED_IO_ENABLED));
-    }
-    // ------------------- cudnn weights_size ---------------------
-    size_t weights_size_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
-        handle, rnn_desc_, x_desc_[0], &weights_size_, cudnn_type));
-
-    PADDLE_ENFORCE_EQ(
-        weights_size_, sizeof(T) * weight_numel_,
-        platform::errors::InvalidArgument(
-            "The cudnn lstm and setting weight size should be same."));
-
-    // ------------------- cudnn weight descriptors ---------------------
-    platform::DataLayout layout = platform::DataLayout::kNCHW;
-    int dim_tmp = weights_size_ / sizeof(T);
-    std::vector<int> dim_w = {dim_tmp, 1, 1};
-    w_desc_ = w_d.descriptor<T>(layout, dim_w);
-
-    // ------------------- cudnn workspace, reserve size ---------------------
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
-        handle, rnn_desc_, seq_length_, x_desc_.data(), workspace_size));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnGetRNNTrainingReserveSize(
-            handle, rnn_desc_, seq_length_, x_desc_.data(), reserve_size));
-  }
-
-  cudnnTensorDescriptor_t* x_desc() { return x_desc_.data(); }
-  cudnnTensorDescriptor_t* y_desc() { return y_desc_.data(); }
-  cudnnRNNDataDescriptor_t x_seq_desc() { return x_seq_desc_; }
-  cudnnRNNDataDescriptor_t y_seq_desc() { return y_seq_desc_; }
-  cudnnTensorDescriptor_t hx_desc() { return hx_desc_; }
-  cudnnTensorDescriptor_t cx_desc() { return cx_desc_; }
-  cudnnTensorDescriptor_t hy_desc() { return hy_desc_; }
-  cudnnTensorDescriptor_t cy_desc() { return cy_desc_; }
-  cudnnRNNDescriptor_t rnn_desc() { return rnn_desc_; }
-  cudnnDropoutDescriptor_t dropout_desc() { return dropout_desc_; }
-  cudnnFilterDescriptor_t w_desc() { return w_desc_; }
-
- private:
-  int seq_length_;
-  int batch_size_;
-  int input_size_;
-  int hidden_size_;
-  int num_layers_;
-  float dropout_prob_;
-  int seed_;
-  int weight_numel_;
-  bool initialized_;
-  bool is_bidirec_;
-
-  std::vector<cudnnTensorDescriptor_t> x_desc_;
-  std::vector<cudnnTensorDescriptor_t> y_desc_;
-  cudnnRNNDataDescriptor_t x_seq_desc_;
-  cudnnRNNDataDescriptor_t y_seq_desc_;
-  // A tensor descriptor describing the initial hidden state of the RNN.
-  cudnnTensorDescriptor_t hx_desc_;
-  // A tensor descriptor describing the initial cell state for LSTM networks.
-  cudnnTensorDescriptor_t cx_desc_;
-  // A tensor descriptor describing the final hidden state of the RNN.
-  cudnnTensorDescriptor_t hy_desc_;
-  // A tensor descriptor describing the final cell state for LSTM networks.
-  cudnnTensorDescriptor_t cy_desc_;
-  cudnnDropoutDescriptor_t dropout_desc_;
-  cudnnFilterDescriptor_t w_desc_;
-  cudnnRNNDescriptor_t rnn_desc_;
-
-  ScopedTensorDescriptor x_d;
-  ScopedTensorDescriptor y_d;
-  ScopedRNNTensorDescriptor x_seq_d;
-  ScopedRNNTensorDescriptor y_seq_d;
-  ScopedTensorDescriptor hx_d;
-  ScopedTensorDescriptor cx_d;
-  ScopedTensorDescriptor hy_d;
-  ScopedTensorDescriptor cy_d;
-  ScopedDropoutDescriptor dropout_d;
-  ScopedFilterDescriptor w_d;
-  ScopedRNNDescriptor rnn_d;
 };
 
 class ScopedConvolutionDescriptor {

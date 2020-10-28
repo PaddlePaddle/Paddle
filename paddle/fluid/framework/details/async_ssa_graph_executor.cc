@@ -89,8 +89,19 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
-  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and the number of local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
+  PADDLE_ENFORCE_EQ(
+      local_scopes_.size(), local_exec_scopes_.size(),
+      platform::errors::InvalidArgument(
+          "The number of local scopes and the number of local execution scopes "
+          "should be equal, but got number of local scopes is %d and "
+          "number of local execution scopes is %d.",
+          local_scopes_.size(), local_exec_scopes_.size()));
 
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()

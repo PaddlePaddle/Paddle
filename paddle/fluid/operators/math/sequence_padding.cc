@@ -15,6 +15,16 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence_padding.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace math {
 

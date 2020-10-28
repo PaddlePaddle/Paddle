@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {

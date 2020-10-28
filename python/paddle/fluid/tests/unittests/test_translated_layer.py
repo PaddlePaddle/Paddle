@@ -49,7 +49,10 @@ class LinearNet(nn.Layer):
         super(LinearNet, self).__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(input_spec=[
+        paddle.static.InputSpec(
+            shape=[None, IMAGE_SIZE], dtype='float32', name='x')
+    ])
     def forward(self, x):
         return self._linear(x)
 
@@ -74,7 +77,7 @@ class TestTranslatedLayer(unittest.TestCase):
         paddle.disable_static(place)
 
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         # create network
@@ -151,6 +154,34 @@ class TestTranslatedLayer(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             program = translated_layer.program('not_exists')
+
+    def test_get_input_spec(self):
+        # load
+        translated_layer = paddle.jit.load(self.model_path)
+
+        expect_spec = [
+            paddle.static.InputSpec(
+                shape=[None, IMAGE_SIZE], dtype='float32', name='x')
+        ]
+        actual_spec = translated_layer._input_spec()
+
+        for spec_x, spec_y in zip(expect_spec, actual_spec):
+            self.assertEqual(spec_x, spec_y)
+
+    def test_get_output_spec(self):
+        # load
+        translated_layer = paddle.jit.load(self.model_path)
+
+        expect_spec = [
+            paddle.static.InputSpec(
+                shape=[None, CLASS_NUM],
+                dtype='float32',
+                name='translated_layer/scale_0.tmp_1')
+        ]
+        actual_spec = translated_layer._output_spec()
+
+        for spec_x, spec_y in zip(expect_spec, actual_spec):
+            self.assertEqual(spec_x, spec_y)
 
 
 if __name__ == '__main__':

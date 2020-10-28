@@ -58,7 +58,8 @@ class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
     AddInput("input", "input of cosine op").AsDuplicable();
     AddOutput("output", "output of cosine op").AsIntermediate();
     auto my_checker = [](int i) {
-      PADDLE_ENFORCE(i % 2 == 0, "'test_attr' must be even!");
+      PADDLE_ENFORCE_EQ(i % 2, 0, platform::errors::InvalidArgument(
+                                      "'test_attr' must be even!"));
     };
     AddAttr<int>("test_attr", "a simple test attribute")
         .AddCustomChecker(my_checker);

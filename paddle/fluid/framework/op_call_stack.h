@@ -15,8 +15,15 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace platform {
+struct EnforceNotMet;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

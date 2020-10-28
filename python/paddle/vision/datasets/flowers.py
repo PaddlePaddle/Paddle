@@ -21,6 +21,7 @@ import numpy as np
 import scipy.io as scio
 from PIL import Image
 
+import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
@@ -104,6 +105,8 @@ class Flowers(Dataset):
         # read dataset into memory
         self._load_anno()
 
+        self.dtype = paddle.get_default_dtype()
+
     def _load_anno(self):
         self.name2mem = {}
         self.data_tar = tarfile.open(self.data_file)
@@ -124,7 +127,7 @@ class Flowers(Dataset):
         if self.transform is not None:
             image = self.transform(image)
 
-        return image, label.astype('int64')
+        return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
         return len(self.indexes)

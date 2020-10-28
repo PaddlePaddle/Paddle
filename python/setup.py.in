@@ -148,13 +148,17 @@ packages=['paddle',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
+          'paddle.distributed.fleet.meta_optimizers.sharding',
           'paddle.distributed.fleet.runtime',
           'paddle.distributed.fleet.dataset',
+          'paddle.distributed.fleet.data_generator',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
           'paddle.framework',
           'paddle.jit',
+          'paddle.jit.dy2static',
+          'paddle.inference',
           'paddle.fluid',
           'paddle.fluid.inference',
           'paddle.fluid.dygraph',
@@ -189,6 +193,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server.ir',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
+          'paddle.amp',
           'paddle.hapi',
           'paddle.vision',
           'paddle.vision.models',
@@ -236,9 +241,6 @@ if sys.version_info >= (3,7):
             continue
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
-
-if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
-    setup_requires+=['opencv-python']
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''

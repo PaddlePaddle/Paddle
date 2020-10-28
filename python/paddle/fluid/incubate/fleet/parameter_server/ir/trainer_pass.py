@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 import six
 import collections
 import warnings
@@ -226,22 +227,6 @@ def append_send_ops_pass(program, config):
 def init_from_server_pass(program, config):
     fetch_barrier_out = program.global_block().create_var(
         name=framework.generate_control_dev_var_name())
-
-    recv_ctx = config.get_communicator_recv_context(recv_type=1)
-    recv_varnames = []
-
-    for name, ctxs in recv_ctx.items():
-        recv_varnames.extend(ctxs.origin_varnames())
-
-    program.global_block().append_op(
-        type="recv",
-        inputs={"X": []},
-        outputs={"Out": []},
-        attrs={
-            "recv_varnames": recv_varnames,
-            "trainer_id": config.get_role_id(),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
 
     program.global_block().append_op(
         type="fetch_barrier",
@@ -565,11 +550,10 @@ def create_heter_program(program, config, heter_program, heter_ops,
         "pserver_id": config.get_role_id(),
         "Fanin": config.get_trainers(),
         "distributed_mode": config.get_distributed_mode(),
-        "rpc_get_thread_num": 12,
-        "rpc_send_thread_num": 12,
-        "rpc_prefetch_thread_num": 12
+        "rpc_get_thread_num": int(os.getenv("CPU_NUM", 32)),
+        "rpc_send_thread_num": int(os.getenv("CPU_NUM", 32)),
+        "rpc_prefetch_thread_num": int(os.getenv("CPU_NUM", 32))
     }
-
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)

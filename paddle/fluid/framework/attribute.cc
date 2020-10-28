@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/attribute.h"
 
-#include <vector>
-
 namespace paddle {
 namespace framework {
 

@@ -27,6 +27,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class OpDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 namespace details {
 

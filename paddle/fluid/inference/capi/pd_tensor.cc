@@ -19,6 +19,7 @@
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
 using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
@@ -37,44 +38,60 @@ void PD_DeletePaddleTensor(PD_Tensor* tensor) {
 }
 
 void PD_SetPaddleTensorName(PD_Tensor* tensor, char* name) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   tensor->tensor.name = std::string(name);
 }
 
 void PD_SetPaddleTensorDType(PD_Tensor* tensor, PD_DataType dtype) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   tensor->tensor.dtype = paddle::ConvertToPaddleDType(dtype);
 }
 
 void PD_SetPaddleTensorData(PD_Tensor* tensor, PD_PaddleBuf* buf) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   tensor->tensor.data = buf->buf;
 }
 
 void PD_SetPaddleTensorShape(PD_Tensor* tensor, int* shape, int size) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   tensor->tensor.shape.assign(shape, shape + size);
 }
 
 const char* PD_GetPaddleTensorName(const PD_Tensor* tensor) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   return tensor->tensor.name.c_str();
 }
 
 PD_DataType PD_GetPaddleTensorDType(const PD_Tensor* tensor) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   return ConvertToPDDataType(tensor->tensor.dtype);
 }
 
 PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   PD_PaddleBuf* ret = PD_NewPaddleBuf();
   ret->buf = tensor->tensor.data;
   return ret;
 }
 
 const int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int* size) {
-  PADDLE_ENFORCE_NOT_NULL(tensor);
+  PADDLE_ENFORCE_NOT_NULL(tensor,
+                          paddle::platform::errors::InvalidArgument(
+                              "The pointer of tensor shouldn't be nullptr"));
   const std::vector<int>& shape = tensor->tensor.shape;
   *size = shape.size();
   return shape.data();

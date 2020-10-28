@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import six
 import inspect
 import numpy as np
 import collections
+
 import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
@@ -291,7 +292,7 @@ def convert_to_input_spec(inputs, input_spec):
         if len(inputs) > len(input_spec):
             for rest_input in inputs[len(input_spec):]:
                 if isinstance(rest_input, (core.VarBase, np.ndarray)):
-                    logging.warning(
+                    logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@declarative` if you expect them as mutable inputs.".
                         format(type_name(rest_input)))

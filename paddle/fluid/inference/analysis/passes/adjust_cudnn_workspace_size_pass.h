@@ -30,6 +30,8 @@ namespace analysis {
  * The default cudnn workspace is 4G, we set it to 64M in this pass, which
  * is applicable for most inference tasks.
  */
+struct Argument;
+
 class AdjustCudnnWorkSpacePass : public AnalysisPass {
  public:
   void RunImpl(Argument *argument) override;

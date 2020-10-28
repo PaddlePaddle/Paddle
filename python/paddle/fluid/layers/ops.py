@@ -20,7 +20,10 @@ from ..framework import convert_np_dtype_to_dtype_, Variable
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
 
-__deprecated_func_name__ = {'tanh_shrink': 'tanhshrink', }
+__deprecated_func_name__ = {
+    'tanh_shrink': 'tanhshrink',
+    'logsigmoid': 'log_sigmoid'
+}
 
 __activations_noattr__ = [
     'sigmoid',
@@ -106,7 +109,7 @@ Examples:
         paddle.disable_static()
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.logsigmoid(x)
+        out = F.log_sigmoid(x)
         print(out.numpy())
         # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
 
@@ -187,11 +190,9 @@ Examples:
     .. code-block:: python
 
         import paddle
-        paddle.disable_static()
 
         x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
         out = paddle.rsqrt(x)
-        print(out.numpy())
         # [3.16227766 2.23606798 1.82574186 1.58113883]
 
 """)

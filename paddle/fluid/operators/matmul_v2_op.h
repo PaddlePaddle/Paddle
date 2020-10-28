@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <functional>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -43,11 +44,7 @@ template <typename DeviceContext, typename T>
 void ReduceSumForMatmulGrad(const Tensor* input, Tensor* output,
                             const std::vector<int>& reduce_dims,
                             const paddle::framework::ExecutionContext& ctx) {
-  if (reduce_dims.empty()) {
-    // FIXME maybe reduce this copy operation
-    framework::TensorCopySync(*input, ctx.GetPlace(), output);
-    return;
-  }
+  if (reduce_dims.empty()) return;
 #ifdef __NVCC__
   auto stream = ctx.cuda_device_context().stream();
   TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
@@ -65,7 +62,7 @@ static void GetBroadcastFromDims(const int x_ndim, const std::int64_t* x_dims,
                                  std::int64_t* x_bd_dims,
                                  std::int64_t* y_bd_dims,
                                  std::int64_t* out_bd_dims) {
-  const int ndim = std::max(x_ndim, y_ndim);
+  const int ndim = (std::max)(x_ndim, y_ndim);
   std::fill(x_bd_dims, x_bd_dims + ndim - x_ndim, 1);
   std::fill(y_bd_dims, y_bd_dims + ndim - y_ndim, 1);
   std::copy(x_dims, x_dims + x_ndim, x_bd_dims + ndim - x_ndim);
@@ -79,7 +76,7 @@ static void GetBroadcastFromDims(const int x_ndim, const std::int64_t* x_dims,
     if (x_bd_dims[i] == 0 || y_bd_dims[i] == 0) {
       out_bd_dims[i] = 0;
     } else {
-      out_bd_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
+      out_bd_dims[i] = (std::max)(x_bd_dims[i], y_bd_dims[i]);
     }
   }
 }
@@ -163,17 +160,20 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
     if (trans_y) {
       const int M = Y->numel() / N;
       VLOG(3) << "MatMul's case 2";
-      blas.GEMV(false, M, N, 1., y_data, x_data, 0., Out->data<T>());
+      blas.GEMV(false, M, N, static_cast<T>(1), y_data, x_data,
+                static_cast<T>(0), Out->data<T>());
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y->numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 3";
-        blas.GEMV(true, N, M, 1., y_data, x_data, 0., Out->data<T>());
+        blas.GEMV(true, N, M, static_cast<T>(1), y_data, x_data,
+                  static_cast<T>(0), Out->data<T>());
       } else {
         VLOG(3) << "MatMul's case 4";
-        blas.BatchedGEMM(CblasTrans, CblasNoTrans, M, 1, N, 1.0f, y_data,
-                         x_data, 0, Out->data<T>(), batch_size, M * N, 0);
+        blas.BatchedGEMM(CblasTrans, CblasNoTrans, M, 1, N, static_cast<T>(1),
+                         y_data, x_data, static_cast<T>(0), Out->data<T>(),
+                         batch_size, M * N, 0);
       }
     }
     return;
@@ -205,16 +205,19 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
       const int batch_size = X->numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 5";
-        blas.GEMV(true, N, M, 1.0f, x_data, y_data, 0.0f, Out->data<T>());
+        blas.GEMV(true, N, M, static_cast<T>(1), x_data, y_data,
+                  static_cast<T>(0), Out->data<T>());
       } else {
         VLOG(3) << "MatMul's case 6";
-        blas.BatchedGEMM(CblasTrans, CblasNoTrans, M, 1, N, 1.0f, x_data,
-                         y_data, 0, Out->data<T>(), batch_size, M * N, 0);
+        blas.BatchedGEMM(CblasTrans, CblasNoTrans, M, 1, N, static_cast<T>(1),
+                         x_data, y_data, static_cast<T>(0), Out->data<T>(),
+                         batch_size, M * N, 0);
       }
     } else {
       const int M = X->numel() / N;
       VLOG(3) << "MatMul's case 7";
-      blas.GEMV(false, M, N, 1.0f, x_data, y_data, 0.0f, Out->data<T>());
+      blas.GEMV(false, M, N, static_cast<T>(1), x_data, y_data,
+                static_cast<T>(0), Out->data<T>());
     }
     return;
   }
@@ -229,7 +232,7 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
                                                  "Input(X) has error dim."));
   }
   const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
-  const int ndim = std::max(x_ndim, y_ndim);
+  const int ndim = (std::max)(x_ndim, y_ndim);
   std::vector<std::int64_t> x_broadcast_dims(ndim);
   std::vector<std::int64_t> y_broadcast_dims(ndim);
   std::vector<std::int64_t> out_broadcast_dims(ndim);
@@ -263,37 +266,38 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
     blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
-              trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f, x_data,
-              y_data, 0.0f, Out->data<T>());
+              trans_y ? CblasTrans : CblasNoTrans, M, N, K, static_cast<T>(1),
+              x_data, y_data, static_cast<T>(0), Out->data<T>());
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
-      blas.GEMV(false, y_batch_size * N, K, 1.0f, y_data, x_data, 0.0f,
-                Out->data<T>());
+      blas.GEMV(false, y_batch_size * N, K, static_cast<T>(1), y_data, x_data,
+                static_cast<T>(0), Out->data<T>());
     } else {
       VLOG(3) << "MatMul's case 10";
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                       trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f,
-                       x_data, y_data, 0, Out->data<T>(), out_batch_size, 0,
-                       K * N);
+                       trans_y ? CblasTrans : CblasNoTrans, M, N, K,
+                       static_cast<T>(1), x_data, y_data, static_cast<T>(0),
+                       Out->data<T>(), out_batch_size, 0, K * N);
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
       blas.GEMM(CblasNoTrans, trans_y ? CblasTrans : CblasNoTrans,
-                x_batch_size * M, N, K, 1.0f, x_data, y_data, 0.0f,
-                Out->data<T>());
+                x_batch_size * M, N, K, static_cast<T>(1), x_data, y_data,
+                static_cast<T>(0), Out->data<T>());
     } else {
       VLOG(3) << "MatMul's case 12";
       blas.BatchedGEMM(CblasTrans, trans_y ? CblasTrans : CblasNoTrans, M, N, K,
-                       1.0f, x_data, y_data, 0, Out->data<T>(), out_batch_size,
-                       M * K, 0);
+                       static_cast<T>(1), x_data, y_data, static_cast<T>(0),
+                       Out->data<T>(), out_batch_size, M * K, 0);
     }
   } else if (!is_broadcast_dims) {
     VLOG(3) << "MatMul's case 13";
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                     trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f, x_data,
-                     y_data, 0, Out->data<T>(), out_batch_size, M * K, K * N);
+                     trans_y ? CblasTrans : CblasNoTrans, M, N, K,
+                     static_cast<T>(1), x_data, y_data, static_cast<T>(0),
+                     Out->data<T>(), out_batch_size, M * K, K * N);
   } else {
     // in the case, can't use stridedgemm
     std::vector<const T*> x_ptr(out_batch_size);
@@ -314,9 +318,9 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
     }
     VLOG(3) << "MatMul's case 14";
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-                     trans_y ? CblasTrans : CblasNoTrans, M, N, K, 1.0f,
-                     x_ptr.data(), y_ptr.data(), 0.0f, out_ptr.data(),
-                     out_batch_size);
+                     trans_y ? CblasTrans : CblasNoTrans, M, N, K,
+                     static_cast<T>(1), x_ptr.data(), y_ptr.data(),
+                     static_cast<T>(0), out_ptr.data(), out_batch_size);
   }
 }
 
@@ -343,20 +347,155 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
   }
 };
 
+// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
+// Identity op if the tensor is not of rank 3.
+static framework::Tensor FoldInitDims(const framework::Tensor& input) {
+  auto output = input;
+  auto in_dims = input.dims();
+  if (in_dims.size() == 3) {
+    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+  }
+  return output;
+}
+
+// Reshape a rank-3 tensor from P x M x N to M x (P * N).
+// (Warning: This requires transposing data and writes into new memory.)
+// Identity op if the tensor is not of rank 3.
+template <typename DeviceContext, typename T>
+static framework::Tensor FoldHeadAndLastDims(const DeviceContext& context,
+                                             const framework::Tensor& input) {
+  auto in_dims = input.dims();
+  if (in_dims.size() != 3) {
+    return input;
+  }
+  framework::Tensor output;
+  output.Resize({in_dims[1], in_dims[0], in_dims[2]});
+  output.mutable_data<T>(context.GetPlace());
+  std::vector<int> axis = {1, 0, 2};
+  math::Transpose<DeviceContext, T, 3> trans;
+  trans(context, input, &output, axis);
+  output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
+  return output;
+}
+
+/**
+ * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+ * original x_dim is returned.
+ */
+static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
+  if (x_dim.size() > 1) {
+    return x_dim;
+  }
+  return framework::make_ddim({1, x_dim[0]});
+}
+
+/**
+ * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+ * original y_dim is returned.
+ */
+static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
+  if (y_dim.size() > 1) {
+    return y_dim;
+  }
+  return framework::make_ddim({y_dim[0], 1});
+}
+
+/**
+ * Reshape a tensor to 3-D or 2-D tensor by matrix descriptor.
+ *
+ * The shape would be [BatchSize, H, W] or [H, W].
+ * If transposed, `H,W` will be swapped.
+ */
+static void ReshapeTensorIntoMatrixSequence(
+    framework::Tensor* x, const math::MatDescriptor& descriptor) {
+  int64_t h, w;
+  h = descriptor.height_;
+  w = descriptor.width_;
+  if (descriptor.trans_) {
+    std::swap(w, h);
+  }
+  if (descriptor.batch_size_) {
+    x->Resize({descriptor.batch_size_, h, w});
+  } else {
+    x->Resize({h, w});
+  }
+}
+
+static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
+                                           framework::Tensor* y,
+                                           framework::Tensor* out, bool trans_x,
+                                           bool trans_y) {
+  auto x_dim = RowMatrixFromVector(x->dims());
+  auto y_dim = ColumnMatrixFromVector(y->dims());
+  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
+    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
+  } else {
+    out->Resize({(std::max)(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
+                 mat_dim_x.height_, mat_dim_y.width_});
+  }
+
+  ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
+  ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
+}
+
 template <typename DeviceContext, typename T>
 class MatMulV2GradKernel : public framework::OpKernel<T> {
  public:
+  void MatMul(const framework::ExecutionContext& context,
+              const framework::Tensor& a, bool trans_a,
+              const framework::Tensor& b, bool trans_b,
+              framework::Tensor* out) const {
+    out->mutable_data<T>(context.GetPlace());
+    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    if (a.dims().size() == 3 && b.dims().size() <= 2) {
+      // the transpose_X must be false, if is true, the transpose cost much time
+      if (!trans_a) {
+        mat_dim_a.height_ *= mat_dim_a.batch_size_;
+        mat_dim_a.batch_size_ = 0;
+      }
+    }
+    blas.MatMul(a, mat_dim_a, b, mat_dim_b, static_cast<T>(1), out,
+                static_cast<T>(0));
+  }
+
+  void CalcInputGrad(const framework::ExecutionContext& context,
+                     const framework::Tensor& a, bool trans_a,
+                     bool is_fold_init_dims_a, const framework::Tensor& b,
+                     bool trans_b, bool is_fold_init_dims_b,
+                     framework::Tensor* out) const {
+    if (out == nullptr) return;
+    bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
+                        out->dims().size() == 2;
+    if (!need_combine) {
+      MatMul(context, a, trans_a, b, trans_b, out);
+    } else {
+      auto& ctx = context.template device_context<DeviceContext>();
+      MatMul(context, is_fold_init_dims_a
+                          ? FoldInitDims(a)
+                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
+             trans_a, is_fold_init_dims_b
+                          ? FoldInitDims(b)
+                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
+             trans_b, out);
+    }
+  }
+
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    bool trans_x = ctx.Attr<bool>("trans_x");
-    bool trans_y = ctx.Attr<bool>("trans_y");
+    bool transpose_x = ctx.Attr<bool>("trans_x");
+    bool transpose_y = ctx.Attr<bool>("trans_y");
+
+    auto x = *ctx.Input<framework::Tensor>("X");
+    auto y = *ctx.Input<framework::Tensor>("Y");
+    auto dout = *ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
 
     // get dims
-    std::vector<std::int64_t> x_dims = vectorize(X->dims());
-    std::vector<std::int64_t> y_dims = vectorize(Y->dims());
-    std::vector<std::int64_t> dout_dims = vectorize(dOut->dims());
+    std::vector<std::int64_t> x_dims = vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = vectorize(y.dims());
+    std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
@@ -365,114 +504,148 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    // x's or y's dim = 1
+    // Case1 : x's or y's dim = 1
     if (x_ndim == 1 && y_ndim == 1) {
       if (dx) dx->mutable_data<T>(ctx.GetPlace());
       if (dy) dy->mutable_data<T>(ctx.GetPlace());
-      if (dOut->numel() == 1) {
-        DotGradFunction<DeviceContext, T>(X, Y, dOut, dx, dy, ctx);
+      if (dout.numel() == 1) {
+        DotGradFunction<DeviceContext, T>(&x, &y, &dout, dx, dy, ctx);
         return;
       }
     }
-    // It is very tricky. For this broadcast, currently using the reduce sum to
-    // get gradient.
-    if (x_ndim == 1) {
-      x_dims.insert(x_dims.begin() + 0, 1);
-      x_ndim += 1;
-      if (trans_x)
-        dout_dims.push_back(1);
-      else
-        dout_dims.insert(dout_dims.begin() + ndim - 1, 1);
-      ndim += 1;
+
+    bool is_broadcast = true;
+    if (x_ndim <= 2 || y_ndim <= 2) {
+      is_broadcast = false;
+    } else if (x_ndim != y_ndim) {
+      is_broadcast = true;
+    } else {
+      is_broadcast = !std::equal(x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2,
+                                 y_dims.cbegin());
     }
 
-    if (y_ndim == 1) {
-      y_dims.push_back(1);
-      y_ndim += 1;
-      if (trans_y)
-        dout_dims.insert(dout_dims.begin() + ndim - 1, 1);
-      else
-        dout_dims.push_back(1);
-      ndim += 1;
-    }
+    // Case2: no broadcast or no batch size, it aims to speed and it is same as
+    // matmul in old version.
+    if (!is_broadcast) {
+      ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
+      framework::DDim dx_dims;
+      if (dx) {
+        dx_dims = dx->dims();
+        if (dx_dims != x.dims()) {
+          dx->Resize(x.dims());
+        }
+      }
 
-    // the normal case
-    Tensor dx_help, dy_help;
-    if (trans_x) {
-      if (trans_y) {
-        // X'Y': dA = Y'G', dB = G'X'
-        if (dx)
-          MatMulFunction<DeviceContext, T>(Y, dOut, y_dims, dout_dims, &dx_help,
-                                           true, true, ctx);
-        if (dy)
-          MatMulFunction<DeviceContext, T>(dOut, X, dout_dims, x_dims, &dy_help,
-                                           true, true, ctx);
+      framework::DDim dy_dims;
+      if (dy) {
+        dy_dims = dy->dims();
+        if (dy_dims != y.dims()) {
+          dy->Resize(y.dims());
+        }
+      }
+      if (transpose_x && transpose_y) {
+        CalcInputGrad(ctx, y, true, true, dout, true, false, dx);
+        CalcInputGrad(ctx, dout, true, true, x, true, false, dy);
+      } else if (transpose_x) {
+        CalcInputGrad(ctx, y, false, false, dout, true, false, dx);
+        CalcInputGrad(ctx, x, false, false, dout, false, true, dy);
+      } else if (transpose_y) {
+        CalcInputGrad(ctx, dout, false, false, y, false, true, dx);
+        CalcInputGrad(ctx, dout, true, true, x, false, true, dy);
       } else {
-        // X'Y: dX = YG', dY = XG
-        if (dx)
-          MatMulFunction<DeviceContext, T>(Y, dOut, y_dims, dout_dims, &dx_help,
-                                           false, true, ctx);
-        if (dy)
-          MatMulFunction<DeviceContext, T>(X, dOut, x_dims, dout_dims, &dy_help,
-                                           false, false, ctx);
+        CalcInputGrad(ctx, dout, false, false, y, true, false, dx);
+        CalcInputGrad(ctx, x, true, true, dout, false, true, dy);
+      }
+
+      if (dx) {
+        if (dx_dims != x.dims()) {
+          dx->Resize(dx_dims);
+        }
+      }
+      if (dy) {
+        if (dy_dims != y.dims()) {
+          dy->Resize(dy_dims);
+        }
       }
     } else {
-      if (trans_y) {
-        // XY': dX = GY, dY = G'X
-        if (dx)
-          MatMulFunction<DeviceContext, T>(dOut, Y, dout_dims, y_dims, &dx_help,
-                                           false, false, ctx);
-        if (dy)
-          MatMulFunction<DeviceContext, T>(dOut, X, dout_dims, x_dims, &dy_help,
-                                           true, false, ctx);
+      // Case3: broadcast. It need cost much time to reduce sum for the
+      // broadcast and wastes the memory.
+      // So we should avoid the case in reality.
+      VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
+                 "wastes the memory. So we should avoid the case in reality";
+      if (transpose_x) {
+        if (transpose_y) {
+          // X'Y': dA = Y'G', dB = G'X'
+          if (dx)
+            MatMulFunction<DeviceContext, T>(&y, &dout, y_dims, dout_dims, dx,
+                                             true, true, ctx);
+          if (dy)
+            MatMulFunction<DeviceContext, T>(&dout, &x, dout_dims, x_dims, dy,
+                                             true, true, ctx);
+        } else {
+          // X'Y: dX = YG', dY = XG
+          if (dx)
+            MatMulFunction<DeviceContext, T>(&y, &dout, y_dims, dout_dims, dx,
+                                             false, true, ctx);
+          if (dy)
+            MatMulFunction<DeviceContext, T>(&x, &dout, x_dims, dout_dims, dy,
+                                             false, false, ctx);
+        }
       } else {
-        // XY: dX = GY', dY = X'G
-        if (dx)
-          MatMulFunction<DeviceContext, T>(dOut, Y, dout_dims, y_dims, &dx_help,
-                                           false, true, ctx);
-        if (dy)
-          MatMulFunction<DeviceContext, T>(X, dOut, x_dims, dout_dims, &dy_help,
-                                           true, false, ctx);
+        if (transpose_y) {
+          // XY': dX = GY, dY = G'X
+          if (dx)
+            MatMulFunction<DeviceContext, T>(&dout, &y, dout_dims, y_dims, dx,
+                                             false, false, ctx);
+          if (dy)
+            MatMulFunction<DeviceContext, T>(&dout, &x, dout_dims, x_dims, dy,
+                                             true, false, ctx);
+        } else {
+          // XY: dX = GY', dY = X'G
+          if (dx)
+            MatMulFunction<DeviceContext, T>(&dout, &y, dout_dims, y_dims, dx,
+                                             false, true, ctx);
+          if (dy)
+            MatMulFunction<DeviceContext, T>(&x, &dout, x_dims, dout_dims, dy,
+                                             true, false, ctx);
+        }
       }
-    }
-    // get help dims
-    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
-    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
 
-    std::vector<std::int64_t> dx_broadcast_dims(ndim);
-    std::vector<std::int64_t> dy_broadcast_dims(ndim);
+      // get help dims
+      const std::vector<std::int64_t> dx_help_dims = vectorize(dx->dims());
+      const std::vector<std::int64_t> dy_help_dims = vectorize(dy->dims());
 
-    std::fill(dx_broadcast_dims.data(),
-              dx_broadcast_dims.data() + ndim - x_ndim, 1);
-    std::fill(dy_broadcast_dims.data(),
-              dy_broadcast_dims.data() + ndim - y_ndim, 1);
-    std::copy(x_dims.data(), x_dims.data() + x_ndim,
-              dx_broadcast_dims.data() + ndim - x_ndim);
-    std::copy(y_dims.data(), y_dims.data() + y_ndim,
-              dy_broadcast_dims.data() + ndim - y_ndim);
+      std::vector<std::int64_t> dx_broadcast_dims(ndim);
+      std::vector<std::int64_t> dy_broadcast_dims(ndim);
 
-    std::vector<int> dx_reduce_dims;
-    std::vector<int> dy_reduce_dims;
-    for (int idx = 0; idx <= ndim - 3; idx++) {
-      if (dx_help_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
-        dx_reduce_dims.push_back(idx);
+      std::fill(dx_broadcast_dims.data(),
+                dx_broadcast_dims.data() + ndim - x_ndim, 1);
+      std::fill(dy_broadcast_dims.data(),
+                dy_broadcast_dims.data() + ndim - y_ndim, 1);
+      std::copy(x_dims.data(), x_dims.data() + x_ndim,
+                dx_broadcast_dims.data() + ndim - x_ndim);
+      std::copy(y_dims.data(), y_dims.data() + y_ndim,
+                dy_broadcast_dims.data() + ndim - y_ndim);
+
+      std::vector<int> dx_reduce_dims;
+      std::vector<int> dy_reduce_dims;
+      for (int idx = 0; idx <= ndim - 3; idx++) {
+        if (dx_help_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
+          dx_reduce_dims.push_back(idx);
+        }
+        if (dy_help_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
+          dy_reduce_dims.push_back(idx);
+        }
       }
-      if (dy_help_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
-        dy_reduce_dims.push_back(idx);
+      // reduce sum to get grad by ReduceSum
+      if (dx) {
+        ReduceSumForMatmulGrad<DeviceContext, T>(dx, dx, dx_reduce_dims, ctx);
+        dx->Resize(x.dims());
       }
-    }
-    // reduce sum to get grad by ReduceSum
-    if (dx) {
-      dx->Resize(dx_help.dims());
-      ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
-                                               ctx);
-      dx->Resize(X->dims());
-    }
-    if (dy) {
-      dy->Resize(dy_help.dims());
-      ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
-                                               ctx);
-      dy->Resize(Y->dims());
+      if (dy) {
+        ReduceSumForMatmulGrad<DeviceContext, T>(dy, dy, dy_reduce_dims, ctx);
+        dy->Resize(y.dims());
+      }
     }
   }
 };

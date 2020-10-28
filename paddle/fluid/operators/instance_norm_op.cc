@@ -181,10 +181,22 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     auto *place = dev_ctx.eigen_device();
 
+    Eigen::DSizes<int, 2> shape(NxC, sample_size);
+// Once eigen on Windows is updated, the if branch can be removed.
+#ifndef EIGEN_HAS_INDEX_LIST
     Eigen::DSizes<int, 2> bcast(1, sample_size);
     Eigen::DSizes<int, 2> C_shape(C, 1);
     Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
-    Eigen::DSizes<int, 2> shape(NxC, sample_size);
+    Eigen::DSizes<int, 1> rdims(1);
+#else
+    Eigen::IndexList<Eigen::type2index<1>, int> bcast;
+    bcast.set(1, sample_size);
+    Eigen::IndexList<int, Eigen::type2index<1>> C_shape;
+    C_shape.set(0, C);
+    Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
+    NxC_shape.set(0, NxC);
+    Eigen::IndexList<Eigen::type2index<1>> rdims;
+#endif
 
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
@@ -200,8 +212,6 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto x_arr = x_e.reshape(shape);
-
-    Eigen::DSizes<int, 1> rdims(1);
 
     saved_mean_e.device(*place) = x_arr.mean(rdims);
     auto saved_variance_arr =
@@ -316,14 +326,25 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     auto *place = dev_ctx.eigen_device();
 
+    Eigen::DSizes<int, 2> rshape(NxC, sample_size);
+    Eigen::DSizes<int, 2> param_shape(N, C);
+    Eigen::DSizes<int, 2> shape(NxC, sample_size);
+#ifndef EIGEN_HAS_INDEX_LIST
     Eigen::DSizes<int, 1> rdims(0);
     Eigen::DSizes<int, 1> mean_rdims(1);
-    Eigen::DSizes<int, 2> rshape(NxC, sample_size);
     Eigen::DSizes<int, 2> bcast(1, sample_size);
     Eigen::DSizes<int, 2> C_shape(C, 1);
     Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
-    Eigen::DSizes<int, 2> param_shape(N, C);
-    Eigen::DSizes<int, 2> shape(NxC, sample_size);
+#else
+    Eigen::IndexList<Eigen::type2index<0>> rdims;
+    Eigen::IndexList<Eigen::type2index<1>> mean_rdims;
+    Eigen::IndexList<Eigen::type2index<1>, int> bcast;
+    bcast.set(1, sample_size);
+    Eigen::IndexList<int, Eigen::type2index<1>> C_shape;
+    C_shape.set(0, C);
+    Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
+    NxC_shape.set(0, NxC);
+#endif
 
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
@@ -520,11 +541,11 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     //          (np.mean(dy, axis=(h,w)) - dy) + inv_var.pow(3) / HxW *
     //          np.sum(dy,
     //          axis=(h,w)) * (x - mean) *
-    //          (np.mean(ddx, axis=(h,w)) - ddx) + ddr * (dy * inv_var - inv_var
-    //          *
+    //          (np.mean(ddx, axis=(h,w)) - ddx)) + ddr * (dy * inv_var -
+    //          inv_var *
     //          np.mean(dy, axis=(h,w)) -
     //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
-    //          axis=(h,w))))
+    //          axis=(h,w)))
 
     Tensor x_sub_mean_mul_invstd;
     x_sub_mean_mul_invstd.Resize({sample_size, NxC});
@@ -595,9 +616,13 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
         first_grad_arr +=
             inv_var_tile_data *
-            (dy_arr - dy_arr.colwise().sum() / sample_size -
+            (dy_arr -
+             dy_arr.colwise().sum().replicate(sample_size, 1) / sample_size -
              x_sub_mean_mul_invstd_arr *
-                 (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                 (dy_arr * x_sub_mean_mul_invstd_arr)
+                     .colwise()
+                     .sum()
+                     .replicate(sample_size, 1) /
                  sample_size);
         first_grad_arr = first_grad_arr * ddx_arr;
         for (int nc = 0; nc < NxC; ++nc) {

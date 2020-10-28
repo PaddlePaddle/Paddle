@@ -54,7 +54,7 @@ class TestSimpleNet(unittest.TestCase):
                     # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
-                    input = paddle.to_variable(input_word)
+                    input = paddle.to_tensor(input_word)
 
                     simplenet = SimpleNet(20, 32, dtype)
                     adam = SGDOptimizer(

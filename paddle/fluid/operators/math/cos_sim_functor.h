@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <stdlib.h>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
@@ -43,6 +44,7 @@ struct CosSimFunctor {
         tep_x = x[i];
         tep_y = y[i];
         xx += tep_x * tep_x;
+
         yy += tep_y * tep_y;
         xy += tep_x * tep_y;
       }

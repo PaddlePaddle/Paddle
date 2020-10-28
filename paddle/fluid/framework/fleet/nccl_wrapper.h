@@ -21,6 +21,7 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -28,6 +29,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

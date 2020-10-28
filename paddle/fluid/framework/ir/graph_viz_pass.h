@@ -28,6 +28,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 const char kGraphvizMarkedNodeAttr[] = "__graphviz__marked_node__";
 
 class GraphVizPass : public Pass {

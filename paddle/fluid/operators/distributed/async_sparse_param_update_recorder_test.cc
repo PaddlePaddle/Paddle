@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
-
 #include <algorithm>
-
 #include "gtest/gtest.h"
 
 namespace paddle {

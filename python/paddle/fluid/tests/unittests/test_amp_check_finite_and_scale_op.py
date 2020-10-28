@@ -18,9 +18,9 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 
 
-class TestAmpCheckFiniteAndScaleOp(OpTest):
+class TestCheckFiniteAndUnscaleOp(OpTest):
     def setUp(self):
-        self.op_type = "amp_check_finite_and_scale"
+        self.op_type = "check_finite_and_unscale"
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         scale = np.random.random((1)).astype(self.dtype)
@@ -28,7 +28,7 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
             'FoundInfinite': np.array([0]),
-            'Out': [('out0', x * scale)],
+            'Out': [('out0', x / scale)],
         }
 
     def init_dtype(self):
@@ -38,9 +38,9 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
         self.check_output()
 
 
-class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
+class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
     def setUp(self):
-        self.op_type = "amp_check_finite_and_scale"
+        self.op_type = "check_finite_and_unscale"
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.nan
@@ -61,9 +61,9 @@ class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
         self.check_output(no_check_set=['Out'])
 
 
-class TestAmpCheckFiniteAndScaleOpWithInf(OpTest):
+class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
     def setUp(self):
-        self.op_type = "amp_check_finite_and_scale"
+        self.op_type = "check_finite_and_unscale"
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.inf

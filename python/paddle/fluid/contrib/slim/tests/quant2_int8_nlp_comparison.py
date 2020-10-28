@@ -25,6 +25,8 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
 from paddle.fluid import core
 
+paddle.enable_static()
+
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)

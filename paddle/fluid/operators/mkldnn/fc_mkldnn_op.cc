@@ -12,13 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <mkldnn/include/mkldnn_types.h>
 #include <memory>
-#include "paddle/fluid/framework/tensor.h"
+
 #include "paddle/fluid/operators/fc_op.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/variant.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

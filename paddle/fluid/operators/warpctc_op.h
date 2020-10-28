@@ -27,7 +27,52 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+template <typename DeviceContext, typename T>
+class ComputeCtcLossFunctor {
+ public:
+  ctcStatus_t operator()(const T* const activations, T* gradients,
+                         const int* const flat_labels,
+                         const int* const label_lengths,
+                         const int* const input_lengths, int alphabet_size,
+                         int minibatch, T* costs, void* workspace,
+                         ctcOptions options) {
+    return CTC_STATUS_EXECUTION_FAILED;
+  }
+};
+
 template <typename DeviceContext>
+class ComputeCtcLossFunctor<DeviceContext, float> {
+ public:
+  ctcStatus_t operator()(const float* const activations, float* gradients,
+                         const int* const flat_labels,
+                         const int* const label_lengths,
+                         const int* const input_lengths, int alphabet_size,
+                         int minibatch, float* costs, void* workspace,
+                         ctcOptions options) {
+    return platform::dynload::compute_ctc_loss(
+        activations, gradients, flat_labels, label_lengths, input_lengths,
+        static_cast<int>(alphabet_size), static_cast<int>(minibatch), costs,
+        workspace, options);
+  }
+};
+
+template <typename DeviceContext>
+class ComputeCtcLossFunctor<DeviceContext, double> {
+ public:
+  ctcStatus_t operator()(const double* const activations, double* gradients,
+                         const int* const flat_labels,
+                         const int* const label_lengths,
+                         const int* const input_lengths, int alphabet_size,
+                         int minibatch, double* costs, void* workspace,
+                         ctcOptions options) {
+    return platform::dynload::compute_ctc_loss_double(
+        activations, gradients, flat_labels, label_lengths, input_lengths,
+        static_cast<int>(alphabet_size), static_cast<int>(minibatch), costs,
+        workspace, options);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class WarpCTCFunctor {
  public:
   /*
@@ -51,21 +96,29 @@ class WarpCTCFunctor {
    * \param blank             blank label used in ctc loss function.
    * \param cpu_losss         cost of each sequence in CPU memory.
    */
-  void operator()(const framework::ExecutionContext& ctx, const float* input,
-                  float* gradient, const int* cpu_labels,
+  void operator()(const framework::ExecutionContext& ctx, const T* input,
+                  T* gradient, const int* cpu_labels,
                   const int* cpu_label_lengths, const int* cpu_input_lengths,
                   const size_t sequence_width, const size_t num_sequences,
-                  const size_t blank, float* cpu_loss) {
+                  const size_t blank, T* cpu_loss) {
     // Init warp-ctc options
     init(ctx, blank);
 
     // Compute the required workspace size.
     // There is no memory allocated operations within warp-ctc.
     size_t workspace_bytes = 0;
-    ctcStatus_t status = platform::dynload::get_workspace_size(
-        cpu_label_lengths, cpu_input_lengths, static_cast<int>(sequence_width),
-        static_cast<int>(num_sequences), options_, &workspace_bytes);
-
+    ctcStatus_t status = CTC_STATUS_UNKNOWN_ERROR;
+    if (sizeof(T) == 4) {
+      status = platform::dynload::get_workspace_size(
+          cpu_label_lengths, cpu_input_lengths,
+          static_cast<int>(sequence_width), static_cast<int>(num_sequences),
+          options_, &workspace_bytes);
+    } else {
+      status = platform::dynload::get_workspace_size_double(
+          cpu_label_lengths, cpu_input_lengths,
+          static_cast<int>(sequence_width), static_cast<int>(num_sequences),
+          options_, &workspace_bytes);
+    }
     PADDLE_ENFORCE_EQ(
         CTC_STATUS_SUCCESS, status,
         platform::errors::PreconditionNotMet(
@@ -79,17 +132,17 @@ class WarpCTCFunctor {
             workspace_bytes));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    size_t workspace_elements = workspace_bytes / sizeof(float) + 1UL;
-    Tensor workspace = ctx.AllocateTmpTensor<float, DeviceContext>(
+    size_t workspace_elements = workspace_bytes / sizeof(T) + 1UL;
+    Tensor workspace = ctx.AllocateTmpTensor<T, DeviceContext>(
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
         dev_ctx);
-    float* workspace_data = workspace.data<float>();
-    math::SetConstant<DeviceContext, float>()(
+    T* workspace_data = workspace.data<T>();
+    math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &workspace,
-        static_cast<float>(0));
+        static_cast<T>(0));
 
     // compute loss and gradient
-    status = platform::dynload::compute_ctc_loss(
+    status = ComputeCtcLossFunctor<DeviceContext, T>()(
         input, gradient, cpu_labels, cpu_label_lengths, cpu_input_lengths,
         static_cast<int>(sequence_width), static_cast<int>(num_sequences),
         cpu_loss, workspace_data, options_);
@@ -112,7 +165,8 @@ class WarpCTCFunctor {
                             ctx.device_context())
                             .stream();
 #else
-      PADDLE_THROW("[warpctc init] GPU is not enabled.");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "[warpctc init] GPU is not enabled."));
 #endif
     } else {
       options_.loc = CTC_CPU;
@@ -292,7 +346,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
-    WarpCTCFunctor<DeviceContext>()(
+    WarpCTCFunctor<DeviceContext, T>()(
         ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
         warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
         sequence_width, num_sequences, blank, warpctc_loss_data);

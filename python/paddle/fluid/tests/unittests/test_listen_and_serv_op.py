@@ -28,6 +28,8 @@ import unittest
 from multiprocessing import Process
 from op_test import OpTest
 
+paddle.enable_static()
+
 
 def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     remove_ps_flag(os.getpid())

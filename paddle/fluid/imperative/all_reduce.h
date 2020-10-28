@@ -26,7 +26,15 @@
 #include "paddle/fluid/imperative/nccl_context.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace imperative {
+
+struct ParallelStrategy;
 
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy);

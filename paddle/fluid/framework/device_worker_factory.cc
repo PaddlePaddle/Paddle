@@ -20,6 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class DeviceWorker;
+
 typedef std::shared_ptr<DeviceWorker> (*Createdevice_workerFunction)();
 typedef std::unordered_map<std::string, Createdevice_workerFunction>
     device_workerMap;

@@ -563,6 +563,33 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
+      .def("__setitem__",
+           [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
+              py::object &value_obj) {
+             auto self_tensor =
+                 self->MutableVar()->GetMutable<framework::LoDTensor>();
+             auto self_numpy = TensorToPyArray(*self_tensor);
+
+             if (py::isinstance<py::array>(value_obj) ||
+                 py::isinstance<py::int_>(value_obj) ||
+                 py::isinstance<py::float_>(value_obj)) {
+               auto value_numpy = value_obj;
+               self_numpy[_index] = value_numpy;
+               SetTensorFromPyArray(self_tensor, self_numpy,
+                                    self_tensor->place(), true);
+
+             } else {
+               auto value =
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               auto value_tensor =
+                   value->MutableVar()->GetMutable<framework::LoDTensor>();
+               auto value_numpy = TensorToPyArray(*value_tensor);
+
+               self_numpy[_index] = value_numpy;
+               SetTensorFromPyArray(self_tensor, self_numpy,
+                                    self_tensor->place(), true);
+             }
+           })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              std::vector<int> slice_axes, slice_starts, slice_ends,
@@ -649,62 +676,96 @@ void BindImperative(py::module *m_ptr) {
              return self.NewVarBase(tensor.place(), false);
            },
            py::return_value_policy::copy, R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
 
-        Returns a new Variable, detached from the current graph.
+        Returns a new Tensor, detached from the current graph.
 
-        Returns:
-             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
-
+        Returns: The detached Tensor.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
-
+                linear = Linear(32, 64)
+                data = paddle.uniform(shape=[30, 10, 32], -1, 1)
+                x = linear(data)
+                y = x.detach()
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
-        **Notes**:
-        **1. This API is ONLY available in Dygraph mode**
+        Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
-        **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
-
-        Clear  (set to ``0`` ) the Gradient of Current Variable
+        The Gradient of current Tensor will be set to ``0`` .
 
         Returns:  None
 
         Examples:
              .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                         tmp = fluid.dygraph.base.to_variable(x)
-                         tmp.stop_gradient=False
-                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    loss2.backward()
-                    print(loss2.gradient())
-                    loss2.clear_gradient()
-                    print("After clear {}".format(loss2.gradient()))
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.ones([2, 2])
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs2)
+                loss = paddle.sum(ret)
+                loss.backward()
+                print("Before clear_gradient {}".format(loss.grad))
+                loss.clear_gradient()
+                print("After clear_gradient {}".format(loss.grad))
       )DOC")
+      .def("clone",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             const auto &tensor = self->Var().Get<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(
+                 tensor.IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "%s has not been initialized", self->Name()));
+             auto tracer = imperative::GetCurrentTracer();
+             auto new_var = std::make_shared<imperative::VarBase>(
+                 true, tracer->GenerateUniqueName(self->Name() + "_clone"));
+             framework::AttributeMap attrs;
+             imperative::NameVarBaseMap ins = {{"X", {self}}};
+             imperative::NameVarBaseMap outs = {{"Out", {new_var}}};
+             tracer->TraceOp("assign", ins, outs, attrs);
+             return new_var;
+           },
+           py::return_value_policy::copy, R"DOC(
+
+        Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
+        It will always have a Tensor copy.
+        Tn addition, the cloned Tensor provides gradient propagation.
+
+        Returns: The cloned Tensor.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+
+              x = paddle.to_tensor(1.0, stop_gradient=False)
+              clone_x = x.clone()
+              y = clone_x**2
+              y.backward()
+              print(clone_x.stop_gradient) # False
+              print(clone_x.grad)          # [2.0], support gradient propagation
+              print(x.stop_gradient)       # False
+              print(x.grad)                # [2.0], clone_x support gradient propagation for x
+
+              x = paddle.to_tensor(1.0)
+              clone_x = x.clone()
+              clone_x.stop_gradient = False
+              z = clone_x**3
+              z.backward()
+              print(clone_x.stop_gradient) # False
+              print(clone_x.grad)          # [3.0], support gradient propagation
+              print(x.stop_gradient) # True
+              print(x.grad)          # None
+       )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self, const imperative::Tracer &tracer,
               bool retain_graph) {
@@ -775,6 +836,127 @@ void BindImperative(py::module *m_ptr) {
              }
            },
            py::call_guard<py::gil_scoped_release>())
+      .def("cpu",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             if (platform::is_cpu_place(self->Place())) {
+               return self;
+             } else {
+               auto new_var = self->NewVarBase(platform::CPUPlace(), true);
+               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+               return new_var;
+             }
+           },
+           R"DOC(
+        Returns a copy of this Tensor in CPU memory.
+
+        If this Tensor is already in CPU memory, then no copy is performed and the original Tensor is returned.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              x = paddle.to_tensor(1.0, place=paddle.CUDAPlace(0))
+              print(x.place)    # CUDAPlace(0)
+              
+              y = x.cpu()
+              print(y.place)    # CPUPlace
+
+              )DOC")
+      .def("pin_memory",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+#ifndef PADDLE_WITH_CUDA
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Cannot copy this Tensor to pinned memory in CPU version "
+                 "Paddle, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
+#endif
+             if (platform::is_cuda_pinned_place(self->Place())) {
+               return self;
+             } else {
+               auto new_var =
+                   self->NewVarBase(platform::CUDAPinnedPlace(), true);
+               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+               return new_var;
+             }
+           },
+           R"DOC(
+        Returns a copy of this Tensor in pin memory.
+
+        If this Tensor is already in pin memory, then no copy is performed and the original Tensor is returned.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              x = paddle.to_tensor(1.0, place=paddle.CUDAPlace(0))
+              print(x.place)      # CUDAPlace(0)
+
+              y = x.pin_memory()
+              print(y.place)      # CUDAPinnedPlace
+
+      )DOC")
+      .def("cuda",
+           [](const std::shared_ptr<imperative::VarBase> &self, int device_id,
+              bool blocking) {
+#ifndef PADDLE_WITH_CUDA
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Cannot copy this Tensor to GPU in CPU version Paddle, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
+#else
+             int device_count = platform::GetCUDADeviceCount();
+             if (device_id == -1) {
+               if (platform::is_gpu_place(self->Place())) {
+                 return self;
+               } else {
+                 device_id = 0;
+               }
+             }
+             PADDLE_ENFORCE_GE(
+                 device_id, 0,
+                 platform::errors::InvalidArgument(
+                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                     "must inside [0, %d)",
+                     device_id, device_count));
+             PADDLE_ENFORCE_LT(
+                 device_id, device_count,
+                 platform::errors::InvalidArgument(
+                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                     "must inside [0, %d)",
+                     device_id, device_count));
+             platform::CUDAPlace place = platform::CUDAPlace(device_id);
+             if (platform::is_same_place(self->Place(), place)) {
+               return self;
+             } else {
+               auto new_var = self->NewVarBase(place, blocking);
+               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+               return new_var;
+             }
+#endif
+           },
+           py::arg("device_id") = -1, py::arg("blocking") = true, R"DOC(
+        Returns a copy of this Tensor in GPU memory.
+
+        If this Tensor is already in GPU memory and device_id is default, 
+        then no copy is performed and the original Tensor is returned.
+        
+        Args:
+            device_id(int, optional): The destination GPU device id. Defaults to the current device.
+            blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
+              asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
+              print(x.place)        # CPUPlace
+
+              y = x.cuda()
+              print(y.place)        # CUDAPlace(0)
+
+              y = x.cuda(1)
+              print(y.place)        # CUDAPlace(1)
+       )DOC")
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
@@ -811,7 +993,8 @@ void BindImperative(py::module *m_ptr) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
             } else {
-              VLOG(2) << "It is meaningless to get shape of variable type "
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
                       << GetTypeName(self);
               return std::vector<int>();
             }
@@ -819,6 +1002,12 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly(
           "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)
+      .def_property_readonly("_place_str",
+                             [](imperative::VarBase &self) {
+                               std::stringstream ostr;
+                               ostr << self.Place();
+                               return ostr.str();
+                             })
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
@@ -876,18 +1065,20 @@ void BindImperative(py::module *m_ptr) {
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
-           py::arg("key") = "eager_tmp")
+           py::arg("key") = "dygraph_tmp")
       .def(
           "_set_amp_op_list",
           [](imperative::Tracer &self,
              std::unordered_set<std::string> &allow_ops,
              std::unordered_set<std::string> &block_ops) {
-            // NOTE(zhiqiu): The automatic conversion in pybind11 between c++
+            // NOTE(zhiqiu): The automatic conversion in pybind11 between
+            // c++
             // STL and python set/list/dict involve a copy operation that
             // prevents pass-by-reference semantics, so it is ok to swap.
             // The reaseon why not directly pass
             // std::shared_ptr<std::unordered_set<std::string>>
-            // is that pybind11 forbid shared_ptr<T> where T is not custom type.
+            // is that pybind11 forbid shared_ptr<T> where T is not custom
+            // type.
             imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
             imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
           })

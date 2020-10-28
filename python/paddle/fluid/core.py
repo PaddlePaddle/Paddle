@@ -39,6 +39,11 @@ try:
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] = third_lib_path + ';' + os.environ['path']
         sys.path.insert(0, third_lib_path)
+        # Note: from python3.8, PATH will not take effect
+        # https://github.com/python/cpython/pull/12302
+        # Use add_dll_directory to specify dll resolution path
+        if sys.version_info[:2] >= (3, 8):
+            os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     from .. import compat as cpt
@@ -200,8 +205,15 @@ def pre_load(dso_name):
     load_dso(dso_path)
 
 
-def get_glibc_ver():
-    return run_shell_command("ldd --version | awk '/ldd/{print $NF}'")
+def get_libc_ver():
+    ldd_glibc = run_shell_command("ldd --version | awk '/ldd/{print $NF}'")
+    if ldd_glibc is not None:
+        return ("glibc", ldd_glibc)
+
+    ldd_musl = run_shell_command("ldd 2>&1 | awk '/Version/{print $NF}'")
+    if ldd_musl is not None:
+        return ("musl", ldd_musl)
+    return (None, None)
 
 
 def less_than_ver(a, b):
@@ -226,13 +238,14 @@ def less_than_ver(a, b):
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'core_avx.so'.
 # The final solution is to upgrade glibc to > 2.22 on the target system.
-if platform.system().lower() == 'linux' and less_than_ver(get_glibc_ver(),
-                                                          '2.23'):
-    try:
-        pre_load('libgomp')
-    except Exception as e:
-        # NOTE(zhiqiu): do not abort if failed, since it may success when import core_avx.so
-        sys.stderr.write('Error: Can not preload libgomp.so')
+if platform.system().lower() == 'linux':
+    libc_type, libc_ver = get_libc_ver()
+    if libc_type == 'glibc' and less_than_ver(libc_ver, '2.23'):
+        try:
+            pre_load('libgomp')
+        except Exception as e:
+            # NOTE(zhiqiu): do not abort if failed, since it may success when import core_avx.so
+            sys.stderr.write('Error: Can not preload libgomp.so')
 
 load_noavx = False
 
@@ -258,6 +271,7 @@ if avx_supported():
         from .core_avx import _save_dygraph_dict
         from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
+        from .core_avx import _cuda_synchronize
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -302,6 +316,7 @@ if load_noavx:
         from .core_noavx import _save_dygraph_dict
         from .core_noavx import _load_dygraph_dict
         from .core_noavx import _create_loaded_parameter
+        from .core_noavx import _cuda_synchronize
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+
 #include <cstdlib>
 #include <vector>
+
 #include "gtest/gtest.h"
 
 DECLARE_bool(free_idle_chunk);
