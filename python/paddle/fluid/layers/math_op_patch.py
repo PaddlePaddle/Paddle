@@ -215,21 +215,31 @@ def monkey_patch_variable():
                          reverse=False,
                          scalar_method=None):
         def __impl__(self, other_var):
-            # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
-            # which may lose accuracy. This is a hot fix for release 1.6.
-            if scalar_method is not None and not (
-                    op_type == 'elementwise_div' and
-                    self.dtype in _supported_int_dtype_):
-                if isinstance(other_var, float):
-                    if self.dtype in _supported_int_dtype_:
-                        assert other_var == int(other_var), \
-                            "float value {} cannot convert to integer".format(other_var)
-                    return scalar_method(self, other_var)
-                elif isinstance(other_var, int):
-                    return scalar_method(self, float(other_var))
+            # 1. scalar exists cases
+            # we need combine the tensor.dtype and scalar.dtype, cast correct object
+            if isinstance(other_var, float):
+                # in all cases(+, -, *, /, **, //, %), we need cast tensor.dtype to float
+                if self.dtype in _supported_int_dtype_:
+                    self = astype(self, 'float32')
+            elif isinstance(other_var, int):
+                # in all cases(+, -, *, /, **, //, %), we can cast it to float
+                # because the output tensor.dtype depend on the type of input tensor
+                other_var = float(other_var)
+                # division is a special case
+                if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                    self = astype(self, 'float32')
+            else:
+                raise TypeError(
+                    "Only supports scalar operations of `int` and `float` now.")
 
+            # 2. scalar method selected
+            # here use `scale` replace `elementwise` to get better performance
+            # but only +, -, *, / can use this method
+            if scalar_method is not None:
+                return scalar_method(self, other_var)
+
+            # 3. create variable for scalar
             lhs_dtype = safe_get_dtype(self)
-
             if not isinstance(other_var, Variable):
                 if reverse:
                     has_batch_size = False
@@ -251,6 +261,7 @@ def monkey_patch_variable():
                     other_var = create_scalar(
                         current_block(self), value=other_var, dtype=lhs_dtype)
 
+            # 4. unify right var type to left var
             rhs_dtype = safe_get_dtype(other_var)
             if lhs_dtype != rhs_dtype:
                 other_var = astype(other_var, lhs_dtype)
