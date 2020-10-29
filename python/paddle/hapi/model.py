@@ -454,7 +454,8 @@ class StaticGraphAdapter(object):
                 rets.insert(i, feed[name])
 
         # step learning rate scheduler on each batch end
-        if self.model._optimizer and \
+        if self.model._optimizer and self.mode == 'train' and \
+                hasattr(self.model._optimizer, '_learning_rate') and \
                 isinstance(self.model._optimizer._learning_rate,
                            paddle.optimizer.lr.LRScheduler):
             self.model._optimizer._learning_rate.step()

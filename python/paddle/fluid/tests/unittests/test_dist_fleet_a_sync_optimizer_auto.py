@@ -54,6 +54,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
+        os.environ["FLAGS_LAUNCH_BARRIER"] = "0"
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)

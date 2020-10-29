@@ -8311,7 +8311,7 @@ def gather(input, index, overwrite=True):
             output = fluid.layers.gather(x, index)
     """
     if in_dygraph_mode():
-        return core.ops.gather(input, index, None)
+        return core.ops.gather(input, index, None, 'overwrite', overwrite)
 
     check_variable_and_dtype(
         input, 'x',
@@ -15145,6 +15145,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
+    utils.try_set_static_shape_tensor(out, shape)
     return out
 
 
