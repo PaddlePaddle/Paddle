@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_lstm_cudnn_op import LSTMCell, RNNMixin, create_parameter_for_rnn, RNN
+from test_lstm_cudnn_op import LSTMCell, RNNMixin
+from test_lstm_cudnn_op import create_parameter_for_rnn, RNN, BiRNN
 
 import unittest
 import numpy as np
@@ -221,7 +222,44 @@ class TestSimpleRNNOpCpu(OpTest):
 
 class TestSimpleRNNOpCpu1(TestSimpleRNNOpCpu):
     def set_attrs(self):
+        self.sequence_length = None
+
+
+class TestSimpleRNNOpCpu2(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.sequence_length = None
+        self.is_bidirec = True
+
+
+class TestSimpleRNNOpCpu3(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.num_layers = 2
+
+
+class TestSimpleRNNOpCpu4(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.is_bidirec = True
+        self.num_layers = 2
+        self.sequence_length = None
+
+
+class TestSimpleRNNOpCpu5(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.is_bidirec = True
+        self.num_layers = 2
+
+
+class TestSimpleRNNOpCpu6(TestSimpleRNNOpCpu):
+    def set_attrs(self):
         self.is_test = True
+        self.is_bidirec = True
+        self.num_layers = 2
+
+
+class TestSimpleRNNOpCpu8(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.is_test = True
+        self.num_layers = 2
 
 
 class TestSimpleRNNOpCpuTanh1(TestSimpleRNNOpCpu):
