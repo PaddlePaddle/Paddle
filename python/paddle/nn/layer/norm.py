@@ -73,7 +73,6 @@ class _InstanceNormBase(layers.Layer):
                  momentum=0.9,
                  weight_attr=None,
                  bias_attr=None,
-                 track_running_stats=False,
                  data_format="NCHW",
                  name=None):
         super(_InstanceNormBase, self).__init__()
@@ -135,9 +134,6 @@ class InstanceNorm1D(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -158,9 +154,6 @@ class InstanceNorm1D(_InstanceNormBase):
 
     Returns:
         None.
-
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
 
     Examples:
@@ -214,9 +207,6 @@ class InstanceNorm2D(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -237,8 +227,6 @@ class InstanceNorm2D(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -290,9 +278,6 @@ class InstanceNorm3D(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -313,8 +298,6 @@ class InstanceNorm3D(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -570,7 +553,6 @@ class _BatchNormBase(layers.Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 track_running_stats=True,
                  name=None):
         super(_BatchNormBase, self).__init__()
         self._num_features = num_features
@@ -636,7 +618,6 @@ class _BatchNormBase(layers.Layer):
         self._momentum = momentum
         self._epsilon = epsilon
         self._fuse_with_relu = False
-        self._track_running_stats = track_running_stats
         self._name = name
 
     def _check_input_dim(self, input):
@@ -651,11 +632,7 @@ class _BatchNormBase(layers.Layer):
 
         self._check_input_dim(input)
 
-        if not self.training and not self._track_running_stats:
-            raise ValueError(
-                'When inference, expected track_running_stats is True.')
-
-        if self.training and not self._track_running_stats:
+        if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
@@ -720,9 +697,6 @@ class BatchNorm1D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -732,9 +706,6 @@ class BatchNorm1D(_BatchNormBase):
 
     Returns:
         None.
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
     
 
     Examples:
@@ -817,9 +788,6 @@ class BatchNorm2D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -829,9 +797,6 @@ class BatchNorm2D(_BatchNormBase):
 
     Returns:
         None
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
 
     Examples:
         .. code-block:: python
@@ -912,9 +877,6 @@ class BatchNorm3D(_BatchNormBase):
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
@@ -924,9 +886,6 @@ class BatchNorm3D(_BatchNormBase):
 
     Returns:
         None
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
 
     Examples:
         .. code-block:: python
@@ -1024,8 +983,6 @@ class SyncBatchNorm(_BatchNormBase):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not 
              have trainable bias parameter. Default: None.
-        track_running_stats(bool, optional): Whether to compute global stats, which including running mean and 
-             running variance. Default: True.
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
@@ -1055,11 +1012,10 @@ class SyncBatchNorm(_BatchNormBase):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 track_running_stats=True,
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, track_running_stats, name)
+                             bias_attr, data_format, name)
 
     def forward(self, x):
         # create output
@@ -1147,10 +1103,10 @@ class SyncBatchNorm(_BatchNormBase):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            layer_output = SyncBatchNorm(
-                layer._num_features, layer._momentum, layer._epsilon,
-                layer._weight_attr, layer._bias_attr, layer._data_format,
-                layer._track_running_stats, layer._name)
+            layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
+                                         layer._epsilon, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():

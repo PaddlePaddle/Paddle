@@ -62,7 +62,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     } else {
       auto _rois_lod = rois->lod().back();
       rois_batch_size = _rois_lod.size() - 1;
-      for (int n = 0; n < _rois_lod.size(); ++n) {
+      for (int n = 0; n < static_cast<int>(_rois_lod.size()); ++n) {
         rois_lod[n] = _rois_lod[n];
       }
       PADDLE_ENFORCE_EQ(

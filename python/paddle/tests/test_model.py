@@ -284,6 +284,17 @@ class TestModel(unittest.TestCase):
 
         fluid.disable_dygraph() if dynamic else None
 
+    def test_predict_without_inputs(self):
+        fluid.enable_dygraph(self.device)
+        model = Model(LeNet())
+        model.prepare()
+        model.load(self.weight_path)
+        model._inputs = None
+        output = model.predict(
+            self.test_dataset, batch_size=64, stack_outputs=True)
+        np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
+        fluid.disable_dygraph()
+
 
 class MyModel(paddle.nn.Layer):
     def __init__(self):
@@ -370,7 +381,7 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
-            out, = model.test_batch([data])
+            out, = model.predict_batch([data])
 
             np.testing.assert_allclose(out, ref, rtol=1e-6)
             fluid.disable_dygraph() if dynamic else None
@@ -530,7 +541,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         self.set_seed()
-        np.random.seed(2020)
+        np.random.seed(201)
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
@@ -546,7 +557,7 @@ class TestModelFunction(unittest.TestCase):
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
 
             model.save(save_dir, training=False)
-            ori_results = model.test_batch(tensor_img)
+            ori_results = model.predict_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -569,7 +580,7 @@ class TestModelFunction(unittest.TestCase):
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         # without inputs
-        for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
+        for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
@@ -590,7 +601,7 @@ class TestModelFunction(unittest.TestCase):
                 elif initial == "eval_batch":
                     model.eval_batch([img], [label])
                 else:
-                    model.test_batch([img])
+                    model.predict_batch([img])
 
             model.save(save_dir, training=False)
             shutil.rmtree(save_dir)

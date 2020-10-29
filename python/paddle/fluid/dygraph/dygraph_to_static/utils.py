@@ -29,6 +29,28 @@ import numpy as np
 
 from paddle.fluid import unique_name
 
+
+class BaseNodeVisitor(gast.NodeVisitor):
+    """
+    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Ancestor nodes are traced to easily support more operations of currently
+    visited node.
+    """
+
+    def __init__(self):
+        self.ancestor_nodes = []
+
+    def visit(self, node):
+        """Visit a node."""
+        self.ancestor_nodes.append(node)
+
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        ret = visitor(node)
+        self.ancestor_nodes.pop()
+        return ret
+
+
 # imp is deprecated in python3
 if six.PY2:
     import imp

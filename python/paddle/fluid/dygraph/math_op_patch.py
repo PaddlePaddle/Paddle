@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, ComplexVariable
 from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 
@@ -149,6 +149,13 @@ def monkey_patch_math_varbase():
                          reverse=False,
                          scalar_method=None):
         def __impl__(self, other_var):
+            # tensor and ComplexVariable opetator
+            if isinstance(other_var, ComplexVariable):
+                # need import paddle in closure
+                import paddle
+                math_op = getattr(paddle.incubate.complex.tensor, op_type)
+                return math_op(self, other_var)
+
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
             # which may lose accuracy. This is a hot fix for release 1.6.
             if scalar_method is not None and not (
