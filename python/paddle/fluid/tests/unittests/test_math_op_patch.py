@@ -16,11 +16,15 @@ from __future__ import print_function
 
 import unittest
 from decorator_helper import prog_scope
+import paddle
 import paddle.fluid as fluid
 import numpy
 
 
 class TestMathOpPatches(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     @prog_scope()
     def test_add_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
@@ -197,8 +201,8 @@ class TestMathOpPatches(unittest.TestCase):
                         feed={"a": a_np},
                         fetch_list=[b])
 
-        b_np_actual = (a_np / 7).astype('int64')
-        self.assertTrue(numpy.array_equal(b_np, b_np_actual))
+        b_np_actual = (a_np / 7).astype('float32')
+        self.assertTrue(numpy.allclose(b_np, b_np_actual))
 
     @prog_scope()
     def test_equal(self):

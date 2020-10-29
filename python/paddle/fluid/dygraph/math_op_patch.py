@@ -171,6 +171,12 @@ def monkey_patch_math_varbase():
                 # because the output tensor.dtype depend on the type of input tensor
                 other_var = float(other_var)
                 # division is a special case
+                # NOTE(chenweihang): because we cast tensor to float32 instead float64,
+                # the division result can only guarantee the numerical accuracy of 6 digits 
+                # after the decimal point. The result of numpy calculation is of float64 type, 
+                # so the calculation result here and the calculation result of numpy are 
+                # different after 6 decimal point. If necessary, we can also use float64 here.
+                # torch's behavior here is consistent with ours
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
