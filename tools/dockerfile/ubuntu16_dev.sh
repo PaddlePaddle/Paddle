@@ -36,13 +36,13 @@ function ref_whl(){
   fi
 
   if [[ ${ref_CUDA_MAJOR} == "10" ]];then
-      ref_version=100
+      ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
-      ref_version=101
+      ref_version=.post101
   elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
       ref_version=
   elif [[ ${ref_CUDA_MAJOR} == "9" ]];then
-      ref_version=90
+      ref_version=.post90
   fi
   
   ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
@@ -62,11 +62,11 @@ function ref_whl(){
   fi
   
   if [[ ${PADDLE_VERSION} != "0.0.0" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}.post${ref_version}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}.post${rf_version}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}.post${f_version}-cp36-cp36m-linux_x86_64.whl
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}.post${f_version}-cp37-cp37m-linux_x86_64.whl
-    ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}.post${f_version}-cp38-cp38-linux_x86_64.whl
+    ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp27-cp27mu-linux_x86_64.whl
+    ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp35-cp35m-linux_x86_64.whl
+    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp36-cp36m-linux_x86_64.whl
+    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp38-cp38-linux_x86_64.whl
   else
     ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp27-cp27mu-linux_x86_64.whl
     ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp35-cp35m-linux_x86_64.whl
