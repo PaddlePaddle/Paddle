@@ -398,8 +398,8 @@ class DataLoader(object):
                        use_multiprocess=False,
                        drop_last=True):
         """
-        .. note::
-          **Warning:** This API will be deprecated in the future, it is recommended to use
+        .. warning::
+          This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
 
         .. note::
@@ -647,8 +647,8 @@ class DataLoader(object):
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
         """
-        .. note::
-          **Warning:** This API will be deprecated in the future, it is recommended to use
+        .. warning::
+          This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
 
         Create an iterable DataLoader object for loading data from Dataset.    
