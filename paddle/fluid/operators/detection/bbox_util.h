@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
+
 struct RangeInitFunctor {
   int start;
   int delta;
@@ -208,6 +210,70 @@ void FilterBoxes(const platform::DeviceContext& ctx,
     }
   }
   keep->Resize({keep_len});
+}
+
+template <class T>
+static void BoxCoder(const platform::DeviceContext& ctx,
+                     framework::Tensor* all_anchors,
+                     framework::Tensor* bbox_deltas,
+                     framework::Tensor* variances,
+                     framework::Tensor* proposals) {
+  T* proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
+
+  int64_t row = all_anchors->dims()[0];
+  int64_t len = all_anchors->dims()[1];
+
+  auto* bbox_deltas_data = bbox_deltas->data<T>();
+  auto* anchor_data = all_anchors->data<T>();
+  const T* variances_data = nullptr;
+  if (variances) {
+    variances_data = variances->data<T>();
+  }
+
+  for (int64_t i = 0; i < row; ++i) {
+    T anchor_width = anchor_data[i * len + 2] - anchor_data[i * len] + 1.0;
+    T anchor_height = anchor_data[i * len + 3] - anchor_data[i * len + 1] + 1.0;
+
+    T anchor_center_x = anchor_data[i * len] + 0.5 * anchor_width;
+    T anchor_center_y = anchor_data[i * len + 1] + 0.5 * anchor_height;
+
+    T bbox_center_x = 0, bbox_center_y = 0;
+    T bbox_width = 0, bbox_height = 0;
+
+    if (variances) {
+      bbox_center_x =
+          variances_data[i * len] * bbox_deltas_data[i * len] * anchor_width +
+          anchor_center_x;
+      bbox_center_y = variances_data[i * len + 1] *
+                          bbox_deltas_data[i * len + 1] * anchor_height +
+                      anchor_center_y;
+      bbox_width = std::exp(std::min<T>(variances_data[i * len + 2] *
+                                            bbox_deltas_data[i * len + 2],
+                                        kBBoxClipDefault)) *
+                   anchor_width;
+      bbox_height = std::exp(std::min<T>(variances_data[i * len + 3] *
+                                             bbox_deltas_data[i * len + 3],
+                                         kBBoxClipDefault)) *
+                    anchor_height;
+    } else {
+      bbox_center_x =
+          bbox_deltas_data[i * len] * anchor_width + anchor_center_x;
+      bbox_center_y =
+          bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
+      bbox_width = std::exp(std::min<T>(bbox_deltas_data[i * len + 2],
+                                        kBBoxClipDefault)) *
+                   anchor_width;
+      bbox_height = std::exp(std::min<T>(bbox_deltas_data[i * len + 3],
+                                         kBBoxClipDefault)) *
+                    anchor_height;
+    }
+
+    proposals_data[i * len] = bbox_center_x - bbox_width / 2;
+    proposals_data[i * len + 1] = bbox_center_y - bbox_height / 2;
+    proposals_data[i * len + 2] = bbox_center_x + bbox_width / 2 - 1;
+    proposals_data[i * len + 3] = bbox_center_y + bbox_height / 2 - 1;
+  }
+  // return proposals;
 }
 
 }  // namespace operators
