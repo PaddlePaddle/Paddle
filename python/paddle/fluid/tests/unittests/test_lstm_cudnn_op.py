@@ -430,7 +430,7 @@ class TestCUDNNLstmOp(OpTest):
         self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
-        self.is_bidirec = False
+        self.is_bidirec = True
         self.is_test = False
         self.set_attrs()
 
