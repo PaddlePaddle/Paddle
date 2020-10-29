@@ -53,6 +53,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
+    {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
