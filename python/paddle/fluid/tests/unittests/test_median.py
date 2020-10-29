@@ -64,6 +64,7 @@ class TestMedian(unittest.TestCase):
             self.static_single_test_median(lis_test)
 
     def test_median_dygraph(self):
+        paddle.disable_static()
         h = 3
         w = 4
         l = 2
@@ -74,6 +75,7 @@ class TestMedian(unittest.TestCase):
             self.dygraph_single_test_median(lis_test)
 
     def test_median_exception(self):
+        paddle.disable_static()
         x = [1, 2, 3, 4]
         self.assertRaises(TypeError, paddle.median, x)
         x = paddle.arange(12).reshape([3, 4])
