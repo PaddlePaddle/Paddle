@@ -429,17 +429,17 @@ class TestCUDNNLstmOp(OpTest):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
-        self.num_layers = 1
-        self.is_bidirec = True
+        self.num_layers = 2
+        self.is_bidirec = False
         self.is_test = False
         self.set_attrs()
 
         direction_num = 2 if self.is_bidirec else 1
         direction = "bidirectional" if self.is_bidirec else "forward"
-        seq_length = 12
-        batch_size = 5
-        input_size = 12
-        hidden_size = 20
+        seq_length = 2
+        batch_size = 4
+        input_size = 5
+        hidden_size = 4
 
         input = np.random.uniform(
             low=-0.1, high=0.1,
@@ -509,7 +509,7 @@ class TestCUDNNLstmOp(OpTest):
         self.sequence_length = None
 
     def test_grad_with_place(self):
-        place = core.CUDAPlace(0)
+        place = core.CPUPlace()
         direction_num = 2 if self.is_bidirec else 1
         var_name_list = self.get_weight_names(direction_num)
         grad_check_list = ['Input', 'InitH', 'InitC']

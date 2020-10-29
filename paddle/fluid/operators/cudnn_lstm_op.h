@@ -999,10 +999,11 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       }
       if (!is_test) {
         prev_hidden_data = hidden_data.Slice(i - 1, i);
-        framework::TensorCopy(
-            prev_hidden_data, ctx.GetPlace(),
-            ctx.template device_context<platform::CPUDeviceContext>(),
-            input_holder);
+        // framework::TensorCopy(
+        //    prev_hidden_data, ctx.GetPlace(),
+        //    ctx.template device_context<platform::CPUDeviceContext>(),
+        //    input_holder);
+        input_holder = &prev_hidden_data;
         input_holder->Resize(output->dims());
       } else {
         SwapPoniter(&output_holder, &input_holder);
@@ -1494,12 +1495,13 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
       TensorList* init_h_grad_unbind, TensorList* init_c_grad_unbind,
       std::vector<TensorList>* weight_list_grad, const int& layer_idx,
       const int& gate_num) {
-    const int& num_layers = context.Attr<int>("num_layers");
     const bool& is_bidirec = context.Attr<bool>("is_bidirec");
     const int& time_step = input->dims()[0];
     const int& batch_size = input->dims()[1];
     const int& direction_num = is_bidirec ? 2 : 1;
     const int& hidden_size = context.Attr<int>("hidden_size");
+    VLOG(0) << "double check the batch_size:" << batch_size
+            << "time step:" << time_step;
     // split the output two tensor to output_forward, output_backward
     VLOG(0) << "start split output and output grad";
     auto& device_ctx =
@@ -1517,19 +1519,11 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     // the output just the concat the forward hidden, backward hidden, so just
     // split it
     // in other layer, we just split the hidden in the rows
-    if (layer_idx == (num_layers - 1)) {
-      output_vec.emplace_back(&forward_output);
-      output_vec.emplace_back(&backward_output);
-      split_tensor_at_last_dim<T>(context, device_ctx, output, &output_vec, 2);
-      forward_output_tensor_unbind = Unbind(*(output_vec[0]));
-      backward_output_tensor_unbind = Unbind(*(output_vec[1]));
-    } else {
-      framework::slice_ddim(output->dims(), 1, output->dims().size());
-      forward_output = output->Slice(0, time_step);
-      backward_output = output->Slice(time_step, 2 * time_step);
-      forward_output_tensor_unbind = Unbind(forward_output);
-      backward_output_tensor_unbind = Unbind(backward_output);
-    }
+    output_vec.emplace_back(&forward_output);
+    output_vec.emplace_back(&backward_output);
+    split_tensor_at_last_dim<T>(context, device_ctx, output, &output_vec, 2);
+    forward_output_tensor_unbind = Unbind(*(output_vec[0]));
+    backward_output_tensor_unbind = Unbind(*(output_vec[1]));
 
     std::vector<Tensor*> output_grad_vec;
     Tensor grad_forward_output;
@@ -1777,7 +1771,7 @@ void RnnGradFunc(const framework::ExecutionContext& context,
         (gate_num + 2 * cell_num) * num_layers,
         (gate_num + 2 * cell_num) * num_layers + num_layers - 1);
     hidden_tensor.Resize(
-        {num_layers - 1, time_step * direction_num, batch_size, hidden_size});
+        {num_layers - 1, time_step, batch_size, hidden_size * direction_num});
   }
   // unbind
   auto last_h_grad_unbind = Unbind(*last_h_grad);
@@ -1808,6 +1802,12 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   if (num_layers > 1) {
     hidden_tensor_unbind = Unbind(hidden_tensor);
   }
+  // squeeze the hidden first dim
+  for (unsigned int i = 0; i < hidden_tensor_unbind.size(); i++) {
+    hidden_tensor_unbind[i].Resize(
+        framework::slice_ddim(hidden_tensor_unbind[i].dims(), 1,
+                              hidden_tensor_unbind[i].dims().size()));
+  }
   // add the output tensor to the hidden vector
   Tensor tmp;
   hidden_tensor_unbind.emplace_back(tmp);
@@ -1828,9 +1828,6 @@ void RnnGradFunc(const framework::ExecutionContext& context,
     // the layer input output had saved, just use the data
     VLOG(0) << "layer_idx:" << i << ", step 1";
     if (i > 0) {
-      hidden_tensor_unbind[i - 1].Resize(
-          framework::slice_ddim(hidden_tensor_unbind[i - 1].dims(), 1,
-                                hidden_tensor_unbind[i - 1].dims().size()));
       layer_input.ShareDataWith(hidden_tensor_unbind[i - 1]);
     } else {
       layer_input.ShareDataWith(*input);
