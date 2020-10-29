@@ -677,16 +677,16 @@ class CompileTimeStrategy(object):
 
                 split_count = 1
 
-                # if min_block_size == -1:
-                #     split_count = 1
-                # else:
-                #     split_count = slice_count
-                #     max_pserver_count = int(
-                #         math.floor(var_numel / float(min_block_size)))
-                #     if max_pserver_count == 0:
-                #         max_pserver_count = 1
-                #     if max_pserver_count < slice_count:
-                #         split_count = max_pserver_count
+                if min_block_size == -1:
+                    split_count = 1
+                else:
+                    split_count = slice_count
+                    max_pserver_count = int(
+                        math.floor(var_numel / float(min_block_size)))
+                    if max_pserver_count == 0:
+                        max_pserver_count = 1
+                    if max_pserver_count < slice_count:
+                        split_count = max_pserver_count
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
