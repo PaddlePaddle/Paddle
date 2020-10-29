@@ -89,11 +89,10 @@ class HeterWrapper {
 #ifdef PADDLE_WITH_CUDA
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
                            platform::Place place,
-                           cudaStream_t stream = nullptr);
-#else
+                           cudaStream_t stream);
+#endif
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
                            platform::Place place);
-#endif
   // HeterWrapper singleton
   static std::shared_ptr<HeterWrapper> GetInstance() {
     if (NULL == s_instance_) {

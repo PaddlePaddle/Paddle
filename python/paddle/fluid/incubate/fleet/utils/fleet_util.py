@@ -24,8 +24,6 @@ import sys
 import time
 import paddle.fluid as fluid
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_pslib
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
 from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 from . import utils
 
@@ -34,7 +32,7 @@ __all__ = ["FleetUtil"]
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-fleet = fleet_pslib
+fleet = None
 
 
 class FleetUtil(object):
@@ -53,8 +51,10 @@ class FleetUtil(object):
     def __init__(self, mode="pslib"):
         global fleet
         if mode == "pslib":
+	    from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_pslib
             fleet = fleet_pslib
         elif mode == "transpiler":
+            from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
             fleet = fleet_transpiler
         else:
             raise ValueError(
