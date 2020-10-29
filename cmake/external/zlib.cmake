@@ -37,7 +37,6 @@ ExternalProject_Add(
     "${ZLIB_DOWNLOAD_CMD}"
     PREFIX          ${ZLIB_PREFIX_DIR}
     SOURCE_DIR      ${ZLIB_SOURCE_DIR}
-    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}

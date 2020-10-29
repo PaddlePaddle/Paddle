@@ -58,7 +58,6 @@ ExternalProject_Add(
     DOWNLOAD_NO_PROGRESS  1
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
-    UPDATE_COMMAND        ""
     INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/include ${MKLML_INC_DIR} &&
 			  ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/lib ${MKLML_LIB_DIR}
 )

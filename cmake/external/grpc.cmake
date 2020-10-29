@@ -47,7 +47,6 @@ ExternalProject_Add(
     URL          http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x_paddle.tar.gz
     URL_MD5      f5442d137ddccee252e194b1bc90f98c
     PREFIX          ${GRPC_SOURCES_DIR}
-    UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
     # NOTE(yuyang18):

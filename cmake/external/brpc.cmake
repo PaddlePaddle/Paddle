@@ -43,7 +43,6 @@ ExternalProject_Add(
     GIT_REPOSITORY  "${GIT_URL}/apache/incubator-brpc.git"
     GIT_TAG         "ad00fe940b4f05225b214131959293bbed8744a0" #rdma branch's head now.
     PREFIX          ${BRPC_SOURCES_DIR}
-    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}

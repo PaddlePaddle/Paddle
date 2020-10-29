@@ -47,7 +47,6 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND      wget --no-check-certificate ${BOX_PS_URL} -c -q -O ${BOX_PS_NAME}.tar.gz
                           && tar zxvf ${BOX_PS_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${BOX_PS_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${BOX_PS_INSTALL_ROOT}
 )

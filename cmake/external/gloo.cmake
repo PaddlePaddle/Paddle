@@ -39,7 +39,6 @@ ExternalProject_Add(
     "${GLOO_DOWNLOAD_CMD}"
     PREFIX                "${GLOO_PREFIX_DIR}"
     SOURCE_DIR            "${GLOO_SOURCE_DIR}"
-    UPDATE_COMMAND        ""
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
         && cd ${GLOO_SOURCE_DIR}/build && cmake .. && make

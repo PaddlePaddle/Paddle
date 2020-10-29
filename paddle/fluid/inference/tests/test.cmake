@@ -18,7 +18,6 @@ function(inference_download INSTALL_DIR URL FILENAME)
       DOWNLOAD_NO_PROGRESS  1
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ""
-      UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
   )
 endfunction()
@@ -40,7 +39,6 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ${CMAKE_COMMAND} -E chdir ${INSTALL_DIR}
                             ${CMAKE_COMMAND} -E tar xzf ${DOWNLOAD_NAME}
-      UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
   )
 endfunction()

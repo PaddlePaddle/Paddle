@@ -66,7 +66,6 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
       PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
-      UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
       CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -109,7 +108,6 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
         GIT_TAG             ${LITE_GIT_TAG}
         PREFIX              ${LITE_SOURCES_DIR}
-        UPDATE_COMMAND      ""
         BUILD_COMMAND       ${LITE_BUILD_COMMAND}
         INSTALL_COMMAND     ""
         CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

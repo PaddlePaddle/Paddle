@@ -34,7 +34,6 @@ ExternalProject_Add(
         "${PYBIND_DOWNLOAD_CMD}"
         PREFIX            ${PYBIND_PREFIX_DIR}
         SOURCE_DIR        ${PYBIND_SOURCE_DIR}
-        UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""

@@ -38,7 +38,6 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND      wget --no-check-certificate ${XPU_URL} -c -q -O xpu.tar.gz
                           && tar xvf xpu.tar.gz
     DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
 )

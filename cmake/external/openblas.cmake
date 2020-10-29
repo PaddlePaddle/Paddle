@@ -56,7 +56,6 @@ IF(NOT WIN32)
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}
         INSTALL_COMMAND     make install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
-        UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
 ELSE(NOT WIN32)
@@ -72,7 +71,6 @@ ELSE(NOT WIN32)
         SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     0
-        UPDATE_COMMAND      ""
         CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}

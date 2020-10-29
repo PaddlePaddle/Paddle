@@ -40,7 +40,6 @@ if(WIN32)
       "${XXHASH_DOWNLOAD_CMD}"
       PREFIX           ${XXHASH_PREFIX_DIR}
       SOURCE_DIR       ${XXHASH_SOURCE_DIR}
-      UPDATE_COMMAND   ""
       PATCH_COMMAND    ""
       CONFIGURE_COMMAND
                       ${CMAKE_COMMAND} ${XXHASH_SOURCE_DIR}/cmake_unofficial
@@ -62,7 +61,6 @@ else()
       "${XXHASH_DOWNLOAD_CMD}"
       PREFIX           ${XXHASH_PREFIX_DIR}
       SOURCE_DIR       ${XXHASH_SOURCE_DIR}
-      UPDATE_COMMAND    ""
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE   1
       BUILD_COMMAND     ${BUILD_CMD}

@@ -47,7 +47,6 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND      wget --no-check-certificate ${LIBMCT_URL} -c -q -O ${LIBMCT_NAME}.tar.gz
                           && tar zxvf ${LIBMCT_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${LIBMCT_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${LIBMCT_INSTALL_ROOT}
 )

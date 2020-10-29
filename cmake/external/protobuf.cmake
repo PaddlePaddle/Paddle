@@ -213,7 +213,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         "${PROTOBUF_DOWNLOAD_CMD}"
         PREFIX          ${PROTOBUF_PREFIX_DIR}
         SOURCE_DIR      ${PROTOBUF_SOURCE_DIR}
-        UPDATE_COMMAND  ""
         DEPENDS         zlib
         CONFIGURE_COMMAND
                         ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake

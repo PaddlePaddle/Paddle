@@ -50,7 +50,6 @@ ExternalProject_Add(
     DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_BRPC_URL} -c -q -O ${PSLIB_BRPC_NAME}.tar.gz
                           && tar zxvf ${PSLIB_BRPC_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_BRPC_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${PSLIB_BRPC_INSTALL_ROOT}
 )

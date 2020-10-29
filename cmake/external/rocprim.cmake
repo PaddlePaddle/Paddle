@@ -32,7 +32,6 @@ ExternalProject_Add(
     GIT_REPOSITORY "${GIT_URL}/ROCmSoftwarePlatform/rocPRIM.git"
     GIT_TAG        5bd41b96ab8d8343330fb2c3e1b96775bde3b3fc 
     PREFIX         ${ROCPRIM_SOURCE_DIR}
-    UPDATE_COMMAND  ""
     CMAKE_ARGS     -DCMAKE_CXX_COMPILER=${HCC_HOME}/bin/hcc
     CMAKE_ARGS     -DONLY_INSTALL=ON
     CMAKE_ARGS     -DBUILD_TEST=OFF

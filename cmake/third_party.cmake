@@ -121,7 +121,6 @@ FUNCTION(file_download_and_uncompress URL NAME)
       DOWNLOAD_NO_PROGRESS  1
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ""
-      UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
     )
   set(third_party_deps ${third_party_deps} extern_download_${NAME} PARENT_SCOPE)

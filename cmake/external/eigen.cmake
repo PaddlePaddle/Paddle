@@ -70,7 +70,6 @@ if(WITH_AMD_GPU)
         "${EIGEN_DOWNLOAD_CMD}"
         PREFIX          ${EIGEN_PREFIX_DIR}
         SOURCE_DIR      ${EIGEN_SOURCE_DIR}
-        UPDATE_COMMAND    ""
         PATCH_COMMAND   ${EIGEN_PATCH_COMMAND}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
@@ -85,7 +84,6 @@ else()
         "${EIGEN_DOWNLOAD_CMD}"
         PREFIX          ${EIGEN_PREFIX_DIR}
         SOURCE_DIR      ${EIGEN_SOURCE_DIR}
-        UPDATE_COMMAND    ""
         PATCH_COMMAND   ${EIGEN_PATCH_COMMAND}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""

@@ -60,7 +60,6 @@ ExternalProject_Add(
     DEPENDS         ${GTEST_DEPENDS}
     PREFIX          ${GTEST_PREFIX_DIR}
     SOURCE_DIR      ${GTEST_SOURCE_DIR}
-    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
