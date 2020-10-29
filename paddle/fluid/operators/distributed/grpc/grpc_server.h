@@ -45,6 +45,22 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+enum CallStatus { PROCESS = 0, FINISH };
+
+// Define an option subclass in order to disable SO_REUSEPORT for the
+// server socket.
+// Come from:
+// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc
+class NoReusePortOption : public ::grpc::ServerBuilderOption {
+ public:
+  void UpdateArguments(::grpc::ChannelArguments* args) override {
+    args->SetInt(GRPC_ARG_ALLOW_REUSEPORT, 0);
+  }
+
+  void UpdatePlugins(std::vector<std::unique_ptr<::grpc::ServerBuilderPlugin>>*
+                         plugins) override {}
+};
+
 class RequestBase;
 
 class AsyncGRPCServer final : public RPCServer {
@@ -72,7 +88,8 @@ class AsyncGRPCServer final : public RPCServer {
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
 
-  std::unique_ptr<grpc_service> service_;
+  std::unique_ptr<GrpcService::AsyncService> service_;
+  std::unique_ptr<sendrecv::SendRecvService::AsyncService> origin_service_;
   std::unique_ptr<::grpc::Server> server_;
 
   // condition of the sub program
@@ -86,6 +103,49 @@ class AsyncGRPCServer final : public RPCServer {
   std::map<std::string, std::unique_ptr<::grpc::ServerCompletionQueue>> rpc_cq_;
   std::map<std::string, std::vector<std::unique_ptr<std::thread>>> rpc_threads_;
   std::map<std::string, std::vector<RequestBase*>> rpc_reqs_;
+};
+
+class OriginRequestBase;
+
+class HeterAsyncGRPCServer final : public RPCServer {
+ public:
+  explicit HeterAsyncGRPCServer(const std::string& address, int client_num)
+      : RPCServer(address, client_num), ready_(0) {}
+
+  virtual ~HeterAsyncGRPCServer() {}
+  void WaitServerReady() override;
+  void StartServer() override;
+
+ private:
+  // HandleRequest needs to be thread-safe.
+  void HandleRequest(
+      ::grpc::ServerCompletionQueue* cq, const std::string& rpc_name,
+      std::function<void(const std::string&, int)> TryToRegisterNewOne);
+
+  void TryToRegisterNewOne(const std::string& rpc_name, int req_id);
+  void ShutdownQueue();
+  void ShutDownImpl() override;
+
+ private:
+  static const int kRequestBufSize = 100;
+
+  std::mutex cq_mutex_;
+  volatile bool is_heter_shut_down_ = false;
+
+  std::unique_ptr<sendrecv::SendRecvService::AsyncService> service_;
+  std::unique_ptr<::grpc::Server> server_;
+
+  // condition of the sub program
+  std::condition_variable barrier_condition_;
+
+  std::mutex mutex_ready_;
+  std::condition_variable condition_ready_;
+
+  int ready_;
+
+  std::map<std::string, std::unique_ptr<::grpc::ServerCompletionQueue>> rpc_cq_;
+  std::map<std::string, std::vector<std::unique_ptr<std::thread>>> rpc_threads_;
+  std::map<std::string, std::vector<OriginRequestBase*>> rpc_reqs_;
 };
 
 };  // namespace distributed

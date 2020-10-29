@@ -88,12 +88,11 @@ enum class GrpcMethod {
   kGetMonomerVariable,
   kGetMonomerBarrier,
   kRequestNotify,
-  kRequestSendAndRecv,
   // when you add new handler, change kGrpcNumMethods at the same time!
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kRequestSendAndRecv) + 1;
+    static_cast<int>(GrpcMethod::kRequestNotify) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
@@ -113,8 +112,6 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/CheckpointNotify";
     case GrpcMethod::kRequestNotify:
       return "/sendrecv.SendRecvService/DistributeNotify";
-    case GrpcMethod::kRequestSendAndRecv:
-      return "/sendrecv.SendRecvService/SendAndRecvVariable";
   }
 
   // Shouldn't be reached.

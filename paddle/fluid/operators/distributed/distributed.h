@@ -23,6 +23,7 @@
 #include "paddle/fluid/operators/distributed/grpc/grpc_server.h"
 #define RPCSERVER_T paddle::operators::distributed::AsyncGRPCServer
 #define RPCCLIENT_T paddle::operators::distributed::GRPCClient
+#define HETERRPCSERVER_T paddle::operators::distributed::HeterAsyncGRPCServer
 
 #else  // PADDLE_WITH_GRPC
 
