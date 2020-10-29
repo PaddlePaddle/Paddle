@@ -239,8 +239,6 @@ class DataLoader(object):
             IMAGE_SIZE = 784
             CLASS_NUM = 10
 
-            USE_GPU = False # whether use GPU to run model
-
             # define a random dataset
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
@@ -255,8 +253,6 @@ class DataLoader(object):
                     return self.num_samples
 
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-
-            # --------------------- dygraph mode --------------------
 
             class SimpleNet(nn.Layer):
                 def __init__(self):
@@ -286,47 +282,6 @@ class DataLoader(object):
                     simple_net.clear_gradients()
                     print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
 
-            # -------------------------------------------------------
-
-            # -------------------- static graph ---------------------
-
-            paddle.enable_static()
-
-            # get places
-            place = paddle.CUDAPlace(0) if USE_GPU else paddle.CPUPlace()
-
-            def simple_net(image, label):
-                fc_tmp = paddle.fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
-                cross_entropy = paddle.fluid.layers.softmax_with_cross_entropy(image, label)
-                loss = paddle.fluid.layers.reduce_mean(cross_entropy)
-                sgd = paddle.fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
-                return loss
-
-            image = paddle.static.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-
-            loss = simple_net(image, label)
-
-            exe = paddle.fluid.Executor(place)
-            exe.run(paddle.fluid.default_startup_program())
-
-            prog = paddle.fluid.CompiledProgram(paddle.fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
-
-            loader = DataLoader(dataset,
-                                feed_list=[image, label],
-                                batch_size=BATCH_SIZE, 
-                                shuffle=True,
-                                drop_last=True,
-                                num_workers=2)
-
-            for e in range(EPOCH_NUM):
-                for i, data in enumerate(loader()):
-                    l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
-                    print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
-
-            # -------------------------------------------------------
-                
 
     .. note::
         For reading iterable dataset with multiprocess Dataloader,
@@ -444,7 +399,7 @@ class DataLoader(object):
                        drop_last=True):
         """
         .. note::
-          This API will be deprecated in the future, it is recommended to use
+          **Warning:** This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
 
         .. note::
@@ -693,7 +648,7 @@ class DataLoader(object):
     def from_dataset(dataset, places, drop_last=True):
         """
         .. note::
-          This API will be deprecated in the future, it is recommended to use
+          **Warning:** This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
 
         Create an iterable DataLoader object for loading data from Dataset.    
