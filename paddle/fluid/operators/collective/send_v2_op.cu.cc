@@ -66,12 +66,10 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpy(numel_ptr, &numel, sizeof(int), cudaMemcpyHostToDevice));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         numel_ptr, 1, ncclInt, peer, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
     VLOG(3) << "rank " << comm->rank() << " send "
             << framework::product(x->dims()) << " to " << peer;
 #else

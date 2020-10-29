@@ -55,7 +55,7 @@ class TestCollectiveAPIRunnerBase(object):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
-        indata = np.random.random((10, 1000))
+        indata = np.random.random((10, 1000)).astype("float32")
         fetch_list = []
         for elem in result:
             fetch_list.append(elem.name)

@@ -578,12 +578,13 @@ def recv(tensor, src=0, group=0):
     op_type = 'recv_v2'
     if in_dygraph_mode():
         return core.ops.recv_v2(tensor, 'use_calc_stream', True, 'ring_id',
-                                group, 'peer', src)
+                                group, 'peer', src, 'dtype', tensor.dtype,
+                                'out_shape', tensor.shape)
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'send')
+        'recv')
     if not isinstance(group, int) or not isinstance(src, int):
-        raise ValueError("Both the type of 'src' and 'group' for send "
+        raise ValueError("Both the type of 'src' and 'group' for recv "
                          "should be int.")
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
@@ -592,5 +593,7 @@ def recv(tensor, src=0, group=0):
         attrs={
             'ring_id': group,
             'peer': src,
+            'out_shape': tensor.shape,
+            'dtype': tensor.dtype,
             'use_calc_stream': True,
         })

@@ -51,7 +51,7 @@ class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
                 paddle.distributed.send(tindata, dst=1)
             else:
                 paddle.distributed.recv(tindata, src=0)
-            return tindata
+            return [tindata]
 
 
 if __name__ == "__main__":
