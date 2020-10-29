@@ -334,7 +334,6 @@ class ComposeDataset(Dataset):
     """
 
     def __init__(self, datasets):
-        super(ComposeDataset).__init__()
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
@@ -396,7 +395,6 @@ class ChainDataset(IterableDataset):
     """
 
     def __init__(self, datasets):
-        super(ChainDataset).__init__()
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
