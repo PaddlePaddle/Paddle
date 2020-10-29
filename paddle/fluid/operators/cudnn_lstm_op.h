@@ -303,11 +303,15 @@ struct SimpleRNNCell : Cell<T> {
                 input, static_cast<T>(1.0));
 
     // activate
+    auto z = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(input, "Input", "z", "Activation"));
     auto hidden = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(input, "Input", "hidden", "Activation"));
+        GET_DATA_SAFELY(last_h, "Input", "hidden", "Activation"));
+
     auto* place = device_ctx->eigen_device();
     ActivationFunctor<T> functor;
-    functor(*place, hidden, hidden);
+    functor(*place, z, hidden);
+    framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx, output);
   }
 };
 
@@ -411,7 +415,7 @@ struct Layer {
 
   void postprocess(const framework::ExecutionContext& context, Tensor* output,
                    const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                   Tensor* last_c, const Tensor& mask_tensor) {
+                   Tensor* last_c, const Tensor& mask_tensor, bool is_lstm) {
     // in the output, if mask flag is 0, we will retun the zero data
     auto eigen_output =
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
@@ -431,12 +435,14 @@ struct Layer {
     eigen_last_h.device(place) = eigen_last_h * eigen_mask_broadcast +
                                  eigen_init_h * (1 - eigen_mask_broadcast);
 
-    auto eigen_init_c =
-        framework::EigenMatrix<T>::Reshape(*init_c, init_c->dims().size() - 1);
-    auto eigen_last_c =
-        framework::EigenMatrix<T>::Reshape(*last_c, last_c->dims().size() - 1);
-    eigen_last_c.device(place) = eigen_last_c * eigen_mask_broadcast +
-                                 eigen_init_c * (1 - eigen_mask_broadcast);
+    if (is_lstm) {
+      auto eigen_init_c = framework::EigenMatrix<T>::Reshape(
+          *init_c, init_c->dims().size() - 1);
+      auto eigen_last_c = framework::EigenMatrix<T>::Reshape(
+          *last_c, last_c->dims().size() - 1);
+      eigen_last_c.device(place) = eigen_last_c * eigen_mask_broadcast +
+                                   eigen_init_c * (1 - eigen_mask_broadcast);
+    }
   }
 
   virtual void operator()(const framework::ExecutionContext& context,
@@ -463,7 +469,7 @@ struct Layer {
       }
     }
     bool is_lstm = false;
-    if (init_c.size() > 0 && last_c->size() > 0) {
+    if (init_c.size() > 0 && last_c_ptr->size() > 0) {
       is_lstm = true;
     }
     auto& dev_ctx =
@@ -494,17 +500,20 @@ struct Layer {
 
     // define the init_h holder for the swap
     bool has_allocate_mem = false;
-    TensorList last_h = *last_h_ptr;
-    TensorList last_c = *last_c_ptr;
-    TensorList cell_value_tensors;
-    TensorList cell_act_value_tensors;
 
     Tensor* init_h_holder = nullptr;
     Tensor init_h_temp;
-    Tensor* last_h_holder = &last_h[layer_idx];
+    Tensor* last_h_holder = &(*last_h_ptr)[layer_idx];
     Tensor* init_c_holder = nullptr;
     Tensor init_c_temp;
-    Tensor* last_c_holder = &last_c[layer_idx];
+    Tensor* last_c_holder = nullptr;
+    const Tensor* init_h_temp_holder = &init_h[layer_idx];
+    const Tensor* init_c_temp_holder = nullptr;
+
+    if (is_lstm) {
+      last_c_holder = &(*last_c_ptr)[layer_idx];
+      init_c_temp_holder = &init_c[layer_idx];
+    }
 
     for (int i = 0; i < time_step; i++) {
       if (i > 0) {
@@ -512,40 +521,34 @@ struct Layer {
           init_h_temp.Resize(init_h[layer_idx].dims());
           init_h_temp.mutable_data<T>(context.GetPlace());
           init_h_holder = &init_h_temp;
-          init_c_temp.Resize(init_c[layer_idx].dims());
-          init_c_temp.mutable_data<T>(context.GetPlace());
-          init_c_holder = &init_c_temp;
+          if (is_lstm) {
+            init_c_temp.Resize(init_c[layer_idx].dims());
+            init_c_temp.mutable_data<T>(context.GetPlace());
+            init_c_holder = &init_c_temp;
+          }
           has_allocate_mem = true;
         }
         SwapPoniter(&init_c_holder, &last_c_holder);
         SwapPoniter(&init_h_holder, &last_h_holder);
+        init_h_temp_holder = init_h_holder;
+        init_c_temp_holder = init_c_holder;
       }
-      if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-              &init_h[layer_idx], &init_c[layer_idx], last_h_holder,
-              last_c_holder, nullptr, &output_tensors[i]);
-      } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4], init_h_holder,
-              init_c_holder, last_h_holder, last_c_holder, nullptr,
-              &output_tensors[i]);
-      }
+      cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
+            init_h_temp_holder, init_c_temp_holder, last_h_holder,
+            last_c_holder, nullptr, &output_tensors[i]);
       if (has_sequence_length) {
-        if (i == 0) {
-          this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
-                            &init_c[layer_idx], last_h_holder, last_c_holder,
-                            mask_tensor_list[i]);
-        } else {
-          this->postprocess(context, &output_tensors[i], init_h_holder,
-                            init_c_holder, last_h_holder, last_c_holder,
-                            mask_tensor_list[i]);
-        }
+        this->postprocess(context, &output_tensors[i], init_h_temp_holder,
+                          init_c_temp_holder, last_h_holder, last_c_holder,
+                          mask_tensor_list[i], is_lstm);
       }
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
-                            &last_h[layer_idx]);
-      framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
-                            &last_c[layer_idx]);
+                            &(*last_h_ptr)[layer_idx]);
+      if (is_lstm) {
+        framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
+                              &(*last_c_ptr)[layer_idx]);
+      }
     }
   }
 
@@ -560,6 +563,7 @@ struct Layer {
       RunTestIter(context, input, vec, init_h, init_c, sequence_length,
                   last_h_ptr, last_c_ptr, output, layer_idx, gate_value,
                   cell_value, cell_act_value, is_bidirect, offset);
+      return;
     }
     bool is_reverse = false;
     if (is_bidirect) {
@@ -569,7 +573,7 @@ struct Layer {
       }
     }
     bool is_lstm = false;
-    if (init_c.size() > 0 && last_c->size() > 0) {
+    if (init_c.size() > 0 && last_c_ptr->size() > 0) {
       is_lstm = true;
     }
     auto& dev_ctx =
@@ -594,31 +598,28 @@ struct Layer {
       mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
 
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
-      // Print2DTensor<T>(&mask_matrix, "Mask Matrix");
       mask_tensor_list = Unbind(mask_matrix);
     }
 
     // define the init_h holder for the swap
     bool has_allocate_mem = false;
-    TensorList last_h = *last_h_ptr;
-    TensorList last_c = *last_c_ptr;
     TensorList cell_value_tensors;
     TensorList cell_act_value_tensors;
 
     Tensor* init_h_holder = nullptr;
     Tensor init_h_temp;
-    Tensor* last_h_holder = &last_h[layer_idx];
-    Tensor* init_c_holder = nullptr;
-    Tensor init_c_temp;
-    Tensor* last_c_holder = &last_c[layer_idx];
-
-    cell_value->Resize({time_step, cell_value->numel() / time_step});
-    cell_value_tensors = Unbind(*cell_value);
-    cell_act_value->Resize({time_step, cell_value->numel() / time_step});
-    cell_act_value_tensors = Unbind(*cell_act_value);
+    Tensor* last_h_holder = &(*last_h_ptr)[layer_idx];
+    const Tensor* init_c_temp_holder = nullptr;
+    const Tensor* init_h_temp_holder = &init_h[layer_idx];
+    Tensor* last_c_temp_holder = nullptr;
+    Tensor* last_c_act_temp_holder = nullptr;
+    if (is_lstm) {
+      cell_value->Resize({time_step, cell_value->numel() / time_step});
+      cell_value_tensors = Unbind(*cell_value);
+      cell_act_value->Resize({time_step, cell_value->numel() / time_step});
+      cell_act_value_tensors = Unbind(*cell_act_value);
+    }
     for (int i = 0; i < time_step; i++) {
-      cell_value_tensors[i].Resize(init_c[layer_idx].dims());
-      cell_act_value_tensors[i].Resize(init_c[layer_idx].dims());
       if (i > 0) {
         if (!has_allocate_mem) {
           init_h_temp.Resize(init_h[layer_idx].dims());
@@ -627,35 +628,38 @@ struct Layer {
           has_allocate_mem = true;
         }
         SwapPoniter(&init_h_holder, &last_h_holder);
+        init_h_temp_holder = init_h_holder;
       }
-      if (i == 0) {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-              &init_h[layer_idx], &init_c[layer_idx], last_h_holder,
-              &cell_value_tensors[i], &cell_act_value_tensors[i],
-              &output_tensors[i]);
-      } else {
-        cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4], init_h_holder,
-              &cell_value_tensors[i - 1], last_h_holder, &cell_value_tensors[i],
-              &cell_act_value_tensors[i], &output_tensors[i]);
-      }
-      if (has_sequence_length) {
+      if (is_lstm) {
         if (i == 0) {
-          this->postprocess(context, &output_tensors[i], &init_h[layer_idx],
-                            &init_c[layer_idx], last_h_holder,
-                            &cell_value_tensors[i], mask_tensor_list[i]);
+          init_c_temp_holder = &init_c[layer_idx];
         } else {
-          this->postprocess(context, &output_tensors[i], init_h_holder,
-                            &cell_value_tensors[i - 1], last_h_holder,
-                            &cell_value_tensors[i], mask_tensor_list[i]);
+          init_c_temp_holder = &cell_value_tensors[i - 1];
         }
+        cell_value_tensors[i].Resize(init_c[layer_idx].dims());
+        cell_act_value_tensors[i].Resize(init_c[layer_idx].dims());
+        last_c_temp_holder = &cell_value_tensors[i];
+        last_c_act_temp_holder = &cell_act_value_tensors[i];
+      }
+
+      cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
+            init_h_temp_holder, init_c_temp_holder, last_h_holder,
+            last_c_temp_holder, last_c_act_temp_holder, &output_tensors[i]);
+      if (has_sequence_length) {
+        this->postprocess(context, &output_tensors[i], init_h_temp_holder,
+                          init_c_temp_holder, last_h_holder, last_c_temp_holder,
+                          mask_tensor_list[i], is_lstm);
       }
     }
     if (time_step % 2 == 0) {
       framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
-                            &last_h[layer_idx]);
+                            &(*last_h_ptr)[layer_idx]);
     }
-    framework::TensorCopy(cell_value_tensors[time_step - 1], context.GetPlace(),
-                          dev_ctx, &last_c[layer_idx]);
+    if (is_lstm) {
+      framework::TensorCopy(cell_value_tensors[time_step - 1],
+                            context.GetPlace(), dev_ctx,
+                            &(*last_c_ptr)[layer_idx]);
+    }
   }
   // Cell for the rnn module
   CellType cell_;

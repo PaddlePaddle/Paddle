@@ -170,9 +170,9 @@ class SimpleRNNCell(LSTMCell):
         z = np.matmul(inputs, self.weight_ih.T)
         if self.bias_ih is not None:
             z = z + self.bias_ih
-        z += np.matmul(pre_hidden, self.weight_hh.T)
         if self.bias_hh is not None:
             z = z + self.bias_hh
+        z += np.matmul(pre_hidden, self.weight_hh.T)
         h = None
         if self.act == "rnn_relu":
             h = np.maximum(z, 0)
@@ -458,6 +458,7 @@ class SimpleRNN(RNNMixin):
                  hidden_size,
                  num_layers=1,
                  direction="forward",
+                 dropout=0.,
                  time_major=False,
                  flat_w=None,
                  act="rnn_relu"):
@@ -507,7 +508,7 @@ class SimpleRNN(RNNMixin):
 
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.dropout = 0.
+        self.dropout = dropout
         self.num_directions = 2 if direction == "bidirectional" else 1
         self.time_major = time_major
         self.num_layers = num_layers
@@ -601,7 +602,6 @@ class TestCUDNNLstmOp(OpTest):
 
     def test_output_with_place(self):
         place = core.CUDAPlace(0)
-        place = core.CPUPlace()
         self.check_output_with_place(
             place, no_check_set=['Reserve', 'StateOut'])
 
@@ -736,6 +736,7 @@ class TestSimpleRNNOpCpu(OpTest):
         self.is_bidirec = False
         self.is_test = False
         self.act = "rnn_relu"
+        self.dropout = 0.
         self.set_attrs()
 
         direction_num = 2 if self.is_bidirec else 1
@@ -768,6 +769,7 @@ class TestSimpleRNNOpCpu(OpTest):
             num_layers=self.num_layers,
             time_major=True,
             direction=direction,
+            dropout=self.dropout,
             flat_w=flat_w,
             act=self.act)
 
@@ -791,7 +793,7 @@ class TestSimpleRNNOpCpu(OpTest):
                 'InitH': init_h,
             }
         self.attrs = {
-            'dropout_prob': 0.0,
+            'dropout_prob': self.dropout,
             'is_bidirec': self.is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,
@@ -814,6 +816,16 @@ class TestSimpleRNNOpCpu(OpTest):
         place = core.CPUPlace()
         self.check_output_with_place(
             place, no_check_set=['Reserve', 'StateOut', 'LastC'])
+
+
+class TestSimpleRNNOpCpu1(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.is_test = True
+
+
+class TestSimpleRNNOpCpuTanh1(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.act = "rnn_tanh"
 
 
 if __name__ == '__main__':
