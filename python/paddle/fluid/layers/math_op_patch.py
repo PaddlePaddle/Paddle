@@ -221,6 +221,10 @@ def monkey_patch_variable():
                 # in all cases(+, -, *, /, **, //, %), we need cast tensor.dtype to float
                 if self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
+                # here use `scale` replace `elementwise` to get better performance
+                # but only +, -, *, / can use this method
+                if scalar_method is not None:
+                    return scalar_method(self, other_var)
             elif isinstance(other_var, int):
                 # in all cases(+, -, *, /, **, //, %), we can cast it to float
                 # because the output tensor.dtype depend on the type of input tensor
@@ -228,17 +232,15 @@ def monkey_patch_variable():
                 # division is a special case
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
+                # here use `scale` replace `elementwise` to get better performance
+                # but only +, -, *, / can use this method
+                if scalar_method is not None:
+                    return scalar_method(self, other_var)
             else:
                 # do nothing
                 pass
 
-            # 2. scalar method selected
-            # here use `scale` replace `elementwise` to get better performance
-            # but only +, -, *, / can use this method
-            if scalar_method is not None:
-                return scalar_method(self, other_var)
-
-            # 3. create variable for scalar
+            # 2. create variable for scalar
             lhs_dtype = safe_get_dtype(self)
             if not isinstance(other_var, Variable):
                 if reverse:
@@ -261,7 +263,7 @@ def monkey_patch_variable():
                     other_var = create_scalar(
                         current_block(self), value=other_var, dtype=lhs_dtype)
 
-            # 4. unify right var type to left var
+            # 3. unify right var type to left var
             rhs_dtype = safe_get_dtype(other_var)
             if lhs_dtype != rhs_dtype:
                 other_var = astype(other_var, lhs_dtype)
