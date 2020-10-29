@@ -1147,7 +1147,7 @@ struct GradLayer {
     const int& current_layer_idx =
         direction_num * layer_idx + current_reverse_idx;
     int begin_idx = 0;
-    if (is_bidirec) {
+    if (is_reverse) {
       begin_idx = time_step;
     }
 
@@ -1494,6 +1494,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
       TensorList* init_h_grad_unbind, TensorList* init_c_grad_unbind,
       std::vector<TensorList>* weight_list_grad, const int& layer_idx,
       const int& gate_num) {
+    const int& num_layers = context.Attr<int>("num_layers");
     const bool& is_bidirec = context.Attr<bool>("is_bidirec");
     const int& time_step = input->dims()[0];
     const int& batch_size = input->dims()[1];
@@ -1510,11 +1511,25 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     std::vector<Tensor*> output_vec;
     Tensor forward_output;
     Tensor backward_output;
-    output_vec.emplace_back(&forward_output);
-    output_vec.emplace_back(&backward_output);
-    split_tensor_at_last_dim<T>(context, device_ctx, output, &output_vec, 2);
-    auto forward_output_tensor_unbind = Unbind(*(output_vec[0]));
-    auto backward_output_tensor_unbind = Unbind(*(output_vec[1]));
+    std::vector<Tensor> forward_output_tensor_unbind;
+    std::vector<Tensor> backward_output_tensor_unbind;
+    // in the last layer, we will use the output as the last hidden
+    // the output just the concat the forward hidden, backward hidden, so just
+    // split it
+    // in other layer, we just split the hidden in the rows
+    if (layer_idx == (num_layers - 1)) {
+      output_vec.emplace_back(&forward_output);
+      output_vec.emplace_back(&backward_output);
+      split_tensor_at_last_dim<T>(context, device_ctx, output, &output_vec, 2);
+      forward_output_tensor_unbind = Unbind(*(output_vec[0]));
+      backward_output_tensor_unbind = Unbind(*(output_vec[1]));
+    } else {
+      framework::slice_ddim(output->dims(), 1, output->dims().size());
+      forward_output = output->Slice(0, time_step);
+      backward_output = output->Slice(time_step, 2 * time_step);
+      forward_output_tensor_unbind = Unbind(forward_output);
+      backward_output_tensor_unbind = Unbind(backward_output);
+    }
 
     std::vector<Tensor*> output_grad_vec;
     Tensor grad_forward_output;
@@ -1555,6 +1570,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     layer_state_tensor.Resize(
         {time_step * direction_num, batch_size, hidden_size});
     auto layer_state_tensor_unbind = Unbind(layer_state_tensor);
+    Print3DTensor<T>(&layer_state_tensor, "layer_state_tensor check");
     VLOG(0) << "just check step 2";
 
     auto layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
@@ -1619,6 +1635,10 @@ struct LSTMGradCell : GradCell<T> {
     size_t frame_size = state_tensor->dims()[2];
     size_t batch_size = state_tensor->dims()[1];
 
+    Print3DTensor<T>(state_tensor, "state tensor");
+    Print3DTensor<T>(act_state_tensor, "act_state_tensor");
+    Print3DTensor<T>(gate_tensor, "gate_tensor");
+    Print3DTensor<T>(grad_hidden, "grad_hidden");
     lstm_value->gate_value = gate_tensor->data<T>();
     lstm_value->state_value = state_tensor->data<T>();
     lstm_value->state_active_value = act_state_tensor->data<T>();

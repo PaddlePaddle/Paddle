@@ -509,7 +509,7 @@ class TestCUDNNLstmOp(OpTest):
         self.sequence_length = None
 
     def test_grad_with_place(self):
-        place = core.CPUPlace()
+        place = core.CUDAPlace(0)
         direction_num = 2 if self.is_bidirec else 1
         var_name_list = self.get_weight_names(direction_num)
         grad_check_list = ['Input', 'InitH', 'InitC']
