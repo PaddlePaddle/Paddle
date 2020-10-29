@@ -1310,8 +1310,12 @@ class Executor(object):
             tensor.set(data, self.place)
 
         if not use_program_cache:
+            if type(fetch_var_name) == str:
+                fetch_var_names = [fetch_var_name]
+            else:
+                fetch_var_names = fetch_var_name
             self._default_executor.run(program.desc, scope, 0, True, True,
-                                       fetch_var_name)
+                                       fetch_var_names)
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
