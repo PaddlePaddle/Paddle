@@ -128,9 +128,9 @@ static inline framework::Tensor VectorToTensor(
 }
 
 template <class T>
-static framework::Tensor NMS(const platform::DeviceContext& ctx,
-                             framework::Tensor* bbox, framework::Tensor* scores,
-                             T nms_threshold, float eta) {
+framework::Tensor NMS(const platform::DeviceContext& ctx,
+                      framework::Tensor* bbox, framework::Tensor* scores,
+                      T nms_threshold, float eta) {
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
