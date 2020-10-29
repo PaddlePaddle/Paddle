@@ -189,8 +189,6 @@ std::vector<double> Lexical_Test(
     acc_res = {precision, recall, f1_score};
     // return acc_res;
   } else {
-    EXPECT_GT(outputs->size(), 0UL);
-    EXPECT_EQ(outputs[0].size(), 1UL);
     LOG(INFO) << "No accuracy result. To get accuracy result provide a model "
                  "with accuracy layers in it and use --with_accuracy_layer "
                  "option.";
