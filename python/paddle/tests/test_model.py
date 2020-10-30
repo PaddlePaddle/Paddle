@@ -541,7 +541,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         self.set_seed()
-        np.random.seed(2020)
+        np.random.seed(201)
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()

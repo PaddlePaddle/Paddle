@@ -13,6 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DIRNAME=`dirname $0`
-source $DIRNAME/.common_test_util.sh
-set_port $@
+DIRNAME="$(dirname "$0")"
+sh "$DIRNAME"/.common_test_util.sh
+set_port "$@"
