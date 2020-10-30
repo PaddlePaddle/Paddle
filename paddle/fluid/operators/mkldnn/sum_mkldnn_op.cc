@@ -149,7 +149,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                           "Operator DNNL Sum must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto in_vars = ctx.MultiInputVar("X");
-    auto out_var = ctx.OutputVar("Out");
 
     PADDLE_ENFORCE_NE(in_vars.empty(), true, platform::errors::InvalidArgument(
                                                  "Input variable is empty."));
