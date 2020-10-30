@@ -24,6 +24,7 @@ from paddle import Model
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
 from paddle.hapi.callbacks import config_callbacks
+import paddle.vision.transforms as T
 
 
 class TestCallbacks(unittest.TestCase):
@@ -112,8 +113,11 @@ class TestCallbacks(unittest.TestCase):
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
-        train_dataset = paddle.vision.datasets.MNIST(mode='train')
-        eval_dataset = paddle.vision.datasets.MNIST(mode='test')
+        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=transform)
+        eval_dataset = paddle.vision.datasets.MNIST(
+            mode='test', transform=transform)
 
         net = paddle.vision.LeNet()
         model = paddle.Model(net, inputs, labels)

@@ -2508,6 +2508,31 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_bn_act_ops = True
                      )DOC")
       .def_property(
+          "fuse_bn_add_act_ops",
+          [](const BuildStrategy &self) { return self.fuse_bn_add_act_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_bn_add_act_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_bn_add_act_ops indicate whether
+                to fuse batch_norm, elementwise_add and activation_op,
+                it may make the execution faster. Default is True
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_bn_add_act_ops = True
+                     )DOC")
+      .def_property(
           "enable_auto_fusion",
           [](const BuildStrategy &self) { return self.enable_auto_fusion_; },
           [](BuildStrategy &self, bool b) {

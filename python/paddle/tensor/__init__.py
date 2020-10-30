@@ -192,6 +192,7 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
 from .stat import numel  #DEFINE_ALIAS
+from .stat import median  #DEFINE_ALIAS
 # from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
