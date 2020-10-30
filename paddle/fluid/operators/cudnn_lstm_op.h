@@ -301,7 +301,13 @@ struct SimpleRNNCell : Cell<T> {
     // convert the batch matmul to matmul, this operator could be speed faster
     blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
                 input, static_cast<T>(1.0));
+    size_t frame_size = init_h->dims()[2];
+    size_t batch_size = init_h->dims()[1];
 
+    if (!(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
+      // run avx
+      return;
+    }
     // activate
     auto z = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(input, "Input", "z", "Activation"));
