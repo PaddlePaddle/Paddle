@@ -31,9 +31,9 @@
 #         <real API implement>\t<API recommend>,<API other alias name1>,<API other alias name2>,...
 
 
-PADDLE_ROOT="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/.."
+PADDLE_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.."
 
-find ${PADDLE_ROOT}/python/ -name '*.py' \
+find "${PADDLE_ROOT}"/python/ -name '*.py' \
     | xargs  grep -v '^#' \
     | grep 'DEFINE_ALIAS' \
     | perl -ne '
