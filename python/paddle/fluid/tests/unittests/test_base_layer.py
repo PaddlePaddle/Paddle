@@ -15,9 +15,11 @@
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import ParamBase
+from paddle.jit import ProgramTranslator
 
 
 class L1(fluid.Layer):
@@ -288,5 +290,45 @@ class TestBuffer(unittest.TestCase):
         self.assertTrue(np.array_equal(var1.numpy(), var2.numpy()))
 
 
+class BufferNet(paddle.nn.Layer):
+    def __init__(self, shape):
+        super(BufferNet, self).__init__()
+
+        self.buffer1 = paddle.zeros(shape, 'int32')
+        self.buffer2 = paddle.zeros(shape, 'int32')
+
+    def forward(self, x):
+        self.buffer1 += x
+        self.buffer2 = self.buffer1 + x
+
+        out = self.buffer1 + self.buffer2
+
+        return out
+
+
+class TestModifiedBuffer(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.prog_trans = ProgramTranslator()
+        self.shape = [10, 16]
+
+    def _run(self, to_static=False):
+        self.prog_trans.enable(to_static)
+
+        x = paddle.ones([1], 'int32')
+        net = BufferNet(self.shape)
+        out = net(x)
+
+        return out, net.buffer1, net.buffer2
+
+    def test_modified(self):
+        dy_outs = self._run(False)
+        st_outs = self._run(True)
+
+        for i in range(len(dy_outs)):
+            self.assertTrue(
+                np.array_equal(dy_outs[i].numpy(), st_outs[i].numpy()))
+
+
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(defaultTest='TestModifiedBuffer')
