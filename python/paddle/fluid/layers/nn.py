@@ -8755,9 +8755,11 @@ def log2(x, name=None):
     Examples:
 
         .. code-block:: python
-
-            import paddle.fluid as fluid
             import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
 
             # Graph Organizing
             x = fluid.layers.data(name="x", shape=[1], dtype="float32")
