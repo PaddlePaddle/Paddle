@@ -1664,6 +1664,7 @@ class TestLog2(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+        print(self.check_grad(['X'], 'Out'))
 
     def test_error(self):
         in1 = fluid.layers.data(
@@ -2435,6 +2436,7 @@ create_test_act_fp16_class(TestSoftRelu)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestLog2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
 create_test_act_fp16_class(TestPow, atol=5e-2)
