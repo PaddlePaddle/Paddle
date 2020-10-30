@@ -289,6 +289,13 @@ well as predefined bounding box shapes 'anchors'. Greedy
 non-maximum suppression is applied to generate the final bounding
 boxes.
 
+The difference between this version and the first version is that the image
+ scale is no long needed now, so the input requires im_shape instead of im_info.
+The change aims to unify the input for all kinds of objective detection 
+such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the 
+size on input image instead of original image which is slightly different 
+to before and will not effect the result.
+
 )DOC");
   }
 };
