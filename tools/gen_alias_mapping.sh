@@ -33,8 +33,7 @@
 
 PADDLE_ROOT="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.."
 
-find "${PADDLE_ROOT}"/python/ -name '*.py' \
-    | xargs  grep -v '^#' \
+find "${PADDLE_ROOT}"/python/ -name '*.py' -exec grep -v '^#' {} + \
     | grep 'DEFINE_ALIAS' \
     | perl -ne '
         if (/\/python\/(.*):from (\.*)(\w.*) import (.*?)\s+#DEFINE_ALIAS\s+$/) {

@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set -xe
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
@@ -7,14 +21,14 @@ PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 # install lcov
 curl -o /lcov-1.14.tar.gz -x "" -s https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz || exit 101
 tar -xf /lcov-1.14.tar.gz -C /
-cd /lcov-1.14
+cd /lcov-1.14 || exit
 make install
 
 # run paddle coverage
 
 cd /paddle/build
 
-python3 ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
+python3 "${PADDLE_ROOT}"/tools/coverage/gcda_clean.py "${GIT_PR_ID}"
 
 lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
@@ -53,17 +67,17 @@ gen_full_html_report || true
 function gen_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
 
-        COVERAGE_DIFF_PATTERN="`python3 ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
+        COVERAGE_DIFF_PATTERN="$(python3 "${PADDLE_ROOT}"/tools/coverage/pull_request.py files "${GIT_PR_ID}")"
 
-        python3 ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > git-diff.out
+        python3 "${PADDLE_ROOT}"/tools/coverage/pull_request.py diff "${GIT_PR_ID}" > git-diff.out
     fi
 
     lcov --extract coverage-full.info \
-        ${COVERAGE_DIFF_PATTERN} \
+        "${COVERAGE_DIFF_PATTERN}" \
         -o coverage-diff.info \
         --rc lcov_branch_coverage=0
 
-    python3 ${PADDLE_ROOT}/tools/coverage/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+    python3 "${PADDLE_ROOT}"/tools/coverage/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
     mv -f coverage-diff.tmp coverage-diff.info
 
@@ -77,12 +91,12 @@ gen_diff_html_report || true
 export COVERAGE_FILE=/paddle/build/python-coverage.data
 
 set +x
-coverage combine `ls python-coverage.data.*`
+coverage combine "$(ls python-coverage.data.*)"
 set -x
 
 coverage xml -i -o python-coverage.xml
 
-python3 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
+python3 "${PADDLE_ROOT}"/tools/coverage/python_coverage.py > python-coverage.info
 
 # python full html report
 #
@@ -108,17 +122,17 @@ gen_python_full_html_report || true
 
 function gen_python_diff_html_report() {
     if [ "${GIT_PR_ID}" != "" ]; then
-        COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/tools/coverage/pull_request.py files ${GIT_PR_ID}`"
+        COVERAGE_DIFF_PATTERN="$(python "${PADDLE_ROOT}"/tools/coverage/pull_request.py files "${GIT_PR_ID}")"
 
-        python ${PADDLE_ROOT}/tools/coverage/pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
+        python "${PADDLE_ROOT}"/tools/coverage/pull_request.py diff "${GIT_PR_ID}" > python-git-diff.out
     fi
 
     lcov --extract python-coverage-full.info \
-        ${COVERAGE_DIFF_PATTERN} \
+        "${COVERAGE_DIFF_PATTERN}" \
         -o python-coverage-diff.info \
         --rc lcov_branch_coverage=0
 
-    python ${PADDLE_ROOT}/tools/coverage/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
+    python "${PADDLE_ROOT}"/tools/coverage/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
 
     mv -f python-coverage-diff.tmp python-coverage-diff.info
 
@@ -136,11 +150,11 @@ gen_python_diff_html_report || true
 
 echo "Assert Diff Coverage"
 
-python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
+python "${PADDLE_ROOT}"/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
 
 echo "Assert Python Diff Coverage"
 
-python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
+python "${PADDLE_ROOT}"/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
 
 if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
     echo "exit 9" > /tmp/paddle_coverage.result

@@ -42,12 +42,12 @@
 #   - math_function.cu | 4 | 0 | 4
 #   - math_function_impl.h | 10 | 0 | 10
 
-. ./count_all_enforce.sh --source-only
+sh ./count_all_enforce.sh --source-only
 
 ROOT_DIR=../paddle/fluid/operators
 
 if [ "$1" != "" ]; then
-    ROOT_DIR=$1
+    ROOT_DIR="$1"
 fi
 
 FILE_WHITE_LIST="\
@@ -67,36 +67,42 @@ FILE_WHITE_LIST="\
     unpooling.cu"
 
 function count_file_recursively(){
-    dir_name=$1
+    dir_name="$1"
     echo "**${dir_name#../}** | **$2** | **$3** | **$(($2-$3))**"
     local i=0
     local dir_array
-    for file in `ls $1`
+    for file in "$1"/*
     do
-        if [ -f $1"/"$file ];then
-            in_white_list=$(echo $FILE_WHITE_LIST | grep "${file}")
+        if [ -f "$file" ];then
+            in_white_list="$(echo "$FILE_WHITE_LIST" | grep "$(echo "${file}" | awk -F [/] '{print $NF}')")"
             if [[ "$in_white_list" == "" ]];then
-                enforce_count $1"/"$file file_total_check_cnt file_valid_check_cnt
-                file_invalid_check_cnt=$(($total_check_cnt-$valid_check_cnt))
-                if [ $file_invalid_check_cnt -gt 0 ];then
+                enforce_count "$file" file_total_check_cnt file_valid_check_cnt
+                total_check_cnt=${total_check_cnt:-}
+                valid_check_cnt=${valid_check_cnt:-}
+                file_invalid_check_cnt=$((total_check_cnt-valid_check_cnt))
+                if [ "$file_invalid_check_cnt" -gt 0 ];then
+                    file_total_check_cnt=${file_total_check_cnt:-}
+                    file_valid_check_cnt=${file_valid_check_cnt:-}
                     echo "- $file | ${file_total_check_cnt} | ${file_valid_check_cnt} | ${file_invalid_check_cnt}"
                 fi
             fi
         fi
-        if [ -d $1"/"$file ];then
-            dir_array[$i]=$1"/"$file
+        if [ -d "$file" ];then
+            dir_array[$i]="$file"
             ((i++))
         fi
     done
-    for sub_dir_name in ${dir_array[@]}
+    for sub_dir_name in "${dir_array[@]}"
     do
-        enforce_count $sub_dir_name dir_total_check_cnt dir_valid_check_cnt
-        count_file_recursively $sub_dir_name $dir_total_check_cnt $dir_valid_check_cnt
+        enforce_count "$sub_dir_name" dir_total_check_cnt dir_valid_check_cnt
+        dir_total_check_cnt=${dir_total_check_cnt:-}
+        dir_valid_check_cnt=${dir_valid_check_cnt:-}
+        count_file_recursively "$sub_dir_name" "$dir_total_check_cnt" "$dir_valid_check_cnt"
     done
 }
 
 main() {
-    count_file_recursively $ROOT_DIR 0 0
+    count_file_recursively "$ROOT_DIR" 0 0
 }
 
 if [ "${1}" != "--source-only" ]; then

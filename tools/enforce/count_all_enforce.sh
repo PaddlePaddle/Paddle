@@ -44,39 +44,39 @@ ALL_PADDLE_CHECK_CNT=0
 VALID_PADDLE_CHECK_CNT=0
 
 function enforce_count(){
-    paddle_check=`grep -r -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
-    total_check_cnt=`echo "$paddle_check" | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    valid_check_cnt=`echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    eval $2=$total_check_cnt
-    eval $3=$valid_check_cnt
+    paddle_check="$(grep -r -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" "$1" || true)"
+    total_check_cnt="$(echo "$paddle_check" | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true)"
+    valid_check_cnt="$(echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true)"
+    eval "$2"="$total_check_cnt"
+    eval "$3"="$valid_check_cnt"
 }
 
 function count_dir_recursively(){
-    for file in `ls $1`
+    for file in "$1"/*
     do
-        if [ -d $1"/"$file ];then
+        if [ -d "$file" ];then
             level=$(($2+1))
-            if [ $level -le 1 ]; then
-                enforce_count $1"/"$file total_check_cnt valid_check_cnt
-                dir_name=$1
-                echo "${dir_name#../}/"$file" | ${total_check_cnt} | ${valid_check_cnt} | $(($total_check_cnt-$valid_check_cnt))"
-                ALL_PADDLE_CHECK_CNT=$(($ALL_PADDLE_CHECK_CNT+$total_check_cnt))
-                VALID_PADDLE_CHECK_CNT=$(($VALID_PADDLE_CHECK_CNT+$valid_check_cnt))
-                count_dir_recursively $1"/"$file $level
+            if [ "$level" -le 1 ]; then
+                enforce_count "$file" total_check_cnt valid_check_cnt
+                dir_name="$1"
+                echo "${dir_name#../}/$file | ${total_check_cnt} | ${valid_check_cnt} | $((total_check_cnt-valid_check_cnt))"
+                ALL_PADDLE_CHECK_CNT=$((ALL_PADDLE_CHECK_CNT+total_check_cnt))
+                VALID_PADDLE_CHECK_CNT=$((VALID_PADDLE_CHECK_CNT+valid_check_cnt))
+                count_dir_recursively "$file" "$level"
             fi
         fi
     done
 }
 
 main() {
-    count_dir_recursively $ROOT_DIR 0
+    count_dir_recursively "$ROOT_DIR" 0
 
     echo "----------------------------"
     echo "PADDLE ENFORCE & THROW COUNT"
     echo "----------------------------"
     echo "All PADDLE_ENFORCE{_**} & PADDLE_THROW Count: ${ALL_PADDLE_CHECK_CNT}"
     echo "Valid PADDLE_ENFORCE{_**} & PADDLE_THROW Count: ${VALID_PADDLE_CHECK_CNT}"
-    echo "Invalid PADDLE_ENFORCE{_**} & PADDLE_THROW Count: $(($ALL_PADDLE_CHECK_CNT-$VALID_PADDLE_CHECK_CNT))"
+    echo "Invalid PADDLE_ENFORCE{_**} & PADDLE_THROW Count: $((ALL_PADDLE_CHECK_CNT-VALID_PADDLE_CHECK_CNT))"
 }
 
 if [ "${1}" != "--source-only" ]; then

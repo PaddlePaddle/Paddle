@@ -57,31 +57,33 @@
 #     paddle/fluid/operators/tensorrt | 7 | 4 | 3
 #     paddle/fluid/operators | 2144 | 999 | 1145
 
-. ./count_all_enforce.sh --source-only
+sh ./count_all_enforce.sh --source-only
 
 ROOT_DIR=../../paddle/fluid
 
 function count_dir_independently(){
     local sub_dir_total_check_cnt=0
     local sub_dir_valid_check_cnt=0
-    for file in `ls $1`
+    for file in "$1"/*
     do
-        if [ -d $1"/"$file ];then
-            enforce_count $1"/"$file dir_total_check_cnt dir_valid_check_cnt
-            sub_dir_total_check_cnt=$(($sub_dir_total_check_cnt+$dir_total_check_cnt))
-            sub_dir_valid_check_cnt=$(($sub_dir_valid_check_cnt+$dir_valid_check_cnt))
+        if [ -d "$file" ];then
+            enforce_count "$file" dir_total_check_cnt dir_valid_check_cnt
+            dir_total_check_cnt=${dir_total_check_cnt:-}
+            dir_valid_check_cnt=${dir_valid_check_cnt:-}
+            sub_dir_total_check_cnt=$((sub_dir_total_check_cnt+dir_total_check_cnt))
+            sub_dir_valid_check_cnt=$((sub_dir_valid_check_cnt+dir_valid_check_cnt))
             
-            count_dir_independently $1"/"$file $dir_total_check_cnt $dir_valid_check_cnt 
+            count_dir_independently "$file" "$dir_total_check_cnt" "$dir_valid_check_cnt" 
         fi
     done
-    total_check_cnt=$(($2-$sub_dir_total_check_cnt))
-    valid_check_cnt=$(($3-$sub_dir_valid_check_cnt))
-    dir_name=$1
-    echo "${dir_name#../} | ${total_check_cnt} | ${valid_check_cnt} | $(($total_check_cnt-$valid_check_cnt))"
+    total_check_cnt=$(($2-sub_dir_total_check_cnt))
+    valid_check_cnt=$(($3-sub_dir_valid_check_cnt))
+    dir_name="$1"
+    echo "${dir_name#../} | ${total_check_cnt} | ${valid_check_cnt} | $((total_check_cnt-valid_check_cnt))"
 }
 
 main() {
-    count_dir_independently $ROOT_DIR 0 0
+    count_dir_independently "$ROOT_DIR" 0 0
 }
 
 if [ "${1}" != "--source-only" ]; then
