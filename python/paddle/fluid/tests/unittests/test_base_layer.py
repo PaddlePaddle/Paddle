@@ -290,9 +290,9 @@ class TestBuffer(unittest.TestCase):
         self.assertTrue(np.array_equal(var1.numpy(), var2.numpy()))
 
 
-class BufferNet(paddle.nn.Layer):
+class BufferNetWithModification(paddle.nn.Layer):
     def __init__(self, shape):
-        super(BufferNet, self).__init__()
+        super(BufferNetWithModification, self).__init__()
 
         self.buffer1 = paddle.zeros(shape, 'int32')
         self.buffer2 = paddle.zeros(shape, 'int32')
@@ -317,7 +317,7 @@ class TestModifiedBuffer(unittest.TestCase):
         self.prog_trans.enable(to_static)
 
         x = paddle.ones([1], 'int32')
-        net = BufferNet(self.shape)
+        net = BufferNetWithModification(self.shape)
         out = net(x)
 
         return out, net.buffer1, net.buffer2
