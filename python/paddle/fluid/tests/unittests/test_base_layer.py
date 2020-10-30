@@ -297,6 +297,7 @@ class BufferNet(paddle.nn.Layer):
         self.buffer1 = paddle.zeros(shape, 'int32')
         self.buffer2 = paddle.zeros(shape, 'int32')
 
+    @paddle.jit.to_static
     def forward(self, x):
         self.buffer1 += x
         self.buffer2 = self.buffer1 + x
@@ -331,4 +332,4 @@ class TestModifiedBuffer(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(defaultTest='TestModifiedBuffer')
+    unittest.main()
