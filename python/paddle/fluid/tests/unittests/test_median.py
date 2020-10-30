@@ -17,16 +17,16 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-from paddle.fluid import Program, program_guard
+from paddle.static import Program, program_guard
 
-Delta = 1e-6
+DELTA = 1e-6
 
 
 class TestMedian(unittest.TestCase):
     def check_numpy_res(self, np1, np2):
         self.assertEqual(np1.shape, np2.shape)
         mismatch = np.sum((np1 - np2) * (np1 - np2))
-        self.assertAlmostEqual(mismatch, 0, Delta)
+        self.assertAlmostEqual(mismatch, 0, DELTA)
 
     def static_single_test_median(self, lis_test):
         paddle.enable_static()
@@ -49,8 +49,7 @@ class TestMedian(unittest.TestCase):
         res_np = np.median(x, axis=axis, keepdims=keepdims)
         if not isinstance(res_np, np.ndarray):
             res_np = np.array([res_np])
-        res_pd = paddle.median(
-            paddle.to_tensor(x), axis=axis, keepdims=keepdims)
+        res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
         self.check_numpy_res(res_pd.numpy(), res_np)
 
     def test_median_static(self):
@@ -59,7 +58,8 @@ class TestMedian(unittest.TestCase):
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
         lis_tests = [[x, axis, keepdims]
-                     for axis in [-1, 0, 1, 2] for keepdims in [False, True]]
+                     for axis in [-1, 0, 1, 2, None]
+                     for keepdims in [False, True]]
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
 
@@ -70,7 +70,8 @@ class TestMedian(unittest.TestCase):
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
         lis_tests = [[x, axis, keepdims]
-                     for axis in [-1, 0, 1, 2] for keepdims in [False, True]]
+                     for axis in [-1, 0, 1, 2, None]
+                     for keepdims in [False, True]]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
 

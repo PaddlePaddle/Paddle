@@ -260,7 +260,7 @@ def numel(x, name=None):
     return out
 
 
-def median(x, axis=None, keepdims=False, name=None):
+def median(x, axis=None, keepdim=False, name=None):
     """
     Compute the median along the specified axis.
 
@@ -300,44 +300,44 @@ def median(x, axis=None, keepdims=False, name=None):
             y3 = paddle.median(x, axis=1)
             # y3 is [1.5, 5.5, 9.5]
 
-            y4 = paddle.median(x, axis=0, keepdims=True)
+            y4 = paddle.median(x, axis=0, keepdim=True)
             # y4 is [[4., 5., 6., 7.]]
 
     """
     if not isinstance(x, Variable):
-        raise TypeError("The input x should be a Tensor.")
+        raise TypeError("In median, the input x should be a Tensor.")
     is_flatten = False
+    dims = len(x.shape)
     if axis is None:
-        dims = len(x.shape)
         x = paddle.flatten(x)
         is_flatten = True
         axis = 0
     else:
-        if not isinstance(axis, int) or not (axis < len(x.shape) and
-                                             axis >= -len(x.shape)):
+        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
             raise ValueError(
-                "axis should be none or an integer in range [-rank(x), rank(x))."
+                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
             )
         if axis < 0:
-            axis += len(x.shape)
+            axis += dims
     sz = x.shape[axis]
     kth = sz >> 1
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
+    dtype = 'float64' if x.dtype == core.VarDesc.VarType.FP64 else 'float32'
     if sz & 1 == 0:
         out_tensor = paddle.slice(
             tensor_topk, axes=[axis], starts=[kth - 1],
             ends=[kth]) + paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1])
-        out_tensor = paddle.cast(out_tensor, dtype='float64') / 2
+        out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
     else:
         out_tensor = paddle.cast(
             paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]),
-            dtype='float64')
-    if not keepdims or is_flatten:
+            dtype=dtype)
+    if not keepdim or is_flatten:
         if not is_flatten:
             newshape = x.shape[:axis] + x.shape[axis + 1:]
-        elif not keepdims:
+        elif not keepdim:
             newshape = [1]
         else:
             newshape = [1] * dims
