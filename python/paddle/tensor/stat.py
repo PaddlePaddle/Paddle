@@ -279,8 +279,7 @@ def median(x, axis=None, keepdim=False, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, results of median along ``axis`` of ``x``. If data type of ``x`` is float64, 
-            data type of results will be float64, otherwise data type will be float32.
+        Tensor, results of median along ``axis`` of ``x``. If data type of ``x`` is float64, data type of results will be float64, otherwise data type will be float32.
 
     Examples:
         .. code-block:: python
