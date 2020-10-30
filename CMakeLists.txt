@@ -98,6 +98,13 @@ else(WIN32)
 endif(WIN32)
 
 find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+    set(GIT_URL "https://github.com")
+endif()
+
 find_package(Threads REQUIRED)
 
 include(simd)
@@ -194,10 +201,19 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-# lite subgraph compilation depends on CUDNN_ROOT,
-# so include(cudnn) needs to be in front of include(third_party/lite)
-include(cudnn)              # set cudnn libraries, must before configure
-include(third_party)        # download, build, install third_party
+if(WITH_GPU)
+    include(cuda)
+    # lite subgraph compilation depends on CUDNN_ROOT,
+    # so include(cudnn) needs to be in front of include(third_party/lite)
+    include(cudnn)              # set cudnn libraries, must before configure
+    include(tensorrt)
+    # there is no official support of nccl, cupti in windows
+    if(NOT WIN32)
+        include(cupti)
+    endif()
+endif()
+
+include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -210,17 +226,7 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-# there is no official support of nccl, cupti in windows
-if(NOT WIN32)
-    include(cupti)
-endif()
-
 include(flags)              # set paddle compile flags
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-endif()
 
 if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
@@ -240,6 +246,12 @@ if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
+
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+endif()
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")

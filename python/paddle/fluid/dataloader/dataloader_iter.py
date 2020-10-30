@@ -17,6 +17,7 @@ import six
 import sys
 import time
 import signal
+import numbers
 import logging
 import itertools
 import threading
@@ -81,12 +82,17 @@ def default_collate_fn(batch):
             else:
                 slots[i].append(item)
 
-    if isinstance(slots[0][0], np.ndarray):
-        return [np.stack(slot, axis=0) for slot in slots]
-    elif isinstance(slots[0][0], paddle.Tensor):
-        return [layers.stack(slot, axis=0) for slot in slots]
-    else:
-        raise RuntimeError("Unknown data type {}".format(type(slots[0][0])))
+    outputs = []
+    for slot in slots:
+        if isinstance(slot[0], (np.ndarray, np.bool, numbers.Number)):
+            tmp = np.stack(slot, axis=0)
+            outputs.append(tmp)
+        elif isinstance(slot[0], paddle.Tensor):
+            tmp = layers.stack(slot, axis=0)
+            outputs.append(tmp)
+        else:
+            raise RuntimeError("Unknown data type {}".format(type(slot[0])))
+    return outputs
 
 
 class _DatasetKind(object):
@@ -335,7 +341,13 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 return self._reader.read_next_var_list()
             else:
                 if self._return_list:
-                    return self._reader.read_next_list()
+                    # static graph organized data on multi-device with list, if
+                    # place number is 1, there is only 1 device, extra the data
+                    # from list for devices to be compatible with dygraph mode
+                    if len(self._places) == 1:
+                        return self._reader.read_next_list()[0]
+                    else:
+                        return self._reader.read_next_list()
                 else:
                     return self._reader.read_next()
         except StopIteration:
@@ -345,6 +357,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     # python2 compatibility
     def next(self):
         return self.__next__()
+
+    def __del__(self):
+        # _blocking_queue in keep order mode holds sub-threads
+        # need to release thread resources on unexpected exit
+        if self._blocking_queue:
+            self._blocking_queue.close()
 
 
 # NOTE(chenweihang): _worker_loop must be top level method to be pickled

@@ -18,15 +18,13 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid import core, layers
 
 # TODO: define searching & indexing functions of a tensor  
-from ..fluid.layers import has_inf  #DEFINE_ALIAS
-from ..fluid.layers import has_nan  #DEFINE_ALIAS
+# from ..fluid.layers import has_inf  #DEFINE_ALIAS
+# from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
 __all__ = [
     'argmax',
     'argmin',
     'argsort',
-    'has_inf',
-    'has_nan',
     'masked_select',
     'topk',
     'where',
@@ -64,7 +62,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         and with data type int64).
 
     Examples:
+
         .. code-block:: python
+
             import paddle
             
             paddle.disable_static()
@@ -360,6 +360,7 @@ def nonzero(x, as_tuple=False):
     
         .. code-block:: python
 
+
             import paddle
 
             x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
@@ -570,9 +571,6 @@ def where(condition, x, y, name=None):
 
 def index_sample(x, index):
     """
-	:alias_main: paddle.index_sample
-	:alias: paddle.index_sample,paddle.tensor.index_sample,paddle.tensor.search.index_sample
-
     **IndexSample Layer**
 
     IndexSample OP returns the element of the specified location of X, 
@@ -595,13 +593,13 @@ def index_sample(x, index):
                        [6, 8, 10]]
 
     Args:
-        x (Variable): The source input tensor with 2-D shape. Supported data type is 
+        x (Tensor): The source input tensor with 2-D shape. Supported data type is 
             int32, int64, float32, float64.
-        index (Variable): The index input tensor with 2-D shape, first dimension should be same with X. 
+        index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X. 
             Data type is int32 or int64.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape as index.
+        output (Tensor): The output is a tensor with the same shape as index.
 
     Examples:
 
@@ -609,7 +607,6 @@ def index_sample(x, index):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],
                                   [9.0, 10.0, 11.0, 12.0]], dtype='float32')
@@ -644,8 +641,10 @@ def index_sample(x, index):
             # [ 800  700]
             # [1200 1100]]
 
-
     """
+    if in_dygraph_mode():
+        return core.ops.index_sample(x, index)
+
     helper = LayerHelper("index_sample", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'paddle.tensor.search.index_sample')

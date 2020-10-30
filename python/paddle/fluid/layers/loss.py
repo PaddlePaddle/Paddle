@@ -59,9 +59,6 @@ def center_loss(input,
                 update_center=True):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.nn.functional.center_loss
-	:alias: paddle.nn.functional.center_loss,paddle.nn.functional.loss.center_loss
-	:old_api: paddle.fluid.layers.center_loss
 
     **Center loss Cost layer**
     
@@ -92,6 +89,8 @@ def center_loss(input,
         .. code-block:: python
 
           import paddle.fluid as fluid 
+          import paddle
+          paddle.enable_static()
 
           input = fluid.data(name='x',shape=[20,30],dtype='float32')
           label = fluid.data(name='y',shape=[20,1],dtype='int64')
@@ -153,9 +152,6 @@ def center_loss(input,
 
 def bpr_loss(input, label, name=None):
     """
-    :alias_main: paddle.nn.functional.bpr_loss
-	:alias: paddle.nn.functional.bpr_loss,paddle.nn.functional.loss.bpr_loss
-	:old_api: paddle.fluid.layers.bpr_loss
 
     **Bayesian Personalized Ranking Loss Operator**
 
@@ -183,6 +179,9 @@ def bpr_loss(input, label, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
 
           neg_size = 10
           label = fluid.data(
@@ -1309,9 +1308,6 @@ def softmax_with_cross_entropy(logits,
 
 def rank_loss(label, left, right, name=None):
     """
-    :alias_main: paddle.nn.functional.rank_loss
-	:alias: paddle.nn.functional.rank_loss,paddle.nn.functional.loss.rank_loss
-	:old_api: paddle.fluid.layers.rank_loss
 
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
@@ -1349,6 +1345,8 @@ def rank_loss(label, left, right, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             label = fluid.data(name="label", shape=[-1, 1], dtype="float32")
             left = fluid.data(name="left", shape=[-1, 1], dtype="float32")
             right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
@@ -1491,9 +1489,6 @@ def teacher_student_sigmoid_loss(input,
                                  soft_max_up_bound=15.0,
                                  soft_max_lower_bound=-15.0):
     """
-    :alias_main: paddle.nn.functional.teacher_student_sigmoid_loss
-	:alias: paddle.nn.functional.teacher_student_sigmoid_loss,paddle.nn.functional.loss.teacher_student_sigmoid_loss
-	:old_api: paddle.fluid.layers.teacher_student_sigmoid_loss
 
     **Teacher Student Log Loss Layer**
 
@@ -1521,7 +1516,8 @@ def teacher_student_sigmoid_loss(input,
         .. code-block:: python
           
           import paddle.fluid as fluid
-
+          import paddle
+          paddle.enable_static()
           batch_size = 64
           label = fluid.data(
                     name="label", shape=[batch_size, 1], dtype="int64")

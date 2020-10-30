@@ -25,7 +25,7 @@ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
 
-SEED = 2020
+SEED = 2000
 DATATYPE = 'float32'
 program_translator = ProgramTranslator()
 
@@ -564,7 +564,7 @@ def train_bmn(args, place, to_static):
     loss_data = []
 
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         global local_random
         local_random = np.random.RandomState(SEED)

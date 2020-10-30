@@ -25,6 +25,7 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
@@ -397,7 +398,7 @@ def _get_output_vars(outputs, output_spec):
         "Layer.forward method."
     result_list = []
     output_vars_dict = OrderedDict()
-    for var in outputs:
+    for var in flatten(outputs):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
@@ -470,10 +471,10 @@ def save(layer, path, input_spec=None, **configs):
     format model, which can be used for inference or fine-tuning after loading.
 
     It will save the translated program and all related persistable 
-    variables of input Layer to given ``path``.
+    variables of input Layer to given ``path`` .
     
     ``path`` is the prefix of saved objects, and the saved translated program file 
-    suffix is ``.pdmodel``, the saved persistable variables file suffix is ``.pdiparams``,
+    suffix is ``.pdmodel`` , the saved persistable variables file suffix is ``.pdiparams`` ,
     and here also saved some additional variable description information to a file,  
     its suffix is ``.pdiparams.info``, these additional information is used in fine-tuning.
 
@@ -483,18 +484,17 @@ def save(layer, path, input_spec=None, **configs):
       - Other C++ inference APIs
 
     Args:
-        layer (Layer): the Layer to be saved. The Layer should be decorated by `@paddle.jit.to_static`.
+        layer (Layer): The Layer to be saved.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model. 
-            It is the example inputs that will be passed to saved TranslatedLayer's forward
-            function. If None, all input variables of the original Layer's forward function
-            would be the inputs of the saved model. Default None.
-        **configs (dict, optional): other save configuration options for compatibility. We do not 
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward 
+            method, which can be described by InputSpec or example Tensor. If None, all input variables of 
+            the original Layer's forward method would be the inputs of the saved model. Default None.
+        **configs (dict, optional): Other save configuration options for compatibility. We do not 
             recommend using these configurations, they may be removed in the future. If not necessary, 
             DO NOT use them. Default None.
             The following options are currently supported:
             (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
-            By default, all return variables of original Layer's forward function are kept as the 
+            By default, all return variables of original Layer's forward method are kept as the 
             output of the saved model. If the provided ``output_spec`` list is not all output variables, 
             the saved model will be pruned according to the given ``output_spec`` list. 
 
@@ -735,14 +735,14 @@ def load(path, **configs):
         4. The parameter's ``trainable`` information is lost and can not be recovered.
 
     Args:
-        path (str): The path prefix to load model. The format is ``dirname/file_prefix`` or ``file_prefix``.
-        **configs (dict, optional): other load configuration options for compatibility. We do not 
+        path (str): The path prefix to load model. The format is ``dirname/file_prefix`` or ``file_prefix`` .
+        **configs (dict, optional): Other load configuration options for compatibility. We do not 
             recommend using these configurations, they may be removed in the future. If not necessary, 
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (string): The inference model file name of the paddle 1.x 
+            (1) model_filename (str): The inference model file name of the paddle 1.x 
             ``save_inference_model`` save format. Default file name is :code:`__model__` . 
-            (2) params_filename (string): The persistable variables file name of the paddle 1.x 
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x 
             ``save_inference_model`` save format. No default file name, save variables separately 
             by default.
 
@@ -844,7 +844,6 @@ def load(path, **configs):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
             import paddle.static as static
             import paddle.nn as nn
             import paddle.optimizer as opt
@@ -870,9 +869,11 @@ def load(path, **configs):
                 def __len__(self):
                     return self.num_samples
 
+            paddle.enable_static()
+
             image = static.data(name='image', shape=[None, 784], dtype='float32')
             label = static.data(name='label', shape=[None, 1], dtype='int64')
-            pred = static.nn.fc(input=image, size=10, act='softmax')
+            pred = static.nn.fc(x=image, size=10, activation='softmax')
             loss = F.cross_entropy(input=pred, label=label)
             avg_loss = paddle.mean(loss)
 
@@ -901,7 +902,7 @@ def load(path, **configs):
                     fetch_list=[avg_loss])
 
             model_path = "fc.example.model"
-            fluid.io.save_inference_model(
+            paddle.fluid.io.save_inference_model(
                 model_path, ["image"], [pred], exe)
 
             # 2. load model
