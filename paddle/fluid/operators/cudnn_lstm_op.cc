@@ -319,6 +319,11 @@ REGISTER_OP_CPU_KERNEL(
     cudnn_lstm,
     ops::CudnnLSTMCPUKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CudnnLSTMCPUKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    cudnn_lstm_grad,
+    ops::CudnnLSTMCPUGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CudnnLSTMCPUGradKernel<paddle::platform::CPUDeviceContext, double>);
 // TODO(Shixiaowei02) Add ModifyInput support
 REGISTER_OP_VERSION(cudnn_lstm)
     .AddCheckpoint(

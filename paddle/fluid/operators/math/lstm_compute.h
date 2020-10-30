@@ -64,7 +64,8 @@ class LstmUnitGradFunctor {
                       LstmMetaGrad<T> grad, int frame_size, int batch_size,
                       T cell_clip, const detail::ActivationType &gate_act,
                       const detail::ActivationType &cell_act,
-                      const detail::ActivationType &cand_act);
+                      const detail::ActivationType &cand_act,
+                      bool old_api_version = true);
 };
 
 }  // namespace math

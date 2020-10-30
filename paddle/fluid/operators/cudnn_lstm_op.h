@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
@@ -282,9 +283,7 @@ struct Cell {
                           Tensor* input, const Tensor* weight_hh,
                           const Tensor* init_h, const Tensor* init_c,
                           Tensor* last_h, Tensor* last_c, Tensor* last_c_act,
-                          Tensor* output) {
-    VLOG(2) << "Calling Base Cell !!!!!";
-  }
+                          Tensor* output) {}
 };
 
 template <typename T, template <typename> class ActivationFunctor>
@@ -327,14 +326,6 @@ struct LSTMCell : Cell<T> {
                   const Tensor* weight_hh, const Tensor* init_h,
                   const Tensor* init_c, Tensor* last_h, Tensor* last_c,
                   Tensor* last_c_act, Tensor* output) override {
-    VLOG(2) << "Calling LSTM Cell !!!!!";
-    VLOG(2) << "input shape: " << input->dims();
-    VLOG(2) << "w_hh shape: " << weight_hh->dims();
-    VLOG(2) << "init_h shape: " << init_h->dims();
-    VLOG(2) << "init_c shape: " << init_c->dims();
-    VLOG(2) << "last_h shape: " << last_h->dims();
-    VLOG(2) << "last_c shape: " << last_c->dims();
-    VLOG(2) << "output shape: " << output->dims();
     // Print3DTensor<T>(input, "Cell Input");
     // Print3DTensor<T>(init_h, "init_h");
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
@@ -785,11 +776,6 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
   // gate_data: 4 * num_layers * block_size
   // cell_data: num_layers * block_size
   // hidden_data: (num_layers - 1) * block_size
-  VLOG(0) << "===========================";
-  VLOG(0) << "gate_num: " << gate_num << ", num_layers: " << num_layers
-          << ", direction_num:" << direction_num << ", time_step: " << time_step
-          << ", input_size: " << batch_size << ", hidden_size:" << hidden_size;
-
   const int& block_size = direction_num * time_step * batch_size * hidden_size;
   const int& hidden_data_idx = (gate_num + 1) * num_layers + (num_layers - 1);
   reserve_data->Resize({hidden_data_idx, block_size});
@@ -894,12 +880,12 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       }
       if (!is_test) {
         prev_hidden_data = hidden_data.Slice(i - 1, i);
-        framework::TensorCopy(
-            prev_hidden_data, ctx.GetPlace(),
-            ctx.template device_context<platform::CPUDeviceContext>(),
-            input_holder);
+        // framework::TensorCopy(
+        //    prev_hidden_data, ctx.GetPlace(),
+        //    ctx.template device_context<platform::CPUDeviceContext>(),
+        //    input_holder);
+        input_holder = &prev_hidden_data;
         input_holder->Resize(output->dims());
-
       } else {
         SwapPoniter(&output_holder, &input_holder);
       }
@@ -1018,9 +1004,161 @@ void create_lstm_grad(math::LstmMetaGrad<T>* lstm_grad) {
   lstm_grad->check_og_grad = nullptr;
 }
 
-template <typename T>
+template <typename T, typename GradCellType>
 struct GradLayer {
+  explicit GradLayer(const GradCellType& cell) : cell_(cell) {}
   virtual ~GradLayer() {}
+  void run_rnn_grad_function(
+      const framework::ExecutionContext& context,
+      const platform::CPUDeviceContext& device_ctx, const Tensor* input,
+      Tensor* input_grad, const Tensor* sequence_length,
+      std::vector<Tensor>* init_h_unbind, std::vector<Tensor>* init_c_unbind,
+      std::vector<Tensor>* init_h_grad_unbind,
+      std::vector<Tensor>* init_c_grad_unbind, Tensor* layer_grad_gate_tensor,
+      std::vector<Tensor>* layer_gate_tensor_unbind,
+      std::vector<Tensor>* layer_grad_gate_tensor_unbind,
+      std::vector<Tensor>* layer_state_tensor_unbind,
+      std::vector<Tensor>* layer_act_state_tensor_unbind,
+      std::vector<Tensor>* output_tensor_unbind,
+      std::vector<Tensor>* output_grad_tensor_unbind,
+      const TensorList& last_h_grad_unbind,
+      const TensorList& last_c_grad_unbind,
+      const std::vector<TensorList>& parameter_lists,
+      std::vector<TensorList>* weight_list_grad, const int& layer_idx,
+      const int& time_step, const bool& has_sequence_length,
+      const bool& is_bidirec, const bool& is_reverse) {
+    Print3DTensor<T>(input_grad, "print after zero step 1");
+
+    const int& direction_num = is_bidirec ? 2 : 1;
+    const int& current_reverse_idx = is_reverse ? 1 : 0;
+    const int& current_layer_idx =
+        direction_num * layer_idx + current_reverse_idx;
+    int begin_idx = 0;
+    if (is_reverse) {
+      begin_idx = time_step;
+    }
+
+    Tensor mask_matrix;
+    TensorList mask_tensor_list;
+    if (has_sequence_length) {
+      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
+      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
+      mask_tensor_list = Unbind(mask_matrix);
+    }
+    // create lstm_value and lstm_grad
+    math::LstmMetaValue<T> lstm_value;
+    math::LstmMetaGrad<T> lstm_grad;
+    create_lstm_value(&lstm_value);
+    create_lstm_grad(&lstm_grad);
+
+    // copy the last_h, last_c for swaping pointer
+    Tensor a, b;
+    Tensor* dynamic_grad_last_h = &a;
+    Tensor* dynamic_grad_last_c = &b;
+    dynamic_grad_last_h->Resize(last_h_grad_unbind[current_layer_idx].dims());
+    dynamic_grad_last_h->mutable_data<T>(context.GetPlace());
+    dynamic_grad_last_c->Resize(last_c_grad_unbind[current_layer_idx].dims());
+    dynamic_grad_last_c->mutable_data<T>(context.GetPlace());
+    framework::TensorCopy(last_h_grad_unbind[current_layer_idx],
+                          context.GetPlace(), dynamic_grad_last_h);
+    framework::TensorCopy(last_c_grad_unbind[current_layer_idx],
+                          context.GetPlace(), dynamic_grad_last_c);
+
+    Tensor c, d;
+    Tensor* dynamic_grad_pre_h = &c;
+    Tensor* dynamic_grad_pre_c = &d;
+    if (init_h_grad_unbind->size() > 0) {
+      dynamic_grad_pre_h->ShareDataWith(
+          (*init_h_grad_unbind)[current_layer_idx]);
+    } else {
+      dynamic_grad_pre_h->Resize(dynamic_grad_last_h->dims());
+      dynamic_grad_pre_h->mutable_data<T>(context.GetPlace());
+    }
+    if (init_c_grad_unbind->size() > 0) {
+      dynamic_grad_pre_c->ShareDataWith(
+          (*init_c_grad_unbind)[current_layer_idx]);
+    } else {
+      dynamic_grad_pre_c->Resize(dynamic_grad_last_c->dims());
+      dynamic_grad_pre_c->mutable_data<T>(context.GetPlace());
+    }
+
+    if (is_reverse) {
+      // must be reverse the input, output, input_grad, output_grad
+      // the gate and grad_gate must be reverse
+      std::reverse(layer_gate_tensor_unbind->begin(),
+                   layer_gate_tensor_unbind->end());
+      std::reverse(layer_grad_gate_tensor_unbind->begin(),
+                   layer_grad_gate_tensor_unbind->end());
+      if (has_sequence_length) {
+        std::reverse(mask_tensor_list.begin(), mask_tensor_list.end());
+      }
+      std::reverse(output_tensor_unbind->begin(), output_tensor_unbind->end());
+      std::reverse(output_grad_tensor_unbind->begin(),
+                   output_grad_tensor_unbind->end());
+    }
+
+    Tensor* weight_grad =
+        &((*weight_list_grad)[layer_idx][current_reverse_idx * 4 + 1]);
+    weight_grad->mutable_data<T>(context.GetPlace());
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    zero(device_ctx, weight_grad, static_cast<T>(0.0));
+
+    Tensor* pre_hidden;
+    Tensor* pre_state;
+
+    for (int i = time_step - 1; i >= 0; --i) {
+      if (has_sequence_length) {
+        this->mask_preprocess(context, &(*output_grad_tensor_unbind)[i],
+                              dynamic_grad_last_h, dynamic_grad_last_c,
+                              dynamic_grad_pre_h, dynamic_grad_pre_c,
+                              mask_tensor_list[i]);
+      } else {
+        this->preprocess(context, &(*output_grad_tensor_unbind)[i],
+                         dynamic_grad_last_h);
+      }
+      VLOG(0) << "layer_idx:" << layer_idx << ", layer step 5";
+      if (i == 0) {
+        pre_hidden = &(*init_h_unbind)[current_layer_idx];
+        pre_state = &(*init_c_unbind)[current_layer_idx];
+      } else {
+        pre_hidden = &(*output_tensor_unbind)[i - 1];
+        pre_state = &(*layer_state_tensor_unbind)[begin_idx + i - 1];
+      }
+      this->cell_(context, &(*layer_gate_tensor_unbind)[i],
+                  &(*layer_state_tensor_unbind)[begin_idx + i],
+                  &(*layer_act_state_tensor_unbind)[begin_idx + i],
+                  &(parameter_lists[layer_idx][current_reverse_idx * 4 + 1]),
+                  pre_hidden, pre_state, dynamic_grad_last_h,
+                  dynamic_grad_last_c, &(*layer_grad_gate_tensor_unbind)[i],
+                  weight_grad, dynamic_grad_pre_h, dynamic_grad_pre_c,
+                  &lstm_value, &lstm_grad);
+      VLOG(0) << "layer_idx:" << layer_idx << ", layer step 6";
+      SwapPoniter(&dynamic_grad_last_h, &dynamic_grad_pre_h);
+      SwapPoniter(&dynamic_grad_last_c, &dynamic_grad_pre_c);
+    }
+
+    Print3DTensor<T>(input_grad, "print after zero step 2");
+    Print3DTensor<T>(layer_grad_gate_tensor, "print layer_grad_gate_tensor");
+    Print3DTensor<T>(&(*layer_grad_gate_tensor_unbind)[0],
+                     "double check print layer_grad_gate_tensor");
+    // postproces for gradient for w_hi, X, bias_hi, bias_hh
+    this->postprocess(context, *layer_grad_gate_tensor, *input, input_grad,
+                      parameter_lists[layer_idx],
+                      &((*weight_list_grad)[layer_idx]), is_reverse);
+
+    VLOG(0) << "layer_idx:" << layer_idx << ", layer step 7";
+    // copy the gradient to init_c init_h
+    if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
+      framework::TensorCopy(*dynamic_grad_last_h, context.GetPlace(),
+                            &((*init_h_grad_unbind)[current_layer_idx]));
+    }
+    if ((*init_c_grad_unbind).size() > 0 && time_step % 2 == 0) {
+      framework::TensorCopy(*dynamic_grad_last_c, context.GetPlace(),
+                            &((*init_c_grad_unbind)[current_layer_idx]));
+    }
+    VLOG(0) << "layer_idx:" << layer_idx << ", layer step 8";
+  }
+
   virtual void operator()(
       const framework::ExecutionContext& context, const Tensor* input,
       const Tensor* output, const TensorList& init_h_unbind,
@@ -1082,46 +1220,69 @@ struct GradLayer {
   void postprocess(const framework::ExecutionContext& context,
                    const Tensor& grad_gate, const Tensor& input,
                    Tensor* input_grad, const TensorList& parameters,
-                   const TensorList& grad_parameters) {
+                   TensorList* grad_parameters, const int& is_reverse) {
+    VLOG(0) << "in gradient postproces";
+    Print3DTensor<T>(input_grad, "the input grad just check");
     // we get the grad_gate step by step, and need to bradocast the grad to the
-    // grad_Whi
-    // grad_Bias_hi, grad_Bias_hh
+    // grad_w_hi, grad_bias_hi, grad_bias_hh
+    int begin_idx = 0;
+    if (is_reverse) {
+      begin_idx = 4;
+    }
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
 
-    // calc the gradient for the W_hi
+    // calc the gradient for the w_hi
     auto mat_dim_out_grad =
         math::CreateMatrixDescriptor(grad_gate.dims(), 0, true);
     auto mat_dim_input = math::CreateMatrixDescriptor(input.dims(), 0, false);
-    mat_dim_out_grad.height_ *= mat_dim_out_grad.batch_size_;
+    mat_dim_out_grad.width_ *= mat_dim_out_grad.batch_size_;
+    mat_dim_out_grad.batch_size_ = 0;
     mat_dim_input.height_ *= mat_dim_input.batch_size_;
+    mat_dim_input.batch_size_ = 0;
+    VLOG(0) << "grad gate dims:" << grad_gate.dims();
+    VLOG(0) << "input:" << input.dims();
     blas.MatMul(grad_gate, mat_dim_out_grad, input, mat_dim_input,
-                static_cast<T>(1.0), &grad_parameters[0], T(0));
+                static_cast<T>(1.0), &((*grad_parameters)[begin_idx + 0]),
+                T(0));
 
+    VLOG(0) << "in postprocess 1";
     // calc the gradient for the X
-    mat_dim_out_grad = math::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
-    mat_dim_out_grad.height_ *= mat_dim_out_grad.batch_size_;
+    auto mat_dim_out_grad_new =
+        math::CreateMatrixDescriptor(grad_gate.dims(), 0, false);
+    mat_dim_out_grad_new.height_ *= mat_dim_out_grad_new.batch_size_;
+    mat_dim_out_grad_new.batch_size_ = 0;
     auto mat_dim_parameter =
         math::CreateMatrixDescriptor(parameters[0].dims(), 0, false);
-    blas.MatMul(grad_gate, mat_dim_out_grad, parameters[0], mat_dim_parameter,
-                static_cast<T>(1.0), input_grad, T(0));
+    blas.MatMul(grad_gate, mat_dim_out_grad_new, parameters[begin_idx + 0],
+                mat_dim_parameter, static_cast<T>(1.0), input_grad, T(1));
 
+    VLOG(0) << "in postprocess 2";
     // calc the gradient of Bias_hi, Bias_hh
     math::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
-    col_sum(device_ctx, grad_gate, &grad_parameters[2]);
-    col_sum(device_ctx, grad_gate, &grad_parameters[3]);
+    Tensor tmp_grad_gate;
+    tmp_grad_gate.ShareDataWith(grad_gate);
+    tmp_grad_gate.Resize(
+        {grad_gate.dims()[0] * grad_gate.dims()[1], grad_gate.dims()[2]});
+    col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 2]));
+    col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 3]));
+    VLOG(0) << "in postprocess 3";
   }
+
+  GradCellType cell_;
 };
 
 template <typename T, typename GradCellType>
-struct SingleGradLayer : GradLayer<T> {
-  explicit SingleGradLayer(GradCellType& cell) : cell_(cell) {}
+struct SingleGradLayer : GradLayer<T, GradCellType> {
+  // explicit SingleGradLayer(GradCellType& cell) : cell_(cell) {}
+  explicit SingleGradLayer(const GradCellType& cell)
+      : GradLayer<T, GradCellType>(cell) {}
   virtual ~SingleGradLayer() {}
   void operator()(
       const framework::ExecutionContext& context, const Tensor* input,
-      const Tensor* output, const TensorList& init_h_unbind,
-      const TensorList& init_c_unbind, const TensorList& last_h_grad_unbind,
+      const Tensor* output, std::vector<Tensor>* init_h_unbind,
+      std::vector<Tensor>* init_c_unbind, const TensorList& last_h_grad_unbind,
       const TensorList& last_c_grad_unbind,
       const TensorList& gate_tensor_unbind,
       const TensorList& state_tensor_unbind,
@@ -1129,151 +1290,88 @@ struct SingleGradLayer : GradLayer<T> {
       const std::vector<TensorList>& parameter_lists,
       const Tensor* sequence_length, Tensor* input_grad,
       TensorList* init_h_grad_unbind, TensorList* init_c_grad_unbind,
-      const std::vector<TensorList>& weight_list_grad, const int& layer_idx,
+      std::vector<TensorList>* weight_list_grad, const int& layer_idx,
       const int& gate_num) {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    zero(device_ctx, input_grad, static_cast<T>(0.0));
+
     const bool& is_bidirec = context.Attr<bool>("is_bidirec");
     const int& time_step = input->dims()[0];
     const int& batch_size = input->dims()[1];
-    const int& input_size = input->dims()[2];
     const int& direction_num = is_bidirec ? 2 : 1;
     const int& hidden_size = context.Attr<int>("hidden_size");
-
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
-
-    const bool& has_sequence_length = sequence_length == nullptr ? false : true;
-    Tensor mask_matrix;
-    TensorList mask_tensor_list;
-    if (has_sequence_length) {
-      mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
-      create_mask_matrix<T>(context, sequence_length, &mask_matrix, false);
-      mask_tensor_list = Unbind(mask_matrix);
-    }
-
-    // create lstm_value and lstm_grad
-    math::LstmMetaValue<T> lstm_value;
-    math::LstmMetaGrad<T> lstm_grad;
-    create_lstm_value(&lstm_value);
-    create_lstm_grad(&lstm_grad);
-
-    // copy the last_h, last_c for swaping pointer
-    Tensor dynamic_grad_last_h;
-    Tensor dynamic_grad_last_c;
-    dynamic_grad_last_h.Resize(last_h_grad_unbind[layer_idx].dims());
-    dynamic_grad_last_h.mutable_data<T>(context.GetPlace());
-    dynamic_grad_last_c.Resize(last_c_grad_unbind[layer_idx].dims());
-    dynamic_grad_last_c.mutable_data<T>(context.GetPlace());
-    framework::TensorCopy(last_h_grad_unbind[layer_idx], context.GetPlace(),
-                          &dynamic_grad_last_h);
-    framework::TensorCopy(last_c_grad_unbind[layer_idx], context.GetPlace(),
-                          &dynamic_grad_last_c);
-
-    // if the init_c init_h grad is nullptr, we will create the tensor
-    Tensor dynamic_grad_pre_h;
-    Tensor dynamic_grad_pre_c;
-    if (init_h_grad_unbind->size() > 0) {
-      dynamic_grad_pre_h.ShareDataWith((*init_h_grad_unbind)[layer_idx]);
-    } else {
-      dynamic_grad_pre_h.Resize(dynamic_grad_last_h.dims());
-      dynamic_grad_pre_h.mutable_data<T>(context.GetPlace());
-    }
-    if (init_c_grad_unbind->size() > 0) {
-      dynamic_grad_pre_c.ShareDataWith((*init_h_grad_unbind)[layer_idx]);
-    } else {
-      dynamic_grad_pre_c.Resize(dynamic_grad_last_c.dims());
-      dynamic_grad_pre_c.mutable_data<T>(context.GetPlace());
-    }
-
-    Tensor grad_gate_tensor;
-    grad_gate_tensor.Resize(gate_tensor_unbind[layer_idx].dims());
-    grad_gate_tensor.mutable_data<T>(context.GetPlace());
-
-    Tensor grad_cell_tensor;
-    grad_cell_tensor.Resize(output->dims());
-    grad_cell_tensor.mutable_data(context.GetPlace());
-    zero(device_ctx, &grad_cell_tensor, static_cast<T>(0.0));
-
-    Tensor weight_grad = weight_list_grad[layer_idx][1];
-    weight_grad.mutable_data<T>(context.GetPlace());
-    zero(device_ctx, &weight_grad, static_cast<T>(0.0));
 
     // in this section, create the gate_state_grad for the postprocess calculate
     // ubind the output, the output from [time_step, batch_size, hidden_size]
     auto output_tensor_unbind = Unbind(*output);
-
+    auto output_grad_tensor_unbind = Unbind(*output_grad);
     auto layer_gate_tensor = gate_tensor_unbind[layer_idx];
+    VLOG(0) << "layer gate before shape:" << layer_gate_tensor.dims();
     layer_gate_tensor.Resize(
         {time_step * direction_num, batch_size, hidden_size * gate_num});
+    VLOG(0) << "layer gate after shape:" << layer_gate_tensor.dims();
     auto layer_gate_tensor_unbind = Unbind(layer_gate_tensor);
+    // the gate_tensor and the grad_gate_tensor must be unbind
+    Tensor layer_grad_gate_tensor;
+    layer_grad_gate_tensor.Resize(layer_gate_tensor.dims());
+    layer_grad_gate_tensor.mutable_data<T>(context.GetPlace());
+    auto layer_grad_gate_tensor_unbind = Unbind(layer_grad_gate_tensor);
 
     // TODO(wawltor)  this is bug for the gru and rnn
     auto layer_state_tensor = state_tensor_unbind[layer_idx];
     layer_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size * gate_num});
-    auto layer_state_tensor_unbind = Unbind(layer_gate_tensor);
-    layer_state_tensor_unbind.emplace_back(*output);
+        {time_step * direction_num, batch_size, hidden_size});
+    auto layer_state_tensor_unbind = Unbind(layer_state_tensor);
 
     auto layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
     layer_act_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size * gate_num});
+        {time_step * direction_num, batch_size, hidden_size});
     auto layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
-
-    Tensor* pre_hidden;
-    Tensor* pre_state;
-    for (int i = time_step - 1; i >= 0; --i) {
-      if (has_sequence_length) {
-        this->mask_preprocess(context, output_tensor_unbind[i],
-                              &dynamic_grad_last_h, &dynamic_grad_last_c,
-                              &dynamic_grad_pre_h, &dynamic_grad_pre_c,
-                              mask_tensor_list[i]);
-      } else {
-        this->preprocess(context, output_tensor_unbind[i],
-                         &dynamic_grad_last_h);
-      }
-      if (i == 0) {
-        pre_hidden = &init_h_unbind[layer_idx];
-        pre_state = &init_c_unbind[layer_idx];
-      } else {
-        pre_hidden = &output_tensor_unbind[i - 1];
-        pre_state = &layer_state_tensor_unbind[i - 1];
-      }
-      // TODO(wawltor) add the rnn cell
-      cell_(context, &layer_gate_tensor_unbind[i],
-            &layer_state_tensor_unbind[i], &layer_act_state_tensor_unbind[i],
-            &(parameter_lists[layer_idx][1]), pre_hidden, pre_state,
-            &dynamic_grad_last_h, &dynamic_grad_last_c, &grad_gate_tensor,
-            &(weight_list_grad[layer_idx][1]), &dynamic_grad_pre_h,
-            &dynamic_grad_pre_c, &lstm_value, &lstm_grad);
-      SwapPoniter(&&dynamic_grad_last_h, &&dynamic_grad_pre_h);
-      SwapPoniter(&&dynamic_grad_last_c, &&dynamic_grad_pre_c);
-    }
-
-    // postproces for gradient for w_hi, X, bias_hi, bias_hh
-    this->postprocess(context, grad_gate_tensor, *input, input_grad,
-                      parameter_lists[layer_idx], weight_list_grad[layer_idx]);
-
-    // copy the gradient to init_c init_h
-    if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
-      framework::TensorCopy(dynamic_grad_last_h, context.GetPlace(),
-                            &((*init_h_grad_unbind)[layer_idx]));
-    }
-    if ((*init_c_grad_unbind).size() > 0 && time_step % 2 == 0) {
-      framework::TensorCopy(dynamic_grad_last_c, context.GetPlace(),
-                            &((*init_c_grad_unbind)[layer_idx]));
-    }
+    const bool& has_sequence_length = sequence_length == nullptr ? false : true;
+    this->run_rnn_grad_function(
+        context, device_ctx, input, input_grad, sequence_length, init_h_unbind,
+        init_c_unbind, init_h_grad_unbind, init_c_grad_unbind,
+        &layer_grad_gate_tensor, &layer_gate_tensor_unbind,
+        &layer_grad_gate_tensor_unbind, &layer_state_tensor_unbind,
+        &layer_act_state_tensor_unbind, &output_tensor_unbind,
+        &output_grad_tensor_unbind, last_h_grad_unbind, last_c_grad_unbind,
+        parameter_lists, weight_list_grad, layer_idx, time_step,
+        has_sequence_length, is_bidirec, false);
   }
-  GradCellType cell_;
 };
+template <typename T>
+void split_tensor_at_last_dim(const framework::ExecutionContext& context,
+                              const platform::CPUDeviceContext& dev_ctx,
+                              const Tensor* output,
+                              std::vector<Tensor*>* output_vec,
+                              const int& axis) {
+  std::vector<const framework::Tensor*> shape_refer;
+  (*output_vec)[0]->Resize(
+      {output->dims()[0], output->dims()[1], output->dims()[2] / 2});
+  (*output_vec)[0]->mutable_data<T>(context.GetPlace());
+  (*output_vec)[1]->Resize(
+      {output->dims()[0], output->dims()[1], output->dims()[2] / 2});
+  (*output_vec)[1]->mutable_data<T>(context.GetPlace());
+  shape_refer.emplace_back((*output_vec)[0]);
+  shape_refer.emplace_back((*output_vec)[1]);
+  VLOG(0) << "before in split functor";
+  math::SplitFunctor<platform::CPUDeviceContext, T> functor;
+  functor(dev_ctx, *output, shape_refer, axis, output_vec);
+  VLOG(0) << "after in split functor";
+}
 
 template <typename T, typename GradCellType>
-struct BidirGradLayer : GradLayer<T> {
-  explicit BidirGradLayer(GradCellType& cell) : cell_(cell) {}
+struct BidirGradLayer : GradLayer<T, GradCellType> {
+  explicit BidirGradLayer(const GradCellType& cell)
+      : GradLayer<T, GradCellType>(cell) {}
+  // explicit BidirGradLayer(GradCellType& cell) : cell_(cell) {}
   virtual ~BidirGradLayer() {}
-  virtual void operator()(
+  void operator()(
       const framework::ExecutionContext& context, const Tensor* input,
-      const Tensor* output, const TensorList& init_h_unbind,
-      const TensorList& init_c_unbind, const TensorList& last_h_grad_unbind,
+      const Tensor* output, std::vector<Tensor>* init_h_unbind,
+      std::vector<Tensor>* init_c_unbind, const TensorList& last_h_grad_unbind,
       const TensorList& last_c_grad_unbind,
       const TensorList& gate_tensor_unbind,
       const TensorList& state_tensor_unbind,
@@ -1281,9 +1379,109 @@ struct BidirGradLayer : GradLayer<T> {
       const std::vector<TensorList>& parameter_lists,
       const Tensor* sequence_length, Tensor* input_grad,
       TensorList* init_h_grad_unbind, TensorList* init_c_grad_unbind,
-      const std::vector<TensorList>& weight_list_grad, const int& layer_idx,
-      const int& gate_num) {}
-  GradCellType cell_;
+      std::vector<TensorList>* weight_list_grad, const int& layer_idx,
+      const int& gate_num) {
+    const bool& is_bidirec = context.Attr<bool>("is_bidirec");
+    const int& time_step = input->dims()[0];
+    const int& batch_size = input->dims()[1];
+    const int& direction_num = is_bidirec ? 2 : 1;
+    const int& hidden_size = context.Attr<int>("hidden_size");
+    VLOG(0) << "double check the batch_size:" << batch_size
+            << "time step:" << time_step;
+    // split the output two tensor to output_forward, output_backward
+    VLOG(0) << "start split output and output grad";
+    auto& device_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    zero(device_ctx, input_grad, static_cast<T>(0.0));
+    Print3DTensor<T>(input_grad, "print after zero");
+
+    std::vector<Tensor*> output_vec;
+    Tensor forward_output;
+    Tensor backward_output;
+    std::vector<Tensor> forward_output_tensor_unbind;
+    std::vector<Tensor> backward_output_tensor_unbind;
+    // in the last layer, we will use the output as the last hidden
+    // the output just the concat the forward hidden, backward hidden, so just
+    // split it
+    // in other layer, we just split the hidden in the rows
+    output_vec.emplace_back(&forward_output);
+    output_vec.emplace_back(&backward_output);
+    split_tensor_at_last_dim<T>(context, device_ctx, output, &output_vec, 2);
+    forward_output_tensor_unbind = Unbind(*(output_vec[0]));
+    backward_output_tensor_unbind = Unbind(*(output_vec[1]));
+
+    std::vector<Tensor*> output_grad_vec;
+    Tensor grad_forward_output;
+    Tensor grad_backward_output;
+    output_grad_vec.emplace_back(&grad_forward_output);
+    output_grad_vec.emplace_back(&grad_backward_output);
+    split_tensor_at_last_dim<T>(context, device_ctx, output_grad,
+                                &output_grad_vec, 2);
+    auto forward_output_grad_tensor_unbind = Unbind(*(output_grad_vec[0]));
+    auto backward_output_grad_tensor_unbind = Unbind(*(output_grad_vec[1]));
+    VLOG(0) << "end split output and output grad";
+
+    // the gate_tensor and the grad_gate_tensor must be unbind
+    auto layer_gate_tensor = gate_tensor_unbind[layer_idx];
+    layer_gate_tensor.Resize(
+        {time_step * 2, batch_size, hidden_size * gate_num});
+    auto layer_forward_gate_tensor = layer_gate_tensor.Slice(0, time_step);
+    auto layer_backward_gate_tensor =
+        layer_gate_tensor.Slice(time_step, 2 * time_step);
+    auto layer_forward_gate_tensor_unbind = Unbind(layer_forward_gate_tensor);
+    auto layer_backward_gate_tensor_unbind = Unbind(layer_backward_gate_tensor);
+
+    Tensor layer_grad_gate_tensor;
+    layer_grad_gate_tensor.Resize(layer_gate_tensor.dims());
+    layer_grad_gate_tensor.mutable_data<T>(context.GetPlace());
+    zero(device_ctx, &layer_grad_gate_tensor, static_cast<T>(0.0));
+    auto layer_forward_grad_gate_tensor =
+        layer_grad_gate_tensor.Slice(0, time_step);
+    auto layer_backward_grad_gate_tensor =
+        layer_grad_gate_tensor.Slice(time_step, 2 * time_step);
+    auto layer_forward_grad_gate_tensor_unbind =
+        Unbind(layer_forward_grad_gate_tensor);
+    auto layer_backward_grad_gate_tensor_unbind =
+        Unbind(layer_backward_grad_gate_tensor);
+
+    // TODO(wawltor)  this is bug for the gru and rnn
+    auto layer_state_tensor = state_tensor_unbind[layer_idx];
+    layer_state_tensor.Resize(
+        {time_step * direction_num, batch_size, hidden_size});
+    auto layer_state_tensor_unbind = Unbind(layer_state_tensor);
+    Print3DTensor<T>(&layer_state_tensor, "layer_state_tensor check");
+    VLOG(0) << "just check step 2";
+
+    auto layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
+    layer_act_state_tensor.Resize(
+        {time_step * direction_num, batch_size, hidden_size});
+    auto layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
+    const bool& has_sequence_length = sequence_length == nullptr ? false : true;
+    VLOG(0) << "data ready!";
+
+    this->run_rnn_grad_function(
+        context, device_ctx, input, input_grad, sequence_length, init_h_unbind,
+        init_c_unbind, init_h_grad_unbind, init_c_grad_unbind,
+        &layer_forward_grad_gate_tensor, &layer_forward_gate_tensor_unbind,
+        &layer_forward_grad_gate_tensor_unbind, &layer_state_tensor_unbind,
+        &layer_act_state_tensor_unbind, &forward_output_tensor_unbind,
+        &forward_output_grad_tensor_unbind, last_h_grad_unbind,
+        last_c_grad_unbind, parameter_lists, weight_list_grad, layer_idx,
+        time_step, has_sequence_length, is_bidirec, false);
+    VLOG(0) << "process forward run!";
+
+    this->run_rnn_grad_function(
+        context, device_ctx, input, input_grad, sequence_length, init_h_unbind,
+        init_c_unbind, init_h_grad_unbind, init_c_grad_unbind,
+        &layer_backward_grad_gate_tensor, &layer_backward_gate_tensor_unbind,
+        &layer_backward_grad_gate_tensor_unbind, &layer_state_tensor_unbind,
+        &layer_act_state_tensor_unbind, &backward_output_tensor_unbind,
+        &backward_output_grad_tensor_unbind, last_h_grad_unbind,
+        last_c_grad_unbind, parameter_lists, weight_list_grad, layer_idx,
+        time_step, has_sequence_length, is_bidirec, true);
+    VLOG(0) << "process backward run!";
+  }
 };
 
 template <typename T>
@@ -1304,32 +1502,35 @@ struct GradCell {
 template <typename T>
 struct LSTMGradCell : GradCell<T> {
   void operator()(const framework::ExecutionContext& context,
-                  const Tensor* gate_tensor, const Tensor* state_tensor,
-                  const Tensor* act_state_tensor, const Tensor* weight_hh,
-                  const Tensor* pre_hidden, const Tensor* pre_state,
-                  const Tensor* grad_hidden, const Tensor* grad_state,
-                  Tensor* grad_gate, Tensor* grad_weight_hh,
+                  Tensor* gate_tensor, Tensor* state_tensor,
+                  Tensor* act_state_tensor, const Tensor* weight_hh,
+                  Tensor* pre_hidden, Tensor* pre_state, Tensor* grad_hidden,
+                  Tensor* grad_state, Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
                   math::LstmMetaValue<T>* lstm_value,
                   math::LstmMetaGrad<T>* lstm_grad) {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
-    size_t frame_size = gate_tensor->dims()[2];
-    size_t batch_size = gate_tensor->dims()[1];
+    size_t frame_size = state_tensor->dims()[2];
+    size_t batch_size = state_tensor->dims()[1];
 
-    lstm_value.gate_value = gate_tensor->data<T>();
-    lstm_value.state_value = state_tensor->data<T>();
-    lstm_value.state_active_value = act_state_tensor->data<T>();
-    lstm_value.prev_state_value = pre_state->data<T>();
+    Print3DTensor<T>(state_tensor, "state tensor");
+    Print3DTensor<T>(act_state_tensor, "act_state_tensor");
+    Print3DTensor<T>(gate_tensor, "gate_tensor");
+    Print3DTensor<T>(grad_hidden, "grad_hidden");
+    lstm_value->gate_value = gate_tensor->data<T>();
+    lstm_value->state_value = state_tensor->data<T>();
+    lstm_value->state_active_value = act_state_tensor->data<T>();
+    lstm_value->prev_state_value = pre_state->data<T>();
 
-    lstm_grad.state_grad = grad_state->data<T>();
-    lstm_grad.gate_grad = grad_gate->data<T>();
-    lstm_grad.output_grad = grad_hidden->data<T>();
-    lstm_grad.prev_state_grad = grad_pre_state->data<T>();
+    lstm_grad->state_grad = grad_state->data<T>();
+    lstm_grad->gate_grad = grad_gate->data<T>();
+    lstm_grad->output_grad = grad_hidden->data<T>();
+    lstm_grad->prev_state_grad = grad_pre_state->data<T>();
 
-    lstm_value.output_value = nullptr;
-    lstm_grad.state_active_grad = nullptr;
+    lstm_value->output_value = nullptr;
+    lstm_grad->state_active_grad = nullptr;
 
     auto gate_act = math::detail::GetActivationType("sigmoid_v2");
     auto state_act = math::detail::GetActivationType("tanh_v2");
@@ -1337,105 +1538,126 @@ struct LSTMGradCell : GradCell<T> {
 
     T cell_clip = 0.0;
     math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
-        &device_ctx, lstm_value, lstm_grad, frame_size, batch_size, cell_clip,
-        gate_act, state_act, cand_act);
+        device_ctx, *lstm_value, *lstm_grad, frame_size, batch_size, cell_clip,
+        gate_act, state_act, cand_act, false);
 
-    blas.MatMul(*grad_gate, false, *weight_hh, true, static_cast<T>(1.0),
-                grad_pre_hidden, static_cast<T>(1.0));
+    auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, false);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    VLOG(0) << "grad gate shape:" << grad_gate->dims();
+    VLOG(0) << "weight_hh shape:" << weight_hh->dims();
+    VLOG(0) << "pre_hidden shape:" << pre_hidden->dims();
+    blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
+                static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
 
-    blas.MatMul(*pre_hidden, true, *grad_gate, false, static_cast<T>(1.0),
-                grad_weight_hh, static_cast<T>(1.0));
-    // trans the gradient to Whh, pre_hidden
+    VLOG(0) << "first blas";
+    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    mat_dim_c.height_ *= mat_dim_c.batch_size_;
+    mat_dim_c.batch_size_ = 0;
+    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+    mat_dim_d.height_ *= mat_dim_d.batch_size_;
+    mat_dim_d.batch_size_ = 0;
+    blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
+                static_cast<T>(1.0), grad_weight_hh, T(1.0));
+    VLOG(0) << "second blas";
   }
 };
 
 template <typename GradCellType,
           template <typename, typename> class SingleGradLayerT,
           template <typename, typename> class BidirGradLayerT, typename T>
-void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
-                 const int& cell_num) {
+void RnnGradFunc(const framework::ExecutionContext& context,
+                 const int& gate_num, const int& cell_num) {
   // get the tensor pointer for the input
-  auto* input = ctx.Input<Tensor>("Input");
-  auto weight_list = ctx.MultiInput<Tensor>("WeightList");
-  auto* init_h = ctx.Input<Tensor>("InitH");
-  auto* init_c = ctx.Input<Tensor>("InitC");
-  auto* reserve_state = ctx.Input<Tensor>("Reserve");
-  auto* state_out = ctx.Input<Tensor>("StateOut");
-  auto* output = ctx.Input<Tensor>("Out");
-  auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* last_h_grad = ctx.Input<Tensor>(framework::GradVarName("LastH"));
-  auto* last_c_grad = ctx.Input<Tensor>(framework::GradVarName("LastC"));
+  auto* input = context.Input<Tensor>("Input");
+  auto weight_list = context.MultiInput<Tensor>("WeightList");
+  auto* init_h = context.Input<Tensor>("InitH");
+  auto* init_c = context.Input<Tensor>("InitC");
+  auto* reserve_state = context.Input<Tensor>("Reserve");
+  auto* state_out = context.Input<Tensor>("StateOut");
+  auto* output = context.Input<Tensor>("Out");
+  auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+  auto* last_h_grad = context.Input<Tensor>(framework::GradVarName("LastH"));
+  auto* last_c_grad = context.Input<Tensor>(framework::GradVarName("LastC"));
 
-  bool has_seq_length = ctx.HasInput("SequenceLength");
+  bool has_seq_length = context.HasInput("SequenceLength");
   const Tensor* sequence_length = nullptr;
   if (has_seq_length) {
-    sequence_length = ctx.Input<Tensor>("SequenceLength");
+    sequence_length = context.Input<Tensor>("SequenceLength");
   }
 
   // get the tensor pointer for the output
-  auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-  auto weight_grad_list =
-      ctx.MultiOutput<framework::Tensor>(framework::GradVarName("WeightList"));
-  auto* init_h_grad = ctx.Output<Tensor>(framework::GradVarName("InitH"));
-  auto* init_c_grad = ctx.Output<Tensor>(framework::GradVarName("InitC"));
+  auto* input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
+  auto weight_grad_list = context.MultiOutput<framework::Tensor>(
+      framework::GradVarName("WeightList"));
+  auto* init_h_grad = context.Output<Tensor>(framework::GradVarName("InitH"));
+  auto* init_c_grad = context.Output<Tensor>(framework::GradVarName("InitC"));
 
   // get the attributes for the calcluate
-  const int& num_layers = ctx.Attr<int>("num_layers");
-  const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
-  const float& dropout_prob = ctx.Attr<float>("dropout_prob");
-  const bool& is_test = ctx.Attr<bool>("is_test");
+  const int& num_layers = context.Attr<int>("num_layers");
+  const bool& is_bidirec = context.Attr<bool>("is_bidirec");
+  const float& dropout_prob = context.Attr<float>("dropout_prob");
+  const bool& is_test = context.Attr<bool>("is_test");
 
   // get the input_size, batch_size, time_step, hidden_size
   const int& time_step = input->dims()[0];
   const int& batch_size = input->dims()[1];
-  const int& input_size = input->dims()[2];
-  const int& hidden_size = ctx.Attr<int>("hidden_size");
+  const int& hidden_size = context.Attr<int>("hidden_size");
   const int& direction_num = is_bidirec ? 2 : 1;
 
-  // allocate the memory
-  input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
-  if (init_h_grad) init_h_grad->mutable_data<T>(init_h->dims(), ctx.GetPlace());
-  if (init_c_grad) init_c_grad->mutable_data<T>(init_c->dims(), ctx.GetPlace());
+  VLOG(0) << "time step:" << time_step << ", batch size:" << batch_size
+          << "hidden_size" <<
 
-  // reset the parameter to sorted
+      // allocate the memory and initization the input_grad
+      input_grad->mutable_data<T>(input->dims(), context.GetPlace());
+
+  if (init_h_grad)
+    init_h_grad->mutable_data<T>(init_h->dims(), context.GetPlace());
+  if (init_c_grad)
+    init_c_grad->mutable_data<T>(init_c->dims(), context.GetPlace());
+
+  // reset the parameter to sorted order and allocate the memory
   std::vector<TensorList> parameter_lists;
   parameter_lists.reserve(num_layers);
   reset_parameter_vector(weight_list, num_layers, gate_num, is_bidirec,
                          &parameter_lists);
+
+  for (unsigned int i = 0; i < weight_grad_list.size(); ++i) {
+    weight_grad_list[i]->mutable_data<T>(context.GetPlace());
+  }
   std::vector<TensorList> parameter_lists_grad;
   parameter_lists_grad.reserve(num_layers);
   reset_parameter_vector(weight_grad_list, num_layers, gate_num, is_bidirec,
                          &parameter_lists_grad);
 
   // resolve the state of reverse_state
-  const int& block_size = time_step * batch_size * hidden_size * direction_num;
-  // NOTICE *******
-  // reserve_state->Resize(framework::make_ddim({reserve_state->numel()/block_size,
-  //    block_size}));
   Tensor gate_tensor;
   Tensor state_tensor;
   Tensor act_state_tensor;
   Tensor hidden_tensor;
   gate_tensor = reserve_state->Slice(0, gate_num * num_layers);
+
   gate_tensor.Resize({num_layers, time_step * direction_num, batch_size,
                       hidden_size * gate_num});
+  VLOG(0) << "raw gate tensor shape:" << gate_tensor.dims();
   if (cell_num >= 1) {
-    state_tensor = state_tensor.Slice(gate_num * num_layers,
-                                      (gate_num + cell_num) * num_layers);
-    act_state_tensor = state_tensor.Slice(
-        gate_num * num_layers, (gate_num + 2 * cell_num) * num_layers);
-    state_tensor = state_tensor.Resize({num_layers, time_step * direction_num,
-                                        batch_size, hidden_size * gate_num});
+    state_tensor = reserve_state->Slice(gate_num * num_layers,
+                                        (gate_num + cell_num) * num_layers);
     act_state_tensor =
-        state_tensor.Resize({num_layers, time_step * direction_num, batch_size,
-                             hidden_size * gate_num});
+        reserve_state->Slice((gate_num + cell_num) * num_layers,
+                             (gate_num + 2 * cell_num) * num_layers);
+    state_tensor.Resize(
+        {num_layers, time_step * direction_num, batch_size, hidden_size});
+    state_tensor.Resize(
+        {num_layers, time_step * direction_num, batch_size, hidden_size});
   }
   if (num_layers > 1) {
     hidden_tensor = reserve_state->Slice(
         (gate_num + 2 * cell_num) * num_layers,
         (gate_num + 2 * cell_num) * num_layers + num_layers - 1);
-    hidden_tensor.Resize({num_layers - 1, time_step * direction_num, batch_size,
-                          hidden_size * gate_num});
+    hidden_tensor.Resize(
+        {num_layers - 1, time_step, batch_size, hidden_size * direction_num});
   }
   // unbind
   auto last_h_grad_unbind = Unbind(*last_h_grad);
@@ -1459,12 +1681,18 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
   if (init_c_grad != nullptr) {
     init_c_grad_unbind = Unbind(*init_c_grad);
   }
-  if (cell_num > 1) {
+  if (cell_num >= 1) {
     state_tensor_unbind = Unbind(state_tensor);
-    act_state_tensor_unbind = Unbind(state_tensor);
+    act_state_tensor_unbind = Unbind(act_state_tensor);
   }
   if (num_layers > 1) {
     hidden_tensor_unbind = Unbind(hidden_tensor);
+  }
+  // squeeze the hidden first dim
+  for (unsigned int i = 0; i < hidden_tensor_unbind.size(); i++) {
+    hidden_tensor_unbind[i].Resize(
+        framework::slice_ddim(hidden_tensor_unbind[i].dims(), 1,
+                              hidden_tensor_unbind[i].dims().size()));
   }
   // add the output tensor to the hidden vector
   Tensor tmp;
@@ -1472,47 +1700,59 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
   hidden_tensor_unbind[num_layers - 1].ShareDataWith(*output);
 
   GradCellType cell;
-  Tensor* layer_input;
-  Tensor* layer_output;
+  Tensor layer_input;
+  Tensor layer_output;
   Tensor* layer_input_grad_holder = nullptr;
-  Tensor* layer_output_grad_holder = output_grad;
+  Tensor tmp_out;
+  tmp_out.ShareDataWith(*output_grad);
+  Tensor* layer_output_grad_holder = &tmp_out;
   Tensor input_grad_temp;
   Tensor output_grad_temp;
 
   bool has_allocate_mem = false;
   for (int i = num_layers - 1; i >= 0; --i) {
     // the layer input output had saved, just use the data
+    VLOG(0) << "layer_idx:" << i << ", step 1";
     if (i > 0) {
-      layer_input->ShareDataWith(hidden_tensor_unbind[i - 1]);
+      layer_input.ShareDataWith(hidden_tensor_unbind[i - 1]);
     } else {
-      layer_input->ShareDataWith(*input);
+      layer_input.ShareDataWith(*input);
     }
-    layer_output->ShareDataWith(hidden_tensor_unbind[i]);
+    layer_output.ShareDataWith(hidden_tensor_unbind[i]);
+    VLOG(0) << "layer_idx:" << i << ", step 2";
     if (num_layers == 1) {
       layer_input_grad_holder = input_grad;
     } else {
       if (i == num_layers - 1) {
-        input_grad_temp.Resize(layer_input->dims());
-        input_grad_temp.mutable_data<T>(ctx.GetPlace());
+        input_grad_temp.Resize(layer_input.dims());
+        input_grad_temp.mutable_data<T>(context.GetPlace());
         layer_input_grad_holder = &input_grad_temp;
       }
     }
     if (is_bidirec) {
       BidirGradLayerT<T, GradCellType> layer(cell);
+      layer(context, &layer_input, &layer_output, &init_h_unbind,
+            &init_c_unbind, last_h_grad_unbind, last_c_grad_unbind,
+            gate_tensor_unbind, state_tensor_unbind, act_state_tensor_unbind,
+            layer_output_grad_holder, parameter_lists, sequence_length,
+            layer_input_grad_holder, &init_h_grad_unbind, &init_c_grad_unbind,
+            &parameter_lists_grad, i, gate_num);
     } else {
       SingleGradLayerT<T, GradCellType> layer(cell);
-      layer(ctx, layer_input, layer_output, init_h_unbind, init_c_unbind,
-            last_h_grad_unbind, last_c_grad_unbind, gate_tensor_unbind,
-            state_tensor_unbind, layer_output_grad_holder, parameter_lists,
-            sequence_length, layer_input_grad_holder, &init_h_grad_unbind,
-            &init_c_grad_unbind, parameter_lists_grad, i, gate_num);
+      layer(context, &layer_input, &layer_output, &init_h_unbind,
+            &init_c_unbind, last_h_grad_unbind, last_c_grad_unbind,
+            gate_tensor_unbind, state_tensor_unbind, act_state_tensor_unbind,
+            layer_output_grad_holder, parameter_lists, sequence_length,
+            layer_input_grad_holder, &init_h_grad_unbind, &init_c_grad_unbind,
+            &parameter_lists_grad, i, gate_num);
     }
 
+    VLOG(0) << "layer_idx:" << i << ", step 3";
     // calcluate the dropout gradient for the layer_input_grad_holder
     // state_out save in the forward process
     if (i > 0) {
       if ((!is_test) && (dropout_prob != 0)) {
-        dropout_cpu_grad_function_inplace<T>(ctx, layer_input_grad_holder,
+        dropout_cpu_grad_function_inplace<T>(context, layer_input_grad_holder,
                                              state_out, dropout_prob);
       }
     }
@@ -1522,10 +1762,12 @@ void RnnGradFunc(const framework::ExecutionContext& ctx, const int& gate_num,
     } else {
       if (!has_allocate_mem) {
         output_grad_temp.Resize(layer_input_grad_holder->dims());
-        output_grad_temp.mutable_data<T>(ctx.GetPlace());
-        layer_output_grad_holder = output_grad_temp;
+        output_grad_temp.mutable_data<T>(context.GetPlace());
+        layer_output_grad_holder = &output_grad_temp;
+        has_allocate_mem = true;
       }
     }
+    VLOG(0) << "layer_idx:" << i << ", step 4";
     SwapPoniter(&layer_input_grad_holder, &layer_output_grad_holder);
   }
 }
