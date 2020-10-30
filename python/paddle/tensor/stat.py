@@ -279,7 +279,8 @@ def median(x, axis=None, keepdim=False, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, results of median along ``axis`` of ``x`` with data type float64
+        Tensor, results of median along ``axis`` of ``x``. If data type of ``x`` is float64, 
+            data type of results will be float64, otherwise data type will be float32.
 
     Examples:
         .. code-block:: python
@@ -306,11 +307,10 @@ def median(x, axis=None, keepdim=False, name=None):
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
-    is_flatten = False
+    is_flatten = axis is None
     dims = len(x.shape)
-    if axis is None:
+    if is_flatten:
         x = paddle.flatten(x)
-        is_flatten = True
         axis = 0
     else:
         if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
