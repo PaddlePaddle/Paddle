@@ -1159,6 +1159,7 @@ struct GradLayer {
       create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
       mask_tensor_list = Unbind(mask_matrix);
     }
+    Print2DTensor<T>(&mask_matrix, "mask matrix");
     // create lstm_value and lstm_grad
     math::LstmMetaValue<T> lstm_value;
     math::LstmMetaGrad<T> lstm_grad;
@@ -1222,10 +1223,12 @@ struct GradLayer {
 
     for (int i = time_step - 1; i >= 0; --i) {
       if (has_sequence_length) {
+        VLOG(0) << "in mask preprocess before";
         this->mask_preprocess(context, &(*output_grad_tensor_unbind)[i],
                               dynamic_grad_last_h, dynamic_grad_last_c,
                               dynamic_grad_pre_h, dynamic_grad_pre_c,
                               mask_tensor_list[i]);
+        VLOG(0) << "in mask preprocess after";
       } else {
         this->preprocess(context, &(*output_grad_tensor_unbind)[i],
                          dynamic_grad_last_h);
@@ -1245,7 +1248,8 @@ struct GradLayer {
                   pre_hidden, pre_state, dynamic_grad_last_h,
                   dynamic_grad_last_c, &(*layer_grad_gate_tensor_unbind)[i],
                   weight_grad, dynamic_grad_pre_h, dynamic_grad_pre_c,
-                  &lstm_value, &lstm_grad);
+                  &lstm_value, &lstm_grad, mask_tensor_list[i],
+                  has_sequence_length);
       VLOG(0) << "layer_idx:" << layer_idx << ", layer step 6";
       SwapPoniter(&dynamic_grad_last_h, &dynamic_grad_pre_h);
       SwapPoniter(&dynamic_grad_last_c, &dynamic_grad_pre_c);
@@ -1297,10 +1301,12 @@ struct GradLayer {
     // the output gradient contribute the gradient to last_h
     eigen_grad_last_h.device(place) = eigen_grad_last_h + eigen_grad_output;
   }
+
   void mask_preprocess(const framework::ExecutionContext& context,
                        const Tensor* grad_output, Tensor* grad_last_h,
                        Tensor* grad_last_c, Tensor* grad_pre_h,
                        Tensor* grad_pre_c, const Tensor& mask_tensor) {
+    VLOG(0) << "in mask process step 1";
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     auto eigen_mask = framework::EigenMatrix<T>::From(
@@ -1319,16 +1325,24 @@ struct GradLayer {
     auto eigen_grad_output = framework::EigenMatrix<T>::Reshape(
         *grad_output, grad_output->dims().size() - 1);
 
+    eigen_grad_last_h.device(place) =
+        eigen_grad_last_h + eigen_grad_output * eigen_mask_broadcast;
+
+    VLOG(0) << "in mask process step 3";
     eigen_grad_pre_h.device(place) =
         (1 - eigen_mask_broadcast) * eigen_grad_last_h;
+    Print3DTensor<T>(grad_pre_h, "mask grad_pre_h");
+    Print3DTensor<T>(grad_last_h, "mask grad_last_h");
+    VLOG(0) << "in mask process step 4";
     eigen_grad_pre_c.device(place) =
         (1 - eigen_mask_broadcast) * eigen_grad_last_c;
+    VLOG(0) << "in mask process step 5";
     eigen_grad_last_h.device(place) = eigen_mask_broadcast * eigen_grad_last_h;
     eigen_grad_last_c.device(place) = eigen_mask_broadcast * eigen_grad_last_c;
+    VLOG(0) << "in mask process step 6";
 
     // the output gradient contribute the gradient to last_h
-    eigen_grad_last_h.device(place) =
-        eigen_grad_last_h + eigen_mask_broadcast * eigen_grad_output;
+    VLOG(0) << "in mask process step 7";
   }
 
   void postprocess(const framework::ExecutionContext& context,
@@ -1383,7 +1397,6 @@ struct GradLayer {
     col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 3]));
     VLOG(0) << "in postprocess 3";
   }
-
   GradCellType cell_;
 };
 
@@ -1610,7 +1623,9 @@ struct GradCell {
                           Tensor* grad_weight_hh, Tensor* grad_pre_hidden,
                           Tensor* grad_pre_state,
                           math::LstmMetaValue<T>* lstm_value,
-                          math::LstmMetaGrad<T>* lstm_grad) {}
+                          math::LstmMetaGrad<T>* lstm_grad,
+                          const Tensor& mask_tensor, bool has_sequence_length) {
+  }
 };
 
 template <typename T>
@@ -1622,13 +1637,26 @@ struct LSTMGradCell : GradCell<T> {
                   Tensor* grad_state, Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
                   math::LstmMetaValue<T>* lstm_value,
-                  math::LstmMetaGrad<T>* lstm_grad) {
+                  math::LstmMetaGrad<T>* lstm_grad, const Tensor& mask_tensor,
+                  bool has_sequence_length) {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     size_t frame_size = state_tensor->dims()[2];
     size_t batch_size = state_tensor->dims()[1];
 
+    Tensor grad_pre_hidden_bak;
+    Tensor grad_pre_state_bak;
+    if (has_sequence_length) {
+      grad_pre_hidden_bak.Resize(grad_pre_hidden->dims());
+      grad_pre_hidden_bak.mutable_data<T>(context.GetPlace());
+      framework::TensorCopy(*grad_pre_hidden, device_ctx.GetPlace(), device_ctx,
+                            &grad_pre_hidden_bak);
+      grad_pre_state_bak.Resize(grad_pre_state->dims());
+      grad_pre_state_bak.mutable_data<T>(context.GetPlace());
+      framework::TensorCopy(*grad_pre_state, device_ctx.GetPlace(), device_ctx,
+                            &grad_pre_state_bak);
+    }
     Print3DTensor<T>(state_tensor, "state tensor");
     Print3DTensor<T>(act_state_tensor, "act_state_tensor");
     Print3DTensor<T>(gate_tensor, "gate_tensor");
@@ -1665,6 +1693,33 @@ struct LSTMGradCell : GradCell<T> {
     blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
                 static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
 
+    Print3DTensor<T>(grad_pre_hidden, "cell grad_pre_h before");
+    if (has_sequence_length) {
+      auto& place =
+          *context.template device_context<platform::CPUDeviceContext>()
+               .eigen_device();
+      auto eigen_mask = framework::EigenMatrix<T>::From(
+          mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+      auto eigen_mask_broadcast = eigen_mask.broadcast(
+          Eigen::DSizes<int, 2>(1, grad_hidden->dims()[2]));
+      auto eigen_grad_pre_hidden = framework::EigenMatrix<T>::Reshape(
+          *grad_pre_hidden, grad_pre_hidden->dims().size() - 1);
+      auto eigen_grad_pre_hidden_bak = framework::EigenMatrix<T>::Reshape(
+          grad_pre_hidden_bak, grad_pre_hidden_bak.dims().size() - 1);
+      auto eigen_grad_pre_state = framework::EigenMatrix<T>::Reshape(
+          *grad_pre_state, grad_pre_state->dims().size() - 1);
+      auto eigen_grad_pre_state_bak = framework::EigenMatrix<T>::Reshape(
+          grad_pre_state_bak, grad_pre_state_bak.dims().size() - 1);
+      eigen_grad_pre_hidden.device(place) =
+          (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
+          eigen_grad_pre_hidden * eigen_mask_broadcast;
+      eigen_grad_pre_state.device(place) =
+          (1 - eigen_mask_broadcast) * eigen_grad_pre_state_bak +
+          eigen_grad_pre_state * eigen_mask_broadcast;
+    }
+    Print3DTensor<T>(grad_pre_hidden, "cell grad_pre_h");
+    Print3DTensor<T>(grad_hidden, "cell grad_hidden");
+
     VLOG(0) << "first blas";
     auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
     mat_dim_c.height_ *= mat_dim_c.batch_size_;
@@ -1674,7 +1729,6 @@ struct LSTMGradCell : GradCell<T> {
     mat_dim_d.batch_size_ = 0;
     blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
                 static_cast<T>(1.0), grad_weight_hh, T(1.0));
-    VLOG(0) << "second blas";
   }
 };
 
