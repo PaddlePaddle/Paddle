@@ -24,10 +24,10 @@ class TestBroadcastShape(unittest.TestCase):
 
         shape = paddle.broadcast_shape(
             [-1, 1, 3], [1, 3, 1])  #support compile time infershape
-        self.assertEqual(shape, [-1, 3, 4])
+        self.assertEqual(shape, [-1, 3, 3])
 
     def test_error(self):
-        self.assertRaises(RuntimeError, paddle.broadcast_shape, [2, 1, 3],
+        self.assertRaises(ValueError, paddle.broadcast_shape, [2, 1, 3],
                           [3, 3, 1])
 
 
