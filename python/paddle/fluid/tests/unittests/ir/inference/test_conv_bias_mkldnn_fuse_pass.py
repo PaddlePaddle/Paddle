@@ -48,14 +48,12 @@ class ConvBiasMkldnnFusePassSamePadTest(InferencePassTest):
     def test_check_output(self):
         use_gpu = False
         self.check_output_with_option(use_gpu)
-
-    def test_pass_compatible(self):
         self.assertTrue(
             PassVersionChecker.IsCompatible("conv_bias_mkldnn_fuse_pass"))
 
 
 #padding VALID
-class ConvBiasMkldnnFusePassValidPadTest(InferencePassTest):
+class ConvBiasMkldnnFusePassValidPadTest(ConvBiasMkldnnFusePassSamePadTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -76,17 +74,9 @@ class ConvBiasMkldnnFusePassValidPadTest(InferencePassTest):
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
-
-    def test_pass_compatible(self):
-        self.assertTrue(
-            PassVersionChecker.IsCompatible("conv_bias_mkldnn_fuse_pass"))
-
 
 #padding EXPLICT NUMBER
-class ConvBiasMkldnnFusePassExplictPadTest(InferencePassTest):
+class ConvBiasMkldnnFusePassExplictPadTest(ConvBiasMkldnnFusePassSamePadTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -107,16 +97,8 @@ class ConvBiasMkldnnFusePassExplictPadTest(InferencePassTest):
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
 
-    def test_pass_compatible(self):
-        self.assertTrue(
-            PassVersionChecker.IsCompatible("conv_bias_mkldnn_fuse_pass"))
-
-
-class ConvBiasMkldnnFusePassGroupTest(InferencePassTest):
+class ConvBiasMkldnnFusePassGroupTest(ConvBiasMkldnnFusePassSamePadTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -141,16 +123,9 @@ class ConvBiasMkldnnFusePassGroupTest(InferencePassTest):
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
 
-    def test_pass_compatible(self):
-        self.assertTrue(
-            PassVersionChecker.IsCompatible("conv_bias_mkldnn_fuse_pass"))
-
-
-class ConvBiasMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
+class ConvBiasMkldnnFusePassDialtionsGroupsTest(
+        ConvBiasMkldnnFusePassSamePadTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
@@ -176,14 +151,6 @@ class ConvBiasMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
 
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
-
-    def test_pass_compatible(self):
-        self.assertTrue(
-            PassVersionChecker.IsCompatible("conv_bias_mkldnn_fuse_pass"))
-
 
 class ConvTransposeMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
     def setUp(self):
@@ -208,8 +175,6 @@ class ConvTransposeMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
     def test_check_output(self):
         use_gpu = False
         self.check_output_with_option(use_gpu)
-
-    def test_pass_compatible(self):
         self.assertTrue(
             PassVersionChecker.IsCompatible(
                 "conv_transpose_bias_mkldnn_fuse_pass"))
