@@ -2147,6 +2147,11 @@ def broadcast_shape(x_shape, y_shape):
     Returns:
         list[int], the result shape.
 
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
             shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
             # [2, 3, 3]
             shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
