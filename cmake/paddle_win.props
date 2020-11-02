@@ -15,11 +15,11 @@
             <Warning>InheritFromHost</Warning>
 
             <BaseCommandLineTemplate>-ccbin "%(VCBinDir)" -x cu [GenerateRelocatableDeviceCode] [Include] [RequiredIncludes] [InterleaveSourceInPTX] [GPUDebugInfo] [GenerateLineInfo] [Keep] [KeepDir] [MaxRegCount] [PtxAsOptionV] [TargetMachinePlatform] [NvccCompilation] [CudaRuntime] [AdditionalOptions]</BaseCommandLineTemplate>
-            <BuildCommandLineTemplate>--use-local-env</BuildCommandLineTemplate>
+            <BuildCommandLineTemplate>--use-local-env --cl-version $(CudaClVersion)</BuildCommandLineTemplate>
             <BuildDynamicCommandLineTemplate>[CodeGeneration]</BuildDynamicCommandLineTemplate>
             <CleanCommandLineTemplate>-clean</CleanCommandLineTemplate>
-            <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [ProgramDataBaseFileName] $(CudaForceSynchronousPdbWrites) /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
-            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [ProgramDataBaseFileName] $(CudaForceSynchronousPdbWrites) [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
+            <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] $(CudaForceSynchronousPdbWrites) /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
+            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] $(CudaForceSynchronousPdbWrites) [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
 
             <DriverApiCommandLineTemplate>%(BaseCommandLineTemplate) [CompileOut] "%(FullPath)"</DriverApiCommandLineTemplate>
             <RuntimeApiCommandLineTemplate>%(BaseCommandLineTemplate) [HostDebugInfo] [Emulation] [FastMath] [Defines] %(HostCommandLineTemplate) [CompileOut] "%(FullPath)"</RuntimeApiCommandLineTemplate>

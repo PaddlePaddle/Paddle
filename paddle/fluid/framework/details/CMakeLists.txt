@@ -107,7 +107,7 @@ cc_test(exception_holder_test SRCS exception_holder_test.cc )
 
 set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     multi_devices_graph_print_pass multi_devices_graph_check_pass
-    fuse_elewise_add_act_pass fuse_bn_act_pass 
+    fuse_elewise_add_act_pass fuse_bn_act_pass fuse_bn_add_act_pass 
     multi_batch_merge_pass 
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass

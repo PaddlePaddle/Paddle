@@ -98,6 +98,13 @@ else(WIN32)
 endif(WIN32)
 
 find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+    set(GIT_URL "https://github.com")
+endif()
+
 find_package(Threads REQUIRED)
 
 include(simd)

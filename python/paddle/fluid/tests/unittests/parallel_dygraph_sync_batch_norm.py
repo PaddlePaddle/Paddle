@@ -63,10 +63,7 @@ class TestLayer(fluid.dygraph.Layer):
             bias_attr=False)
 
         self._sync_batch_norm2 = SyncBatchNorm(
-            num_filters,
-            weight_attr=False,
-            bias_attr=False,
-            track_running_stats=False)
+            num_filters, weight_attr=False, bias_attr=False)
 
     def forward(self, inputs):
         y = self._conv(inputs)

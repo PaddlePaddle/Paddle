@@ -261,7 +261,7 @@ class StaticGraphAdapter(object):
         self.mode = 'eval'
         return self._run(inputs, labels)
 
-    def test_batch(self, inputs):
+    def predict_batch(self, inputs):
         self.mode = 'test'
         return self._run(inputs, None)
 
@@ -454,7 +454,8 @@ class StaticGraphAdapter(object):
                 rets.insert(i, feed[name])
 
         # step learning rate scheduler on each batch end
-        if self.model._optimizer and \
+        if self.model._optimizer and self.mode == 'train' and \
+                hasattr(self.model._optimizer, '_learning_rate') and \
                 isinstance(self.model._optimizer._learning_rate,
                            paddle.optimizer.lr.LRScheduler):
             self.model._optimizer._learning_rate.step()
@@ -723,7 +724,7 @@ class DynamicGraphAdapter(object):
         else:
             return metrics
 
-    def test_batch(self, inputs):
+    def predict_batch(self, inputs):
         self.model.network.eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
@@ -836,6 +837,7 @@ class Model(object):
 
         import paddle
         import paddle.nn as nn
+        import paddle.vision.transforms as T
         from paddle.static import InputSpec
 
         device = paddle.set_device('cpu') # or 'gpu'
@@ -857,7 +859,11 @@ class Model(object):
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
         
-        data = paddle.vision.datasets.MNIST(mode='train')
+        transform = T.Compose([
+            T.Transpose(),
+            T.Normalize([127.5], [127.5])
+        ])
+        data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
         model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
@@ -894,10 +900,13 @@ class Model(object):
         Run one training step on a batch of data.
 
         Args:
-            inputs (list): A list of numpy.ndarray, each is a batch of
-                input data.
-            labels (list): A list of numpy.ndarray, each is a batch of
-                input label. If has no labels, set None. Default is None.
+            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
+                be a numpy array or paddle.Tensor, or a list of arrays or 
+                tensors (in case the model has multiple inputs).
+            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be 
+                a numpy array or paddle.Tensor, or a list of arrays or tensors 
+                (in case the model has multiple labels). If has no labels, 
+                set None. Default is None.
 
         Returns:
             A list of scalar training loss if the model has no metrics,
@@ -941,10 +950,13 @@ class Model(object):
         Run one evaluating step on a batch of data.
 
         Args:
-            inputs (list): A list of numpy.ndarray, each is a batch of
-                input data.
-            labels (list): A list of numpy.ndarray, each is a batch of
-                input label. If has no labels, set None. Default is None.
+            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
+                be a numpy array or paddle.Tensor, or a list of arrays or 
+                tensors (in case the model has multiple inputs).
+            labels (numpy.ndarray|Tensor|list): Batch of labels. It could be 
+                a numpy array or paddle.Tensor, or a list of arrays or tensors 
+                (in case the model has multiple labels). If has no labels, 
+                set None. Default is None.
 
         Returns:
             A list of scalar testing loss if the model has no metrics,
@@ -984,13 +996,14 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    def test_batch(self, inputs):
+    def predict_batch(self, inputs):
         """
-        Run one testing step on a batch of data.
+        Run one predicting step on a batch of data.
 
         Args:
-            inputs (list): A list of numpy.ndarray, each is a batch of
-                input data.
+            inputs (numpy.ndarray|Tensor|list): Batch of input data. It could 
+                be a numpy array or paddle.Tensor, or a list of arrays or 
+                tensors (in case the model has multiple inputs).
 
         Returns:
             A list of numpy.ndarray of predictions, that is the outputs
@@ -1019,10 +1032,10 @@ class Model(object):
               model = paddle.Model(net, input, label)
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
-              out = model.test_batch([data])
+              out = model.predict_batch([data])
               print(out)
         """
-        loss = self._adapter.test_batch(inputs)
+        loss = self._adapter.predict_batch(inputs)
         if fluid.in_dygraph_mode() and self._input_shapes is None:
             self._update_inputs()
         return loss
@@ -1059,6 +1072,7 @@ class Model(object):
 
                 import paddle
                 import paddle.nn as nn
+                import paddle.vision.transforms as T
                 from paddle.static import InputSpec
 
                 class Mnist(nn.Layer):
@@ -1085,7 +1099,13 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                data = paddle.vision.datasets.MNIST(mode='train')
+                
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+                
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
@@ -1345,14 +1365,19 @@ class Model(object):
             .. code-block:: python
 
               import paddle
+              import paddle.vision.transforms as T
               from paddle.static import InputSpec
 
               dynamic = True
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device) if dynamic else None
-           
-              train_dataset = paddle.vision.datasets.MNIST(mode='train')
-              val_dataset = paddle.vision.datasets.MNIST(mode='test')
+              
+              transform = T.Compose([
+                  T.Transpose(),
+                  T.Normalize([127.5], [127.5])
+              ])
+              train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+              val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
@@ -1378,16 +1403,21 @@ class Model(object):
             .. code-block:: python
 
               import paddle
+              import paddle.vision.transforms as T
               from paddle.static import InputSpec
 
               dynamic = True
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device) if dynamic else None
-           
-              train_dataset = paddle.vision.datasets.MNIST(mode='train')
+              
+              transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+              train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
               train_loader = paddle.io.DataLoader(train_dataset,
                   places=device, batch_size=64)
-              val_dataset = paddle.vision.datasets.MNIST(mode='test')
+              val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
               val_loader = paddle.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
@@ -1514,10 +1544,15 @@ class Model(object):
         .. code-block:: python
 
             import paddle
+            import paddle.vision.transforms as T
             from paddle.static import InputSpec
 
             # declarative mode
-            val_dataset = paddle.vision.datasets.MNIST(mode='test')
+            transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+            val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             label = InputSpec([None, 1], 'int64', 'label')
@@ -1847,10 +1882,9 @@ class Model(object):
                     logs[k] = v
             else:
                 if self._inputs is not None:
-                    outs = getattr(self,
-                                   mode + '_batch')(data[:len(self._inputs)])
+                    outs = self.predict_batch(data[:len(self._inputs)])
                 else:
-                    outs = getattr(self, mode + '_batch')(data)
+                    outs = self.predict_batch(data)
 
                 outputs.append(outs)
 

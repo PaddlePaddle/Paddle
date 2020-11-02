@@ -188,7 +188,6 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     std::string act_type = ctx.Attr<std::string>("act_type");
 
     const auto *x = ctx.Input<Tensor>("X");
-    const auto *z = ctx.Input<Tensor>("Z");
     const auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");

@@ -17,10 +17,11 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
-SETLOCAL
+setlocal
 
 rem -------clean up environment-----------
 set work_dir=%cd%
+set cache_dir=%work_dir:Paddle=cache%
 taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
 
@@ -36,9 +37,9 @@ if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
-if not defined WITH_CACHE set WITH_CACHE=ON
+if not defined WITH_CACHE set WITH_CACHE=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
-
+set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 rem -------set cache build work directory-----------
 rmdir build\python /s/q
@@ -47,16 +48,42 @@ if "%WITH_CACHE%"=="OFF" (
     goto :mkbuild
 )
 
+set error_code=0
+type %cache_dir%\error_code.txt
+set /p error_code=< %cache_dir%\error_code.txt
+if %error_code% NEQ 0 (
+    rmdir build /s/q
+    goto :mkbuild
+)
+
+setlocal enabledelayedexpansion
+git show-ref --verify --quiet refs/heads/last_pr
+if %ERRORLEVEL% EQU 0 (
+    git diff HEAD last_pr --stat --name-only
+    git diff HEAD last_pr --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+    if !ERRORLEVEL! EQU 0 (
+        rmdir build /s/q
+    )
+    git branch -D last_pr
+    git branch last_pr
+) else (
+    rmdir build /s/q
+    git branch last_pr
+)
+
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 set day_now=%datetime:~6,2%
 set day_before=-1
-set /p day_before=< %work_dir%\..\day.txt
+set /p day_before=< %cache_dir%\day.txt
 if %day_now% NEQ %day_before% (
-    echo %day_now% > %work_dir%\..\day.txt
-    type %work_dir%\..\day.txt
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
     rmdir build /s/q
+    goto :mkbuild
 )
-git diff origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+
+git diff HEAD origin/develop --stat --name-only
+git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
 if %ERRORLEVEL% EQU 0 (
     rmdir build /s/q
 )
@@ -67,6 +94,7 @@ if not exist build (
 )
 cd /d build
 dir .
+dir %cache_dir%
 dir paddle\fluid\pybind\Release
 
 rem ------initialize the python environment------
@@ -107,10 +135,6 @@ clcache.exe -M 21474836480
 
 
 rem ------set cache third_party------
-set cache_dir=%work_dir:Paddle=cache%
-dir %cache_dir%
-set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
-
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
 )
@@ -194,7 +218,8 @@ cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH
 goto:eof
 
 :cmake_error
-call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo 7 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Cmake failed, will exit!
 exit /b 7
 
@@ -239,7 +264,8 @@ echo Build Paddle successfully!
 goto:eof
 
 :build_error
-call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo 7 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Build Paddle failed, will exit!
 exit /b 7
 
@@ -257,6 +283,7 @@ call :timestamp "%start%" "%end%" "Build"
 tree /F %cd%\paddle_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
+@ECHO OFF
 for /F %%i in ("%libsize%") do (
     set /a libsize_m=%%i/1024
     echo "Windows Paddle_Inference Size: !libsize_m!M"
@@ -267,6 +294,7 @@ for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
+@ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install -U %PADDLE_WHL_FILE_WIN% --user
@@ -280,7 +308,8 @@ python %work_dir%\paddle\scripts\installation_validate.py
 goto:eof
 
 :test_whl_pacakage_error
-call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo 1 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Test import paddle failed, will exit!
 exit /b 1
 
@@ -315,7 +344,8 @@ ctest.exe -E "(%disable_ut_quickly%)" --output-on-failure -C Release -j 8 --repe
 goto:eof
 
 :unit_test_error
-call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo 8 > %cache_dir%\
+type %cache_dir%\error_code.txt
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "1 card TestCases Total"
@@ -339,7 +369,8 @@ cd %work_dir%\paddle\fluid\inference\api\demo_ci
 goto:eof
 
 :test_inference_error
-call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo 1 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Testing fluid library for inference failed!
 exit /b 1
 
@@ -349,8 +380,10 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
+@ECHO OFF
 cd /d %work_dir%\build
-echo set -ex>  check_change_of_unittest.sh
+echo set -e>  check_change_of_unittest.sh
+echo set +x>> check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
 echo GIT_PR_ID=%AGILE_PULL_ID% >>  check_change_of_unittest.sh
 echo BRANCH=%BRANCH%>>  check_change_of_unittest.sh
@@ -395,7 +428,6 @@ echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST
 echo if [ "$unittest_spec_diff" != "" ]; then>>  check_change_of_unittest.sh
 echo     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420>>  check_change_of_unittest.sh
 echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
-echo     set +x>>  check_change_of_unittest.sh
 echo     if [ "$approval_line" != "" ]; then>>  check_change_of_unittest.sh
 echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
 echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
@@ -418,12 +450,12 @@ echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
-call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo 1 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 exit /b 1
 
 
 :timestamp
-echo on
 setlocal enabledelayedexpansion
 set start=%~1
 set dd=%start:~2,2%
@@ -476,7 +508,8 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-taskkill /f /im python.exe  2>NUL
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 

@@ -40,10 +40,10 @@ class TestPretrainedModel(unittest.TestCase):
 
             if dygraph:
                 model.save(path)
-                res['dygraph'] = model.test_batch(x)
+                res['dygraph'] = model.predict_batch(x)
             else:
                 model.load(path)
-                res['static'] = model.test_batch(x)
+                res['static'] = model.predict_batch(x)
 
             if not dygraph:
                 paddle.disable_static()
