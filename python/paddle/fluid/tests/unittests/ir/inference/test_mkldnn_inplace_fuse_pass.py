@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
@@ -26,6 +27,7 @@ from paddle.fluid.core import PassVersionChecker
 class MkldnnInplacePassTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+            paddle.enable_static()
             data = fluid.data(
                 name="data", shape=[-1, 3, 100, 100], dtype="float32")
             conv_out = fluid.layers.conv2d(
