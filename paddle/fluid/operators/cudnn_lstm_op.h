@@ -37,6 +37,8 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using TensorList = std::vector<framework::Tensor>;
 
+double total_time = 0.0;
+
 template <typename T>
 void Print2DTensor(const Tensor* a, std::string name) {
   const int& heigth = a->dims()[0];
@@ -286,7 +288,8 @@ struct Cell {
                           Tensor* output) {}
 };
 
-template <typename T, template <typename> class ActivationFunctor>
+template <typename T, template <typename> class EigenActivationFunctor,
+          math::detail::ActivationType act_type>
 struct SimpleRNNCell : Cell<T> {
   void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
                   const Tensor* weight_hh, const Tensor* init_h,
@@ -300,22 +303,43 @@ struct SimpleRNNCell : Cell<T> {
     // convert the batch matmul to matmul, this operator could be speed faster
     blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
                 input, static_cast<T>(1.0));
-    size_t frame_size = init_h->dims()[2];
-    size_t batch_size = init_h->dims()[1];
+//    size_t frame_size = init_h->dims()[2];
 
-    if (!(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
-      // run avx
-      return;
-    }
+#ifdef __AVX__
+//    if (!(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
+//      // run avx
+//      VLOG(0) << "run avx";
+//      auto start = system_clock::now();
+//      __m256* z = reinterpret_cast<__m256*>(input->data<T>());
+//      __m256* hidden = reinterpret_cast<__m256*>(last_h->data<T>());
+//      int num = input->numel();
+//      for(int i = 0; i < num / 8; ++i) {
+//        hidden[i] = math::detail::forward::activation(z[i], act_type);
+//      }
+//      auto end = system_clock::now();
+//      auto duration = duration_cast<microseconds>(end - start);
+//      total_time += double(duration.count()) * microseconds::period::num /
+//      microseconds::period::den;
+//      framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx,
+//      output);
+//      return;
+//    }
+#endif
+    //    VLOG(0) << "run eigen";
     // activate
+    //    auto start = system_clock::now();
     auto z = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(input, "Input", "z", "Activation"));
     auto hidden = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(last_h, "Input", "hidden", "Activation"));
 
     auto* place = device_ctx->eigen_device();
-    ActivationFunctor<T> functor;
+    EigenActivationFunctor<T> functor;
     functor(*place, z, hidden);
+    //    auto end = system_clock::now();
+    //    auto duration = duration_cast<microseconds>(end - start);
+    //    total_time += double(duration.count()) * microseconds::period::num /
+    //                  microseconds::period::den;
     framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx, output);
   }
 };
@@ -856,7 +880,6 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
 
   Tensor curr_gate_data, curr_cell_data, curr_cell_act_data;
   Tensor curr_hidden_data, prev_hidden_data;
-
   for (int i = 0; i < num_layers; i++) {
     if (!is_test) {
       if (cell_data.numel() > 0) /** for lstm, gru **/ {
@@ -912,6 +935,8 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              output_holder, i, gate_num, &curr_gate_data, &curr_cell_data,
              &curr_cell_act_data, is_test);
   }
+  VLOG(0) << "Spend " << total_time * 1000 << " ms";
+  total_time = 0;
   if (num_layers % 2 == 0) {
     // the final result is in output_holder, must copy the data to output
     framework::TensorCopy(
@@ -972,7 +997,9 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
       // run rnn
       last_c = nullptr;
       init_c = nullptr;
-      RnnFunc<SimpleRNNCell<T, ReluFunctor>, Layer, SingleLayer, BidirLayer, T>(
+      RnnFunc<
+          SimpleRNNCell<T, ReluFunctor, math::detail::ActivationType::kReLU>,
+          Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
           last_c, output, dropout_mask, num_layers, gate_num, input_size,
           hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
@@ -981,7 +1008,9 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
       gate_num = 0;
       last_c = nullptr;
       init_c = nullptr;
-      RnnFunc<SimpleRNNCell<T, TanhFunctor>, Layer, SingleLayer, BidirLayer, T>(
+      RnnFunc<
+          SimpleRNNCell<T, TanhFunctor, math::detail::ActivationType::kTanhV2>,
+          Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
           last_c, output, dropout_mask, num_layers, gate_num, input_size,
           hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
