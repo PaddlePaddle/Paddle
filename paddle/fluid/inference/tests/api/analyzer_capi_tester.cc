@@ -90,8 +90,6 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
   EXPECT_TRUE(quantizer_enable);
   PD_EnableMkldnnBfloat16(config);
-  bool bfloat16_enable = PD_MkldnnBfloat16Enabled(config);
-  EXPECT_TRUE(bfloat16_enable);
   PD_SetMkldnnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -ex
-SYSTEM=`uname -s`
+SYSTEM="$(uname -s)"
 rm -f protoc-3.11.3-linux-x86_64.*
 if [ "$SYSTEM" == "Linux" ]; then
     wget --no-check-certificate https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protoc-3.11.3-linux-x86_64.zip
@@ -28,5 +28,5 @@ if [ "$1" != "" ]; then
     fi
 fi
 
-python spider.py --version=$version --url=$url
+python spider.py --version=$version --url="$url"
 tar czf cudaErrorMessage.tar.gz cudaErrorMessage.pb

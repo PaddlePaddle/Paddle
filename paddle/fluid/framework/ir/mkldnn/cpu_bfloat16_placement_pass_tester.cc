@@ -40,6 +40,10 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("X", {inputs[0], inputs[1]});
   } else if (type == "pool2d") {
     op->SetInput("X", {inputs[0]});
+  } else if (type == "transpose2") {
+    op->SetInput("X", {inputs[0]});
+  } else if (type == "reshape2") {
+    op->SetInput("X", {inputs[0]});
   } else {
     FAIL() << "Unexpected operator type.";
   }
@@ -57,8 +61,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
 
-  for (auto& v :
-       std::vector<std::string>({"a", "b", "c", "f", "g", "h", "k", "l"})) {
+  for (auto& v : std::vector<std::string>(
+           {"a", "b", "c", "f", "g", "h", "k", "l", "m", "n", "o", "p"})) {
     prog.MutableBlock(0)->Var(v);
   }
 
@@ -68,6 +72,9 @@ ProgramDesc BuildProgramDesc() {
   SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"});
   SetOp(&prog, "conv2d", "conv2", {"h"}, {"k"});
   SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"});
+  SetOp(&prog, "concat", "concat2", {"l", "m"}, {"n"});
+  SetOp(&prog, "transpose2", "transpose", {"n"}, {"o"});
+  SetOp(&prog, "reshape2", "reshape", {"o"}, {"p"});
 
   return prog;
 }
@@ -115,7 +122,7 @@ void DefaultAttrTest(unsigned expected_bfloat16_data_type_count) {
 }
 
 TEST(Bfloat16PlacementPass, enable_all) {
-  MainTest({"conv2d", "pool2d", "relu", "concat"}, 6);
+  MainTest({"conv2d", "pool2d", "relu", "concat"}, 7);
 }
 
 TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
@@ -123,7 +130,7 @@ TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
   MainTest({"conv2d", "pool2d"}, 3);
 }
 
-TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(0); }
+TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(5); }
 
 }  // namespace ir
 }  // namespace framework

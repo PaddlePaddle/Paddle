@@ -47,23 +47,36 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self.assertTrue(np.allclose(self.calc(x, y, "mul", place), x * y))
             self.assertTrue(np.allclose(self.calc(x, y, "div", place), x / y))
 
+    def compare_op(self, x, y):
+        for place in self._places:
+            with dg.guard(place):
+                var_x = dg.to_variable(x)
+                var_y = dg.to_variable(y)
+                self.assertTrue(var_x + var_y, x + y)
+                self.assertTrue(var_x - var_y, x - y)
+                self.assertTrue(var_x * var_y, x * y)
+                self.assertTrue(var_x / var_y, x / y)
+
     def test_complex_xy(self):
         x = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
             [2, 3, 4, 5]).astype(self._dtype)
         y = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
             [2, 3, 4, 5]).astype(self._dtype)
         self.compare(x, y)
+        self.compare_op(x, y)
 
     def test_complex_x_real_y(self):
         x = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
             [2, 3, 4, 5]).astype(self._dtype)
         y = rand([4, 5]).astype(self._dtype)
         self.compare(x, y)
+        self.compare_op(x, y)
 
     def test_real_x_complex_y(self):
         x = rand([2, 3, 4, 5]).astype(self._dtype)
         y = rand([5]).astype(self._dtype) + 1j * rand([5]).astype(self._dtype)
         self.compare(x, y)
+        self.compare_op(x, y)
 
 
 if __name__ == '__main__':

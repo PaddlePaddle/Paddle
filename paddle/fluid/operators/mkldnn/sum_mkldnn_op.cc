@@ -80,8 +80,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto& input0 = in_vars[0]->Get<LoDTensor>();
     in_place = (input0.numel() > 0) && (input0.data<T>() == output_data);
 
-    MKLDNNMemoryFormat input_format = input0.format();
-
     for (size_t i = 0; i < in_vars.size(); i++) {
       auto& input_it = in_vars[i]->Get<LoDTensor>();
       if (input_it.numel() == 0) {
@@ -89,6 +87,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       const T* input_data = input_it.data<T>();
+      MKLDNNMemoryFormat input_format = input_it.format();
 
       auto src_md = memory::desc(src_tz, memory::data_type::f32, input_format);
       auto src_mem = memory(src_md, mkldnn_engine, to_void_cast(input_data));
@@ -115,7 +114,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::reorder> reorder_p;
     std::shared_ptr<memory> target_mem;
     if (in_place) {
-      output_format = input_format;
+      output_format = input0.format();
       target_mem.reset(
           new memory({{src_tz}, memory::data_type::f32, output_format},
                      mkldnn_engine, output_data));
