@@ -135,6 +135,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
       auto allocation = allocator.Allocate(allocate_size);
       ASSERT_TRUE(false);
       allocation.reset();
+      allocator.Release(p);
     } catch (BadAlloc &ex) {
       ASSERT_TRUE(std::string(ex.what()).find("Cannot allocate") !=
                   std::string::npos);
