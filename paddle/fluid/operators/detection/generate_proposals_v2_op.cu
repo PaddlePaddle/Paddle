@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ using LoDTensor = framework::LoDTensor;
 namespace {
 template <typename T>
 static std::pair<Tensor, Tensor> ProposalForOneImage(
-    const platform::CUDADeviceContext &ctx, const Tensor &im_info,
+    const platform::CUDADeviceContext &ctx, const Tensor &im_shape,
     const Tensor &anchors, const Tensor &variances,
     const Tensor &bbox_deltas,  // [M, 4]
     const Tensor &scores,       // [N, 1]
@@ -54,7 +54,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{
         anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
-        index_sort.data<int>(), im_info.data<T>(), proposals.data<T>()});
+        index_sort.data<int>(), im_shape.data<T>(), proposals.data<T>()});
   }
 
   // 3. filter
@@ -64,8 +64,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   min_size = std::max(min_size, 1.0f);
   auto stream = ctx.stream();
   FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
-      proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
-      keep_num_t.data<int>(), keep_index.data<int>());
+      proposals.data<T>(), im_shape.data<T>(), min_size, pre_nms_num,
+      keep_num_t.data<int>(), keep_index.data<int>(), false);
   int keep_num;
   const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
@@ -110,12 +110,12 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
 }  // namespace
 
 template <typename DeviceContext, typename T>
-class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
+class CUDAGenerateProposalsV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
-    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto *im_shape = context.Input<Tensor>("ImShape");
     auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
                                    "Anchors", "GenerateProposals");
     auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
@@ -177,7 +177,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     std::vector<int> tmp_num;
 
     for (int64_t i = 0; i < num; ++i) {
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
+      Tensor im_shape_slice = im_shape->Slice(i, i + 1);
       Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
       Tensor scores_slice = scores_swap.Slice(i, i + 1);
 
@@ -185,7 +185,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
       std::pair<Tensor, Tensor> box_score_pair =
-          ProposalForOneImage<T>(dev_ctx, im_info_slice, anchors, variances,
+          ProposalForOneImage<T>(dev_ctx, im_shape_slice, anchors, variances,
                                  bbox_deltas_slice, scores_slice, pre_nms_top_n,
                                  post_nms_top_n, nms_thresh, min_size, eta);
 
@@ -224,6 +224,6 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(generate_proposals,
-                        ops::CUDAGenerateProposalsKernel<
+REGISTER_OP_CUDA_KERNEL(generate_proposals_v2,
+                        ops::CUDAGenerateProposalsV2Kernel<
                             paddle::platform::CUDADeviceContext, float>);
