@@ -757,7 +757,6 @@ struct BidirLayer : public Layer<T, CellType> {
   }
 };
 
-// TODO(zhoushunjie)
 inline void SplitReserveData(Tensor* reserve_data, Tensor* gate_data,
                              Tensor* cell_data, Tensor* cell_act_data,
                              Tensor* hidden_data, int direction_num,
@@ -1528,6 +1527,53 @@ struct GradCell {
                           math::LstmMetaGrad<T>* lstm_grad) {}
 };
 
+template <typename T, template <typename> class EigenActivationBackwardFunctor>
+struct SimpleRNNGradCell : GradCell<T> {
+  void operator()(const framework::ExecutionContext& context,
+                  Tensor* gate_tensor, Tensor* state_tensor,
+                  Tensor* act_state_tensor, const Tensor* weight_hh,
+                  Tensor* pre_hidden, Tensor* pre_state, Tensor* grad_hidden,
+                  Tensor* grad_state, Tensor* grad_gate, Tensor* grad_weight_hh,
+                  Tensor* grad_pre_hidden, Tensor* grad_pre_state,
+                  math::LstmMetaValue<T>* lstm_value,
+                  math::LstmMetaGrad<T>* lstm_grad) {
+    auto& device_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    // update dz
+    auto dz = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(grad_gate, "Output", "dz", "Grad"));
+    auto dh = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(grad_hidden, "Input", "dh", "Grad"));
+    auto h = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(gate_tensor, "Input", "h", "Value"));
+    // useless, but need this argument to execute functor
+    auto z = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(gate_tensor, "Input", "z", "Value"));
+
+    auto* place = device_ctx.eigen_device();
+    EigenActivationBackwardFunctor<T> functor;
+    functor(*place, z, dh, h, dz);
+
+    // update grad_weight_hh, grad_pre_hidden
+    auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, false);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
+                static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
+
+    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    mat_dim_c.height_ *= mat_dim_c.batch_size_;
+    mat_dim_c.batch_size_ = 0;
+    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+    mat_dim_d.height_ *= mat_dim_d.batch_size_;
+    mat_dim_d.batch_size_ = 0;
+    blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
+                static_cast<T>(1.0), grad_weight_hh, static_cast<T>(1.0));
+  }
+};
+
 template <typename T>
 struct LSTMGradCell : GradCell<T> {
   void operator()(const framework::ExecutionContext& context,
@@ -1811,6 +1857,20 @@ class CudnnLSTMCPUGradKernel : public framework::OpKernel<T> {
     if (cell_type == "lstm") {
       RnnGradFunc<LSTMGradCell<T>, SingleGradLayer, BidirGradLayer, T>(
           ctx, gate_num, cell_num);
+    } else if (cell_type == "gru") {
+      gate_num = 3;
+      // run gru
+    } else if (cell_type == "rnn_relu") {
+      gate_num = 0;
+      cell_num = 0;
+      RnnGradFunc<SimpleRNNGradCell<T, ReluGradFunctor>, SingleGradLayer,
+                  BidirGradLayer, T>(ctx, gate_num, cell_num);
+      // run rnn
+    } else if (cell_type == "rnn_tanh") {
+      gate_num = 0;
+      cell_num = 0;
+      RnnGradFunc<SimpleRNNGradCell<T, ReluGradFunctor>, SingleGradLayer,
+                  BidirGradLayer, T>(ctx, gate_num, cell_num);
     }
   }
 };
