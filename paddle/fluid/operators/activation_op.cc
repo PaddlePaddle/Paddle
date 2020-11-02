@@ -304,7 +304,7 @@ Natural logarithm of x.
 UNUSED constexpr char Log2Doc[] = R"DOC(
 Log2 Activation Operator.
 
-$$out = \ln(x)$$
+$$out = \log_2x$$
 
 logarithm of x base to 2.
 
