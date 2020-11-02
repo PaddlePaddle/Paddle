@@ -33,7 +33,7 @@ using OpAttrVariantT =
     boost::variant<bool,                    /* AttrType::BOOL */
                    float,                   /* AttrType::FLOAT */
                    int32_t,                 /* AttrType::INT */
-                   int64_t,                 /* AttrType::LONGS */
+                   int64_t,                 /* AttrType::LONG*/
                    std::string,             /* AttrType::STRING */
                    std::vector<bool>,       /* AttrType::BOOLS */
                    std::vector<float>,      /* AttrType::FLOATS */
