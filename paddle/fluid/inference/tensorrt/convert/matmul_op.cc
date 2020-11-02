@@ -53,7 +53,7 @@ class MatMulOpConverter : public OpConverter {
     if (fabs(alpha - 1.0) < std::numeric_limits<float>::epsilon()) {
       engine_->SetITensor(output_name, layer->getOutput(0));
     } else {
-      auto create_weights = [&](float data, std::string type) -> float* {
+      auto create_weights = [&](float data, const std::string &type) -> float* {
         std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
         tmp_tensor->Resize({1});
         auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
