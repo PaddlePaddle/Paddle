@@ -178,6 +178,9 @@ class OpVersionRegistrar {
   const std::unordered_map<std::string, OpVersion>& GetVersionMap() {
     return op_version_map_;
   }
+  bool Has(const std::string& op_type) const {
+    return op_version_map_.count(op_type);
+  }
   uint32_t version_id(const std::string& op_type) const;
 
  private:
@@ -202,21 +205,24 @@ class OpVersionComparator {
   virtual ~OpVersionComparator() = default;
 };
 
-#define ADD_OP_VERSION_COMPARATOR(cmp_name, cmp_math)                   \
-  class OpVersion##cmp_name##Comparator : public OpVersionComparator {  \
-   public:                                                              \
-    explicit OpVersion##cmp_name##Comparator(const std::string op_name, \
-                                             uint32_t target_version)   \
-        : op_name_(op_name), target_version_(target_version) {}         \
-    virtual bool operator()() {                                         \
-      return OpVersionRegistrar::GetInstance().version_id(op_name_)     \
-          cmp_math target_version_;                                     \
-    }                                                                   \
-    virtual ~OpVersion##cmp_name##Comparator() {}                       \
-                                                                        \
-   private:                                                             \
-    std::string op_name_;                                               \
-    uint32_t target_version_;                                           \
+#define ADD_OP_VERSION_COMPARATOR(cmp_name, cmp_math)                        \
+  class OpVersion##cmp_name##Comparator : public OpVersionComparator {       \
+   public:                                                                   \
+    explicit OpVersion##cmp_name##Comparator(const std::string op_name,      \
+                                             uint32_t target_version)        \
+        : op_name_(op_name), target_version_(target_version) {}              \
+    virtual bool operator()() {                                              \
+      uint32_t version_id = 0;                                               \
+      if (OpVersionRegistrar::GetInstance().Has(op_name_)) {                 \
+        version_id = OpVersionRegistrar::GetInstance().version_id(op_name_); \
+      }                                                                      \
+      return version_id cmp_math target_version_;                            \
+    }                                                                        \
+    virtual ~OpVersion##cmp_name##Comparator() {}                            \
+                                                                             \
+   private:                                                                  \
+    std::string op_name_;                                                    \
+    uint32_t target_version_;                                                \
   };
 
 ADD_OP_VERSION_COMPARATOR(LE, <=);
