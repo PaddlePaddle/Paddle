@@ -590,7 +590,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--allocator_strategy=thread_local");
         process_level_allocator_enabled = false;
       } else {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
         process_level_allocator_enabled = true;
       }
 
@@ -889,6 +888,38 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+void AnalysisPredictor::ShrinkMemory() {
+  ClearIntermediateTensor();
+  std::lock_guard<std::mutex> lk(clone_mutex_);
+
+  for (auto name : scope_->LocalVarNames()) {
+    auto *variable = scope_->FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(variable,
+                            platform::errors::PreconditionNotMet(
+                                "Not found variable %s in scope.", name));
+    if (variable != nullptr && variable->IsType<framework::LoDTensor>()) {
+      VLOG(3) << "Clear Intermediate Tensor: " << name;
+      auto *t = variable->GetMutable<framework::LoDTensor>();
+      t->clear();
+    } else if (variable != nullptr &&
+               variable->IsType<framework::LoDTensorArray>()) {
+      VLOG(3) << "Clear Intermediate TensorArray: " << name;
+      auto *tr = variable->GetMutable<framework::LoDTensorArray>();
+      for (size_t i = 0; i < tr->size(); ++i) {
+        tr[i].clear();
+      }
+    } else {
+      VLOG(3) << "Not supported type: " << variable->Type()
+              << " in ShrinkMemory";
+    }
+  }
+  scope_->EraseVars(scope_->LocalVarNames());
+  // Release-operation release all weights and tmp tensor, so we need to init
+  // predictor again.
+  paddle::memory::Release(place_);
+  Init(nullptr);
+}
+
 void AnalysisPredictor::ClearIntermediateTensor() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           platform::errors::PreconditionNotMet(
@@ -1140,6 +1171,8 @@ std::unique_ptr<Predictor> Predictor::Clone() {
 void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
+
+void Predictor::ShrinkMemory() { predictor_->ShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

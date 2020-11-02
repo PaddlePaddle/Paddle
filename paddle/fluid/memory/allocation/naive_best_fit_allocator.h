@@ -35,6 +35,7 @@ class NaiveBestFitAllocator : public Allocator {
  protected:
   Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(Allocation *allocation) override;
+  void ReleaseImpl(const platform::Place &place) override;
 
  private:
   platform::Place place_;

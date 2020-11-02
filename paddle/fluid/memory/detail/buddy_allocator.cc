@@ -39,9 +39,10 @@ BuddyAllocator::~BuddyAllocator() {
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
     auto desc = cache_.LoadDesc(block);
-    VLOG(10) << "Free from block (" << block << ", " << desc->get_size() << ")";
+    VLOG(10) << "Free from block (" << block << ", " << desc->get_total_size()
+             << ")";
 
-    system_allocator_->Free(block, desc->get_size(), desc->get_index());
+    system_allocator_->Free(block, desc->get_total_size(), desc->get_index());
     cache_.Invalidate(block);
     pool_.erase(pool_.begin());
   }
@@ -159,6 +160,31 @@ void BuddyAllocator::Free(void* p) {
            << desc->get_total_size() << ")";
   pool_.insert(
       IndexSizeAddress(desc->get_index(), desc->get_total_size(), block));
+}
+
+void BuddyAllocator::Release() {
+  // Acquire the allocator lock
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (total_used_ == 0) {
+    while (!pool_.empty()) {
+      auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
+      auto desc = cache_.LoadDesc(block);
+
+      VLOG(10) << "Release from block (" << block << ", "
+               << desc->get_total_size() << ")";
+      total_free_ -= desc->get_total_size();
+      system_allocator_->Free(static_cast<void*>(block), desc->get_total_size(),
+                              desc->get_index());
+      cache_.Invalidate(block);
+      pool_.erase(pool_.begin());
+    }
+  } else {
+    LOG(WARNING) << "The memory pool is not ready to release, please release "
+                    "all variables that occupy the allocator memory."
+                 << " If you are in multi-thread mode, please use "
+                    "thread_local_allocator.";
+  }
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
