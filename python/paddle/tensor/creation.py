@@ -47,7 +47,8 @@ __all__ = [
     'empty_like',
     'triu',
     'tril',
-    'meshgrid'
+    'meshgrid',
+    'assign',
 ]
 
 
@@ -89,61 +90,38 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     .. code-block:: python
 
         import paddle
-        import numpy as np
-        paddle.disable_static()
                 
         type(paddle.to_tensor(1))
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor: generated_tensor_0
-        # - place: CUDAPlace(0)   # allocate on global default place CPU:0
-        # - shape: [1]
-        # - layout: NCHW
-        # - dtype: int64_t
-        # - data: [1]
+        # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #        [1])
 
         x = paddle.to_tensor(1)
         paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
-        # Tensor: generated_tensor_01
-        # - place: CPUPlace
-        # - shape: [1]
-        # - layout: NCHW
-        # - dtype: int
-        # - data: [1]
+        # Tensor(shape=[1], dtype=int32, place=CPUPlace, stop_gradient=True,
+        #        [1])
 
         paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
-        # Tensor: generated_tensor_1
-        #   - place: CUDAPinnedPlace
-        #   - shape: [2]
-        #   - layout: NCHW
-        #   - dtype: double
-        #   - data: [1.1 2.2]
+        # Tensor(shape=[1], dtype=float32, place=CUDAPinnedPlace, stop_gradient=True,
+        #        [1])
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
-        # Tensor: generated_tensor_2
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: double
-        #   - data: [0.1 0.2 0.3 0.4]
+        # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        #        [[0.10000000, 0.20000000],
+        #         [0.30000001, 0.40000001]])
 
         type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]]), dtype='complex64')
         # <class 'paddle.ComplexTensor'>
 
         paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # ComplexTensor[real]: generated_tensor_0.real
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: float
-        #   - data: [1 2 3 4]
-        # ComplexTensor[imag]: generated_tensor_0.imag
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: float
-        #   - data: [1 0 2 0]
+        # ComplexTensor[real](shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #                     [[1., 2.],
+        #                      [3., 4.]])
+        # ComplexTensor[imag](shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #                     [[1., 0.],
+        #                      [2., 0.]])
     """
 
     if place is None:
@@ -1106,3 +1084,77 @@ def empty_like(x, dtype=None, name=None):
         stop_gradient=True)
     out.stop_gradient = True
     return out
+
+
+def assign(x, output=None):
+    """
+ 
+ 
+    The OP copies the :attr:`x` to the :attr:`output`.
+ 
+    Parameters:
+        x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+            float16, float32, float64, int32 and int64.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
+ 
+    Returns:
+        Tensor: A tensor with the same shape, data type and value as :attr:`x`.
+ 
+    Examples:
+        .. code-block:: python
+ 
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    helper = LayerHelper('assign', **locals())
+    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    if isinstance(x, Variable):
+        check_dtype(
+            x.dtype, 'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+            'assign', '(When the type of input in assign is Variable.)')
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+    elif isinstance(x, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(x.dtype)
+        if dtype == VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [bool(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.INT32:
+            value_name = "int32_values"
+            values = [int(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.INT64:
+            value_name = "int64_values"
+            values = [int(v) for v in x.flat]
+        else:
+            raise TypeError(
+                "When the type of 'x' in assign is numpy.ndarray, "
+                "the data type of 'x' must be bool, float32, int32 or int64, but "
+                "received %s." % convert_dtype(dtype))
+        if x.size > 1024 * 1024:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={'dtype': dtype,
+                   'shape': list(x.shape),
+                   value_name: values})
+
+    return output

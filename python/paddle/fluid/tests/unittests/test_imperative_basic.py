@@ -333,7 +333,7 @@ class TestImperative(unittest.TestCase):
             try:
                 new_variable.numpy()
             except Exception as e:
-                assert type(e) == core.EnforceNotMet
+                assert type(e) == ValueError
 
             try:
                 new_variable.backward()
@@ -689,4 +689,5 @@ class TestDygraphGuardWithError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

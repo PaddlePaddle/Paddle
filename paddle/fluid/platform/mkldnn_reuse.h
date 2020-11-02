@@ -346,6 +346,18 @@ class MKLDNNHandler {
     return mem_p;
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      mkldnn::memory::desc md, const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    }
+    return mem_p;
+  }
+
   // This incarnation of AcquireMemory can call user function eg. custom reorder
   // or preprocessing routine if needed
   std::shared_ptr<mkldnn::memory> AcquireMemory(
@@ -1197,6 +1209,12 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       void* ptr) {
     return this->AcquireMemoryFromPrimitive(
         conv_bwd_weights_pd_->diff_weights_desc(), ptr, "@diff_weights_mem_p");
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemoryFromWeightsPrimitive(
+      void) {
+    return this->AcquireMemoryFromPrimitive(
+        conv_bwd_weights_pd_->diff_weights_desc(), "@diff_weights_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(

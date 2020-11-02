@@ -77,6 +77,7 @@ from .tensor.creation import tril  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
 from .tensor.creation import empty  #DEFINE_ALIAS
 from .tensor.creation import empty_like  #DEFINE_ALIAS
+from .tensor.creation import assign  #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
 from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum        #DEFINE_ALIAS
@@ -102,11 +103,10 @@ from .tensor.logic import logical_not  #DEFINE_ALIAS
 from .tensor.logic import logical_or  #DEFINE_ALIAS
 from .tensor.logic import logical_xor  #DEFINE_ALIAS
 from .tensor.logic import not_equal  #DEFINE_ALIAS
-# from .tensor.logic import reduce_all  #DEFINE_ALIAS
-# from .tensor.logic import reduce_any  #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
 from .tensor.logic import equal_all  #DEFINE_ALIAS
 # from .tensor.logic import isnan        #DEFINE_ALIAS
+from .tensor.logic import is_tensor  #DEFINE_ALIAS
 from .tensor.manipulation import cast  #DEFINE_ALIAS
 from .tensor.manipulation import concat  #DEFINE_ALIAS
 from .tensor.manipulation import expand  #DEFINE_ALIAS
@@ -160,6 +160,8 @@ from .tensor.math import reciprocal  #DEFINE_ALIAS
 # from .tensor.math import reduce_min  #DEFINE_ALIAS
 # from .tensor.math import reduce_prod  #DEFINE_ALIAS
 # from .tensor.math import reduce_sum  #DEFINE_ALIAS
+from .tensor.math import all  #DEFINE_ALIAS
+from .tensor.math import any  #DEFINE_ALIAS
 from .tensor.math import round  #DEFINE_ALIAS
 from .tensor.math import rsqrt  #DEFINE_ALIAS
 from .tensor.math import scale  #DEFINE_ALIAS
@@ -220,7 +222,7 @@ from .tensor.search import sort  #DEFINE_ALIAS
 
 from .tensor.to_string import set_printoptions
 
-from .framework.random import manual_seed  #DEFINE_ALIAS
+from .framework.random import seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
 from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS
@@ -246,6 +248,7 @@ from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 # from .fluid.data import data
 from .tensor.stat import numel  #DEFINE_ALIAS
+from .tensor.stat import median  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
@@ -261,7 +264,6 @@ from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
 from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 from .fluid.layers import crop_tensor as crop  #DEFINE_ALIAS
-
 
 from . import jit
 from . import static

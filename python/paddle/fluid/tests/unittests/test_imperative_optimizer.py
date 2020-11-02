@@ -74,7 +74,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             try:
-                paddle.manual_seed(seed)
+                paddle.seed(seed)
                 paddle.framework.random._manual_program_seed(seed)
                 mlp = MLP()
                 optimizer = self.get_optimizer_dygraph(
@@ -91,7 +91,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CUDAPlace(0)
 
         with fluid.dygraph.guard(place):
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             mlp = MLP()
@@ -132,7 +132,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             if place == None:

@@ -20,7 +20,8 @@ SET(GLOO_SOURCE_DIR    ${THIRD_PARTY_PATH}/gloo/src/extern_gloo/gloo)
 SET(GLOO_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gloo)
 SET(GLOO_INCLUDE_DIR   "${GLOO_INSTALL_DIR}/include" CACHE PATH "gloo include directory." FORCE)
 SET(GLOO_LIBRARY_DIR   "${GLOO_INSTALL_DIR}/lib" CACHE PATH "gloo library directory." FORCE)
-SET(GLOO_REPOSITORY    https://github.com/sandyhouse/gloo.git)
+# As we add extra features for gloo, we use the non-official repo
+SET(GLOO_REPOSITORY    ${GIT_URL}/sandyhouse/gloo.git)
 SET(GLOO_TAG           v0.0.2)
 SET(GLOO_LIBRARIES     "${GLOO_INSTALL_DIR}/lib/libgloo.a" CACHE FILEPATH "gloo library." FORCE)
 

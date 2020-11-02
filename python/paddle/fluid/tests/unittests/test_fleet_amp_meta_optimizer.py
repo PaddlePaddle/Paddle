@@ -133,7 +133,13 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.set_strategy(strategy, 'amp')
         self.set_strategy(strategy, 'recompute')
         self.set_strategy(strategy, 'lamb')
+
         self.optimizer(avg_cost, strategy, train_prog, startup_prog, 'adam')
+
+        applied_meta_list = fleet._get_applied_meta_list()
+        applied_graph_list = fleet._get_applied_graph_list()
+        print(applied_meta_list, applied_graph_list)
+        self.assertEqual(len(applied_meta_list), 3)
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [

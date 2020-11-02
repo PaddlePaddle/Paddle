@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -156,6 +157,21 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
 
+    if (!is_test) {
+      int device_id =
+          BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+      auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+      if (gen_cuda->GetIsInitPy() && seed == 0) {
+        // If perform `manual_seed` in python and inner seed is not specified
+        // (equals 0), use global generator generated seed.
+        seed = static_cast<int>(gen_cuda->Random64());
+      } else if (seed == 0) {
+        // use random generated seed
+        std::random_device rd;
+        seed = rd();
+      }  // else use `ctx.Attr<int>("seed")` specified seed
+    }
+
     bool has_seq_length = ctx.HasInput("SequenceLength");
     std::vector<int> SequenceLength;
     if (has_seq_length) {
@@ -194,13 +210,25 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 
       if (!continuous) {
         LOG_FIRST_N(WARNING, 2)
-            << "If the memory space of the Input WeightList is not "
-               "continuous, less efficient calculation will be "
-               "called. Please call coalesce_tensor op to make the "
-               "input memory continuous.";
+            << "If the memory space of the Input WeightList is not continuous, "
+               "less efficient calculation will be called. Please call "
+               "flatten_parameters() to make the input memory continuous.";
         weight_whole.mutable_data<T>({weight_numel}, place);
         weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
         w_data = weight_whole.data<T>();
+        if (is_test) {  // maybe also reset small weights' ptr for training
+          int offset = 0;
+          for (size_t i = 0; i < weight_list.size(); ++i) {
+            size_t len = weight_list[i]->numel();
+            auto dim = weight_list[i]->dims();
+            const_cast<Tensor *>(weight_list[i])
+                ->ShareDataWith(
+                    weight_whole.Slice(static_cast<int64_t>(offset),
+                                       static_cast<int64_t>(offset + len)))
+                .Resize(dim);
+            offset += len;
+          }
+        }
       } else {
         w_data = const_cast<T *>(weight_list[0]->data<T>());
       }
@@ -226,12 +254,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       LSTMInferece<T>(has_seq_length, handle, seq_length, &rnn, x_data,
                       init_h_data, init_c_data, w_data, out_data, last_h_data,
                       last_c_data, &workspace_data_, workspace_size);
-      if (!w_initialized && ctx.HasInput("W") && ctx.HasInput("WeightList")) {
-        auto *W = const_cast<Tensor *>(ctx.Input<Tensor>("W"));
-        auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
-        W->mutable_data<T>({weight_numel}, place);
-        weight_to_tensor<T>(place, stream, weight_list, W);
-      }
     } else {
       if (!has_seq_length) {
         // for train
