@@ -987,6 +987,16 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         raise NotImplementedError()
 
+    def _remove_collective_ops(self, program, name):
+        """
+        colective init op should call once, so remove other call.
+        """
+        block = program.global_block()
+        for ids, op in list(enumerate(block.ops)):
+            if op.type == name:
+                block._remove_op(ids)
+                return
+
     def apply_gradients(self, params_grads):
         """
         Currently, apply_gradients function can not be called through DistributedOptimizer
@@ -1010,6 +1020,23 @@ class DownpourOptimizer(DistributedOptimizer):
             'trainer_endpoints': trainer_endpoints
         }
 
+    def _remove_collective_op_for_embedding(self, loss, table_name):
+        """
+        find multi-sparse-table
+        """
+        table_name = [name + "@GRAD" for name in table_name]
+        need_remove_op_index = []
+        block = loss.block.program.global_block()
+        collective_ops = ["c_sync_calc_stream", "c_allreduce_sum"]
+        for ids, op in list(enumerate(block.ops)):
+            if op.type in collective_ops:
+                if op.input("X")[0] in table_name:
+                    need_remove_op_index.append(ids)
+
+        need_remove_op_index.sort(reverse=True)
+        for index in need_remove_op_index:
+            block._remove_op(index)
+    
     def minimize(self,
                  losses,
                  scopes=None,
@@ -1077,6 +1104,13 @@ class DownpourOptimizer(DistributedOptimizer):
                     endpoints=env["trainer_endpoints"],
                     current_endpoint=env['current_endpoint'],
                     wait_port=False)
+                if i > 0:
+                    self._remove_collective_ops(start_program, "c_comm_init_all")
+                
+            for i in range(0, len(losses)):
+                loss = losses[i]
+                embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table([loss])
+                self._remove_collective_op_for_embedding(loss, embedding_table)
 
 
         return [optimize_ops, param_grads]

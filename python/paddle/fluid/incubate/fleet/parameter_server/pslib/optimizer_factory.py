@@ -15,6 +15,7 @@
 
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
@@ -24,6 +25,7 @@ import copy
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
 
+OpRole = core.op_proto_and_checker_maker.OpRole
 # this dict is for store info about pull/push sparse ops.
 FLEET_GLOBAL_DICT = {
     # global settings
@@ -88,6 +90,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
         ]
+        op_maker = core.op_proto_and_checker_maker
+        self.op_role_key = op_maker.kOpRoleAttrName()
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
@@ -146,6 +150,26 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
 
+    def _is_optimizer_op(self, op):
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+
+    def _remove_optimize_op_for_embedding(self, loss, table_name):
+        """
+        find multi-sparse-table
+        """
+        table_name = [name + "@GRAD" for name in table_name]
+        need_remove_op_index = []
+        block = loss.block.program.global_block()
+        for ids, op in list(enumerate(block.ops)):
+            if self._is_optimizer_op(op):
+                if op.input("Grad")[0] in table_name:
+                    need_remove_op_index.append(ids)
+
+        need_remove_op_index.sort(reverse=True)
+        for index in need_remove_op_index:
+            block._remove_op(index)
+    
     def _find_multi_distributed_lookup_table(self, losses):
         """
         find multi-sparse-table
@@ -326,11 +350,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
             flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
             if flag_use_ps_gpu:
-                if not isinstance(losses, list):
+                if not isinstance(startup_program, list):
                     startup_program = [startup_program]
                 optimizer = copy.deepcopy(self._optimizer)
                 optimize_ops = optimizer.apply_optimize(
                     loss, startup_program=startup_program[num], params_grads=params_grads)
+                embedding_table = self._find_multi_distributed_lookup_table([loss])
+                self._remove_optimize_op_for_embedding(loss, embedding_table)
             # has condition_block op means multi-task 
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
