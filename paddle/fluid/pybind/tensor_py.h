@@ -58,7 +58,7 @@ struct npy_format_descriptor<paddle::platform::float16> {
     // https://docs.python.org/3/library/struct.html#format-characters.
     return "e";
   }
-  static constexpr auto name = _("float16");
+  static PYBIND11_DESCR name() { return _("float16"); }
 };
 
 // Note: Since bfloat16 is not a builtin type in C++ and in numpy,
@@ -75,7 +75,7 @@ struct npy_format_descriptor<paddle::platform::bfloat16> {
     // https://docs.python.org/3/library/struct.html#format-characters.
     return "H";
   }
-  static constexpr auto name = _("bfloat16");
+  static PYBIND11_DESCR name() { return _("bfloat16"); }
 };
 
 }  // namespace detail

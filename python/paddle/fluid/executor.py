@@ -1261,11 +1261,6 @@ class Executor(object):
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
 
-        if not isinstance(fetch_var_name, str):
-            raise TypeError(
-                "The name of fetch variable requires string as its Parameter. But you passed in %s"
-                % (type(fetch_var_name)))
-
         if use_program_cache:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
             cached_program = self._get_program_cache(cache_key)
@@ -1316,7 +1311,7 @@ class Executor(object):
 
         if not use_program_cache:
             self._default_executor.run(program.desc, scope, 0, True, True,
-                                       [fetch_var_name])
+                                       fetch_var_name)
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
