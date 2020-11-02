@@ -1667,27 +1667,23 @@ class TestLog2(TestActivation):
         print(self.check_grad(['X'], 'Out'))
 
     def test_error(self):
-        in1 = fluid.layers.data(
-            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32")
-        in2 = fluid.layers.data(
-            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64")
+        in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
+        in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
 
-        self.assertRaises(TypeError, fluid.layers.log2, in1)
-        self.assertRaises(TypeError, fluid.layers.log2, in2)
+        self.assertRaises(TypeError, paddle.log2, in1)
+        self.assertRaises(TypeError, paddle.log2, in2)
 
     def test_api(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
-            data_x = fluid.layers.data(
-                name="data_x",
-                shape=[11, 17],
-                append_batch_size=False,
-                dtype="float64")
+            data_x = paddle.static.data(
+                name="data_x", shape=[11, 17], dtype="float64")
 
-            out1 = fluid.layers.log2(data_x)
-            exe = fluid.Executor(place=fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-            res1 = exe.run(fluid.default_main_program(),
+            out1 = paddle.log2(data_x)
+            exe = paddle.static.Executor(place=fluid.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            res1 = exe.run(paddle.static.default_main_program(),
                            feed={"data_x": input_x},
                            fetch_list=[out1])
         expected_res = np.log2(input_x)
@@ -1696,8 +1692,8 @@ class TestLog2(TestActivation):
         # dygraph
         with fluid.dygraph.guard():
             np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
-            data_x = fluid.dygraph.to_variable(np_x)
-            z = fluid.layers.log2(data_x)
+            data_x = paddle.to_tensor(np_x)
+            z = paddle.log2(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log2(np_x))
         self.assertTrue(np.allclose(np_z, z_expected))

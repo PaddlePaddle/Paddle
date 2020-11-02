@@ -8742,7 +8742,7 @@ def log2(x, name=None):
 
     .. math::
 
-        Out = \\ln(x)/ln2
+        Out = \\log_2x
 
     Args:
         x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
@@ -8766,7 +8766,7 @@ def log2(x, name=None):
             res = fluid.layers.log2(x)
 
             # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(fluid.CPUPlace())
 
             # Execute
             x_i = np.array([[1], [2]]).astype(np.float32)

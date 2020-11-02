@@ -153,6 +153,7 @@ from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
+from .tensor.math import log2  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
