@@ -1092,12 +1092,16 @@ struct GradLayer {
     Tensor* dynamic_grad_last_c = &b;
     dynamic_grad_last_h->Resize(last_h_grad_unbind[current_layer_idx].dims());
     dynamic_grad_last_h->mutable_data<T>(context.GetPlace());
-    dynamic_grad_last_c->Resize(last_c_grad_unbind[current_layer_idx].dims());
-    dynamic_grad_last_c->mutable_data<T>(context.GetPlace());
     framework::TensorCopy(last_h_grad_unbind[current_layer_idx],
                           context.GetPlace(), dynamic_grad_last_h);
-    framework::TensorCopy(last_c_grad_unbind[current_layer_idx],
-                          context.GetPlace(), dynamic_grad_last_c);
+    if (last_c_grad_unbind.size() > 0) {
+      dynamic_grad_last_c->Resize(last_c_grad_unbind[current_layer_idx].dims());
+      dynamic_grad_last_c->mutable_data<T>(context.GetPlace());
+      framework::TensorCopy(last_c_grad_unbind[current_layer_idx],
+                            context.GetPlace(), dynamic_grad_last_c);
+    } else {
+      dynamic_grad_last_c = nullptr;
+    }
 
     Tensor c, d;
     Tensor* dynamic_grad_pre_h = &c;
@@ -1113,8 +1117,9 @@ struct GradLayer {
       dynamic_grad_pre_c->ShareDataWith(
           (*init_c_grad_unbind)[current_layer_idx]);
     } else {
-      dynamic_grad_pre_c->Resize(dynamic_grad_last_c->dims());
-      dynamic_grad_pre_c->mutable_data<T>(context.GetPlace());
+      // dynamic_grad_pre_c->Resize(dynamic_grad_last_c->dims());
+      // dynamic_grad_pre_c->mutable_data<T>(context.GetPlace());
+      dynamic_grad_pre_c = nullptr;
     }
 
     if (is_reverse) {
@@ -1236,27 +1241,29 @@ struct GradLayer {
 
     auto eigen_grad_last_h = framework::EigenMatrix<T>::Reshape(
         *grad_last_h, grad_last_h->dims().size() - 1);
-    auto eigen_grad_last_c = framework::EigenMatrix<T>::Reshape(
-        *grad_last_c, grad_last_c->dims().size() - 1);
     auto eigen_grad_pre_h = framework::EigenMatrix<T>::Reshape(
         *grad_pre_h, grad_pre_h->dims().size() - 1);
-    auto eigen_grad_pre_c = framework::EigenMatrix<T>::Reshape(
-        *grad_pre_c, grad_pre_c->dims().size() - 1);
     auto eigen_grad_output = framework::EigenMatrix<T>::Reshape(
         *grad_output, grad_output->dims().size() - 1);
-
     eigen_grad_last_h.device(place) =
         eigen_grad_last_h + eigen_grad_output * eigen_mask_broadcast;
-
     eigen_grad_pre_h.device(place) =
         (1 - eigen_mask_broadcast) * eigen_grad_last_h;
-    eigen_grad_pre_c.device(place) =
-        (1 - eigen_mask_broadcast) * eigen_grad_last_c;
     Print3DTensor<T>(grad_pre_h, "mask grad_pre_h");
     Print3DTensor<T>(grad_last_h, "mask grad_last_h");
-    Print3DTensor<T>(grad_pre_c, "mask grad_pre_c");
     eigen_grad_last_h.device(place) = eigen_mask_broadcast * eigen_grad_last_h;
-    eigen_grad_last_c.device(place) = eigen_mask_broadcast * eigen_grad_last_c;
+
+    if (grad_last_c && grad_pre_c) {
+      auto eigen_grad_last_c = framework::EigenMatrix<T>::Reshape(
+          *grad_last_c, grad_last_c->dims().size() - 1);
+      auto eigen_grad_pre_c = framework::EigenMatrix<T>::Reshape(
+          *grad_pre_c, grad_pre_c->dims().size() - 1);
+      eigen_grad_pre_c.device(place) =
+          (1 - eigen_mask_broadcast) * eigen_grad_last_c;
+      eigen_grad_last_c.device(place) =
+          eigen_mask_broadcast * eigen_grad_last_c;
+      Print3DTensor<T>(grad_pre_c, "mask grad_pre_c");
+    }
   }
 
   void postprocess(const framework::ExecutionContext& context,
@@ -1351,16 +1358,23 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
     layer_grad_gate_tensor.mutable_data<T>(context.GetPlace());
     auto layer_grad_gate_tensor_unbind = Unbind(layer_grad_gate_tensor);
 
-    // TODO(wawltor)  this is bug for the gru and rnn
-    auto layer_state_tensor = state_tensor_unbind[layer_idx];
-    layer_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size});
-    auto layer_state_tensor_unbind = Unbind(layer_state_tensor);
+    Tensor layer_state_tensor;
+    TensorList layer_state_tensor_unbind;
+    if (state_tensor_unbind.size() > 0) {
+      layer_state_tensor = state_tensor_unbind[layer_idx];
+      layer_state_tensor.Resize(
+          {time_step * direction_num, batch_size, hidden_size});
+      layer_state_tensor_unbind = Unbind(layer_state_tensor);
+    }
 
-    auto layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
-    layer_act_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size});
-    auto layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
+    Tensor layer_act_state_tensor;
+    TensorList layer_act_state_tensor_unbind;
+    if (act_state_tensor_unbind.size() > 0) {
+      layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
+      layer_act_state_tensor.Resize(
+          {time_step * direction_num, batch_size, hidden_size});
+      layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
+    }
     const bool& has_sequence_length = sequence_length == nullptr ? false : true;
     this->run_rnn_grad_function(
         context, device_ctx, input, input_grad, sequence_length, init_h_unbind,
@@ -1727,10 +1741,12 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   // allocate the memory and initization the input_grad
   input_grad->mutable_data<T>(input->dims(), context.GetPlace());
 
-  if (init_h_grad)
+  if (init_h_grad) {
     init_h_grad->mutable_data<T>(init_h->dims(), context.GetPlace());
-  if (init_c_grad)
+  }
+  if (init_c_grad) {
     init_c_grad->mutable_data<T>(init_c->dims(), context.GetPlace());
+  }
 
   // reset the parameter to sorted order and allocate the memory
   std::vector<TensorList> parameter_lists;
@@ -1768,19 +1784,21 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   }
   // unbind
   auto last_h_grad_unbind = Unbind(*last_h_grad);
-  auto last_c_grad_unbind = Unbind(*last_c_grad);
   auto gate_tensor_unbind = Unbind(gate_tensor);
+  TensorList last_c_grad_unbind;
+  if (last_c_grad) {
+    last_c_grad_unbind = Unbind(*last_c_grad);
+  }
 
-  std::vector<Tensor> init_h_unbind;
-  std::vector<Tensor> init_c_unbind;
-  std::vector<Tensor> init_h_grad_unbind;
-  std::vector<Tensor> init_c_grad_unbind;
-  std::vector<Tensor> state_tensor_unbind;
-  std::vector<Tensor> act_state_tensor_unbind;
-  std::vector<Tensor> hidden_tensor_unbind;
+  TensorList init_h_unbind, init_c_unbind;
+  TensorList init_h_grad_unbind, init_c_grad_unbind;
+  TensorList state_tensor_unbind, act_state_tensor_unbind;
+  TensorList hidden_tensor_unbind;
 
   init_h_unbind = Unbind(*init_h);
-  init_c_unbind = Unbind(*init_c);
+  if (init_c) {
+    init_c_unbind = Unbind(*init_c);
+  }
 
   if (init_h_grad != nullptr) {
     init_h_grad_unbind = Unbind(*init_h_grad);
