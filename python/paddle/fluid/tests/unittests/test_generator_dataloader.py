@@ -191,5 +191,33 @@ class TestDataLoaderBaseAbstract(unittest.TestCase):
             self.assertTrue(True)
 
 
+class TestDataLoaderNoiterable(unittest.TestCase):
+    def test_lod_tensor_blocking_queue_var(self):
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            with paddle.fluid.unique_name.guard():
+                image = fluid.layers.data(
+                    name='image', shape=[784], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                py_reader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=4,
+                    iterable=False,
+                    use_double_buffer=False)
+
+                # var lod_tensor_blocking_queue_xx in block
+                # lod_tensor_blocking_queue_xx is input var of 'create_py_reader_xx' op
+                has_lod_tensor_blocking_queue_var = False
+                for op in main_prog.global_block().ops:
+                    for var_name in op.input_arg_names:
+                        if 'lod_tensor_blocking_queue' in var_name:
+                            has_lod_tensor_blocking_queue_var = True
+                        self.assertTrue(
+                            main_prog.global_block().var(var_name) is not None)
+                self.assertTrue(has_lod_tensor_blocking_queue_var)
+
+
 if __name__ == '__main__':
     unittest.main()

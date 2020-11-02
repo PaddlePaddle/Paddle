@@ -18,6 +18,7 @@ limitations under the License. */
 #include <queue>
 #include <set>
 #include <unordered_set>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
@@ -167,6 +168,7 @@ Variable* Scope::VarInternal(const std::string& name) {
   if (v != nullptr) return v;
   v = new Variable();
   vars_.emplace(name, std::unique_ptr<Variable>(v));
+  VLOG(3) << (parent_ == nullptr) << std::endl;
   VLOG(3) << "Create variable " << name;
   return v;
 }

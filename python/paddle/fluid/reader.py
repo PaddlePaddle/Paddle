@@ -1063,6 +1063,7 @@ class GeneratorLoader(DataLoaderBase):
 
         queue_name = data_loader_unique_name_generator(
             'lod_tensor_blocking_queue')
+
         reader_name = data_loader_unique_name_generator('create_py_reader')
         double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
@@ -1076,6 +1077,15 @@ class GeneratorLoader(DataLoaderBase):
             block = default_startup_program().current_block()
 
         reader_var = block.create_var(name=reader_name)
+
+        # NOTE(zhiqiu): add queue_var in block to keep the completeness of program.
+        # Otherwise, the program may lack of queue_var, and may result in errors when 
+        # traverse the program. 
+        # We should carefully handle queue_var and not initializing it in Executor, since it
+        # is already initialized by core.init_lod_tensor_blocking_queue in global scope.
+        # Also, see comments in ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() and Executor::CreateVariables().
+        queue_var = block.create_var(
+            name=queue_name, type=core.VarDesc.VarType.RAW)
 
         dtype_int = [int(t) for t in dtypes]
         block.append_op(

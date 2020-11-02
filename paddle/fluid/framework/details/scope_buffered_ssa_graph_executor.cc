@@ -184,6 +184,17 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
         }
         InitializeVariable(scope->Var(info.name_), info.type_);
       } else {
+        auto var = scope->FindVar(info.name_);
+        if (var != nullptr &&
+            (var->IsType<operators::reader::LoDTensorBlockingQueueHolder>() ||
+             var->IsType<
+                 operators::reader::
+                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>())) {
+          // NOTE(zhiqiu): variable lod_tensor_blocking_queue_xx is created and
+          // initialized in init_lod_tensor_blocking_queue(), and it only need
+          // one instance in global scope, so skip initialize it in Executor.
+          continue;
+        }
         Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);
         tmp_var_infos_[idx].emplace_back(tmp_var, info.type_);

@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
+
 #include <deque>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -120,6 +122,16 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
         VLOG(3) << "Create Variable " << var->Name()
                 << " global, which pointer is " << ptr;
       } else {
+        auto v = scope->FindVar(var->Name());
+        if (v != nullptr &&
+            (v->IsType<operators::reader::LoDTensorBlockingQueueHolder>() ||
+             v->IsType<operators::reader::
+                           OrderedMultiDeviceLoDTensorBlockingQueueHolder>())) {
+          // NOTE(zhiqiu): variable lod_tensor_blocking_queue_xx is created and
+          // initialized in init_lod_tensor_blocking_queue(), and it only need
+          // one instance in global scope, so skip initialize it in Executor.
+          continue;
+        }
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
