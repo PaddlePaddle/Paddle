@@ -757,18 +757,23 @@ struct BidirLayer : public Layer<T, CellType> {
   }
 };
 
-inline void SplitReserveData(Tensor* reserve_data, Tensor* gate_data,
-                             Tensor* cell_data, Tensor* cell_act_data,
-                             Tensor* hidden_data, int direction_num,
-                             const int& time_step, const int& batch_size,
-                             const int& hidden_size, const int& gate_num,
-                             const int& num_layers) {
-  const int& block_size = direction_num * time_step * batch_size * hidden_size;
-  const int& gate_data_idx = (gate_num - 1) * num_layers;
-  const int& cell_data_idx = gate_num * num_layers;
-  const int& cell_act_data_idx = (gate_num + 1) * num_layers;
-  const int& hidden_data_idx = (gate_num + 1) * num_layers + (num_layers - 1);
-  reserve_data->Resize({hidden_data_idx, block_size});
+template <typename TensorType>
+void SplitReserveData(TensorType* reserve_data, Tensor* gate_data,
+                      Tensor* cell_data, Tensor* cell_act_data,
+                      Tensor* hidden_data, int direction_num,
+                      const int& time_step, const int& batch_size,
+                      const int& hidden_size, const int& gate_num,
+                      const int& num_layers) {
+  /** for lstm and gru **/
+  int gate_num_tmp = gate_num;
+  if (gate_num_tmp > 0) {
+    gate_num_tmp += 1;
+  }
+  const int& gate_data_idx = (gate_num_tmp - 1) * num_layers;
+  const int& cell_data_idx = gate_num_tmp * num_layers;
+  const int& cell_act_data_idx = (gate_num_tmp + 1) * num_layers;
+  const int& hidden_data_idx =
+      (gate_num_tmp + 1) * num_layers + (num_layers - 1);
   if (gate_data_idx > 0) /** for lstm, gru **/ {
     *gate_data = reserve_data->Slice(0, gate_data_idx);
     *cell_data = reserve_data->Slice(gate_data_idx, cell_data_idx);
@@ -789,9 +794,9 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
                          Tensor* hidden_data, const Tensor* input,
                          bool is_bidirec, int num_layers, int gate_num,
                          int hidden_size) {
-  if (std::is_same<CellType, LSTMCell<T>>::value) {
-    // need to store cell value
-    gate_num += 1;
+  int gate_num_tmp = gate_num;
+  if (gate_num > 0) {
+    gate_num_tmp += 1;
   }
   const int& direction_num = is_bidirec ? 2 : 1;
   const int& time_step = input->dims()[0];
@@ -800,7 +805,8 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
   // cell_data: num_layers * block_size
   // hidden_data: (num_layers - 1) * block_size
   const int& block_size = direction_num * time_step * batch_size * hidden_size;
-  const int& hidden_data_idx = (gate_num + 1) * num_layers + (num_layers - 1);
+  const int& hidden_data_idx =
+      (gate_num_tmp + 1) * num_layers + (num_layers - 1);
   reserve_data->Resize({hidden_data_idx, block_size});
   reserve_data->mutable_data<T>(ctx.GetPlace());
   SplitReserveData(reserve_data, gate_data, cell_data, cell_act_data,
@@ -934,7 +940,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              output_holder, i, gate_num, &curr_gate_data, &curr_cell_data,
              &curr_cell_act_data, is_test);
   }
-  VLOG(0) << "Spend " << total_time * 1000 << " ms";
+  // VLOG(0) << "Spend " << total_time * 1000 << " ms";
   total_time = 0;
   if (num_layers % 2 == 0) {
     // the final result is in output_holder, must copy the data to output
@@ -1531,7 +1537,8 @@ struct SimpleRNNGradCell : GradCell<T> {
                   Tensor* grad_state, Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
                   math::LstmMetaValue<T>* lstm_value,
-                  math::LstmMetaGrad<T>* lstm_grad) {
+                  math::LstmMetaGrad<T>* lstm_grad, const Tensor& mask_tensor,
+                  bool has_sequence_length) {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
@@ -1679,7 +1686,7 @@ template <typename GradCellType,
           template <typename, typename> class SingleGradLayerT,
           template <typename, typename> class BidirGradLayerT, typename T>
 void RnnGradFunc(const framework::ExecutionContext& context,
-                 const int& gate_num, const int& cell_num) {
+                 const int& gate_num) {
   // get the tensor pointer for the input
   auto* input = context.Input<Tensor>("Input");
   auto weight_list = context.MultiInput<Tensor>("WeightList");
@@ -1744,26 +1751,18 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   Tensor state_tensor;
   Tensor act_state_tensor;
   Tensor hidden_tensor;
-  gate_tensor = reserve_state->Slice(0, gate_num * num_layers);
-
+  SplitReserveData(reserve_state, &gate_tensor, &state_tensor,
+                   &act_state_tensor, &hidden_tensor, direction_num, time_step,
+                   batch_size, hidden_size, gate_num, num_layers);
   gate_tensor.Resize({num_layers, time_step * direction_num, batch_size,
                       hidden_size * gate_num});
-  VLOG(0) << "raw gate tensor shape:" << gate_tensor.dims();
-  if (cell_num >= 1) {
-    state_tensor = reserve_state->Slice(gate_num * num_layers,
-                                        (gate_num + cell_num) * num_layers);
-    act_state_tensor =
-        reserve_state->Slice((gate_num + cell_num) * num_layers,
-                             (gate_num + 2 * cell_num) * num_layers);
+  if (state_tensor.numel() > 0) {
     state_tensor.Resize(
         {num_layers, time_step * direction_num, batch_size, hidden_size});
-    state_tensor.Resize(
+    act_state_tensor.Resize(
         {num_layers, time_step * direction_num, batch_size, hidden_size});
   }
   if (num_layers > 1) {
-    hidden_tensor = reserve_state->Slice(
-        (gate_num + 2 * cell_num) * num_layers,
-        (gate_num + 2 * cell_num) * num_layers + num_layers - 1);
     hidden_tensor.Resize(
         {num_layers - 1, time_step, batch_size, hidden_size * direction_num});
   }
@@ -1789,7 +1788,7 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   if (init_c_grad != nullptr) {
     init_c_grad_unbind = Unbind(*init_c_grad);
   }
-  if (cell_num >= 1) {
+  if (state_tensor.numel() > 0) {
     state_tensor_unbind = Unbind(state_tensor);
     act_state_tensor_unbind = Unbind(act_state_tensor);
   }
@@ -1885,24 +1884,21 @@ class CudnnLSTMCPUGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string& cell_type = ctx.Attr<std::string>("cell_type");
     int gate_num = 4;
-    int cell_num = 1;
     if (cell_type == "lstm") {
       RnnGradFunc<LSTMGradCell<T>, SingleGradLayer, BidirGradLayer, T>(
-          ctx, gate_num, cell_num);
+          ctx, gate_num);
     } else if (cell_type == "gru") {
       gate_num = 3;
       // run gru
     } else if (cell_type == "rnn_relu") {
       gate_num = 0;
-      cell_num = 0;
       RnnGradFunc<SimpleRNNGradCell<T, ReluGradFunctor>, SingleGradLayer,
-                  BidirGradLayer, T>(ctx, gate_num, cell_num);
+                  BidirGradLayer, T>(ctx, gate_num);
       // run rnn
     } else if (cell_type == "rnn_tanh") {
       gate_num = 0;
-      cell_num = 0;
       RnnGradFunc<SimpleRNNGradCell<T, ReluGradFunctor>, SingleGradLayer,
-                  BidirGradLayer, T>(ctx, gate_num, cell_num);
+                  BidirGradLayer, T>(ctx, gate_num);
     }
   }
 };

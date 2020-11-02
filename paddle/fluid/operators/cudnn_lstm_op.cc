@@ -236,7 +236,11 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTMGrad");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTMGrad");
-    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTMGrad");
+
+    const std::string& cell_type = ctx->Attrs().Get<std::string>("cell_type");
+    if (cell_type == "lstm") {
+      OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTMGrad");
+    }
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);
@@ -251,7 +255,9 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
                          ctx->GetInputsDim("WeightList"));
     }
     SetOutGradDim("InitH");
-    SetOutGradDim("InitC");
+    if (ctx->HasInput("InitC")) {
+      SetOutGradDim("InitC");
+    }
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -282,7 +288,10 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
+
+    if (this->HasInput(framework::GradVarName("LastC"))) {
+      op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
+    }
     op->SetInput(framework::GradVarName("LastH"), this->OutputGrad("LastH"));
 
     if (this->HasInput("WeightList")) {
