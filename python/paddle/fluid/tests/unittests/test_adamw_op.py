@@ -47,6 +47,7 @@ class TestAdamWOp(unittest.TestCase):
         assert (adam.__str__() is not None)
 
     def test_adamw_op(self):
+        paddle.enable_static()
         place = fluid.CPUPlace()
         shape = [2, 3, 8, 8]
         exe = fluid.Executor(place)
@@ -75,6 +76,7 @@ class TestAdamWOp(unittest.TestCase):
         data_np = np.random.random(shape).astype('float32')
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
+        paddle.disable_static()
 
     def test_adamw_op_invalid_input(self):
         paddle.disable_static()
