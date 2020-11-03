@@ -19,7 +19,6 @@
 if("x${HCC_HOME}" STREQUAL "x")
   set(HCC_HOME "${ROCM_PATH}/hcc")
 endif()
-message("HCC_HOME:$$$$$$$$$$$$$$$$$$:",${HCC_HOME})
 INCLUDE(ExternalProject)
 
 SET(ROCPRIM_SOURCE_DIR ${THIRD_PARTY_PATH}/rocprim)
