@@ -75,14 +75,12 @@ FUNCTION(cache_third_party TARGET)
             STRING(SUBSTRING ${HASH_GIT} 0 8 HASH_GIT)
             STRING(CONCAT HASH ${HASH_REPO} ${HASH_GIT})
             # overwrite the original SOURCE_DIR when cache directory
-            #SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
-            SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET})
+            SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
         ELSEIF(cache_third_party_REPOSITORY)
             STRING(MD5 HASH_REPO ${cache_third_party_REPOSITORY})
             STRING(SUBSTRING ${HASH_REPO} 0 16 HASH)
             # overwrite the original SOURCE_DIR when cache directory
-            #SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
-            SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET})
+            SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
         ENDIF()
 
         IF(EXISTS ${${cache_third_party_DIR}})

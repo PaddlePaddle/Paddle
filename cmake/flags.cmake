@@ -155,8 +155,7 @@ set(COMMON_FLAGS
 )
 
 if(NOT APPLE)
-    #if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 7.0)
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 7.3)
         set(COMMON_FLAGS
                 ${COMMON_FLAGS}
                 -Wno-format-truncation # Warning in boost gcc 8.2
@@ -208,6 +207,7 @@ foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
 endforeach()
+
 
 set(SAFE_GPU_COMMON_FLAGS "")
 foreach(flag ${GPU_COMMON_FLAGS})

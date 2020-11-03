@@ -11,7 +11,6 @@ include_directories("${ROCM_PATH}/hiprand/include")
 include_directories("${ROCM_PATH}/rocrand/include")
 include_directories("${ROCM_PATH}/rccl/include")
 
-# hc
 #include_directories("${ROCM_PATH}/thrust")
 include_directories("${ROCM_PATH}/rocthrust/include/")
 include_directories("${ROCM_PATH}/hipcub/include/")
@@ -26,10 +25,8 @@ set(HIP_CLANG_PARALLEL_BUILD_LINK_OPTIONS "")
 set(HIP_COMPILER "clang")
 
 list(APPEND EXTERNAL_LIBS "-L${ROCM_PATH}/lib/ -lhip_hcc")
-#HC
 set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -DEIGEN_USE_HIP -DEIGEN_USE_GPU -D__HIP_NO_HALF_CONVERSIONS__ -std=c++11 --amdgpu-target=gfx906" )
 
-#xuan
 if(WITH_RCCL)
   set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -DPADDLE_WITH_RCCL")
 endif()
@@ -37,7 +34,6 @@ endif()
 if(NOT WITH_PYTHON)
   set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -DPADDLE_NO_PYTHON")
 endif(NOT WITH_PYTHON)
-#########
 
 if(WITH_DSO)
   set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} -DPADDLE_USE_DSO")
@@ -101,11 +97,6 @@ elseif("${HIP_COMPILER}" STREQUAL "clang")
       endif()
     endif()
 
-    message("+++++++++++++++++++++")
-    message(${HIP_CLANG_PATH})
-    message(${HIP_CLANG_NUM_PARALLEL_JOBS})
-    #message(${HIP_CLANG_PARALLEL_BUILD_COMPILE_OPTIONS})
-    #message(${HIP_CLANG_PARALLEL_BUILD_LINK_OPTIONS})
 
     # Set the CMake Flags to use the HIP-Clang Compiler.
     set(CMAKE_HIP_CREATE_SHARED_LIBRARY "${HIP_HIPCC_CMAKE_LINKER_HELPER} ${HIP_CLANG_PATH} ${HIP_CLANG_PARALLEL_BUILD_LINK_OPTIONS} <CMAKE_SHARED_LIBRARY_CXX_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES> --amdgpu-target=gfx906")
