@@ -326,7 +326,7 @@ class PassVersionCheckerRegistrar {
 }  // namespace paddle
 
 #define REGISTER_OP_VERSION(op_type)                                       \
-  __attribute__((unused)) static paddle::framework::compatible::OpVersion& \
+  UNUSED static paddle::framework::compatible::OpVersion&                  \
       RegisterOpVersion__##op_type =                                       \
           paddle::framework::compatible::OpVersionRegistrar::GetInstance() \
               .Register(#op_type)
