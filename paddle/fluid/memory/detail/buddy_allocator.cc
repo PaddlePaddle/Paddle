@@ -163,28 +163,36 @@ void BuddyAllocator::Free(void* p) {
 }
 
 void BuddyAllocator::Release() {
-  // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
+  int num = 0;
+  uint64_t bytes = 0;
+  bool del_flag = false;
+  for (auto iter = pool_.begin(); iter != pool_.end();) {
+    auto remain_size = std::get<1>(*iter);
+    auto remain_ptr = std::get<2>(*iter);
+    for (auto& chunk : chunks_) {
+      auto init_size = std::get<1>(chunk);
+      auto init_ptr = std::get<2>(chunk);
 
-  if (total_used_ == 0) {
-    while (!pool_.empty()) {
-      auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-      auto desc = cache_.LoadDesc(block);
-
-      VLOG(10) << "Release from block (" << block << ", "
-               << desc->get_total_size() << ")";
-      total_free_ -= desc->get_total_size();
-      system_allocator_->Free(static_cast<void*>(block), desc->get_total_size(),
-                              desc->get_index());
-      cache_.Invalidate(block);
-      pool_.erase(pool_.begin());
+      if (init_size == remain_size && init_ptr == remain_ptr) {
+        ++num;
+        bytes += init_size;
+        total_free_ -= init_size;
+        auto block = static_cast<MemoryBlock*>(std::get<2>(chunk));
+        system_allocator_->Free(init_ptr, init_size, std::get<0>(chunk));
+        cache_.Invalidate(block);
+        del_flag = true;
+        break;
+      }
     }
-  } else {
-    LOG(WARNING) << "The memory pool is not ready to release, please release "
-                    "all variables that occupy the allocator memory."
-                 << " If you are in multi-thread mode, please use "
-                    "thread_local_allocator.";
+
+    if (del_flag) {
+      iter = pool_.erase(iter);
+    } else {
+      iter++;
+    }
   }
+  VLOG(10) << "Release " << num << " chunk, Free " << bytes << " bytes.";
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -238,6 +246,9 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
                                      allocate_bytes, nullptr, nullptr);
 
   total_free_ += allocate_bytes;
+
+  // record the chunk.
+  chunks_.insert(IndexSizeAddress(index, allocate_bytes, p));
 
   // dump the block into pool
   return pool_.insert(IndexSizeAddress(index, allocate_bytes, p)).first;

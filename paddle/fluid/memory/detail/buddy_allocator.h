@@ -94,6 +94,11 @@ class BuddyAllocator {
    */
   PoolSet pool_;
 
+  /**
+   * \brief Record the allocated chunks when Refill pool.
+   */
+  PoolSet chunks_;
+
  private:
   /*! Unify the metadata format between GPU and CPU allocations */
   MetadataCache cache_;
