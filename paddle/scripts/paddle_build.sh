@@ -568,35 +568,40 @@ EOF
         retry_time=3
         exec_times=0
         exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=20
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
-            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
-                do
-                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    failed_test_lists_ult=`echo "${failed_test_lists}"`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-                    echo "========================================="
-                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
-                    echo "========================================="
-                    echo "The following unittest will be re-run:"
-                    echo "${retry_unittests}"
-                    echo "========================================="
+            read need_retry_ut <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_count=${#need_retry_ut[@]} 
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                    do
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        echo "========================================="
 
-                    retry_unittests_regular=''
-                    for line in ${retry_unittests[@]} ;
-                        do
-                            if [[ "$retry_unittests_regular" == "" ]];then
-                                retry_unittests_regular="^$line$"
-                            else
-                                retry_unittests_regular="$retry_unittests_regular|^$line$"
-                            fi
-                        done
-                    rm -f $tmp_dir/*
-                    failed_test_lists=''
-                    ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
-                    collect_failed_tests
-                    exec_times=$[$exec_times+1]
-                done
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        rm -f $tmp_dir/*
+                        failed_test_lists=''
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        collect_failed_tests
+                        exec_times=$[$exec_times+1]
+                    done
+            fi
         fi
         #mactest_error=$?
         ut_endTime_s=`date +%s`
@@ -1080,71 +1085,76 @@ set +x
         retry_unittests_record=''
         retry_time=3
         exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=20
         if [ -n "$failed_test_lists" ];then
-            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
-                do
-                    
-                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-                    echo "========================================="
-                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
-                    echo "========================================="
-                    echo "The following unittest will be re-run:"
-                    echo "${failed_test_lists_ult}"
+            read need_retry_ut <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_count=${#need_retry_ut[@]}
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                    do
                         
-                    for line in ${retry_unittests[@]} ;
-                        do
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${failed_test_lists_ult}"
+                            
+                        for line in ${retry_unittests[@]} ;
+                            do
 
-                            one_card_tests=$single_card_tests'|'$single_card_tests_1
+                                one_card_tests=$single_card_tests'|'$single_card_tests_1
 
-                            read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
-                            read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
-                            read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
+                                read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
+                                read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
+                                read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
-                            if [[ "$tmp_one_tmp" != ""  ]]; then
-                                if [[ "$one_card_retry" == "" ]]; then
-                                    one_card_retry="^$line$"
+                                if [[ "$tmp_one_tmp" != ""  ]]; then
+                                    if [[ "$one_card_retry" == "" ]]; then
+                                        one_card_retry="^$line$"
+                                    else
+                                        one_card_retry="$one_card_retry|^$line$"
+                                    fi
+                                elif [[ "$tmp_mul_tmp" != "" ]]; then
+                                    if [[ "$multiple_card_retry" == "" ]]; then
+                                        multiple_card_retry="^$line$"
+                                    else
+                                        multiple_card_retry="$multiple_card_retry|^$line$"
+                                    fi
                                 else
-                                    one_card_retry="$one_card_retry|^$line$"
+                                    if [[ "$exclusive_retry" == "" ]];then
+                                        exclusive_retry="^$line$"
+                                    else
+                                        exclusive_retry="$exclusive_retry|^$line$"
+                                    fi
                                 fi
-                            elif [[ "$tmp_mul_tmp" != "" ]]; then
-                                if [[ "$multiple_card_retry" == "" ]]; then
-                                    multiple_card_retry="^$line$"
-                                else
-                                    multiple_card_retry="$multiple_card_retry|^$line$"
-                                fi
-                            else
-                                if [[ "$exclusive_retry" == "" ]];then
-                                    exclusive_retry="^$line$"
-                                else
-                                    exclusive_retry="$exclusive_retry|^$line$"
-                                fi
-                            fi
 
-                        done
+                            done
 
-                    if [[ "$one_card_retry" != "" ]]; then
-                        card_test "$one_card_retry" 1
-                    fi
+                        if [[ "$one_card_retry" != "" ]]; then
+                            card_test "$one_card_retry" 1
+                        fi
 
-                    if [[ "$multiple_card_retry" != "" ]]; then
-                        card_test "$multiple_card_retry" 2
-                    fi
+                        if [[ "$multiple_card_retry" != "" ]]; then
+                            card_test "$multiple_card_retry" 2
+                        fi
 
-                    if [[ "$exclusive_retry" != "" ]]; then
-                        card_test "$exclusive_retry"
-                    fi
-                    
-                    exec_times=$[$exec_times+1]
-                    failed_test_lists=''
-                    collect_failed_tests
-                    rm -f $tmp_dir/*
-                    one_card_retry=''
-                    multiple_card_retry=''
-                    exclusive_retry=''
-                    retry_unittests=''
-                done
+                        if [[ "$exclusive_retry" != "" ]]; then
+                            card_test "$exclusive_retry"
+                        fi
+                        
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                        multiple_card_retry=''
+                        exclusive_retry=''
+                        retry_unittests=''
+                    done
+            fi
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
