@@ -8734,10 +8734,6 @@ def log(x, name=None):
 
 def log2(x, name=None):
     """
-    :alias_main: paddle.log2
-	:alias: paddle.log2,paddle.tensor.log2,paddle.tensor.math.log2
-	:old_api: paddle.fluid.layers.log2
-
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
     .. math::
@@ -8745,38 +8741,45 @@ def log2(x, name=None):
         Out = \\log_2x
 
     Args:
-        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input tensor must be one of the following types: float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
     Returns:
-        Variable: The log to the base 2 of the input LoDTensor or Tensor computed element-wise.
+        Tensor: The log to the base 2 of the input Tensor computed element-wise.
 
     Examples:
 
         .. code-block:: python
-            import numpy as np
             import paddle
             import paddle.fluid as fluid
 
-            paddle.enable_static()
+            # example 1: x is a float
+            x_i = paddle.to_tensor([[1.0], [2.0]])
+            res = paddle.log2(x_i)
 
-            # Graph Organizing
-            x = fluid.layers.data(name="x", shape=[1], dtype="float32")
-            res = fluid.layers.log2(x)
+            # example 2: x is float32
+            x_i = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            paddle.to_tensor(x_i)
+            res = paddle.log2(x_i)
+            print(res.numpy()) # [1.]
 
-            # Create an executor using CPU as an example
-            exe = paddle.static.Executor(fluid.CPUPlace())
+            # example 3: x is float64
+            x_i = paddle.full(shape=[1], fill_value=2, dtype='float64')
+            paddle.to_tensor(x_i)
+            res = paddle.log2(x_i)
+            print(res.numpy()) # [1.]
 
-            # Execute
-            x_i = np.array([[1], [2]]).astype(np.float32)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
-            print(res_val) # [[0.], [0.6931472]]
+            # example 4: x is a float16
+            x_i = paddle.full(shape=[1], fill_value=2, dtype='float16')
+            paddle.to_tensor(x_i)
+            res = paddle.log2(x_i)
+            print(res.numpy()) # [1.]
     """
     if in_dygraph_mode():
         return core.ops.log2(x)
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log2")
     inputs = {'X': [x]}
     helper = LayerHelper('log2', **locals())
     dtype = helper.input_dtype(input_param_name='x')
