@@ -75,4 +75,5 @@ class SplitFunctor {
   macro(uint8_t);                     \
   macro(int8_t);                      \
   macro(::paddle::platform::float16); \
-  macro(::paddle::platform::bfloat16)
+  macro(::paddle::platform::bfloat16);\
+  macro(::paddle::platform::complex64)

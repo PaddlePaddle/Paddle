@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
@@ -27,8 +28,10 @@ namespace math {
 
 using float16 = paddle::platform::float16;
 using bfloat16 = paddle::platform::bfloat16;
+using complex64 = paddle::platform::complex64;
 
 template struct SetConstant<platform::CUDADeviceContext, platform::float16>;
+template struct SetConstant<platform::CUDADeviceContext, platform::complex64>;
 template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
@@ -40,6 +43,7 @@ template struct SetConstant<platform::CUDADeviceContext, bool>;
   template struct Transpose<platform::CUDADeviceContext, double, RANK>;   \
   template struct Transpose<platform::CUDADeviceContext, float16, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext, bfloat16, RANK>; \
+  template struct Transpose<platform::CUDADeviceContext, complex64, RANK>; \
   template struct Transpose<platform::CUDADeviceContext, int8_t, RANK>;   \
   template struct Transpose<platform::CUDADeviceContext, int32_t, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext, int64_t, RANK>;
@@ -124,6 +128,7 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
 
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
+DEFINE_GPU_TRANS_NORMAL(complex64);
 DEFINE_GPU_TRANS_NORMAL(float);
 DEFINE_GPU_TRANS_NORMAL(double);
 DEFINE_GPU_TRANS_NORMAL(int);

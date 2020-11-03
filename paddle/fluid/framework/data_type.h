@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace platform {
@@ -49,6 +50,7 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, float, FP32);                        \
   _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);  \
   _ForEachDataTypeHelper_(callback, ::paddle::platform::bfloat16, BF16); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::complex64, COMPLEX64); \
   _ForEachDataTypeHelper_(callback, double, FP64);                       \
   _ForEachDataTypeHelper_(callback, int, INT32);                         \
   _ForEachDataTypeHelper_(callback, int64_t, INT64);                     \

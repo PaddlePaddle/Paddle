@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace framework {
@@ -978,6 +979,16 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
         os << " " << signed(inspect[j]);
       }
     }
+  } else if (typeid(paddle::platform::complex64) == typeid(T) ) {
+    if (element_num > 0) {
+      //os << signed(inspect[0].real) << signed(inspect[0].imag) << "i";
+      os << signed(inspect[0]) << signed(inspect[0]) << "i";
+      for (int j =1; j < element_num; ++j) {
+        //os << " " << signed(inspect[0].real) << signed(inspect[0].imag) << "i";
+        os << " " << signed(inspect[0]) << signed(inspect[0]) << "i";
+      }
+    }
+
   } else {
     if (element_num > 0) {
       os << inspect[0];

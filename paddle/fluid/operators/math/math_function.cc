@@ -38,6 +38,7 @@ using float16 = paddle::platform::float16;
 
 template struct SetConstant<platform::CPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::CPUDeviceContext, platform::bfloat16>;
+template struct SetConstant<platform::CPUDeviceContext, platform::complex64>;
 template struct SetConstant<platform::CPUDeviceContext, float>;
 template struct SetConstant<platform::CPUDeviceContext, double>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
@@ -58,6 +59,8 @@ template struct SetConstant<platform::XPUDeviceContext, bool>;
   template struct Transpose<platform::CPUDeviceContext, platform::float16,  \
                             RANK>;                                          \
   template struct Transpose<platform::CPUDeviceContext, platform::bfloat16, \
+                            RANK>;                                          \
+  template struct Transpose<platform::CPUDeviceContext, platform::complex64, \
                             RANK>;                                          \
   template struct Transpose<platform::CPUDeviceContext, float, RANK>;       \
   template struct Transpose<platform::CPUDeviceContext, double, RANK>;      \
@@ -115,6 +118,7 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
 
 DEFINE_CPU_TRANS_NORMAL(platform::float16);
 DEFINE_CPU_TRANS_NORMAL(platform::bfloat16);
+DEFINE_CPU_TRANS_NORMAL(platform::complex64);
 DEFINE_CPU_TRANS_NORMAL(float);
 DEFINE_CPU_TRANS_NORMAL(double);
 DEFINE_CPU_TRANS_NORMAL(int);
