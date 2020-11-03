@@ -63,8 +63,29 @@ if(WIN32)
         set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
         set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
         set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+        foreach(flag_var
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+            if(${flag_var} MATCHES "/MD")
+                string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+            endif()
+        endforeach(flag_var)
     endif()
-    
+
+    # windows build turn off warnings.
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+        string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
+    endforeach(flag_var)
+    foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
+        set(${flag_var} "${${flag_var}} /w")
+    endforeach(flag_var)
+
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838 /MP")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838 /MP")
     message(STATUS "Using parallel compiling (/MP)")
@@ -77,6 +98,13 @@ else(WIN32)
 endif(WIN32)
 
 find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+    set(GIT_URL "https://github.com")
+endif()
+
 find_package(Threads REQUIRED)
 
 include(simd)
@@ -110,6 +138,7 @@ option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
+option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -171,10 +200,19 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-# lite subgraph compilation depends on CUDNN_ROOT,
-# so include(cudnn) needs to be in front of include(third_party/lite)
-include(cudnn)              # set cudnn libraries, must before configure
-include(third_party)        # download, build, install third_party
+if(WITH_GPU)
+    include(cuda)
+    # lite subgraph compilation depends on CUDNN_ROOT,
+    # so include(cudnn) needs to be in front of include(third_party/lite)
+    include(cudnn)              # set cudnn libraries, must before configure
+    include(tensorrt)
+    # there is no official support of nccl, cupti in windows
+    if(NOT WIN32)
+        include(cupti)
+    endif()
+endif()
+
+include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -187,17 +225,7 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-# there is no official support of nccl, cupti in windows
-if(NOT WIN32)
-    include(cupti)
-endif()
-
 include(flags)              # set paddle compile flags
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-endif()
 
 if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
@@ -217,6 +245,12 @@ if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
+
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+endif()
 
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")

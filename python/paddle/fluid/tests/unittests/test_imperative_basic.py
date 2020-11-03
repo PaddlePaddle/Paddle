@@ -211,7 +211,7 @@ class TestImperative(unittest.TestCase):
         paddle.disable_static()
         self.assertTrue(paddle.in_dynamic_mode())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        var_inp = paddle.to_variable(np_inp)
+        var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out1 = out.numpy()
@@ -221,7 +221,7 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(paddle.in_dynamic_mode())
         paddle.disable_static()
         self.assertTrue(paddle.in_dynamic_mode())
-        var_inp = paddle.to_variable(np_inp)
+        var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out2 = out.numpy()
@@ -333,7 +333,7 @@ class TestImperative(unittest.TestCase):
             try:
                 new_variable.numpy()
             except Exception as e:
-                assert type(e) == core.EnforceNotMet
+                assert type(e) == ValueError
 
             try:
                 new_variable.backward()
@@ -652,7 +652,7 @@ class TestDygraphUtils(unittest.TestCase):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
         func = helper.append_activation
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.core.CPUPlace()):
             a = fluid.dygraph.to_variable(a_np)
             fluid.set_flags({'FLAGS_use_mkldnn': True})
             try:
@@ -689,4 +689,5 @@ class TestDygraphGuardWithError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

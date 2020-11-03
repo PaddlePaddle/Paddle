@@ -12,8 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from functools import reduce
+
 from paddle.fluid.framework import Variable
 from paddle.fluid import core
+
+dtype_to_size = {
+    core.VarDesc.VarType.FP16: 2,
+    core.VarDesc.VarType.FP32: 4,
+    core.VarDesc.VarType.FP64: 8,
+    core.VarDesc.VarType.INT16: 2,
+    core.VarDesc.VarType.INT32: 4,
+    core.VarDesc.VarType.INT64: 8,
+    core.VarDesc.VarType.BOOL: 1,
+    core.VarDesc.VarType.UINT8: 1,
+}
 
 
 class VarBlock:
@@ -51,11 +64,14 @@ class VarStruct(object):
         self.type = type
         self.lod_level = lod_level
         self.persistable = persistable
+        self.m_size = 1
+        self.m_size = reduce(lambda x, y: x * y, shape)
+        self.m_size *= dtype_to_size[dtype]
 
     def __str__(self):
-        return "N: {}, S: {}, D: {}, T: {}, LL: {}, P: {}".format(
+        return "N: {}, S: {}, D: {}, T: {}, LL: {}, P: {}, M: {}".format(
             self.name, self.shape, self.dtype, self.type, self.lod_level,
-            self.persistable)
+            self.persistable, self.m_size)
 
 
 class VarDistributed(object):

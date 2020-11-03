@@ -330,6 +330,22 @@ class TestFillConstantImperative(unittest.TestCase):
                 res4.numpy(), np.full(
                     [1, 2], 88, dtype="int32"))
 
+    def test_nan(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.nan)
+            self.assertTrue(np.isnan(res.numpy().item(0)))
+
+    def test_inf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.inf)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+
+    def test_ninf(self):
+        with fluid.dygraph.guard():
+            res = fluid.layers.fill_constant([1], 'float32', np.NINF)
+            self.assertTrue(np.isinf(res.numpy().item(0)))
+            self.assertEqual(np.NINF, res.numpy().item(0))
+
 
 class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
@@ -348,6 +364,14 @@ class TestFillConstantOpError(unittest.TestCase):
                 shape=[1],
                 value=5,
                 dtype='int16',
+                out=x1)
+
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[1.1],
+                value=5,
+                dtype='float32',
                 out=x1)
 
             # The argument dtype of fill_constant_op must be one of bool, float16,

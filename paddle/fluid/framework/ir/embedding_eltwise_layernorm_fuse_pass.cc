@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/embedding_eltwise_layernorm_fuse_pass.h"
-#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -334,3 +335,8 @@ void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
 
 REGISTER_PASS(embedding_eltwise_layernorm_fuse_pass,
               paddle::framework::ir::EmbeddingEltwiseLayerNormFusePass);
+REGISTER_PASS_CAPABILITY(embedding_eltwise_layernorm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("lookup_table", 0)
+            .EQ("elementweise_add", 0));

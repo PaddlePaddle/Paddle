@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -162,7 +163,8 @@ void TestInference(const std::string& dirname,
     //   int device_id = place.GetDeviceId();
     paddle::platform::SetDeviceId(0);
 #else
-    PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "'CUDAPlace' is not supported in CPU only device."));
 #endif
   }
 

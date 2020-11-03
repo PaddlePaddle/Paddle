@@ -21,12 +21,9 @@ limitations under the License. */
 #endif
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-
 #include <fstream>
 #include <string>
 

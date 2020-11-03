@@ -17,9 +17,10 @@ import collections
 import copy
 import six
 import numpy as np
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
+from sys import version_info
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -358,3 +359,73 @@ def convert_shape_to_list(shape):
     else:
         shape = list(shape.numpy().astype(int))
     return shape
+
+
+def check_shape(shape):
+    """
+    Check shape type and shape elements type before passing it to fill_constant
+    """
+    if isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
+    else:
+        for ele in shape:
+            if not isinstance(ele, Variable):
+                if ele < 0:
+                    raise ValueError(
+                        "All elements in ``shape`` must be positive when it's a list or tuple"
+                    )
+                if not isinstance(ele, six.integer_types):
+                    raise TypeError(
+                        "All elements in ``shape`` must be integers when it's a list or tuple"
+                    )
+
+
+def try_set_static_shape_tensor(tensor, shape):
+    """Try to set static shape of tensor from a shape tensor.
+    
+    For example,
+
+    import paddle
+    paddle.enable_static()
+    data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
+    shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
+    x = paddle.uniform(shape) 
+    print(x.shape) 
+    # (-1, 2)
+    
+    """
+    if not in_dygraph_mode():
+        # static mode, and shape is not all inferred (contains -1)
+        if -1 in tensor.shape:
+            if isinstance(shape, Variable):
+                shape = try_get_constant_shape_from_tensor(shape)
+                if shape:
+                    tensor.desc.set_shape(shape)
+
+
+def try_get_constant_shape_from_tensor(shape_tensor):
+    """Try to get shape from a tensor with constant value.
+
+    For example,
+    
+    import paddle
+    paddle.enable_static()
+    data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
+    shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
+    x = paddle.uniform(shape) 
+    print(x.shape) 
+    # (-1, 2)
+    
+    """
+    if not in_dygraph_mode():
+        try:
+            if shape_tensor.op is not None:
+                generate_op = shape_tensor.op
+                if generate_op.type == 'shape':
+                    var = shape_tensor.block.vars[generate_op.input_arg_names[
+                        0]]
+                    return var.shape
+        except:
+            return None
+
+        return None

@@ -20,6 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class AssignFunctor {
  public:
@@ -47,12 +54,15 @@ class AssignFunctor {
     out_rows.set_height(rows.height());
     auto &t = rows.value();
     auto *m = out_rows.mutable_value();
-    framework::TensorCopy(t, dev_ctx_.GetPlace(), dev_ctx_, m);
+    framework::TensorCopy(t, t.place(), m);
   }
 
   template <typename T>
   void operator()(const T &v) const {
-    PADDLE_THROW("Not support type for assign op %s", typeid(T).name());
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::PermissionDenied(
+            "Not support type for assign op with type %s", typeid(T).name()));
   }
 
  private:
@@ -60,7 +70,7 @@ class AssignFunctor {
                    framework::LoDTensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
-    TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
+    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 

@@ -34,8 +34,7 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
 
     std::normal_distribution<T> dist(mean, std);
-    const std::string op_type = "gaussian_random";
-    auto shape = GetShape(context, op_type);
+    auto shape = GetShape(context);
     tensor->Resize(shape);
     int64_t size = tensor->numel();
     T* data = tensor->mutable_data<T>(context.GetPlace());

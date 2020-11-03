@@ -53,6 +53,8 @@ def value_bound(input, w, h, x, y):
 def bicubic_interp_np(input,
                       out_h,
                       out_w,
+                      scale_h=0,
+                      scale_w=0,
                       out_size=None,
                       actual_shape=None,
                       align_corners=True,
@@ -73,13 +75,19 @@ def bicubic_interp_np(input,
         if (align_corners):
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
-            ratio_h = 1.0 * in_h / out_h
+            if scale_h > 0:
+                ratio_h = 1.0 / scale_h
+            else:
+                ratio_h = 1.0 * in_h / out_h
 
     if out_w > 1:
         if (align_corners):
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
-            ratio_w = 1.0 * in_w / out_w
+            if scale_w > 0:
+                ratio_w = 1.0 / scale_w
+            else:
+                ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_h, out_w))
 
@@ -128,7 +136,8 @@ class TestBicubicInterpOp(OpTest):
         self.init_test_case()
         self.op_type = "bicubic_interp_v2"
         input_np = np.random.random(self.input_shape).astype("float64")
-
+        scale_h = 0
+        scale_w = 0
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
@@ -151,9 +160,9 @@ class TestBicubicInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bicubic_interp_np(input_np, out_h, out_w, self.out_size,
-                                      self.actual_shape, self.align_corners,
-                                      self.data_layout)
+        output_np = bicubic_interp_np(input_np, out_h, out_w, scale_h, scale_w,
+                                      self.out_size, self.actual_shape,
+                                      self.align_corners, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -480,9 +489,33 @@ class TestBicubicOpError(unittest.TestCase):
                 out = interpolate(
                     x,
                     size=None,
-                    mode='trilinear',
+                    mode='bicubic',
                     align_corners=False,
                     scale_factor=[1, 2, 2])
+
+            def test_size_and_scale():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x,
+                    size=None,
+                    mode='bicubic',
+                    align_corners=False,
+                    scale_factor=None)
+
+            def test_size_and_scale2():
+                x = fluid.data(
+                    name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
+                out = interpolate(
+                    x,
+                    size=[2, 2, 2],
+                    mode='trilinear',
+                    align_corners=False,
+                    scale_factor=2.0)
+
+            def test_size_type():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x, size={2, 2}, mode='bicubic', align_corners=False)
 
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)
@@ -498,6 +531,9 @@ class TestBicubicOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_align_corners_and_nearest)
             self.assertRaises(ValueError, test_scale_shape)
             self.assertRaises(ValueError, test_scale_value)
+            self.assertRaises(ValueError, test_size_and_scale)
+            self.assertRaises(ValueError, test_size_and_scale2)
+            self.assertRaises(TypeError, test_size_type)
 
 
 if __name__ == "__main__":

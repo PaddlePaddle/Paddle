@@ -102,10 +102,10 @@ TEST(EngineManager, engine) {
   config.model_from_memory = true;
   config.valid_places = {
 #ifdef PADDLE_WITH_CUDA
-      paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
-      paddle::lite::Place({TARGET(kX86), PRECISION(kFloat)}),
-      paddle::lite::Place({TARGET(kHost), PRECISION(kAny)}),
+      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
 
   LOG(INFO) << "Create EngineManager";
@@ -118,7 +118,7 @@ TEST(EngineManager, engine) {
   ASSERT_EQ(inference::Singleton<inference::lite::EngineManager>::Global().Has(
                 unique_key),
             true);
-  paddle::lite::Predictor* engine_0 =
+  paddle::lite_api::PaddlePredictor* engine_0 =
       inference::Singleton<inference::lite::EngineManager>::Global().Get(
           unique_key);
   CHECK_NOTNULL(engine_0);

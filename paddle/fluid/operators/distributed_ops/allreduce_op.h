@@ -76,7 +76,8 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     }
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

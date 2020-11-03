@@ -417,8 +417,90 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext,
-                                               float>;
+// ChannelClipAndQuantDequantKernel for quant_axis is 0
+template <typename T>
+__global__ void ChannelClipAndQuantDequantKernelQuantAxis0(
+    const T* in, const T* scale, const int bin_cnt, const int n, const int c,
+    T* out) {
+  int tid = threadIdx.x;
+
+  int channel_size = n / c;
+  const T* in_c = in + blockIdx.x * channel_size;
+  T* out_c = out + blockIdx.x * channel_size;
+
+  T s = scale[blockIdx.x];
+  T inv_s = inverse(s);
+
+  for (int i = tid; i < channel_size; i += blockDim.x) {
+    T x = in_c[i];
+    T v = x > s ? s : x;
+    v = v < -s ? -s : v;
+    v = bin_cnt * inv_s * v;
+    out_c[i] = round(v) * s / bin_cnt;
+  }
+}
+
+// ChannelClipAndQuantDequantKernel for quant_axis is 1
+template <typename T>
+__global__ void ChannelClipAndQuantDequantKernelQuantAxis1(
+    const T* in, const T* scale, const int bin_cnt, const int n, const int cin,
+    const int cout, T* out) {
+  T s = scale[blockIdx.x % cout];
+  T inv_s = inverse(s);
+
+  int wh_size = n / (cin * cout);
+  const T* in_c = in + blockIdx.x * wh_size;
+  T* out_c = out + blockIdx.x * wh_size;
+
+  for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
+    T x = in_c[i];
+    T v = x > s ? s : x;
+    v = v < -s ? -s : v;
+    v = bin_cnt * inv_s * v;
+    out_c[i] = round(v) * s / bin_cnt;
+  }
+}
+
+template <typename T>
+struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const framework::Tensor& in, const framework::Tensor& scale,
+                  const int bin_cnt, const int quant_axis,
+                  framework::Tensor* out) {
+    // At present, channelwise quantization supports conv2d, depthwise_conv2d
+    // conv2d_transpose and mul
+    PADDLE_ENFORCE_EQ(
+        quant_axis == 0 || quant_axis == 1, true,
+        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                          "the received is %d",
+                                          quant_axis));
+
+    int num = in.numel();
+    auto in_dims = in.dims();
+
+    const T* in_data = in.data<T>();
+    const T* scale_data = scale.data<T>();
+    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+
+    if (quant_axis == 0) {
+      int grid = in_dims[0];
+      int block = 1024;
+      ChannelClipAndQuantDequantKernelQuantAxis0<
+          T><<<grid, block, 0, ctx.stream()>>>(in_data, scale_data, bin_cnt,
+                                               num, in_dims[0], out_data);
+    } else if (quant_axis == 1) {
+      int grid = in_dims[0] * in_dims[1];
+      int block = 1024;
+
+      ChannelClipAndQuantDequantKernelQuantAxis1<
+          T><<<grid, block, 0, ctx.stream()>>>(
+          in_data, scale_data, bin_cnt, num, in_dims[0], in_dims[1], out_data);
+    }
+  }
+};
+
+template struct ChannelClipFakeQuantDequantFunctor<platform::CUDADeviceContext,
+                                                   float>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -443,3 +525,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_grad,
                         ops::FakeQuantDequantGradKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(
+    fake_channel_wise_quantize_dequantize_abs_max,
+    ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CUDA, float>);

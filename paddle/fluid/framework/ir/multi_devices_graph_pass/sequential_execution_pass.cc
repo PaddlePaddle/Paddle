@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

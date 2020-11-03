@@ -23,8 +23,8 @@ from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
-import objgraph
 from ..data_feeder import convert_dtype
+import warnings
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
@@ -117,11 +117,15 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
-    This function enables dynamic graph mode.
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API turn OFF static graph mode. You can turn ON static graph mode by `enable_static <./disable_dygraph_en.html>`_ .
 
     Parameters:
-        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
-            If None, the running place will be determined according to the way of paddle compilation. Default: None
+        place(paddle.CPUPlace|paddle.CUDAPlace, optional): Place to run dynamic graph. Default: None. Which means that the running place will be 
+            determined according to the way of paddle compilation. 
 
     return:
         None
@@ -129,12 +133,15 @@ def enable_dygraph(place=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is None:
@@ -147,7 +154,11 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
-    This function disables dynamic graph mode.
+
+    .. note::
+        Dynamic graph mode is turn ON by default since paddle 2.0.0
+
+    This API turn ON static graph mode. You can turn ON static graph mode by `disable_static <./enable_dygraph_en.html>`_ .
 
     return:
         None
@@ -155,12 +166,15 @@ def disable_dygraph():
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+
+            paddle.disable_static()
+            print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
+
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is not None:
@@ -363,26 +377,8 @@ def guard(place=None):
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(place):
+                with framework._dygraph_place_guard(expected_place):
                     yield
-
-
-def _print_debug_msg(parameter_list, limit=5, is_test=False):
-    if not core._is_dygraph_debug_enabled():
-        logging.warn(
-            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
-        )
-        return
-    unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(parameter_list)
-    alive_cpp_var_size = len(core.VarBase._alive_vars())
-    if not is_test:
-        logging.warn(
-            'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
-            .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
-        objgraph.show_growth(limit=limit)
-    else:
-        return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
 @framework.dygraph_only
@@ -484,7 +480,7 @@ def grad(outputs,
             paddle.disable_static()
 
             def test_dygraph_grad(grad_outputs=None):
-                x = paddle.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x = paddle.fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -507,7 +503,7 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            grad_value = paddle.fill_constant(shape=[1], value=4.0, dtype='float32')
+            grad_value = paddle.fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
 
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
@@ -519,7 +515,7 @@ def grad(outputs,
             print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            grad_y1 = paddle.fill_constant(shape=[1], value=3.0, dtype='float32')
+            grad_y1 = paddle.fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 
@@ -609,10 +605,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             uint8, uint16, complex64, complex128}.
         name(str, optional): The default value is None. Normally there is no 
             need for user to set this property. For more information, please 
-            refer to :ref:`api_guide_Name` .
+            refer to :ref:`api_guide_Name` . 
         zero_copy(bool, optional): Whether to share memory with the input numpy 
             array. This parameter only works with CPUPlace and will be set to 
-            True when it is None. Default: None.
+            True when it is None. Default: None. (Note: zero_copy is discarded temporally for some reason.)
         dtype(str, optional): The desired data type of returned ``Variable`` .
             Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 
             'int32' , 'int64' , 'uint8' . Default: None.
@@ -665,8 +661,17 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     else:
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
-            if zero_copy is None:
-                zero_copy = True
+            #TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
+            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy. 
+            # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
+            # (2): when used in flask framework, it may result in hang.
+            # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
+            # So, we temporally diable the zero_copy strategy.
+            if zero_copy == True:
+                warnings.warn(
+                    "Currently, zero_copy is not supported, and it will be discarded."
+                )
+                zero_copy = False
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
 

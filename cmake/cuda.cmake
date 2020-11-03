@@ -16,6 +16,7 @@ else()
   set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
   set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
   set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
 
 ######################################################################################
@@ -61,10 +62,6 @@ function(detect_installed_gpus out_variable)
   if(NOT CUDA_gpu_detect_output)
     message(STATUS "Automatic GPU detection failed. Building for all known architectures.")
     set(${out_variable} ${paddle_known_gpu_archs} PARENT_SCOPE)
-    #Todo: fix Automatic GPU detection failed on windows
-    if(WIN32)
-      set(${out_variable} "61 75" PARENT_SCOPE)
-    endif()
   else()
     set(${out_variable} ${CUDA_gpu_detect_output} PARENT_SCOPE)
   endif()
@@ -106,6 +103,9 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Maxwell")
     set(cuda_arch_bin "50")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Pascal")
+    if (NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
+      add_definitions("-DSUPPORTS_CUDA_FP16")
+    endif()
     set(cuda_arch_bin "60 61")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
     if (NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
@@ -188,9 +188,15 @@ elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
+elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.x
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs11})
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
 endif()
 
-add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
+add_definitions("-DCUDA_VERSION_MAJOR=\"${CUDA_VERSION_MAJOR}\"")
+add_definitions("-DCUDA_VERSION_MINOR=\"${CUDA_VERSION_MINOR}\"")
+add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")
 
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
@@ -241,3 +247,4 @@ endif()
 
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)
 mark_as_advanced(CUDA_SDK_ROOT_DIR CUDA_SEPARABLE_COMPILATION)
+

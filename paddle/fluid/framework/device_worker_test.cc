@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/device_worker.h"
+
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {
 namespace framework {

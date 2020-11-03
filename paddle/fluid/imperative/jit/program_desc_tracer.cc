@@ -13,9 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
+
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
+
+namespace paddle {
+namespace imperative {
+class VarBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
@@ -198,7 +204,8 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
 
 void ProgramDescTracer::InsertVarIfNotExist(
     const std::shared_ptr<VarBase> &new_var, bool is_input) {
-  PADDLE_ENFORCE_NOT_NULL(new_var);
+  PADDLE_ENFORCE_NOT_NULL(new_var, platform::errors::InvalidArgument(
+                                       "The variable to insert is NULL."));
   if (vars_.count(new_var) != 0) return;
 
   auto new_var_desc = new framework::VarDesc("");
@@ -215,7 +222,9 @@ void ProgramDescTracer::InsertVarIfNotExist(
   }
 
   const auto &inner_var = new_var->Var();
-  PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true);
+  PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The variable to insert is not initialized."));
   if (inner_var.IsType<framework::LoDTensor>()) {
     const auto &tensor = inner_var.Get<framework::LoDTensor>();
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -227,8 +236,9 @@ void ProgramDescTracer::InsertVarIfNotExist(
       new_var_desc->SetDataType(framework::proto::VarType::FP32);
     }
   } else {
-    PADDLE_THROW("Not support variable type %s",
-                 framework::ToTypeName(inner_var.Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support variable type %s.",
+        framework::ToTypeName(inner_var.Type())));
   }
 }
 

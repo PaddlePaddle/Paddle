@@ -41,8 +41,8 @@ class PipelineHelper(object):
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker._worker_index()]
         node_num = _get_node_num(endpoints)
         assert len(endpoints) % node_num == 0
         gpus_per_node = len(endpoints) // node_num
@@ -50,19 +50,19 @@ class PipelineHelper(object):
         # Create a global ring for all gpus
         print("current_endpoint:", current_endpoint)
         print("endpoints:", endpoints)
-        print("rank:", self.role_maker.worker_index())
+        print("rank:", self.role_maker._worker_index())
         self._init_communicator(
             self.startup_program, current_endpoint, endpoints,
-            self.role_maker.worker_index(), 0, self.wait_port)
+            self.role_maker._worker_index(), 0, self.wait_port)
 
         if node_num == 1: return
         # Create rings for gpus with the same gpu id
         eps = []
-        local_rank = self.role_maker.worker_index() % gpus_per_node
+        local_rank = self.role_maker._worker_index() % gpus_per_node
         ring_id = local_rank + 1
         for i in range(node_num):
             eps.append(endpoints[i * gpus_per_node + local_rank])
-        temp_rank = self.role_maker.worker_index() // node_num
+        temp_rank = self.role_maker._worker_index() // node_num
         self._init_communicator(self.startup_program, current_endpoint, eps,
                                 temp_rank, ring_id, self.wait_port)
         self._broadcast_params(ring_id)
@@ -138,14 +138,17 @@ class PipelineOptimizer(MetaOptimizerBase):
         super(PipelineOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
         num_microbatches = user_defined_strategy.pipeline_configs['micro_batch']
-        endpoints = role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[role_maker.worker_index()]
+        endpoints = role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[role_maker._worker_index()]
         self.local_rank = self._get_local_rank(current_endpoint, endpoints)
         self.wrapped_opt = PO(self.inner_opt,
                               num_microbatches=num_microbatches,
                               start_cpu_core_id=self.local_rank)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.pipeline == True:
             return True
         return False
@@ -167,8 +170,8 @@ class PipelineOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker._worker_index()]
         node_num = _get_node_num(endpoints)
         gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
@@ -176,9 +179,6 @@ class PipelineOptimizer(MetaOptimizerBase):
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
 
-        if self.role_maker.worker_num() == 1:
-            return self.inner_opt.minimize(loss, startup_program,
-                                           parameter_list, no_grad_set)
         loss.block.program._pipeline_opt = dict()
         loss.block.program._pipeline_opt['local_rank'] = self.local_rank
         optimize_ops, params_grads, prog_list = \
@@ -192,12 +192,13 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.nranks = nranks
         self.nrings = len(self.main_program_list)
 
-        self.rank = self.role_maker.worker_index()
+        self.rank = self.role_maker._worker_index()
         self.endpoints = endpoints
         self.current_endpoint = current_endpoint
 
         pipeline_helper = PipelineHelper(self.role_maker)
-        pipeline_helper.update_startup_program(self.startup_program)
+        pipeline_helper.update_startup_program(
+            self.startup_program._pipeline_opt["startup_program"])
 
         self._transpile_main_program(loss, node_num, gpus_per_node)
         return optimize_ops, params_grads
@@ -233,7 +234,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
-                OP_ROLE_VAR_KEY in op.attr_names:
+                    OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
                 if len(op_role_var) == 0:
                     continue

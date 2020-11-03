@@ -534,13 +534,6 @@ def get_incrementapi():
                 f.write('\n')
 
 
-# only white on CPU
-gpu_not_white = [
-    "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
-    "cuda_profiler", 'DGCMomentumOptimizer'
-]
-
-
 def get_wlist():
     '''
     this function will get the white list of API.
@@ -552,17 +545,25 @@ def get_wlist():
     '''
     wlist = []
     wlist_file = []
+    # only white on CPU
+    gpu_not_white = []
     with open("wlist.json", 'r') as load_f:
         load_dict = json.load(load_f)
         for key in load_dict:
-            if key == 'wlist_file':
-                wlist_file = wlist_file + load_dict[key]
+            if key == 'wlist_dir':
+                for item in load_dict[key]:
+                    wlist_file.append(item["name"])
+            elif key == "gpu_not_white":
+                gpu_not_white = load_dict[key]
+            elif key == "wlist_api":
+                for item in load_dict[key]:
+                    wlist.append(item["name"])
             else:
                 wlist = wlist + load_dict[key]
-    return wlist, wlist_file
+    return wlist, wlist_file, gpu_not_white
 
 
-wlist, wlist_file = get_wlist()
+wlist, wlist_file, gpu_not_white = get_wlist()
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")

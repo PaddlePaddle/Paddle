@@ -16,7 +16,6 @@ limitations under the License. */
 #include <thrust/random.h>
 #include <thrust/transform.h>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/bernoulli_op.h"

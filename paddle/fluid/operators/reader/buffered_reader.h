@@ -18,6 +18,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
+
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #ifdef PADDLE_WITH_CUDA

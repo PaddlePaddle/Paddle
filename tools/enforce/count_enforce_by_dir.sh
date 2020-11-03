@@ -59,7 +59,7 @@
 
 . ./count_all_enforce.sh --source-only
 
-ROOT_DIR=../paddle/fluid
+ROOT_DIR=../../paddle/fluid
 
 function count_dir_independently(){
     local sub_dir_total_check_cnt=0

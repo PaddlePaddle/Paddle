@@ -783,12 +783,13 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
 
   int out_w = ctx.Attr<int>("out_w");
   auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  float scale_w = -1.;
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
     out_w = new_size[0];
   } else {
-    float scale_w = -1;
+    // float scale_w = -1;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -833,8 +834,11 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
 
   float ratio_w = 0.f;
   if (out_w > 1) {
+    float new_scale_w = 0.f;
+    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
+                                : static_cast<float>(in_w) / out_w;
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(in_w) / out_w;
+                              : static_cast<float>(new_scale_w);
   }
   if ("linear" == interp_method) {
     LinearInterpolation<T>(input, output, ratio_w, in_w, n, c, out_w,
@@ -856,6 +860,8 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
+  float scale_h = -1;
+  float scale_w = -1;
 
   auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
@@ -864,8 +870,6 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[0];
     out_w = new_size[1];
   } else {
-    float scale_h = -1;
-    float scale_w = -1;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -925,12 +929,18 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   float ratio_h = 0.f;
   float ratio_w = 0.f;
   if (out_h > 1) {
+    float new_scale_h = 0.f;
+    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
+                                : static_cast<float>(in_h) / out_h;
     ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(in_h) / out_h;
+                              : static_cast<float>(new_scale_h);
   }
   if (out_w > 1) {
+    float new_scale_w = 0.f;
+    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
+                                : static_cast<float>(in_w) / out_w;
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(in_w) / out_w;
+                              : static_cast<float>(new_scale_w);
   }
 
   if ("bilinear" == interp_method) {
@@ -962,6 +972,10 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
+  float scale_d = -1;
+  float scale_h = -1;
+  float scale_w = -1;
+
   auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
@@ -970,9 +984,6 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[1];
     out_w = new_size[2];
   } else {
-    float scale_d = -1;
-    float scale_h = -1;
-    float scale_w = -1;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -1043,16 +1054,25 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   float ratio_h = 0.f;
   float ratio_w = 0.f;
   if (out_d > 1) {
+    float new_scale_d = 0.f;
+    new_scale_d = (scale_d > 0) ? static_cast<float>(1. / scale_d)
+                                : static_cast<float>(in_d) / out_d;
     ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                              : static_cast<float>(in_d) / out_d;
+                              : static_cast<float>(new_scale_d);
   }
   if (out_h > 1) {
+    float new_scale_h = 0.f;
+    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
+                                : static_cast<float>(in_h) / out_h;
     ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(in_h) / out_h;
+                              : static_cast<float>(new_scale_h);
   }
   if (out_w > 1) {
+    float new_scale_w = 0.f;
+    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
+                                : static_cast<float>(in_w) / out_w;
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(in_w) / out_w;
+                              : static_cast<float>(new_scale_w);
   }
 
   if ("trilinear" == interp_method) {
@@ -1127,8 +1147,11 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
 
   float ratio_w = 0.f;
   if (out_w > 1) {
+    float new_scale_w = 0.f;
+    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
+                                : static_cast<float>(in_w) / out_w;
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(in_w) / out_w;
+                              : static_cast<float>(new_scale_w);
   }
   if ("linear" == interp_method) {
     LinearInterpolationGrad<T>(output_grad, input_grad, ratio_w, in_w, n, c,
@@ -1216,12 +1239,18 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
   float ratio_h = 0.f;
   float ratio_w = 0.f;
   if (out_h > 1) {
+    float new_scale_h = 0.f;
+    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
+                                : static_cast<float>(in_h) / out_h;
     ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(in_h) / out_h;
+                              : static_cast<float>(new_scale_h);
   }
   if (out_w > 1) {
+    float new_scale_w = 0.f;
+    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
+                                : static_cast<float>(in_w) / out_w;
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(in_w) / out_w;
+                              : static_cast<float>(new_scale_w);
   }
 
   if ("bilinear" == interp_method) {
@@ -1327,16 +1356,25 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   float ratio_h = 0.f;
   float ratio_w = 0.f;
   if (out_d > 1) {
+    float new_scale_d = 0.f;
+    new_scale_d = (scale_d > 0) ? static_cast<float>(1. / scale_d)
+                                : static_cast<float>(in_d) / out_d;
     ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                              : static_cast<float>(in_d) / out_d;
+                              : static_cast<float>(new_scale_d);
   }
   if (out_h > 1) {
+    float new_scale_h = 0.f;
+    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
+                                : static_cast<float>(in_h) / out_h;
     ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(in_h) / out_h;
+                              : static_cast<float>(new_scale_h);
   }
   if (out_w > 1) {
+    float new_scale_w = 0.f;
+    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
+                                : static_cast<float>(in_w) / out_w;
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(in_w) / out_w;
+                              : static_cast<float>(new_scale_w);
   }
 
   if ("trilinear" == interp_method) {

@@ -15,10 +15,13 @@
 #pragma once
 
 #include <dlpack/dlpack.h>
+
 #include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
+
+class Tensor;
 
 class DLPackTensor {
  public:

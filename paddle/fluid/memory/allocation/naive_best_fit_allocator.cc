@@ -127,11 +127,10 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+  PADDLE_ENFORCE_EQ(
+      ret, XPU_SUCCESS,
+      platform::errors::External(
+          "XPU API return wrong value[%d], no enough memory", ret));
   if (FLAGS_init_allocated_mem) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));

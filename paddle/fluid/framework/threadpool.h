@@ -23,6 +23,7 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -91,7 +92,8 @@ class ThreadPool {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (!running_) {
-        PADDLE_THROW("enqueue on stopped ThreadPool");
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Task is enqueued into stopped ThreadPool."));
       }
       tasks_.push(std::move(task));
     }

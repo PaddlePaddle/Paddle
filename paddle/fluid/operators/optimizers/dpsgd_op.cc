@@ -24,32 +24,45 @@ class DpsgdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
-                      "Input(Param) of DpsgdOp should not be null.");
+                      platform::errors::NotFound(
+                          "Input(Param) of DpsgdOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
-                      "Input(Grad) of DpsgdOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
-                      "Input(LearningRate) of DpsgdOp should not be null.");
+                      platform::errors::NotFound(
+                          "Input(Grad) of DpsgdOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("LearningRate"), true,
+        platform::errors::NotFound(
+            "Input(LearningRate) of DpsgdOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Param").front()));
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Grad").front(),
         framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->GetInputsVarType("Grad").front()));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
-                      "Output(ParamOut) of DpsgdOp should not be null.");
+                      platform::errors::NotFound(
+                          "Output(ParamOut) of DpsgdOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "Learning rate should have 1 dimension");
+                      platform::errors::InvalidArgument(
+                          "Learning rate should have 1 dimension. But Received "
+                          "LearningRate's dims [%s].",
+                          framework::product(lr_dims)));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Grad"),
-        "Param and Grad input of DpsgdOp should have same dimension");
+        platform::errors::InvalidArgument(
+            "Param and Grad input of DpsgdOp should have same dimension. But "
+            "received Para's dim [%s] and Grad's dim [%s].",
+            param_dims, ctx->GetInputDim("Grad")));
 
     ctx->SetOutputDim("ParamOut", param_dims);
   }

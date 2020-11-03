@@ -45,7 +45,9 @@ endif()
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)
-    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+        SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+    endif()
 endif()
 
 SET(OP_PREFETCH_DEPS "")
@@ -90,7 +92,7 @@ cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEP
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
-sequence_pooling executor device_memory_aligment generator)
+sequence_pooling segment_pooling executor device_memory_aligment generator)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc matrix_inverse)
@@ -142,4 +144,5 @@ cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_o
 
 if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)
+include(mkldnn/nhwc_op_tests.cmake)
 endif()

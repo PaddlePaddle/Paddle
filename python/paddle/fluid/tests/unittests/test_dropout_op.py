@@ -43,7 +43,7 @@ class TestDropoutOp(OpTest):
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((2000)).astype("float32")}
+        self.inputs = {'X': np.random.random((2000, )).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
@@ -487,7 +487,7 @@ class TestDropoutCAPI(unittest.TestCase):
                 self.assertTrue(np.allclose(result.numpy(), result_np))
 
 
-class TestDropout2dFAPI(unittest.TestCase):
+class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -535,7 +535,7 @@ class TestDropout2dFAPI(unittest.TestCase):
                 self.assertTrue(np.allclose(res.numpy(), res_np))
 
 
-class TestDropout2dFAPIError(unittest.TestCase):
+class TestDropout2DFAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -554,7 +554,7 @@ class TestDropout2dFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dataformat)
 
 
-class TestDropout2dCAPI(unittest.TestCase):
+class TestDropout2DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -567,13 +567,13 @@ class TestDropout2dCAPI(unittest.TestCase):
                 input_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 result_np = input_np
                 input = fluid.dygraph.to_variable(input_np)
-                m = paddle.nn.Dropout2d(p=0.)
+                m = paddle.nn.Dropout2D(p=0.)
                 m.eval()
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), result_np))
 
 
-class TestDropout3dFAPI(unittest.TestCase):
+class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -621,7 +621,7 @@ class TestDropout3dFAPI(unittest.TestCase):
                 self.assertTrue(np.allclose(res.numpy(), res_np))
 
 
-class TestDropout3dFAPIError(unittest.TestCase):
+class TestDropout3DFAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -640,7 +640,7 @@ class TestDropout3dFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_dataformat)
 
 
-class TestDropout3dCAPI(unittest.TestCase):
+class TestDropout3DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -653,7 +653,7 @@ class TestDropout3dCAPI(unittest.TestCase):
                 input_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 result_np = input_np
                 input = fluid.dygraph.to_variable(input_np)
-                m = paddle.nn.Dropout3d(p=0.)
+                m = paddle.nn.Dropout3D(p=0.)
                 m.eval()
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), result_np))
@@ -672,9 +672,11 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
             res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.)
             res2 = paddle.nn.functional.alpha_dropout(
                 x=input, p=0., training=False)
+            res3 = paddle.nn.functional.alpha_dropout(x=input, p=1.)
 
             in_np = np.random.random([40, 40]).astype("float32")
             res_np = in_np
+            res_np3 = np.zeros_like(in_np)
 
             exe = fluid.Executor(place)
             res_list = [res1, res2]
@@ -683,6 +685,10 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
                                   feed={"input": in_np},
                                   fetch_list=[res])
                 self.assertTrue(np.allclose(fetches[0], res_np))
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": in_np},
+                              fetch_list=[res3])
+            self.assertTrue(np.allclose(fetches[0], res_np3))
 
     def test_static(self):
         for place in self.places:
@@ -693,15 +699,18 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
+                res_np3 = np.zeros_like(in_np)
                 input = fluid.dygraph.to_variable(in_np)
 
                 res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.)
                 res2 = paddle.nn.functional.alpha_dropout(
                     x=input, p=0., training=False)
+                res3 = paddle.nn.functional.alpha_dropout(x=input, p=1.)
 
             res_list = [res1, res2]
             for res in res_list:
                 self.assertTrue(np.allclose(res.numpy(), res_np))
+            self.assertTrue(np.allclose(res3.numpy(), res_np3))
 
 
 class TestAlphaDropoutFAPIError(unittest.TestCase):

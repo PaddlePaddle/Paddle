@@ -39,7 +39,7 @@
 #     Valid PADDLE_ENFORCE{_**} & PADDLE_THROW Count: 1706
 #     Invalid PADDLE_ENFORCE{_**} & PADDLE_THROW Count: 4572
 
-ROOT_DIR=../paddle/fluid
+ROOT_DIR=../../paddle/fluid
 ALL_PADDLE_CHECK_CNT=0
 VALID_PADDLE_CHECK_CNT=0
 

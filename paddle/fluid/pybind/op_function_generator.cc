@@ -43,6 +43,17 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nll_loss", {"X", "Label", "Weight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
     {"gather", {"X", "Index", "Axis"}},
+    {"roi_pool", {"X", "ROIs", "RoisNum"}},
+    {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"collect_fpn_proposals",
+     {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
+    {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}},
+    {"warpctc", {"Logits", "Label", "LogitsLength", "LabelLength"}},
+    {"hierarchical_sigmoid",
+     {"X", "W", "Label", "PathTable", "PathCode", "Bias"}},
+    {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
+    {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
+    {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -63,6 +74,13 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"unique", {"Out", "Index", "Indices", "Counts"}},
+    {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
+    {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
+    {"matrix_nms", {"Out", "Index", "RoisNum"}},
+    {"distribute_fpn_proposals",
+     {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
+    {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
+    {"multiclass_nms3", {"Out", "NmsRoisNum"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -102,7 +120,11 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
-    {"amp_check_finite_and_scale", {"Out", "FoundInfinite"}},
+    {"fake_channel_wise_quantize_dequantize_abs_max", {"Out", "OutScale"}},
+    {"check_finite_and_unscale", {"Out", "FoundInfinite"}},
+    {"update_loss_scaling",
+     {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
+    {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
 };
 
 // clang-format off

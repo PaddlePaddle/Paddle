@@ -521,3 +521,40 @@ DEFINE_int32(
 DEFINE_bool(sort_sum_gradient, false,
             "Sum gradients by the reverse order of "
             "the forward execution sequence.");
+
+/**
+ * Performance related FLAG
+ * Name: max_inplace_grad_add
+ * Since Version: 2.0.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: The maximum number of inplace grad_add.
+ */
+DEFINE_int32(
+    max_inplace_grad_add, 0,
+    "The maximum number of inplace grad_add. When doing "
+    "gradient accumulation, if the number of gradients need to that "
+    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
+    "instead of sum. Default is 0.");
+
+/**
+ * Debug related FLAG
+ * Name: tracer_mkldnn_ops_on
+ * Since Version: 2.0.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be enabled.
+ */
+DEFINE_string(tracer_mkldnn_ops_on, "",
+              "List of OneDNN operation types to be turned on");
+
+/**
+ * Debug related FLAG
+ * Name: tracer_mkldnn_ops_off
+ * Since Version: 2.0.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be disabled.
+ */
+DEFINE_string(tracer_mkldnn_ops_off, "",
+              "List of OneDNN operation types to be turned off");

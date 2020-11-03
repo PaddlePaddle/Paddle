@@ -21,14 +21,12 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import paddle
 
-from ..fluid.io import shuffle  #DEFINE_ALIAS
-
 __all__ = [
     'bernoulli',
+    'multinomial',
     'standard_normal',
     'normal',
     'uniform',
-    'shuffle',
     'randn',
     'rand',
     'randint',
@@ -59,20 +57,19 @@ def bernoulli(x, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
 
-        paddle.disable_static()
+            paddle.seed(100) # on CPU device
+            x = paddle.rand([2,3])
+            print(x.numpy())
+            # [[0.5535528  0.20714243 0.01162981]
+            # [0.51577556 0.36369765 0.2609165 ]]
 
-        x = paddle.rand([2, 3])
-        print(x.numpy())
-        # [[0.11272584 0.3890902  0.7730957 ]
-        # [0.10351662 0.8510418  0.63806665]]
-
-        out = paddle.bernoulli(x)
-        print(out.numpy())
-        # [[0. 0. 1.]
-        # [0. 0. 1.]]
+            paddle.seed(200) # on CPU device
+            out = paddle.bernoulli(x)
+            print(out.numpy())
+            # [[0. 0. 0.]
+            # [1. 1. 0.]]
 
     """
 
@@ -86,6 +83,72 @@ def bernoulli(x, name=None):
         dtype=x.dtype)  # maybe set out to int32 ? 
     helper.append_op(
         type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={})
+    return out
+
+
+def multinomial(x, num_samples=1, replacement=False, name=None):
+    """
+    This OP returns a Tensor filled with random values sampled from a Multinomical
+    distribution. The input ``x`` is a tensor with probabilities for generating the
+    random number. Each element in ``x`` should be larger or equal to 0, but not all
+    0. ``replacement`` indicates whether it is a replaceable sample. If ``replacement``
+    is True, a category can be sampled more than once.
+
+    Args:
+        x(Tensor):  A tensor with probabilities for generating the random number. The data type
+            should be float32, float64.
+        num_samples(int, optional): Number of samples, default is 1.
+        replacement(bool, optional): Whether it is a replaceable sample, default is False.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A Tensor filled with sampled category index after ``num_samples`` times samples.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.seed(100) # on CPU device
+            x = paddle.rand([2,4])
+            print(x.numpy())
+            # [[0.5535528  0.20714243 0.01162981 0.51577556]
+            # [0.36369765 0.2609165  0.18905126 0.5621971 ]]
+
+            paddle.seed(200) # on CPU device
+            out1 = paddle.multinomial(x, num_samples=5, replacement=True)
+            print(out1.numpy())
+            # [[3 3 0 0 0]
+            # [3 3 3 1 0]]
+
+            # out2 = paddle.multinomial(x, num_samples=5)
+            # InvalidArgumentError: When replacement is False, number of samples
+            #  should be less than non-zero categories
+
+            paddle.seed(300) # on CPU device
+            out3 = paddle.multinomial(x, num_samples=3)
+            print(out3.numpy())
+            # [[3 0 1]
+            # [3 1 0]]
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.multinomial(x, 'num_samples', num_samples,
+                                    'replacement', replacement)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
+
+    helper = LayerHelper("multinomial", **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=convert_np_dtype_to_dtype_('int64'))
+    helper.append_op(
+        type='multinomial',
+        inputs={"X": x},
+        outputs={'Out': out},
+        attrs={'num_samples': num_samples,
+               'replacement': replacement})
     return out
 
 
@@ -188,7 +251,6 @@ def standard_normal(shape, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
@@ -209,8 +271,9 @@ def standard_normal(shape, dtype=None, name=None):
             #   [ 0.8086993 ,  0.6868893 ]]]  # random
 
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-            shape_tensor = paddle.to_tensor(np.array([2, 3]))
-            out3 = paddle.standard_normal(shape_tensor)
+            shape_tensor = paddle.to_tensor([2, 3])
+            result_3 = paddle.standard_normal(shape_tensor)
+
             # [[-2.878077 ,  0.17099959,  0.05111201]  # random
             #  [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
 
@@ -258,7 +321,6 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
@@ -266,11 +328,11 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             # [[ 0.17501129  0.32364586  1.561118  ]  # random
             #  [-1.7232178   1.1545963  -0.76156676]]  # random
 
-            mean_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+            mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             out2 = paddle.normal(mean=mean_tensor)
             # [ 0.18644847 -1.19434458  3.93694787]  # random
 
-            std_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+            std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             out3 = paddle.normal(mean=mean_tensor, std=std_tensor)
             # [1.00780561 3.78457445 5.81058198]  # random
 
@@ -318,7 +380,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
     Examples:
+
     ::
+
         Input:
           shape = [1, 2]
         Output:
@@ -357,7 +421,6 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
             
-            import numpy as np
             import paddle
 
             paddle.disable_static()
@@ -371,16 +434,15 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim_1 = paddle.fill_constant([1], "int64", 2)
-            dim_2 = paddle.fill_constant([1], "int32", 3)
+            dim_1 = paddle.full([1], 2, "int64")
+            dim_2 = paddle.full([1], 3, "int32")
             result_2 = paddle.tensor.random.uniform(shape=[dim_1, dim_2])
             # [[-0.9951253,   0.30757582, 0.9899647 ],
             #  [ 0.5864527,   0.6607096,  -0.8886161 ]]
 
             # example 3:
             # attr shape is a Tensor, the data type must be int64 or int32.
-            shape = np.array([2, 3])
-            shape_tensor = paddle.to_tensor(shape)
+            shape_tensor = paddle.to_tensor([2, 3])
             result_3 = paddle.tensor.random.uniform(shape_tensor)
             # if shape_tensor's value is [2, 3]
             # result_3 is:
@@ -393,8 +455,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "uniform only supports [float32, float64], but the default dtype is %s"
-                % dtype)
+                "uniform/rand only supports [float32, float64], but the default dtype is {}".
+                format(dtype))
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -405,15 +467,15 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand')
 
-    helper = LayerHelper("uniform_random", **locals())
+    helper = LayerHelper("uniform", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
@@ -454,7 +516,6 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
@@ -473,8 +534,10 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
             # example 3:
             # attr shape is a Tensor
-            shape_tensor = paddle.to_tensor(np.array([3]))
-            out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
+
+            shape_tensor = paddle.to_tensor(3)
+            result_3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
+
             # [-2, 2, 3]  # random
 
             # example 4:
@@ -604,7 +667,6 @@ def rand(shape, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
             # example 1: attr shape is a list which doesn't contain Tensor.
@@ -624,8 +686,9 @@ def rand(shape, dtype=None, name=None):
             #   [0.870881  , 0.2984597 ]]]  # random
 
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-            shape_tensor = paddle.to_tensor(np.array([2, 3]))
-            out2 = paddle.rand(shape_tensor)
+            shape_tensor = paddle.to_tensor([2, 3])
+            result_3 = paddle.rand(shape_tensor)
+
             # [[0.22920267, 0.841956  , 0.05981819],  # random
             #  [0.4836288 , 0.24573246, 0.7516129 ]]  # random
 

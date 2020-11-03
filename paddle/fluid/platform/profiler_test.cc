@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+
 #include <string>
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
+
 #include "gtest/gtest.h"
 
 TEST(Event, CpuElapsedTime) {

@@ -25,6 +25,8 @@ import paddle
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
 
+paddle.enable_static()
+
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
 label_dict_len = len(label_dict)

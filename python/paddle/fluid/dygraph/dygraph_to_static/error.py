@@ -13,12 +13,21 @@
 # limitations under the License.
 
 import os
+import six
 import sys
 import traceback
 
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
 
 ERROR_DATA = "Error data about original source code information and traceback."
+
+# A flag to set whether to open the dygraph2static error reporting module
+SIMPLIFY_ERROR_ENV_NAME = "TRANSLATOR_SIMPLIFY_NEW_ERROR"
+DEFAULT_SIMPLIFY_NEW_ERROR = 1
+
+# A flag to set whether to display the simplified error stack
+DISABLE_ERROR_ENV_NAME = "TRANSLATOR_DISABLE_NEW_ERROR"
+DEFAULT_DISABLE_NEW_ERROR = 0
 
 
 def attach_error_data(error, in_runtime=False):
@@ -103,7 +112,10 @@ class ErrorData(object):
 
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
-            self._simplify_error_value()
+            if int(
+                    os.getenv(SIMPLIFY_ERROR_ENV_NAME,
+                              DEFAULT_SIMPLIFY_NEW_ERROR)):
+                self._simplify_error_value()
             message_lines.append(str(self.error_value))
             return '\n'.join(message_lines)
 
@@ -150,3 +162,22 @@ class ErrorData(object):
 
         error_value_str = '\n'.join(error_value_lines)
         self.error_value = self.error_type(error_value_str)
+
+    def raise_new_exception(self):
+
+        # Raises the origin error if disable dygraph2static error module,
+        if int(os.getenv(DISABLE_ERROR_ENV_NAME, DEFAULT_DISABLE_NEW_ERROR)):
+            raise
+
+        new_exception = self.create_exception()
+        if six.PY3:
+            # NOTE(liym27):
+            # 1. Why `raise new_exception from None`?
+            #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+            #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+            #   caught exception.
+            # 2. Use exec to bypass syntax error checking in Python 2.
+
+            six.exec_("raise new_exception from None")
+        else:
+            raise new_exception

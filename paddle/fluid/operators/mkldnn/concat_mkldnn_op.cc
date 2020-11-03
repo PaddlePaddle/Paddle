@@ -86,8 +86,10 @@ class ConcatPrimitiveFactory {
   concat CreateConcatPrimitive(const concat::primitive_desc& concat_pd,
                                Tensor* output, platform::CPUPlace place,
                                const mkldnn::engine& mkldnn_engine) {
-    dst_mem = mkldnn::memory(concat_pd.dst_desc(), mkldnn_engine,
-                             output->mutable_data<T>(place));
+    dst_mem = mkldnn::memory(
+        concat_pd.dst_desc(), mkldnn_engine,
+        output->mutable_data<T>(place, concat_pd.dst_desc().get_size()));
+
     return concat(concat_pd);
   }
 
@@ -193,7 +195,9 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         prim_creator.SetSrcDataHandleByIndex(
             *srcs, i, to_void_cast<T>(multi_input[i]->data<T>()));
       }
-      prim_creator.SetDstDataHandle(*dst_mem, output->mutable_data<T>(place));
+      prim_creator.SetDstDataHandle(
+          *dst_mem,
+          output->mutable_data<T>(place, concat_pd->dst_desc().get_size()));
     }
 
     mkldnn::stream astream(mkldnn_engine);
@@ -217,5 +221,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(concat, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::ConcatMKLDNNOpKernel<float>,
+                   ops::ConcatMKLDNNOpKernel<paddle::platform::bfloat16>,
                    ops::ConcatMKLDNNOpKernel<int8_t>,
                    ops::ConcatMKLDNNOpKernel<uint8_t>);

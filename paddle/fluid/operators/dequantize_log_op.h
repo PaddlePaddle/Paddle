@@ -15,8 +15,15 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

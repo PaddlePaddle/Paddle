@@ -96,7 +96,7 @@ class TestDygraph(unittest.TestCase):
         a = np.random.rand(3, 3)
         a_t = np.transpose(a, [1, 0])
         x_data = np.matmul(a, a_t) + 1e-03
-        x = paddle.to_variable(x_data)
+        x = paddle.to_tensor(x_data)
         out = paddle.cholesky(x, upper=False)
 
 
@@ -118,7 +118,10 @@ class TestCholeskySingularAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": input_np},
                                   fetch_list=[result])
-            except fluid.core.EnforceNotMet as ex:
+            except RuntimeError as ex:
+                print("The mat is singular")
+                pass
+            except ValueError as ex:
                 print("The mat is singular")
                 pass
 
@@ -135,10 +138,14 @@ class TestCholeskySingularAPI(unittest.TestCase):
                 input = fluid.dygraph.to_variable(input_np)
                 try:
                     result = paddle.cholesky(input)
-                except fluid.core.EnforceNotMet as ex:
+                except RuntimeError as ex:
+                    print("The mat is singular")
+                    pass
+                except ValueError as ex:
                     print("The mat is singular")
                     pass
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

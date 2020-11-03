@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence_scale.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace math {
 
@@ -40,6 +46,7 @@ class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
 };
 
 template class ScaleLoDTensorFunctor<platform::CPUDeviceContext, float>;
+template class ScaleLoDTensorFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

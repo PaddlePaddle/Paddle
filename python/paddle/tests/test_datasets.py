@@ -103,12 +103,14 @@ class TestMNISTTest(unittest.TestCase):
 
 class TestMNISTTrain(unittest.TestCase):
     def test_main(self):
-        mnist = MNIST(mode='train', chw_format=False)
+        mnist = MNIST(mode='train')
         self.assertTrue(len(mnist) == 60000)
 
         for i in range(len(mnist)):
             image, label = mnist[i]
-            self.assertTrue(image.shape[0] == 784)
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
             self.assertTrue(label.shape[0] == 1)
             self.assertTrue(0 <= int(label) <= 9)
 

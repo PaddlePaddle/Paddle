@@ -96,6 +96,42 @@ __global__ void RandomGeneratorWithSeed(const size_t n, const int* seed,
   }
 }
 
+template <typename T, typename MaskType>
+__global__ void RandomGeneratorWithGenerator(const size_t n, uint64_t seed,
+                                             const float dropout_prob,
+                                             const T* src, MaskType* mask_data,
+                                             T* dst, bool is_upscale_in_train,
+                                             uint64_t increment) {
+  curandStatePhilox4_32_10_t state;
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = 0;
+
+  MaskType mask;
+  T dest;
+  for (; idx < n; idx += blockDim.x * gridDim.x) {
+    T s = src[idx];
+    if (step_size == 0) {
+      curand_init(seed, idx, increment, &state);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      curand_init(seed, idx, increment, &state);
+    }
+    if (curand_uniform(&state) < dropout_prob) {
+      mask = 0;
+      dest = 0;
+    } else {
+      mask = 1;
+      if (is_upscale_in_train) {
+        dest = s / static_cast<T>(1.0f - dropout_prob);
+      } else {
+        dest = s;
+      }
+    }
+    mask_data[idx] = mask;
+    dst[idx] = dest;
+  }
+}
+
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
@@ -148,6 +184,17 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       } else {
         seed_data =
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+      }
+
+      int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
+                          .GetDeviceId();
+      auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+      if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
+        auto seed_offset = gen_cuda->IncrementOffset(1);
+        RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
+            size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, seed_offset.second);
+        return;
       }
 
       RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(

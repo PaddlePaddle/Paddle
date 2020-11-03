@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 import paddle.fluid.core as core
-from paddle import to_variable
 
 
 class TestDefaultType(unittest.TestCase):

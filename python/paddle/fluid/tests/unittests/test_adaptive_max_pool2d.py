@@ -84,7 +84,7 @@ def adaptive_pool2d_forward(x, output_size, data_format='NCHW',
     return out
 
 
-class TestAdaptiveMaxPool2dAPI(unittest.TestCase):
+class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
         self.res_1_np = adaptive_pool2d_forward(
@@ -110,7 +110,7 @@ class TestAdaptiveMaxPool2dAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
 
             out_1 = paddle.nn.functional.adaptive_max_pool2d(
                 x=x, output_size=[3, 3])
@@ -147,10 +147,10 @@ class TestAdaptiveMaxPool2dAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
-            x = paddle.to_variable(self.x_np)
+            x = paddle.to_tensor(self.x_np)
 
             out_1 = paddle.nn.functional.adaptive_max_pool2d(
-                x=x, return_indices=False, output_size=[3, 3])
+                x=x, return_mask=False, output_size=[3, 3])
 
             out_2 = paddle.nn.functional.adaptive_max_pool2d(x=x, output_size=5)
 
@@ -174,7 +174,7 @@ class TestAdaptiveMaxPool2dAPI(unittest.TestCase):
             assert np.allclose(out_5.numpy(), self.res_5_np)
 
 
-class TestAdaptiveMaxPool2dClassAPI(unittest.TestCase):
+class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
         self.res_1_np = adaptive_pool2d_forward(
@@ -200,22 +200,22 @@ class TestAdaptiveMaxPool2dClassAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=[3, 3])
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[3, 3])
             out_1 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=5)
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=5)
             out_2 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=[2, 5])
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[2, 5])
             out_3 = adaptive_max_pool(x=x)
 
-            #    adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(
+            #    adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
             #        output_size=[3, 3], data_format="NHWC")
             #    out_4 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
                 output_size=[None, 3])
             out_5 = adaptive_max_pool(x=x)
 
@@ -240,22 +240,22 @@ class TestAdaptiveMaxPool2dClassAPI(unittest.TestCase):
                          if core.is_compiled_with_cuda() else [False]):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
-            x = paddle.to_variable(self.x_np)
+            x = paddle.to_tensor(self.x_np)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=[3, 3])
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[3, 3])
             out_1 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=5)
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=5)
             out_2 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(output_size=[2, 5])
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[2, 5])
             out_3 = adaptive_max_pool(x=x)
 
-            #adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(
+            #adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
             #    output_size=[3, 3], data_format="NHWC")
             #out_4 = adaptive_max_pool(x=x)
 
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2d(
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
                 output_size=[None, 3])
             out_5 = adaptive_max_pool(x=x)
 

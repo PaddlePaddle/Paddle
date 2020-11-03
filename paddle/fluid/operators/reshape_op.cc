@@ -13,8 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct CUDAPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -34,7 +49,8 @@ inline std::vector<int> get_new_shape(
             "the element's shape must be [1]. But received the element's shape "
             "is [%s]",
             tensor->dims()));
-    if (platform::is_gpu_place(tensor->place())) {
+    if (platform::is_gpu_place(tensor->place()) ||
+        platform::is_xpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
 
@@ -347,7 +363,8 @@ class ReshapeKernel {
       if (shape_tensor) {
         auto *shape_data = shape_tensor->data<int>();
         framework::Tensor cpu_shape_tensor;
-        if (platform::is_gpu_place(shape_tensor->place())) {
+        if (platform::is_gpu_place(shape_tensor->place()) ||
+            platform::is_xpu_place(shape_tensor->place())) {
           TensorCopySync(*shape_tensor, platform::CPUPlace(),
                          &cpu_shape_tensor);
           shape_data = cpu_shape_tensor.data<int>();
@@ -360,9 +377,22 @@ class ReshapeKernel {
 
     out->Resize(out_dims);
     out->mutable_data(ctx.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), out);
+
+#ifdef PADDLE_WITH_XPU
+    if (platform::is_xpu_place(ctx.GetPlace())) {
+      auto &dev_ctx =
+          ctx.template device_context<paddle::platform::XPUDeviceContext>();
+      xpu::memcpy_device(
+          dev_ctx.x_context(), out->data<void>(), in->data<void>(),
+          in->numel() * paddle::framework::SizeOfType(in->type()));
+    } else {
+#endif
+      framework::TensorCopy(
+          *in, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), out);
+#ifdef PADDLE_WITH_XPU
+    }
+#endif
     out->Resize(out_dims);
   }
 };
@@ -591,15 +621,20 @@ REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int8_t, ops::ReshapeKernel,
                                uint8_t, ops::ReshapeKernel, int,
-                               ops::ReshapeKernel, int64_t, ops::ReshapeKernel);
+                               ops::ReshapeKernel, int64_t, ops::ReshapeKernel,
+                               bool, ops::ReshapeKernel,
+                               paddle::platform::bfloat16, ops::ReshapeKernel);
+
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
+                               ops::ReshapeGradKernel, bool,
                                ops::ReshapeGradKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad_grad, float,
                                ops::ReshapeDoubleGradKernel, double,
                                ops::ReshapeDoubleGradKernel, int,
                                ops::ReshapeDoubleGradKernel, int64_t,
+                               ops::ReshapeDoubleGradKernel, bool,
                                ops::ReshapeDoubleGradKernel);
 
 #ifdef PADDLE_WITH_CUDA
@@ -611,15 +646,17 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                 double, ops::ReshapeGradKernel, int,
                                 ops::ReshapeGradKernel, int64_t,
                                 ops::ReshapeGradKernel, plat::float16,
+
                                 ops::ReshapeGradKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
                                 int64_t, ops::ReshapeKernel, plat::float16,
-                                ops::ReshapeKernel);
+                                ops::ReshapeKernel, bool, ops::ReshapeKernel);
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                 double, ops::ReshapeGradKernel, int,
                                 ops::ReshapeGradKernel, int64_t,
                                 ops::ReshapeGradKernel, plat::float16,
+                                ops::ReshapeGradKernel, bool,
                                 ops::ReshapeGradKernel);
 
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad_grad, float,
@@ -627,5 +664,19 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad_grad, float,
                                 ops::ReshapeDoubleGradKernel, int,
                                 ops::ReshapeDoubleGradKernel, int64_t,
                                 ops::ReshapeDoubleGradKernel, plat::float16,
+                                ops::ReshapeDoubleGradKernel, bool,
                                 ops::ReshapeDoubleGradKernel);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
+                               ops::ReshapeKernel, int, ops::ReshapeKernel,
+                               int64_t, ops::ReshapeKernel, plat::float16,
+                               ops::ReshapeKernel, bool, ops::ReshapeKernel);
+REGISTER_OP_XPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
+                               double, ops::ReshapeGradKernel, int,
+                               ops::ReshapeGradKernel, int64_t,
+                               ops::ReshapeGradKernel, plat::float16,
+                               ops::ReshapeGradKernel, bool,
+                               ops::ReshapeGradKernel);
 #endif
