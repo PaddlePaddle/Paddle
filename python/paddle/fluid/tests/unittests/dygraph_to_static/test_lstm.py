@@ -115,5 +115,19 @@ class TestSaveInEvalMode(unittest.TestCase):
                                                             infer_out))
 
 
+class TestEvalAfterSave(unittest.TestCase):
+    def test_eval_after_save(self):
+        x = paddle.randn((2, 10, 12)).astype('float32')
+        net = Net(12, 2)
+
+        origin_func = net.lstm.forward
+        paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
+
+        net.eval()
+        after_func = net.lstm.forward
+        out = net(x)
+        # No changes applied on function after jit.save
+        self.assertEqual(origin_func, after_func)
+
 if __name__ == "__main__":
     unittest.main()
