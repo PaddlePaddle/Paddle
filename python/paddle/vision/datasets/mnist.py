@@ -18,6 +18,7 @@ import os
 import gzip
 import struct
 import numpy as np
+from PIL import Image
 
 import paddle
 from paddle.io import Dataset
@@ -48,7 +49,11 @@ class MNIST(Dataset):
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
             :attr:`image_path` :attr:`label_path` is not set. Default True
-
+        backend(str, optional): Specifies which type of image to be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
+            
     Returns:
         Dataset: MNIST Dataset.
 
@@ -62,7 +67,7 @@ class MNIST(Dataset):
 
             for i in range(len(mnist)):
                 sample = mnist[i]
-                print(sample[0].shape, sample[1])
+                print(sample[0].size, sample[1])
 
     """
 
@@ -71,9 +76,19 @@ class MNIST(Dataset):
                  label_path=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'test'], \
                 "mode should be 'train' or 'test', but got {}".format(mode)
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
+
         self.mode = mode.lower()
         self.image_path = image_path
         if self.image_path is None:
@@ -145,9 +160,17 @@ class MNIST(Dataset):
 
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]
-        image = np.reshape(image, [1, 28, 28])
+        image = np.reshape(image, [28, 28])
+
+        if self.backend == 'pil':
+            image = Image.fromarray(image, mode='L')
+
         if self.transform is not None:
             image = self.transform(image)
+
+        if self.backend == 'pil':
+            return image, label.astype('int64')
+
         return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
