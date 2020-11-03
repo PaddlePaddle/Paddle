@@ -598,6 +598,13 @@ def save(layer, path, input_spec=None, **configs):
     # avoid change user given input_spec
     inner_input_spec = None
     if input_spec is not None:
+        for attr_func in dir(layer):
+            static_func = getattr(layer, attr_func, None)
+            if isinstance(static_func,
+                          StaticFunction) and 'forward' != attr_func:
+                raise TypeError(
+                    "If there are static functions other than forward that need to be saved, the input input_spec should be None, but received input_spec's type is %s."
+                    % type(input_spec))
         if not isinstance(input_spec, list):
             raise TypeError(
                 "The input input_spec should be 'list', but received input_spec's type is %s."
@@ -616,105 +623,118 @@ def save(layer, path, input_spec=None, **configs):
 
     # parse configs
     configs = _parse_save_configs(configs)
+    for attr_func in dir(layer):
+        # 2. get program from Layer
+        # TODO(chenweihang): add support for other method, not only forward
+        # if isinstance(layer.forward, StaticFunction):
+        #     concrete_program = layer.forward.concrete_program
+        static_func = getattr(layer, attr_func, None)
+        if isinstance(static_func, StaticFunction):
+            concrete_program = static_func.concrete_program
+        elif 'forward' == attr_func:
+            # transform in jit.save, if input_spec is incomplete, declarative will throw error
+            static_forward = declarative(
+                layer.forward, input_spec=inner_input_spec)
+            concrete_program = static_forward.concrete_program
+            # the input_spec has been used in declarative, which is equal to 
+            # @declarative with input_spec and jit.save without input_spec,
+            # avoid needless warning
+            inner_input_spec = None
+        else:
+            continue
 
-    # 2. get program from Layer
-    # TODO(chenweihang): add support for other method, not only forward
-    if isinstance(layer.forward, StaticFunction):
-        concrete_program = layer.forward.concrete_program
-    else:
-        # transform in jit.save, if input_spec is incomplete, declarative will throw error
-        static_forward = declarative(layer.forward, input_spec=inner_input_spec)
-        concrete_program = static_forward.concrete_program
-        # the input_spec has been used in declarative, which is equal to 
-        # @declarative with input_spec and jit.save without input_spec,
-        # avoid needless warning
-        inner_input_spec = None
+        # 3. build input & output of save_infernece_model
+        # NOTE(chenweihang): [ Get input variables name ]
+        # There are two cases, whether to prune the inputs or not
+        # - not prune inputs (recommend):
+        #   - the len(input_spec) == len((concrete_program.inputs) - 1
+        #   - here can use concrete_program.inputs directly
+        # - prune inputs:
+        #   - the input_spec length < len((concrete_program.inputs) - 1
+        #   - the input_spec's name should be in concrete_program.inputs
+        input_var_names = _get_input_var_names(concrete_program.inputs,
+                                               inner_input_spec)
 
-    # 3. build input & output of save_infernece_model
-    # NOTE(chenweihang): [ Get input variables name ]
-    # There are two cases, whether to prune the inputs or not
-    # - not prune inputs (recommend):
-    #   - the len(input_spec) == len((concrete_program.inputs) - 1
-    #   - here can use concrete_program.inputs directly
-    # - prune inputs:
-    #   - the input_spec length < len((concrete_program.inputs) - 1
-    #   - the input_spec's name should be in concrete_program.inputs
-    input_var_names = _get_input_var_names(concrete_program.inputs,
-                                           inner_input_spec)
+        # NOTE(chenweihang): [ Get output variables ]
+        # the rule is like [ Get input variables name ]. For output var, 
+        # we only support VarBase spec, and actually, we only need the 
+        # var name of output, and we don't recommended to use output_spec
+        output_vars = _get_output_vars(concrete_program.outputs,
+                                       configs.output_spec)
 
-    # NOTE(chenweihang): [ Get output variables ]
-    # the rule is like [ Get input variables name ]. For output var, 
-    # we only support VarBase spec, and actually, we only need the 
-    # var name of output, and we don't recommended to use output_spec
-    output_vars = _get_output_vars(concrete_program.outputs,
-                                   configs.output_spec)
+        # NOTE(chenweihang): we maintain the mapping of variable name to
+        # structured name, the buffer variable (non-persistable)
+        # saved to inference program may not need by dygraph Layer, 
+        # we only record the state_dict variable's structured name
+        state_names_dict = dict()
+        for structured_name, var in six.iteritems(layer.state_dict()):
+            state_names_dict[var.name] = structured_name
 
-    # NOTE(chenweihang): we maintain the mapping of variable name to
-    # structured name, the buffer variable (non-persistable)
-    # saved to inference program may not need by dygraph Layer, 
-    # we only record the state_dict variable's structured name
-    state_names_dict = dict()
-    for structured_name, var in six.iteritems(layer.state_dict()):
-        state_names_dict[var.name] = structured_name
+        # 4. share parameters from Layer to scope & record var info
+        scope = core.Scope()
+        extra_var_info = dict()
+        for param_or_buffer in concrete_program.parameters:
+            # share to scope
+            param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor(
+            )
+            src_tensor = param_or_buffer.value().get_tensor()
+            param_or_buffer_tensor._share_data_with(src_tensor)
+            # record var info
+            extra_info_dict = dict()
+            if param_or_buffer.name in state_names_dict:
+                extra_info_dict['structured_name'] = state_names_dict[
+                    param_or_buffer.name]
+            extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
+            if isinstance(param_or_buffer, ParamBase):
+                extra_info_dict['trainable'] = param_or_buffer.trainable
+            extra_var_info[param_or_buffer.name] = extra_info_dict
 
-    # 4. share parameters from Layer to scope & record var info
-    scope = core.Scope()
-    extra_var_info = dict()
-    for param_or_buffer in concrete_program.parameters:
-        # share to scope
-        param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor()
-        src_tensor = param_or_buffer.value().get_tensor()
-        param_or_buffer_tensor._share_data_with(src_tensor)
-        # record var info
-        extra_info_dict = dict()
-        if param_or_buffer.name in state_names_dict:
-            extra_info_dict['structured_name'] = state_names_dict[
-                param_or_buffer.name]
-        extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
-        if isinstance(param_or_buffer, ParamBase):
-            extra_info_dict['trainable'] = param_or_buffer.trainable
-        extra_var_info[param_or_buffer.name] = extra_info_dict
+        # 5. save inference model
+        from paddle.fluid.io import save_inference_model
 
-    # 5. save inference model
-    from paddle.fluid.io import save_inference_model
+        # construct new save_inference_model arguments
+        model_path = dirname
+        # NOTE(chenweihang): because prefix contains model and params filename,
+        # so we don't support set model_filename & params_filename 
+        if 'forward' == attr_func:
+            model_filename = file_prefix + INFER_MODEL_SUFFIX
+            params_filename = file_prefix + INFER_PARAMS_SUFFIX
+            extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
+        else:
+            model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
+            params_filename = file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
+            extra_var_info_path = path + '.' + attr_func + INFER_PARAMS_INFO_SUFFIX
 
-    # construct new save_inference_model arguments
-    model_path = dirname
-    # NOTE(chenweihang): because prefix contains model and params filename,
-    # so we don't support set model_filename & params_filename 
-    model_filename = file_prefix + INFER_MODEL_SUFFIX
-    params_filename = file_prefix + INFER_PARAMS_SUFFIX
+        with scope_guard(scope):
+            save_inference_model(
+                dirname=model_path,
+                feeded_var_names=input_var_names,
+                target_vars=output_vars,
+                executor=Executor(_current_expected_place()),
+                main_program=concrete_program.main_program.clone(),
+                model_filename=model_filename,
+                params_filename=params_filename,
+                export_for_deployment=configs._export_for_deployment,
+                program_only=configs._program_only)
 
-    with scope_guard(scope):
-        save_inference_model(
-            dirname=model_path,
-            feeded_var_names=input_var_names,
-            target_vars=output_vars,
-            executor=Executor(_current_expected_place()),
-            main_program=concrete_program.main_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename,
-            export_for_deployment=configs._export_for_deployment,
-            program_only=configs._program_only)
+            # NOTE(chenweihang): [ Save extra variable info ]
+            # save_inference_model will lose some important variable information, including:
+            #   - Variable name and correspondence (when saved variables as one file)
+            #   - Variable.stop_gradient information
+            #   - Which persistent variable are parameter and which are not
+            #   - Parameter.trainable information
+            #
+            # The lost information cannot be recovered when it is loaded again, 
+            # so if we want to perform fine-tune after loading, we may need to 
+            # configure redundant information to proceed.
+            #
+            # Due to compatibility issues, we cannot change the original storage structure, 
+            # but we can save these information in `jit.save` without changing the original 
+            # storage to improve user experience. So we save extra information into
+            # file `***.pdiparams.info`
 
-        # NOTE(chenweihang): [ Save extra variable info ]
-        # save_inference_model will lose some important variable information, including:
-        #   - Variable name and correspondence (when saved variables as one file)
-        #   - Variable.stop_gradient information
-        #   - Which persistent variable are parameter and which are not
-        #   - Parameter.trainable information
-        #
-        # The lost information cannot be recovered when it is loaded again, 
-        # so if we want to perform fine-tune after loading, we may need to 
-        # configure redundant information to proceed.
-        #
-        # Due to compatibility issues, we cannot change the original storage structure, 
-        # but we can save these information in `jit.save` without changing the original 
-        # storage to improve user experience. So we save extra information into
-        # file `***.pdiparams.info`
-        extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
-        with open(extra_var_info_path, 'wb') as f:
-            pickle.dump(extra_var_info, f, protocol=2)
+            with open(extra_var_info_path, 'wb') as f:
+                pickle.dump(extra_var_info, f, protocol=2)
 
 
 @dygraph_only
