@@ -563,6 +563,7 @@ EOF
         ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
+        echo ${collect_failed_tests}
         mactest_error=0
         retry_unittests_record=''
         retry_time=3
@@ -573,6 +574,8 @@ EOF
             mactest_error=1
             read need_retry_ut <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             need_retry_ut_count=${#need_retry_ut[@]} 
+            echo need_retry_ut_count${need_retry_ut_count}
+            echo exec_retry_threshold${exec_retry_threshold}
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
                     do
