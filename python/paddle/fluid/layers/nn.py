@@ -8751,6 +8751,7 @@ def log2(x, name=None):
     Examples:
 
         .. code-block:: python
+        
             import paddle
             import paddle.fluid as fluid
 
