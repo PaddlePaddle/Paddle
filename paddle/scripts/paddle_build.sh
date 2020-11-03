@@ -572,7 +572,7 @@ EOF
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-            need_retry_ut_arr=("${need_retry_ut_str}")
+            need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             echo ${need_retry_ut_arr}
             echo ${need_retry_ut_count}
