@@ -17,6 +17,7 @@ import paddle
 import unittest
 from paddle import nn
 
+
 class LSTMLayer(nn.Layer):
     def __init__(self, in_channels, hidden_size):
         super(LSTMLayer, self).__init__()
@@ -26,6 +27,7 @@ class LSTMLayer(nn.Layer):
     def forward(self, x):
         x, _ = self.cell(x)
         return x
+
 
 class Net(nn.Layer):
     def __init__(self, in_channels, hidden_size):
@@ -137,8 +139,9 @@ class TestEvalAfterSave(unittest.TestCase):
         print(after_func)
         out = net(x)
         # No changes applied on function after jit.save
-        print('xxx'*50)
+        print('xxx' * 50)
         self.assertEqual(origin_func, after_func)
+
 
 if __name__ == "__main__":
     unittest.main()

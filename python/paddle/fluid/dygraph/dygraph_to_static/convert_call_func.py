@@ -219,5 +219,6 @@ def convert_call(func):
         return func
 
     if func_self:
+
         converted_call = functools.partial(converted_call, func_self)
     return converted_call
