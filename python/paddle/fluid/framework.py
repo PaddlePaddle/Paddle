@@ -643,6 +643,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
         return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 

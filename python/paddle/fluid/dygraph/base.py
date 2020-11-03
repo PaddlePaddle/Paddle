@@ -686,6 +686,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
         if np.iscomplexobj(value):
             if not name:
                 name = framework.unique_name.generate('_generated_var')
+            '''
             real_var = core.VarBase(
                 value=value.real,
                 place=framework._current_expected_place(),
@@ -699,6 +700,16 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
                 zero_copy=zero_copy,
                 name=name + ".imag")
             return framework.ComplexVariable(real_var, imag_var)
+            '''
+
+            py_var = core.VarBase(
+                value=value,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name if name else '')
+            return py_var
+
         else:
             py_var = core.VarBase(
                 value=value,

@@ -42,6 +42,7 @@ namespace detail {
 // print np.dtype(np.float16).num  # 23
 constexpr int NPY_FLOAT16_ = 23;
 constexpr int NPY_UINT16_ = 4;
+constexpr int NPY_COMPLEX64 = 14;
 
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
@@ -76,6 +77,26 @@ struct npy_format_descriptor<paddle::platform::bfloat16> {
     return "H";
   }
   static PYBIND11_DESCR name() { return _("bfloat16"); }
+};
+
+
+//todo 
+// we register paddle::platform::complex64 as numpy.complex64.
+template <>
+struct npy_format_descriptor<paddle::platform::complex64> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX64);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+  //todo  which char to return?
+  static std::string format() {
+    // Note: "F" represents complex64.
+    // Details at: 
+    //https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
+    //for k, v in np.sctypeDict.iteritems(): print '{0:14s} : {1:40s}'.format(str(k), v)
+    return "F";
+  }
+  static PYBIND11_DESCR name() { return _("complext64"); }
 };
 
 }  // namespace detail
@@ -124,6 +145,7 @@ struct ValidDTypeToPyArrayChecker {
 
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::bfloat16);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex64);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
@@ -283,6 +305,9 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
     SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
+                                                        zero_copy);
+  } else if (py::isinstance<py::array_t<paddle::platform::complex64>>(array)) {
+    SetTensorFromPyArrayT<paddle::platform::complex64, P>(self, array, place,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
@@ -504,6 +529,8 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
       return _sliceAndConcat<paddle::platform::float16>(self, obj, dim);
     case framework::proto::VarType::BF16:
       return _sliceAndConcat<paddle::platform::bfloat16>(self, obj, dim);
+    case framework::proto::VarType::COMPLEX64:
+      return _sliceAndConcat<paddle::platform::complex64>(self, obj, dim);
     case framework::proto::VarType::FP32:
       return _sliceAndConcat<float>(self, obj, dim);
     case framework::proto::VarType::FP64:
