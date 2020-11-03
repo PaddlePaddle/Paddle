@@ -20,6 +20,7 @@ import random
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PaddleTensor
@@ -30,6 +31,7 @@ from paddle.fluid.core import create_paddle_predictor
 
 class InferencePassTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
+        paddle.enable_static()
         super(InferencePassTest, self).__init__(methodName)
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -152,6 +154,11 @@ class InferencePassTest(unittest.TestCase):
             format(device))
 
         for out, analysis_output in zip(outs, analysis_outputs):
+            out = np.array(out)
+            if flatten:
+                out = out.flatten()
+                analysis_output = analysis_output.flatten()
+
             self.assertTrue(
                 np.allclose(
                     np.array(out), analysis_output, atol=atol),
@@ -169,6 +176,11 @@ class InferencePassTest(unittest.TestCase):
                 "The number of outputs is different between GPU and TensorRT. ")
 
             for out, tensorrt_output in zip(outs, tensorrt_outputs):
+                out = np.array(out)
+                if flatten:
+                    out = out.flatten()
+                    tensorrt_output = tensorrt_output.flatten()
+
                 self.assertTrue(
                     np.allclose(
                         np.array(out), tensorrt_output, atol=atol),

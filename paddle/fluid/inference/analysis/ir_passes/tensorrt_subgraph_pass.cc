@@ -114,11 +114,20 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   block_desc.Proto()->set_idx(0);
   LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
 
+  bool has_fused_embedding_eltwise_layernorm = false;
+  bool has_multihead_matmul = false;
   for (auto *node : subgraph) {
     auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
     *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
+    if (!has_fused_embedding_eltwise_layernorm 
+        && op->Type() == "fused_embedding_eltwise_layernorm") {
+      has_fused_embedding_eltwise_layernorm = true;
+    }
+    if (!has_multihead_matmul && op->Type() == "multihead_matmul") {
+      has_multihead_matmul = true;
+    }
   }
 
   // Then, we will use the input_names_with_id and output_names_with_id to
@@ -300,6 +309,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
+  trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetWithErnie(
+      has_multihead_matmul && has_fused_embedding_eltwise_layernorm);
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

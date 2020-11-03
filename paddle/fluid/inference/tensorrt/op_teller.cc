@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace inference {
@@ -61,6 +63,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "conv2d_transpose"};
   std::unordered_set<std::string> teller_set{
       "mul",
+      "matmul",
       "conv2d",
       "pool2d",
       "relu",
@@ -105,6 +108,20 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
       std::vector<int> paddings =
           boost::get<std::vector<int>>(desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
+    }
+    if (op_type == "matmul") {
+      auto* block = desc.Block();
+      for (auto& param_name : desc.Inputs()) {
+        for (auto& var_name : param_name.second) {
+          auto* var_desc = block->FindVar(var_name);
+          const auto shape = var_desc->GetShape();
+          if (shape.size() < 3) {
+            VLOG(1) << "matmul op dims < 3 not supported in tensorrt, but got dims " 
+              << shape.size() << ", so jump it.";
+            return false;
+          }
+        }
+      }
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
