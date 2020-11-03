@@ -3787,7 +3787,10 @@ class PipelineOptimizer(object):
                 used_var_set.add(var)
                 source_var = main_program.block(0).var(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
-                    block.create_var(name=var, type=core.VarDesc.VarType.READER)
+                    block.create_var(
+                        name=var,
+                        type=core.VarDesc.VarType.READER,
+                        persistable=source_var.persistable)
                 else:
                     block._clone_variable(source_var, False)
 
@@ -3837,12 +3840,13 @@ class PipelineOptimizer(object):
                     op_desc = op.desc
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
-                    ap_op._set_attr(self._op_device_key, device)
+                    ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
                 ap_op = program["program"].block(0).desc.append_op()
                 ap_op.copy_from(op_desc)
+                ap_op._set_attr(self._op_device_key, "")
 
         for key in sorted(device_program_map.keys()):
             program = device_program_map[key]
@@ -3864,7 +3868,7 @@ class PipelineOptimizer(object):
             op_desc = op.desc
             ap_op = new_startup_program.block(0).desc.append_op()
             ap_op.copy_from(op_desc)
-            ap_op._set_attr(self._op_device_key, device)
+            ap_op._set_attr(self._op_device_key, "")
         new_startup_program._sync_with_cpp()
         self._create_vars(new_startup_program.block(0), startup_program)
         return new_startup_program

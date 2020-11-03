@@ -97,8 +97,6 @@ void SectionWorker::TrainFiles() {
   }
 #endif
 
-  platform::Timer batch_timer;
-  batch_timer.Start();
   for (int i = 0; i < num_microbatches_; ++i) {
     try {
       for (auto& op : ops_) {
@@ -159,8 +157,6 @@ void SectionWorker::TrainFiles() {
     }
   }
   dev_ctx_->Wait();
-  batch_timer.Pause();
-  VLOG(0) << "batch: " << batch_id_ << ", time: " << batch_timer.ElapsedUS();
   ++batch_id_;
 }
 
@@ -168,7 +164,6 @@ void SectionWorker::TrainFilesWithProfiler() {
   VLOG(5) << "begin section_worker TrainFiles with profiler";
   AutoSetCPUAffinity(true);
 
-  platform::Timer batch_timer;
   platform::Timer timeline;
 
   std::vector<std::string> op_name;
@@ -214,7 +209,6 @@ void SectionWorker::TrainFilesWithProfiler() {
   struct timeval micro_end;
 
   // Start a minibatch.
-  batch_timer.Start();
   for (int i = 0; i < num_microbatches_; ++i) {
     try {
       int op_idx = 0;
@@ -374,8 +368,6 @@ void SectionWorker::TrainFilesWithProfiler() {
             << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
             << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
   dev_ctx_->Wait();
-  batch_timer.Pause();
-  VLOG(0) << "batch: " << batch_id_ << ", time: " << batch_timer.ElapsedUS();
   ++batch_id_;
 }
 
