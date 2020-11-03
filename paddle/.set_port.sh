@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +15,5 @@
 # limitations under the License.
 
 DIRNAME="$(dirname "$0")"
-sh "$DIRNAME"/.common_test_util.sh
+source "$DIRNAME"/.common_test_util.sh
 set_port "$@"

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 # 
@@ -47,7 +48,7 @@ MANYLINUX1_DEPS="glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-de
 
 # Get build utilities
 MY_DIR=$(dirname "${BASH_SOURCE[0]}")
-sh "$MY_DIR"/build_utils.sh
+source "$MY_DIR"/build_utils.sh
 
 # EPEL support
 yum -y install wget curl

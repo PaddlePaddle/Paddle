@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1004,SC2016
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 # 
@@ -16,14 +17,14 @@
 
 
 function install_gcc(){
-  sed -i "s#<install_gcc>#RUN apt-get update \n
+  sed -i 's#<install_gcc>#RUN apt-get update \n
     WORKDIR /usr/bin \
-    RUN apt install -y gcc-4.8 g++-4.8 \&\& cp gcc gcc.bak \&\& cp g++ g++.bak \&\& rm gcc \&\& rm g++ \&\& ln -s gcc-4.8 gcc \&\& ln -s g++-4.8 g++ #g" "$1"
+    RUN apt install -y gcc-4.8 g++-4.8 \&\& cp gcc gcc.bak \&\& cp g++ g++.bak \&\& rm gcc \&\& rm g++ \&\& ln -s gcc-4.8 gcc \&\& ln -s g++-4.8 g++ #g' "$1"
 }
 
 
 function install_gcc8(){
-  sed -i "s#<install_gcc>#WORKDIR /usr/bin \
+  sed -i 's#<install_gcc>#WORKDIR /usr/bin \
     COPY tools/dockerfile/build_scripts /build_scripts \
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \
     RUN cp gcc gcc.bak \&\& cp g++ g++.bak \&\& rm gcc \&\& rm g++ \
@@ -31,7 +32,7 @@ function install_gcc8(){
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \
-    ENV PATH=/usr/local/gcc-8.2/bin:$PATH #g" "$1"
+    ENV PATH=/usr/local/gcc-8.2/bin:$PATH #g' "$1"
 }
 
 

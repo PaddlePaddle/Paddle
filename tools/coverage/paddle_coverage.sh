@@ -21,7 +21,7 @@ PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 # install lcov
 curl -o /lcov-1.14.tar.gz -x "" -s https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz || exit 101
 tar -xf /lcov-1.14.tar.gz -C /
-cd /lcov-1.14 || exit
+cd /lcov-1.14
 make install
 
 # run paddle coverage

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2045,SC2154
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -15,10 +16,10 @@
 # limitations under the License.
 
 # This script is used to count detail PADDLE checks in the paddle/fluid directory,
-#   contains the number of PADDLE checks under each folder, the statistical data 
+#   contains the number of PADDLE checks under each folder, the statistical data
 #   does not include subdirectories, only covers all files under the current directory.
-#   
-#   The three columns of data are: total number, valid number, invalid number. 
+#
+#   The three columns of data are: total number, valid number, invalid number.
 #   The output format is easy to display as a markdown table.
 
 # Usage: bash count_enforce_by_dir.sh (run in tools directory)
@@ -57,23 +58,21 @@
 #     paddle/fluid/operators/tensorrt | 7 | 4 | 3
 #     paddle/fluid/operators | 2144 | 999 | 1145
 
-sh ./count_all_enforce.sh --source-only
+source ./count_all_enforce.sh --source-only
 
 ROOT_DIR=../../paddle/fluid
 
 function count_dir_independently(){
     local sub_dir_total_check_cnt=0
     local sub_dir_valid_check_cnt=0
-    for file in "$1"/*
+    for file in $(ls "$1")
     do
-        if [ -d "$file" ];then
-            enforce_count "$file" dir_total_check_cnt dir_valid_check_cnt
-            dir_total_check_cnt=${dir_total_check_cnt:-}
-            dir_valid_check_cnt=${dir_valid_check_cnt:-}
+        if [ -d "$1""/""$file" ];then
+            enforce_count "$1""/""$file" dir_total_check_cnt dir_valid_check_cnt
             sub_dir_total_check_cnt=$((sub_dir_total_check_cnt+dir_total_check_cnt))
             sub_dir_valid_check_cnt=$((sub_dir_valid_check_cnt+dir_valid_check_cnt))
-            
-            count_dir_independently "$file" "$dir_total_check_cnt" "$dir_valid_check_cnt" 
+
+            count_dir_independently "$1""/""$file" "$dir_total_check_cnt" "$dir_valid_check_cnt"
         fi
     done
     total_check_cnt=$(($2-sub_dir_total_check_cnt))

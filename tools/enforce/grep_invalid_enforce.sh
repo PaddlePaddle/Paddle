@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2045,SC2116
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -17,14 +18,14 @@
 # This script is used to grep invalid PADDLE checks by directory or file in the paddle/fluid/,
 #   the result show all invalid PADDLE checks in specified directory or file.
 
-# Usage: 
+# Usage:
 #   - bash grep_invalid_enforce.sh [target directory or file] (run in tools directory)
 #       - The default check path is paddle/fluid/operators
 
 # Result Examples:
 # 1. grep invalid PADDLE checks in directory
 
-#     - Command: /work/paddle/tools {develop} bash grep_invalid_enforce.sh ../paddle/fluid/imperative 
+#     - Command: /work/paddle/tools {develop} bash grep_invalid_enforce.sh ../paddle/fluid/imperative
 #     - Results:
 #         - paddle/fluid/imperative/gradient_accumulator.cc
 #         PADDLE_ENFORCE_EQ(dst_tensor->numel() == numel, true,
@@ -60,20 +61,20 @@
 #                     "Place cannot be CUDAPlace when use_double_buffer is False");
 #         PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
 #         PADDLE_ENFORCE_EQ(status, Status::kException);
-#         PADDLE_ENFORCE_EQ(status, Status::kSuccess);    
+#         PADDLE_ENFORCE_EQ(status, Status::kSuccess);
 
-sh ./count_enforce_by_file.sh --source-only
+source ./count_enforce_by_file.sh --source-only
 
 ROOT_DIR=../paddle/fluid/operators
 
 if [ "$1" != "" ]; then
-    ROOT_DIR=$1
+    ROOT_DIR="$1"
 fi
 
 function enforce_grep(){
-    paddle_check="$(grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" "$1" || true)"
-    valid_check="$(echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true)"
-    invalid_check="$(echo "$paddle_check" | grep -vxF "$valid_check" || true)"
+    paddle_check=$(grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" "$1" || true)
+    valid_check=$(echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true)
+    invalid_check=$(echo "$paddle_check" | grep -vxF "$valid_check" || true)
     if [ "${invalid_check}" != "" ];then
         file_path="$1"
         echo -e "\n- ${file_path#../}"
@@ -84,20 +85,20 @@ function enforce_grep(){
 function grep_file_recursively(){
     local i=0
     local dir_array
-    for file in "$1"/*
+    for file in $(ls "$1")
     do
-        if [ -f "$file" ];then
-            in_white_list="$(echo "$FILE_WHITE_LIST" | grep "$(echo "${file}" | awk -F [/] '{print $NF}')")"
+        if [ -f "$1""/""$file" ];then
+            in_white_list=$(echo "$FILE_WHITE_LIST" | grep "${file}")
             if [[ "$in_white_list" == "" ]];then
-                enforce_grep "$file"
+                enforce_grep "$1""/""$file"
             fi
         fi
-        if [ -d "$file" ];then
-            dir_array[$i]="$file"
+        if [ -d "$1""/""$file" ];then
+            dir_array[$i]="$1""/""$file"
             ((i++))
         fi
     done
-    for sub_dir_name in ${dir_array[*]}
+    for sub_dir_name in "${dir_array[@]}"
     do
         grep_file_recursively "$sub_dir_name"
     done
@@ -105,9 +106,9 @@ function grep_file_recursively(){
 
 function grep_file(){
     file_path="$1"
-    file_name="${file_path##*/}"
+    file_name=$(echo "${file_path##*/}")
     if [ -f "$file_path" ];then
-        in_white_list="$(echo "$FILE_WHITE_LIST" | grep "${file_name}")"
+        in_white_list=$(echo "$FILE_WHITE_LIST" | grep "${file_name}")
         if [[ "$in_white_list" == "" ]];then
             enforce_grep "$file_path"
         fi

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091,SC2045,SC2154
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -16,8 +17,8 @@
 
 # This script is used to count PADDLE checks by files in the paddle/fluid/operators directory,
 #   contains the number of PADDLE checks under each file.
-#   
-#   The three columns of data are: total number, valid number, invalid number. 
+#
+#   The three columns of data are: total number, valid number, invalid number.
 #   The output format is easy to display as a markdown table.
 
 # Usage: bash count_enforce_by_file.sh  [target directory or file] (run in tools directory)
@@ -42,7 +43,7 @@
 #   - math_function.cu | 4 | 0 | 4
 #   - math_function_impl.h | 10 | 0 | 10
 
-sh ./count_all_enforce.sh --source-only
+source ./count_all_enforce.sh --source-only
 
 ROOT_DIR=../paddle/fluid/operators
 
@@ -71,32 +72,26 @@ function count_file_recursively(){
     echo "**${dir_name#../}** | **$2** | **$3** | **$(($2-$3))**"
     local i=0
     local dir_array
-    for file in "$1"/*
+    for file in $(ls "$1")
     do
-        if [ -f "$file" ];then
-            in_white_list="$(echo "$FILE_WHITE_LIST" | grep "$(echo "${file}" | awk -F [/] '{print $NF}')")"
+        if [ -f "$1""/""$file" ];then
+            in_white_list=$(echo "$FILE_WHITE_LIST" | grep "${file}")
             if [[ "$in_white_list" == "" ]];then
-                enforce_count "$file" file_total_check_cnt file_valid_check_cnt
-                total_check_cnt=${total_check_cnt:-}
-                valid_check_cnt=${valid_check_cnt:-}
+                enforce_count "$1""/""$file" file_total_check_cnt file_valid_check_cnt
                 file_invalid_check_cnt=$((total_check_cnt-valid_check_cnt))
                 if [ "$file_invalid_check_cnt" -gt 0 ];then
-                    file_total_check_cnt=${file_total_check_cnt:-}
-                    file_valid_check_cnt=${file_valid_check_cnt:-}
                     echo "- $file | ${file_total_check_cnt} | ${file_valid_check_cnt} | ${file_invalid_check_cnt}"
                 fi
             fi
         fi
-        if [ -d "$file" ];then
-            dir_array[$i]="$file"
+        if [ -d "$1""/""$file" ];then
+            dir_array[$i]="$1""/""$file"
             ((i++))
         fi
     done
     for sub_dir_name in "${dir_array[@]}"
     do
         enforce_count "$sub_dir_name" dir_total_check_cnt dir_valid_check_cnt
-        dir_total_check_cnt=${dir_total_check_cnt:-}
-        dir_valid_check_cnt=${dir_valid_check_cnt:-}
         count_file_recursively "$sub_dir_name" "$dir_total_check_cnt" "$dir_valid_check_cnt"
     done
 }

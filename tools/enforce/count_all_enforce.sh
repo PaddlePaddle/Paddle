@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2045
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -52,17 +53,17 @@ function enforce_count(){
 }
 
 function count_dir_recursively(){
-    for file in "$1"/*
+    for file in $(ls "$1")
     do
-        if [ -d "$file" ];then
+        if [ -d "$1""/""$file" ];then
             level=$(($2+1))
-            if [ "$level" -le 1 ]; then
-                enforce_count "$file" total_check_cnt valid_check_cnt
-                dir_name="$1"
+            if [ $level -le 1 ]; then
+                enforce_count "$1""/""$file" total_check_cnt valid_check_cnt
+                dir_name=$1
                 echo "${dir_name#../}/$file | ${total_check_cnt} | ${valid_check_cnt} | $((total_check_cnt-valid_check_cnt))"
                 ALL_PADDLE_CHECK_CNT=$((ALL_PADDLE_CHECK_CNT+total_check_cnt))
                 VALID_PADDLE_CHECK_CNT=$((VALID_PADDLE_CHECK_CNT+valid_check_cnt))
-                count_dir_recursively "$file" "$level"
+                count_dir_recursively "$1""/""$file" "$level"
             fi
         fi
     done

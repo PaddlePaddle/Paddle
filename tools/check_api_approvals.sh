@@ -79,7 +79,8 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 32832641 6836917
 fi
 
-if [ -n "${echo_list[*]}" ];then
+# shellcheck disable=SC2128
+if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
