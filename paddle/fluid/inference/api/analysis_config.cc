@@ -121,6 +121,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_oss_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -272,6 +273,10 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   max_input_shape_ = max_input_shape;
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
+}
+
+void AnalysisConfig::EnableTensorRtOSS() {
+    trt_use_oss_ = true;
 }
 
 // TODO(Superjomn) refactor this, buggy.
