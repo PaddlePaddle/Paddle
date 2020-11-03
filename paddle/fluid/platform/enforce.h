@@ -904,6 +904,25 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
     }                                                            \
   } while (0)
 
+#define PADDLE_RETRY_CUDA_SUCCESS(COND)                                 \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    int retry_count = 1;                                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
+    constexpr auto __success_type__ =                                   \
+        ::paddle::platform::details::CudaStatusType<                    \
+            __CUDA_STATUS_TYPE__>::kSuccess;                            \
+    while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
+      __cond__ = (COND);                                                \
+      ++retry_count;                                                    \
+    }                                                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                       \
+      auto __summary__ = ::paddle::platform::errors::External(          \
+          ::paddle::platform::build_nvidia_error_msg(__cond__));        \
+      __THROW_ERROR_INTERNAL__(__summary__);                            \
+    }                                                                   \
+  } while (0)
+
 #undef DEFINE_CUDA_STATUS_TYPE
 #endif  // PADDLE_WITH_CUDA
 
