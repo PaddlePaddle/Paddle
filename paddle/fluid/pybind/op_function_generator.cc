@@ -82,6 +82,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
+    {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
