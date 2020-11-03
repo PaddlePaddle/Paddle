@@ -17,15 +17,23 @@ import paddle
 import unittest
 from paddle import nn
 
+class LSTMLayer(nn.Layer):
+    def __init__(self, in_channels, hidden_size):
+        super(LSTMLayer, self).__init__()
+        self.cell = nn.LSTM(
+            in_channels, hidden_size, direction='bidirectional', num_layers=2)
+
+    def forward(self, x):
+        x, _ = self.cell(x)
+        return x
 
 class Net(nn.Layer):
     def __init__(self, in_channels, hidden_size):
         super(Net, self).__init__()
-        self.lstm = nn.LSTM(
-            in_channels, hidden_size, direction='bidirectional', num_layers=2)
+        self.lstm = LSTMLayer(in_channels, hidden_size)
 
     def forward(self, x):
-        x, _ = self.lstm(x)
+        x = self.lstm(x)
         return x
 
 
@@ -121,12 +129,15 @@ class TestEvalAfterSave(unittest.TestCase):
         net = Net(12, 2)
 
         origin_func = net.lstm.forward
+        print(origin_func)
         paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
 
         net.eval()
         after_func = net.lstm.forward
+        print(after_func)
         out = net(x)
         # No changes applied on function after jit.save
+        print('xxx'*50)
         self.assertEqual(origin_func, after_func)
 
 if __name__ == "__main__":
