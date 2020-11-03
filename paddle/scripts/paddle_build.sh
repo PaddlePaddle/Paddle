@@ -572,7 +572,7 @@ EOF
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-            need_retry_ut_arr=("${need_retry_ut_str}")
+            need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
