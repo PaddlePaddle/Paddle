@@ -123,10 +123,10 @@ python setup.py install
     - cudatoolkit>=10.2, <10.3
     - cudnn>=7.6, <7.7
     """
-        self.cuda_info = [(self.cuda90, "cuda9.0", ".post9"),
+        self.cuda_info = [(self.cuda90, "cuda9.0", ".post90"),
                           (self.cuda100, "cuda10.0", ".post100"),
                           (self.cuda101, "cuda10.1", ".post101"),
-                          (self.cuda102, "cuda10.2", ".post")]
+                          (self.cuda102, "cuda10.2", "")]
         self.py_str = ["py27", "py35", "py36", "py37","py38"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
