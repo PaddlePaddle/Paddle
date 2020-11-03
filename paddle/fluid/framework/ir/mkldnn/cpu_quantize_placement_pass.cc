@@ -45,11 +45,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
 
     if (op->Op()->HasAttr("mkldnn_data_type") ||
         op->Op()->HasProtoAttr("mkldnn_data_type")) {
-      // The attribute `use_quantizer` is no longer used
-      // assign value for compatibility
-      if (op->Op()->GetAttrIfExists<bool>("use_quantizer")) {
-        op->Op()->SetAttr("use_quantizer", true);
-      }
       op->Op()->SetAttr("mkldnn_data_type", INT8);
     }
   };
