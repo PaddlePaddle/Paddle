@@ -537,15 +537,16 @@ def _construct_params_and_buffers(model_path,
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
     var_dict = dict()
+    #     raise ValueError("%s is not found, please check your saved model." %params_filename)
     if os.path.exists(var_info_path):
+        var_dict.update(
+            _load_persistable_vars(model_path, var_info_path, programs[
+                'forward'], params_filename))
         model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
         #Load every file that meets the requirements in the directory model_path.
         for file_name in os.listdir(model_path):
-            if file_name == params_filename:
-                var_info_filename = str(file_name) + ".info"
-                func_name = 'forward'
-            elif file_name.endswith(
-                    INFER_PARAMS_SUFFIX) and file_name.startswith(model_name):
+            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
+                    model_name) and file_name != params_filename:
                 var_info_filename = str(file_name) + ".info"
                 func_name = file_name[len(model_name) + 1:-len(
                     INFER_PARAMS_SUFFIX)]
