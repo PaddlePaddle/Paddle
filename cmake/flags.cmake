@@ -155,7 +155,8 @@ set(COMMON_FLAGS
 )
 
 if(NOT APPLE)
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+    #if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 7.0)
         set(COMMON_FLAGS
                 ${COMMON_FLAGS}
                 -Wno-format-truncation # Warning in boost gcc 8.2

@@ -204,6 +204,8 @@ void* GetCublasDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cublas_lib);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "librocblas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
@@ -221,6 +223,8 @@ void* GetCUDNNDsoHandle() {
                                     {}, mac_warn_meg);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libMIOpen.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false,
                                     {linux_cudnn_lib_path});
@@ -242,6 +246,8 @@ void* GetCurandDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhiprand.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
@@ -260,6 +266,8 @@ void* GetCusolverDsoHandle() {
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhiprtc.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -268,6 +276,8 @@ void* GetNVRTCDsoHandle() {
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhip_hcc.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
@@ -295,11 +305,20 @@ void* GetNCCLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", true, {},
                                     warning_msg);
+#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "librccl.so",true, {},
+                                    warning_msg);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", true, {},
                                     warning_msg);
 #endif
 }
+
+#if defined(PADDLE_WITH_HIP)
+void* GetRCCLDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "librccl.so");}
+#endif
+
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)

@@ -226,7 +226,7 @@ function cmake_base() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
+        -DWITH_ROCM_PLATFORM=${WITH_ROCM_PLATFORM:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -258,7 +258,7 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
+        -DWITH_ROCM_PLATFORM=${WITH_ROCM_PLATFORM:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
