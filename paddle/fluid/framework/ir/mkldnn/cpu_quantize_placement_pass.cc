@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 #include <unordered_set>
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -44,13 +45,12 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
 
     if (op->Op()->HasAttr("mkldnn_data_type") ||
         op->Op()->HasProtoAttr("mkldnn_data_type")) {
-      // use_quantizer is no longer used
+      // The attribute `use_quantizer` is no longer used
       // assign value for compatibility
       if (op->Op()->GetAttrIfExists<bool>("use_quantizer")) {
-        op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
+        op->Op()->SetAttr("use_quantizer", true);
       }
-      op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
-      op->Op()->SetAttr("use_quantizer", true);
+      op->Op()->SetAttr("mkldnn_data_type", INT8);
     }
   };
   gpd(graph, handler);
