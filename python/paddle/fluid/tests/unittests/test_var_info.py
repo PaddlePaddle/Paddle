@@ -31,6 +31,7 @@ class TestVarInfo(unittest.TestCase):
         """ Testcase for get and set info for variable. """
         value = np.random.randn(1)
         var = fluid.layers.create_global_var([1], value, "float32")
+        self.assertEqual(1,2)
         var._set_info("name", "test")
         ret = var._get_info("name")
         assert ret == "test"

@@ -101,6 +101,7 @@ class TestWhileOp(unittest.TestCase):
     def test_simple_net_forward(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        self.assertEqual(1,2)
         with fluid.program_guard(main_program, startup_program):
             self.simple_net()
             binary = fluid.compiler.CompiledProgram(main_program)

@@ -74,6 +74,7 @@ class TestZerosLikeImpeartive(unittest.TestCase):
 
         out = paddle.tensor.creation.zeros_like(x)
         self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(), True)
+        self.assertEqual(1,2)
         paddle.enable_static()
 
 

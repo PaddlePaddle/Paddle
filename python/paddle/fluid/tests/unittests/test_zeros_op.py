@@ -43,6 +43,7 @@ class ApiZerosTest(unittest.TestCase):
             result, = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
+        self.assertEqual(1,2)
 
         with paddle.static.program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype="int64")
