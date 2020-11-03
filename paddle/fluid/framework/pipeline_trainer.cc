@@ -92,7 +92,7 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
         is_param_grad = true;
       }
     }
-    if (is_param_grad && microbatch_id == 0) {
+    if ((is_param_grad || var->Persistable()) && microbatch_id == 0) {
       auto* ptr = minibatch_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create grad for persistable var: " << var->Name()
