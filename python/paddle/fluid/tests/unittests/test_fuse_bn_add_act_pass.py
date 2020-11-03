@@ -170,22 +170,25 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         startup_program = fluid.Program()
         x, y, loss = self.build_origin_program(main_program, startup_program,
                                                use_cuda)
-        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_add_act_ops = True
         binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy_fused)
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
         exe = fluid.Executor(place)
         loss_vals_fused = []
+        x_data = []
+        y_data = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
-                data = next(train_reader())
+                x = np.random.random((batch_size, 1, 28, 28)).astype("float32")
+                y = np.random.random((batch_size, 1)).astype("int64")
+                x_data.append(x)
+                y_data.append(y)
                 loss_v = exe.run(binary_fused,
-                                 feed=feeder.feed(data),
+                                 feed={"x": x,
+                                       "y": y},
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
 
@@ -194,16 +197,14 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         build_strategy.fuse_bn_add_act_ops = False
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
         loss_vals = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
-            for _ in range(iters):
-                data = next(train_reader())
+            for i in range(iters):
                 loss_v = exe.run(binary,
-                                 feed=feeder.feed(data),
+                                 feed={"x": x_data[i],
+                                       "y": y_data[i]},
                                  fetch_list=[loss])
                 loss_vals.append(loss_v[0][0])
 
@@ -222,16 +223,16 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         place = fluid.CUDAPlace(0)
         x, y, loss = self.build_fused_program(
             main_program, startup_program, use_cuda=True)
-        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
-        train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=16)
         exe = fluid.Executor(place)
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(5):
-                data = next(train_reader())
+                x = np.random.random((4, 1, 28, 28)).astype("float32")
+                y = np.random.random((4, 1)).astype("int64")
                 loss_v = exe.run(main_program,
-                                 feed=feeder.feed(data),
+                                 feed={"x": x,
+                                       "y": y},
                                  fetch_list=[loss])
 
 
