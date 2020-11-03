@@ -112,4 +112,4 @@ if(LINUX AND NOT WITH_SW)
     message(FATAL_ERROR "patchelf not found, please install it.\n"
             "For Ubuntu, the command is: apt-get install -y patchelf.")
   endif()
-endif(LINUX)
+endif()
