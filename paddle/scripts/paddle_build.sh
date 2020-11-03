@@ -571,8 +571,9 @@ EOF
         exec_retry_threshold=20
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
-            read need_retry_ut <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-            need_retry_ut_count=${#need_retry_ut[@]} 
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_arr = (${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
                     do
@@ -601,7 +602,12 @@ EOF
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
+            else
+                echo "========================================="
+                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
+                echo "========================================="
             fi
+
         fi
         #mactest_error=$?
         ut_endTime_s=`date +%s`
@@ -1154,6 +1160,10 @@ set +x
                         exclusive_retry=''
                         retry_unittests=''
                     done
+            else 
+                echo "========================================="
+                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
+                echo "========================================="
             fi
         fi
 
