@@ -48,8 +48,7 @@ class TestSumMKLDNN(TestSumOp):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
         pass
