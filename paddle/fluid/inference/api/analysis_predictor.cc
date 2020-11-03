@@ -470,6 +470,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -1055,7 +1056,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
-USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
