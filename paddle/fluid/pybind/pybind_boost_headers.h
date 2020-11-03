@@ -65,6 +65,27 @@ struct paddle_variant_caster<V<Ts...>> {
     auto caster = make_caster<T>();
     if (!load_success_ && caster.load(src, convert)) {
       load_success_ = true;
+
+      if (std::is_same<T, std::vector<float>>::value) {
+        auto caster_ints = make_caster<std::vector<int64_t>>();
+        if (caster_ints.load(src, convert)) {
+          VLOG(4) << "This value are floats and int64_ts satisfy "
+                     "simultaneously, will set it's type to "
+                     "std::vector<int64_t>";
+          value = cast_op<std::vector<int64_t>>(caster_ints);
+          return true;
+        }
+      }
+
+      if (std::is_same<T, float>::value) {
+        auto caster_int64 = make_caster<int64_t>();
+        if (caster_int64.load(src, convert)) {
+          VLOG(4) << "this value are float and int64 satisfy simula.";
+          value = cast_op<int64_t>(caster_int64);
+          return true;
+        }
+      }
+
       value = cast_op<T>(caster);
       return true;
     }
