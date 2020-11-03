@@ -82,7 +82,7 @@ def get_cudnn_version():
             
             import paddle
 
-            cudnn_version = get_cudnn_version()
+            cudnn_version = paddle.device.get_cudnn_version()
 
 
 
@@ -117,8 +117,8 @@ def set_device(device):
      .. code-block:: python
             
         import paddle
-        paddle.disable_static()
-        paddle.set_device("cpu")
+
+        paddle.device.set_device("cpu")
         x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
         data = paddle.stack([x1,x2], axis=1)
@@ -179,8 +179,7 @@ def get_device():
      .. code-block:: python
             
         import paddle
-        paddle.disable_static()
-        device = paddle.get_device()
+        device = paddle.device.get_device()
 
     """
     device = ''

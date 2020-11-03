@@ -67,8 +67,6 @@ __all__ = [
 
 def concat(x, axis=0, name=None):
     """
-	:alias_main: paddle.concat
-	:alias: paddle.tensor.concat, paddle.tensor.manipulation.concat
 
     This OP concatenates the input along the axis.
 
@@ -91,7 +89,6 @@ def concat(x, axis=0, name=None):
             
             import paddle
             
-            paddle.disable_static()  # Now we are in imperative mode
             x1 = paddle.to_tensor([[1, 2, 3],
                                    [4, 5, 6]])
             x2 = paddle.to_tensor([[11, 12, 13],
@@ -465,7 +462,6 @@ def split(x, num_or_sections, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
@@ -608,7 +604,6 @@ def unique(x,
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [1 2 3 5]
@@ -1058,7 +1053,6 @@ def chunk(x, chunks, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
@@ -1451,7 +1445,6 @@ def gather_nd(x, index, name=None):
             
             import paddle
             
-            paddle.disable_static()
             x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]],
                                   [[7, 8], [9, 10], [11, 12]]])
             index = paddle.to_tensor([[0, 1]])
