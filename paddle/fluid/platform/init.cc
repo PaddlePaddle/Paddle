@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -105,8 +106,8 @@ void InitP2P(std::vector<int> devices) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
         if (can_acess != 1) {
-          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
-                       << " to " << devices[j];
+          VLOG(2) << "Cannot enable P2P access from " << devices[i] << " to "
+                  << devices[j];
         } else {
           platform::CUDADeviceGuard guard(devices[i]);
           cudaDeviceEnablePeerAccess(devices[j], 0);
