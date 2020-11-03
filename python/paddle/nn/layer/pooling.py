@@ -503,6 +503,7 @@ class MaxPool2D(layers.Layer):
             stride=self.stride,
             padding=self.padding,
             return_mask=self.return_mask,
+            ceil_mode=self.ceil_mode,
             data_format=self.data_format,
             name=self.name)
 
@@ -594,6 +595,7 @@ class MaxPool3D(layers.Layer):
             stride=self.stride,
             padding=self.padding,
             return_mask=self.return_mask,
+            ceil_mode=self.ceil_mode,
             data_format=self.data_format,
             name=self.name)
 
