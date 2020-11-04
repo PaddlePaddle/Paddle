@@ -140,6 +140,7 @@ option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
+option(WITH_OP_UNITY_BUILD "Compile operator libraries with Unity Build" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -283,6 +284,14 @@ if(ON_INFER)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
+
+if(NOT WIN32)
+    set(WITH_OP_UNITY_BUILD OFF CACHE STRING "Unity Build only support Winodws system." FORCE)
+endif()
+if(WITH_OP_UNITY_BUILD)
+    message(STATUS "Compile operator libraries use Unity Build mode.")
+    add_definitions(-DPADDLE_WITH_OP_UNITY_BUILD)
 endif()
 
 add_subdirectory(paddle)

@@ -50,6 +50,7 @@
 namespace paddle {
 namespace operators {
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
@@ -59,6 +60,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+#endif
 
 template <typename DeviceContext, typename T>
 class MeshgridKernel : public framework::OpKernel<T> {

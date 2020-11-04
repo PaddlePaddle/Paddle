@@ -147,3 +147,7 @@ if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)
 include(mkldnn/nhwc_op_tests.cmake)
 endif()
+
+if(WITH_OP_UNITY_BUILD)
+    target_link_libraries(paddle_operators_unity generator sampler beam_search device_memory_aligment selected_rows_functor tensor_formatter tree2col vol2col concat_and_split im2col cos_sim_functor sequence2batch segment_pooling jit_kernel_helper pooling cross_entropy gru_compute)
+endif()

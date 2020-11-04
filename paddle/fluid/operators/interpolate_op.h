@@ -26,6 +26,9 @@ using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace interpolate_op {
+#endif
 inline std::vector<int> get_new_shape(
     const std::vector<const Tensor*>& list_new_shape_tensor) {
   // get tensor from
@@ -1240,6 +1243,9 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
         c, out_d, out_h, out_w, align_corners, align_mode, data_layout);
   }
 }
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 template <typename T>
 class InterpolateKernel : public framework::OpKernel<T> {
@@ -1249,6 +1255,15 @@ class InterpolateKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
 
     auto input_dims = input->dims();
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    if (input_dims.size() == 3) {  // 1D interpolation
+      interpolate_op::Interpolate1DCPUFwd<T>(ctx, *input, output);
+    } else if (input_dims.size() == 4) {  // 2D interpolation
+      interpolate_op::Interpolate2DCPUFwd<T>(ctx, *input, output);
+    } else if (input_dims.size() == 5) {  // 3D interpolation
+      interpolate_op::Interpolate3DCPUFwd<T>(ctx, *input, output);
+    }
+#else
     if (input_dims.size() == 3) {  // 1D interpolation
       Interpolate1DCPUFwd<T>(ctx, *input, output);
     } else if (input_dims.size() == 4) {  // 2D interpolation
@@ -1256,6 +1271,7 @@ class InterpolateKernel : public framework::OpKernel<T> {
     } else if (input_dims.size() == 5) {  // 3D interpolation
       Interpolate3DCPUFwd<T>(ctx, *input, output);
     }
+#endif
   }
 };
 
@@ -1267,6 +1283,15 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    if (output_grad_dims.size() == 3) {  // 1D interpolation grad
+      interpolate_op::Interpolate1DCPUBwd<T>(ctx, input_grad, *output_grad);
+    } else if (output_grad_dims.size() == 4) {  // 2D interpolation grad
+      interpolate_op::Interpolate2DCPUBwd<T>(ctx, input_grad, *output_grad);
+    } else if (output_grad_dims.size() == 5) {  // 3D interpolation grad
+      interpolate_op::Interpolate3DCPUBwd<T>(ctx, input_grad, *output_grad);
+    }
+#else
     if (output_grad_dims.size() == 3) {  // 1D interpolation grad
       Interpolate1DCPUBwd<T>(ctx, input_grad, *output_grad);
     } else if (output_grad_dims.size() == 4) {  // 2D interpolation grad
@@ -1274,6 +1299,7 @@ class InterpolateGradKernel : public framework::OpKernel<T> {
     } else if (output_grad_dims.size() == 5) {  // 3D interpolation grad
       Interpolate3DCPUBwd<T>(ctx, input_grad, *output_grad);
     }
+#endif
   }
 };
 

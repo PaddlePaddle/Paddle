@@ -170,7 +170,14 @@ REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+REGISTER_OP_CPU_KERNEL(
+    matmul_v2_grad,
+    ops::matmul_v2_op::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::matmul_v2_op::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>);
+#else
 REGISTER_OP_CPU_KERNEL(
     matmul_v2_grad,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

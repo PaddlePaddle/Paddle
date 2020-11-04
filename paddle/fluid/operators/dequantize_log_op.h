@@ -28,11 +28,17 @@ class Tensor;
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace dequantize_log_op {
+#endif
 template <typename DeviceContext, typename T>
 struct DequantizeFunctor {
   void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
                   const framework::Tensor* dict, framework::Tensor* out);
 };
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 template <typename DeviceContext, typename T>
 class DequantizeLogKernel : public framework::OpKernel<T> {
@@ -45,7 +51,11 @@ class DequantizeLogKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     out->mutable_data<float>(dev_ctx.GetPlace());
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    dequantize_log_op::DequantizeFunctor<DeviceContext, T>()(dev_ctx, in, dict, out);
+#else
     DequantizeFunctor<DeviceContext, T>()(dev_ctx, in, dict, out);
+#endif
   }
 };
 

@@ -27,9 +27,11 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+#endif
 
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 

@@ -22,9 +22,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {  // Internal
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+#endif
 using framework::Tensor;
 
 inline std::vector<int> get_new_data(
@@ -119,6 +121,9 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
   return res;
 }
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace crop_tensor_op {
+#endif
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
   int rank = ctx.Input<Tensor>("X")->dims().size();
@@ -167,6 +172,9 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   }
   return res;
 }
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 template <typename DeviceContext, typename T, size_t D>
 void CropTensorFunction(const framework::ExecutionContext& context) {
@@ -176,7 +184,11 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
   auto out_dims = out->dims();
 
   // get shape from Input(ShapeTensor) of Input(Shape)
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+  std::vector<int> shape = crop_tensor_op::GetShape(context);
+#else
   std::vector<int> shape = GetShape(context);
+#endif
   // out_dims set by arrt(shape)
   if (shape.size() == 0) {
     for (int i = 0; i < out_dims.size(); ++i) {
@@ -258,7 +270,11 @@ void CropTensorGradFunction(const framework::ExecutionContext& context) {
   if (d_x != nullptr) {
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     d_x->mutable_data<T>(x->dims(), context.GetPlace());
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    auto offsets = crop_tensor_op::GetOffsets(context);
+#else
     auto offsets = GetOffsets(context);
+#endif
     Eigen::array<std::pair<int, int>, D> paddings;
     for (size_t i = 0; i < D; ++i) {
       paddings[i].first = offsets[i];

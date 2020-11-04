@@ -1,4 +1,11 @@
 set(PART_CUDA_KERNEL_FILES)
+set(UNITY_BEFORE_CODE [[
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif]])
 function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
     # cc_library. But it handle split GPU/CPU code and link some common library
@@ -15,7 +22,7 @@ function(op_library TARGET)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
     set(op_common_deps operator op_registry math_function layer common_infer_shape_functions)
-    set(options "")
+    set(options UNITY)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     set(pybind_flag 0)
@@ -105,7 +112,17 @@ function(op_library TARGET)
         endif()
     endforeach()
     endif(WIN32)
-    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} CACHE INTERNAL "op libs")
+
+    if(WITH_OP_UNITY_BUILD AND op_library_UNITY)
+        string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET ${CMAKE_CURRENT_SOURCE_DIR})
+        string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
+        set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
+        if(NOT ${UNITY_TARGET} IN_LIST OP_LIBRARY)
+            set(OP_LIBRARY ${UNITY_TARGET} ${OP_LIBRARY} CACHE INTERNAL "op libs")
+        endif()
+    else()
+        set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} CACHE INTERNAL "op libs")
+    endif()
 
     list(LENGTH op_library_DEPS op_library_DEPS_len)
     if (${op_library_DEPS_len} GREATER 0)
@@ -118,8 +135,20 @@ function(op_library TARGET)
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cu_srcs} ${miopen_hip_cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
-        cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
-            ${op_common_deps})
+        if(WITH_OP_UNITY_BUILD AND op_library_UNITY)
+            if(TARGET ${UNITY_TARGET})
+                target_sources(${UNITY_TARGET} PRIVATE ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs})
+            else()
+                cc_library(${UNITY_TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
+                    ${op_common_deps})
+                set_property(TARGET ${UNITY_TARGET} PROPERTY UNITY_BUILD true)
+                set_property(TARGET ${UNITY_TARGET} PROPERTY UNITY_BUILD_CODE_BEFORE_INCLUDE "${UNITY_BEFORE_CODE}")
+            endif()
+            add_library(${TARGET} ALIAS ${UNITY_TARGET})
+        else()
+            cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} DEPS ${op_library_DEPS}
+                ${op_common_deps})
+        endif()
     endif()
 
     # Define operators that don't need pybind here.
@@ -256,9 +285,9 @@ function(register_operators)
         list(FIND register_operators_EXCLUDES ${src} _index)
         if (${_index} EQUAL -1)
             if (${register_operators_DEPS_len} GREATER 0)
-                op_library(${src} DEPS ${register_operators_DEPS})
+                op_library(${src} UNITY DEPS ${register_operators_DEPS})
             else()
-                op_library(${src})
+                op_library(${src} UNITY)
             endif()
         endif()
     endforeach()

@@ -20,9 +20,11 @@
 namespace paddle {
 namespace operators {
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+#endif
 using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 

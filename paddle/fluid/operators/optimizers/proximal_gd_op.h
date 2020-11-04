@@ -20,9 +20,11 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+#endif
 
 template <typename DeviceContext, typename T>
 class ProximalGDOpKernel : public framework::OpKernel<T> {

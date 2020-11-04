@@ -27,6 +27,9 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace sequence_expand_op {
+#endif
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
   void operator()(
@@ -79,6 +82,9 @@ struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
@@ -134,12 +140,19 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
       ref_x_lod.resize(x->dims()[0] + 1);
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    sequence_expand_op::SequenceExpandFunctor<DeviceContext, T> functor;
+#else
     SequenceExpandFunctor<DeviceContext, T> functor;
+#endif
     functor(context.template device_context<DeviceContext>(), *x, ref_x_lod,
             y_lod[ref_level], out);
   }
 };
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace sequence_expand_op {
+#endif
 /*
  *Given Grad(Out)
  *
@@ -179,6 +192,9 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 template <typename DeviceContext, typename T>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
@@ -214,7 +230,11 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       ref_x_lod.resize(x->dims()[0] + 1);
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
+#ifdef PADDLE_WITH_UNITY_BUILD
+    sequence_expand_op::SequenceExpandGradFunctor<DeviceContext, T> functor;
+#else
     SequenceExpandGradFunctor<DeviceContext, T> functor;
+#endif
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
             ref_lod, g_x);
   }

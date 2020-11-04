@@ -29,9 +29,11 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+#endif
 
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {

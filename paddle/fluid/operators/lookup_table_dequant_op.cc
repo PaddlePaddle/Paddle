@@ -22,6 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+constexpr int64_t kNoPadding = -1;
+#endif
+
 class LookupTableDequantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

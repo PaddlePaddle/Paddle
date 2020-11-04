@@ -347,6 +347,9 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
   }
 };
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace matmul_v2_op {
+#endif
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
 static framework::Tensor FoldInitDims(const framework::Tensor& input) {
@@ -649,6 +652,9 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
     }
   }
 };
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 }  // namespace operators
 }  // namespace paddle

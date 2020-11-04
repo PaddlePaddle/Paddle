@@ -27,6 +27,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 template <typename T>
 using EigenArrayMap =
     Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
@@ -38,6 +39,7 @@ using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
+#endif
 
 class InstanceNormOp : public framework::OperatorWithKernel {
  public:

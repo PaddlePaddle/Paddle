@@ -33,6 +33,9 @@ struct CPUPlace;
 
 namespace paddle {
 namespace operators {
+#ifdef PADDLE_WITH_UNITY_BUILD
+namespace dequantize_log_op {
+#endif
 
 template <typename T>
 struct DequantizeFunctor<platform::CPUDeviceContext, T> {
@@ -54,6 +57,9 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
 };
 
 template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 class DequantizeLogOp : public framework::OperatorWithKernel {
  public:

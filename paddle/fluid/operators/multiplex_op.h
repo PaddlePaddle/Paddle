@@ -43,8 +43,8 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LT(static_cast<size_t>(k), ins.size(),
                         platform::errors::PreconditionNotMet(
                             "index exceeds the number of candidate tensors."));
-      memory::Copy(place, out->data<T>() + i * cols, place,
-                   ins[k]->data<T>() + i * cols, cols * sizeof(T));
+      ::paddle::memory::Copy(place, out->data<T>() + i * cols, place,
+                             ins[k]->data<T>() + i * cols, cols * sizeof(T));
     }
   }
 };
@@ -80,8 +80,8 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < rows; i++) {
       size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {
-        memory::Copy(place, d_ins[k]->data<T>() + i * cols, place,
-                     d_out->data<T>() + i * cols, cols * sizeof(T));
+        ::paddle::memory::Copy(place, d_ins[k]->data<T>() + i * cols, place,
+                               d_out->data<T>() + i * cols, cols * sizeof(T));
       }
     }
   }

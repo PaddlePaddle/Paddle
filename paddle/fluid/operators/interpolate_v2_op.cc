@@ -21,6 +21,9 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace interpolate_v2_op {
+#endif
 static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
@@ -327,6 +330,9 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   }
   ctx->SetOutputDim("Out", dim_out);
 }
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 class InterpolateV2Op : public framework::OperatorWithKernel {
  public:
@@ -344,6 +350,18 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
             "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
             dim_x.size()));
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    if (dim_x.size() == 3) {
+      // shape check for 1D interpolate for input tensor shape NCHW
+      interpolate_v2_op::Interpolate1DInferShapeCheck(ctx);
+    } else if (dim_x.size() == 4) {
+      // shape check for 2D interpolate for input tensor shape NCHW
+      interpolate_v2_op::Interpolate2DInferShapeCheck(ctx);
+    } else {  // dim_x.size() == 5
+      // shape check for 3D interpolate for input tensor shape NCDHW
+      interpolate_v2_op::Interpolate3DInferShapeCheck(ctx);
+    }
+#else
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
       Interpolate1DInferShapeCheck(ctx);
@@ -354,6 +372,7 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
       // shape check for 3D interpolate for input tensor shape NCDHW
       Interpolate3DInferShapeCheck(ctx);
     }
+#endif
   }
 
  protected:

@@ -22,7 +22,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
+#endif
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"

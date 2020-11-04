@@ -299,6 +299,9 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 configure_file(commit.h.in commit.h)
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
+if(WITH_OP_UNITY_BUILD)
+    set(FLUID_FRAMEWORK_MODULES ${FLUID_FRAMEWORK_MODULES} recurrent_op)
+endif()
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared

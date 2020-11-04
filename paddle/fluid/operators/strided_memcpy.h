@@ -95,7 +95,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
   for (int64_t i = 0; i < before; ++i) {
     if (platform::is_cpu_place(place)) {
       auto& cpu_place = BOOST_GET_CONST(platform::CPUPlace, place);
-      memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
+      ::paddle::memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
                    src + i * src_after, sizeof(T) * size);
     } else {
 #ifdef PADDLE_WITH_CUDA

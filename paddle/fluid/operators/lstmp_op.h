@@ -66,6 +66,9 @@ class _ClipGradFunctor {
   T max_;
 };
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace lstmp_op {
+#endif
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
@@ -75,6 +78,9 @@ inline void ReorderInitState(const DeviceContext& ctx,
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index, dst, indexed_src);
 }
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+}
+#endif
 
 template <typename DeviceContext, typename T>
 class LSTMPKernel : public framework::OpKernel<T> {
@@ -155,8 +161,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
       // Since the batch computing for LSTMP reorders the input sequence
       // according to their length. The initialized cell state also needs
       // to reorder.
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+      lstmp_op::ReorderInitState<DeviceContext, T>(device_ctx, *cell_t0, order,
+                                                   &ordered_c0, true);
+#else
       ReorderInitState<DeviceContext, T>(device_ctx, *cell_t0, order,
                                          &ordered_c0, true);
+#endif
       lstmp_value.prev_state_value = ordered_c0.data<T>();
     }
 
@@ -207,8 +218,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
         // Since the batch computing for LSTMP reorders the input sequence
         // according to their length. The initialized hidden state also needs
         // to reorder.
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+        lstmp_op::ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
+                                                     &ordered_h0, true);
+#else
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
                                            &ordered_h0, true);
+#endif
         blas.MatMul(ordered_h0, false, *weight, false, static_cast<T>(1.0),
                     &gate_t, static_cast<T>(1.0));
       }
@@ -317,8 +333,13 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (c0) {
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+      lstmp_op::ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
+                                                   true);
+#else
       ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
                                          true);
+#endif
     }
     if (c0 && c0_g) {
       ordered_c0_g.mutable_data<T>(c0_g->dims(), ctx.GetPlace());
@@ -483,8 +504,14 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         }
       } else {
         if (h0 && weight_g) {
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+          lstmp_op::ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
+                                                       &ordered_h0, true);
+
+#else
           ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
                                              &ordered_h0, true);
+#endif
           if (weight_g) {
             blas.MatMul(ordered_h0, true, gate_g, false, static_cast<T>(1.0),
                         weight_g, static_cast<T>(1.0));
@@ -513,6 +540,16 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    if (h0 && h0_g) {
+      lstmp_op::ReorderInitState<DeviceContext, T>(device_ctx, ordered_h0_g, order, h0_g,
+                                                   false);
+    }
+    if (c0 && c0_g) {
+      lstmp_op::ReorderInitState<DeviceContext, T>(device_ctx, ordered_c0_g, order, c0_g,
+                                                   false);
+    }
+#else
     if (h0 && h0_g) {
       ReorderInitState<DeviceContext, T>(device_ctx, ordered_h0_g, order, h0_g,
                                          false);
@@ -521,6 +558,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       ReorderInitState<DeviceContext, T>(device_ctx, ordered_c0_g, order, c0_g,
                                          false);
     }
+#endif
   }
 };
 

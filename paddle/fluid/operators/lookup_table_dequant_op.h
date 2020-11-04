@@ -46,7 +46,9 @@ void dequant(const unsigned char *in, T *out, float min, float max,
   }
 }
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 constexpr int64_t kNoPadding = -1;
+#endif
 
 template <typename T>
 class LookupTableDequantKernel : public framework::OpKernel<T> {
