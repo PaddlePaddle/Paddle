@@ -81,12 +81,15 @@ class OpHandleBase {
 
   // This method adds the wait events of all the input on all the device
   // context.
-  // NODE: This Wait is asynchronous operation.
-  virtual void WaitInputVarGenerated();
+  // NOTE: This Wait is asynchronous operation.
+  // NOTE: wait_for_feed is added to wait for feed var, since it has
+  // generated op, no event and cannot perform event wait. It is only
+  // used in fetch_async_op_handle currently.
+  virtual void WaitInputVarGenerated(bool wait_for_feed = false);
 
   // This method adds the wait events of all the input on the specified device
   // context.
-  // NODE: This Wait is asynchronous operation.
+  // NOTE: This Wait is asynchronous operation.
   virtual void WaitInputVarGenerated(const platform::Place &place);
 
   virtual bool NeedWait(VarHandleBase *in_var);

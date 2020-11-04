@@ -470,6 +470,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -500,6 +501,10 @@ void AnalysisPredictor::PrepareArgument() {
         config_.mkldnn_quantizer_config()->enabled_op_types());
     argument_.SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
+  }
+  if (config_.use_mkldnn_bfloat16_) {
+    LOG(INFO) << "Bfloat16 is enabled";
+    argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 #endif
 
@@ -1051,7 +1056,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
-USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);

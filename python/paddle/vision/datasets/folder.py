@@ -14,6 +14,7 @@
 
 import os
 import sys
+from PIL import Image
 
 import paddle
 from paddle.io import Dataset
@@ -136,7 +137,7 @@ class DatasetFolder(Dataset):
                 "Found 0 files in subfolders of: " + self.root + "\n"
                 "Supported extensions are: " + ",".join(extensions)))
 
-        self.loader = cv2_loader if loader is None else loader
+        self.loader = default_loader if loader is None else loader
         self.extensions = extensions
 
         self.classes = classes
@@ -193,9 +194,23 @@ IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif',
                   '.tiff', '.webp')
 
 
+def pil_loader(path):
+    with open(path, 'rb') as f:
+        img = Image.open(f)
+        return img.convert('RGB')
+
+
 def cv2_loader(path):
     cv2 = try_import('cv2')
-    return cv2.imread(path)
+    return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+
+
+def default_loader(path):
+    from paddle.vision import get_image_backend
+    if get_image_backend() == 'cv2':
+        return cv2_loader(path)
+    else:
+        return pil_loader(path)
 
 
 class ImageFolder(Dataset):
@@ -280,7 +295,7 @@ class ImageFolder(Dataset):
                 "Found 0 files in subfolders of: " + self.root + "\n"
                 "Supported extensions are: " + ",".join(extensions)))
 
-        self.loader = cv2_loader if loader is None else loader
+        self.loader = default_loader if loader is None else loader
         self.extensions = extensions
         self.samples = samples
         self.transform = transform

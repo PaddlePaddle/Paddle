@@ -25,13 +25,11 @@ import six
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
-from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
-from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
 from ..fluid import layers
 import paddle
 
@@ -58,7 +56,6 @@ __all__ = [
     'strided_slice',
     'transpose',
     'unique',
-    'unique_with_counts',
     'unsqueeze',
     'unstack',
     'flip',
@@ -672,21 +669,24 @@ def unique(x,
     }
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
+    indices = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
     inverse = helper.create_variable_for_type_inference(
         dtype=attr_dtype, stop_gradient=True)
-    outputs = {"Out": out, "Index": inverse}
+    counts = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    outputs = {
+        "Out": out,
+        "Indices": indices,
+        "Index": inverse,
+        "Counts": counts
+    }
     outs = [out]
     if return_index:
-        indices = helper.create_variable_for_type_inference(
-            dtype=attr_dtype, stop_gradient=True)
-        outputs["Indices"] = indices
         outs.append(indices)
     if return_inverse:
         outs.append(inverse)
     if return_counts:
-        counts = helper.create_variable_for_type_inference(
-            dtype=attr_dtype, stop_gradient=True)
-        outputs["Counts"] = counts
         outs.append(counts)
 
     helper.append_op(
@@ -1353,7 +1353,7 @@ def reshape(x, shape, name=None):
     the corresponding dimension of x.
 
     Args:
-        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
         shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
@@ -1461,3 +1461,89 @@ def gather_nd(x, index, name=None):
     """
 
     return paddle.fluid.layers.gather_nd(input=x, index=index, name=name)
+
+
+def strided_slice(x, axes, starts, ends, strides, name=None):
+    """
+    This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
+    slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
+    Following examples will explain how strided_slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+                strides = [1, 1]
+            Then:
+                result = [ [5, 6, 7], ]
+
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [2, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [8, 7, 6], ]
+        Case3:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+                strides = [1, 3]
+            Then:
+                result = [ [2], ]
+    Args:
+        x (Tensor): An N-D ``Tensor``. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
+                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .                                                                                     It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Tensor): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``strides`` is an Tensor, it should be an 1-D Tensor .                                                                                  It represents slice step of corresponding axis in ``axes``.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor:  A ``Tensor`` with the same dimension as ``x``. The data type is same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.zeros(shape=[3,4,5,6], dtype="float32")
+            # example 1:
+            # attr starts is a list which doesn't contain Tensor.
+            axes = [1, 2, 3]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            strides_1 = [1, 1, 1]
+            strides_2 = [1, 1, 2]
+            sliced_1 = paddle.strided_slice(x, axes=axes, starts=starts, ends=ends, strides=strides_1)
+            # sliced_1 is x[:, 1:3:1, 0:2:1, 2:4:1].                                
+            # example 2:
+            # attr starts is a list which contain tensor Tensor.
+            minus_3 = paddle.fill_constant([1], "int32", -3)
+            sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
+            # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
+    """
+
+    return paddle.fluid.layers.strided_slice(
+        input=x, axes=axes, starts=starts, ends=ends, strides=strides)

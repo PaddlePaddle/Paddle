@@ -219,7 +219,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -305,7 +305,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -414,7 +414,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -521,7 +521,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -711,7 +711,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -802,7 +802,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
 
@@ -916,11 +916,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
-
-            para_state_dict, opti_state_dict = fluid.load_dygraph(
-                os.path.join('saved_dy', 'emb_dy'), True)
-            self.assertTrue(para_state_dict != None)
-            self.assertTrue(opti_state_dict == None)
 
             para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy'), keep_name_table=True)

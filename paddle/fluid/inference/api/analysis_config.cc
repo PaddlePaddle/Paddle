@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -121,10 +122,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_oss_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   CP_MEMBER(mkldnn_cache_capacity_);
+  // Bfloat16 related.
+  CP_MEMBER(use_mkldnn_bfloat16_);
+  CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -219,7 +224,12 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  use_mkldnn_bfloat16_ = true;
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+    use_mkldnn_bfloat16_ = true;
+  } else {
+    LOG(INFO) << "CPU does not support BFLOAT16 calculations";
+    use_mkldnn_bfloat16_ = false;
+  }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
   use_mkldnn_bfloat16_ = false;
@@ -269,6 +279,10 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   max_input_shape_ = max_input_shape;
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
+}
+
+void AnalysisConfig::EnableTensorRtOSS() {
+    trt_use_oss_ = true;
 }
 
 // TODO(Superjomn) refactor this, buggy.
@@ -372,7 +386,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#ifndef PADDLE_WITH_XPU
+#ifndef LITE_SUBGRAPH_WITH_XPU
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use an XPU device, but Paddle was not compiled "
         "with XPU-runtime."));
@@ -417,6 +431,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_mkldnn_quantizer_;
   ss << use_mkldnn_bfloat16_;
+  for (auto &item : bfloat16_enabled_op_types_) ss << item;
+  ss << ";";
   ss << model_from_memory_;
 
   ss << with_profile_;

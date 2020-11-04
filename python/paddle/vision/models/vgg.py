@@ -57,7 +57,7 @@ class VGG(nn.Layer):
     def __init__(self, features, num_classes=1000):
         super(VGG, self).__init__()
         self.features = features
-        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
+        self.avgpool = nn.AdaptiveAvgPool2D((7, 7))
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(),
@@ -80,11 +80,11 @@ def make_layers(cfg, batch_norm=False):
     in_channels = 3
     for v in cfg:
         if v == 'M':
-            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+            layers += [nn.MaxPool2D(kernel_size=2, stride=2)]
         else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            conv2d = nn.Conv2D(in_channels, v, kernel_size=3, padding=1)
             if batch_norm:
-                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU()]
+                layers += [conv2d, nn.BatchNorm2D(v), nn.ReLU()]
             else:
                 layers += [conv2d, nn.ReLU()]
             in_channels = v
@@ -117,9 +117,8 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-        assert weight_path.endswith(
-            '.pdparams'), "suffix of weight must be .pdparams"
-        param, _ = paddle.load(weight_path)
+
+        param = paddle.load(weight_path)
         model.load_dict(param)
 
     return model

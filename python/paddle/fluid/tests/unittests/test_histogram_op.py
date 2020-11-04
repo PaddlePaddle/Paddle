@@ -73,33 +73,33 @@ class TestHistogramOpError(unittest.TestCase):
         """Test bins should be greater than or equal to 1."""
 
         def net_func():
-            input_value = paddle.fill_constant(
+            input_value = paddle.fluid.layers.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0)
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
 
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(IndexError):
             self.run_network(net_func)
 
     def test_min_max_error(self):
         """Test max must be larger or equal to min."""
 
         def net_func():
-            input_value = paddle.fill_constant(
+            input_value = paddle.fluid.layers.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0)
             paddle.histogram(input=input_value, bins=1, min=5, max=1)
 
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_min_max_range_error(self):
         """Test range of min, max is not finite"""
 
         def net_func():
-            input_value = paddle.fill_constant(
+            input_value = paddle.fluid.layers.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0)
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)
 
-        with self.assertRaises(fluid.core.EnforceNotMet):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_type_errors(self):
@@ -138,4 +138,5 @@ class TestHistogramOp(OpTest):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

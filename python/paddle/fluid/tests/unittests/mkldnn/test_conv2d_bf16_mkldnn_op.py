@@ -20,13 +20,7 @@ import struct
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
-from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
-
-
-def conv2d_forward_refer(input, filter, group, conv_param):
-    out, in_n, out_h, out_w, out_c = conv2d_forward_naive(input, filter, group,
-                                                          conv_param)
-    return out
+from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2DOp
 
 
 def conv2d_residual_naive(out, residual):
@@ -37,7 +31,7 @@ def conv2d_residual_naive(out, residual):
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
-class TestConv2dBf16Op(TestConv2dOp):
+class TestConv2DBf16Op(TestConv2DOp):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -116,7 +110,7 @@ class TestConv2dBf16Op(TestConv2dOp):
         pass
 
     def init_test_case(self):
-        TestConv2dOp.init_test_case(self)
+        TestConv2DOp.init_test_case(self)
         self.input_size = [1, 1, 5, 5]  # NCHW
         f_c = self.input_size[1] // self.groups
         self.input_residual_size = [1, 2, 3, 3]
@@ -136,7 +130,7 @@ class TestConv2dBf16Op(TestConv2dOp):
         self.fuse_residual = True
 
 
-class TestConv2d(TestConv2dBf16Op):
+class TestConv2D(TestConv2DBf16Op):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -150,19 +144,19 @@ class TestConv2d(TestConv2dBf16Op):
         self.input_type = np.uint16
 
 
-class TestWithPad(TestConv2d):
+class TestWithPad(TestConv2D):
     def init_test_case(self):
-        TestConv2d.init_test_case(self)
+        TestConv2D.init_test_case(self)
         self.pad = [1, 1]
         self.input_residual_size = [2, 6, 5, 5]
 
 
-class TestWithGroup(TestConv2d):
+class TestWithGroup(TestConv2D):
     def init_group(self):
         self.groups = 3
 
 
-class TestWithStride(TestConv2dBf16Op):
+class TestWithStride(TestConv2DBf16Op):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -176,7 +170,22 @@ class TestWithStride(TestConv2dBf16Op):
         self.input_type = np.uint16
 
 
-class TestWith1x1ForceFP32Output(TestConv2dBf16Op):
+class TestWithDilations(TestConv2DBf16Op):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [2, 2]
+        self.input_size = [2, 3, 10, 10]
+        self.input_residual_size = [2, 6, 8, 8]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+    def init_data_type(self):
+        self.input_type = np.uint16
+
+
+class TestWith1x1ForceFP32Output(TestConv2DBf16Op):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -192,7 +201,7 @@ class TestWith1x1ForceFP32Output(TestConv2dBf16Op):
         self.fuse_residual = False
 
 
-class TestWithInput1x1Filter1x1(TestConv2dBf16Op):
+class TestWithInput1x1Filter1x1(TestConv2DBf16Op):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -207,4 +216,6 @@ class TestWithInput1x1Filter1x1(TestConv2dBf16Op):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()

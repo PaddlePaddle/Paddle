@@ -284,7 +284,17 @@ def _current_expected_place():
     global _global_expected_place_
     if _global_expected_place_ is None:
         if core.is_compiled_with_cuda():
-            _global_expected_place_ = core.CUDAPlace(0)
+            try:
+                device_count = core.get_cuda_device_count()
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CUDAPlace(0)
+            else:
+                warnings.warn(
+                    "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -533,7 +543,7 @@ def name_scope(prefix=None):
           import paddle
           paddle.enable_static()
           with paddle.static.name_scope("s1"):
-             a = paddle.data(name='data', shape=[None, 1], dtype='int32')
+             a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
              with paddle.static.name_scope("s2"):
                 c = b * 1
@@ -1182,8 +1192,8 @@ class Variable(object):
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
                     inputs.append(tmp)
-                ret = paddle.sums(inputs)
-                loss = paddle.reduce_sum(ret)
+                ret = paddle.add_n(inputs)
+                loss = paddle.sum(ret)
                 loss.backward()
 
         """
@@ -1333,7 +1343,9 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
+                paddle.enable_static()
                 cur_program = fluid.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
@@ -1773,8 +1785,6 @@ class ComplexVariable(object):
     **Notes**:
         **The constructor of ComplexTensor should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexTensor with complex number data.**
-
     Args:
         real (Tensor): The Tensor holding real-part data.
         imag (Tensor): The Tensor holding imaginery-part data.
@@ -1783,14 +1793,14 @@ class ComplexVariable(object):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.enable_imperative()
             x = paddle.to_tensor([1.0+2.0j, 0.2])
             print(x.name, x.dtype, x.shape)
-            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, 'complex128', [2L])
-            print(x.numpy())
-            # [1. +2.j 0.2+0.j]
+            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, complex64, [2])
+            print(x)
+            # ComplexTensor[real](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #                     [        1., 0.20000000])
+            # ComplexTensor[imag](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #                     [2., 0.])
             print(type(x))
             # <class 'paddle.ComplexTensor'>
     """
@@ -1815,6 +1825,9 @@ class ComplexVariable(object):
         else:
             self._dtype = "complex128"
         self._shape = self.real.shape
+
+    def __getitem__(self, idx):
+        return ComplexVariable(self.real[idx], self.imag[idx])
 
     @property
     def dtype(self):
@@ -1846,9 +1859,10 @@ class ComplexVariable(object):
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __str__(self):
-        return "ComplexTensor[real]: %s\n%s\nComplexTensor[imag]: %s\n%s" % (
-            self.real.name, str(self.real.value().get_tensor()), self.imag.name,
-            str(self.imag.value().get_tensor()))
+        from paddle.tensor.to_string import to_string
+        return "ComplexTensor containing:\n{real}\n{imag}".format(
+            real=to_string(self.real, "[real part]Tensor"),
+            imag=to_string(self.imag, "[imag part]Tensor"))
 
     __repr__ = __str__
 
@@ -2088,10 +2102,16 @@ class Operator(object):
                             % (out_proto.name, len(out_args)))
                     out_arg_names = []
                     for arg in out_args:
-                        out_arg_names.append(cpt.to_text(arg.name))
+                        if isinstance(arg, six.string_types):
+                            out_arg_names.append(arg)
+                        else:
+                            out_arg_names.append(cpt.to_text(arg.name))
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not in_dygraph_mode():
-                            arg.op = self
+                            if isinstance(arg, six.string_types):
+                                block.var(arg).op = self
+                            else:
+                                arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
             if op_attrs is not None:
@@ -2825,8 +2845,9 @@ class Block(object):
         self._sync_with_cpp()
         return var
 
-    def _remove_var(self, name):
-        self._sync_with_cpp()
+    def _remove_var(self, name, sync=True):
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
@@ -2924,7 +2945,23 @@ class Block(object):
         self.ops.insert(index, op)
         return op
 
-    def _remove_op(self, index):
+    def _insert_op_without_sync(self, index, *args, **kwargs):
+        """
+        Insert an Operator according to the giving arguments, 
+        without sync_with_cpp to meke the compilation faster.
+
+        Args:
+            index(int): the place that the operator to insert.
+
+        Returns:
+            Operator: the insert Operator.
+        """
+        op_desc = self.desc._insert_op(index)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        self.ops.insert(index, op)
+        return op
+
+    def _remove_op(self, index, sync=True):
         """
         Remove the specific position operator.
 
@@ -2934,7 +2971,8 @@ class Block(object):
         Returns:
             None
         """
-        self._sync_with_cpp()
+        if sync == True:
+            self._sync_with_cpp()
         self.desc._remove_op(index, index + 1)
         del self.ops[index]
 
@@ -3996,7 +4034,7 @@ class Program(object):
             with static.program_guard(main_program=main_program, startup_program=startup_program):
                 x = static.data(name="x", shape=[-1, 784], dtype='float32')
                 y = static.data(name="y", shape=[-1, 1], dtype='int32')
-                z = static.nn.fc(name="fc", input=x, size=10, act="relu")
+                z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
             print("main program is: {}".format(main_program))
             print("start up program is: {}".format(startup_program))
@@ -4344,7 +4382,7 @@ class Program(object):
             paddle.enable_static()
 
             img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(input=img, size=10, act='relu')
+            pred = static.nn.fc(x=img, size=10, actvation='relu')
             loss = paddle.mean(pred)
             # Here we use clone before Momentum
             test_program = static.default_main_program().clone(for_test=True)
@@ -4415,10 +4453,10 @@ class Program(object):
                     with static.program_guard(train_program, startup_program):
                         with utils.unique_name.guard():
                             img = static.data(name='image', shape=[None, 784])
-                            hidden = static.nn.fc(input=img, size=200, act='relu')
+                            hidden = static.nn.fc(x=img, size=200, activation='relu')
                             hidden = F.dropout(hidden, p=0.5)
                             loss = F.cross_entropy(
-                                input=static.nn.fc(hidden, size=10, act='softmax'),
+                                input=static.nn.fc(x=hidden, size=10, activation='softmax'),
                                 label=static.data(name='label', shape=[1], dtype='int64'))
                             avg_loss = paddle.mean(loss)
                             test_program = train_program.clone(for_test=True)
@@ -4462,10 +4500,10 @@ class Program(object):
 
                     def network():
                         img = static.data(name='image', shape=[None, 784])
-                        hidden = static.nn.fc(input=img, size=200, act='relu')
+                        hidden = static.nn.fc(x=img, size=200, activation='relu')
                         hidden = F.dropout(hidden, p=0.5)
                         loss = F.cross_entropy(
-                            input=static.nn.fc(hidden, size=10, act='softmax'),
+                            input=static.nn.fc(x=hidden, size=10, activation='softmax'),
                             label=static.data(name='label', shape=[1], dtype='int64'))
                         avg_loss = paddle.mean(loss)
                         return avg_loss
@@ -5079,7 +5117,7 @@ class Program(object):
 
                 program = static.default_main_program()
                 data = static.data(name='x', shape=[None, 13], dtype='float32')
-                hidden = static.nn.fc(input=data, size=10)
+                hidden = static.nn.fc(x=data, size=10)
                 loss = paddle.mean(hidden)
                 paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -5299,19 +5337,16 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-                conv = paddle.nn.Conv2D(3, 3, 5)
-                print(conv.weight)
-                # Parameter: conv2d_0.w_0
-                #   - place: CUDAPlace(0)
-                #   - shape: [3, 3, 5, 5]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [...] 
-                paddle.enable_static()
+                linear = paddle.nn.Linear(3, 3)
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [[ 0.48948765,  0.05829060, -0.25524026],
+                #         [-0.70368278,  0.52986908, -0.68742192],
+                #         [-0.54217887,  0.48439729,  0.34082305]])
         """
-        return "Parameter containing:\n  {}\n  - stop_gradient: {}".format(
-            super(ParamBase, self).__str__(), self.stop_gradient)
+        return "Parameter containing:\n{tensor}".format(
+            tensor=super(ParamBase, self).__str__())
 
     __repr__ = __str__
 
@@ -5345,9 +5380,9 @@ def default_startup_program():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = paddle.data(name="x", shape=[-1, 784], dtype='float32')
-                y = paddle.data(name="y", shape=[-1, 1], dtype='int32')
-                z = paddle.static.nn.fc(name="fc", input=x, size=10, act="relu")
+                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
+                z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
                 print("main program is: {}".format(paddle.static.default_main_program()))
                 print("start up program is: {}".format(paddle.static.default_startup_program()))
@@ -5360,7 +5395,7 @@ def default_main_program():
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
     
-    For example ``z = paddle.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    For example ``z = paddle.fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
     Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
     The ``default main program`` is the default value for ``Program`` parameter in 
@@ -5379,18 +5414,18 @@ def default_main_program():
             
             paddle.enable_static()
             # Sample Network:
-            data = paddle.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = paddle.data(name='label', shape=[None, 1], dtype='int64')
+            data = paddle.static.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             
             conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
             bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
-            pool1 = paddle.nn.functional.pool2d(bn1, 2, 'max', 2)
+            pool1 = paddle.fluid.layers.pool2d(bn1, 2, 'max', 2)
             conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
             bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
-            pool2 = paddle.nn.functional.pool2d(bn2, 2, 'max', 2)
+            pool2 = paddle.fluid.layers.pool2d(bn2, 2, 'max', 2)
             
-            fc1 = paddle.static.nn.fc(pool2, size=50, act='relu')
-            fc2 = paddle.static.nn.fc(fc1, size=102, act='softmax')
+            fc1 = paddle.static.nn.fc(x=pool2, size=50, activation='relu')
+            fc2 = paddle.static.nn.fc(x=fc1, size=102, activation='softmax')
             
             loss = paddle.nn.functional.loss.cross_entropy(input=fc2, label=label)
             loss = paddle.mean(loss)
@@ -5467,7 +5502,7 @@ def program_guard(main_program, startup_program=None):
           startup_program = paddle.static.Program()
           with paddle.static.program_guard(main_program, startup_program):
               data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-              hidden = paddle.static.nn.fc(input=data, size=10, act='relu')
+              hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.

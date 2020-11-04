@@ -219,7 +219,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -239,7 +239,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.PiecewiseLR(
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr)
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters())
@@ -308,7 +308,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -328,7 +328,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.PiecewiseLR(
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr)
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters())
@@ -416,7 +416,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -436,7 +436,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.PiecewiseLR(
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr)
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters())
@@ -524,7 +524,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -544,7 +544,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.PiecewiseLR(
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr)
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters())
@@ -638,7 +638,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -717,7 +717,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -808,7 +808,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
@@ -829,7 +829,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            scheduler = paddle.optimizer.PiecewiseLR(
+            scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr)
             adam = Adam(
                 learning_rate=scheduler,

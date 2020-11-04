@@ -57,17 +57,26 @@ struct PathNode {
 
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
 
-// NOTE: In order to adapt to the default installation path of cuda on linux
-static constexpr char linux_cudnn_lib_path[] = "/usr/local/cuda/lib64";
+// NOTE: In order to adapt to the default installation path of cuda
+#if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+static constexpr char cuda_lib_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin";
+#else
+static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";
+#endif
 
 static PathNode s_py_site_pkg_path;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
-static constexpr char* win_curand_lib = "curand64_" PADDLE_CUDA_BINVER ".dll";
-static constexpr char* win_cudnn_lib = "cudnn64_" PADDLE_CUDNN_BINVER ".dll";
+static constexpr char* win_cublas_lib =
+    "cublas64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cublas64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_curand_lib =
+    "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;curand64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cusolver_lib =
-    "cusolver64_" PADDLE_CUDA_BINVER ".dll";
+    "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll";
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -85,6 +94,24 @@ static inline std::string join(const std::string& part1,
   }
   ret += part2;
   return ret;
+}
+
+static inline std::vector<std::string> split(
+    const std::string& str, const std::string separator = " ") {
+  std::vector<std::string> str_list;
+  std::string::size_type firstPos;
+  firstPos = str.find_first_not_of(separator, 0);
+  std::string::size_type lastPos;
+  lastPos = str.find_first_of(separator, firstPos);
+  while (std::string::npos != firstPos && std::string::npos != lastPos) {
+    str_list.push_back(str.substr(firstPos, lastPos - firstPos));
+    firstPos = str.find_first_not_of(separator, lastPos);
+    lastPos = str.find_first_of(separator, firstPos);
+  }
+  if (std::string::npos == lastPos) {
+    str_list.push_back(str.substr(firstPos, lastPos - firstPos));
+  }
+  return str_list;
 }
 
 void SetPaddleLibPath(const std::string& py_site_pkg_path) {
@@ -147,26 +174,31 @@ static inline void* GetDsoHandleFromSearchPath(
 #else
   int dynload_flags = 0;
 #endif  // !_WIN32
-  // 1. search in user config path by FLAGS
-  void* dso_handle =
-      GetDsoHandleFromSpecificPath(config_path, dso_name, dynload_flags);
-  // 2. search in system default path
-  if (nullptr == dso_handle) {
-    dso_handle = GetDsoHandleFromDefaultPath(dso_name, dynload_flags);
-  }
-  // 3. search in extra paths
-  if (nullptr == dso_handle) {
-    for (auto path : extra_paths) {
-      dso_handle = GetDsoHandleFromSpecificPath(path, dso_name, dynload_flags);
+  std::vector<std::string> dso_names = split(dso_name, ";");
+  void* dso_handle = nullptr;
+  for (auto dso : dso_names) {
+    // 1. search in user config path by FLAGS
+    dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
+    // 2. search in extra paths
+    if (nullptr == dso_handle) {
+      for (auto path : extra_paths) {
+        VLOG(3) << "extra_paths: " << path;
+        dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
+      }
     }
+    // 3. search in system default path
+    if (nullptr == dso_handle) {
+      dso_handle = GetDsoHandleFromDefaultPath(dso, dynload_flags);
+    }
+    if (nullptr != dso_handle) break;
   }
 
-  // 4. [If Failed] logging warning if exists
+  // 4. [If Failed for All dso_names] logging warning if exists
   if (nullptr == dso_handle && !warning_msg.empty()) {
     LOG(WARNING) << warning_msg;
   }
 
-  // 5. [If Failed] logging or throw error info
+  // 5. [If Failed for All dso_names] logging or throw error info
   if (nullptr == dso_handle) {
     auto error_msg =
         "The third-party dynamic library (%s) that Paddle depends on is not "
@@ -238,7 +270,7 @@ void* GetCUDNNDsoHandle() {
                                     {linux_cudnn_lib_path});
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false,
-                                    {linux_cudnn_lib_path});
+                                    {cuda_lib_path});
 #endif
 }
 
@@ -269,7 +301,8 @@ void* GetCusolverDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib, true,
+                                    {cuda_lib_path});
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif

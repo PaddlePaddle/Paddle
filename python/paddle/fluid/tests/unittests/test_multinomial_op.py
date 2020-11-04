@@ -17,12 +17,14 @@ from __future__ import print_function
 import unittest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from op_test import OpTest
 import numpy as np
 
 
 class TestMultinomialOp(OpTest):
     def setUp(self):
+        paddle.enable_static()
         self.op_type = "multinomial"
         self.init_data()
         self.inputs = {"X": self.input_np}
@@ -173,6 +175,39 @@ class TestMultinomialAlias(unittest.TestCase):
         paddle.multinomial(x, num_samples=10, replacement=True)
         paddle.tensor.multinomial(x, num_samples=10, replacement=True)
         paddle.tensor.random.multinomial(x, num_samples=10, replacement=True)
+
+
+class TestMultinomialError(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_num_sample(self):
+        def test_num_sample_less_than_0():
+            x = paddle.rand([4])
+            paddle.multinomial(x, num_samples=-2)
+
+        self.assertRaises(ValueError, test_num_sample_less_than_0)
+
+    def test_replacement_False(self):
+        def test_samples_larger_than_categories():
+            x = paddle.rand([4])
+            paddle.multinomial(x, num_samples=5, replacement=False)
+
+        self.assertRaises(ValueError, test_samples_larger_than_categories)
+
+    def test_input_probs_dim(self):
+        def test_dim_larger_than_2():
+            x = paddle.rand([2, 3, 3])
+            paddle.multinomial(x)
+
+        self.assertRaises(ValueError, test_dim_larger_than_2)
+
+        def test_dim_less_than_1():
+            x_np = np.random.random([])
+            x = paddle.to_tensor(x_np)
+            paddle.multinomial(x)
+
+        self.assertRaises(ValueError, test_dim_less_than_1)
 
 
 if __name__ == "__main__":

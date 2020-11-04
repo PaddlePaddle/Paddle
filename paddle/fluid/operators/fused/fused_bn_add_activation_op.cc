@@ -186,8 +186,6 @@ void FusedBatchNormAddActGradOp::InferShape(
   // check input
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
                  "FusedBatchNormAddActGradOp");
-  OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z",
-                 "FusedBatchNormAddActGradOp");
   OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
                  "FusedBatchNormAddActGradOp");
   OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",

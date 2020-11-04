@@ -26,6 +26,7 @@ import itertools
 import collections
 from collections import defaultdict
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
@@ -1133,8 +1134,10 @@ class OpTest(unittest.TestCase):
             )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
-        self.check_inplace_output_with_place(
-            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
+        # Currently not support ParallelExecutor on XPUPlace.
+        if not paddle.is_compiled_with_xpu():
+            self.check_inplace_output_with_place(
+                place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
         if check_dygraph:
             return outs, dygraph_outs, fetch_list
@@ -1317,6 +1320,13 @@ class OpTest(unittest.TestCase):
         cache_list = None
         if hasattr(self, "cache_name_list"):
             cache_list = self.cache_name_list
+
+        # oneDNN numeric gradient should use CPU kernel
+        use_onednn = False
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+            op_attrs["use_mkldnn"] = False
+            use_onednn = True
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -1324,6 +1334,9 @@ class OpTest(unittest.TestCase):
             op_outputs,
             op_attrs,
             cache_list=cache_list)
+
+        if use_onednn:
+            op_attrs["use_mkldnn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

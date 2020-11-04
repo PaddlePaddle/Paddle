@@ -32,6 +32,10 @@ RUN apt-get update && \
     net-tools libtool module-init-tools && \
     apt-get clean -y
 
+RUN wget https://github.com/koalaman/shellcheck/releases/download/v0.7.1/shellcheck-v0.7.1.linux.x86_64.tar.xz -O shellcheck-v0.7.1.linux.x86_64.tar.xz && \
+    tar -xf shellcheck-v0.7.1.linux.x86_64.tar.xz && cp  shellcheck-v0.7.1/shellcheck /usr/bin/shellcheck && \
+    rm -rf shellcheck-v0.7.1.linux.x86_64.tar.xz shellcheck-v0.7.1
+
 # Downgrade gcc&&g++
 <install_gcc>
 
@@ -126,7 +130,8 @@ RUN curl -s -q https://glide.sh/get | sh
 
 # Downgrade TensorRT 
 COPY tools/dockerfile/build_scripts /build_scripts
-RUN bash /build_scripts/install_trt.sh
+RUN bash /build_scripts/install_trt.sh && \
+    bash /build_scripts/install_nccl2.sh
 RUN rm -rf /build_scripts
 
 # git credential to skip password typing
@@ -156,19 +161,14 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
 
 RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.6 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.7 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip3.8 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.8 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip --no-cache-dir install opencv-python==4.2.0.32
+    pip --no-cache-dir install 'ipykernel==4.6.0'
 
 #For docstring checker
 RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
@@ -207,7 +207,7 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
-RUN pip --no-cache-dir install -U netifaces==0.10.9
+RUN apt-get install libprotobuf-dev -y
 
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
@@ -225,5 +225,6 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+
 
 EXPOSE 22

@@ -36,7 +36,7 @@ class ConvBNLayer(nn.Layer):
                  num_groups=1):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = nn.Conv2d(
+        self._conv = nn.Conv2D(
             in_channels,
             out_channels,
             kernel_size,
@@ -45,7 +45,7 @@ class ConvBNLayer(nn.Layer):
             groups=num_groups,
             bias_attr=False)
 
-        self._norm_layer = nn.BatchNorm2d(out_channels)
+        self._norm_layer = nn.BatchNorm2D(out_channels)
         self._act = nn.ReLU()
 
     def forward(self, x):
@@ -214,7 +214,7 @@ class MobileNetV1(nn.Layer):
         self.dwsl.append(dws6)
 
         if with_pool:
-            self.pool2d_avg = nn.AdaptiveAvgPool2d(1)
+            self.pool2d_avg = nn.AdaptiveAvgPool2D(1)
 
         if num_classes > 0:
             self.fc = nn.Linear(int(1024 * scale), num_classes)
@@ -240,9 +240,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
             arch)
         weight_path = get_weights_path_from_url(model_urls[arch][0],
                                                 model_urls[arch][1])
-        assert weight_path.endswith(
-            '.pdparams'), "suffix of weight must be .pdparams"
-        param, _ = paddle.load(weight_path)
+
+        param = paddle.load(weight_path)
         model.load_dict(param)
 
     return model

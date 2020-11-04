@@ -13,16 +13,12 @@
 # limitations under the License.
 
 # TODO: define pooling functions
-from ...fluid.layers import pool2d  #DEFINE_ALIAS
-from ...fluid.layers import pool3d  #DEFINE_ALIAS
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers import utils, LayerHelper, unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 
 __all__ = [
-    'pool2d',
-    'pool3d',
     'avg_pool1d',
     'avg_pool2d',
     'avg_pool3d',
@@ -161,7 +157,7 @@ def avg_pool1d(x,
                kernel_size,
                stride=None,
                padding=0,
-               count_include_pad=True,
+               exclusive=True,
                ceil_mode=False,
                name=None):
     """
@@ -183,7 +179,7 @@ def avg_pool1d(x,
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `True`.
         ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
             If it is set to False, the floor function will be used. The default value is False.
@@ -234,8 +230,8 @@ def avg_pool1d(x,
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'strides', stride, 'paddings', padding, 'padding_algorithm',
             padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', not count_include_pad,
-            'data_format', data_format)
+            'use_mkldnn', False, 'exclusive', exclusive, 'data_format',
+            data_format)
         return squeeze(output, [2])
 
     op_type = 'pool2d'
@@ -257,7 +253,7 @@ def avg_pool1d(x,
             "use_cudnn": True,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
-            "exclusive": not count_include_pad,
+            "exclusive": not exclusive,
             "data_format": data_format,
         })
 
@@ -269,7 +265,7 @@ def avg_pool2d(x,
                stride=None,
                padding=0,
                ceil_mode=False,
-               count_include_pad=True,
+               exclusive=True,
                divisor_override=None,
                data_format="NCHW",
                name=None):
@@ -298,7 +294,7 @@ def avg_pool2d(x,
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        count_include_pad (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
         divisor_override (float): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
@@ -342,8 +338,8 @@ def avg_pool2d(x,
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'padding_algorithm', padding_algorithm, 'strides', stride,
             'paddings', padding, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', not count_include_pad,
-            'data_format', data_format)
+            'use_mkldnn', False, 'exclusive', exclusive, 'data_format',
+            data_format)
         if divisor_override is None:
             return output
         else:
@@ -369,7 +365,7 @@ def avg_pool2d(x,
             "use_cudnn": True,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
-            "exclusive": not count_include_pad,
+            "exclusive": not exclusive,
             "data_format": data_format,
         })
 
@@ -385,7 +381,7 @@ def avg_pool3d(x,
                stride=None,
                padding=0,
                ceil_mode=False,
-               count_include_pad=True,
+               exclusive=True,
                divisor_override=None,
                data_format="NCDHW",
                name=None):
@@ -412,7 +408,7 @@ def avg_pool3d(x,
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): ${ceil_mode_comment}
-        count_include_pad (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is True.
         divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
@@ -456,8 +452,8 @@ def avg_pool3d(x,
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides', stride,
             'paddings', padding, 'global_pooling', False, 'padding_algorithm',
             padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', not count_include_pad,
-            'data_format', data_format)
+            'use_mkldnn', False, 'exclusive', exclusive, 'data_format',
+            data_format)
         if divisor_override is None:
             return output
         else:
@@ -485,7 +481,7 @@ def avg_pool3d(x,
             "use_cudnn": True,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
-            "exclusive": not count_include_pad,
+            "exclusive": not exclusive,
             "data_format": data_format,
         })
 
@@ -501,7 +497,7 @@ def max_pool1d(x,
                kernel_size,
                stride=None,
                padding=0,
-               return_indices=False,
+               return_mask=False,
                ceil_mode=False,
                name=None):
     """
@@ -523,7 +519,7 @@ def max_pool1d(x,
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
+        return_mask (bool): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False.
         name(str, optional): For detailed information, please refer
@@ -546,7 +542,7 @@ def max_pool1d(x,
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
           # pool_out shape: [1, 3, 16]
-          pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_indices=True)
+          pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
           # pool_out shape: [1, 3, 16],  indices shape: [1, 3, 16]
     """
     """NCL to NCHW"""
@@ -567,16 +563,16 @@ def max_pool1d(x,
     padding = _expand_low_nd_padding(padding)
 
     if in_dygraph_mode():
-        if return_indices:
+        if return_mask:
             pool_out = core.ops.max_pool2d_with_index(
                 x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
                 stride, 'paddings', padding, 'padding_algorithm',
                 padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
                 'use_mkldnn', False, 'exclusive', True, 'data_format',
                 data_format)
-            return (squeeze(pool_out[0], [2]), squeeze(
-                pool_out[1],
-                [2])) if return_indices else squeeze(pool_out[0], [2])
+            return (squeeze(pool_out[0], [2]),
+                    squeeze(pool_out[1],
+                            [2])) if return_mask else squeeze(pool_out[0], [2])
         else:
             pool_out = core.ops.pool2d(
                 x, 'pooling_type', 'max', 'ksize', kernel_size,
@@ -586,7 +582,7 @@ def max_pool1d(x,
                 'data_format', data_format)
             return squeeze(pool_out, [2])
 
-    op_type = 'max_pool2d_with_index' if return_indices else "pool2d"
+    op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -612,14 +608,14 @@ def max_pool1d(x,
         })
 
     return (squeeze(pool_out, [2]),
-            squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
+            squeeze(mask, [2])) if return_mask else squeeze(pool_out, [2])
 
 
 def max_pool2d(x,
                kernel_size,
                stride=None,
                padding=0,
-               return_indices=False,
+               return_mask=False,
                ceil_mode=False,
                data_format="NCHW",
                name=None):
@@ -647,7 +643,7 @@ def max_pool2d(x,
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        return_indices (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
+        return_mask (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -672,12 +668,12 @@ def max_pool2d(x,
                                 kernel_size=2,
                                 stride=2, padding=0)
           # output.shape [1, 3, 16, 16]
-          # for return_indices=True
+          # for return_mask=True
           out, max_indices = F.max_pool2d(x,
                                              kernel_size=2,
                                              stride=2,
                                              padding=0,
-                                             return_indices=True)
+                                             return_mask=True)
           # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool2d')
@@ -697,20 +693,20 @@ def max_pool2d(x,
     padding, padding_algorithm = _update_padding_nd(
         padding, num_dims=2, channel_last=channel_last, ceil_mode=ceil_mode)
 
-    if data_format == "NHWC" and return_indices:
+    if data_format == "NHWC" and return_mask:
         raise ValueError(
-            "When setting return_indices to true, data_format must be set to NCHW in API:max_pool2d"
+            "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
     if in_dygraph_mode():
-        if return_indices:
+        if return_mask:
             output = core.ops.max_pool2d_with_index(
                 x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
                 stride, 'paddings', padding, 'padding_algorithm',
                 padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
                 'use_mkldnn', False, 'exclusive', True, 'data_format',
                 data_format)
-            return output if return_indices else output[0]
+            return output if return_mask else output[0]
         else:
             output = core.ops.pool2d(
                 x, 'pooling_type', 'max', 'ksize', kernel_size,
@@ -720,7 +716,7 @@ def max_pool2d(x,
                 'data_format', data_format)
             return output
 
-    op_type = 'max_pool2d_with_index' if return_indices else "pool2d"
+    op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -745,14 +741,14 @@ def max_pool2d(x,
             "data_format": data_format,
         })
 
-    return (pool_out, mask) if return_indices else pool_out
+    return (pool_out, mask) if return_mask else pool_out
 
 
 def max_pool3d(x,
                kernel_size,
                stride=None,
                padding=0,
-               return_indices=False,
+               return_mask=False,
                ceil_mode=False,
                data_format="NCDHW",
                name=None):
@@ -777,7 +773,7 @@ def max_pool3d(x,
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): ${ceil_mode_comment}
-        return_indices (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
+        return_mask (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
@@ -802,13 +798,13 @@ def max_pool3d(x,
                                 kernel_size=2,
                                 stride=2, padding=0)
           output.shape [1, 3, 16, 16, 16]
-          # for return_indices=True
+          # for return_mask=True
           x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
           output, max_indices = paddle.nn.functional.max_pool3d(x,
                                         kernel_size = 2,
                                         stride = 2,
                                         padding=0,
-                                        return_indices=True)
+                                        return_mask=True)
           # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
@@ -823,20 +819,20 @@ def max_pool3d(x,
     padding, padding_algorithm = _update_padding_nd(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
 
-    if data_format == "NDHWC" and return_indices:
+    if data_format == "NDHWC" and return_mask:
         raise ValueError(
-            "When setting return_indices to true, data_format must be set to NCDHW in API:max_pool3d"
+            "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
     if in_dygraph_mode():
-        if return_indices:
+        if return_mask:
             output = core.ops.max_pool3d_with_index(
                 x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides',
                 stride, 'paddings', padding, 'global_pooling', False,
                 'padding_algorithm', padding_algorithm, 'use_cudnn', True,
                 'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
                 'data_format', data_format)
-            return output if return_indices else output[0]
+            return output if return_mask else output[0]
         else:
             output = core.ops.pool3d(
                 x, 'pooling_type', 'max', 'ksize', kernel_size,
@@ -846,7 +842,7 @@ def max_pool3d(x,
                 'data_format', data_format)
             return output
 
-    op_type = "max_pool3d_with_index" if return_indices else "pool3d"
+    op_type = "max_pool3d_with_index" if return_mask else "pool3d"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -871,7 +867,7 @@ def max_pool3d(x,
             "data_format": data_format,
         })
 
-    return (pool_out, mask) if return_indices else pool_out
+    return (pool_out, mask) if return_mask else pool_out
 
 
 def adaptive_avg_pool1d(x, output_size, name=None):
@@ -1152,7 +1148,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     return pool_out
 
 
-def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
+def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     """
     This API implements adaptive max pooling 1d operation.
     See more details in :ref:`api_nn_pooling_AdaptiveMaxPool1d` .
@@ -1163,7 +1159,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
         output_size (int): The pool kernel size. The value should be an integer.
-        return_indices (bool): If true, the index of max pooling point will be returned along
+        return_mask (bool): If true, the index of max pooling point will be returned along
                 with outputs. It cannot be set in average pooling type. Default False.
         name(str, optional): For detailed information, please refer
                                  to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -1194,7 +1190,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
               data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
               pool_out = F.adaptive_max_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
-              pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_indices=True)
+              pool_out, indices = F.adaptive_max_pool1d(data, output_size=16, return_mask=True)
               # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
     """
     pool_type = 'max'
@@ -1202,7 +1198,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
                              'adaptive_max_pool1d')
     _check_input(x, 3)
     check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
-    check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool1d')
+    check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool1d')
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
@@ -1213,7 +1209,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
         pool_out = core.ops.max_pool2d_with_index(
             x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True)
         return (squeeze(pool_out[0], [2]), squeeze(
-            pool_out[1], [2])) if return_indices else squeeze(pool_out[0], [2])
+            pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
@@ -1233,10 +1229,10 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
         })
 
     return (squeeze(pool_out, [2]),
-            squeeze(mask, [2])) if return_indices else squeeze(pool_out, [2])
+            squeeze(mask, [2])) if return_mask else squeeze(pool_out, [2])
 
 
-def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
+def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     """
         This operation applies a 2D adaptive max pooling on input tensor.
         See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
@@ -1244,7 +1240,7 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
         Args:
             x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
             output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two elements, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
-            return_indices (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+            return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
             name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
         Returns:
@@ -1284,7 +1280,7 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
                                  'adaptive_max_pool2d')
     _check_input(x, 4)
     #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
-    check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool2d')
+    check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool2d')
 
     in_h, in_w = x.shape[2:4]
     if isinstance(output_size, int):
@@ -1299,7 +1295,7 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
     if in_dygraph_mode():
         pool_out = core.ops.max_pool2d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
-        return pool_out if return_indices else pool_out[0]
+        return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool2d_with_index'
 
@@ -1319,11 +1315,11 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
             "ksize": output_size,
             "adaptive": True,
         })
-    #return (pool_out, mask) if return_indices else pool_out
+    #return (pool_out, mask) if return_mask else pool_out
     return pool_out
 
 
-def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
+def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     """
         This operation applies a 3D adaptive max pooling on input tensor.
         See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
@@ -1331,7 +1327,7 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
         Args:
             x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
             output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
-            return_indices (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+            return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
             name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
         Returns:
@@ -1375,7 +1371,7 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
                                  'adaptive_max_pool3d')
     _check_input(x, 5)
     #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
-    check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool3d')
+    check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool3d')
 
     in_l, in_h, in_w = x.shape[2:5]
     if isinstance(output_size, int):
@@ -1392,7 +1388,7 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
     if in_dygraph_mode():
         pool_out = core.ops.max_pool3d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
-        return pool_out if return_indices else pool_out[0]
+        return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool3d_with_index'
 
@@ -1413,4 +1409,4 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
             "adaptive": True,
         })
 
-    return (pool_out, mask) if return_indices else pool_out
+    return (pool_out, mask) if return_mask else pool_out
