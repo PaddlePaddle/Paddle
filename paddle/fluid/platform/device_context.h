@@ -214,8 +214,8 @@ class CUDAContext {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_RETRY_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
+      PADDLE_RETRY_CUDA_SUCCESS(
           dynload::cudnnSetStream(cudnn_handle_, RawStream()));
     } else {
       cudnn_handle_ = nullptr;
@@ -223,9 +223,8 @@ class CUDAContext {
   }
 
   void InitCuSolverContext() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cusolverDnCreate(&cusolver_dn_handle_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cusolverDnCreate(&cusolver_dn_handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(
         dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
   }
 

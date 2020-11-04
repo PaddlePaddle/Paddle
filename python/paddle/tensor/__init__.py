@@ -164,6 +164,8 @@ from .math import isnan  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
 from .math import all  #DEFINE_ALIAS
 from .math import any  #DEFINE_ALIAS
+from .math import broadcast_shape  #DEFINE_ALIAS
+
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
@@ -190,7 +192,8 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
 from .stat import numel  #DEFINE_ALIAS
+from .stat import median  #DEFINE_ALIAS
 # from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
-from .to_string import set_printoptions
+from .to_string import set_printoptions  #DEFINE_ALIAS
