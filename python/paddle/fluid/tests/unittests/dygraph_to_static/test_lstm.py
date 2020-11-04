@@ -132,7 +132,10 @@ class TestEvalAfterSave(unittest.TestCase):
         dy_out = net(x)
         # save model
         paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
-
+        load_net = paddle.jit.load('jit.save/lstm')
+        load_out = load_net(x)
+        self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+        # eval
         net.eval()
         out = net(x)
         self.assertTrue(np.allclose(dy_out.numpy(), out.numpy()))
