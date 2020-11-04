@@ -39,6 +39,9 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   void FreeImpl(Allocation *allocation) override;
 
+  // Release the memory block which is not used in pool.
+  void ReleaseImpl(const platform::Place &place) override { FreeIdleChunks(); }
+
  private:
   void FreeIdleChunks();
 
