@@ -185,7 +185,7 @@ class DataLoader(object):
         batch_sampler(BatchSampler): an instance of `paddle.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
             and combine a batch. Default None.
-        batch_size(int): sample number in a mini-batch, a substitution
+        batch_size(int|None): sample number in a mini-batch, a substitution
             parameter for :attr:`batch_sampler`, if :attr:`batch_sampler`
             is not set, a default `paddle.io.BatchSampler` will be used
             and initialize by :attr:`batch_size`, :attr:`shuffle` and
@@ -358,10 +358,15 @@ class DataLoader(object):
                 "batch_size/shuffle/drop_last should not be set when " \
                 "batch_sampler is given"
             self.batch_sampler = batch_sampler
+            self.batch_size = None
+        elif batch_size is None:
+            self.batch_sampler = None
+            self.batch_size = None
         else:
-            assert batch_size is not None and batch_size > 0, \
-                "batch_size should be a positive value when " \
+            assert batch_size > 0, \
+                "batch_size should be None or a positive value when " \
                 "batch_sampler is not given"
+            self.batch_size = batch_size
             if isinstance(dataset, IterableDataset):
                 self.batch_sampler = _InfiniteIterableSampler(dataset,
                                                               batch_size)
@@ -372,13 +377,21 @@ class DataLoader(object):
                     shuffle=shuffle,
                     drop_last=drop_last)
 
+        self.auto_collate_batch = self.batch_sampler is not None
+
         self.pin_memory = False
         if in_dygraph_mode():
             self.pin_memory = True if use_pinned_memory(
             ) is None else use_pinned_memory()
 
     def __len__(self):
-        return len(self.batch_sampler)
+        if self.dataset_kind == _DatasetKind.ITER:
+            raise ValueError("length of IterableDataset not supported")
+        else:
+            if self.batch_size is None:
+                return len(self.dataset)
+            else:
+                return len(self.batch_sampler)
 
     def __iter__(self):
         if self.num_workers == 0:
