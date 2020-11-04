@@ -46,13 +46,6 @@ function make_centos_dockerfile(){
     RUN rm -rf /usr/include/NvInfer*" ${dockerfile_name}
   sed -i $"${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \\
     RUN tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "s#RUN bash build_scripts/install_nccl2.sh##g" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm \\
-    RUN wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm \\
-    RUN wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm \\
-    RUN rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm \\
-    RUN rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm \\
-    RUN rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/include/nccl.h " ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
