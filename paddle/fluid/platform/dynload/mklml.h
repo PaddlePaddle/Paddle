@@ -79,6 +79,7 @@ extern void* mklml_dso_handle;
   __macro(cblas_dscal);             \
   __macro(vsAdd);                   \
   __macro(vdAdd);                   \
+  __macro(vcAdd);                   \
   __macro(vsSub);                   \
   __macro(vdSub);                   \
   __macro(vsMul);                   \

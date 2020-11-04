@@ -17,6 +17,7 @@
 #include <limits>
 #include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
@@ -392,6 +393,23 @@ struct CBlas<platform::float16> {
   }
 #endif
 };
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+struct CBlas<platform::complex64> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    //platform::dynload::cblas_dcopy(args...);
+    cblas_dcopy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vcAdd(args...);
+  }
+};
+#endif
+
 
 #ifdef PADDLE_WITH_MKLML
 template <>
