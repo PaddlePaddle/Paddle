@@ -164,6 +164,8 @@ inline std::string TensorDTypeToPyDTypeStr(
     } else if (std::is_same<T, platform::bfloat16>::value) {                \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
       return "H";                                                           \
+    } else if (std::is_same<T, platform::complex64>::value) {               \
+      return "F";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
       PADDLE_ENFORCE_EQ(                                                    \
