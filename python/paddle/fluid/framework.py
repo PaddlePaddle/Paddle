@@ -2884,7 +2884,9 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
-        param.stop_gradient = False
+
+        trainable = kwargs.get('trainable', True)
+        param.stop_gradient = not trainable
         return param
 
     def append_op(self, *args, **kwargs):
