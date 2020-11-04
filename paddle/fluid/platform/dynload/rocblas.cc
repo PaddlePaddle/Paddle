@@ -12,34 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <string>
+#include "paddle/fluid/platform/dynload/rocblas.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
+std::once_flag cublas_dso_flag;
+void *cublas_dso_handle = nullptr;
 
-#ifndef _WIN32
-#define DECLARE_TYPE(__name, ...) decltype(__name(__VA_ARGS__))
-#else
-#define DECLARE_TYPE(__name, ...) decltype(auto)
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
+
+CUBLAS_BLAS_ROUTINE_EACH(DEFINE_WRAP);
+
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R2
+CUBLAS_BLAS_ROUTINE_EACH_R2(DEFINE_WRAP);
 #endif
 
-void* GetCublasDsoHandle();
-void* GetCUDNNDsoHandle();
-void* GetCUPTIDsoHandle();
-void* GetCurandDsoHandle();
-void* GetCusolverDsoHandle();
-void* GetNVRTCDsoHandle();
-void* GetCUDADsoHandle();
-void* GetWarpCTCDsoHandle();
-void* GetNCCLDsoHandle();
-void* GetRCCLDsoHandle();
-void* GetTensorRtDsoHandle();
-void* GetMKLMLDsoHandle();
-void* GetOpDsoHandle(const std::string& dso_name);
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R3
+CUBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
+#endif
 
-void SetPaddleLibPath(const std::string&);
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R4
+CUBLAS_BLAS_ROUTINE_EACH_R4(DEFINE_WRAP);
+#endif
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

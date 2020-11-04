@@ -203,7 +203,10 @@ void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cublas_lib);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cublas_lib, true,
+                                    {cuda_lib_path});
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "librocblas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
@@ -220,7 +223,19 @@ void* GetCUDNNDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false,
                                     {}, mac_warn_meg);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib);
+  std::string win_warn_meg(
+      "Note: [Recommend] copy cudnn into CUDA installation directory. \n "
+      "For instance, download cudnn-10.0-windows10-x64-v7.6.5.32.zip from "
+      "NVIDIA's official website, \n"
+      "then, unzip it and copy it into C:\\Program Files\\NVIDIA GPU Computing "
+      "Toolkit\\CUDA/v10.0\n"
+      "You should do this according to your CUDA installation directory and "
+      "CUDNN version.");
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib, true,
+                                    {cuda_lib_path}, win_warn_meg);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libMIOpen.so", false,
+                                    {linux_cudnn_lib_path});
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false,
                                     {linux_cudnn_lib_path});
@@ -241,7 +256,10 @@ void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib, true,
+                                    {cuda_lib_path});
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhiprand.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
@@ -260,6 +278,8 @@ void* GetCusolverDsoHandle() {
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhiprtc.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -268,6 +288,8 @@ void* GetNVRTCDsoHandle() {
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libhip_hcc.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
@@ -295,11 +317,20 @@ void* GetNCCLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", true, {},
                                     warning_msg);
+#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "librccl.so",true, {},
+                                    warning_msg);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", true, {},
                                     warning_msg);
 #endif
 }
+
+#if defined(PADDLE_WITH_HIP)
+void* GetRCCLDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "librccl.so");}
+#endif
+
 
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)

@@ -17,9 +17,8 @@
 # for developing performant GPU-accelerated code on AMD ROCm platform.
 
 if("x${HCC_HOME}" STREQUAL "x")
-  set(HCC_HOME "/opt/rocm/hcc")
+  set(HCC_HOME "${ROCM_PATH}/hcc")
 endif()
-
 INCLUDE(ExternalProject)
 
 SET(ROCPRIM_SOURCE_DIR ${THIRD_PARTY_PATH}/rocprim)
@@ -44,6 +43,12 @@ ExternalProject_Add(
 
 INCLUDE_DIRECTORIES(${ROCPRIM_INCLUDE_DIR})
 
-add_library(rocprim INTERFACE)
+if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/rocprim_dummy.c)
+    file(WRITE ${dummyfile} "const char *dummy_rocprim = \"${dummyfile}\";")
+    add_library(rocprim STATIC ${dummyfile})
+else()
+    add_library(rocprim INTERFACE)
+endif()
 
 add_dependencies(rocprim extern_rocprim)
