@@ -591,7 +591,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--allocator_strategy=thread_local");
         process_level_allocator_enabled = false;
       } else {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
         process_level_allocator_enabled = true;
       }
 
@@ -890,6 +889,11 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+void AnalysisPredictor::ShrinkMemory() {
+  ClearIntermediateTensor();
+  paddle::memory::Release(place_);
+}
+
 void AnalysisPredictor::ClearIntermediateTensor() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           platform::errors::PreconditionNotMet(
@@ -904,6 +908,13 @@ void AnalysisPredictor::ClearIntermediateTensor() {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
         auto *t = variable->GetMutable<framework::LoDTensor>();
         t->clear();
+      } else if (variable != nullptr &&
+                 variable->IsType<framework::LoDTensorArray>()) {
+        VLOG(3) << "Clear Intermediate TensorArray: " << name;
+        auto *tr = variable->GetMutable<framework::LoDTensorArray>();
+        for (size_t i = 0; i < tr->size(); ++i) {
+          tr[i].clear();
+        }
       }
     }
   }
@@ -1141,6 +1152,8 @@ std::unique_ptr<Predictor> Predictor::Clone() {
 void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
+
+void Predictor::ShrinkMemory() { predictor_->ShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

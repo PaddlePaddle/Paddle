@@ -194,6 +194,13 @@ class AnalysisPredictor : public PaddlePredictor {
   void ClearIntermediateTensor();
 
   ///
+  /// \brief Shrink memory. Release all weights and tmp tensor to destructor
+  /// Allocator. And reinit predictor to reconstruct an allocator. After
+  /// this operation, we reduced the memory usage.
+  ///
+  void ShrinkMemory() override;
+
+  ///
   /// \brief Get the argument used by predictor
   ///
   /// \return the argument obtained by config

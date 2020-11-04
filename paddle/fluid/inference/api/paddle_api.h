@@ -319,6 +319,13 @@ class PD_INFER_DECL PaddlePredictor {
   ///
   virtual void ClearIntermediateTensor() {}
 
+  ///
+  /// \brief Shrink memory. Release all weights and tmp tensor to destructor
+  /// Allocator. And reinit predictor to reconstruct an Allocator. After
+  /// this operation, we reduced the memory usage.
+  ///
+  virtual void ShrinkMemory() {}
+
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.

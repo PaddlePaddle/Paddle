@@ -135,6 +135,7 @@ TEST(AnalysisPredictor, ZeroCopy) {
   auto* out_data = out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
   LOG(INFO) << "output_data: " << out_data;
+  predictor->ShrinkMemory();
 }
 
 TEST(AnalysisPredictor, Clone) {

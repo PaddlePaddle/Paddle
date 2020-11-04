@@ -224,6 +224,13 @@ class PD_INFER_DECL Predictor {
   /// \brief Clear the intermediate tensors of the predictor
   void ClearIntermediateTensor();
 
+  ///
+  /// \brief Shrink memory. Release all weights and tmp tensor to destructor
+  /// Allocator. And reinit predictor to reconstruct an Allocator. After
+  /// this operation, we reduced the memory usage.
+  ///
+  void ShrinkMemory();
+
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
 };
