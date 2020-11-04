@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
+#include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -1173,13 +1174,36 @@ void BindImperative(py::module *m_ptr) {
       py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)
-  py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
-                                                       "NCCLParallelContext");
-
-  nccl_ctx
+  py::class_<imperative::ParallelContext,
+             std::shared_ptr<imperative::ParallelContext>>(m,
+                                                           "ParallelContext");
+  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::NCCLParallelContext>>(
+      m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+#endif
+
+#ifdef PADDLE_WITH_NCCL
+  py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
+      m, "Reducer", R"DOC()DOC")
+      .def(py::init(
+          [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
+             const std::vector<std::vector<size_t>> &group_indices,
+             const std::vector<bool> &is_sparse_gradient,
+             std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
+            return imperative::Reducer::SetInstance(
+                vars, group_indices, is_sparse_gradient, parallel_ctx);
+          }))
+      .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
+           py::call_guard<py::gil_scoped_release>());
+
+  m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
+        py::arg("is_sparse_gradient"),
+        py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
+        py::call_guard<py::gil_scoped_release>());
+
 #endif
 }
 
