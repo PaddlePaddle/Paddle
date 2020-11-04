@@ -193,11 +193,14 @@ def convert_call(func):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
                 forward_func = convert_to_static(forward_func)
-                func_self = func
+                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # So descriptor mechanism is used to bound `self` instance on function to
+                # keep it as bound method.
+                setattr(func, 'forward', forward_func.__get__(func))
             except Exception:
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
-            converted_call = forward_func
+            converted_call = func
         else:
             try:
                 call_func = func.__class__.__call__

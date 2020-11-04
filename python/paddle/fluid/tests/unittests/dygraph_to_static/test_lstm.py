@@ -129,18 +129,13 @@ class TestEvalAfterSave(unittest.TestCase):
     def test_eval_after_save(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         net = Net(12, 2)
-
-        origin_func = net.lstm.forward
-        print(origin_func)
+        dy_out = net(x)
+        # save model
         paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
 
         net.eval()
-        after_func = net.lstm.forward
-        print(after_func)
         out = net(x)
-        # No changes applied on function after jit.save
-        print('xxx' * 50)
-        self.assertEqual(origin_func, after_func)
+        self.assertTrue(np.allclose(dy_out.numpy(), out.numpy()))
 
 
 if __name__ == "__main__":
