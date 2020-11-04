@@ -13,7 +13,12 @@
 // limitations under the License.
 #pragma once
 
-#ifdef __CUDACC__
+#ifdef __HIPCC__
+#include<hip/hip_runtime.h>
+#endif
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+//#ifdef __CUDACC__
+
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
 #define HOST __host__
