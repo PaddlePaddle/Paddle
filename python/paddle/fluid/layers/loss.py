@@ -1107,13 +1107,14 @@ def sampled_softmax_with_cross_entropy(logits,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.nn as nn
 
-            input = fluid.layers.data(name='data', shape=[256], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            fc = fluid.layers.fc(input=input, size=100)
-            out = fluid.layers.sampled_softmax_with_cross_entropy(
-                      logits=fc, label=label, num_samples=25)
+            linear = nn.Linear(256, 100)
+            input = paddle.rand(shape=[32, 256])
+            label = paddle.full([32, 1], 1, "int64")
+            fc = linear(input)
+            out = nn.functional.loss.sampled_softmax_with_cross_entropy(logits=fc, label=label, num_samples=25)
     """
     helper = LayerHelper('sample_logits', **locals())
     samples = customized_samples if use_customized_samples else helper.create_variable_for_type_inference(
