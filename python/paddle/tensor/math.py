@@ -1329,7 +1329,8 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
         input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
         tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
         tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
+        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input,
+            value must be float, otherwise an integer.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
@@ -1342,7 +1343,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
           tensor1 = paddle.ones([2,2])
           tensor2 = paddle.ones([2,2])
           out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
-          print(out.numpy())
+          print(out)
           # [[1.5 1.5]
           # [1.5 1.5]]
     """
