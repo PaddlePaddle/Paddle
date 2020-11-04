@@ -122,7 +122,7 @@ void SectionWorker::TrainFiles() {
       }
     } catch (platform::EOFException& e) {
       VLOG(3) << "EOF encountered and completed.";
-      throw;
+      std::rethrow_exception(std::current_exception());
     }
   }
 
@@ -273,7 +273,7 @@ void SectionWorker::TrainFilesWithProfiler() {
                 << ", mean_time: " << op_total_time[i] / op_count[i];
       }
       VLOG(0) << "================================";
-      throw;
+      std::rethrow_exception(std::current_exception());
     }
   }
 
