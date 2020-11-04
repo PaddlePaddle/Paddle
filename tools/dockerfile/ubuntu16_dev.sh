@@ -79,12 +79,13 @@ function ref_whl(){
 
 function install_whl(){
   dockerfile_line=`wc -l Dockerfile.tmp|awk '{print $1}'`
-  sed -i "${dockerfile_line}i RUN wget ${ref_web}/${ref_paddle_whl} && pip install ${ref_paddle_whl} && rm -f  ${ref_paddle_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget ${ref_web}/${ref_paddle3_whl} && pip3.5 install ${ref_paddle3_whl} && rm  -f ${ref_paddle3_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget ${ref_web}/${ref_paddle36_whl} && pip3.6 install ${ref_paddle36_whl} && rm -f ${ref_paddle36_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget ${ref_web}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget ${ref_web}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
+  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle_whl} && pip install ${ref_paddle_whl} && rm -f  ${ref_paddle_whl}" Dockerfile.tmp
+  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle3_whl} && pip3.5 install ${ref_paddle3_whl} && rm  -f ${ref_paddle3_whl}" Dockerfile.tmp
+  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle36_whl} && pip3.6 install ${ref_paddle36_whl} && rm -f ${ref_paddle36_whl}" Dockerfile.tmp
+  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
+  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
 }
+
 
 function install_gcc(){
   if [ "${gcc_version}" == "8.2.0" ];then
@@ -109,6 +110,7 @@ function install_gcc(){
 function make_dockerfile(){
   sed "s/<baseimg>/${docker_name}/g" tools/dockerfile/Dockerfile.ubuntu >Dockerfile.tmp
 }
+
 
 function main(){
   make_dockerfile
