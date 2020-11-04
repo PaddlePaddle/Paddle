@@ -225,9 +225,8 @@ class PD_INFER_DECL Predictor {
   void ClearIntermediateTensor();
 
   ///
-  /// \brief Shrink memory. Release all weights and tmp tensor to destructor
-  /// Allocator. And reinit predictor to reconstruct an Allocator. After
-  /// this operation, we reduced the memory usage.
+  /// \brief Release all tmp tensor to compress the size of the memory pool.
+  /// After this operation, we reduced the memory usage.
   ///
   void ShrinkMemory();
 

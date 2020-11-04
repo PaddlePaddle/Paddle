@@ -908,13 +908,6 @@ void AnalysisPredictor::ClearIntermediateTensor() {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
         auto *t = variable->GetMutable<framework::LoDTensor>();
         t->clear();
-      } else if (variable != nullptr &&
-                 variable->IsType<framework::LoDTensorArray>()) {
-        VLOG(3) << "Clear Intermediate TensorArray: " << name;
-        auto *tr = variable->GetMutable<framework::LoDTensorArray>();
-        for (size_t i = 0; i < tr->size(); ++i) {
-          tr[i].clear();
-        }
       }
     }
   }

@@ -508,3 +508,45 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
 }
 
 }  // namespace paddle
+
+namespace paddle_infer {
+
+TEST(Predictor, Run) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  w0->Reshape({4, 1});
+  w1->Reshape({4, 1});
+  w2->Reshape({4, 1});
+  w3->Reshape({4, 1});
+
+  auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
+  auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
+  auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
+  auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
+
+  for (int i = 0; i < 4; i++) {
+    w0_data[i] = i;
+    w1_data[i] = i;
+    w2_data[i] = i;
+    w3_data[i] = i;
+  }
+
+  predictor->Run();
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->ShrinkMemory();
+}
+
+}  // namespace paddle_infer
