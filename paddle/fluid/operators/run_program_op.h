@@ -243,8 +243,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
             "The OutScope of RunProgramGradOp should only hold one scope."));
 
     // Step 2. prepare executor and init persistable variables
-    std::shared_ptr<framework::Executor> exe = nullptr;
-    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx = nullptr;
+    std::shared_ptr<framework::Executor> exe;
+    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx;
     auto it = cached_exe_map.find(program);
     if (it == cached_exe_map.end()) {
       VLOG(1) << "create exe_info for program: " << program;
@@ -362,8 +362,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     auto &scope = *(global_inner_scope->kids().front());
 
     // Step 2. prepare executor and scope
-    std::shared_ptr<framework::Executor> exe = nullptr;
-    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx = nullptr;
+    std::shared_ptr<framework::Executor> exe;
+    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx;
     auto it = cached_exe_map.find(program);
     if (it == cached_exe_map.end()) {
       VLOG(1) << "create exe_info for backward program: " << program;
