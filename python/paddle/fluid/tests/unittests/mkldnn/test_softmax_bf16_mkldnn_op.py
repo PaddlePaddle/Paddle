@@ -37,7 +37,6 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         return -1
 
     def setUp(self):
-        enable_static()
         self.op_type = "softmax"
         self.use_mkldnn = True
         self.dtype = np.uint16
@@ -89,4 +88,5 @@ class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
 
 
 if __name__ == '__main__':
+    enable_static()
     unittest.main()
