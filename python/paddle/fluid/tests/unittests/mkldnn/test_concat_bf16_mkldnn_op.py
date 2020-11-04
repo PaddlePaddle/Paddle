@@ -30,7 +30,7 @@ class TestConcatBf16Op(OpTest):
         enable_static()
         self.op_type = "concat"
         self.use_mkldnn = True
-        self.mkldnn_data_type = "bfloat16"
+        self.mkldnn_data_type = core.VarDesc.VarType.BF16
         self.init_axis()
         self.init_shape()
         self.init_test_data()
