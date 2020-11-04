@@ -811,9 +811,6 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
                 )) < 1e-5)
 
     def test_jit_save_load_multi_methods_inputspec(self):
-        """
-        When multiple StaticFunction need to be saved, the input_spec parameter in save must be None.
-        """
         model_path = 'jit_save_load_multi_methods/model'
         layer = LinearNetWithMultiStaticFunc(784, 1)
         with self.assertRaises(ValueError):
