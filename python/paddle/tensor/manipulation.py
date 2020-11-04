@@ -52,6 +52,7 @@ __all__ = [
     'split',
     'chunk',
     'squeeze',
+    'squeeze_',
     'stack',
     'strided_slice',
     'transpose',
@@ -572,6 +573,22 @@ def squeeze(x, axis=None, name=None):
         axis = list(axis)
 
     return layers.squeeze(x, axis, name)
+
+
+def squeeze_(x, axis=None, name=None):
+    """
+    only used in dygraph
+    """
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+
+    assert in_dygraph_mode(), "squeeze_ can't be used in static mode"
+    core.ops.squeeze2_(x, x, 'axes', axis)
+    return x
 
 
 def unique(x,

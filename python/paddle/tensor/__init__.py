@@ -88,6 +88,7 @@ from .manipulation import shard_index  #DEFINE_ALIAS
 from .manipulation import slice  #DEFINE_ALIAS
 from .manipulation import split  #DEFINE_ALIAS
 from .manipulation import squeeze  #DEFINE_ALIAS
+from .manipulation import squeeze_  #DEFINE_ALIAS
 from .manipulation import stack  #DEFINE_ALIAS
 from .manipulation import strided_slice  #DEFINE_ALIAS
 from .manipulation import transpose  #DEFINE_ALIAS
