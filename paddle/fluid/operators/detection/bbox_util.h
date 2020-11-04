@@ -127,15 +127,15 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
 
 template <class T>
 void ClipTiledBoxes(const platform::DeviceContext& ctx,
-                    const framework::Tensor& im_info,
+                    const framework::Tensor& im_shape,
                     const framework::Tensor& input_boxes,
                     framework::Tensor* out) {
   T* out_data = out->mutable_data<T>(ctx.GetPlace());
-  const T* im_info_data = im_info.data<T>();
+  const T* im_shape_data = im_shape.data<T>();
   const T* input_boxes_data = input_boxes.data<T>();
   T zero(0);
-  T im_w = round(im_info_data[1] / im_info_data[2]);
-  T im_h = round(im_info_data[0] / im_info_data[2]);
+  T im_w = im_shape_data[1];
+  T im_h = im_shape_data[0];
   for (int64_t i = 0; i < input_boxes.numel(); ++i) {
     if (i % 4 == 0) {
       out_data[i] = std::max(std::min(input_boxes_data[i], im_w - 1), zero);

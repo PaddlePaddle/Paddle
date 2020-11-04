@@ -24,16 +24,14 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTenso = framework::LoDTensor;
 
-static constexpr int ImInfoSize = 3;
+static constexpr int ImShapeSize = 2;
 
 template <typename T, int BlockSize>
 static __global__ void GPUBoxClip(const T *input, const size_t *lod,
-                                  const size_t width, const T *im_info,
+                                  const size_t width, const T *im_shape,
                                   T *output) {
-  T im_w = round(im_info[blockIdx.x * ImInfoSize + 1] /
-                 im_info[blockIdx.x * ImInfoSize + 2]);
-  T im_h = round(im_info[blockIdx.x * ImInfoSize] /
-                 im_info[blockIdx.x * ImInfoSize + 2]);
+  T im_w = im_shape[blockIdx.x * ImShapeSize + 1];
+  T im_h = im_shape[blockIdx.x * ImShapeSize];
   for (int i = threadIdx.x; i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * width;
        i += BlockSize) {
     int idx = lod[blockIdx.x] * width + i;
@@ -47,19 +45,35 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *input = context.Input<LoDTensor>("Input");
-    auto *im_info = context.Input<Tensor>("ImInfo");
+    auto *im_shape = context.Input<Tensor>("ImShape");
     auto *output = context.Output<LoDTensor>("Output");
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;
-    auto lod = input->lod();
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+
     auto &dev_ctx = context.template device_context<DeviceContext>();
     auto stream = dev_ctx.stream();
-    const size_t batch_size = lod.back().size() - 1;
+    // LOG(ERROR)<<"DEBUG111111111111";
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
-    GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
-        input->data<T>(), abs_offset_lod[0].CUDAMutableData(dev_ctx.GetPlace()),
-        bbox_width, im_info->data<T>(), output_data);
+    if (context.HasInput("RoisNum")) {
+      auto *rois_num = context.Input<Tensor>("RoisNum");
+      // LOG(ERROR)<<"DEBUG rois_num"<<rois_num;
+      const size_t batch_size = rois_num->numel();
+      const size_t *rois_num_data =
+          reinterpret_cast<const size_t *>(rois_num->data<int>());
+      GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
+          input->data<T>(), rois_num_data, bbox_width, im_shape->data<T>(),
+          output_data);
+      // LOG(ERROR)<<"DEBUG33333333333";
+      // LOG(ERROR)<<"DEBUG output_data:"<<output_data;
+    } else {
+      auto lod = input->lod();
+      framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+      const size_t batch_size = lod.back().size() - 1;
+      GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
+          input->data<T>(),
+          abs_offset_lod[0].CUDAMutableData(dev_ctx.GetPlace()), bbox_width,
+          im_shape->data<T>(), output_data);
+    }
   }
 };
 
