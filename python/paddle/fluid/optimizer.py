@@ -773,7 +773,8 @@ class Optimizer(object):
                 else self._parameter_list
 
             if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
+                pass
+                # apply_collective_grads(parameter_list)
 
             params_grads = []
             for param in parameter_list:

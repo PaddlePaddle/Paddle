@@ -203,7 +203,11 @@ void BasicEngine::Execute() {
               platform::errors::NotFound("Cannot find gradient of variable %s",
                                          var->Name()));
 
-          if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
+          // if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
+          //   continue;
+          // }
+          if (var->OverridedStopGradient()) {
+            VLOG(3) << "stop gradient...";
             continue;
           }
 

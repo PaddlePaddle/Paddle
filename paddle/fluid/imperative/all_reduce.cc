@@ -191,6 +191,47 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
   AllReduce(src, dst, strategy, stream);
 }
 
+void AllReduce(
+    const framework::Variable &src, framework::Variable *dst,
+    bool use_calc_stream,
+    const std::unique_ptr<paddle::platform::CUDADeviceContext> &ctx) {
+  const auto &place = GetVarPlace(src);
+  const auto strategy = ParallelStrategy();
+  PADDLE_ENFORCE_EQ(
+      platform::is_gpu_place(place), true,
+      platform::errors::Unimplemented(
+          "Imperative mode does not support multi-CPU training yet."));
+
+  cudaStream_t stream = nullptr;
+  if (use_calc_stream) {
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    stream = static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
+  } else {
+    stream = ctx->stream();
+  }
+  AllReduce(src, dst, strategy, stream);
+}
+
+void AllReduce(
+    const framework::Tensor &src, framework::Tensor *dst,
+    const std::unique_ptr<paddle::platform::CUDADeviceContext> &ctx) {
+  const auto strategy = ParallelStrategy();
+  cudaStream_t stream = ctx->stream();
+  AllReduce(src, dst, strategy, stream);
+}
+
+void SyncCommStream(
+    const std::unique_ptr<paddle::platform::CUDADeviceContext> &ctx) {
+  auto stream = ctx->stream();
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+}
+
+void SyncCalStream(const platform::Place &place) {
+  auto dev_ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx->stream()));
+}
+
 }  // namespace imperative
 }  // namespace paddle
 

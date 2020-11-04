@@ -364,6 +364,8 @@ static platform::Place GetPlaceOfVar(
 
 void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
                                    size_t trace_id, bool unchange_input) {
+  // const std::string &var_name = var->Name();
+  // VLOG(0) << "before add_dist_hook, varname is " << var_name;
   /**
    * If var has grad node, it indicates that this var would be an input
    * of a grad op. Therefore, it should not be changed.
@@ -371,15 +373,28 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
   if (var->HasGradNode()) {
     unchange_input = true;
   }
-
   auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVar(var);
+
+  // no copy, only move
+  if (ref_cnt_ == 1) {
+    MoveOrCopyVar(dst_var, var->MutableVar(), false);
+    auto reducer_ptr_ = Reducer::GetInstance();
+    if (reducer_ptr_) reducer_ptr_->add_dist_hook(var_);
+    return;
+  }
+
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
       MoveOrCopyVar(dst_var, var->MutableVar(), unchange_input);
     } else {
       VariableWrapperAdd(var, var_, unchange_input);
+    }
+    // add dist hook
+    if (cur_cnt_ == ref_cnt_) {
+      auto reducer_ptr_ = Reducer::GetInstance();
+      if (reducer_ptr_) reducer_ptr_->add_dist_hook(var_);
     }
   } else {
     if (!var_->Var().IsInitialized() ||

@@ -19,11 +19,13 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <nccl.h>
+#include <memory>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/nccl_context.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -38,6 +40,18 @@ struct ParallelStrategy;
 
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy);
+
+void AllReduce(const framework::Variable &src, framework::Variable *dst,
+               bool use_calc_stream,
+               const std::unique_ptr<paddle::platform::CUDADeviceContext> &ctx);
+
+void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
+               const std::unique_ptr<paddle::platform::CUDADeviceContext> &ctx);
+
+void SyncCommStream(
+    const std::unique_ptr<paddle::platform::CUDADeviceContext> &ctx);
+
+void SyncCalStream(const platform::Place &place);
 
 }  // namespace imperative
 }  // namespace paddle

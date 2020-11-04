@@ -409,7 +409,10 @@ class DataParallel(layers.Layer):
                 # train()
     """
 
-    def __init__(self, layers, strategy=None):
+    def __init__(self,
+                 layers,
+                 strategy=None,
+                 group_size_limits=[25 * 1024 * 1024]):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -424,7 +427,26 @@ class DataParallel(layers.Layer):
         else:
             self._strategy = _build_default_parallel_strategy()
 
+        self.group_size_limits = group_size_limits
+        self.init_reducer()
+
+    def init_reducer(self):
+        # Build list of parameters which is trainable.
+        trainable_parameters = [
+            param
+            for _, param in filter(
+                lambda (_, param): param.trainable,
+                self.named_parameters(include_sublayers=True))
+        ]
+        self.group_indices = core.assign_group_by_size(trainable_parameters,
+                                                       self.group_size_limits)
+        self._reducer = core.Reducer(trainable_parameters,
+                                     list(reversed(self.group_indices)))
+
     def forward(self, *inputs, **kwargs):
+        # prepare the backward
+        self._reducer.prepare_for_backward()
+
         return self._layers(*inputs, **kwargs)
 
     @deprecated(

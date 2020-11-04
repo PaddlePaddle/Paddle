@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/reducer.h"
 
 namespace paddle {
 namespace imperative {
