@@ -187,6 +187,31 @@ class NoParamLayer(paddle.nn.Layer):
         return x + y
 
 
+class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithMultiStaticFunc, self).__init__()
+        self._linear_0 = Linear(in_size, out_size)
+        self._linear_1 = Linear(in_size, out_size)
+        self._scale = paddle.to_tensor(9.9)
+
+    @declarative
+    def forward(self, x):
+        return self._linear_0(x)
+
+    #The input is pruned 
+    # @declarative
+    # def forward_const(self,x):
+    #     return self._scale
+
+    @declarative
+    def forward_no_param(self, x):
+        return x
+
+    @declarative
+    def forward_general(self, x):
+        return self._linear_0(x) + self._linear_1(x) * self._scale
+
+
 def train(layer, input_size=784, label_size=1):
     # create optimizer
     sgd = fluid.optimizer.SGDOptimizer(
@@ -762,6 +787,38 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
         load_layer = paddle.jit.load(self.model_path)
         load_out = load_layer(x, y)
         self.assertTrue(np.array_equal(out, load_out))
+
+
+class TestJitSaveLoadMultiMethods(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_jit_save_load_inference(self):
+        model_path_inference = "jit_save_load_multi_methods/model"
+        IMAGE_SIZE = 224
+        layer = LinearNetWithMultiStaticFunc(IMAGE_SIZE, 10)
+        inps = paddle.randn([1, IMAGE_SIZE])
+        result_origin = {}
+        for func in dir(layer):
+            if func.startswith('forward'):
+                result_origin[func] = getattr(layer, func, None)(inps)
+        paddle.jit.save(layer, model_path_inference)
+        load_net = paddle.jit.load(model_path_inference)
+        for func, result in result_origin.items():
+            self.assertTrue(
+                float((result - getattr(load_net, func, None)(inps)).abs().max(
+                )) < 1e-5)
+
+    def test_jit_save_load_multi_methods_inputspec(self):
+        """
+        When multiple StaticFunction need to be saved, the input_spec parameter in save must be None.
+        """
+        model_path = 'jit_save_load_multi_methods/model'
+        layer = LinearNetWithMultiStaticFunc(784, 1)
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
 
 
 if __name__ == '__main__':

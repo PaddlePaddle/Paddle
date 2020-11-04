@@ -495,37 +495,24 @@ def _remove_varname_suffix(var_dict, program_holder):
 def _construct_program_holders(model_path, model_filename=None):
     # make sure the path has been checked
     program_holder_dict = dict()
-
-    if model_filename is not None:
-        # [compatible] if assign model_filename, only can load one program as Layer.forward
-        model_filename = os.path.basename(model_filename)
-        model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
-        #Load every file that meets the requirements in the directory model_path.
-        for filename in os.listdir(model_path):
-            if model_filename == filename:
-                func_name = 'forward'
-                model_file_path = os.path.join(model_path, model_filename)
-            elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
-                    model_name):
-                func_name = filename[len(model_name) + 1:-len(
-                    INFER_MODEL_SUFFIX)]
-                model_file_path = os.path.join(model_path, filename)
-            else:
-                continue
-            program_holder_dict[func_name] = _ProgramHolder(
-                _load_program_desc(model_file_path))
-    else:
-        for _, _, file_names in os.walk(model_path):
-            for name in file_names:
-                if 'model' in name:
-                    model_file_path = os.path.join(model_path, name)
-                    method_name = name.strip('_')
-                    if method_name == 'model':
-                        method_name = 'forward'
-                    else:
-                        method_name.replace('model', '')
-                    program_holder_dict[method_name] = _ProgramHolder(
-                        _load_program_desc(model_file_path))
+    if model_filename is None:
+        model_filename = 'model'
+    # [compatible] if assign model_filename, only can load one program as Layer.forward
+    model_filename = os.path.basename(model_filename)
+    model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
+    #Load every file that meets the requirements in the directory model_path.
+    for filename in os.listdir(model_path):
+        if model_filename == filename:
+            func_name = 'forward'
+            model_file_path = os.path.join(model_path, model_filename)
+        elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
+                model_name):
+            func_name = filename[len(model_name) + 1:-len(INFER_MODEL_SUFFIX)]
+            model_file_path = os.path.join(model_path, filename)
+        else:
+            continue
+        program_holder_dict[func_name] = _ProgramHolder(
+            _load_program_desc(model_file_path))
 
     return program_holder_dict
 
@@ -534,15 +521,15 @@ def _construct_params_and_buffers(model_path,
                                   programs,
                                   params_filename=None,
                                   append_suffix=True):
+    if params_filename is None:
+        params_filename = 'model' + INFER_PARAMS_SUFFIX
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
-    var_dict = dict()
-    #     raise ValueError("%s is not found, please check your saved model." %params_filename)
+    model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
+
     if os.path.exists(var_info_path):
-        var_dict.update(
-            _load_persistable_vars(model_path, var_info_path, programs[
-                'forward'], params_filename))
-        model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
+        var_dict = _load_persistable_vars(model_path, var_info_path,
+                                          programs['forward'], params_filename)
         #Load every file that meets the requirements in the directory model_path.
         for file_name in os.listdir(model_path):
             if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
@@ -559,6 +546,16 @@ def _construct_params_and_buffers(model_path,
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
+        for file_name in os.listdir(model_path):
+            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
+                    model_name) and file_name != params_filename:
+                func_name = file_name[len(model_name) + 1:-len(
+                    INFER_PARAMS_SUFFIX)]
+            else:
+                continue
+            var_dict.update(
+                _load_persistable_vars_by_program(model_path, programs[
+                    func_name], file_name))
 
     if not append_suffix:
         var_dict = _remove_varname_suffix(var_dict, programs['forward'])

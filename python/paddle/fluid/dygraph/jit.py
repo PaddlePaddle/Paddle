@@ -602,7 +602,7 @@ def save(layer, path, input_spec=None, **configs):
             static_func = getattr(layer, attr_func, None)
             if isinstance(static_func,
                           StaticFunction) and 'forward' != attr_func:
-                raise TypeError(
+                raise ValueError(
                     "If there are static functions other than forward that need to be saved, the input input_spec should be None, but received input_spec's type is %s."
                     % type(input_spec))
         if not isinstance(input_spec, list):
