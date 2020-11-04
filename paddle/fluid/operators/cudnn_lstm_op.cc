@@ -274,10 +274,14 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
+    const std::string& cell_type =
+        BOOST_GET_CONST(std::string, this->GetAttr("cell_type"));
     op->SetType("cudnn_lstm_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("InitH", this->Input("InitH"));
-    op->SetInput("InitC", this->Input("InitC"));
+    if (cell_type == "lstm") {
+      op->SetInput("InitC", this->Input("InitC"));
+    }
     if (this->HasInput("WeightList")) {
       op->SetInput("WeightList", this->Input("WeightList"));
     }
@@ -289,7 +293,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    if (this->HasInput(framework::GradVarName("LastC"))) {
+    if (cell_type == "lstm") {
       op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
     }
     op->SetInput(framework::GradVarName("LastH"), this->OutputGrad("LastH"));
@@ -301,7 +305,9 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
-    op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
+    if (cell_type == "lstm") {
+      op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
+    }
     op->SetAttrMap(this->Attrs());
   }
 };
