@@ -230,7 +230,7 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       ref_x_lod.resize(x->dims()[0] + 1);
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
-#ifdef PADDLE_WITH_UNITY_BUILD
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
     sequence_expand_op::SequenceExpandGradFunctor<DeviceContext, T> functor;
 #else
     SequenceExpandGradFunctor<DeviceContext, T> functor;

@@ -33,7 +33,7 @@ struct CPUPlace;
 
 namespace paddle {
 namespace operators {
-#ifdef PADDLE_WITH_UNITY_BUILD
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
 namespace dequantize_log_op {
 #endif
 

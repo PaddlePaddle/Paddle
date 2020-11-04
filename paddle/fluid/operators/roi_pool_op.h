@@ -23,7 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 static constexpr int kROISize = 4;
+#endif
 
 template <typename DeviceContext, typename T>
 class CPUROIPoolOpKernel : public framework::OpKernel<T> {

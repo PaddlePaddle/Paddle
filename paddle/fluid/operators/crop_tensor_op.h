@@ -184,11 +184,7 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
   auto out_dims = out->dims();
 
   // get shape from Input(ShapeTensor) of Input(Shape)
-#ifdef PADDLE_WITH_OP_UNITY_BUILD
-  std::vector<int> shape = crop_tensor_op::GetShape(context);
-#else
   std::vector<int> shape = GetShape(context);
-#endif
   // out_dims set by arrt(shape)
   if (shape.size() == 0) {
     for (int i = 0; i < out_dims.size(); ++i) {
@@ -196,7 +192,11 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
     }
   }
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+  auto offsets = crop_tensor_op::GetOffsets(context);
+#else
   auto offsets = GetOffsets(context);
+#endif
   out_dims = ValidateShape(shape, offsets, x->dims());
   out->mutable_data<T>(out_dims, context.GetPlace());
   for (size_t i = 0; i < offsets.size(); ++i) {
