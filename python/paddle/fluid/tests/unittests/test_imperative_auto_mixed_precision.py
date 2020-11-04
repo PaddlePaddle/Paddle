@@ -196,14 +196,26 @@ class TestAmpScaler(unittest.TestCase):
                     np.array_equal(param.numpy(), params_init[param.name]))
 
 
+def reader_decorator(reader):
+    def __reader__():
+        for item in reader():
+            img = np.array(item[0]).astype('float32').reshape(3, 224, 224)
+            label = np.array(item[1]).astype('int64').reshape(1)
+            yield img, label
+
+    return __reader__
+
+
 class TestResnet2(unittest.TestCase):
-    def train_resnet(self, enable_amp=True):
+    """
+    Use paddle-2.0 API
+    """
+
+    def train_resnet(self, enable_amp=True, use_data_loader=False):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
         batch_num = 1
-
-        paddle.disable_static()
 
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
@@ -223,18 +235,35 @@ class TestResnet2(unittest.TestCase):
         scaler = paddle.amp.GradScaler(
             enable=enable_amp, init_loss_scaling=2.**10)
 
+        if use_data_loader:
+            train_reader = paddle.batch(
+                reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
+                batch_size=batch_size,
+                drop_last=True)
+            train_loader = fluid.io.DataLoader.from_generator(
+                capacity=4,
+                use_double_buffer=True,
+                iterable=True,
+                return_list=True)
+            train_loader.set_sample_list_generator(train_reader)
+            train_reader = train_loader
+
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
                 break
-            dy_x_data = np.array(
-                [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-            if len(np.array([x[1]
-                             for x in data]).astype('int64')) != batch_size:
-                continue
-            y_data = np.array([x[1] for x in data]).astype('int64').reshape(-1,
-                                                                            1)
-            img = paddle.to_tensor(dy_x_data)
-            label = paddle.to_tensor(y_data)
+            if use_data_loader:
+                img, label = data
+            else:
+                dy_x_data = np.array(
+                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                if len(np.array([x[1]
+                                 for x in data]).astype('int64')) != batch_size:
+                    continue
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    -1, 1)
+
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
             with paddle.amp.auto_cast(enable=enable_amp):
@@ -262,19 +291,30 @@ class TestResnet2(unittest.TestCase):
             dy_param_value = {}
             for param in resnet.parameters():
                 dy_param_value[param.name] = param.numpy()
-
-            paddle.enable_static()
-
+        if use_data_loader:
+            train_reader._reset()
         return dy_out, dy_param_value, dy_grad_value
 
     def test_resnet(self):
-        out_fp32 = self.train_resnet(enable_amp=False)
-        out_amp = self.train_resnet(enable_amp=True)
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(enable_amp=False)
+            out_amp = self.train_resnet(enable_amp=True)
+        print(out_fp32[0], out_amp[0])
+        self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
+
+    def test_with_data_loader(self):
+        with fluid.dygraph.guard():
+            out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
+            out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
         print(out_fp32[0], out_amp[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
 
 
 class TestResnet(unittest.TestCase):
+    """
+    Use paddle-1.x API
+    """
+
     def train_resnet(self, enable_amp=True):
         seed = 90
 
