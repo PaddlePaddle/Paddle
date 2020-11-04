@@ -51,15 +51,11 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   int try_times = 0;
   while (true) {
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-      if (try_times < 10) {
-        LOG(WARNING) << "Socket bind worker " << ep
-                     << " failed, try again after 3 seconds.";
-      } else {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Bind on endpoint %s failed. Please confirm whether the "
-            "communication port (%d) or GPU card is occupied.",
-            ep, port));
-      }
+      LOG(WARNING) << "Socket bind worker " << ep << (try_times < 5)
+          ? " failed, try again after 3 seconds."
+          : " failed, try again after 3 seconds. Bind on endpoint %s failed. "
+            "Please confirm whether the communication port or GPU card is "
+            "occupied.";
       std::this_thread::sleep_for(std::chrono::seconds(3));
       ++try_times;
       continue;
@@ -133,16 +129,11 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   int try_times = 0;
   while (true) {
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      if (try_times < 10) {
-        LOG(WARNING) << "Socket connect worker " << ep
-                     << " failed, try again after 3 seconds.";
-      } else {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Worker %s is not ready. Maybe that some process "
+      LOG(WARNING) << "Socket connect worker " << ep << (try_times < 5)
+          ? " failed, try again after 3 seconds."
+          : " failed, try again after 3 seconds. Maybe that some process "
             "is occupied the GPUs of this node now, "
-            "and you should kill those process manually.",
-            ep));
-      }
+            "and you should kill those process manually.";
       std::this_thread::sleep_for(std::chrono::seconds(3));
       ++try_times;
       continue;
