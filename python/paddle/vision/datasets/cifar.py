@@ -161,7 +161,7 @@ class Cifar10(Dataset):
         image = image.transpose([1, 2, 0])
 
         if self.backend == 'pil':
-            image = Image.fromarray(image)
+            image = Image.fromarray(image.astype('uint8'))
         if self.transform is not None:
             image = self.transform(image)
 
