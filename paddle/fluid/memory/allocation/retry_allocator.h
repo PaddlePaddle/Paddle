@@ -47,6 +47,9 @@ class RetryAllocator : public Allocator {
  protected:
   void FreeImpl(Allocation* allocation) override;
   Allocation* AllocateImpl(size_t size) override;
+  void ReleaseImpl(const platform::Place& place) override {
+    underlying_allocator_->Release(place);
+  }
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;

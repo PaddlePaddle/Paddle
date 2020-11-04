@@ -86,14 +86,8 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_lod_tensor(use_cuda, use_parallel_executor)
 
                 # Test exception message when feeding with error 
-                if six.PY2:
-                    in_shape_tuple = (long(-1), long(3), long(4), long(8))
-                    error_shape_list = [
-                        long(self.data_batch_size), long(3), long(4), long(5)
-                    ]
-                else:
-                    in_shape_tuple = (-1, 3, 4, 8)
-                    error_shape_list = [self.data_batch_size, 3, 4, 5]
+                in_shape_tuple = (-1, 3, 4, 8)
+                error_shape_list = [self.data_batch_size, 3, 4, 5]
 
                 with self.assertRaises(ValueError) as shape_mismatch_err:
                     self._test_feed_data_shape_mismatch(use_cuda,

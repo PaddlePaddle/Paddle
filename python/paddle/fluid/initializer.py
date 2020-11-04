@@ -105,10 +105,14 @@ class ConstantInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-    	    import paddle.fluid as fluid
+            import paddle
+            import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-	    fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Constant(value=2.0))
+            fc = fluid.layers.fc(
+                input=x,
+                size=10,
+                param_attr=fluid.initializer.Constant(value=2.0))
 
     """
 
@@ -623,7 +627,9 @@ class MSRAInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.MSRA(uniform=False))
@@ -743,7 +749,7 @@ class BilinearInitializer(Initializer):
                                       regularizer=L2Decay(0.),
                                       initializer=nn.initializer.Bilinear())
             data = paddle.rand([B, 3, H, W], dtype='float32')
-            conv_up = nn.ConvTranspose2d(3,
+            conv_up = nn.Conv2DTranspose(3,
                                          out_channels=C,
                                          kernel_size=2 * factor - factor % 2,
                                          padding=int(

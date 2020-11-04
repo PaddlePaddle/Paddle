@@ -187,8 +187,8 @@ class PtbModel(paddle.nn.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False)
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = paddle.reduce_mean(loss, dim=[0])
-        loss = paddle.reduce_sum(loss)
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.fluid.layers.reduce_sum(loss)
 
         return loss, last_hidden, last_cell
 
@@ -210,7 +210,7 @@ def train(place):
     batch_num = 200
 
     paddle.disable_static(place)
-    paddle.manual_seed(SEED)
+    paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
     ptb_model = PtbModel(
         hidden_size=hidden_size,

@@ -99,6 +99,12 @@ class CollectiveHelper(object):
                 OP_ROLE_KEY: OpRole.Forward
             })
 
+    def _wait(self, current_endpoint, endpoints):
+        assert (self.wait_port)
+        other_endpoints = endpoints[:]
+        other_endpoints.remove(current_endpoint)
+        wait_server_ready(other_endpoints)
+
     def _broadcast_params(self):
         block = self.startup_program.global_block()
         ring_id = -1

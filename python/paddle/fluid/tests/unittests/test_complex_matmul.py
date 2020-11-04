@@ -34,6 +34,15 @@ class TestComplexMatMulLayer(unittest.TestCase):
         np_result = np.matmul(x, y)
         self.assertTrue(np.allclose(result.numpy(), np_result))
 
+    def compare_op(self, x, y):
+        for place in self._places:
+            with dg.guard(place):
+                x_var = dg.to_variable(x)
+                y_var = dg.to_variable(y)
+                result = x_var.matmul(y_var)
+        np_result = np.matmul(x, y)
+        self.assertTrue(np.allclose(result.numpy(), np_result))
+
     def test_complex_xy(self):
         x = np.random.random(
             (2, 3, 4, 5)).astype("float32") + 1J * np.random.random(
@@ -42,6 +51,7 @@ class TestComplexMatMulLayer(unittest.TestCase):
             (2, 3, 5, 4)).astype("float32") + 1J * np.random.random(
                 (2, 3, 5, 4)).astype("float32")
         self.compare(x, y)
+        self.compare_op(x, y)
 
     def test_complex_x(self):
         x = np.random.random(
@@ -49,6 +59,7 @@ class TestComplexMatMulLayer(unittest.TestCase):
                 (2, 3, 4, 5)).astype("float32")
         y = np.random.random((2, 3, 5, 4)).astype("float32")
         self.compare(x, y)
+        self.compare_op(x, y)
 
     def test_complex_y(self):
         x = np.random.random((2, 3, 4, 5)).astype("float32")

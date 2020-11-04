@@ -46,7 +46,7 @@ class InplaceTestBase(unittest.TestCase):
 
     def build_program_and_scope(self):
         self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
-        paddle.manual_seed(1)
+        paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         startup_program = fluid.Program()
         main_program = fluid.Program()
@@ -115,15 +115,7 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_val2, = exe.run(compiled_prog,
                                               feed=feed_dict,
                                               fetch_list=[fetch_var])
-                        #NOTE(zhiqiu): Temporally changed from array_equal to allclose. 
-                        # The real root is fuse_all_reduce and fuse_all_optimizer_opss may 
-                        # result in diff because of the instruction set on the virtual machine.
-                        # And the related unit tests: test_fuse_all_reduce_pass and test_fuse_optimizer_pass use "almostEqual" in their checks.
-                        # There are also some related issues:
-                        # https://github.com/PaddlePaddle/Paddle/issues/21270
-                        # https://github.com/PaddlePaddle/Paddle/issues/21046
-                        # https://github.com/PaddlePaddle/Paddle/issues/21045
-                        self.assertTrue(np.allclose(fetch_val1, fetch_val2))
+                        self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
 
     def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
@@ -167,8 +159,7 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_vals.append(fetch_val)
 
                 for item in fetch_vals:
-                    # save above
-                    self.assertTrue(np.allclose(fetch_vals[0], item))
+                    self.assertTrue(np.array_equal(fetch_vals[0], item))
 
 
 class CUDAInplaceTest(InplaceTestBase):

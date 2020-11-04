@@ -20,13 +20,12 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-from ...fluid import one_hot  #DEFINE_ALIAS
-from ...fluid.layers import pad2d  #DEFINE_ALIAS
+# from ...fluid import one_hot  #DEFINE_ALIAS
+# from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
-from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
@@ -36,7 +35,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
-from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+# from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
@@ -51,10 +50,7 @@ __all__ = [
     #       'fc',
     'label_smooth',
     'linear',
-    'one_hot',
     'pad',
-    'pad_constant_like',
-    'pad2d',
     'unfold',
     #       'bilinear_tensor_product',
     'assign',
@@ -1395,9 +1391,9 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             # [0.99806249 0.9817672  0.94987036]
             
     """
-    w12 = sum(elementwise_mul(x1, x2), axis=axis)
-    w1 = sum(elementwise_mul(x1, x1), axis=axis)
-    w2 = sum(elementwise_mul(x2, x2), axis=axis)
+    w12 = sum(paddle.multiply(x1, x2), axis=axis)
+    w1 = sum(paddle.multiply(x1, x1), axis=axis)
+    w2 = sum(paddle.multiply(x2, x2), axis=axis)
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim

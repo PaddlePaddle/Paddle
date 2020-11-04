@@ -24,6 +24,9 @@
         }
     ],
     "wlist_temp_api":[
+        "to_tensor",
+        "LRScheduler",
+        "ReduceOnPlateau",
         "append_LARS",
         "BuildStrategy.debug_graphviz_path",
         "BuildStrategy.enable_sequential_execution",

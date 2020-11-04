@@ -466,7 +466,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         pass
 
     def _prepare_program(self, config, parallel=True):
-        paddle.manual_seed(config.random_seed)
+        paddle.seed(config.random_seed)
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
         with fluid.program_guard(self.main_program, self.startup_program):

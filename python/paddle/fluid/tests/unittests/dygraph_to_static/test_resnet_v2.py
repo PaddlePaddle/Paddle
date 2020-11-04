@@ -34,7 +34,11 @@ batch_size = 2
 epoch_num = 1
 place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
     else paddle.CPUPlace()
-MODEL_SAVE_PATH = "./resnet_v2.inference.model"
+
+MODEL_SAVE_DIR = "./inference"
+MODEL_SAVE_PREFIX = "./inference/resnet_v2"
+MODEL_FILENAME = "resnet_v2" + paddle.fluid.dygraph.io.INFER_MODEL_SUFFIX
+PARAMS_FILENAME = "resnet_v2" + paddle.fluid.dygraph.io.INFER_PARAMS_SUFFIX
 DY_STATE_DICT_SAVE_PATH = "./resnet_v2.dygraph"
 program_translator = paddle.jit.ProgramTranslator()
 
@@ -62,7 +66,7 @@ class ConvBNLayer(paddle.nn.Layer):
                  act=None):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = paddle.nn.Conv2d(
+        self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
             out_channels=num_filters,
             kernel_size=filter_size,
@@ -149,7 +153,7 @@ class ResNet(paddle.nn.Layer):
 
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
-        self.pool2d_max = paddle.nn.Pool2D(
+        self.pool2d_max = paddle.fluid.dygraph.Pool2D(
             pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
@@ -167,7 +171,7 @@ class ResNet(paddle.nn.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = paddle.nn.Pool2D(
+        self.pool2d_avg = paddle.fluid.dygraph.Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
@@ -210,7 +214,7 @@ def train(to_static):
     """
     paddle.disable_static(place)
     np.random.seed(SEED)
-    paddle.manual_seed(SEED)
+    paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
 
     train_reader = paddle.batch(
@@ -255,7 +259,7 @@ def train(to_static):
                         total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
             if batch_id == 10:
                 if to_static:
-                    paddle.jit.save(resnet, MODEL_SAVE_PATH)
+                    paddle.jit.save(resnet, MODEL_SAVE_PREFIX)
                 else:
                     paddle.fluid.dygraph.save_dygraph(resnet.state_dict(),
                                                       DY_STATE_DICT_SAVE_PATH)
@@ -289,9 +293,10 @@ def predict_static(data):
     exe = paddle.static.Executor(place)
     [inference_program, feed_target_names,
      fetch_targets] = paddle.static.load_inference_model(
-         MODEL_SAVE_PATH,
+         MODEL_SAVE_DIR,
          executor=exe,
-         params_filename=paddle.fluid.dygraph.io.VARIABLE_FILENAME)
+         model_filename=MODEL_FILENAME,
+         params_filename=PARAMS_FILENAME)
 
     pred_res = exe.run(inference_program,
                        feed={feed_target_names[0]: data},
@@ -302,7 +307,7 @@ def predict_static(data):
 
 def predict_dygraph_jit(data):
     paddle.disable_static(place)
-    resnet = paddle.jit.load(MODEL_SAVE_PATH)
+    resnet = paddle.jit.load(MODEL_SAVE_PREFIX)
     resnet.eval()
 
     pred_res = resnet(data)
@@ -313,8 +318,8 @@ def predict_dygraph_jit(data):
 
 
 def predict_analysis_inference(data):
-    output = PredictorTools(MODEL_SAVE_PATH,
-                            paddle.fluid.dygraph.io.VARIABLE_FILENAME, [data])
+    output = PredictorTools(MODEL_SAVE_DIR, MODEL_FILENAME, PARAMS_FILENAME,
+                            [data])
     out = output()
     return out
 

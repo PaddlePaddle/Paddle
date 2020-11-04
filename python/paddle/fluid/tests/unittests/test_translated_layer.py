@@ -77,7 +77,7 @@ class TestTranslatedLayer(unittest.TestCase):
         paddle.disable_static(place)
 
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         # create network
