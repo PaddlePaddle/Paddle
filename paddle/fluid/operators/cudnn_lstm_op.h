@@ -1497,17 +1497,24 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
     auto layer_backward_grad_gate_tensor_unbind =
         Unbind(layer_backward_grad_gate_tensor);
 
-    // TODO(wawltor)  this is bug for the gru and rnn
-    auto layer_state_tensor = state_tensor_unbind[layer_idx];
-    layer_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size});
-    auto layer_state_tensor_unbind = Unbind(layer_state_tensor);
+    Tensor layer_state_tensor;
+    TensorList layer_state_tensor_unbind;
+    if (state_tensor_unbind.size() > 0) {
+      layer_state_tensor = state_tensor_unbind[layer_idx];
+      layer_state_tensor.Resize(
+          {time_step * direction_num, batch_size, hidden_size});
+      layer_state_tensor_unbind = Unbind(layer_state_tensor);
+    }
     Print3DTensor<T>(&layer_state_tensor, "layer_state_tensor check");
 
-    auto layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
-    layer_act_state_tensor.Resize(
-        {time_step * direction_num, batch_size, hidden_size});
-    auto layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
+    Tensor layer_act_state_tensor;
+    TensorList layer_act_state_tensor_unbind;
+    if (act_state_tensor_unbind.size() > 0) {
+      layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
+      layer_act_state_tensor.Resize(
+          {time_step * direction_num, batch_size, hidden_size});
+      layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
+    }
     const bool& has_sequence_length = sequence_length == nullptr ? false : true;
     VLOG(0) << "data ready!";
 
