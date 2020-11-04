@@ -16,8 +16,8 @@ include(ExternalProject)
 
 set(PYBIND_PREFIX_DIR     ${THIRD_PARTY_PATH}/pybind)
 set(PYBIND_SOURCE_DIR     ${THIRD_PARTY_PATH}/pybind/src/extern_pybind)
-SET(PYBIND_REPOSITORY     https://github.com/pybind/pybind11.git)
-SET(PYBIND_TAG            v2.2.4)
+SET(PYBIND_REPOSITORY     ${GIT_URL}/pybind/pybind11.git)
+SET(PYBIND_TAG            v2.4.3)
 
 cache_third_party(extern_pybind
     REPOSITORY    ${PYBIND_REPOSITORY}

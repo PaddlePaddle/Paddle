@@ -29,11 +29,11 @@ class Config(object):
     config for training
     '''
     # encoder rnn hidden_size
-    encoder_size = 64
+    encoder_size = 16
     # decoder size for decoder stage
-    decoder_size = 64
+    decoder_size = 16
     # size for word embedding
-    word_vector_dim = 64
+    word_vector_dim = 16
     # max length for label padding
     max_length = 5
     # optimizer setting
@@ -41,9 +41,9 @@ class Config(object):
     learning_rate_decay = None
 
     # batch size to train
-    batch_size = 16
+    batch_size = 8
     # class number to classify
-    num_classes = 481
+    num_classes = 64
 
     use_gpu = False
     # special label for start and end
@@ -376,7 +376,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
         seed = 90
         epoch_num = 1
         if core.is_compiled_with_cuda():
-            batch_num = 10
+            batch_num = 6
         else:
             batch_num = 4
         np.random.seed = seed
@@ -403,7 +403,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
         with fluid.dygraph.guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             ocr_attention = OCRAttention()
 
@@ -454,7 +454,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

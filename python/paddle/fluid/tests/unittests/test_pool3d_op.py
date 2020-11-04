@@ -219,7 +219,7 @@ def avg_pool3D_forward_naive(x,
     return out
 
 
-class TestPool3d_Op(OpTest):
+class TestPool3D_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
         self.init_kernel_type()
@@ -312,7 +312,7 @@ class TestPool3d_Op(OpTest):
         self.adaptive = False
 
 
-class TestCase1(TestPool3d_Op):
+class TestCase1(TestPool3D_Op):
     def init_shape(self):
         self.shape = [2, 3, 7, 7, 7]
 
@@ -330,7 +330,7 @@ class TestCase1(TestPool3d_Op):
         self.global_pool = False
 
 
-class TestCase2(TestPool3d_Op):
+class TestCase2(TestPool3D_Op):
     def init_shape(self):
         self.shape = [2, 3, 6, 7, 7]
 
@@ -348,7 +348,7 @@ class TestCase2(TestPool3d_Op):
         self.global_pool = False
 
 
-class TestCase3(TestPool3d_Op):
+class TestCase3(TestPool3D_Op):
     def init_pool_type(self):
         self.pool_type = "max"
 
@@ -378,7 +378,7 @@ def create_test_cudnn_class(parent):
     globals()[cls_name] = TestCUDNNCase
 
 
-create_test_cudnn_class(TestPool3d_Op)
+create_test_cudnn_class(TestPool3D_Op)
 create_test_cudnn_class(TestCase1)
 create_test_cudnn_class(TestCase2)
 create_test_cudnn_class(TestCase3)
@@ -405,12 +405,38 @@ def create_test_cudnn_fp16_class(parent):
     globals()[cls_name] = TestCUDNNFp16Case
 
 
-create_test_cudnn_fp16_class(TestPool3d_Op)
+def create_test_fp16_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestFp16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = False
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=1e-2)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
+
+
+create_test_cudnn_fp16_class(TestPool3D_Op)
 create_test_cudnn_fp16_class(TestCase1)
 create_test_cudnn_fp16_class(TestCase2)
 create_test_cudnn_fp16_class(TestCase3)
 create_test_cudnn_fp16_class(TestCase4)
 create_test_cudnn_fp16_class(TestCase5)
+
+create_test_fp16_class(TestPool3D_Op)
+create_test_fp16_class(TestCase1)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
 
 
 # ---- test ceil mode ------
@@ -429,7 +455,7 @@ def create_test_cudnn_use_ceil_class(parent):
     globals()[cls_name] = TestPool3DUseCeilCase
 
 
-create_test_cudnn_use_ceil_class(TestPool3d_Op)
+create_test_cudnn_use_ceil_class(TestPool3D_Op)
 create_test_cudnn_use_ceil_class(TestCase1)
 
 
@@ -480,7 +506,7 @@ class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
 
 
 #-------test pool3d with asymmetric padding------
-class TestPool3d_Op_AsyPadding(TestPool3d_Op):
+class TestPool3D_Op_AsyPadding(TestPool3D_Op):
     def init_test_case(self):
         self.ksize = [3, 4, 3]
         self.strides = [1, 1, 2]
@@ -552,21 +578,21 @@ class TestCase5_AsyPadding(TestCase5):
         self.shape = [2, 3, 7, 7, 7]
 
 
-create_test_cudnn_class(TestPool3d_Op_AsyPadding)
+create_test_cudnn_class(TestPool3D_Op_AsyPadding)
 create_test_cudnn_class(TestCase1_AsyPadding)
 create_test_cudnn_class(TestCase2_AsyPadding)
 create_test_cudnn_class(TestCase3_AsyPadding)
 create_test_cudnn_class(TestCase4_AsyPadding)
 create_test_cudnn_class(TestCase5_AsyPadding)
 
-create_test_cudnn_fp16_class(TestPool3d_Op_AsyPadding)
+create_test_cudnn_fp16_class(TestPool3D_Op_AsyPadding)
 create_test_cudnn_fp16_class(TestCase1_AsyPadding)
 create_test_cudnn_fp16_class(TestCase2_AsyPadding)
 create_test_cudnn_fp16_class(TestCase3_AsyPadding)
 create_test_cudnn_fp16_class(TestCase4_AsyPadding)
 create_test_cudnn_fp16_class(TestCase5_AsyPadding)
 
-create_test_cudnn_use_ceil_class(TestPool3d_Op_AsyPadding)
+create_test_cudnn_use_ceil_class(TestPool3D_Op_AsyPadding)
 create_test_cudnn_use_ceil_class(TestCase1_AsyPadding)
 
 create_test_use_ceil_class(TestCase1_AsyPadding)
@@ -606,7 +632,7 @@ class TestAvgPoolAdaptive_AsyPadding(TestCase1):
 
 
 # ------------ test channel_last --------------
-class TestPool3d_channel_last(TestPool3d_Op):
+class TestPool3D_channel_last(TestPool3D_Op):
     def init_data_format(self):
         self.data_format = "NDHWC"
 
@@ -654,14 +680,14 @@ class TestCase5_channel_last(TestCase5):
         self.shape = [2, 7, 7, 7, 3]
 
 
-create_test_cudnn_class(TestPool3d_channel_last)
+create_test_cudnn_class(TestPool3D_channel_last)
 create_test_cudnn_class(TestCase1_channel_last)
 create_test_cudnn_class(TestCase2_channel_last)
 create_test_cudnn_class(TestCase3_channel_last)
 create_test_cudnn_class(TestCase4_channel_last)
 create_test_cudnn_class(TestCase5_channel_last)
 
-create_test_cudnn_use_ceil_class(TestPool3d_channel_last)
+create_test_cudnn_use_ceil_class(TestPool3D_channel_last)
 create_test_cudnn_use_ceil_class(TestCase1_channel_last)
 
 create_test_use_ceil_class(TestCase1_channel_last)
@@ -716,7 +742,7 @@ class TestAvgPoolAdaptive_channel_last(TestCase1_channel_last):
 
 
 # --- asy padding
-class TestPool3d_Op_AsyPadding_channel_last(TestPool3d_Op_AsyPadding):
+class TestPool3D_Op_AsyPadding_channel_last(TestPool3D_Op_AsyPadding):
     def init_data_format(self):
         self.data_format = "NDHWC"
 
@@ -764,14 +790,14 @@ class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
         self.shape = [2, 7, 8, 6, 3]
 
 
-create_test_cudnn_class(TestPool3d_Op_AsyPadding_channel_last)
+create_test_cudnn_class(TestPool3D_Op_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase1_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase2_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase3_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase4_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase5_AsyPadding_channel_last)
 
-create_test_cudnn_use_ceil_class(TestPool3d_Op_AsyPadding_channel_last)
+create_test_cudnn_use_ceil_class(TestPool3D_Op_AsyPadding_channel_last)
 create_test_cudnn_use_ceil_class(TestCase1_AsyPadding_channel_last)
 
 create_test_use_ceil_class(TestCase1_AsyPadding_channel_last)
@@ -812,14 +838,14 @@ def create_test_padding_SAME_class(parent):
     globals()[cls_name] = TestPaddingSMAECase
 
 
-create_test_padding_SAME_class(TestPool3d_Op)
+create_test_padding_SAME_class(TestPool3D_Op)
 create_test_padding_SAME_class(TestCase1)
 create_test_padding_SAME_class(TestCase2)
 create_test_padding_SAME_class(TestCase3)
 create_test_padding_SAME_class(TestCase4)
 create_test_padding_SAME_class(TestCase5)
 
-create_test_padding_SAME_class(TestPool3d_channel_last)
+create_test_padding_SAME_class(TestPool3D_channel_last)
 create_test_padding_SAME_class(TestCase1_channel_last)
 create_test_padding_SAME_class(TestCase2_channel_last)
 create_test_padding_SAME_class(TestCase3_channel_last)
@@ -843,14 +869,14 @@ def create_test_cudnn_padding_SAME_class(parent):
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
 
-create_test_cudnn_padding_SAME_class(TestPool3d_Op)
+create_test_cudnn_padding_SAME_class(TestPool3D_Op)
 create_test_cudnn_padding_SAME_class(TestCase1)
 create_test_cudnn_padding_SAME_class(TestCase2)
 create_test_cudnn_padding_SAME_class(TestCase3)
 create_test_cudnn_padding_SAME_class(TestCase4)
 create_test_cudnn_padding_SAME_class(TestCase5)
 
-create_test_cudnn_padding_SAME_class(TestPool3d_channel_last)
+create_test_cudnn_padding_SAME_class(TestPool3D_channel_last)
 create_test_cudnn_padding_SAME_class(TestCase1_channel_last)
 create_test_cudnn_padding_SAME_class(TestCase2_channel_last)
 create_test_cudnn_padding_SAME_class(TestCase3_channel_last)
@@ -869,14 +895,14 @@ def create_test_padding_VALID_class(parent):
     globals()[cls_name] = TestPaddingVALIDCase
 
 
-create_test_padding_VALID_class(TestPool3d_Op)
+create_test_padding_VALID_class(TestPool3D_Op)
 create_test_padding_VALID_class(TestCase1)
 create_test_padding_VALID_class(TestCase2)
 create_test_padding_VALID_class(TestCase3)
 create_test_padding_VALID_class(TestCase4)
 create_test_padding_VALID_class(TestCase5)
 
-create_test_padding_VALID_class(TestPool3d_channel_last)
+create_test_padding_VALID_class(TestPool3D_channel_last)
 create_test_padding_VALID_class(TestCase1_channel_last)
 create_test_padding_VALID_class(TestCase2_channel_last)
 create_test_padding_VALID_class(TestCase3_channel_last)
@@ -900,14 +926,14 @@ def create_test_cudnn_padding_VALID_class(parent):
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 
 
-create_test_cudnn_padding_VALID_class(TestPool3d_Op)
+create_test_cudnn_padding_VALID_class(TestPool3D_Op)
 create_test_cudnn_padding_VALID_class(TestCase1)
 create_test_cudnn_padding_VALID_class(TestCase2)
 create_test_cudnn_padding_VALID_class(TestCase3)
 create_test_cudnn_padding_VALID_class(TestCase4)
 create_test_cudnn_padding_VALID_class(TestCase5)
 
-create_test_cudnn_padding_VALID_class(TestPool3d_channel_last)
+create_test_cudnn_padding_VALID_class(TestPool3D_channel_last)
 create_test_cudnn_padding_VALID_class(TestCase1_channel_last)
 create_test_cudnn_padding_VALID_class(TestCase2_channel_last)
 create_test_cudnn_padding_VALID_class(TestCase3_channel_last)
@@ -916,7 +942,7 @@ create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
 
 
 #test API
-class TestPool3dAPI(unittest.TestCase):
+class TestPool3DAPI(unittest.TestCase):
     def test_api(self):
         x_NDHWC = np.random.random([2, 5, 5, 5, 3]).astype("float32")
         x_NCDHW = np.random.random([2, 3, 5, 5, 5]).astype("float32")
@@ -1101,7 +1127,7 @@ class TestPool3dAPI(unittest.TestCase):
             atol=1e-05)
 
 
-class TestPool3dAPI_Error(unittest.TestCase):
+class TestPool3DAPI_Error(unittest.TestCase):
     def test_api(self):
         input_NDHWC = fluid.layers.data(
             name="input_NDHWC",

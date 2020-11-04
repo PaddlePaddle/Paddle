@@ -24,12 +24,14 @@
 PYPATH=""
 set -x
 while getopts "d:" opt; do
-  case $opt in
+  case "$opt" in
     d)
       PYPATH=$OPTARG
       ;;
+    *)
+      ;;
   esac
 done
-shift $(($OPTIND - 1))
+shift $(("$OPTIND" - 1))
 export PYTHONPATH=$PYPATH:$PYTHONPATH
-$@
+"$@"
