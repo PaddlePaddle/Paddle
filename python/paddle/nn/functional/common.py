@@ -1226,6 +1226,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Code Examples:
         .. code-block:: python
+
             import numpy as np
             import paddle
             import paddle.nn.functional as F
@@ -1357,6 +1358,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Examples:
         .. code-block:: text
+        
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
                      [0.48949873 0.5797396  0.65444374 0.66510963]
@@ -1372,6 +1374,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Code Examples:
         .. code-block:: python
+        
             import paddle
             import paddle.nn as nn
             import numpy as np
