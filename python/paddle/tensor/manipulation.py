@@ -16,7 +16,7 @@ from __future__ import print_function
 
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
+from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_, device_guard
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
@@ -794,7 +794,8 @@ def gather(x, index, axis=None, name=None):
         axis = 0
     axis_tensor = axis
     if not isinstance(axis, Variable):
-        axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+        with device_guard("cpu"):
+            axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
     if in_dygraph_mode():
         return core.ops.gather(x, index, axis_tensor)
 
