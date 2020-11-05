@@ -1013,8 +1013,10 @@ class LogSoftmax(layers.Layer):
 
     .. math::
 
-        Out[i, j] = log(softmax(x))
-                  = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
+        \\begin{aligned} 
+        Out[i, j] &= log(softmax(x)) \\\\
+        &= log(\\frac{\\exp(X[i, j])}{\\sum_j(\\exp(X[i, j])})
+        \\end{aligned}
 
     Parameters:
         axis (int, optional): The axis along which to perform log_softmax

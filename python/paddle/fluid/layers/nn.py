@@ -9737,7 +9737,7 @@ def prelu(x, mode, param_attr=None, name=None):
     prelu activation.
 
     .. math::
-        prelu(x) = max(0, x) + weight * min(0, x)
+        prelu(x) = max(0, x) + \\alpha * min(0, x)
 
     There are three modes for the activation:
 
