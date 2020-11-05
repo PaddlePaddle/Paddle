@@ -44,9 +44,8 @@ class MatMulOpConverter : public OpConverter {
     bool transpose_X = boost::get<bool>(op_desc.GetAttr("transpose_X"));
     bool transpose_Y = boost::get<bool>(op_desc.GetAttr("transpose_Y"));
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1),
-        transpose_X, *const_cast<nvinfer1::ITensor*>(input2), transpose_Y);
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, MatrixMultiply, *input1,
+                                       transpose_X, *input2, transpose_Y);
 
     float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
     auto output_name = op_desc.Output("Out")[0];
