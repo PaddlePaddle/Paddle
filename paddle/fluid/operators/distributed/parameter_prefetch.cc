@@ -293,10 +293,10 @@ void prefetchs(const std::vector<std::string> &id_var_names,
         }
       }
       auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
-      auto &cpu_place = BOOST_GET_CONST(
-          platform::CPUPlace, paddle::platform::CPUDeviceContext().GetPlace());
+      auto &cpu_place = paddle::platform::CPUDeviceContext().GetPlace();
+      auto &const_cpu_place = BOOST_GET_CONST(platform::CPUPlace, cpu_place);
       auto stream = context.cuda_device_context().stream();
-      memory::Copy(gpu_place, out_d, cpu_place, &ids_value_vec[0],
+      memory::Copy(gpu_place, out_d, const_cpu_place, &ids_value_vec[0],
                    sizeof(float) * ids_size * vec_dim_1, stream);
 #else
       PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
