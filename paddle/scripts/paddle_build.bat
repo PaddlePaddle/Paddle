@@ -344,7 +344,8 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 if "%NIGHTLY_MODE%"=="ON" (
     set nightly_label=''
     ) else (
-    set nightly_label='RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY'
+    set nightly_label_pre="RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+    set nightly_label=%nightly_label_pre:"=%
     echo    ========================================
     echo    "Unittests with nightly labels  are only run at night"
     echo    ========================================
