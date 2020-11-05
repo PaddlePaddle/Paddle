@@ -578,7 +578,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
-        test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+        test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST:NIGHTLY")
 # disable test_parallel_executor_fetch_isolated_var
 # set_tests_properties(test_parallel_executor_fetch_isolated_var PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
@@ -593,7 +593,7 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
     set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -604,7 +604,7 @@ endif()
 # setting timeout value for old unittests
 # set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
 if(NOT WIN32 AND NOT APPLE)
-    set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
+    set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
     set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
     set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
     set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
