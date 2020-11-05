@@ -20,7 +20,7 @@ from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode
+from ..framework import Variable, in_dygraph_mode, _varbase_creator
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
@@ -1116,6 +1116,25 @@ def sampled_softmax_with_cross_entropy(logits,
             fc = linear(input)
             out = nn.functional.loss.sampled_softmax_with_cross_entropy(logits=fc, label=label, num_samples=25)
     """
+    if in_dygraph_mode():
+        attrs = ('use_customized_samples', use_customized_samples, 'uniq', True,
+                 'remove_accidental_hits', remove_accidental_hits,
+                 'num_samples', num_samples, 'seed', seed)
+        if use_customized_samples:
+            _, _, _, _, sampled_logits, sampled_label = core.ops.sample_logits(
+                logits, label, customized_samples, customized_probabilities,
+                *attrs)
+        else:
+            _, _, _, _, sampled_logits, sampled_label = core.ops.sample_logits(
+                logits, label, *attrs)
+
+        sampled_softlabel = core.ops.one_hot(sampled_label, 'depth',
+                                             num_samples + 1)
+        softmax, loss = core.ops.softmax_with_cross_entropy(
+            sampled_logits, sampled_softlabel, 'soft_label', True,
+            'ignore_index', False, 'numeric_stable_mode', False)
+        return loss / num_true
+
     helper = LayerHelper('sample_logits', **locals())
     samples = customized_samples if use_customized_samples else helper.create_variable_for_type_inference(
         dtype='int64')
