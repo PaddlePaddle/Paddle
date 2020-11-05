@@ -1230,22 +1230,18 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             import paddle
             import paddle.nn.functional as F
             
-            paddle.disable_static()
-            
             # example 1
             x_shape = (1, 1, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = F.pad(tensor_x, pad=[2, 3], value=1, mode='constant')
-            print(y.numpy())
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
-            
+
             # example 2
             x_shape = (1, 1, 2, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = F.pad(tensor_x, pad=[1, 2, 1, 1], value=1, mode='circular')
-            print(y.numpy())
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
+            print(y)
             # [[[[6. 4. 5. 6. 4. 5.]
             #    [3. 1. 2. 3. 1. 2.]
             #    [6. 4. 5. 6. 4. 5.]
@@ -1379,7 +1375,6 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -1387,7 +1382,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
             result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
             
     """
