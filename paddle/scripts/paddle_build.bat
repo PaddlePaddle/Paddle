@@ -342,16 +342,15 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 if "%NIGHTLY_MODE%"=="ON" (
-    set nightly_label=''
+    set nightly_label="()"
     ) else (
-    set nightly_label_pre="RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY"
-    set nightly_label=%nightly_label_pre:"=%
+    set nightly_label="(RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
     echo    ========================================
     echo    "Unittests with nightly labels  are only run at night"
     echo    ========================================
 )
 
-ctest.exe -E "(%disable_ut_quickly%)" -LE "(%nightly_label%)" --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 goto:eof
 
 :unit_test_error
