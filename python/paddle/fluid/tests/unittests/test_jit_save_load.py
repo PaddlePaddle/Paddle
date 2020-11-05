@@ -194,20 +194,15 @@ class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
         self._linear_1 = Linear(in_size, out_size)
         self._scale = paddle.to_tensor(9.9)
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, x):
         return self._linear_0(x)
 
-    #The input is pruned 
-    # @declarative
-    # def forward_const(self,x):
-    #     return self._scale
-
-    @declarative
+    @paddle.jit.to_static
     def forward_no_param(self, x):
         return x
 
-    @declarative
+    @paddle.jit.to_static
     def forward_general(self, x):
         return self._linear_0(x) + self._linear_1(x) * self._scale
 

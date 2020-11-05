@@ -603,7 +603,7 @@ def save(layer, path, input_spec=None, **configs):
             if isinstance(static_func,
                           StaticFunction) and 'forward' != attr_func:
                 raise ValueError(
-                    "If there are static functions other than forward that need to be saved, the input input_spec should be None, but received input_spec's type is %s."
+                    "If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is %s."
                     % type(input_spec))
         if not isinstance(input_spec, list):
             raise TypeError(
@@ -624,10 +624,6 @@ def save(layer, path, input_spec=None, **configs):
     # parse configs
     configs = _parse_save_configs(configs)
     for attr_func in dir(layer):
-        # 2. get program from Layer
-        # TODO(chenweihang): add support for other method, not only forward
-        # if isinstance(layer.forward, StaticFunction):
-        #     concrete_program = layer.forward.concrete_program
         static_func = getattr(layer, attr_func, None)
         if isinstance(static_func, StaticFunction):
             concrete_program = static_func.concrete_program
@@ -680,14 +676,15 @@ def save(layer, path, input_spec=None, **configs):
             src_tensor = param_or_buffer.value().get_tensor()
             param_or_buffer_tensor._share_data_with(src_tensor)
             # record var info
-            extra_info_dict = dict()
-            if param_or_buffer.name in state_names_dict:
-                extra_info_dict['structured_name'] = state_names_dict[
-                    param_or_buffer.name]
-            extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
-            if isinstance(param_or_buffer, ParamBase):
-                extra_info_dict['trainable'] = param_or_buffer.trainable
-            extra_var_info[param_or_buffer.name] = extra_info_dict
+            if 'forward' == attr_func:
+                extra_info_dict = dict()
+                if param_or_buffer.name in state_names_dict:
+                    extra_info_dict['structured_name'] = state_names_dict[
+                        param_or_buffer.name]
+                extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
+                if isinstance(param_or_buffer, ParamBase):
+                    extra_info_dict['trainable'] = param_or_buffer.trainable
+                extra_var_info[param_or_buffer.name] = extra_info_dict
 
         # 5. save inference model
         from paddle.fluid.io import save_inference_model
@@ -699,11 +696,9 @@ def save(layer, path, input_spec=None, **configs):
         if 'forward' == attr_func:
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
-            extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
         else:
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
-            extra_var_info_path = path + '.' + attr_func + INFER_PARAMS_INFO_SUFFIX
 
         with scope_guard(scope):
             save_inference_model(
@@ -732,9 +727,10 @@ def save(layer, path, input_spec=None, **configs):
             # but we can save these information in `jit.save` without changing the original 
             # storage to improve user experience. So we save extra information into
             # file `***.pdiparams.info`
-
-            with open(extra_var_info_path, 'wb') as f:
-                pickle.dump(extra_var_info, f, protocol=2)
+            if 'forward' == attr_func:
+                extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
+                with open(extra_var_info_path, 'wb') as f:
+                    pickle.dump(extra_var_info, f, protocol=2)
 
 
 @dygraph_only

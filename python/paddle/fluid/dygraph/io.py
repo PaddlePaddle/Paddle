@@ -500,7 +500,6 @@ def _construct_program_holders(model_path, model_filename=None):
         # [compatible] if assign model_filename, only can load one program as Layer.forward
         model_filename = os.path.basename(model_filename)
         model_file_path = os.path.join(model_path, model_filename)
-        # program_holder_dict['forward'] = _ProgramHolder(_load_program_desc(model_file_path))
         model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
         #Load every file that meets the requirements in the directory model_path.
         for filename in os.listdir(model_path):
@@ -547,7 +546,6 @@ def _construct_params_and_buffers(model_path,
         for file_name in os.listdir(model_path):
             if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
                     model_name) and file_name != params_filename:
-                var_info_filename = str(file_name) + ".info"
                 func_name = file_name[len(model_name) + 1:-len(
                     INFER_PARAMS_SUFFIX)]
             else:
