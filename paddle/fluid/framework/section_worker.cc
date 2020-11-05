@@ -77,25 +77,27 @@ void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
   AutoSetCPUAffinity(true);
 
-  int64_t max_memory_size = 0;
+  int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
   auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+  if (max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(place_)) {
-    if (IsFastEagerDeletionModeEnabled()) {
-      gc.reset(new UnsafeFastGPUGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
-    } else {
-      gc.reset(new DefaultStreamGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+    if (platform::is_gpu_place(place_)) {
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new UnsafeFastGPUGarbageCollector(
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+      } else {
+        gc.reset(new DefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+      }
+    } else if (platform::is_cpu_place(place_)) {
+#endif
+      gc.reset(new CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
     }
-  } else if (platform::is_cpu_place(place_)) {
 #endif
-    gc.reset(new CPUGarbageCollector(
-        BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
-#ifdef PADDLE_WITH_CUDA
   }
-#endif
 
   for (int i = 0; i < num_microbatches_; ++i) {
     try {
@@ -114,10 +116,11 @@ void SectionWorker::TrainFiles() {
           VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
                   << i;
           op->Run(*microbatch_scopes_[i], place_);
-          if (gc) {
-            DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                                gc.get());
-          }
+          // if (gc) {
+          //   DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+          //   unused_vars_,
+          //                       gc.get());
+          // }
         }
       }
     } catch (platform::EOFException& e) {
@@ -136,10 +139,10 @@ void SectionWorker::TrainFiles() {
         VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
                 << i;
         op->Run(*microbatch_scopes_[i], place_);
-        if (gc) {
-          DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                              gc.get());
-        }
+        // if (gc) {
+        //   DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
+        //                       gc.get());
+        // }
       }
     }
   }
@@ -150,10 +153,10 @@ void SectionWorker::TrainFiles() {
     if (op_role == static_cast<int>(OpRole::kOptimize)) {
       VLOG(3) << "Update: running op " << op->Type();
       op->Run(*microbatch_scopes_[0], place_);
-      if (gc) {
-        DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
-                            gc.get());
-      }
+      // if (gc) {
+      //   DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
+      //                       gc.get());
+      // }
     }
   }
   dev_ctx_->Wait();
@@ -183,25 +186,27 @@ void SectionWorker::TrainFilesWithProfiler() {
   }
   op_count.resize(ops_.size());
 
-  int64_t max_memory_size = 0;
+  int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
   auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+  if (max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(place_)) {
-    if (IsFastEagerDeletionModeEnabled()) {
-      gc.reset(new UnsafeFastGPUGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
-    } else {
-      gc.reset(new DefaultStreamGarbageCollector(
-          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+    if (platform::is_gpu_place(place_)) {
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc.reset(new UnsafeFastGPUGarbageCollector(
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+      } else {
+        gc.reset(new DefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+      }
+    } else if (platform::is_cpu_place(place_)) {
+#endif
+      gc.reset(new CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
     }
-  } else if (platform::is_cpu_place(place_)) {
 #endif
-    gc.reset(new CPUGarbageCollector(
-        BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
-#ifdef PADDLE_WITH_CUDA
   }
-#endif
 
   struct timeval start;
   struct timeval end;
@@ -230,10 +235,11 @@ void SectionWorker::TrainFilesWithProfiler() {
                   << i;
           timeline.Start();
           op->Run(*microbatch_scopes_[i], place_);
-          if (gc) {
-            DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                                gc.get());
-          }
+          // if (gc) {
+          //   DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+          //   unused_vars_,
+          //                       gc.get());
+          // }
           cudaDeviceSynchronize();
           timeline.Pause();
           gettimeofday(&end, NULL);
@@ -291,10 +297,10 @@ void SectionWorker::TrainFilesWithProfiler() {
                 << " for micro-batch " << i;
         timeline.Start();
         op->Run(*microbatch_scopes_[i], place_);
-        if (gc) {
-          DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                              gc.get());
-        }
+        // if (gc) {
+        //   DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
+        //                       gc.get());
+        // }
         cudaDeviceSynchronize();
         gettimeofday(&end, NULL);
         timeline.Pause();
@@ -336,10 +342,10 @@ void SectionWorker::TrainFilesWithProfiler() {
       VLOG(3) << "Update: running op " << op->Type();
       timeline.Start();
       op->Run(*microbatch_scopes_[0], place_);
-      if (gc) {
-        DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
-                            gc.get());
-      }
+      // if (gc) {
+      //   DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
+      //                       gc.get());
+      // }
       cudaDeviceSynchronize();
       gettimeofday(&end, NULL);
       timeline.Pause();

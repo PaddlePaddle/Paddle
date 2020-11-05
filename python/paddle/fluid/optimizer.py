@@ -4006,7 +4006,8 @@ class PipelineOptimizer(object):
                     attrs={
                         self._op_device_key: first_dev_spec,
                         self._op_role_key: self._op_role.Forward,
-                        'peer': dev_index
+                        'use_calc_stream': True,
+                        'peer': dev_index,
                     })
                 # Get the device that that data on
                 assert device in devices
@@ -4025,7 +4026,8 @@ class PipelineOptimizer(object):
                         'dtype': new_var.dtype,
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
-                        'peer': first_dev_index
+                        'peer': first_dev_index,
+                        'use_calc_stream': True,
                     })
 
     def _strip_grad_suffix(self, name):
@@ -4176,7 +4178,8 @@ class PipelineOptimizer(object):
                         attrs={
                             self._op_device_key: prev_device_spec,
                             self._op_role_key: op_role,
-                            'peer': cur_device_index
+                            'use_calc_stream': True,
+                            'peer': cur_device_index,
                         })
                     extra_index += 1
                     block._insert_op(
@@ -4188,7 +4191,8 @@ class PipelineOptimizer(object):
                             'dtype': var.dtype,
                             self._op_device_key: cur_device_spec,
                             self._op_role_key: op_role,
-                            'peer': prev_device_index
+                            'use_calc_stream': True,
+                            'peer': prev_device_index,
                         })
                     extra_index += 1
 
@@ -4353,10 +4357,11 @@ class PipelineOptimizer(object):
                     inputs={'X': write_block.var(var_name), },
                     attrs={
                         self._op_device_key: write_device,
+                        'use_calc_stream': True,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
-                        'peer': read_dev_index
+                        'peer': read_dev_index,
                     })
                 read_block._insert_op(
                     index=0,
@@ -4366,6 +4371,7 @@ class PipelineOptimizer(object):
                         'out_shape': read_block.var(var_name).shape,
                         'dtype': read_block.var(var_name).dtype,
                         self._op_device_key: read_device,
+                        'use_calc_stream': True,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
