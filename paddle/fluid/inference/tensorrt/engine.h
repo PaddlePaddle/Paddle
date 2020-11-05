@@ -71,9 +71,9 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 template <typename T>
 nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                             bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GT(shape.size(), 1UL,
+  PADDLE_ENFORCE_GT(shape.size(), 0UL,
                     platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 2 "
+                        "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
@@ -174,6 +174,7 @@ class TensorRTEngine {
                       "version should be at least 6.";
 #endif
     }
+    dy::initLibNvInferPlugins(&logger, "");
   }
 
   ~TensorRTEngine() {}
@@ -285,6 +286,9 @@ class TensorRTEngine {
     suffix_counter += 1;
   }
 
+  void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+  void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
+
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
@@ -312,6 +316,8 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  bool use_oss() { return use_oss_; }
+  bool with_ernie() { return with_ernie_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
@@ -347,6 +353,8 @@ class TensorRTEngine {
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
+  bool use_oss_{false};
+  bool with_ernie_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
