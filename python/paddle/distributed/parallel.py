@@ -31,6 +31,7 @@ from paddle.distributed.fleet.base.private_helper_function import wait_server_re
 __all__ = ["init_parallel_env"]
 
 ParallelStrategy = core.ParallelStrategy
+parallel_env = None
 
 
 def _start_kv_server(port, http_server_d):
@@ -177,6 +178,8 @@ def init_parallel_env():
     parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
     parallel_helper._init_parallel_ctx()
 
+    parallel_env = ParallelEnv()
+
 
 def get_rank():
     """
@@ -221,4 +224,5 @@ def get_world_size():
             print("The world_size is %d" % dist.get_world_size())
             # The world_size is 4
     """
-    return ParallelEnv().world_size
+
+    return parallel_env.world_size if parallel_env else 0
