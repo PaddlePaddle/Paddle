@@ -319,10 +319,8 @@ if '${WITH_XPU}' == 'ON':
                 raise Exception("patch ${XPU_API_LIB} failed, command: %s" % command)
     shutil.copy('${XPU_API_LIB}', libs_path)
     shutil.copy('${XPU_RT_LIB}', libs_path)
-    shutil.copy('${XPU_SIM_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_API_LIB_NAME}',
-                                  '${XPU_RT_LIB_NAME}',
-                                  '${XPU_SIM_LIB_NAME}']
+                                  '${XPU_RT_LIB_NAME}']
 
 # copy libfuild_framework.so to libs
 if os.name != 'nt' and sys.platform != 'darwin':
