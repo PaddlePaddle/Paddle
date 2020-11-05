@@ -376,29 +376,21 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _accumulate_gradients_by_sum_op_(var_name,
-                                     renamed_vars,
-                                     pending_sum_ops,
-                                     op_idx,
-                                     op_device=""):
+def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
+                                     op_idx):
     """
     Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
     if op_idx not in pending_sum_ops.keys():
         pending_sum_ops[op_idx] = []
     pending_sum_ops[op_idx].append(
-        _create_op_desc_("sum", {"X": renamed_vars[var_name]}, {
-            "Out": [var_name]
-        }, {"use_mkldnn": False,
-            "op_device": op_device}))
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
+                         {"Out": [var_name]}, {"use_mkldnn": False}))
     renamed_vars[var_name] = [var_name]
 
 
-def _accumulate_gradients_by_add_ops_(var_name,
-                                      renamed_vars,
-                                      pending_sum_ops,
-                                      op_idx,
-                                      op_device=""):
+def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
+                                      op_idx):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
@@ -415,8 +407,7 @@ def _accumulate_gradients_by_add_ops_(var_name,
         pending_sum_ops[op_idx].append(
             _create_op_desc_("grad_add", {"X": [x_name],
                                           "Y": [y_name]}, {"Out": [out_name]},
-                             {"use_mkldnn": False,
-                              "op_device": op_device}))
+                             {"use_mkldnn": False}))
     renamed_vars[var_name] = [var_name]
 
 
@@ -434,22 +425,16 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
     for idx, op_desc in enumerate(op_descs):
-        op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
-        )
-        op_deivce = ""
-        if op_desc.has_attr(op_device_attr_name):
-            op_device = op_desc.attr(op_device_attr_name)
-
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                    _accumulate_gradients_by_sum_op_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                     pending_sum_ops, idx)
                 else:
-                    _accumulate_gradients_by_add_ops_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                      pending_sum_ops, idx)
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
