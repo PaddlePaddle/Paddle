@@ -287,6 +287,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   return m_->GetAllocator(place, size)->Allocate(size);
 }
 
+void AllocatorFacade::Release(const platform::Place& place) {
+  m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
+      ->Release(place);
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
