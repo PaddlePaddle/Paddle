@@ -602,6 +602,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_requantize_mkldnn_op',
     'test_softmax_mkldnn_op',
     'test_sum_mkldnn_op',
+    'test_sum_bf16_mkldnn_op',
     'test_transpose_int8_mkldnn_op',
     'test_transpose_mkldnn_op',
     'test_mkldnn_conv_activation_fuse_pass',
