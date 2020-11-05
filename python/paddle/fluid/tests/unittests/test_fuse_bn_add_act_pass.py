@@ -110,10 +110,13 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                              use_cuda,
                              seed=1):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
+            x1 = fluid.layers.data(
+                name='x1', shape=[1, 28, 28], dtype='float32')
+            x2 = fluid.layers.data(
+                name='x2', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
             conv1_1 = fluid.layers.conv2d(
-                input=x,
+                input=x1,
                 filter_size=3,
                 num_filters=32,
                 stride=1,
@@ -123,7 +126,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC')
             conv1_2 = fluid.layers.conv2d(
-                input=x,
+                input=x2,
                 filter_size=3,
                 num_filters=32,
                 stride=1,
@@ -157,7 +160,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
             sgd.minimize(loss)
 
-        return x, y, loss
+        return loss
 
     def check(self, place, use_cuda):
         paddle.seed(1)
@@ -168,26 +171,30 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         # build_fused_program: turn on fuse_bn_add_act_ops
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        x, y, loss = self.build_origin_program(main_program, startup_program,
-                                               use_cuda)
+        loss = self.build_origin_program(main_program, startup_program,
+                                         use_cuda)
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_add_act_ops = True
         binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy_fused)
         exe = fluid.Executor(place)
         loss_vals_fused = []
-        x_data = []
+        x1_data = []
+        x2_data = []
         y_data = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
-                x = np.random.random((batch_size, 1, 28, 28)).astype("float32")
+                x1 = np.random.random((batch_size, 1, 28, 28)).astype("float32")
+                x2 = np.random.random((batch_size, 1, 28, 28)).astype("float32")
                 y = np.random.random((batch_size, 1)).astype("int64")
-                x_data.append(x)
+                x1_data.append(x1)
+                x2_data.append(x2)
                 y_data.append(y)
                 loss_v = exe.run(binary_fused,
-                                 feed={"x": x,
+                                 feed={"x1": x1,
+                                       "x2": x2,
                                        "y": y},
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
@@ -196,16 +203,18 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_add_act_ops = False
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy)
+            loss_name=loss.name, build_strategy=build_strategy_fused)
         loss_vals = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for i in range(iters):
-                loss_v = exe.run(binary,
-                                 feed={"x": x_data[i],
-                                       "y": y_data[i]},
-                                 fetch_list=[loss])
+                loss_v = exe.run(
+                    binary,
+                    feed={"x1": x1_data[i],
+                          "x2": x2_data[i],
+                          "y": y_data[i]},
+                    fetch_list=[loss])
                 loss_vals.append(loss_v[0][0])
 
         # check loss
