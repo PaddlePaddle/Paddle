@@ -560,10 +560,13 @@ EOF
         set +ex
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
-        if [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
+        if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label=""
         else
             nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+            echo "========================================="
+            echo "Unittests with nightly labels  are only run at night"
+            echo "========================================="
         fi
         ctest -E "($disable_ut_quickly)" -LE "($nightly_label)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
