@@ -96,6 +96,7 @@ TEST(RetryAllocator, RetryAllocator) {
     bool is_all_equal = std::all_of(addresses.begin(), addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
+    allocator->Release(platform::CPUPlace());
   }
 }
 
@@ -135,6 +136,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
       auto allocation = allocator.Allocate(allocate_size);
       ASSERT_TRUE(false);
       allocation.reset();
+      allocator.Release(p);
     } catch (BadAlloc &ex) {
       ASSERT_TRUE(std::string(ex.what()).find("Cannot allocate") !=
                   std::string::npos);

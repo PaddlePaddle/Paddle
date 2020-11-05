@@ -142,7 +142,7 @@ def convert_call(func):
             # Note(Aurelius84): Because `@declarative` returns a class instance instead of
             # a function. This will modify the value referring to itself in `__globals__`.
 
-            # For example: 
+            # For example:
             #
             #      @declarative
             #      def foo(x):
@@ -150,7 +150,7 @@ def convert_call(func):
             #
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
-            # `foo` function. So `isinstance(fn, StaticFunction)` is added here. 
+            # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
             global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
@@ -193,8 +193,10 @@ def convert_call(func):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
                 forward_func = convert_to_static(forward_func)
-                setattr(func, 'forward', forward_func)
-                func_self = func
+                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # So descriptor mechanism is used to bound `self` instance on function to
+                # keep it as bound method.
+                setattr(func, 'forward', forward_func.__get__(func))
             except Exception:
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self

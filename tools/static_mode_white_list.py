@@ -602,6 +602,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_requantize_mkldnn_op',
     'test_softmax_mkldnn_op',
     'test_sum_mkldnn_op',
+    'test_sum_bf16_mkldnn_op',
     'test_transpose_int8_mkldnn_op',
     'test_transpose_mkldnn_op',
     'test_mkldnn_conv_activation_fuse_pass',
@@ -673,4 +674,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_sgd_op_xpu',
     'test_shape_op_xpu',
     'test_slice_op_xpu',
+    'test_generate_proposals_v2_op',
 ]

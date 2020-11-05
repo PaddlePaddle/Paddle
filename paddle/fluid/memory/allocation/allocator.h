@@ -178,12 +178,15 @@ class Allocator {
     FreeImpl(allocation);
   }
 
+  inline void Release(const platform::Place& place) { ReleaseImpl(place); }
+
   // True if the `Allocate` is thread safe.
   virtual bool IsAllocThreadSafe() const;
 
  protected:
   virtual Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(Allocation* allocation);
+  virtual void ReleaseImpl(const platform::Place& place) {}
 };
 
 using AllocationDeleter = Allocator::AllocationDeleter;
