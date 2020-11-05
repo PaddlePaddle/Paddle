@@ -44,6 +44,7 @@ from ..fluid.layers import cosh    #DEFINE_ALIAS
 # from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
 from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
+from ..fluid.layers import log10
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
 from ..fluid.layers import reduce_all    #DEFINE_ALIAS
@@ -113,6 +114,7 @@ __all__ = [
         'logsumexp',
         'inverse',
         'log1p',
+        'log10',
         'erf',
         'addcmul',
         'addmm',

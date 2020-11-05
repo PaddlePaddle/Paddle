@@ -152,6 +152,7 @@ from .tensor.math import cumsum  #DEFINE_ALIAS
 from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
+from .tensor.math import log10  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS

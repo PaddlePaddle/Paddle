@@ -310,6 +310,15 @@ Natural logarithm of x.
 
 )DOC";
 
+UNUSED constexpr char Log10Doc[] = R"DOC(
+Log10 Activation Operator.
+
+$$out = \log_{10}x$$
+
+logarithm of x base to 10.
+
+)DOC";
+
 UNUSED constexpr char SquareDoc[] = R"DOC(
 The OP square each elements of the inputs.
 
@@ -698,6 +707,7 @@ REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
