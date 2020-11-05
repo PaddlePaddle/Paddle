@@ -9734,12 +9734,10 @@ def swish(x, beta=1.0, name=None):
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.prelu")
 def prelu(x, mode, param_attr=None, name=None):
     """
-    :api_attr: Static Graph
-
-    Equation:
+    prelu activation.
 
     .. math::
-        y = \max(0, x) + \\alpha * \min(0, x)
+        prelu(x) = max(0, x) + weight * min(0, x)
 
     There are three modes for the activation:
 
@@ -9750,7 +9748,7 @@ def prelu(x, mode, param_attr=None, name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Args:
-        x (Variable): The input Tensor or LoDTensor with data type float32.
+        x (Tensor): The input Tensor or LoDTensor with data type float32.
         mode (str): The mode for weight sharing.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
           weight (alpha), it can be create by ParamAttr. None by default.
@@ -9760,23 +9758,18 @@ def prelu(x, mode, param_attr=None, name=None):
           None by default.
 
     Returns:
-        Variable:
-
-        output(Variable): The tensor or LoDTensor with the same shape as input.
-        The data type is float32.
+        A tensor or LoDTensor with the same shape as x. The data type is float32.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
-            paddle.enable_static()
-            from paddle.fluid.param_attr import ParamAttr
-            x = fluid.data(name="x", shape=[None,5,10,10], dtype="float32")
-            mode = 'channel'
-            output = fluid.layers.prelu(
-                     x,mode,param_attr=ParamAttr(name='alpha'))
+
+            x = paddle.to_tensor([-1., 2., 3.])
+            param = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(0.2))
+            out = paddle.static.nn.prelu(x, 'all', param)
+            # [-0.2, 2., 3.]
 
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'prelu')

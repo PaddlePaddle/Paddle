@@ -252,8 +252,6 @@ def standard_normal(shape, dtype=None, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             # example 1: attr shape is a list which doesn't contain Tensor.
             out1 = paddle.standard_normal(shape=[2, 3])
             # [[-2.923464  ,  0.11934398, -0.51249987],  # random
@@ -273,7 +271,6 @@ def standard_normal(shape, dtype=None, name=None):
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
             shape_tensor = paddle.to_tensor([2, 3])
             result_3 = paddle.standard_normal(shape_tensor)
-
             # [[-2.878077 ,  0.17099959,  0.05111201]  # random
             #  [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
 
@@ -321,8 +318,6 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
 
             out1 = paddle.normal(shape=[2, 3])
             # [[ 0.17501129  0.32364586  1.561118  ]  # random
@@ -668,7 +663,6 @@ def rand(shape, dtype=None, name=None):
 
             import paddle
 
-            paddle.disable_static()
             # example 1: attr shape is a list which doesn't contain Tensor.
             out1 = paddle.rand(shape=[2, 3])
             # [[0.451152  , 0.55825245, 0.403311  ],  # random

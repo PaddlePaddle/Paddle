@@ -166,11 +166,8 @@ class Hardshrink(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            x = paddle.to_tensor([-1, 0.3, 2.5])
             m = paddle.nn.Hardshrink()
             out = m(x) # [-1., 0., 2.5]
     """
@@ -295,11 +292,10 @@ class Hardtanh(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
+            x = paddle.to_tensor([-1.5, 0.3, 2.5])
             m = paddle.nn.Hardtanh()
-            out = m(x) # # [-1., 0.3, 1.]
+            out = m(x) # [-1., 0.3, 1.]
     """
 
     def __init__(self, min=-1.0, max=1.0, name=None):
@@ -399,9 +395,8 @@ class ReLU(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            x = paddle.to_tensor([-2., 0., 1.])
             m = paddle.nn.ReLU()
             out = m(x) # [0., 0., 1.]
     """
@@ -615,7 +610,7 @@ class Hardsigmoid(layers.Layer):
 
           import paddle
 
-          m = paddle.nn.Sigmoid()
+          m = paddle.nn.Hardsigmoid()
           x = paddle.to_tensor([-4., 5., 1.])
           out = m(x) # [0., 1, 0.666667]
     """
@@ -1037,16 +1032,13 @@ class LogSoftmax(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                           [3.0, -4.0, 5.0, -6.0],
-                           [-7.0, -8.0, 8.0, 9.0]],
-                          [[1.0, -2.0, -3.0, 4.0],
-                           [-5.0, 6.0, 7.0, -8.0],
-                           [6.0, 7.0, 8.0, 9.0]]])
+            x = [[[-2.0, 3.0, -4.0, 5.0],
+                  [3.0, -4.0, 5.0, -6.0],
+                  [-7.0, -8.0, 8.0, 9.0]],
+                 [[1.0, -2.0, -3.0, 4.0],
+                  [-5.0, 6.0, 7.0, -8.0],
+                  [6.0, 7.0, 8.0, 9.0]]]
             m = paddle.nn.LogSoftmax()
             x = paddle.to_tensor(x)
             out = m(x)
