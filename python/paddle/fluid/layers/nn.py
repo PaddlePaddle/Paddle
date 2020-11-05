@@ -111,7 +111,6 @@ __all__ = [
     'relu',
     'selu',
     'log',
-    'log2',
     'crop',
     'crop_tensor',
     'elu',
@@ -8729,62 +8728,6 @@ def log(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def log2(x, name=None):
-    """
-    Calculates the log to the base 2 of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \\log_2x
-
-    Args:
-        x (Tensor): Input tensor must be one of the following types: float32, float64.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-
-    Returns:
-        Tensor: The log to the base 2 of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-        
-            import paddle
-
-            # example 1: x is a float
-            x_i = paddle.to_tensor([[1.0], [2.0]])
-            res = paddle.log2(x_i) # [[0.],[1.0]]
-
-            # example 2: x is float32
-            x_i = paddle.full(shape=[1], fill_value=2, dtype='float32')
-            paddle.to_tensor(x_i)
-            res = paddle.log2(x_i)
-            print(res.numpy()) # [1.]
-
-            # example 3: x is float64
-            x_i = paddle.full(shape=[1], fill_value=2, dtype='float64')
-            paddle.to_tensor(x_i)
-            res = paddle.log2(x_i)
-            print(res.numpy()) # [1.]
-
-            # example 4: x is a float16
-            x_i = paddle.full(shape=[1], fill_value=2, dtype='float16')
-            paddle.to_tensor(x_i)
-            res = paddle.log2(x_i)
-            print(res.numpy()) # [1.]
-    """
-    if in_dygraph_mode():
-        return core.ops.log2(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log2")
-    inputs = {'X': [x]}
-    helper = LayerHelper('log2', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
     return out
 
 

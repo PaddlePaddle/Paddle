@@ -1664,7 +1664,6 @@ class TestLog2(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
-        print(self.check_grad(['X'], 'Out'))
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
