@@ -204,13 +204,16 @@ class GPUBuddyAllocatorList {
     auto gpu_num = devices_.size();
     allocators_.resize(gpu_num);
     init_flags_.reserve(gpu_num);
-    for (size_t i = 0; i < gpu_num; ++i) {
+
+    size_t index = gpu_num;
+    while (index--) {
       init_flags_.emplace_back(new std::once_flag());
     }
   }
 
   static GPUBuddyAllocatorList *CreateNewInstance() {
-    return new GPUBuddyAllocatorList();
+    auto ret = new GPUBuddyAllocatorList();
+    return ret;
   }
 
  public:

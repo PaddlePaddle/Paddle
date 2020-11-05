@@ -336,6 +336,13 @@ function(cc_library TARGET_NAME)
       message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
     endif()
   endif(cc_library_SRCS)
+  if(WITH_COVERAGE)
+    if ("${TARGET_NAME}" MATCHES "naive_best_fit_allocator")
+      message(STATUS "wanghuan add coverage ${TARGET_NAME}")
+      target_compile_options(${TARGET_NAME} PRIVATE -g -O0 -fprofile-arcs -ftest-coverage)
+      target_link_libraries(${TARGET_NAME} -fprofile-arcs)
+    endif()
+  endif()
 endfunction(cc_library)
 
 
