@@ -1062,17 +1062,15 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
         if in_dygraph_mode():
-            reserve, self._dropout_state, out, last_h, last_c = core.ops.cudnn_lstm(
-                inputs, initial_states[0], initial_states[1], self._all_weights,
-                sequence_length, self._dropout_state, 'cell_type', 'lstm',
-                'dropout_prob', self.dropout, 'is_bidirec',
-                self.num_directions == 2, 'input_size', self.input_size,
+            reserve, out, state = core.ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, 'mode', 'LSTM', 'dropout_prob',
+                self.dropout, 'is_bidirec', self.num_directions == 2,
                 'hidden_size', self.hidden_size, 'num_layers', self.num_layers,
                 'is_test', not self.training)
             out = paddle.tensor.transpose(
                 out, [1, 0, 2]) if not self.time_major else out
-            states = (last_h, last_c)
-            return out, states
+            return out, tuple(state) if len(state) > 1 else state[0]
 
         out = self._helper.create_variable_for_type_inference(inputs.dtype)
         state = [

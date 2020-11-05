@@ -54,7 +54,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
-    {"cudnn_lstm", {"Input", "InitH", "InitC", "WeightList", "SequenceLength"}},
+    {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -127,7 +127,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"update_loss_scaling",
      {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
     {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
-    {"cudnn_lstm", {"StateOut"}},
+    {"rnn", {"DropoutState"}},
 };
 
 // clang-format off

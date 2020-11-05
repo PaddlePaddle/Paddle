@@ -137,6 +137,7 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     }
   }
 }
+/*
 template <typename T>
 void parameter_split(const Tensor* weight, const int& gate_num,
                      const int& layers_num, const int& input_size,
@@ -202,7 +203,7 @@ void parameter_split(const Tensor* weight, const int& gate_num,
     }
     params_vec->emplace_back(tensor_list);
   }
-}
+}*/
 
 void reset_parameter_vector(const std::vector<const Tensor*>& raw_params_vec,
                             const int& num_layers, const int& gate_num,
@@ -641,10 +642,9 @@ template <typename CellType, template <typename, typename> class SingleLayerT,
 void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const std::vector<const Tensor*> weight_list, const Tensor* init_h,
              const Tensor* init_c, const Tensor* sequence_length,
-             Tensor* last_h, Tensor* last_c, Tensor* output,
+             Tensor* last_h, Tensor* last_c, Tensor* output, Tensor* reserve,
              Tensor* dropout_mask, const int& num_layers, const int& gate_num,
-             const int& input_size, const int& hidden_size,
-             const bool& is_bidirec, const std::string& cell_type,
+             const int& hidden_size, const bool& is_bidirec,
              const float& dropout_prob, const bool& is_test, const int& seed) {
   // check the dim message of init state
   const int& direction_num = is_bidirec ? 2 : 1;
@@ -727,21 +727,50 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
 }
 
 template <typename DeviceContext, typename T>
-class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
+class RNNCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const std::string& cell_type = ctx.Attr<std::string>("cell_type");
+    auto* input = ctx.Input<Tensor>("Input");
+    // auto* init_h = ctx.Input<Tensor>("InitH");
+    // auto* init_c = ctx.Input<Tensor>("InitC");
+    auto pre_state = ctx.MultiInput<Tensor>("PreState");
+
+    // auto* last_h = ctx.Output<Tensor>("LastH");
+    // auto* last_c = ctx.Output<Tensor>("LastC");
+
+    auto state = ctx.MultiOutput<Tensor>("State");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* reserve = ctx.Output<Tensor>("Reserve");
+    auto* dropout_mask = ctx.Output<Tensor>("DropoutState");
+
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
-    const int& input_size = ctx.Attr<int>("input_size");
+    // const int& input_size = ctx.Attr<int>("input_size");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const float& dropout_prob = ctx.Attr<float>("dropout_prob");
+
+    auto mode = ctx.Attr<std::string>("mode");
+    // cudnnRNNMode_t rnn_mode = CUDNN_LSTM;
+    // if (mode == "LSTM")
+    //   rnn_mode = CUDNN_LSTM;
+    // else if (mode == "GRU")
+    //   rnn_mode = CUDNN_GRU;
+    // else if (mode == "RNN_RELU")
+    //   rnn_mode = CUDNN_RNN_RELU;
+    // else if (mode == "RNN_TANH")
+    //   rnn_mode = CUDNN_RNN_TANH;
+    // else
+    //   PADDLE_THROW(platform::errors::InvalidArgument(
+    //       "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received:
+    //       "
+    //       "%s.",
+    //       mode));
+
+    // get the input and weight tensor for the cacluate rnn cell
+
     const bool& is_test = ctx.Attr<bool>("is_test");
     const int& seed = ctx.Attr<int>("seed");
-    // get the input and weight tensor for the cacluate rnn cell
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* init_h = ctx.Input<Tensor>("InitH");
-    auto* init_c = ctx.Input<Tensor>("InitC");
+
     auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
@@ -749,20 +778,21 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
     }
-    auto* last_h = ctx.Output<Tensor>("LastH");
-    auto* last_c = ctx.Output<Tensor>("LastC");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* dropout_mask = ctx.Output<Tensor>("StateOut");
-
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
-    last_h->mutable_data<T>(ctx.GetPlace());
-    last_c->mutable_data<T>(ctx.GetPlace());
-    if (cell_type == "lstm") {
+    if (mode == "LSTM") {
+      state[0]->mutable_data<T>(ctx.GetPlace());
+      state[1]->mutable_data<T>(ctx.GetPlace());
+
       RnnFunc<LSTMCell<T>, SingleLayer, BidirLayer, T>(
-          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
-          last_c, output, dropout_mask, num_layers, 4, input_size, hidden_size,
-          is_bidirec, cell_type, dropout_prob, is_test, seed);
+          ctx, input, weight_list, pre_state[0], pre_state[1], sequence_length,
+          state[0], state[1], output, reserve, dropout_mask, num_layers, 4,
+          hidden_size, is_bidirec, dropout_prob, is_test, seed);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received: "
+          "%s.",
+          mode));
     }
   }
 };
