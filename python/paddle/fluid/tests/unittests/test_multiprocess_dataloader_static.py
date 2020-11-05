@@ -217,7 +217,7 @@ class TestStaticDataLoaderReturnList(unittest.TestCase):
 
 class RandomBatchedDataset(Dataset):
     def __init__(self, sample_num, class_num):
-        self.sample_num = sample_num / BATCH_SIZE
+        self.sample_num = int(sample_num / BATCH_SIZE)
         self.class_num = class_num
 
     def __getitem__(self, idx):
