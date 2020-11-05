@@ -173,7 +173,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   return res;
 }
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace crop_tensor_op
 #endif
 
 template <typename DeviceContext, typename T, size_t D>

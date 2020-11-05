@@ -58,7 +58,7 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
 
 template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace dequantize_log_op
 #endif
 
 class DequantizeLogOp : public framework::OperatorWithKernel {

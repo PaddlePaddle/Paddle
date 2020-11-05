@@ -1244,7 +1244,7 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   }
 }
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace interpolate_op
 #endif
 
 template <typename T>

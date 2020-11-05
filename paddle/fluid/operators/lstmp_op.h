@@ -79,7 +79,7 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index, dst, indexed_src);
 }
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace lstmp_op
 #endif
 
 template <typename DeviceContext, typename T>

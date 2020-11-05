@@ -83,7 +83,7 @@ struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
   }
 };
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace sequence_expand_op
 #endif
 
 template <typename DeviceContext, typename T>

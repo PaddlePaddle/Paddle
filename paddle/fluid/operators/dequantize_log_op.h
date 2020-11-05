@@ -37,7 +37,7 @@ struct DequantizeFunctor {
                   const framework::Tensor* dict, framework::Tensor* out);
 };
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace dequantize_log_op
 #endif
 
 template <typename DeviceContext, typename T>

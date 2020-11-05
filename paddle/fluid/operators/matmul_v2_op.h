@@ -653,7 +653,7 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
   }
 };
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace matmul_v2_op
 #endif
 
 }  // namespace operators

@@ -331,7 +331,7 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   ctx->SetOutputDim("Out", dim_out);
 }
 #ifdef PADDLE_WITH_OP_UNITY_BUILD
-}
+} // namespace interpolate_v2_op
 #endif
 
 class InterpolateV2Op : public framework::OperatorWithKernel {
