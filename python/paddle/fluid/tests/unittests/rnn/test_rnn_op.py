@@ -17,7 +17,6 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import math
-
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
@@ -33,10 +32,6 @@ from op_test import OpTest
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
-
-SIGMOID_THRESHOLD_MIN = -40.0
-SIGMOID_THRESHOLD_MAX = 13.0
-EXP_MAX_INPUT = 40.0
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

@@ -44,7 +44,6 @@ void create_mask_matrix(const framework::ExecutionContext& context,
                         const bool& is_reverse, int* min_seq_len) {
   const auto& seq_len_vec = GetDataFromTensor<int>(sequence_length);
   const int& table_width = mask_matrix->dims()[0];
-  // VLOG(2) << "INPUT MASK TENSOR SHAPE:" << mask_matrix->dims();
   Tensor temp;
   temp.Resize(
       framework::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
@@ -84,7 +83,6 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
                                   const int& seed_number,
                                   const bool& upscale_in_train,
                                   const bool& is_test) {
-  // VLOG(2) << "dropout_cpu_function_inplace function";
   auto* x_data = x->data<T>();
   if (!is_test) {
     size_t size = framework::product(x->dims());
@@ -137,73 +135,6 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     }
   }
 }
-/*
-template <typename T>
-void parameter_split(const Tensor* weight, const int& gate_num,
-                     const int& layers_num, const int& input_size,
-                     const int& hidden_size, const int& is_bidirec,
-                     std::vector<TensorList>* params_vec) {
-  // if the weight of RNN is flatten, we need to convert the
-  // the flattened weight to single split tensor
-  const auto& weight_numel = weight->numel();
-  // resize the weight tensor, could slice tensor directly
-  const auto& mem_block_size = gate_num * hidden_size;
-  Tensor weight_shared;
-  weight_shared.ShareDataWith(*weight);
-  weight_shared.Resize(framework::make_ddim(
-      {static_cast<int64_t>(weight_numel / mem_block_size), mem_block_size}));
-
-  // the calcluate the offset of tensor
-  const int& direction_num = is_bidirec ? 2 : 1;
-  const int& first_input_w_stride = input_size;
-  const int& other_input_w_stride = hidden_size * direction_num;
-  const int& hidden_w_stride = hidden_size;
-  const int& bias_offset =
-      direction_num *
-      (first_input_w_stride + hidden_w_stride +
-       (layers_num - 1) * (other_input_w_stride + hidden_w_stride));
-
-  for (int i = 0; i < layers_num; ++i) {
-    TensorList tensor_list;
-    // parameter for the w_hi, w_hh, bias_hi, bias_hh
-    const int& weight_size = 4 * direction_num;
-    tensor_list.reserve(weight_size);
-    for (int j = 0; j < weight_size; ++j) {
-      const int& section = j / 4;
-      int k = j % 4;
-      if (k < 2) {
-        int start_idx = 0;
-        int end_idx = 0;
-        if (i == 0) {
-          start_idx = section * (hidden_w_stride + first_input_w_stride) +
-                      (k % 2) * first_input_w_stride;
-          end_idx =
-              start_idx + (k == 0 ? first_input_w_stride : hidden_w_stride);
-        } else {
-          start_idx = direction_num * (hidden_w_stride + first_input_w_stride) +
-                      (i - 1) * direction_num *
-                          (hidden_w_stride + other_input_w_stride) +
-                      section * (hidden_w_stride + other_input_w_stride) +
-                      (k % 2) * other_input_w_stride;
-          end_idx =
-              start_idx + (k == 0 ? other_input_w_stride : hidden_w_stride);
-        }
-        auto tmp_tensor = weight_shared.Slice(start_idx, end_idx);
-        tmp_tensor.Resize(
-            framework::make_ddim({tmp_tensor.dims()[1], tmp_tensor.dims()[0]}));
-        tensor_list.emplace_back(tmp_tensor);
-      } else {
-        const auto& start_idx =
-            bias_offset + i * 2 * direction_num + section * 2 + k % 2;
-        auto tmp_tensor = weight_shared.Slice(start_idx, start_idx + 1);
-        tmp_tensor.Resize(
-            framework::make_ddim({tmp_tensor.dims()[1], tmp_tensor.dims()[0]}));
-        tensor_list.emplace_back(tmp_tensor);
-      }
-    }
-    params_vec->emplace_back(tensor_list);
-  }
-}*/
 
 void reset_parameter_vector(const std::vector<const Tensor*>& raw_params_vec,
                             const int& num_layers, const int& gate_num,
@@ -374,7 +305,6 @@ struct SingleLayer : Layer<T> {
     // vec[0] is parameter of w_hi, vec[2] is bias of b_hi
     Tensor input_w;
     this->preprocess(context, input, vec[0], vec[2], vec[3], &input_w);
-    // VLOG(2) << "output shape: " << output->dims();
 
     auto input_tensors = Unbind(input_w);
     auto output_tensors = Unbind(*output);
@@ -731,12 +661,8 @@ class RNNCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
-    // auto* init_h = ctx.Input<Tensor>("InitH");
-    // auto* init_c = ctx.Input<Tensor>("InitC");
     auto pre_state = ctx.MultiInput<Tensor>("PreState");
-
-    // auto* last_h = ctx.Output<Tensor>("LastH");
-    // auto* last_c = ctx.Output<Tensor>("LastC");
+    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
 
     auto state = ctx.MultiOutput<Tensor>("State");
     auto* output = ctx.Output<Tensor>("Out");
@@ -745,33 +671,11 @@ class RNNCPUKernel : public framework::OpKernel<T> {
 
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
-    // const int& input_size = ctx.Attr<int>("input_size");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const float& dropout_prob = ctx.Attr<float>("dropout_prob");
-
     auto mode = ctx.Attr<std::string>("mode");
-    // cudnnRNNMode_t rnn_mode = CUDNN_LSTM;
-    // if (mode == "LSTM")
-    //   rnn_mode = CUDNN_LSTM;
-    // else if (mode == "GRU")
-    //   rnn_mode = CUDNN_GRU;
-    // else if (mode == "RNN_RELU")
-    //   rnn_mode = CUDNN_RNN_RELU;
-    // else if (mode == "RNN_TANH")
-    //   rnn_mode = CUDNN_RNN_TANH;
-    // else
-    //   PADDLE_THROW(platform::errors::InvalidArgument(
-    //       "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received:
-    //       "
-    //       "%s.",
-    //       mode));
-
-    // get the input and weight tensor for the cacluate rnn cell
-
     const bool& is_test = ctx.Attr<bool>("is_test");
     const int& seed = ctx.Attr<int>("seed");
-
-    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
     const Tensor* sequence_length = nullptr;
