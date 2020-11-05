@@ -121,7 +121,8 @@ __all__ = [
         'kron',
         'isfinite',
         'isinf',
-        'isnan'
+        'isnan',
+        'broadcast_shape'
 ]
 # yapf: enable.
 
@@ -2133,3 +2134,30 @@ def any(x, axis=None, keepdim=False, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
+def broadcast_shape(x_shape, y_shape):
+    """
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
+
+    Args:
+        x_shape (list[int]|tuple[int]): A shape of tensor.
+        y_shape (list[int]|tuple[int]): A shape of tensor.
+        
+
+    Returns:
+        list[int], the result shape.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
+            # [2, 3, 3]
+            
+            # shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
+            # ValueError (terminated with error message).
+
+    """
+
+    return core.broadcast_shape(x_shape, y_shape)
