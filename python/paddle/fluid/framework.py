@@ -37,6 +37,7 @@ from . import unique_name
 import paddle.version as fluid_version
 import warnings
 import functools
+from ..utils import deprecated
 
 __all__ = [
     'Program',
@@ -523,6 +524,8 @@ _name_scope = NameScope()
 
 
 @signature_safe_contextmanager
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.name_scope")
 def name_scope(prefix=None):
     """
     :api_attr: Static Graph
