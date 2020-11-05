@@ -986,7 +986,10 @@ class RNNBase(LayerList):
                 "direction should be forward, backward or bidirectional, "
                 "received direction = {}".format(direction))
 
-        self.could_use_cudnn = True
+        self.could_use_cudnn = get_device().startswith(
+            "gpu:") and get_cudnn_version()
+        if self.mode == "LSTM":
+            self.could_use_cudnn = True
         self.could_use_cudnn &= direction != "backward"
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
             2 if direction == "bidirectional" else 1)
@@ -1062,9 +1065,9 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
         if in_dygraph_mode():
-            reserve, out, state = core.ops.rnn(
+            self._dropout_state, reserve, out, state = core.ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
-                self._dropout_state, 'mode', 'LSTM', 'dropout_prob',
+                self._dropout_state, 2, 'mode', self.mode, 'dropout_prob',
                 self.dropout, 'is_bidirec', self.num_directions == 2,
                 'hidden_size', self.hidden_size, 'num_layers', self.num_layers,
                 'is_test', not self.training)
