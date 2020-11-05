@@ -825,7 +825,7 @@ template <typename T>
 struct Log2Functor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log() / static_cast<T>(log(2));
+    out.device(d) = x.log2();
   }
 };
 
