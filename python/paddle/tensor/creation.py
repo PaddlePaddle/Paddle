@@ -1170,13 +1170,19 @@ def assign(x, output=None):
         if isinstance(x, Variable):
             return core.ops.assign(x)
         else:
+            if x.size > 1024 * 1024:
+                raise ValueError(
+                    "The size of input is too big. Please consider "
+                    "saving it to file and 'load_op' to load it")
+            if not output:
+                output = _varbase_creator(dtype=x.dtype)
             attrs = get_attrs(x)
             attrs_ = []
             for k, v in attrs.items():
                 attrs_.append(k)
                 attrs_.append(v)
-            core.ops.assign_value(output, *attrs_)
-            return output
+            out = core.ops.assign_value(output, *attrs_)
+            return out
     helper = LayerHelper('assign', **locals())
 
     if isinstance(x, Variable):
