@@ -195,9 +195,14 @@ class AnalysisPredictor : public PaddlePredictor {
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
-  /// After this operation, we reduced the memory usage.
+  /// The memory pool is considered to be composed of a list of chunks, if
+  /// the chunk is not occupied, it can be released.
   ///
-  void ShrinkMemory() override;
+  /// \return Number of bytes released. It may be smaller than the actual
+  /// released memory, because part of the memory is not managed by the
+  /// MemoryPool.
+  ///
+  uint64_t TryShrinkMemory() override;
 
   ///
   /// \brief Get the argument used by predictor

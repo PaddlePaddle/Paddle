@@ -566,7 +566,7 @@ void BindAnalysisPredictor(py::module *m) {
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
       .def("clear_intermediate_tensor",
            &AnalysisPredictor::ClearIntermediateTensor)
-      .def("shrink_memory", &AnalysisPredictor::ShrinkMemory)
+      .def("try_shrink_memory", &AnalysisPredictor::TryShrinkMemory)
       .def("create_feed_fetch_var", &AnalysisPredictor::CreateFeedFetchVar)
       .def("prepare_feed_fetch", &AnalysisPredictor::PrepareFeedFetch)
       .def("prepare_argument", &AnalysisPredictor::PrepareArgument)
@@ -594,7 +594,7 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("get_output_handle", &paddle_infer::Predictor::GetOutputHandle)
       .def("run", &paddle_infer::Predictor::Run)
       .def("clone", &paddle_infer::Predictor::Clone)
-      .def("shrink_memory", &paddle_infer::Predictor::ShrinkMemory)
+      .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",
            &paddle_infer::Predictor::ClearIntermediateTensor);
 }

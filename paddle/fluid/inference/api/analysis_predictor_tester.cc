@@ -135,7 +135,7 @@ TEST(AnalysisPredictor, ZeroCopy) {
   auto* out_data = out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
   LOG(INFO) << "output_data: " << out_data;
-  predictor->ShrinkMemory();
+  predictor->TryShrinkMemory();
 }
 
 TEST(AnalysisPredictor, Clone) {
@@ -546,7 +546,7 @@ TEST(Predictor, Run) {
   int size = 0;
   out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
-  predictor->ShrinkMemory();
+  predictor->TryShrinkMemory();
 }
 
 }  // namespace paddle_infer

@@ -889,9 +889,9 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
-void AnalysisPredictor::ShrinkMemory() {
+uint64_t AnalysisPredictor::TryShrinkMemory() {
   ClearIntermediateTensor();
-  paddle::memory::Release(place_);
+  return paddle::memory::Release(place_);
 }
 
 void AnalysisPredictor::ClearIntermediateTensor() {
@@ -982,6 +982,8 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
+  // TODO(wilber): release weight memory.
+  paddle::memory::Release(place_);
 
 #if PADDLE_WITH_MKLDNN
   if (mkldnn_quantizer_) {
@@ -1146,7 +1148,7 @@ void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
 
-void Predictor::ShrinkMemory() { predictor_->ShrinkMemory(); }
+uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {
