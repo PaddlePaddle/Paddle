@@ -142,6 +142,11 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
                                     ops::kTransposeMKLDNNINT8,
                                     ops::TransposeMKLDNNOpKernel<int8_t>);
 
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    transpose2, MKLDNN, ::paddle::platform::CPUPlace, BF16,
+    ops::kTransposeMKLDNNFP32,
+    ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
+
 REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 

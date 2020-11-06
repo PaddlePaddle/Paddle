@@ -12,6 +12,7 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
@@ -127,6 +128,7 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
@@ -139,6 +141,7 @@ endif()
 if (WITH_NCCL)
     if (${NCCL_VERSION} VERSION_LESS 2212)
         LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
         LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_transformer)
     endif()
 endif()
@@ -339,7 +342,6 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_isolated_var)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -587,6 +589,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
         test_parallel_executor_profiler
+        test_parallel_executor_fetch_isolated_var
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)

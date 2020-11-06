@@ -319,10 +319,8 @@ if '${WITH_XPU}' == 'ON':
                 raise Exception("patch ${XPU_API_LIB} failed, command: %s" % command)
     shutil.copy('${XPU_API_LIB}', libs_path)
     shutil.copy('${XPU_RT_LIB}', libs_path)
-    shutil.copy('${XPU_SIM_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_API_LIB_NAME}',
-                                  '${XPU_RT_LIB_NAME}',
-                                  '${XPU_SIM_LIB_NAME}']
+                                  '${XPU_RT_LIB_NAME}']
 
 # copy libfuild_framework.so to libs
 if os.name != 'nt' and sys.platform != 'darwin':
@@ -349,7 +347,8 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
         # The dynamic library compiled under aarch64 is greater than 64M,
         # and an oversize error will be reported when using patchelf.
-        if platform.machine() != 'aarch64':
+        # The sw_64 not suppot patchelf, so we just disable that.
+        if platform.machine() != 'aarch64' and platform.machine() != 'sw_64':
           if os.system(command) != 0:
               raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 

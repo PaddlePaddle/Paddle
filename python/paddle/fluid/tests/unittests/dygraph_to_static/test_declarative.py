@@ -115,6 +115,7 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(len(net.forward.program_cache) == 1)
 
             # 2. test save load
+            net.inner_function(x)
             jit.save(net, './simple_net')
             infer_net = fluid.dygraph.jit.load('./simple_net')
             pred = infer_net(x)

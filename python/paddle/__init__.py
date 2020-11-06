@@ -200,6 +200,8 @@ from .tensor.math import isfinite  #DEFINE_ALIAS
 from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
+from .tensor.math import broadcast_shape  #DEFINE_ALIAS
+
 from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
@@ -220,7 +222,7 @@ from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 
-from .tensor.to_string import set_printoptions
+from .tensor.to_string import set_printoptions  #DEFINE_ALIAS
 
 from .framework.random import seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
@@ -248,6 +250,7 @@ from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 # from .fluid.data import data
 from .tensor.stat import numel  #DEFINE_ALIAS
+from .tensor.stat import median  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
