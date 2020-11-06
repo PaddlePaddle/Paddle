@@ -15,6 +15,6 @@
 # limitations under the License.
 
 set -x
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit
 rm -rf build/
 set +x

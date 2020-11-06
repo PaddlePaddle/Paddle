@@ -1785,8 +1785,6 @@ class ComplexVariable(object):
     **Notes**:
         **The constructor of ComplexTensor should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexTensor with complex number data.**
-
     Args:
         real (Tensor): The Tensor holding real-part data.
         imag (Tensor): The Tensor holding imaginery-part data.
@@ -1795,14 +1793,14 @@ class ComplexVariable(object):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.enable_imperative()
             x = paddle.to_tensor([1.0+2.0j, 0.2])
             print(x.name, x.dtype, x.shape)
-            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, 'complex128', [2L])
-            print(x.numpy())
-            # [1. +2.j 0.2+0.j]
+            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, complex64, [2])
+            print(x)
+            # ComplexTensor[real](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #                     [        1., 0.20000000])
+            # ComplexTensor[imag](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #                     [2., 0.])
             print(type(x))
             # <class 'paddle.ComplexTensor'>
     """
@@ -1827,6 +1825,9 @@ class ComplexVariable(object):
         else:
             self._dtype = "complex128"
         self._shape = self.real.shape
+
+    def __getitem__(self, idx):
+        return ComplexVariable(self.real[idx], self.imag[idx])
 
     @property
     def dtype(self):
@@ -1858,9 +1859,10 @@ class ComplexVariable(object):
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __str__(self):
-        return "ComplexTensor[real]: %s\n%s\nComplexTensor[imag]: %s\n%s" % (
-            self.real.name, str(self.real.value().get_tensor()), self.imag.name,
-            str(self.imag.value().get_tensor()))
+        from paddle.tensor.to_string import to_string
+        return "ComplexTensor containing:\n{real}\n{imag}".format(
+            real=to_string(self.real, "[real part]Tensor"),
+            imag=to_string(self.imag, "[imag part]Tensor"))
 
     __repr__ = __str__
 
@@ -5335,16 +5337,13 @@ class ParamBase(core.VarBase):
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-                conv = paddle.nn.Conv2D(3, 3, 5)
-                print(conv.weight)
-                # Parameter: conv2d_0.w_0
-                #   - place: CUDAPlace(0)
-                #   - shape: [3, 3, 5, 5]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [...] 
-                paddle.enable_static()
+                linear = paddle.nn.Linear(3, 3)
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [[ 0.48948765,  0.05829060, -0.25524026],
+                #         [-0.70368278,  0.52986908, -0.68742192],
+                #         [-0.54217887,  0.48439729,  0.34082305]])
         """
         return "Parameter containing:\n{tensor}".format(
             tensor=super(ParamBase, self).__str__())

@@ -17,7 +17,7 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
-SETLOCAL
+setlocal
 
 rem -------clean up environment-----------
 set work_dir=%cd%
@@ -56,11 +56,12 @@ if %error_code% NEQ 0 (
     goto :mkbuild
 )
 
+setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
-    if %ERRORLEVEL% EQU 0 (
+    if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
     git branch -D last_pr
@@ -218,6 +219,7 @@ goto:eof
 
 :cmake_error
 echo 7 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Cmake failed, will exit!
 exit /b 7
 
@@ -246,7 +248,8 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
+::msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 1 (
@@ -263,6 +266,7 @@ goto:eof
 
 :build_error
 echo 7 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Build Paddle failed, will exit!
 exit /b 7
 
@@ -306,6 +310,7 @@ goto:eof
 
 :test_whl_pacakage_error
 echo 1 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Test import paddle failed, will exit!
 exit /b 1
 
@@ -340,7 +345,8 @@ ctest.exe -E "(%disable_ut_quickly%)" --output-on-failure -C Release -j 8 --repe
 goto:eof
 
 :unit_test_error
-echo 8 > %cache_dir%\error_code.txt
+echo 8 > %cache_dir%\
+type %cache_dir%\error_code.txt
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "1 card TestCases Total"
@@ -365,6 +371,7 @@ goto:eof
 
 :test_inference_error
 echo 1 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Testing fluid library for inference failed!
 exit /b 1
 
@@ -374,8 +381,10 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
+@ECHO OFF
 cd /d %work_dir%\build
-echo set -ex>  check_change_of_unittest.sh
+echo set -e>  check_change_of_unittest.sh
+echo set +x>> check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
 echo GIT_PR_ID=%AGILE_PULL_ID% >>  check_change_of_unittest.sh
 echo BRANCH=%BRANCH%>>  check_change_of_unittest.sh
@@ -420,7 +429,6 @@ echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST
 echo if [ "$unittest_spec_diff" != "" ]; then>>  check_change_of_unittest.sh
 echo     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420>>  check_change_of_unittest.sh
 echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
-echo     set +x>>  check_change_of_unittest.sh
 echo     if [ "$approval_line" != "" ]; then>>  check_change_of_unittest.sh
 echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
 echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
@@ -444,11 +452,11 @@ goto:eof
 
 :check_change_of_unittest_error
 echo 1 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 exit /b 1
 
 
 :timestamp
-echo on
 setlocal enabledelayedexpansion
 set start=%~1
 set dd=%start:~2,2%
@@ -502,6 +510,7 @@ taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
 echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
 echo Windows CI run successfully!
 exit /b 0
 
