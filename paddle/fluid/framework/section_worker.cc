@@ -121,6 +121,7 @@ void SectionWorker::TrainFiles() {
         }
       }
     }
+    cudaDeviceSynchronize();
   }
 
   // backward pass
@@ -139,6 +140,7 @@ void SectionWorker::TrainFiles() {
         }
       }
     }
+    cudaDeviceSynchronize();
   }
 
   // update pass

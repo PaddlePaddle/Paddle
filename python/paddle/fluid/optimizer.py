@@ -3841,6 +3841,14 @@ class PipelineOptimizer(object):
                     ap_op = program["program"].block(0).desc.append_op()
                     ap_op.copy_from(op_desc)
                     ap_op._set_attr(self._op_device_key, "")
+            elif op.type == "create_py_reader" or op.type == "read":
+                # Copy read related ops to all section to make them exit after each epoch.
+                for device in device_program_map.keys():
+                    program = device_program_map[device]
+                    op_desc = op.desc
+                    ap_op = program["program"].block(0).desc.append_op()
+                    ap_op.copy_from(op_desc)
+                    ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
@@ -4015,6 +4023,10 @@ class PipelineOptimizer(object):
                 prog = programs[prog_index]['program']
                 block = prog.block(0)
                 index = 0
+                for op in block.ops:
+                    index += 1
+                    if op.type == "read":
+                        break
                 source_var = main_program.block(0).var(var_name)
                 new_var = self._create_var(block, source_var, var_name)
                 block._insert_op(
@@ -4323,7 +4335,9 @@ class PipelineOptimizer(object):
             for prog in var_info[var_name]:
                 block = prog.block(0)
                 for op in block.ops:
-                    if op.type == "recv_v2": continue
+                    if op.type == "recv_v2" or op.type == "create_py_reader" or \
+                        op.type == "read":
+                        continue
                     # We have processed lr related vars
                     if op.attr(self._op_role_key) == int(
                             self._op_role.Optimize.LRSched):
@@ -4444,10 +4458,6 @@ class PipelineOptimizer(object):
         # Step7: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
                                                           local_rank)
-        with open("startup_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(new_startup_program))
-        with open("main_prog_%d" % local_rank, 'w') as f:
-            f.writelines(str(program_list[local_rank]['program']))
 
         # Step8: clear gradients before each mini-batch and 
         # accumulate gradients during backward
@@ -4456,6 +4466,11 @@ class PipelineOptimizer(object):
             dev_spec=device_specs[local_rank])
         self._accumulate_gradients(program_list[local_rank]['program']
                                    .global_block())
+
+        with open("startup_prog_%d" % local_rank, 'w') as f:
+            f.writelines(str(new_startup_program))
+        with open("main_prog_%d" % local_rank, 'w') as f:
+            f.writelines(str(program_list[local_rank]['program']))
 
         startup_program._pipeline_opt = {"startup_program": new_startup_program}
         main_program._pipeline_opt = {
