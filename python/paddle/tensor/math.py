@@ -384,7 +384,7 @@ def remainder(x, y, name=None):
     Mod two tensors element-wise. The equation is:
 
     .. math::
-        out = x \% y
+        out = x / y
 
     **Note**:
     ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
@@ -407,6 +407,7 @@ def remainder(x, y, name=None):
             y = paddle.to_tensor([1, 5, 3, 3])
             z = paddle.remainder(x, y)
             print(z)  # [0, 3, 2, 1]
+
     """
     op_type = 'elementwise_mod'
     axis = -1
