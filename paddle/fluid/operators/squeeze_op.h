@@ -39,11 +39,10 @@ class SqueezeKernel : public framework::OpKernel<T> {
     auto x_dims = in->dims();
     auto out_dims = GetOutputShape(axes, x_dims, true);
 
-    // out->mutable_data(context.GetPlace(), in->type());
-    out->ShareDataWith(*in);
-    // framework::TensorCopy(
-    //     *in, context.GetPlace(),
-    //     context.template device_context<platform::DeviceContext>(), out);
+    out->mutable_data(context.GetPlace(), in->type());
+    framework::TensorCopy(
+        *in, context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
   }
 };
@@ -75,11 +74,10 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
     auto x_dims = in->dims();
     auto out_dims = GetOutputShape(axes, x_dims, true);
 
-    // out->mutable_data(context.GetPlace(), in->type());
-    out->ShareDataWith(*in);
-    // framework::TensorCopy(
-    //     *in, context.GetPlace(),
-    //     context.template device_context<platform::DeviceContext>(), out);
+    out->mutable_data(context.GetPlace(), in->type());
+    framework::TensorCopy(
+        *in, context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
   }
 };

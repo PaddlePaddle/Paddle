@@ -132,13 +132,18 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
 // NOTE(pangyoki): The same function with op_passing_outs_map, but used for
 // in-place ops.
 std::map<std::string, std::set<std::string>> op_inplace_passing_outs_map = {
-    {"squeeze2", {"Out"}},
+    {"squeeze2", {"Out"}},  // "X" -> "Out"
+};
+std::map<std::string, std::map<std::string, std::string>>
+    op_reuse_buffer_inplace_passing_outs_map = {
+        {"squeeze2", {{"Out", "X"}}},  // "X" -> "Out"
 };
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
 const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
+const char* OUT_INPLACE_INITIALIZER_TEMPLATE = R"({"%s", {inplace_varbase_%s}})";
 
 const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
 const char* INPUT_LIST_INITIALIZER_TEMPLATE = R"({"%s", %s})";
@@ -190,6 +195,14 @@ const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
+const char* REUSE_BUFFER_INPLACE_TEMPLATE =
+R"(
+    auto inplace_varbase_%s = std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()));
+    auto *out_tensor_%s = inplace_varbase_%s->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto *in_tensor_%s = %s->MutableVar()->GetMutable<framework::LoDTensor>();
+    out_tensor_%s->ShareBufferWith(*in_tensor_%s);
+)";
+
 const char* OP_FUNCTION_TEMPLATE =
 R"(
 %s %s(%s)
@@ -200,6 +213,7 @@ R"(
   {
     py::gil_scoped_release release;
     auto tracer = imperative::GetCurrentTracer();
+    %s
     imperative::NameVarBaseMap outs = %s;
     imperative::NameVarBaseMap ins = %s;
     %s
@@ -237,7 +251,7 @@ static inline std::string TempName(const std::string& name) {
 
 std::string GenerateOpFunctionsBody(
     const paddle::framework::proto::OpProto* op_proto, std::string func_name,
-    bool flag_inplace = false) {
+    bool flag_inplace_reuse_varbase = false) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
   std::string ins_initializer = "{";
@@ -246,6 +260,7 @@ std::string GenerateOpFunctionsBody(
   int arg_idx = 0;
   int input_args_num = 0;
   std::string ins_cast_str = "";
+  std::string reuse_buffer_inplace_str = "";
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -304,7 +319,8 @@ std::string GenerateOpFunctionsBody(
     const auto return_template =
         output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
     if (FindPassingOutsMap(op_type, out_name) ||
-        (flag_inplace && FindInplacePassingOutsMap(op_type, out_name))) {
+        (flag_inplace_reuse_varbase &&
+         FindInplacePassingOutsMap(op_type, out_name))) {
       if (input_args != "") {
         input_args += ",";
       }
@@ -326,6 +342,28 @@ std::string GenerateOpFunctionsBody(
             paddle::string::Sprintf(out_template, out_name, out_name);
         outs_initializer += ",";
       }
+    } else if (FindInplacePassingOutsMap(op_type, out_name)) {
+      if (output.duplicable()) {
+        if (input_args != "") {
+          input_args += ",";
+        }
+        auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
+        input_args += ARG_OUT_NUM_TYPE;
+        input_args += out_num_str;
+        input_args_num++;
+        outs_initializer += paddle::string::Sprintf(
+            OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
+      } else {
+        std::string reuse_buffer_in_name =
+            op_reuse_buffer_inplace_passing_outs_map[op_type][out_name];
+        reuse_buffer_inplace_str += paddle::string::Sprintf(
+            REUSE_BUFFER_INPLACE_TEMPLATE, out_name, out_name, out_name,
+            reuse_buffer_in_name, reuse_buffer_in_name, out_name,
+            reuse_buffer_in_name);
+        outs_initializer += paddle::string::Sprintf(
+            OUT_INPLACE_INITIALIZER_TEMPLATE, out_name, out_name);
+      }
+      outs_initializer += ",";
     } else {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the
@@ -376,9 +414,9 @@ std::string GenerateOpFunctionsBody(
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
       OP_FUNCTION_TEMPLATE, return_type, func_name, function_args, ins_cast_str,
-      op_type, input_args_num, outs_initializer, ins_initializer,
-      ins_initializer_with_null + outs_initializer_with_null, op_type,
-      return_str);
+      op_type, input_args_num, reuse_buffer_inplace_str, outs_initializer,
+      ins_initializer, ins_initializer_with_null + outs_initializer_with_null,
+      op_type, return_str);
 
   return op_function_str;
 }
