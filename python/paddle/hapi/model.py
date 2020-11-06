@@ -1716,8 +1716,7 @@ class Model(object):
         cbks.on_end('test', logs)
         return outputs
 
-    def _save_inference_model(self,
-                              path):
+    def _save_inference_model(self, path):
         """
         Save inference model can be used in static or dynamic mode.
 
@@ -1731,6 +1730,7 @@ class Model(object):
         if fluid.in_dygraph_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
+
                 if self._input_shapes is None:  # No provided or inferred
                     raise RuntimeError(
                         "Saving inference model needs 'inputs' or running before saving. Please specify 'inputs' in Model initialization or input training data and perform a training for shape derivation."
