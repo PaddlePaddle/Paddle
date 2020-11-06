@@ -194,6 +194,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
 
   DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
                       std::vector<std::string>);

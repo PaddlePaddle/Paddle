@@ -312,6 +312,22 @@ struct AnalysisConfig {
       std::map<std::string, std::vector<int>> max_input_shape,
       std::map<std::string, std::vector<int>> optim_input_shape,
       bool disable_trt_plugin_fp16 = false);
+
+  ///
+  /// \brief Replace some TensorRT plugins to TensorRT OSS(
+  /// https://github.com/NVIDIA/TensorRT), with which some models's inference
+  /// may
+  /// be more high-performance. Libnvinfer_plugin.so greater than V7.2.1 is
+  /// needed.
+  ///
+  void EnableTensorRtOSS();
+  ///
+  /// \brief A boolean state telling whether to use the TensorRT OSS.
+  ///
+  /// \return bool Whether to use the TensorRT OSS.
+  ///
+  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
@@ -531,6 +547,7 @@ struct AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
+  bool trt_use_oss_{false};
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
