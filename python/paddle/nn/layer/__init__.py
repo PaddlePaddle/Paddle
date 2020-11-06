@@ -35,11 +35,11 @@ from .rnn import *
 from .vision import *
 
 from .transformer import *
-# from .activation import PReLU        #DEFINE_ALIAS
+from .activation import PReLU  #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
 from .activation import LeakyReLU  #DEFINE_ALIAS
 from .activation import Sigmoid  #DEFINE_ALIAS
-# from .activation import Softmax        #DEFINE_ALIAS
+from .activation import Softmax  #DEFINE_ALIAS
 from .activation import LogSoftmax  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Bilinear  #DEFINE_ALIAS
