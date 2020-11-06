@@ -623,6 +623,8 @@ def save(layer, path, input_spec=None, **configs):
 
     # parse configs
     configs = _parse_save_configs(configs)
+    scope = core.Scope()
+    extra_var_info = dict()
     for attr_func in dir(layer):
         static_func = getattr(layer, attr_func, None)
         if isinstance(static_func, StaticFunction):
@@ -666,9 +668,7 @@ def save(layer, path, input_spec=None, **configs):
         for structured_name, var in six.iteritems(layer.state_dict()):
             state_names_dict[var.name] = structured_name
 
-        # 4. share parameters from Layer to scope & record var info
-        scope = core.Scope()
-        extra_var_info = dict()
+        # 4. share parameters from Layer to scope & record var info        
         for param_or_buffer in concrete_program.parameters:
             # share to scope
             param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor(
@@ -676,7 +676,7 @@ def save(layer, path, input_spec=None, **configs):
             src_tensor = param_or_buffer.value().get_tensor()
             param_or_buffer_tensor._share_data_with(src_tensor)
             # record var info
-            if 'forward' == attr_func:
+            if param_or_buffer.name not in extra_var_info:
                 extra_info_dict = dict()
                 if param_or_buffer.name in state_names_dict:
                     extra_info_dict['structured_name'] = state_names_dict[
@@ -712,25 +712,25 @@ def save(layer, path, input_spec=None, **configs):
                 export_for_deployment=configs._export_for_deployment,
                 program_only=configs._program_only)
 
-            # NOTE(chenweihang): [ Save extra variable info ]
-            # save_inference_model will lose some important variable information, including:
-            #   - Variable name and correspondence (when saved variables as one file)
-            #   - Variable.stop_gradient information
-            #   - Which persistent variable are parameter and which are not
-            #   - Parameter.trainable information
-            #
-            # The lost information cannot be recovered when it is loaded again, 
-            # so if we want to perform fine-tune after loading, we may need to 
-            # configure redundant information to proceed.
-            #
-            # Due to compatibility issues, we cannot change the original storage structure, 
-            # but we can save these information in `jit.save` without changing the original 
-            # storage to improve user experience. So we save extra information into
-            # file `***.pdiparams.info`
-            if 'forward' == attr_func:
-                extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
-                with open(extra_var_info_path, 'wb') as f:
-                    pickle.dump(extra_var_info, f, protocol=2)
+    # NOTE(chenweihang): [ Save extra variable info ]
+    # save_inference_model will lose some important variable information, including:
+    #   - Variable name and correspondence (when saved variables as one file)
+    #   - Variable.stop_gradient information
+    #   - Which persistent variable are parameter and which are not
+    #   - Parameter.trainable information
+    #
+    # The lost information cannot be recovered when it is loaded again, 
+    # so if we want to perform fine-tune after loading, we may need to 
+    # configure redundant information to proceed.
+    #
+    # Due to compatibility issues, we cannot change the original storage structure, 
+    # but we can save these information in `jit.save` without changing the original 
+    # storage to improve user experience. So we save extra information into
+    # file `***.pdiparams.info`
+    with scope_guard(scope):
+        extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
+        with open(extra_var_info_path, 'wb') as f:
+            pickle.dump(extra_var_info, f, protocol=2)
 
 
 @dygraph_only
