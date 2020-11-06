@@ -2101,8 +2101,9 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>(
-          {"concat", "conv2d", "fusion_gru", "reshape2", "transpose2", "sum"});
+      std::unordered_set<std::string>({"concat", "conv2d", "fusion_gru", "gelu",
+                                       "reshape2", "softmax", "sum",
+                                       "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
