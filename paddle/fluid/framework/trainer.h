@@ -248,7 +248,7 @@ class PipelineTrainer : public TrainerBase {
   std::vector<std::string> skip_vars_;
   TrainerDesc trainer_desc_;
 
-  std::thread section_thread_;
+  std::future<void> section_thread_;
   std::shared_ptr<paddle::framework::DeviceWorker> worker_;
   Scope* minibatch_scope_;
   // microbatch_scopes_: [microbatch_id]

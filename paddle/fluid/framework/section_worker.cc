@@ -100,31 +100,26 @@ void SectionWorker::TrainFiles() {
   }
 
   for (int i = 0; i < num_microbatches_; ++i) {
-    try {
-      for (auto& op : ops_) {
-        int op_role = op->Attr<int>(std::string("op_role"));
-        // We run op with op_role = kLRSched only for the first microbatch
-        // to avoid increasing the @LR_DECAY_STEP@ multiple times.
-        bool run_first_mbatch = op_role == static_cast<int>(OpRole::kForward) ||
-                                op_role == (static_cast<int>(OpRole::kForward) |
-                                            static_cast<int>(OpRole::kLoss)) ||
-                                op_role == static_cast<int>(OpRole::kLRSched);
-        bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
-                          op_role == (static_cast<int>(OpRole::kForward) |
-                                      static_cast<int>(OpRole::kLoss));
-        if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
-          VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
-                  << i;
-          op->Run(*microbatch_scopes_[i], place_);
-          if (gc) {
-            DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                                gc.get());
-          }
+    for (auto& op : ops_) {
+      int op_role = op->Attr<int>(std::string("op_role"));
+      // We run op with op_role = kLRSched only for the first microbatch
+      // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+      bool run_first_mbatch = op_role == static_cast<int>(OpRole::kForward) ||
+                              op_role == (static_cast<int>(OpRole::kForward) |
+                                          static_cast<int>(OpRole::kLoss)) ||
+                              op_role == static_cast<int>(OpRole::kLRSched);
+      bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                        op_role == (static_cast<int>(OpRole::kForward) |
+                                    static_cast<int>(OpRole::kLoss));
+      if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+        VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
+                << i;
+        op->Run(*microbatch_scopes_[i], place_);
+        if (gc) {
+          DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
+                              gc.get());
         }
       }
-    } catch (platform::EOFException& e) {
-      VLOG(3) << "EOF encountered and completed.";
-      std::rethrow_exception(std::current_exception());
     }
   }
 
@@ -214,71 +209,58 @@ void SectionWorker::TrainFilesWithProfiler() {
 
   // Start a minibatch.
   for (int i = 0; i < num_microbatches_; ++i) {
-    try {
-      int op_idx = 0;
-      gettimeofday(&micro_start, NULL);
-      for (auto& op : ops_) {
-        gettimeofday(&start, NULL);
-        int op_role = op->Attr<int>(std::string("op_role"));
-        // We run op with op_role = kLRSched only for the first microbatch
-        // to avoid increasing the @LR_DECAY_STEP@ multiple times.
-        bool run_first_mbatch = op_role == static_cast<int>(OpRole::kForward) ||
-                                op_role == (static_cast<int>(OpRole::kForward) |
-                                            static_cast<int>(OpRole::kLoss)) ||
-                                op_role == static_cast<int>(OpRole::kLRSched);
-        bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
-                          op_role == (static_cast<int>(OpRole::kForward) |
-                                      static_cast<int>(OpRole::kLoss));
-        if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
-          VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
-                  << i;
-          timeline.Start();
-          op->Run(*microbatch_scopes_[i], place_);
-          if (gc) {
-            DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                                gc.get());
-          }
-          cudaDeviceSynchronize();
-          timeline.Pause();
-          gettimeofday(&end, NULL);
-          auto time = timeline.ElapsedUS();
-          op_total_time[op_idx] += time;
-          if (time > op_max_time[op_idx]) {
-            op_max_time[op_idx] = time;
-          }
-          if (time < op_min_time[op_idx]) {
-            op_min_time[op_idx] = time;
-          }
-          op_count[op_idx] += 1;
-
-          std::cout << std::fixed;
-          std::cout.precision(0);
-          std::cout << "::FWD:B[" << batch_id_ << "]:SCOPE[" << i << "]:OP["
-                    << op->Type() << "]:START["
-                    << start.tv_sec * 1e6 + start.tv_usec << "]:END["
-                    << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
+    int op_idx = 0;
+    gettimeofday(&micro_start, NULL);
+    for (auto& op : ops_) {
+      gettimeofday(&start, NULL);
+      int op_role = op->Attr<int>(std::string("op_role"));
+      // We run op with op_role = kLRSched only for the first microbatch
+      // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+      bool run_first_mbatch = op_role == static_cast<int>(OpRole::kForward) ||
+                              op_role == (static_cast<int>(OpRole::kForward) |
+                                          static_cast<int>(OpRole::kLoss)) ||
+                              op_role == static_cast<int>(OpRole::kLRSched);
+      bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                        op_role == (static_cast<int>(OpRole::kForward) |
+                                    static_cast<int>(OpRole::kLoss));
+      if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+        VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
+                << i;
+        timeline.Start();
+        op->Run(*microbatch_scopes_[i], place_);
+        if (gc) {
+          DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
+                              gc.get());
         }
-        op_idx++;
-      }
+        cudaDeviceSynchronize();
+        timeline.Pause();
+        gettimeofday(&end, NULL);
+        auto time = timeline.ElapsedUS();
+        op_total_time[op_idx] += time;
+        if (time > op_max_time[op_idx]) {
+          op_max_time[op_idx] = time;
+        }
+        if (time < op_min_time[op_idx]) {
+          op_min_time[op_idx] = time;
+        }
+        op_count[op_idx] += 1;
 
-      gettimeofday(&micro_end, NULL);
-      std::cout << std::fixed;
-      std::cout.precision(0);
-      std::cout << "!!FWD:B[" << batch_id_ << "]:START["
-                << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
-                << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
-                << std::endl;
-    } catch (platform::EOFException& e) {
-      VLOG(0) << "EOF encountered, and completed";
-      VLOG(0) << "============timeline============";
-      for (size_t i = 0; i < ops_.size(); ++i) {
-        VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
-                << ", min_time: " << op_min_time[i]
-                << ", mean_time: " << op_total_time[i] / op_count[i];
+        std::cout << std::fixed;
+        std::cout.precision(0);
+        std::cout << "::FWD:B[" << batch_id_ << "]:SCOPE[" << i << "]:OP["
+                  << op->Type() << "]:START["
+                  << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                  << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
       }
-      VLOG(0) << "================================";
-      std::rethrow_exception(std::current_exception());
+      op_idx++;
     }
+
+    gettimeofday(&micro_end, NULL);
+    std::cout << std::fixed;
+    std::cout.precision(0);
+    std::cout << "!!FWD:B[" << batch_id_ << "]:START["
+              << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
+              << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
   }
 
   // backward pass

@@ -137,15 +137,19 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 void PipelineTrainer::Run() {
   VLOG(5) << "Going to run PipelineTrainer::Run()";
   if (!debug_) {
-    section_thread_ = std::thread(&DeviceWorker::TrainFiles, worker_.get());
+    section_thread_ = std::async(&DeviceWorker::TrainFiles, worker_.get());
   } else {
     section_thread_ =
-        std::thread(&DeviceWorker::TrainFilesWithProfiler, worker_.get());
+        std::async(&DeviceWorker::TrainFilesWithProfiler, worker_.get());
   }
 }
 
 void PipelineTrainer::Finalize() {
-  section_thread_.join();
+  try {
+    section_thread_.get();
+  } catch (platform::EOFException& e) {
+    std::rethrow_exception(std::current_exception());
+  }
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }
