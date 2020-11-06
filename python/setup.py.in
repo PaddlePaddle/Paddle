@@ -261,6 +261,10 @@ else:
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
     package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
+    if '${XPU_SDK_ROOT}':
+        shutil.copy('${XPUAPI_LIB}', libs_path)
+        shutil.copy('${XPURT_LIB}', libs_path)
+        package_data['paddle.libs'] += ['libxpuapi.so', 'libxpurt.so']
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)

@@ -311,6 +311,17 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] inputs tensors
   ///
   void MkldnnPreSet(const std::vector<PaddleTensor> &inputs);
+
+  ///
+  /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
+  ///
+  /// Used in AnalysisPredictor::Run(), do not support
+  /// AnalysisPredictor::ZeroCopyRun() now.
+  ///
+  /// \param[in] inputs tensor shape
+  ///
+  void MkldnnPreSet(const std::vector<std::vector<int>> &inputs_shape);
+
   ///
   /// \brief PostReset for Mkldnn multi-thread and dynamic shape input.
   ///
