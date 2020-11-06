@@ -18,6 +18,7 @@
 #include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/complex64.h"
+#include "mkl.h"
 
 namespace paddle {
 namespace operators {
@@ -288,6 +289,30 @@ struct CBlas<double> {
   }
 };
 
+template <>
+struct CBlas<platform::complex64> {
+//struct CBlas<std::complex<float>> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    //platform::dynload::cblas_dcopy(args...);
+    //cblas_dcopy(args...);
+  }
+
+  /*
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vcAdd(args...);
+  }
+  */
+
+  template<typename... ARGS>
+  static void VADD(int n, const paddle::platform::complex64* a, const 
+    paddle::platform::complex64* b, paddle::platform::complex64* y) {
+      platform::dynload::vcAdd(n, reinterpret_cast<const MKL_Complex8*>(a), 
+        reinterpret_cast<const MKL_Complex8*>(b), reinterpret_cast<MKL_Complex8*>(y));
+  }
+};
+
 #else
 
 template <>
@@ -345,6 +370,22 @@ struct CBlas<double> {
     cblas_dtrsm(args...);
   }
 };
+
+template <>
+struct CBlas<platform::complex64> {
+  /*
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    //platform::dynload::cblas_dcopy(args...);
+    cblas_dcopy(args...);
+  }
+
+  template <typename... ARGS>
+  static void VADD(ARGS... args) {
+    platform::dynload::vcAdd(args...);
+  }
+  */
+};
 #endif
 
 template <>
@@ -393,23 +434,6 @@ struct CBlas<platform::float16> {
   }
 #endif
 };
-
-#ifdef PADDLE_WITH_MKLML
-template <>
-struct CBlas<platform::complex64> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    //platform::dynload::cblas_dcopy(args...);
-    cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
-  static void VADD(ARGS... args) {
-    platform::dynload::vcAdd(args...);
-  }
-};
-#endif
-
 
 #ifdef PADDLE_WITH_MKLML
 template <>

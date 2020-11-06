@@ -158,8 +158,7 @@ struct PADDLE_ALIGN(8) complex64 {
 };
 
 HOSTDEVICE inline complex64 operator+(const complex64& a, const complex64& b) {
-  //return complex64(a.real + b.real, a.imag + b.imag);
-  return complex64();
+  return complex64(a.real + b.real, a.imag + b.imag);
 }
 
 HOSTDEVICE inline complex64 operator-(const complex64& a, const complex64& b) {
