@@ -54,7 +54,7 @@ template <typename Place>
 void Free(const Place &place, void *p, size_t size);
 
 template <typename Place>
-void Release(const Place &place);
+uint64_t Release(const Place &place);
 
 template <typename Place>
 size_t Used(const Place &place);
@@ -103,8 +103,8 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
 }
 
 template <>
-void Release<platform::CPUPlace>(const platform::CPUPlace &place) {
-  GetCPUBuddyAllocator()->Release();
+uint64_t Release<platform::CPUPlace>(const platform::CPUPlace &place) {
+  return GetCPUBuddyAllocator()->Release();
 }
 
 template <>
@@ -195,7 +195,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
 }
 
 template <>
-void Release<platform::XPUPlace>(const platform::XPUPlace &place) {
+uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
   PADDLE_THROW(
       platform::errors::PermissionDenied("Release XPU pool is not supported."));
@@ -333,9 +333,9 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
 }
 
 template <>
-void Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
+uint64_t Release<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 #ifdef PADDLE_WITH_CUDA
-  GetGPUBuddyAllocator(place.device)->Release();
+  return GetGPUBuddyAllocator(place.device)->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CUDAPlace' is not supported in CPU only device."));
@@ -401,10 +401,10 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 }
 
 template <>
-void Release<platform::CUDAPinnedPlace>(
+uint64_t Release<platform::CUDAPinnedPlace>(
     const platform::CUDAPinnedPlace &place) {
 #ifdef PADDLE_WITH_CUDA
-  GetCUDAPinnedBuddyAllocator()->Release();
+  return GetCUDAPinnedBuddyAllocator()->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
@@ -437,10 +437,10 @@ struct FreeVisitor : public boost::static_visitor<void> {
   size_t size_;
 };
 
-struct ReleaseVisitor : public boost::static_visitor<void> {
+struct ReleaseVisitor : public boost::static_visitor<uint64_t> {
   template <typename Place>
-  inline void operator()(const Place &place) const {
-    Release<Place>(place);
+  inline uint64_t operator()(const Place &place) const {
+    return Release<Place>(place);
   }
 };
 
@@ -486,8 +486,8 @@ void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
   delete allocation;
 }
 
-void NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  boost::apply_visitor(legacy::ReleaseVisitor(), place);
+uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
+  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
 }
 
 }  // namespace allocation
