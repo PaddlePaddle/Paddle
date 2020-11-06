@@ -110,13 +110,10 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                              use_cuda,
                              seed=1):
         with fluid.program_guard(main_program, startup_program):
-            x1 = fluid.layers.data(
-                name='x1', shape=[1, 28, 28], dtype='float32')
-            x2 = fluid.layers.data(
-                name='x2', shape=[1, 28, 28], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
             conv1_1 = fluid.layers.conv2d(
-                input=x1,
+                input=x,
                 filter_size=3,
                 num_filters=32,
                 stride=1,
@@ -125,24 +122,23 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 param_attr=self.conv_param_attr1,
                 bias_attr=False,
                 data_format='NHWC')
-            conv1_2 = fluid.layers.conv2d(
-                input=x2,
-                filter_size=3,
-                num_filters=32,
-                stride=1,
-                padding=1,
-                act=None,
-                param_attr=self.conv_param_attr2,
-                bias_attr=False,
-                data_format='NHWC')
             bn1 = fluid.layers.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr1,
                 bias_attr=self.bn_bias_attr1,
                 act=None,
                 data_layout='NHWC')
+            conv1_2 = fluid.layers.conv2d(
+                input=conv1_1,
+                filter_size=1,
+                num_filters=32,
+                stride=1,
+                act=None,
+                param_attr=self.conv_param_attr2,
+                bias_attr=False,
+                data_format='NHWC')
             bn2 = fluid.layers.batch_norm(
-                input=conv1_2,
+                input=conv1_1,
                 param_attr=self.bn_param_attr2,
                 bias_attr=self.bn_bias_attr2,
                 act=None,
@@ -179,22 +175,18 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             loss_name=loss.name, build_strategy=build_strategy_fused)
         exe = fluid.Executor(place)
         loss_vals_fused = []
-        x1_data = []
-        x2_data = []
+        x_data = []
         y_data = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
-                x1 = np.random.random((batch_size, 1, 28, 28)).astype("float32")
-                x2 = np.random.random((batch_size, 1, 28, 28)).astype("float32")
+                x = np.random.random((batch_size, 1, 28, 28)).astype("float32")
                 y = np.random.random((batch_size, 1)).astype("int64")
-                x1_data.append(x1)
-                x2_data.append(x2)
+                x_data.append(x)
                 y_data.append(y)
                 loss_v = exe.run(binary_fused,
-                                 feed={"x1": x1,
-                                       "x2": x2,
+                                 feed={"x": x,
                                        "y": y},
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
@@ -209,12 +201,10 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for i in range(iters):
-                loss_v = exe.run(
-                    binary,
-                    feed={"x1": x1_data[i],
-                          "x2": x2_data[i],
-                          "y": y_data[i]},
-                    fetch_list=[loss])
+                loss_v = exe.run(binary,
+                                 feed={"x": x_data[i],
+                                       "y": y_data[i]},
+                                 fetch_list=[loss])
                 loss_vals.append(loss_v[0][0])
 
         # check loss
