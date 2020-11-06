@@ -21,12 +21,12 @@ import unittest
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
-from parallel_dygraph_sparse_embedding import TestSparseEmbedding
+from parallel_dygraph_sparse_embedding_over_height import TestSparseEmbeddingOverHeight
 
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestParallelDygraphSparseEmdedding(TestDistBase):
+class TestParallelDygraphSparseEmdeddingOverHeight(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -41,11 +41,11 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
                 log_name=flag_name)
 
 
-class TestParallelDygraphSparseEmdeddingSpawn(TestDistSpawnRunner):
+class TestParallelDygraphSparseEmdeddingOverHeightSpawn(TestDistSpawnRunner):
     def test_sparse_embedding_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(
-                test_class=TestSparseEmbedding, delta=1e-5)
+                test_class=TestSparseEmbeddingOverHeight, delta=1e-5)
 
 
 if __name__ == "__main__":
