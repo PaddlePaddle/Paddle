@@ -41,7 +41,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
         user would like to pass backward gradient.
 
     Args:
-       name (str): The name/alias of the tensor, see :ref:`api_guide_Name`
+       name (str): The name/alias of the Tensor, see :ref:`api_guide_Name`
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" at a dimension to indicate the dimension can be of any
@@ -54,7 +54,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
 
     Returns:
-        Tensor: The global tensor that gives access to the data.
+        Tensor: The global Tensor that gives access to the data.
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
