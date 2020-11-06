@@ -1174,15 +1174,15 @@ def assign(x, output=None):
                 raise ValueError(
                     "The size of input is too big. Please consider "
                     "saving it to file and 'load_op' to load it")
-            if not output:
+            if output is None:
                 output = _varbase_creator(dtype=x.dtype)
             attrs = get_attrs(x)
             attrs_ = []
             for k, v in attrs.items():
                 attrs_.append(k)
                 attrs_.append(v)
-            out = core.ops.assign_value(output, *attrs_)
-            return out
+            return core.ops.assign_value(output, *attrs_)
+
     helper = LayerHelper('assign', **locals())
 
     if isinstance(x, Variable):
