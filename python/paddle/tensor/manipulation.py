@@ -739,9 +739,6 @@ def unsqueeze(x, axis, name=None):
 
 def gather(x, index, axis=None, name=None):
     """
-
-    **Gather Layer**
-
     Output is obtained by gathering entries of ``axis``
     of ``x`` indexed by ``index`` and concatenate them together.
 
@@ -761,6 +758,7 @@ def gather(x, index, axis=None, name=None):
 
                 out = [[3, 4],
                        [5, 6]]
+    
     Args:
         x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
