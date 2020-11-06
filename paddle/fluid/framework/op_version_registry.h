@@ -92,7 +92,7 @@ enum class OpUpdateType {
 
 class OpUpdateBase {
  public:
-  virtual const OpUpdateInfo* info() const = 0;
+  virtual const OpUpdateInfo& info() const = 0;
   virtual OpUpdateType type() const = 0;
   virtual ~OpUpdateBase() = default;
 };
@@ -101,7 +101,7 @@ template <typename InfoType, OpUpdateType type__>
 class OpUpdate : public OpUpdateBase {
  public:
   explicit OpUpdate(const InfoType& info) : info_{info}, type_{type__} {}
-  const OpUpdateInfo* info() const override { return &info_; }
+  const InfoType& info() const override { return info_; }
   OpUpdateType type() const override { return type_; }
 
  private:
@@ -169,7 +169,6 @@ class OpVersion {
 
 class OpVersionRegistrar {
  public:
-  OpVersionRegistrar() = default;
   static OpVersionRegistrar& GetInstance() {
     static OpVersionRegistrar instance;
     return instance;
@@ -185,6 +184,8 @@ class OpVersionRegistrar {
 
  private:
   std::unordered_map<std::string, OpVersion> op_version_map_;
+  OpVersionRegistrar() = default;
+  OpVersionRegistrar& operator=(const OpVersionRegistrar&) = delete;
 };
 
 inline const std::unordered_map<std::string, OpVersion>& get_op_version_map() {
