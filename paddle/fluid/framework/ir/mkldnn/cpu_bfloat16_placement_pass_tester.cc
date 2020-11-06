@@ -33,7 +33,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   if (type == "conv2d") {
     op->SetAttr("name", name);
     op->SetInput("Input", {inputs[0]});
-  } else if (type == "relu") {
+  } else if (type == "gelu") {
     op->SetInput("X", inputs);
   } else if (type == "concat") {
     op->SetAttr("axis", 1);
@@ -71,7 +71,7 @@ ProgramDesc BuildProgramDesc() {
 
   SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"});
   SetOp(&prog, "conv2d", "conv1", {"c"}, {"f"});
-  SetOp(&prog, "relu", "relu1", {"f"}, {"g"});
+  SetOp(&prog, "gelu", "gelu1", {"f"}, {"g"});
   SetOp(&prog, "pool2d", "pool1", {"g"}, {"h"});
   SetOp(&prog, "conv2d", "conv2", {"h"}, {"k"});
   SetOp(&prog, "pool2d", "pool2", {"k"}, {"l"});
@@ -126,7 +126,7 @@ void DefaultAttrTest(unsigned expected_bfloat16_data_type_count) {
 }
 
 TEST(Bfloat16PlacementPass, enable_all) {
-  MainTest({"conv2d", "pool2d", "relu", "concat", "sum"}, 8);
+  MainTest({"conv2d", "pool2d", "gelu", "concat", "sum"}, 8);
 }
 
 TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
@@ -134,7 +134,7 @@ TEST(Bfloat16PlacementPass, enabled_conv_and_pool) {
   MainTest({"conv2d", "pool2d"}, 3);
 }
 
-TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(6); }
+TEST(Bfloat16PlacementPass, default_attr_value) { DefaultAttrTest(7); }
 
 }  // namespace ir
 }  // namespace framework
