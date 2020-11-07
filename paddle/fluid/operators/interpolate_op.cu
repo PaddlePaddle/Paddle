@@ -21,6 +21,9 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace interpolate_op {
+#endif
 template <typename T>
 __global__ void KeNearestNeighborInterpFw(
     const T* in, const size_t in_img_h, const size_t in_img_w,
@@ -1390,6 +1393,9 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
         align_mode, data_layout);
   }
 }
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+} // namespace interpolate_op
+#endif
 
 template <typename T>
 class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
@@ -1402,6 +1408,15 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
 
     auto input_dims = input->dims();
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    if (input_dims.size() == 3) {  // 1D interpolation
+      interpolate_op::Interpolate1DCUDAFwd<T>(ctx, *input, output);
+    } else if (input_dims.size() == 4) {  // 2D interpolation
+      interpolate_op::Interpolate2DCUDAFwd<T>(ctx, *input, output);
+    } else if (input_dims.size() == 5) {  // 3D interpolation
+      interpolate_op::Interpolate3DCUDAFwd<T>(ctx, *input, output);
+    }
+#else
     if (input_dims.size() == 3) {  // 1D interpolation
       Interpolate1DCUDAFwd<T>(ctx, *input, output);
     } else if (input_dims.size() == 4) {  // 2D interpolation
@@ -1409,6 +1424,7 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
     } else if (input_dims.size() == 5) {  // 3D interpolation
       Interpolate3DCUDAFwd<T>(ctx, *input, output);
     }
+#endif
   }
 };
 
@@ -1423,6 +1439,15 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+    if (output_grad_dims.size() == 3) {  // 1D interpolation
+      interpolate_op::Interpolate1DCUDABwd<T>(ctx, input_grad, *output_grad);
+    } else if (output_grad_dims.size() == 4) {  // 2D interpolation
+      interpolate_op::Interpolate2DCUDABwd<T>(ctx, input_grad, *output_grad);
+    } else if (output_grad_dims.size() == 5) {  // 3D interpolation
+      interpolate_op::Interpolate3DCUDABwd<T>(ctx, input_grad, *output_grad);
+    }
+#else
     if (output_grad_dims.size() == 3) {  // 1D interpolation
       Interpolate1DCUDABwd<T>(ctx, input_grad, *output_grad);
     } else if (output_grad_dims.size() == 4) {  // 2D interpolation
@@ -1430,6 +1455,7 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     } else if (output_grad_dims.size() == 5) {  // 3D interpolation
       Interpolate3DCUDABwd<T>(ctx, input_grad, *output_grad);
     }
+#endif
   }
 };
 

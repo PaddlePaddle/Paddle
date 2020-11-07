@@ -22,9 +22,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {  // Internal
 
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_TENSOR) || defined(__NVCC__)
+#define UNITY_EIGEN_TENSOR
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+#endif
 using framework::Tensor;
 
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {

@@ -22,7 +22,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulV2Kernel<plf::CUDADeviceContext, double>,
     ops::MatMulV2Kernel<plf::CUDADeviceContext, plf::float16>);
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+REGISTER_OP_CUDA_KERNEL(
+    matmul_v2_grad, ops::matmul_v2_op::MatMulV2GradKernel<plf::CUDADeviceContext, float>,
+    ops::matmul_v2_op::MatMulV2GradKernel<plf::CUDADeviceContext, double>,
+    ops::matmul_v2_op::MatMulV2GradKernel<plf::CUDADeviceContext, plf::float16>);
+#else
 REGISTER_OP_CUDA_KERNEL(
     matmul_v2_grad, ops::MatMulV2GradKernel<plf::CUDADeviceContext, float>,
     ops::MatMulV2GradKernel<plf::CUDADeviceContext, double>,
     ops::MatMulV2GradKernel<plf::CUDADeviceContext, plf::float16>);
+#endif

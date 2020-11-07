@@ -23,9 +23,12 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_VECTOR)
+#define UNITY_EIGEN_VECTOR
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+#endif
 
 template <typename DeviceContext>
 void GetAccumulators(const framework::ExecutionContext& ctx,

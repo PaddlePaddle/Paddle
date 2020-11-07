@@ -27,14 +27,13 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
 
 template <typename DeviceContext, typename T>
 class GroupNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
+    const framework::DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* scale = ctx.Input<Tensor>("Scale");
@@ -48,8 +47,8 @@ class GroupNormKernel : public framework::OpKernel<T> {
 
     const auto x_dims = x->dims();
     const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+        (data_layout == framework::DataLayout::kNCHW ? x_dims[1]
+                                                     : x_dims[x_dims.size() - 1]);
     const int group_size = (C - 1) / groups + 1;
 
     y->mutable_data<T>(ctx.GetPlace());
@@ -66,8 +65,8 @@ class GroupNormKernel : public framework::OpKernel<T> {
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
+    int imsize = (data_layout == framework::DataLayout::kNCHW ? x_dims[2] * x_dims[3]
+                                                              : x_dims[1] * x_dims[2]);
 
     auto* iter_x_data = x_data;
     auto* iter_y_data = y_data;
@@ -81,7 +80,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
         auto* tmp_y = iter_y_data;
         auto* y_src_data = iter_y_data;
 
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == framework::DataLayout::kNCHW) {
           for (int cid = 0; cid < number; cid++) {
             for (int imid = 0; imid < imsize; imid++, iter_x_data++) {
               x_mean += iter_x_data[0];
@@ -106,7 +105,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
         mean_data[bid * groups + gid] = x_mean;
         var_data[bid * groups + gid] = x_var;
 
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == framework::DataLayout::kNCHW) {
           for (int cid = 0; cid < number; cid++) {
             for (int imid = 0; imid < imsize; imid++, tmp_x++, iter_y_data++) {
               T val = (tmp_x[0] - x_mean) * var_inv;
@@ -130,7 +129,7 @@ class GroupNormKernel : public framework::OpKernel<T> {
           iter_y_data = tmp_y + group_size;
         }
       }
-      if (data_layout == DataLayout::kNHWC) {
+      if (data_layout == framework::DataLayout::kNHWC) {
         iter_x_data = x_data + (bid + 1) * C * imsize;
         iter_y_data = y_data + (bid + 1) * C * imsize;
       }
@@ -143,7 +142,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
+    const framework::DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<Tensor>("Y");
@@ -160,8 +159,8 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
 
     const auto& x_dims = x->dims();
     const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+        (data_layout == framework::DataLayout::kNCHW ? x_dims[1]
+                                                     : x_dims[x_dims.size() - 1]);
     const int group_size = (C - 1) / groups + 1;
 
     d_x->mutable_data<T>(ctx.GetPlace());
@@ -190,8 +189,8 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
-                                                   : x_dims[1] * x_dims[2]);
+    int imsize = (data_layout == framework::DataLayout::kNCHW ? x_dims[2] * x_dims[3]
+                                                              : x_dims[1] * x_dims[2]);
     auto* iter_x_data = x_data;
     auto* iter_d_x_data = d_x_data;
     auto* iter_y_data = y_data;
@@ -212,7 +211,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
         auto* iter_d_x_data_backup = iter_d_x_data;
         T dp_scale = 0, dp_bias = 0;
 
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout == framework::DataLayout::kNCHW) {
           for (int cid = 0; cid < number; cid++) {
             for (int imid = 0; imid < imsize;
                  imid++, iter_x_data++, iter_y_data++) {
@@ -294,7 +293,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
           iter_d_x_data = iter_d_x_data_backup + group_size;
         }
       }
-      if (data_layout == DataLayout::kNHWC) {
+      if (data_layout == framework::DataLayout::kNHWC) {
         iter_x_data = x_data + (bid + 1) * C * imsize;
         iter_d_x_data = d_x_data + (bid + 1) * C * imsize;
         iter_y_data = y_data + (bid + 1) * C * imsize;

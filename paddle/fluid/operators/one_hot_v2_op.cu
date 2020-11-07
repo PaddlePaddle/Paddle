@@ -21,7 +21,7 @@ namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename InT, typename OutT>
-__global__ void FillOutputKernel(const InT* p_in_data, OutT* p_out_data,
+__global__ void FillOutputV2Kernel(const InT* p_in_data, OutT* p_out_data,
                                  const int64_t numel, const int depth) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < numel && p_in_data[idx] >= 0 && p_in_data[idx] < depth) {
@@ -49,7 +49,7 @@ struct OneHotV2OpCUDAFunctor {
     auto stream = ctx_.stream();
     math::set_constant(ctx_, out_, 0.0);
 
-    FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
+    FillOutputV2Kernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                            PADDLE_CUDA_NUM_THREADS,
                        PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         p_in_data, p_out_data, numel, depth_);

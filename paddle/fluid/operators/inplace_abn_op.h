@@ -22,13 +22,19 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_MATRIX)
+#define UNITY_EIGEN_MATRIX
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+#endif
 
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_VECTOR)
+#define UNITY_EIGEN_VECTOR
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+#endif
 
 enum InplaceABNActivationType { identity = 0, leakyrelu = 1, elu = 2 };
 

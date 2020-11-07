@@ -27,15 +27,25 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 
-#ifndef PADDLE_WITH_OP_UNITY_BUILD
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_ARRAY_MAP)
+#define UNITY_EIGEN_ARRAY_MAP
 template <typename T>
 using EigenArrayMap =
     Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_CONST_EIGEN_ARRAY_MAP)
+#define UNITY_CONST_EIGEN_ARRAY_MAP
 template <typename T>
 using ConstEigenArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+#endif
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_VECTOR_ARRAY_MAP)
+#define UNITY_EIGEN_VECTOR_ARRAY_MAP
 template <typename T>
 using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
+#endif
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_CONST_EIGEN_VECTOR_ARRAY_MAP)
+#define UNITY_CONST_EIGEN_VECTOR_ARRAY_MAP
 template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;

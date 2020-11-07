@@ -23,7 +23,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-#ifndef PADDLE_WITH_OP_UNITY_BUILD
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_MATRIX)
+#define UNITY_EIGEN_MATRIX
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;

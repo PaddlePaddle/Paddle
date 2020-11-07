@@ -31,9 +31,12 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using platform::Transform;
 
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_MATRIX)
+#define UNITY_EIGEN_MATRIX
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+#endif
 
 template <typename T>
 class _ClipFunctor {

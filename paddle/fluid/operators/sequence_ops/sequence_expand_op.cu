@@ -133,6 +133,9 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
   return num_copys;
 }
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace sequence_expand_op {
+#endif
 template <typename T>
 struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
   void operator()(
@@ -201,6 +204,9 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
         dx->mutable_data<T>(context.GetPlace()));
   }
 };
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+} // namespace sequence_expand_op
+#endif
 
 }  // namespace operators
 }  // namespace paddle

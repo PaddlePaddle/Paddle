@@ -64,8 +64,16 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
+set(SKIP_UNITY_BUILD_OPS "")
+if(WITH_OP_UNITY_BUILD)
+    set(SKIP_UNITY_BUILD_OPS dist_op expand_as_op activation_op arg_max_op arg_min_op gru_unit_op instance_norm_op batch_norm_op)
+    foreach(skip_unity_build_op ${SKIP_UNITY_BUILD_OPS})
+        op_library(${skip_unity_build_op} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+    endforeach()
+endif()
+
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
-    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+    sync_batch_norm_op ${OP_MKL_DEPS} ${SKIP_UNITY_BUILD_OPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -150,4 +158,7 @@ endif()
 
 if(WITH_OP_UNITY_BUILD)
     target_link_libraries(paddle_operators_unity generator sampler beam_search device_memory_aligment selected_rows_functor tensor_formatter tree2col vol2col concat_and_split im2col cos_sim_functor sequence2batch segment_pooling jit_kernel_helper pooling cross_entropy gru_compute)
+    if(WITH_GPU)
+        target_link_libraries(paddle_operators_unity softmax sample_prob)
+    endif()
 endif()

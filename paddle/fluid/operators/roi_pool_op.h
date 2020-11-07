@@ -23,7 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#ifndef PADDLE_WITH_OP_UNITY_BUILD
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_K_ROI_SIZE)
+#define UNITY_K_ROI_SIZE
 static constexpr int kROISize = 4;
 #endif
 

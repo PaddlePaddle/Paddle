@@ -33,6 +33,9 @@ __global__ void KeDequantize(const T* in, const float* dict, int num,
   }
 }
 
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+namespace dequantize_log_op {
+#endif
 template <typename T>
 struct DequantizeFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
@@ -52,6 +55,9 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
 };
 
 template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
+#ifdef PADDLE_WITH_OP_UNITY_BUILD
+} // namespace dequantize_log_op
+#endif
 
 }  // namespace operators
 }  // namespace paddle

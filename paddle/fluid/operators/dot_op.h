@@ -22,9 +22,12 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_MATRIX)
+#define UNITY_EIGEN_MATRIX
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+#endif
 
 template <typename DeviceContext, typename T>
 void DotGradFunction(const Tensor* tensor_x, const Tensor* tensor_y,

@@ -23,6 +23,8 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+namespace sigmoid_cross_entropy_with_logits_op {
+
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
@@ -30,6 +32,8 @@ static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
 }
+
+} // namespace sigmoid_cross_entropy_with_logits_op
 
 template <typename T>
 __global__ void GPUSigmoidForward(const T *x_data, const T *label_data,
@@ -117,14 +121,14 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     T *counts = reinterpret_cast<T *>(cnt_ptr->ptr());
 
     int limit = Out->numel();
-    int blocks = NumBlocks(limit);
-    int threads = kNumCUDAThreads;
+    int blocks = sigmoid_cross_entropy_with_logits_op::NumBlocks(limit);
+    int threads = sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads;
     GPUSigmoidForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<T>(), ignore_index, limit, out_data, counts);
     if (normalize) {
       auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
       T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
-      Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
+      Sum<T, sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads><<<1, sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);
       Div<T><<<blocks, threads, 0, dev_ctx.stream()>>>(out_data, limit, norm);
     }
@@ -151,8 +155,8 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
     T *counts = reinterpret_cast<T *>(cnt_ptr->ptr());
 
     int limit = dX->numel();
-    int blocks = NumBlocks(limit);
-    int threads = kNumCUDAThreads;
+    int blocks = sigmoid_cross_entropy_with_logits_op::NumBlocks(limit);
+    int threads = sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads;
     GPUSigmoidBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<T>(), ignore_index, dOut->data<T>(), limit,
         dx_data, counts);
@@ -160,7 +164,7 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
     if (normalize) {
       auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
       T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
-      Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
+      Sum<T, sigmoid_cross_entropy_with_logits_opk::NumCUDAThreads><<<1, sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);
       Div<T><<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data, limit, norm);
     }

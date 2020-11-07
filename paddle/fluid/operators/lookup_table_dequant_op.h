@@ -46,7 +46,8 @@ void dequant(const unsigned char *in, T *out, float min, float max,
   }
 }
 
-#ifndef PADDLE_WITH_OP_UNITY_BUILD
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_K_NO_PADDING)
+#define UNITY_K_NO_PADDING
 constexpr int64_t kNoPadding = -1;
 #endif
 

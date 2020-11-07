@@ -23,7 +23,9 @@ namespace operators {
 #define FULL_MASK 0xffffffff
 
 using framework::Tensor;
+#ifndef PADDLE_WITH_OP_UNITY_BUILD
 using DataLayout = framework::DataLayout;
+#endif
 
 template <typename T>
 __forceinline__ __device__ T warpReduceSum(T val) {

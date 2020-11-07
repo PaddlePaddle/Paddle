@@ -18,9 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_MATRIX)
+#define UNITY_EIGEN_MATRIX
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+#endif
 
 static inline int CanonicalAxis(const int axis, const int rank) {
   if (axis < 0) {

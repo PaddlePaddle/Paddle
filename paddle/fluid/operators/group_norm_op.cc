@@ -23,7 +23,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
 
 class GroupNormOp : public framework::OperatorWithKernel {
  public:
@@ -42,7 +41,7 @@ class GroupNormOp : public framework::OperatorWithKernel {
     const framework::DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const int64_t channel_num =
-        (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
+        (data_layout == framework::DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
     auto batch_size = x_dim[0];
     auto groups = ctx->Attrs().Get<int>("groups");
     PADDLE_ENFORCE_LE(

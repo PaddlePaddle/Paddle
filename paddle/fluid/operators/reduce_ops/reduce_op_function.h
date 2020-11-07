@@ -22,15 +22,24 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_TENSOR)
+#define UNITY_EIGEN_TENSOR
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+#endif
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_SCALAR)
+#define UNITY_EIGEN_SCALAR
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
+#endif
+#if !defined(PADDLE_WITH_OP_UNITY_BUILD) || !defined(UNITY_EIGEN_VECTOR)
+#define UNITY_EIGEN_VECTOR
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+#endif
 
 template <typename DeviceContext, typename T, size_t D, size_t R_D,
           typename Functor>

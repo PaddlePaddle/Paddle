@@ -21,6 +21,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+namespace psroi_pool_op {
+
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
@@ -28,6 +30,8 @@ static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaximumNumBlocks);
 }
+
+} // namespace psroi_pool_op
 
 template <typename T>
 __global__ void GPUPSROIPoolForward(
@@ -218,8 +222,8 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
                           ctx.device_context(), &rois_batch_id_list_gpu);
 
     int output_size = out->numel();
-    int blocks = NumBlocks(output_size);
-    int threads = kNumCUDAThreads;
+    int blocks = psroi_pool_op::NumBlocks(output_size);
+    int threads = psroi_pool_op::kNumCUDAThreads;
 
     // call cuda kernel function
     GPUPSROIPoolForward<
@@ -274,8 +278,8 @@ class GPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
       set_zero(ctx.cuda_device_context(), input_grad, static_cast<T>(0));
 
       int output_grad_size = output_grad->numel();
-      int blocks = NumBlocks(output_grad_size);
-      int threads = kNumCUDAThreads;
+      int blocks = psroi_pool_op::NumBlocks(output_grad_size);
+      int threads = psroi_pool_op::kNumCUDAThreads;
 
       if (output_grad_size > 0) {
         GPUPSROIPoolBackward<

@@ -22,6 +22,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+namespace roi_pool_op {
+
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
@@ -29,6 +31,8 @@ static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
 }
+
+} // namespace roi_pool_op
 
 template <typename T>
 __global__ void GPUROIPoolForward(
@@ -148,8 +152,8 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     if (rois_num == 0) return;
 
     int output_size = out->numel();
-    int blocks = NumBlocks(output_size);
-    int threads = kNumCUDAThreads;
+    int blocks = roi_pool_op::NumBlocks(output_size);
+    int threads = roi_pool_op::kNumCUDAThreads;
 
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
@@ -278,8 +282,8 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
       int output_grad_size = out_grad->numel();
-      int blocks = NumBlocks(output_grad_size);
-      int threads = kNumCUDAThreads;
+      int blocks = roi_pool_op::NumBlocks(output_grad_size);
+      int threads = roi_pool_op::kNumCUDAThreads;
 
       if (output_grad_size > 0) {
         GPUROIPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
