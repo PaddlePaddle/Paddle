@@ -975,6 +975,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     SaveTrtCalibToDisk();
   }
 #endif
+  // TODO(wilber): release weight memory.
+  TryShrinkMemory();
   if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
@@ -982,8 +984,6 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
-// TODO(wilber): release weight memory.
-// paddle::memory::Release(place_);
 
 #if PADDLE_WITH_MKLDNN
   if (mkldnn_quantizer_) {
