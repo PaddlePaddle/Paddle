@@ -215,7 +215,7 @@ function(py_test_modules TARGET_NAME)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
 
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 15)
   endif()
 endfunction()
 
@@ -776,3 +776,4 @@ endif()
 if(WITH_GPU)
     set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT 120)
 endif()
+set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
