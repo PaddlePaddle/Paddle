@@ -164,7 +164,7 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
     if (normalize) {
       auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
       T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
-      Sum<T, sigmoid_cross_entropy_with_logits_opk::NumCUDAThreads><<<1, sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads, 0, dev_ctx.stream()>>>(
+      Sum<T, sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads><<<1, sigmoid_cross_entropy_with_logits_op::kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);
       Div<T><<<blocks, threads, 0, dev_ctx.stream()>>>(dx_data, limit, norm);
     }
