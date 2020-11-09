@@ -37,19 +37,16 @@ from .clip import ClipGradByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
 from .clip import clip_by_norm  #DEFINE_ALIAS
-from .control_flow import cond  #DEFINE_ALIAS
+# from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-from .control_flow import while_loop  #DEFINE_ALIAS
+# from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
-# from .decode import BeamSearchDecoder        #DEFINE_ALIAS
+from .decode import BeamSearchDecoder  #DEFINE_ALIAS
+from .decode import dynamic_decode  #DEFINE_ALIAS
 # from .decode import Decoder        #DEFINE_ALIAS
-# from .decode import beam_search  #DEFINE_ALIAS
-# from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import crf_decoding        #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
-# from .decode import dynamic_decode        #DEFINE_ALIAS
-from .decode import gather_tree  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU  #DEFINE_ALIAS
 from .layer.activation import GELU  #DEFINE_ALIAS
@@ -64,7 +61,7 @@ from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 from .layer.activation import Hardsigmoid  #DEFINE_ALIAS
-from .layer.activation import LogSigmoid
+from .layer.activation import LogSigmoid  #DEFINE_ALIAS
 from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
 from .layer.activation import Softshrink  #DEFINE_ALIAS
@@ -73,66 +70,50 @@ from .layer.activation import Swish  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import ThresholdedReLU  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
-from .layer.activation import HSigmoid  #DEFINE_ALIAS
 from .layer.activation import Maxout  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
+from .layer.common import Pad1D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
-from .layer.common import ReflectionPad1d  #DEFINE_ALIAS
-from .layer.common import ReplicationPad1d  #DEFINE_ALIAS
-from .layer.common import ConstantPad1d  #DEFINE_ALIAS
-from .layer.common import ReflectionPad2d  #DEFINE_ALIAS
-from .layer.common import ReplicationPad2d  #DEFINE_ALIAS
-from .layer.common import ConstantPad2d  #DEFINE_ALIAS
-from .layer.common import ZeroPad2d  #DEFINE_ALIAS
-from .layer.common import ReplicationPad3d  #DEFINE_ALIAS
-from .layer.common import ConstantPad3d  #DEFINE_ALIAS
+from .layer.common import Pad3D  #DEFINE_ALIAS
 from .layer.common import CosineSimilarity  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import Upsample  #DEFINE_ALIAS
-from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
-from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
-from .layer.common import Dropout2d  #DEFINE_ALIAS
-from .layer.common import Dropout3d  #DEFINE_ALIAS
+from .layer.common import Dropout2D  #DEFINE_ALIAS
+from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
 
-from .layer.pooling import AvgPool1d  #DEFINE_ALIAS
-from .layer.pooling import AvgPool2d  #DEFINE_ALIAS
-from .layer.pooling import AvgPool3d  #DEFINE_ALIAS
-from .layer.pooling import MaxPool1d  #DEFINE_ALIAS
-from .layer.pooling import MaxPool2d  #DEFINE_ALIAS
-from .layer.pooling import MaxPool3d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool1D  #DEFINE_ALIAS
+from .layer.pooling import AvgPool2D  #DEFINE_ALIAS
+from .layer.pooling import AvgPool3D  #DEFINE_ALIAS
+from .layer.pooling import MaxPool1D  #DEFINE_ALIAS
+from .layer.pooling import MaxPool2D  #DEFINE_ALIAS
+from .layer.pooling import MaxPool3D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool1D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool2D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool3D  #DEFINE_ALIAS
 
-from .layer.pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
-from .layer.conv import Conv1d  #DEFINE_ALIAS
-from .layer.conv import Conv2d  #DEFINE_ALIAS
-from .layer.conv import Conv3d  #DEFINE_ALIAS
-from .layer.conv import ConvTranspose1d  #DEFINE_ALIAS
-from .layer.conv import ConvTranspose2d  #DEFINE_ALIAS
-from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool1D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool2D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool3D  #DEFINE_ALIAS
+from .layer.conv import Conv1D  #DEFINE_ALIAS
+from .layer.conv import Conv2D  #DEFINE_ALIAS
+from .layer.conv import Conv3D  #DEFINE_ALIAS
+from .layer.conv import Conv1DTranspose  #DEFINE_ALIAS
+from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
+from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
-# from .layer.learning_rate import CosineDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import ExponentialDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import InverseTimeDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NaturalExpDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
 from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
+from .layer.loss import HSigmoidLoss  #DEFINE_ALIAS
 from .layer.loss import MSELoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer.loss import NLLLoss  #DEFINE_ALIAS
@@ -146,13 +127,13 @@ from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
-from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
-from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
-from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
-from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm1D  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm2D  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm3D  #DEFINE_ALIAS
+from .layer.norm import BatchNorm1D  #DEFINE_ALIAS
+from .layer.norm import BatchNorm2D  #DEFINE_ALIAS
+from .layer.norm import BatchNorm3D  #DEFINE_ALIAS
+from .layer.norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .layer.rnn import RNNCellBase  #DEFINE_ALIAS
 from .layer.rnn import SimpleRNNCell  #DEFINE_ALIAS

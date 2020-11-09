@@ -21,63 +21,70 @@ def export(layer, save_file, input_spec=None, opset_version=9, **configs):
     """
     Export Layer as ONNX format model, which can be used for inference.
     Now, it supports a limited operater set and dynamic models.(e.g., MobileNet.)
-    More features and introduction, Please reference the https://github.com/PaddlePaddle/paddle2onnx
+    More features and introduction, Please reference `Github <https://github.com/PaddlePaddle/paddle2onnx>`_.
     
     Args:
         layer (Layer): The Layer to be saved.
-        save_file (str): The file path to save the onnx model.
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model. 
-            It is the example inputs that will be passed to saved ONNX model.
-            If None, Please specific `input_spec` to layer in `@paddle.jit.to_static`. Default None.
+        save_file (str): The file path to save the onnx model. The format is `` dirname/file_name`` or ``file_name``.
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward 
+            method, which can be described by InputSpec or example Tensor. If None, all input variables of 
+            the original Layer's forward method would be the inputs of the saved ``ONNX`` model. Default None.
         opset_version(int, optional): Opset version of exported ONNX model.
             Now, stable supported opset version include 9, 10, 11. Default 9.
-        **configs (dict, optional): Additional keyword parameters. Currently supports 'output_spec', 
-            which describes the output to prune model.
+        **configs (dict, optional): Other save configuration options for compatibility. We do not 
+            recommend using these configurations, they may be removed in the future. If not necessary, 
+            DO NOT use them. Default None.
+            The following options are currently supported:
+            (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
+            By default, all return variables of original Layer's forward method are kept as the 
+            output of the saved model. If the provided ``output_spec`` list is not all output variables, 
+            the saved model will be pruned according to the given ``output_spec`` list. 
     Returns:
         None
     Examples:
         .. code-block:: python
-			import paddle
-			import numpy as np
-			
-			class LinearNet(paddle.nn.Layer):
-			    def __init__(self):
-			        super(LinearNet, self).__init__()
-			        self._linear = paddle.nn.Linear(128, 10)
-			
-			    def forward(self, x):
-			        return self._linear(x)
-			
-			#export model with InputSpec, which supports set dynamic shape for inputs.
-			def export_linear_net():
-			    model = LinearNet()
-			    x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
-			    paddle.onnx.export(model, 'linear_net.onnx', input_spec=[x_spec])
-			
-			export_linear_net()
-			
-			
-			class Logic(paddle.nn.Layer):
-			    def __init__(self):
-			        super(Logic, self).__init__()
-			
-			    def forward(self, x, y, z):
-			        if z:
-			            return x
-			        else:
-			            return y
-			
-			#export model with Tensor, which supports prune model by set 'output_spec' with output of model.
-			def export_logic():
-			    model = Logic()
-			    x = paddle.to_tensor(np.random.random((1)))
-			    y = paddle.to_tensor(np.random.random((1)))
-			    # prune model with input_spec and output_spec, which need to static and run model before export.
-			    paddle.jit.to_static(model)
-			    out = model(x, y, z=True)
-			    paddle.onnx.export(model, 'pruned.onnx', input_spec=[x], output_spec=[out])
-			
-			export_logic()
+
+            import paddle
+            import numpy as np
+
+            class LinearNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear = paddle.nn.Linear(128, 10)
+
+                def forward(self, x):
+                    return self._linear(x)
+
+            # export model with InputSpec, which supports set dynamic shape for inputs.
+            def export_linear_net():
+                model = LinearNet()
+                x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
+                paddle.onnx.export(model, 'linear_net.onnx', input_spec=[x_spec])
+
+            export_linear_net()
+
+
+            class Logic(paddle.nn.Layer):
+                def __init__(self):
+                    super(Logic, self).__init__()
+
+                def forward(self, x, y, z):
+                    if z:
+                        return x
+                    else:
+                        return y
+
+            # export model with Tensor, which supports prune model by set 'output_spec' with output of model.
+            def export_logic():
+                model = Logic()
+                x = paddle.to_tensor(np.array([1]))
+                y = paddle.to_tensor(np.array([2]))
+                # prune model with input_spec and output_spec, which need to static and run model before export.
+                paddle.jit.to_static(model)
+                out = model(x, y, z=True)
+                paddle.onnx.export(model, 'pruned.onnx', input_spec=[x], output_spec=[out])
+
+            export_logic()
     """
 
     p2o = try_import('paddle2onnx')

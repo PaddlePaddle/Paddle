@@ -22,8 +22,8 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
-
 from decorator_helper import prog_scope
+paddle.enable_static()
 
 
 class TestMulGradCheck(unittest.TestCase):
@@ -161,10 +161,10 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         y_shapes = [[2], [3, 2], [2, 4, 5], [2, 3, 3, 5], [4, 3]]
         transpose_xs = [False, True, True, False, False]
         transpose_ys = [False, True, False, True, False]
-        dtypes = [np.float64, np.float64, np.float32, np.float32, np.float64]
-        typenames = ["float64", "float64", "float32", "float32", "float64"]
-        for i, (x_shape, y_shape, transpose_x, transpose_y, dtype, typename) \
-            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys, dtypes, typenames)):
+        dtype = np.float64
+        typename = "float64"
+        for i, (x_shape, y_shape, transpose_x, transpose_y) \
+            in enumerate(zip(x_shapes, y_shapes, transpose_xs, transpose_ys)):
             x = layers.create_parameter(
                 dtype=typename, shape=x_shape, name='x{}'.format(i))
             y = layers.create_parameter(
@@ -268,6 +268,54 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
         out = paddle.expand(x, new_shape)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestSqueezeDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [1, 3, 1, 40]
+        axes = [0, 2]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.squeeze(x, axes)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [3, 40]
+        axes = [1, 2]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.unsqueeze(x, axes)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(

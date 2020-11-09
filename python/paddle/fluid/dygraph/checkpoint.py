@@ -140,12 +140,12 @@ def load_dygraph(model_path, **configs):
     Args:
         model_path(str) : The file prefix store the state_dict. 
             (The path should Not contain suffix '.pdparams') 
-        **configs (dict, optional): other save configuration options for compatibility. We do not 
+        **configs (dict, optional): Other load configuration options for compatibility. We do not 
             recommend using these configurations, if not necessary, DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (string): The inference model file name of the paddle 1.x ``save_inference_model`` 
+            (1) model_filename (str): The inference model file name of the paddle 1.x ``save_inference_model`` 
             save format. Default file name is :code:`__model__` . 
-            (2) params_filename (string): The persistable variables file name of the paddle 1.x ``save_inference_model`` 
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x ``save_inference_model`` 
             save format. No default file name, save variables separately by default.
 
     Returns:
@@ -164,7 +164,7 @@ def load_dygraph(model_path, **configs):
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "paddle_dy")
 
-            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+            scheduler = paddle.optimizer.lr.NoamDecay(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,

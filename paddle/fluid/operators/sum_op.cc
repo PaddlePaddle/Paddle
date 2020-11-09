@@ -148,16 +148,19 @@ class SumOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
       if (library == framework::LibraryType::kPlain &&
           platform::CanMKLDNNBeUsed(ctx) &&
-          static_cast<framework::proto::VarType::Type>(dtype) ==
-              framework::proto::VarType::FP32 &&
+          (static_cast<framework::proto::VarType::Type>(dtype) ==
+               framework::proto::VarType::FP32 ||
+           static_cast<framework::proto::VarType::Type>(dtype) ==
+               framework::proto::VarType::BF16) &&
           ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
         if (std::all_of(x_vars.begin(), x_vars.end(),
                         [](const framework::Variable* v) {
                           return v->IsType<framework::LoDTensor>();
                         })) {
           return framework::OpKernelType(
-              framework::proto::VarType::FP32, ctx.GetPlace(),
-              framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
+              static_cast<framework::proto::VarType::Type>(dtype),
+              ctx.GetPlace(), framework::DataLayout::kMKLDNN,
+              framework::LibraryType::kMKLDNN);
         }
       }
 #endif
@@ -215,6 +218,11 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
     AddComment(R"DOC(This OP is used to sum one or more Tensor or LoDTensor
                     of the input. If the input is LoDTensor, the output only
                     shares LoD information with the first input.)DOC");

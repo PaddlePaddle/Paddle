@@ -264,17 +264,17 @@ class WeightNormParamAttr(ParamAttr):
 
             data = paddle.static.data(name="data", shape=[3, 32, 32], dtype="float32")
 
-            fc = paddle.static.nn.fc(input=data,
+            fc = paddle.static.nn.fc(x=data,
                                      size=1000,
-                                     param_attr=paddle.static.WeightNormParamAttr(
-                                                dim=None,
-                                                name='weight_norm_param',
-                                                initializer=paddle.nn.initializer.Constant(1.0),
-                                                learning_rate=1.0,
-                                                regularizer=paddle.regularizer.L2Decay(0.1),
-                                                trainable=True,
-                                                do_model_average=False,
-                                                need_clip=True))
+                                     weight_attr=paddle.static.WeightNormParamAttr(
+                                         dim=None,
+                                         name='weight_norm_param',
+                                         initializer=paddle.nn.initializer.Constant(1.0),
+                                         learning_rate=1.0,
+                                         regularizer=paddle.regularizer.L2Decay(0.1),
+                                         trainable=True,
+                                         do_model_average=False,
+                                         need_clip=True))
 
     """
     # List to record the parameters reparameterized by weight normalization.

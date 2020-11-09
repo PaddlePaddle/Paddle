@@ -114,7 +114,7 @@ struct NCCLContextMap {
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
+      PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(nccl_id, platform::errors::InvalidArgument(
@@ -132,8 +132,8 @@ struct NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
+          PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+          PADDLE_RETRY_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
       }

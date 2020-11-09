@@ -57,7 +57,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         return x, y, loss
 
     def check(self, place, use_cuda):
-        paddle.manual_seed(1)
+        paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         main_program = fluid.Program()
         startup_program = fluid.Program()

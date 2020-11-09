@@ -23,20 +23,14 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
-from ...fluid.layers import center_loss  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
-from ...fluid.layers import rank_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
-from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
-from ...fluid.layers import smooth_l1  #DEFINE_ALIAS
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
-from ...fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
@@ -49,11 +43,9 @@ from ...fluid.framework import Variable
 __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
-    'bpr_loss',
-    'center_loss',
     'cross_entropy',
     'dice_loss',
-    'edit_distance',
+    'hsigmoid_loss',
     'iou_similarity',
     'kl_div',
     'l1_loss',
@@ -63,16 +55,11 @@ __all__ = [
     #       'nce',
     'nll_loss',
     'npair_loss',
-    'rank_loss',
-    'sampled_softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
-    'smooth_l1',
     'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
-    'teacher_student_sigmoid_loss',
     'ctc_loss',
 ]
 
@@ -180,7 +167,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
         outputs={'Out': [out]})
 
     if weight is not None:
-        if isinstance(weight, paddle.framework.Variable):
+        if isinstance(weight, paddle.static.Variable):
             weight_name = name if reduction is 'none' else None
             out = paddle.multiply(out, weight, axis=-1, name=weight_name)
         else:
@@ -315,16 +302,18 @@ def binary_cross_entropy_with_logits(logit,
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name)
 
-    one = paddle.fill_constant(shape=[1], value=1.0, dtype=logit.dtype)
+    one = paddle.fluid.layers.fill_constant(
+        shape=[1], value=1.0, dtype=logit.dtype)
     if pos_weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             pos_weight, 'pos_weight', ['float32', 'float64'],
             'binary_cross_entropy_with_logits')
         log_weight = paddle.add(
-            paddle.multiply(label, paddle.elementwise_sub(pos_weight, one)),
+            paddle.multiply(
+                label, paddle.fluid.layers.elementwise_sub(pos_weight, one)),
             one)
         pos_weight_name = name if reduction == 'none' and weight is None else None
         out = paddle.multiply(out, log_weight, name=pos_weight_name)
@@ -340,6 +329,138 @@ def binary_cross_entropy_with_logits(logit,
         return paddle.sum(out, name=name)
     elif reduction == "mean":
         return paddle.mean(out, name=name)
+    return out
+
+
+def hsigmoid_loss(input,
+                  label,
+                  num_classes,
+                  weight,
+                  bias=None,
+                  path_table=None,
+                  path_code=None,
+                  is_sparse=False,
+                  name=None):
+    """
+    The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
+    and speed up the model training, especially the training of language model.
+    Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
+    For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
+    the path, and sum them to get a total cost.
+    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    represents the number of classes or the size of word dict.
+
+    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_. For the custom
+    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
+
+    1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
+    2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
+    3. Creating a dict map word_id -> code of path that from the word to the root node, we call it path_code.
+       Code means the label of each binary classifier, 1 indicate true, 0 indicate false.
+    4. Now, each word should has its path and code along the path, you can pass a batch of path and code related
+       to the same batch of inputs.
+
+    Parameters:
+        input (Tensor): A tensor with the shape [N, D], where N is the size of mini-batch,
+            and D is the feature size. Its data type supports float32 or float64.
+        label (Tensor): A tensor contains the labels of training data. Its shape is [N, 1]
+            and data type is int64.
+        num_classes (int): The number of classes or the size of word dict, must be greater than 2.
+            If the default tree is used (path_code and path_table is None are None), `num_classes`
+            should not be None. If the custom tree is used (path_code and path_table is None are not None),
+            `num_classes` should be the number of non-leaf nodes, which indicates the num of
+            classes using by the binary classifier.
+        weight (Tensor): A tensor with shape (num_classes - 1, D), with the same data type as `input`.
+        bias (Tensor, optional): A tensor with shape (num_classes - 1, 1), with the same data type as `input`.
+            If `bias` is None, no bias will be add. Default is None.
+        path_table (Tensor, optional): A tensor that stores each batch of samples' path from leaf to root
+            node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
+            path_table[i] is a np.array like structure and each element in this array is the indexes in parent
+            nodes' weight matrix. If `path_table` and `path_code` are None, the default tree will be used.
+            Default is None.
+        path_code (Tensor, optional): A tensor that stores each batch of samples' code of path from leaf
+            to root node, its shape is [N, L] and data type is int64, which is the same as :attr:`path_table`.
+            Each code of path is consisted with the code of nodes from leaf to root node. If `path_table` and
+            `path_code` are None, the default tree will be used. Default is None.
+        is_sparse (bool, optional): Whether use sparse updating instead of dense updating. If `is_sparse` is True,
+            the gradient of `weight` and `input` will be sparse. Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as `input`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            paddle.set_device('cpu')
+
+            input = paddle.uniform([2, 3])
+            # [[-0.8018668   0.8736385  -0.9064771 ] # random
+            #  [-0.10228515 -0.87188244 -0.8783718 ]] # random
+            label = paddle.to_tensor([0, 1, 4, 5])
+            num_classes = 5
+            weight=paddle.uniform([num_classes-1, 3])
+            # [[-0.24148715  0.8449961  -0.7399121 ] # random
+            #  [-0.9800559   0.43509364  0.9091208 ] # random
+            #  [ 0.60194826  0.10430074 -0.4521166 ] # random
+            #  [-0.4469818  -0.01536179 -0.604454  ]] # random
+
+            out=F.hsigmoid_loss(input, label, num_classes, weight)
+            # [[3.0159328]
+            #  [2.2407534]]
+    """
+
+    if in_dygraph_mode():
+        out, _, _ = core.ops.hierarchical_sigmoid(
+            input, weight, label, path_table, path_code, bias, 'num_classes',
+            num_classes, 'is_sparse', is_sparse, 'remote_prefetch', is_sparse)
+        return out
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'hsigmoid_loss')
+    check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid_loss')
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                             'hsigmoid_loss')
+    if bias is not None:
+        check_variable_and_dtype(bias, 'bias', ['float32', 'float64'],
+                                 'hsigmoid_loss')
+    if path_table is not None:
+        check_variable_and_dtype(path_table, 'path_table', ['int64'],
+                                 'hsigmoid_loss')
+    if path_code is not None:
+        check_variable_and_dtype(path_code, 'path_code', ['int64'],
+                                 'hsigmoid_loss')
+
+    attrs = {
+        "num_classes": num_classes,
+        "is_sparse": is_sparse,
+        "remote_prefetch": is_sparse
+    }
+
+    inputs = {
+        "X": input,
+        "W": weight,
+        "Bias": bias,
+        "PathTable": path_table,
+        "PathCode": path_code,
+        "Label": label
+    }
+
+    helper = LayerHelper('hsigmoid_loss', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    pre_out = helper.create_variable_for_type_inference(input.dtype)
+    outputs = {"Out": out, "PreOut": pre_out, "W_Out": weight}
+
+    helper.append_op(
+        type="hierarchical_sigmoid",
+        inputs=inputs,
+        outputs=outputs,
+        attrs=attrs)
     return out
 
 
@@ -494,12 +615,13 @@ def margin_ranking_loss(input,
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64'], 'margin_rank_loss')
 
-    out = paddle.elementwise_sub(other, input)
+    out = paddle.fluid.layers.elementwise_sub(other, input)
     out = paddle.multiply(out, label)
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
-        paddle.fill_constant([1], out.dtype, margin, out=margin_var)
+        paddle.fluid.layers.fill_constant(
+            [1], out.dtype, margin, out=margin_var)
         out = paddle.add(out, margin_var)
 
     result_out = helper.create_variable_for_type_inference(input.dtype)
@@ -604,13 +726,14 @@ def l1_loss(input, label, reduction='mean', name=None):
         label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
     if reduction == 'sum':
-        unreduced = paddle.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.elementwise_sub(input, label, act='abs', name=name)
+        return paddle.fluid.layers.elementwise_sub(
+            input, label, act='abs', name=name)
 
 
 def nll_loss(input,
@@ -877,8 +1000,8 @@ def mse_loss(input, label, reduction='mean', name=None):
             # static graph mode
             paddle.enable_static()
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.data(name="input", shape=[1])
-            label = paddle.data(name="label", shape=[1])
+            input = paddle.fluid.data(name="input", shape=[1])
+            label = paddle.fluid.data(name="label", shape=[1])
             place = paddle.CPUPlace()
 
             output = mse_loss(input,label)
@@ -989,7 +1112,6 @@ def ctc_loss(log_probs,
             input_lengths = np.array([5, 5]).astype("int64")
             label_lengths = np.array([3, 3]).astype("int64")
 
-            paddle.disable_static()
             log_probs = paddle.to_tensor(log_probs)
             labels = paddle.to_tensor(labels)
             input_lengths = paddle.to_tensor(input_lengths)
@@ -1000,14 +1122,14 @@ def ctc_loss(log_probs,
                 label_lengths,
                 blank=0,
                 reduction='none')
-            print(loss.numpy())  #[3.9179852 2.9076521]
+            print(loss)  #[3.9179852 2.9076521]
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
                 label_lengths,
                 blank=0,
                 reduction='mean')
-            print(loss.numpy())  #[1.1376063]
+            print(loss)  #[1.1376063]
 
     """
 
@@ -1223,7 +1345,7 @@ def sigmoid_focal_loss(logit,
             label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
             one = paddle.to_tensor([1.], dtype='float32')
             fg_label = paddle.greater_equal(label, one)
-            fg_num = paddle.reduce_sum(paddle.cast(fg_label, dtype='float32'))
+            fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
             print(output.numpy())  # [0.65782464]
 

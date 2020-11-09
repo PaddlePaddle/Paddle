@@ -48,9 +48,21 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
 
-  if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Bind on endpoint %s failed.", ep));
+  int try_times = 0;
+  while (true) {
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+      LOG(WARNING) << "Socket bind worker " << ep
+                   << (try_times < 5 ? " failed, try again after 3 seconds."
+                                     : " failed, try again after 3 seconds. "
+                                       "Bind on endpoint %s failed. "
+                                       "Please confirm whether the "
+                                       "communication port or GPU card is "
+                                       "occupied.");
+      std::this_thread::sleep_for(std::chrono::seconds(3));
+      ++try_times;
+      continue;
+    }
+    break;
   }
 
   VLOG(3) << "listening on: " << ep;
@@ -100,20 +112,32 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(port);
 
-  if (inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0) {
+  char *ip = NULL;
+  struct hostent *hp;
+  if ((hp = gethostbyname(host.c_str())) == NULL) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Fail to get host by name %s.", host));
+  }
+  int i = 0;
+  while (hp->h_addr_list[i] != NULL) {
+    ip = inet_ntoa(*(struct in_addr *)hp->h_addr_list[i]);
+    VLOG(3) << "gethostbyname  host:" << host << "  ->ip: " << ip;
+    break;
+  }
+  if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
     PADDLE_THROW(platform::errors::Unavailable("Open address %s failed.", ep));
   }
 
   int try_times = 0;
   while (true) {
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-      VLOG(0) << "worker: " << ep
-              << (try_times < 5 ? " is not ready, will retry after 3 seconds..."
-                                : " is not ready. Maybe that some process "
-                                  "is occupied the GPUs of this node now, "
-                                  "and you should kill those process manually. "
-                                  "Will retry after 3 seconds...");
-
+      LOG(WARNING)
+          << "Socket connect worker " << ep
+          << (try_times < 5
+                  ? " failed, try again after 3 seconds."
+                  : " failed, try again after 3 seconds. Maybe that "
+                    "some process is occupied the GPUs of this node "
+                    "now, and you should kill those process manually.");
       std::this_thread::sleep_for(std::chrono::seconds(3));
       ++try_times;
       continue;

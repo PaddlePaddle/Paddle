@@ -17,7 +17,7 @@ limitations under the License. */
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 #include "paddle/fluid/operators/cum_op.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 using Tensor = paddle::framework::Tensor;
 using LoDTensor = paddle::framework::LoDTensor;

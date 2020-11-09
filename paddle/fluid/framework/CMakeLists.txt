@@ -247,7 +247,8 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS executor)
+cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
+    conditional_block_op executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -325,4 +326,7 @@ if(APPLE)
   set(FLUID_FRAMEWORK_SHARED_LIB
       ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
       CACHE INTERNAL "Fluid framework lib")
+endif()
+if(WITH_TESTING)
+set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()

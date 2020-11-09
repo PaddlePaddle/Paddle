@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set -xe
 
 REPO="${REPO:-paddledocker}"
@@ -18,6 +33,11 @@ function make_cuda101cudnn7() {
   sed -i "s#COPY build_scripts /build_scripts#COPY build_scripts /build_scripts \nRUN bash build_scripts/install_gcc.sh gcc82 \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
 }
 
+function make_cuda102cudnn7() {
+  sed 's/<baseimg>/10.2-cudnn7-devel-centos6/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#COPY build_scripts /build_scripts#COPY build_scripts /build_scripts \nRUN bash build_scripts/install_gcc.sh gcc82 \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
+}
+
 
 function main() {
   local CMD=$1 
@@ -31,6 +51,9 @@ function main() {
     cuda101cudnn7)
       make_cuda101cudnn7
       ;;
+    cuda102cudnn7)
+      make_cuda102cudnn7
+      ;;
     *)
       echo "Make dockerfile error, Without this paramet."
       exit 1
@@ -38,4 +61,4 @@ function main() {
   esac
 }
 
-main $@
+main "$@"

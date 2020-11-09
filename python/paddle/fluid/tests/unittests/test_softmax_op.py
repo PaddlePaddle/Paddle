@@ -267,22 +267,11 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
         pass
 
 
-@unittest.skip('disable TestSoftmaxFP16Op2')
-class TestSoftmaxFP16Op2(TestSoftmaxOp):
-    def init_kernel_type(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSoftmaxFP16Op2(TestSoftmaxFP16Op):
     def get_x_shape(self):
-        return [2, 3, 4, 5]
-
-    def test_check_grad(self):
-        pass
+        return [2, 3, 4, 10]
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -315,7 +304,7 @@ class TestSoftmaxAPI(unittest.TestCase):
 
     def test_static_check(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', self.x_np.shape, 'float32')
+            x = paddle.fluid.data('X', self.x_np.shape, 'float32')
             out1 = F.softmax(x)
             m = paddle.nn.Softmax()
             out2 = m(x)
@@ -354,10 +343,12 @@ class TestSoftmaxAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softmax, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.data(name='x_int32', shape=[2, 3], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[2, 3], dtype='int32')
             self.assertRaises(TypeError, F.softmax, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.data(name='x_fp16', shape=[2, 3], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[2, 3], dtype='float16')
             F.softmax(x_fp16)
 
 

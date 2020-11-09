@@ -33,7 +33,7 @@ STEP_NUM = 10
 
 def train_static(args, batch_generator):
     paddle.enable_static()
-    paddle.manual_seed(SEED)
+    paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
     train_prog = fluid.Program()
     startup_prog = fluid.Program()
@@ -131,7 +131,7 @@ def train_static(args, batch_generator):
 def train_dygraph(args, batch_generator):
     with fluid.dygraph.guard(place):
         if SEED is not None:
-            paddle.manual_seed(SEED)
+            paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
         # define data loader
         train_loader = fluid.io.DataLoader.from_generator(capacity=10)
@@ -223,7 +223,7 @@ def train_dygraph(args, batch_generator):
 
 def predict_dygraph(args, batch_generator):
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         # define data loader
@@ -295,7 +295,7 @@ def predict_dygraph(args, batch_generator):
 def predict_static(args, batch_generator):
     test_prog = fluid.Program()
     with fluid.program_guard(test_prog):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         # define input and reader

@@ -13,21 +13,12 @@
 # limitations under the License.
 
 __all__ = [
-    'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
-    'Adamax', 'AdamW', 'DecayedAdagrad', 'DecayedAdagradOptimizer', 'Dpsgd',
-    'DpsgdOptimizer', 'Ftrl', 'FtrlOptimizer', 'Momentum', 'MomentumOptimizer',
-    'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer', '_LRScheduler', 'NoamLR',
-    'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
-    'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR',
-    'ReduceLROnPlateau', 'CosineAnnealingLR'
+    'Optimizer', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
+    'SGD', 'Momentum', 'lr'
 ]
 
-
-from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl,\
-            AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
-            FtrlOptimizer, AdadeltaOptimizer
-
 from .optimizer import Optimizer
+from .adagrad import Adagrad
 from .adam import Adam
 from .adamw import AdamW
 from .adamax import Adamax
@@ -35,7 +26,4 @@ from .rmsprop import RMSProp
 from .adadelta import Adadelta
 from .sgd import SGD
 from .momentum import Momentum
-
-from . import lr_scheduler
-from .lr_scheduler import _LRScheduler, NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
-            LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR
+from . import lr
