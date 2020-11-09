@@ -224,7 +224,8 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
           quantized_weight_data[j] *= weight_scale[j % w_dims[1]];
         }
       }
-    } else if (quantized_op_type == "conv2d") {
+    } else if (quantized_op_type == "conv2d" ||
+               quantized_op_type == "depthwise_conv2d") {
       PADDLE_ENFORCE_EQ(
           dequant_type, "fake_channel_wise_dequantize_max_abs",
           platform::errors::InvalidArgument("conv2d op must be dequantized by "
