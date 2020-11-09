@@ -400,10 +400,7 @@ class Layer(core.Layer):
         Parameters:
             name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
             persistable(bool, optional): if set this tensor persistable. Default: False
-            dtype(str, optional): data type of this parameter.
-                If set str, it can be "bool",  "float16", "float32", "float64",
-                "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: None
+            dtype(str, optional): data type of this parameter. If set str, it can be "bool", "float16", "float32", "float64","int8", "int16", "int32", "int64", "uint8" or "uint16". If set None, it will be "float32". Default: None
 
         Returns:
             Tensor, created Tensor.
