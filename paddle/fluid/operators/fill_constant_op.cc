@@ -152,4 +152,4 @@ REGISTER_OP_VERSION(fill_constant)
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewInput(
             "ValueTensor",
-            "In order to support new feature tensor support of Value", {}));
+            "In order to support new feature tensor support of Value"));
