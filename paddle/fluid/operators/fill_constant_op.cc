@@ -143,3 +143,12 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<int>,
                        ops::FillConstantKernel<bool>,
                        ops::FillConstantKernel<paddle::platform::float16>);
+
+REGISTER_OP_VERSION(fill_constant)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant, add a new attribute [ValueTensor].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "valTensor",
+            "In order to support new feature tensor support of Value", false));
