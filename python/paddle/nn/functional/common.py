@@ -715,7 +715,6 @@ def bilinear(x1, x2, weight, bias=None, name=None):
         import numpy
         import paddle.nn.functional as F
 
-        paddle.disable_static()
         x1 = numpy.random.random((5, 5)).astype('float32')
         x2 = numpy.random.random((5, 4)).astype('float32')
         w = numpy.random.random((1000, 5, 4)).astype('float32')

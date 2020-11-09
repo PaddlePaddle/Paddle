@@ -389,19 +389,23 @@ class Layer(core.Layer):
                                              default_initializer)
 
     # TODO: Add more parameter list when we need them
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.nn.Layer.create_tensor",
+        reason="New api in create_tensor, easier to use.")
     def create_variable(self, name=None, persistable=None, dtype=None):
-        """Create Variable for this layer.
+        """Create Tensor for this layer.
 
         Parameters:
-            name(str, optional): name of the variable. Please refer to :ref:`api_guide_Name` . Default: None
-            persistable(bool, optional): if set this variable persistable. Default: False
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
+            persistable(bool, optional): if set this tensor persistable. Default: False
             dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
                 If set None, it will be "float32". Default: None
 
         Returns:
-            Tensor, created Variable.
+            Tensor, created Tensor.
 
         Examples:
             .. code-block:: python
@@ -416,6 +420,54 @@ class Layer(core.Layer):
                         self.linear = paddle.nn.Linear( 10, 10)
                             
                         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                    
+                    def forward(self, input):
+                        out = self.linear(input)
+                        paddle.assign( out, self.back_var)
+                        
+                        return out
+
+        """
+        if name is not None:
+            var_name = ".".join([self._full_name, name])
+        else:
+            var_name = unique_name.generate(".".join(
+                [self._full_name, "_generated_var"]))
+
+        return self._helper.main_program.current_block().create_var(
+            name=var_name,
+            persistable=persistable,
+            dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR)
+
+    # TODO: Add more parameter list when we need them
+    def create_tensor(self, name=None, persistable=None, dtype=None):
+        """Create Tensor for this layer.
+
+        Parameters:
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
+            persistable(bool, optional): if set this tensor persistable. Default: False
+            dtype(str, optional): data type of this parameter.
+                If set str, it can be "bool",  "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8" or "uint16".
+                If set None, it will be "float32". Default: None
+
+        Returns:
+            Tensor, created Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLinear(paddle.nn.Layer):
+                    def __init__(self,
+                                in_features,
+                                out_features):
+                        super(MyLinear, self).__init__()
+                        self.linear = paddle.nn.Linear( 10, 10)
+                            
+                        self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
                     
                     def forward(self, input):
                         out = self.linear(input)
@@ -1053,7 +1105,7 @@ class Layer(core.Layer):
 
     def __dir__(self):
         """
-        Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
+        Return a list. Get all parameters, buffers(non-parameter tensors), sublayers, method and attr of Layer.
 
         Examples:
             .. code-block:: python
