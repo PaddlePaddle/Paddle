@@ -761,7 +761,7 @@ function(py_test TARGET_NAME)
     
     if (WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    if (APPLE)
+    elseif (APPLE)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 20)
     else()
         # No unit test should exceed 2 minutes in Linux.
