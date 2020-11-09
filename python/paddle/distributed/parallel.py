@@ -123,27 +123,28 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
-    if ParallelEnv().world_size < 2:
+    parallel_env = ParallelEnv()
+    if parallel_env.world_size < 2:
         return
 
     # 3: init gloo context
-    ep_rank_0 = ParallelEnv().trainer_endpoints[0].split(":")
-    ep_rank = ParallelEnv().trainer_endpoints[ParallelEnv().rank].split(":")
+    ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
+    ep_rank = parallel_env.trainer_endpoints[parallel_env.rank].split(":")
     manager = Manager()
     # glboal dict to store status
     http_server_d = manager.dict()
     http_server_d["running"] = False
-    if ParallelEnv().rank == 0:
+    if parallel_env.rank == 0:
         http_server = Process(
             target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
-    wait_server_ready([ParallelEnv().trainer_endpoints[0]])
+    wait_server_ready([parallel_env.trainer_endpoints[0]])
 
     gloo_strategy = core.GlooParallelStrategy()
-    gloo_strategy.rank = ParallelEnv().rank
-    gloo_strategy.rank_num = ParallelEnv().world_size
+    gloo_strategy.rank = parallel_env.rank
+    gloo_strategy.rank_num = parallel_env.world_size
     gloo_strategy.ip_address = ep_rank_0[0]
     gloo_strategy.ip_port = int(ep_rank_0[1])
     default_init_timeout_seconds = 3600
@@ -152,7 +153,7 @@ def init_parallel_env():
     gloo_strategy.run_seconds = default_run_timeout_seconds
     gloo = core.GlooParallelContext(gloo_strategy)
     gloo.init()
-    if ParallelEnv().rank == 0:
+    if parallel_env.rank == 0:
         http_server_d["running"] = False
         http_server.join()
 
@@ -160,10 +161,10 @@ def init_parallel_env():
     strategy = ParallelStrategy()
     if parallel_helper._is_parallel_ctx_initialized():
         warnings.warn("The parallel environment has been initialized.")
-    strategy.nranks = ParallelEnv().world_size
-    strategy.local_rank = ParallelEnv().rank
-    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-    strategy.current_endpoint = ParallelEnv().current_endpoint
+    strategy.nranks = parallel_env.world_size
+    strategy.local_rank = parallel_env.rank
+    strategy.trainer_endpoints = parallel_env.trainer_endpoints
+    strategy.current_endpoint = parallel_env.current_endpoint
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode, 
@@ -171,14 +172,12 @@ def init_parallel_env():
     # directly, if they want to switch default place,
     # they need to call a function to change default place,
     # here just set correctly place to users
-    place = core.CUDAPlace(ParallelEnv().device_id)
+    place = core.CUDAPlace(parallel_env.device_id)
     _set_expected_place(place)
 
     # init nccl context
     parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
     parallel_helper._init_parallel_ctx()
-
-    parallel_env = ParallelEnv()
 
 
 def get_rank():
@@ -201,7 +200,7 @@ def get_rank():
             print("The rank is %d" % dist.get_rank())
             # The rank is 0
     """
-    return ParallelEnv().rank
+    return parallel_env.rank if parallel_env else 0
 
 
 def get_world_size():
