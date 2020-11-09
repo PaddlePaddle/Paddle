@@ -40,42 +40,6 @@ void SwapPoniter(Tensor** a, Tensor** b) {
 }
 
 template <typename T>
-void Print3DTensor(const Tensor* a, std::string name) {
-  const int& row = a->dims()[0];
-  const int& heigth = a->dims()[1];
-  const int& width = a->dims()[2];
-  std::string message = "print value, name is " + name + "\n";
-  for (int r = 0; r < row; r++) {
-    for (int i = 0; i < heigth; i++) {
-      for (int j = 0; j < width; j++) {
-        message +=
-            std::to_string(a->data<T>()[r * heigth * width + i * width + j]) +
-            " ";
-      }
-      message += "\n";
-    }
-    message += "*******\n";
-  }
-
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-
-template <typename T>
-void Print2DTensor(const Tensor* a, std::string name) {
-  const int& heigth = a->dims()[0];
-  const int& width = a->dims()[1];
-  std::string message = "print value, name is " + name + "\n";
-  for (int i = 0; i < heigth; i++) {
-    for (int j = 0; j < width; j++) {
-      message += std::to_string(a->data<T>()[i * width + j]) + " ";
-    }
-    message += "\n";
-  }
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-template <typename T>
 void create_mask_matrix(const framework::ExecutionContext& context,
                         const Tensor* sequence_length, Tensor* mask_matrix,
                         const bool& is_reverse, int* min_seq_len) {
