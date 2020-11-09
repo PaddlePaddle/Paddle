@@ -473,8 +473,8 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
           handle, cuTransB, cuTransA, N, M, K, reinterpret_cast<void *>(&alpha),
           B, fp, ldb, strideB, A, fp, lda, strideA,
-          reinterpret_cast<void *>(&beta), C, fp, ldc, strideC, batchCount, fp,
-          algo));
+          reinterpret_cast<void *>(&beta), C, fp, ldc, strideC, batchCount,
+          computeType, algo));
     });
   } else {
 #endif  // CUDA_VERSION >= 9010
