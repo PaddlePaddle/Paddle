@@ -82,7 +82,7 @@ def get_cudnn_version():
             
             import paddle
 
-            cudnn_version = paddle.device.get_cudnn_version()
+            cudnn_version = paddle.get_cudnn_version()
 
 
 
@@ -179,7 +179,7 @@ def get_device():
      .. code-block:: python
             
         import paddle
-        device = paddle.device.get_device()
+        device = paddle.get_device()
 
     """
     device = ''
