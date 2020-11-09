@@ -167,5 +167,5 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<int64_t>);
 REGISTER_OP_VERSION(gather)
     .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
-                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                   paddle::framework::compatible::OpVersionDesc().NewInput(
                        "Axis", "Specify the axis of gather operation.", {}));

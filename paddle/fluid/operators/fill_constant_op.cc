@@ -150,6 +150,6 @@ REGISTER_OP_VERSION(fill_constant)
         R"ROC(
       Upgrade fill_constant, add a new attribute [ValueTensor].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
+        paddle::framework::compatible::OpVersionDesc().NewInput(
             "ValueTensor",
             "In order to support new feature tensor support of Value", {}));
