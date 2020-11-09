@@ -103,5 +103,23 @@ class TestSampleLogitsOpWithAccidentalHits(TestSampleLogitsOp):
         self.attrs = {'num_samples': self.S, 'remove_accidental_hits': False}
 
 
+class TestSampledSoftmaxWithCrossEntropyAPI(TestSampleLogitsOp):
+    def setUp(self):
+        pass
+
+    def test_use_customized_samples(self):
+        linear = paddle.nn.Linear(256, 100)
+        input = paddle.rand(shape=[32, 256])
+        label = paddle.full([32, 1], 1, "int64")
+        fc = linear(input)
+        out = paddle.nn.functional.loss.sampled_softmax_with_cross_entropy(
+            logits=fc,
+            label=label,
+            num_samples=25,
+            use_customized_samples=True,
+            customized_samples=label,
+            customized_probabilities=fc)
+
+
 if __name__ == "__main__":
     unittest.main()
