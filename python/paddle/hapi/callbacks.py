@@ -296,12 +296,17 @@ class ProgBarLogger(Callback):
         .. code-block:: python
 
             import paddle
+            import paddle.vision.transforms as T
             from paddle.static import InputSpec
 
             inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            train_dataset = paddle.vision.datasets.MNIST(mode='train')
+            transform = T.Compose([
+                T.Transpose(),
+                T.Normalize([127.5], [127.5])
+            ])
+            train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
 
             lenet = paddle.vision.LeNet()
             model = paddle.Model(lenet,
@@ -432,12 +437,17 @@ class ModelCheckpoint(Callback):
         .. code-block:: python
 
             import paddle
+            import paddle.vision.transforms as T
             from paddle.static import InputSpec
 
             inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            train_dataset = paddle.vision.datasets.MNIST(mode='train')
+            transform = T.Compose([
+                T.Transpose(),
+                T.Normalize([127.5], [127.5])
+            ])
+            train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
 
             lenet = paddle.vision.LeNet()
             model = paddle.Model(lenet,
@@ -484,13 +494,18 @@ class VisualDL(Callback):
         .. code-block:: python
 
             import paddle
+            import paddle.vision.transforms as T
             from paddle.static import InputSpec
 
             inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
 
-            train_dataset = paddle.vision.datasets.MNIST(mode='train')
-            eval_dataset = paddle.vision.datasets.MNIST(mode='test')
+            transform = T.Compose([
+                T.Transpose(),
+                T.Normalize([127.5], [127.5])
+            ])
+            train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+            eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
             net = paddle.vision.LeNet()
             model = paddle.Model(net, inputs, labels)

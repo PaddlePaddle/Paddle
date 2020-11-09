@@ -133,7 +133,6 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
-
 rem ------set cache third_party------
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools

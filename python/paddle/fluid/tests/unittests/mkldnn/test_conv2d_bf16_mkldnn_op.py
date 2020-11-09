@@ -216,4 +216,6 @@ class TestWithInput1x1Filter1x1(TestConv2DBf16Op):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()
