@@ -32,6 +32,7 @@ from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
+import paddle.utils.deprecated as deprecated
 
 __all__ = ['Layer']
 
