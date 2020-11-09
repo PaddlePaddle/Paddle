@@ -32,7 +32,6 @@ from paddle.fluid.dygraph import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import in_dygraph_mode, core
 
 __all__ = [
     'RNNCellBase',
@@ -1064,17 +1063,6 @@ class RNNBase(LayerList):
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
-        if in_dygraph_mode():
-            self._dropout_state, reserve, out, state = core.ops.rnn(
-                inputs, initial_states, self._all_weights, sequence_length,
-                self._dropout_state, 2, 'mode', self.mode, 'dropout_prob',
-                self.dropout, 'is_bidirec', self.num_directions == 2,
-                'hidden_size', self.hidden_size, 'num_layers', self.num_layers,
-                'is_test', not self.training)
-            out = paddle.tensor.transpose(
-                out, [1, 0, 2]) if not self.time_major else out
-            return out, tuple(state) if len(state) > 1 else state[0]
-
         out = self._helper.create_variable_for_type_inference(inputs.dtype)
         state = [
             self._helper.create_variable_for_type_inference(inputs.dtype)
