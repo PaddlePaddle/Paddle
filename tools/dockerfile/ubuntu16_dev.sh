@@ -15,6 +15,7 @@
 # limitations under the License.
 
 docker_name=$1
+
   
 function ref_whl(){
   if [[ ${WITH_GPU} == "ON" ]]; then
