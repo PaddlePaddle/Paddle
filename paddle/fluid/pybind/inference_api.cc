@@ -387,6 +387,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("params_file", &AnalysisConfig::params_file)
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
+      .def("enable_xpu", &AnalysisConfig::EnableXpu,
+           py::arg("l3_workspace_size"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
@@ -427,8 +429,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
-           py::arg("zero_copy") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
+           py::arg("zero_copy") = false,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())
       .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)

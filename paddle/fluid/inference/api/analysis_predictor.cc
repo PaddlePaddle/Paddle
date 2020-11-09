@@ -232,8 +232,17 @@ bool AnalysisPredictor::PrepareExecutor() {
 
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
-          << platform::get_cur_mkldnn_session_id();
+  std::vector<std::vector<int>> inputs_shape;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    inputs_shape.emplace_back(inputs[i].shape);
+  }
+  MkldnnPreSet(inputs_shape);
+#endif
+}
+
+void AnalysisPredictor::MkldnnPreSet(
+    const std::vector<std::vector<int>> &inputs_shape) {
+#ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
@@ -243,9 +252,9 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
         config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      for (size_t j = 0; j < inputs[i].shape.size(); ++j) {
-        ss << inputs[i].shape[j] << "-";
+    for (size_t i = 0; i < inputs_shape.size(); ++i) {
+      for (size_t j = 0; j < inputs_shape[i].size(); ++j) {
+        ss << inputs_shape[i][j] << "-";
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
@@ -445,6 +454,8 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   if (config_.lite_engine_enabled()) {
+    argument_.SetCpuMathLibraryNumThreads(
+        config_.cpu_math_library_num_threads());
     argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
@@ -656,6 +667,18 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) {
+    std::vector<std::vector<int>> shape_vector;
+    auto names = GetInputNames();
+    for (size_t i = 0; i < names.size(); ++i) {
+      auto in_tensor = GetInputTensor(names[i]);
+      shape_vector.emplace_back(in_tensor->shape());
+    }
+    MkldnnPreSet(shape_vector);
+  }
+#endif
+
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -664,6 +687,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
 #if defined(PADDLE_WITH_MKLML) && defined(_LINUX)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
