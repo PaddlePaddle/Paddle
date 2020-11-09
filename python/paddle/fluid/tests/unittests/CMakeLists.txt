@@ -214,8 +214,11 @@ function(py_test_modules TARGET_NAME)
     if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
-
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 15)
+    if(WIN32)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
+    else()
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 15)
+    endif()
   endif()
 endfunction()
 
