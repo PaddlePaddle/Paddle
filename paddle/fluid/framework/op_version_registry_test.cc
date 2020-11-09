@@ -58,7 +58,7 @@ TEST(test_operator_version, test_operator_version) {
 TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
   const std::string fake_op_name{"op_name__"};
   ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
-      "no_registered_pass"));
+      "no_registered_capability_pass"));
 
   REGISTER_PASS_CAPABILITY(no_bind_pass);
   ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
