@@ -273,6 +273,8 @@ from . import jit
 from . import static
 from . import amp
 
+from . import onnx
+
 # high-level api
 from .hapi import Model
 from .hapi import callbacks
