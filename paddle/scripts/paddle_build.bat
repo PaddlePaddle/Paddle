@@ -133,7 +133,6 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
-
 rem ------set cache third_party------
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
@@ -248,8 +247,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-::msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 1 (
