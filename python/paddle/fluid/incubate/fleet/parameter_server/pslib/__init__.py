@@ -1032,6 +1032,14 @@ class DownpourOptimizer(DistributedOptimizer):
             if op.type in collective_ops:
                 if op.input("X")[0] in table_name:
                     need_remove_op_index.append(ids)
+            if op.type == "lookup_table_grad":
+                need_remove_op_index.append(ids)
+            try:
+                if op.output("Out")[0] in table_name:
+                    need_remove_op_index.append(ids)
+            except:
+                pass
+
 
         need_remove_op_index.sort(reverse=True)
         for index in need_remove_op_index:

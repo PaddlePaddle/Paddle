@@ -214,12 +214,12 @@ void FleetWrapper::HeterPullSparseVars(
 }
 
 void FleetWrapper::HeterPushSparseVars(
-    std::shared_ptr<HeterTask> task, const uint64_t table_id,
+    std::shared_ptr<HeterTask> task, const Scope& scope,
+    const uint64_t table_id,
     const std::vector<std::string>& sparse_key_names,
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<::std::future<int32_t>>* push_sparse_status, const bool use_cvm,
     const bool dump_slot, const bool no_cvm) {
-  auto& scope = *(task->scope_);
   int batch_size = task->cur_batch_;
   int offset = 2;
   int slot_offset = 0;

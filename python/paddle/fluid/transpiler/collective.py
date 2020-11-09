@@ -203,7 +203,8 @@ class GradAllReduce(Collective):
                     outputs={'Out': loss_grad_var},
                     attrs={
                         'scale': 1.0 / self.nranks,
-                        self.op_role_key: OpRole.Backward
+                        self.op_role_key: OpRole.Backward,
+                        "op_device": "gpu"
                     })
 
     def _insert_allreduce_ops(self):
@@ -233,7 +234,7 @@ class GradAllReduce(Collective):
                             type='c_sync_calc_stream',
                             inputs={'X': grad},
                             outputs={'Out': grad},
-                            attrs={self.op_role_key: OpRole.Backward})
+                            attrs={self.op_role_key: OpRole.Backward, "op_device": "gpu"})
                         offset += 1
 
                     # As we search ops reversedly, we should insert c_allreduce_sum
@@ -246,7 +247,8 @@ class GradAllReduce(Collective):
                         outputs={'Out': grad},
                         attrs={
                             'ring_id': ring_id,
-                            self.op_role_key: OpRole.Backward
+                            self.op_role_key: OpRole.Backward,
+                            "op_device": "gpu"
                         })
 
         if grad is None:

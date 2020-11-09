@@ -811,7 +811,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             }
             timeline.Start();
             fleet_ptr_->HeterPushSparseVars(
-                task, tid, sparse_key_names_[tid], sparse_grad_names_[tid],
+                task, *(task->scope_), tid, sparse_key_names_[tid], sparse_grad_names_[tid],
                 table.emb_dim(), &push_sparse_status_, use_cvm_, dump_slot_,
                 no_cvm_);
             timeline.Pause();
@@ -1074,7 +1074,7 @@ void HeterCpuWorker::TrainFiles() {
               }
             }
             fleet_ptr_->HeterPushSparseVars(
-                task, tid, sparse_key_names_[tid], sparse_grad_names_[tid],
+                task, *(task->scope_), tid, sparse_key_names_[tid], sparse_grad_names_[tid],
                 table.emb_dim(), &push_sparse_status_, use_cvm_, dump_slot_,
                 no_cvm_);
           }
