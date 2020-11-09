@@ -162,7 +162,7 @@ void BuddyAllocator::Free(void* p) {
       IndexSizeAddress(desc->get_index(), desc->get_total_size(), block));
 }
 
-void BuddyAllocator::Release() {
+uint64_t BuddyAllocator::Release() {
   std::lock_guard<std::mutex> lock(mutex_);
   int num = 0;
   uint64_t bytes = 0;
@@ -193,6 +193,7 @@ void BuddyAllocator::Release() {
     }
   }
   VLOG(10) << "Release " << num << " chunk, Free " << bytes << " bytes.";
+  return bytes;
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }

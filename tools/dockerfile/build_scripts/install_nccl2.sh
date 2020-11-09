@@ -24,8 +24,8 @@ wget -q -O $DIR/$DEB $URL
 cd $DIR && ar x $DEB && tar xf data.tar.xz
 DEBS=$(find ./var/ -name "*.deb")
 for sub_deb in $DEBS; do
-  echo "$sub_deb"
-  ar x "$sub_deb" && tar xf data.tar.xz
+  echo $sub_deb
+  ar x $sub_deb && tar xf data.tar.xz
 done
 mv -f usr/include/nccl.h /usr/local/include/
 mv -f usr/lib/x86_64-linux-gnu/libnccl* /usr/local/lib/
