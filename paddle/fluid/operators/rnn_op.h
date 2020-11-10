@@ -37,8 +37,6 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using TensorList = std::vector<framework::Tensor>;
 
-double total_time = 0.0;
-
 template <typename T>
 void Print2DTensor(const Tensor* a, std::string name) {
   const int& heigth = a->dims()[0];
@@ -318,7 +316,6 @@ struct SimpleRNNCell : Cell<T> {
 //      }
 //      auto end = system_clock::now();
 //      auto duration = duration_cast<microseconds>(end - start);
-//      total_time += double(duration.count()) * microseconds::period::num /
 //      microseconds::period::den;
 //      framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx,
 //      output);
@@ -340,8 +337,6 @@ struct SimpleRNNCell : Cell<T> {
     // Print3DTensor<T>(last_h, "last_h");
     //    auto end = system_clock::now();
     //    auto duration = duration_cast<microseconds>(end - start);
-    //    total_time += double(duration.count()) * microseconds::period::num /
-    //                  microseconds::period::den;
     framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx, output);
   }
 };
@@ -942,8 +937,6 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              output_holder, i, gate_num, &curr_gate_data, &curr_cell_data,
              &curr_cell_act_data, is_test);
   }
-  // VLOG(0) << "Spend " << total_time * 1000 << " ms";
-  total_time = 0;
   if (num_layers % 2 == 0) {
     // the final result is in output_holder, must copy the data to output
     framework::TensorCopy(
