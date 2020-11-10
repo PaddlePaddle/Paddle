@@ -104,7 +104,7 @@ class TestSampleLogitsOpWithAccidentalHits(TestSampleLogitsOp):
         self.attrs = {'num_samples': self.S, 'remove_accidental_hits': False}
 
 
-class TestSampledSoftmaxWithCrossEntropyAPI(TestSampleLogitsOp):
+class TestSampledSoftmaxWithCrossEntropyAPI(unittest.TestCase):
     def setUp(self):
         pass
 
