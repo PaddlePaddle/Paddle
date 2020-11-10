@@ -21,7 +21,7 @@ def export(layer, save_file, input_spec=None, opset_version=9, **configs):
     """
     Export Layer as ONNX format model, which can be used for inference.
     Now, it supports a limited operater set and dynamic models.(e.g., MobileNet.)
-    More features and introduction, Please reference `Github <https://github.com/PaddlePaddle/paddle2onnx>`_.
+    More features and introduction, Please reference `Github <https://github.com/PaddlePaddle/paddle2onnx>`_ .
     
     Args:
         layer (Layer): The Layer to be saved.
