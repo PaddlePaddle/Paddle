@@ -12,23 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import models
-from .models import *
+__all__ = ['yolo_loss', 'decode_yolo_box']
 
-from . import transforms
-from .transforms import *
-
-from . import datasets
-from .datasets import *
-
-from . import image
-from .image import *
-
-from . import layers
-from .layers import *
-
-__all__ = models.__all__ \
-        + transforms.__all__ \
-        + datasets.__all__ \
-        + image.__all__ \
-        + layers.__all__
+from ..fluid.layers import yolov3_loss as yolo_loss
+from ..fluid.layers import yolo_box as decode_yolo_box
