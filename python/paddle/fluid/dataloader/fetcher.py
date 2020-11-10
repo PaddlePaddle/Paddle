@@ -46,7 +46,9 @@ class _IterableDatasetFetcher(_DatasetFetcher):
         else:
             data = next(self.dataset_iter)
 
-        return self.collate_fn(data)
+        if self.collate_fn:
+            data = self.collate_fn(data)
+        return data
 
 
 class _MapDatasetFetcher(_DatasetFetcher):
@@ -58,4 +60,7 @@ class _MapDatasetFetcher(_DatasetFetcher):
             data = [self.dataset[idx] for idx in batch_indices]
         else:
             data = self.dataset[batch_indices]
-        return self.collate_fn(data)
+
+        if self.collate_fn:
+            data = self.collate_fn(data)
+        return data

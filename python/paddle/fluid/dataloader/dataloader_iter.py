@@ -225,7 +225,6 @@ class _DataLoaderIterBase(object):
         self._return_list = loader.return_list
         self._batch_sampler = loader.batch_sampler
         self._auto_collate_batch = loader.auto_collate_batch
-        self._collate_fn = loader.collate_fn or default_collate_fn
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
         self._use_shared_memory = loader.use_shared_memory
@@ -236,11 +235,13 @@ class _DataLoaderIterBase(object):
 
         if self._auto_collate_batch:
             self._sampler_iter = iter(loader.batch_sampler)
+            self._collate_fn = loader.collate_fn or default_collate_fn
         else:
             if self._dataset_kind == _DatasetKind.MAP:
                 self._sampler_iter = iter(list(range(len(self._dataset))))
             else:
                 self._sampler_iter = iter(_InfiniteIterableSampler(self._dataset, 1))
+            self._collate_fn = loader.collate_fn
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data

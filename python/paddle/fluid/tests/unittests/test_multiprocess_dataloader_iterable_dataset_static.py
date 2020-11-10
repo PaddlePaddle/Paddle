@@ -175,13 +175,15 @@ class RandomBatchedDataset(IterableDataset):
     def __iter__(self):
         for i in range(self.sample_num):
             np.random.seed(i)
-            data = []
+            images = []
+            labels = []
             for _ in range(BATCH_SIZE):
                 image = np.random.random([IMAGE_SIZE]).astype('float32')
                 label = np.random.randint(0, self.class_num - 1,
                                           (1, )).astype('int64')
-                data.append([image, label])
-            yield data
+                images.append(image)
+                labels.append(label)
+            yield np.stack(images, axis=0), np.stack(labels, axis=0)
 
 
 class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
@@ -198,7 +200,6 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
                 num_workers=num_workers,
                 batch_size=None,
                 drop_last=True)
-            # assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)

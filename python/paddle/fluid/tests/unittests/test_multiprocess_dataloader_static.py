@@ -222,12 +222,14 @@ class RandomBatchedDataset(Dataset):
 
     def __getitem__(self, idx):
         np.random.seed(idx)
-        data = []
+        images = []
+        labels = []
         for _ in range(BATCH_SIZE):
             image = np.random.random([IMAGE_SIZE]).astype('float32')
             label = np.random.randint(0, self.class_num - 1, (1, )).astype('int64')
-            data.append([image, label])
-        return data
+            images.append(image)
+            labels.append(label)
+        return np.stack(images, axis=0), np.stack(labels, axis=0)
 
     def __len__(self):
         return self.sample_num

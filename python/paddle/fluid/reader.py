@@ -163,6 +163,20 @@ class DataLoader(object):
 
     For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
 
+    **Disable automatic batching**
+
+    In certain cases such as some NLP task, instead of automatic batching,
+    handling batching manually is needed by users. For these cases,
+    automatic batching is disabled if both :attr:`batch_size` and
+    :attr:`batch_sampler` is set as None, each data yield from
+    :attr:`dataset` should be a list of samples in a batch and will be
+    processed with function define by :attr:`collate_fn` or
+    :attr:`default_collate_fn`
+
+    ..note::
+    When **automatic batching is disabled**, :attr:`default_collate_fn` will
+    do nothing to data from dataset.
+
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
