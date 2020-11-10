@@ -166,12 +166,11 @@ class DataLoader(object):
     **Disable automatic batching**
 
     In certain cases such as some NLP task, instead of automatic batching,
-    handling batching manually is needed by users. For these cases,
-    automatic batching is disabled if both :attr:`batch_size` and
-    :attr:`batch_sampler` is set as None, each data yield from
-    :attr:`dataset` should be a list of samples in a batch and will be
-    processed with function define by :attr:`collate_fn` or
-    :attr:`default_collate_fn`
+    handling batching manually in dataset is needed by users. For these
+    cases, automatic batching is disabled if both :attr:`batch_size` and
+    :attr:`batch_sampler` is set as None, each data got from :attr:`dataset`
+    should be batched data and will be processed with function define by
+    :attr:`collate_fn` or :attr:`default_collate_fn`.
 
     ..note::
     When **automatic batching is disabled**, :attr:`default_collate_fn` will
