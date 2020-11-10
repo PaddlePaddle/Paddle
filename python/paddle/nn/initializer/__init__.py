@@ -45,3 +45,8 @@ __all__ += xavier.__all__
 __all__ += assign.__all__
 __all__ += normal.__all__
 __all__ += uniform.__all__
+
+from . import initializer
+from .initializer import set_global_initializer  #DEFINE_ALIAS
+
+__all__ += initializer.__all__
