@@ -175,7 +175,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 #undef CP_MEMBER
 
-  Update();
+  // Update();
+  // Update() will reset all the passes, when some tensorRT pass is deleted in
+  // other.pass_builder(), it will set again, so just copy the passes.
+  pass_builder_->ClearPasses();
+  for (const std::string &pass : other.pass_builder()->AllPasses()) {
+    pass_builder_->AppendPass(pass);
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -281,9 +287,7 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
-void AnalysisConfig::EnableTensorRtOSS() {
-    trt_use_oss_ = true;
-}
+void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
