@@ -154,7 +154,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out2) 
             # [2 3 1]
             out3 = paddle.argmax(x, axis=-1)
-            print(out3.numpy()) 
+            print(out3) 
             # [2 3 1]
     """
     if axis is not None and not isinstance(axis, int):
@@ -226,9 +226,9 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
                                      [0,0,1,7],
                                      [6,9,2,4]])
             out1 = paddle.argmin(x)
-            print(out1.numpy()) # 4
+            print(out1) # 4
             out2 = paddle.argmin(x, axis=1)
-            print(out2.numpy()) 
+            print(out2) 
             # [0 0 2]
             out3 = paddle.argmin(x, axis=-1)
             print(out3) 
