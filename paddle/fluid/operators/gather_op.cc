@@ -66,6 +66,11 @@ class GatherOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return expected_kernel_type;
+  }
 };
 
 class GatherGradOp : public framework::OperatorWithKernel {

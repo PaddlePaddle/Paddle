@@ -234,10 +234,6 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
 
-// NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
-DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(SoftmaxGradInplaceInferer,
-                                     {"Out", framework::GradVarName("X")});
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -248,8 +244,7 @@ REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxInplaceInferer);
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
-                  ops::SoftmaxGradInplaceInferer);
+REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
