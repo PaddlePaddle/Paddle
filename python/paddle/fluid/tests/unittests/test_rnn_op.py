@@ -39,10 +39,12 @@ paddle.enable_static()
 class TestRNNOp(OpTest):
     def get_weight_names(self):
         weight_names = []
-        for i in range(2 * self.num_layers):
-            weight_names.append('weight{}'.format(i))
-        for i in range(2 * self.num_layers):
-            weight_names.append('bias{}'.format(i))
+        for i in range(self.num_layers):
+            for j in range(0, 2 * self.direction_num):
+                weight_names.append("{}.weight_{}".format(i, j))
+        for i in range(self.num_layers):
+            for j in range(0, 2 * self.direction_num):
+                weight_names.append("{}.bias_{}".format(i, j))
         return weight_names
 
     def setUp(self):
@@ -52,14 +54,15 @@ class TestRNNOp(OpTest):
         self.num_layers = 1
         self.is_bidirec = False
         self.mode = "LSTM"
+        self.is_test = False
         self.set_attrs()
 
-        direction_num = 2 if self.is_bidirec else 1
+        self.direction_num = 2 if self.is_bidirec else 1
         direction = "bidirectional" if self.is_bidirec else "forward"
         seq_length = 12
         batch_size = 5
-        input_size = 21
-        hidden_size = 21
+        input_size = 4
+        hidden_size = 2
 
         input = np.random.uniform(
             low=-0.1, high=0.1,
@@ -78,13 +81,12 @@ class TestRNNOp(OpTest):
             direction=direction)
 
         flat_w = get_params_for_net(rnn1)
-
         output, (last_hidden, last_cell) = rnn1(
             input, sequence_length=self.sequence_length)
 
-        init_h = np.zeros((self.num_layers * direction_num, batch_size,
+        init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
                            hidden_size)).astype(self.dtype)
-        init_c = np.zeros((self.num_layers * direction_num, batch_size,
+        init_c = np.zeros((self.num_layers * self.direction_num, batch_size,
                            hidden_size)).astype(self.dtype)
         state_out = np.ndarray((300)).astype("uint8")
 
@@ -107,7 +109,7 @@ class TestRNNOp(OpTest):
             'hidden_size': hidden_size,
             'num_layers': self.num_layers,
             'mode': self.mode,
-            'is_test': False
+            'is_test': self.is_test
         }
         self.outputs = {
             'Out': output,
@@ -124,14 +126,15 @@ class TestRNNOp(OpTest):
     def set_attrs(self):
         pass
 
-    #def test_grad_with_place(self):
-    #    place = core.CPUPlace()
-    #    var_name_list = self.get_weight_names()
-    #    for var_name in var_name_list:
-    #        self.check_grad_with_place(
-    #            place,
-    #            set(['Input', var_name, 'InitH', 'InitC']),
-    #            ['Out', 'LastH', 'LastC'])
+    def test_grad_with_place(self):
+        if not self.is_test:
+            place = core.CUDAPlace(0)
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input', 'init_h', 'init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad_with_place(place,
+                                       set(grad_check_list),
+                                       ['Out', 'last_hidden', 'last_cell'])
 
 
 class TestRNNCpu(TestRNNOp):
@@ -139,6 +142,16 @@ class TestRNNCpu(TestRNNOp):
         place = core.CPUPlace()
         self.check_output_with_place(
             place, no_check_set=['Reserve', 'DropoutState'])
+
+    def test_grad_with_place(self):
+        if not self.is_test:
+            place = core.CPUPlace()
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input', 'init_h', 'init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad_with_place(place,
+                                       set(grad_check_list),
+                                       ['Out', 'last_hidden', 'last_cell'])
 
 
 class TestRNNCpu1(TestRNNCpu):
@@ -154,15 +167,15 @@ class TestRNNCpu2(TestRNNCpu):
 
 class TestRNNCpu3(TestRNNCpu):
     def set_attrs(self):
-        self.is_bidirec = True
-        self.num_layers = 2
+        self.is_test = True
         self.sequence_length = None
 
 
 class TestRNNCpu4(TestRNNCpu):
     def set_attrs(self):
+        self.is_test = True
+        self.sequence_length = None
         self.is_bidirec = True
-        self.num_layers = 2
 
 
 if __name__ == '__main__':
