@@ -134,6 +134,52 @@ class TestMNISTTrain(unittest.TestCase):
             mnist = MNIST(mode='train', transform=transform, backend=1)
 
 
+class TestFASHIONMNISTTest(unittest.TestCase):
+    def test_main(self):
+        transform = T.Transpose()
+        mnist = FashionMNIST(mode='test', transform=transform)
+        self.assertTrue(len(mnist) == 10000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+
+
+class TestFASHIONMNISTTrain(unittest.TestCase):
+    def test_main(self):
+        transform = T.Transpose()
+        mnist = FashionMNIST(mode='train', transform=transform)
+        self.assertTrue(len(mnist) == 60000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+
+        # test cv2 backend
+        mnist = FashionMNIST(mode='train', transform=transform, backend='cv2')
+        self.assertTrue(len(mnist) == 60000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+            break
+
+        with self.assertRaises(ValueError):
+            mnist = FashionMNIST(mode='train', transform=transform, backend=1)
+
+
 class TestFlowersTrain(unittest.TestCase):
     def test_main(self):
         flowers = Flowers(mode='train')

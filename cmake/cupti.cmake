@@ -8,6 +8,7 @@ find_path(CUPTI_INCLUDE_DIR cupti.h
         PATHS ${CUPTI_ROOT} ${CUPTI_ROOT}/include
         $ENV{CUPTI_ROOT} $ENV{CUPTI_ROOT}/include
         ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/include
+        ${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/include
         NO_DEFAULT_PATH
         )
 
@@ -27,6 +28,7 @@ list(APPEND CUPTI_CHECK_LIBRARY_DIRS
         $ENV{CUPTI_ROOT}/lib64
         $ENV{CUPTI_ROOT}/lib
         /usr/lib
+        ${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/lib64
         ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/lib64)
 find_library(CUPTI_LIBRARY NAMES libcupti.so libcupti.dylib # libcupti_static.a
        PATHS ${CUPTI_CHECK_LIBRARY_DIRS} ${CUPTI_INCLUDE_DIR} ${__libpath_hist}

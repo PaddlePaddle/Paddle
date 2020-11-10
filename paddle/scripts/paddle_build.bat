@@ -85,11 +85,11 @@ if %day_now% NEQ %day_before% (
     goto :mkbuild
 )
 
-git diff HEAD origin/develop --stat --name-only
-git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
-if %ERRORLEVEL% EQU 0 (
-    rmdir build /s/q
-)
+:: git diff HEAD origin/develop --stat --name-only
+:: git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+:: if %ERRORLEVEL% EQU 0 (
+::     rmdir build /s/q
+:: )
 
 :mkbuild
 if not exist build (
@@ -135,6 +135,7 @@ set CLCACHE_HARDLINK=1
 set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
+
 
 goto :CASE_%1
 
@@ -262,8 +263,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-::msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 1 (
@@ -370,6 +370,8 @@ echo    ========================================
 echo    Running GPU unit tests in parallel way ...
 echo    ========================================
 
+set FLAGS_fraction_of_gpu_memory_to_use=0.7
+
 nvidia-smi -L
 for /F %%# in ('nvidia-smi -L ^| find "GPU" /C /I') do set CUDA_DEVICE_COUNT=%%#
 if !errorlevel! NEQ 0 exit /b 8
@@ -387,7 +389,8 @@ test_parallel_executor_seresnext_base_gpu^|test_parallel_executor_seresnext_with
 test_parallel_ssa_graph_inference_feed_partial_data^|test_partial_eager_deletion_transformer^|test_program_prune_backward^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
 test_py_reader_push_pop^|test_py_reader_using_executor^|test_reader_reset^|test_sync_batch_norm_op^|test_update_loss_scaling_op^|test_imperative_static_runner_while^|test_parallel_executor_crf^|^
 test_parallel_executor_profiler^|test_parallel_executor_transformer^|test_parallel_executor_transformer_auto_growth^|test_parallel_executor_seresnext_base_cpu^|test_yolov3^|^
-test_parallel_executor_seresnext_with_reduce_cpu^|test_parallel_executor_seresnext_with_fuse_all_reduce_cpu^|test_flags_use_mkldnn^|test_spawn_and_init_parallel_env
+test_parallel_executor_seresnext_with_reduce_cpu^|test_parallel_executor_seresnext_with_fuse_all_reduce_cpu^|test_flags_use_mkldnn^|test_spawn_and_init_parallel_env^|test_train_recognize_digits^|^
+test_optimizer_in_control_flow^|test_fuse_bn_act_pass^|test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm
 rem /*===============================================================*/
 
 rem these unittest that cost long time, diabled temporarily, greater than 10s
@@ -401,7 +404,7 @@ test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imp
 test_lstm_cudnn_op^|test_masked_select_op^|test_matmul_v2_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
 test_normal^|test_pool3d_op^|test_pool2d_op^|test_prroi_pool_op^|test_regularizer^|test_regularizer_api^|test_sgd_op^|test_softmax_with_cross_entropy_op^|test_static_save_load^|^
 test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_weight_decay^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|test_imperative_out_scale^|^
-test_imperative_qat^|test_imperative_qat_channelwise
+test_imperative_qat^|test_imperative_qat_channelwise^|test_quantization_pass
 
 set /a end=CUDA_DEVICE_COUNT-1
 

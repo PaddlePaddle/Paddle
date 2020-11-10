@@ -29,19 +29,19 @@ __all__ = [
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
-    This function creates a variable on the global block. Unlike
-    `paddle.fluid.data` , the created variable doesn't check the dtype and the
-    shape of feed data because dygraph input data can be variable-length.
-    This API is used in translating dygraph into static graph.
+    This function creates a Tensor on the global block. The created Tensor
+    doesn't check the dtype and the shape of feed data because dygraph input
+    data can be various-length. This API is used in translating dygraph into
+    static graph.
 
      Note: 
-        The default :code:`stop_gradient` attribute of the Variable created by
+        The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
-        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        through the data Tensor. Set :code:`var.stop_gradient = False` If
         user would like to pass backward gradient.
 
     Args:
-       name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+       name (str): The name/alias of the Tensor, see :ref:`api_guide_Name`
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" at a dimension to indicate the dimension can be of any
@@ -54,7 +54,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
 
     Returns:
-        Variable: The global variable that gives access to the data.
+        Tensor: The global Tensor that gives access to the data.
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
@@ -87,7 +87,8 @@ def create_static_variable_gast_node(name):
 
 
 def create_fill_constant_node(name, value):
-    func_code = "{} = paddle.fluid.layers.fill_constant(shape=[1], ".format(name)
+    func_code = "{} = paddle.fluid.layers.fill_constant(shape=[1], ".format(
+        name)
     if isinstance(value, bool):
         func_code += "dtype='bool', value={})".format(value)
         return gast.parse(func_code).body[0]
@@ -110,7 +111,7 @@ def create_fill_constant_node(name, value):
 
 def to_static_variable(x):
     '''
-    Translate a Python variable to PaddlePaddle static graph variable
+    Translate a Python Tensor to PaddlePaddle static graph Tensor
     '''
     if isinstance(x, bool):
         return fill_constant(shape=[1], dtype='bool', value=x)
