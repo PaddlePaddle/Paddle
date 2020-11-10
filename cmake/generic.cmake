@@ -536,9 +536,8 @@ function(nv_test TARGET_NAME)
     if (WIN32)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif(WIN32)
+    check_coverage_opt(${TARGET_NAME} ${nv_test_SRCS})
   endif()
-
-  check_coverage_opt(${TARGET_NAME} ${nv_test_SRCS})
 
 endfunction(nv_test)
 
@@ -578,7 +577,7 @@ function(hip_library TARGET_NAME)
           list(APPEND hip_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-      
+
       check_coverage_opt(${TARGET_NAME} ${hip_library_SRCS})
 
     else(hip_library_SRCS)
