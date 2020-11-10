@@ -148,9 +148,15 @@ def as_numpy(tensor, copy=False):
             return LoDTensor itself directly.")
     if tensor._is_initialized():
         if copy:
-            return np.array(tensor)
+            result = np.array(tensor)
         else:
-            return np.asarray(tensor)
+            result = np.asarray(tensor)
+
+    if tensor._is_initialized():
+        if copy:
+            return result
+        else:
+            return result
     else:
         return None
 
