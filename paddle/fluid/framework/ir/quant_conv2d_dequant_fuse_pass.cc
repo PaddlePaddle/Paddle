@@ -259,6 +259,9 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
         int inner_size = w_dims[2] * w_dims[3];
         quantized_weight_data[j] *= weight_scale[(j / inner_size) % w_dims[1]];
       }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported quantized op type: %s", quantized_op_type));
     }
 
     // create new op_desc
