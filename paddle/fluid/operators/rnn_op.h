@@ -108,12 +108,11 @@ struct SimpleRNNCell : Cell<T> {
     auto z = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(input, "Input", "z", "Activation"));
     auto hidden = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(last_h, "Input", "hidden", "Activation"));
+        GET_DATA_SAFELY(output, "Output", "hidden", "Activation"));
 
     auto* place = device_ctx->eigen_device();
     EigenActivationFunctor<T> functor;
     functor(*place, z, hidden);
-    framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx, output);
   }
 };
 
@@ -875,14 +874,33 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
     int gate_num = 4;
+    state[0]->mutable_data<T>(ctx.GetPlace());
     if (mode == "LSTM") {
-      state[0]->mutable_data<T>(ctx.GetPlace());
       state[1]->mutable_data<T>(ctx.GetPlace());
       RnnFunc<LSTMCell<T>, Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, pre_state[0], pre_state[1], sequence_length,
           state[0], state[1], output, dropout_mask, num_layers, gate_num,
           input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
           seed, reserve_data);
+    } else if (mode == "RNN_RELU") {
+      gate_num = 0;
+      RnnFunc<
+          SimpleRNNCell<T, ReluFunctor, math::detail::ActivationType::kReLU>,
+          Layer, SingleLayer, BidirLayer, T>(
+          ctx, input, weight_list, pre_state[0], nullptr, sequence_length,
+          state[0], nullptr, output, dropout_mask, num_layers, gate_num,
+          input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
+          seed, reserve_data);
+    } else if (mode == "RNN_TANH") {
+      gate_num = 0;
+      RnnFunc<
+          SimpleRNNCell<T, TanhFunctor, math::detail::ActivationType::kTanhV2>,
+          Layer, SingleLayer, BidirLayer, T>(
+          ctx, input, weight_list, pre_state[0], nullptr, sequence_length,
+          state[0], nullptr, output, dropout_mask, num_layers, gate_num,
+          input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
+          seed, reserve_data);
+    } else if (mode == "GRU") {
     }
   }
 };

@@ -128,7 +128,7 @@ class TestRNNOp(OpTest):
 
     def test_grad_with_place(self):
         if not self.is_test:
-            place = core.CPUPlace()
+            place = core.CUDAPlace(0)
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
@@ -142,6 +142,16 @@ class TestRNNCpu(TestRNNOp):
         place = core.CPUPlace()
         self.check_output_with_place(
             place, no_check_set=['Reserve', 'DropoutState'])
+
+    def test_grad_with_place(self):
+        if not self.is_test:
+            place = core.CPUPlace()
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input', 'init_h', 'init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad_with_place(place,
+                                       set(grad_check_list),
+                                       ['Out', 'last_hidden', 'last_cell'])
 
 
 class TestRNNCpu1(TestRNNCpu):
