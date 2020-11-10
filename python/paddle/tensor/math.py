@@ -1350,12 +1350,6 @@ def log2(x, name=None):
             paddle.to_tensor(x_i)
             res = paddle.log2(x_i)
             print(res) # [1.0]
-
-            # example 4: x is a float16
-            x_i = paddle.full(shape=[1], fill_value=2, dtype='float16')
-            paddle.to_tensor(x_i)
-            res = paddle.log2(x_i)
-            print(res) # [1.0]
     """
     if in_dygraph_mode():
         return core.ops.log2(x)
