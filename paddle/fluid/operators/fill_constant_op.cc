@@ -148,7 +148,7 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(
         R"ROC(
-      Upgrade fill_constant, add a new attribute [ValueTensor].
+      Upgrade fill_constant, add a new input [ValueTensor].
     )ROC",
         paddle::framework::compatible::OpVersionDesc().NewInput(
             "ValueTensor",
