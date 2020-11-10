@@ -722,7 +722,7 @@ def add_n(inputs, name=None):
     
     For example:
 
-    .. code-block::text
+    .. code-block:: text
     
         Case 1:
 
