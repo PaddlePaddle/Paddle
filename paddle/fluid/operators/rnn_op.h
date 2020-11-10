@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -37,43 +38,6 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using TensorList = std::vector<framework::Tensor>;
 
-template <typename T>
-void Print2DTensor(const Tensor* a, std::string name) {
-  const int& heigth = a->dims()[0];
-  const int& width = a->dims()[1];
-  std::string message = "print value, name is " + name + "\n";
-  for (int i = 0; i < heigth; i++) {
-    for (int j = 0; j < width; j++) {
-      message += std::to_string(a->data<T>()[i * width + j]) + " ";
-    }
-    message += "\n";
-  }
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-
-template <typename T>
-void Print3DTensor(const Tensor* a, std::string name) {
-  const int& row = a->dims()[0];
-  const int& heigth = a->dims()[1];
-  const int& width = a->dims()[2];
-  std::string message = "print value, name is " + name + "\n";
-  for (int r = 0; r < row; r++) {
-    for (int i = 0; i < heigth; i++) {
-      for (int j = 0; j < width; j++) {
-        message +=
-            std::to_string(a->data<T>()[r * heigth * width + i * width + j]) +
-            " ";
-      }
-      message += "\n";
-    }
-    message += "*******\n";
-  }
-
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-
 void SwapPoniter(Tensor** a, Tensor** b) {
   Tensor* c = *a;
   *a = *b;
@@ -83,17 +47,18 @@ void SwapPoniter(Tensor** a, Tensor** b) {
 template <typename T>
 void create_mask_matrix(const framework::ExecutionContext& context,
                         const Tensor* sequence_length, Tensor* mask_matrix,
-                        const bool& is_reverse) {
+                        const bool& is_reverse, int* min_seq_len) {
   const auto& seq_len_vec = GetDataFromTensor<int>(sequence_length);
   const int& table_width = mask_matrix->dims()[0];
-  VLOG(2) << "INPUT MASK TENSOR SHAPE:" << mask_matrix->dims();
   Tensor temp;
   temp.Resize(
       framework::make_ddim({mask_matrix->dims()[1], mask_matrix->dims()[0]}));
   T* data_temp = temp.mutable_data<T>(context.GetPlace());
   std::fill(data_temp, data_temp + mask_matrix->numel(), static_cast<T>(1.0));
+  *min_seq_len = table_width;
   for (unsigned int i = 0; i < seq_len_vec.size(); i++) {
     // reset the mask matrix
+    *min_seq_len = std::min(seq_len_vec[i], *min_seq_len);
     if (seq_len_vec[i] == table_width) {
       continue;
     }
@@ -106,8 +71,6 @@ void create_mask_matrix(const framework::ExecutionContext& context,
                 data_temp + (i + 1) * table_width, static_cast<T>(0));
     }
   }
-  // Print2DTensor<T>(&temp, "Original mask Tensor");
-  // transpose the result for the mask
   mask_matrix->mutable_data<T>(context.GetPlace());
   std::vector<int> trans_vec;
   trans_vec.emplace_back(1);
@@ -118,19 +81,86 @@ void create_mask_matrix(const framework::ExecutionContext& context,
 }
 
 template <typename T>
-void dropout_cpu_grad_function_inplace(
-    const framework::ExecutionContext& context, Tensor* grad_x,
-    const Tensor* mask, const float& dropout_prob) {
-  auto& place = *context.template device_context<platform::CPUDeviceContext>()
-                     .eigen_device();
-  auto M = EigenVector<uint8_t>::Flatten(*mask);
-  auto dX = EigenVector<T>::Flatten(*grad_x);
-  if (dropout_prob == 1.0f) {
-    dX.device(place) = static_cast<T>(0) * dX;
-  } else {
-    dX.device(place) = dX * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
+struct Cell {
+  virtual ~Cell() {}
+  virtual void operator()(const platform::CPUDeviceContext* device_ctx,
+                          Tensor* input, const Tensor* weight_hh,
+                          const Tensor* init_h, const Tensor* init_c,
+                          Tensor* last_h, Tensor* last_c, Tensor* last_c_act,
+                          Tensor* output) {}
+};
+
+template <typename T, template <typename> class EigenActivationFunctor,
+          math::detail::ActivationType act_type>
+struct SimpleRNNCell : Cell<T> {
+  void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
+                  const Tensor* weight_hh, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* last_c_act, Tensor* output) override {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    // convert the batch matmul to matmul, this operator could be speed faster
+    blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
+                input, static_cast<T>(1.0));
+    auto z = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(input, "Input", "z", "Activation"));
+    auto hidden = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(last_h, "Input", "hidden", "Activation"));
+
+    auto* place = device_ctx->eigen_device();
+    EigenActivationFunctor<T> functor;
+    functor(*place, z, hidden);
+    framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx, output);
   }
-}
+};
+
+template <typename T>
+struct LSTMCell : Cell<T> {
+  void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
+                  const Tensor* weight_hh, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* last_c_act, Tensor* output) override {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
+    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    // convert the batch matmul to matmul, this operator could be speed faster
+    blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
+                input, static_cast<T>(1.0));
+
+    math::LstmMetaValue<T> lstm_value;
+    lstm_value.check_ig = nullptr;
+    lstm_value.check_fg = nullptr;
+    lstm_value.check_og = nullptr;
+
+    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
+    auto cell_act = math::detail::GetActivationType("tanh_v2");
+    auto cand_act = math::detail::GetActivationType("tanh_v2");
+
+    size_t frame_size = init_h->dims()[2];
+    size_t batch_size = init_h->dims()[1];
+
+    Tensor cell_pre_act;
+    if (last_c_act == nullptr) { /* is test */
+      cell_pre_act.mutable_data<T>(init_h->dims(), device_ctx->GetPlace());
+      last_c_act = &cell_pre_act;
+    }
+
+    lstm_value.prev_state_value = init_c->data<T>();
+    lstm_value.gate_value = input->data<T>();
+    lstm_value.output_value = output->data<T>();
+    lstm_value.state_value = last_c->data<T>();
+    lstm_value.state_active_value = last_c_act->data<T>();
+    T cell_clip = 0.0;
+    math::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
+        *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
+        cell_act, cand_act, false);
+  }
+};
 
 template <typename T>
 void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
@@ -177,220 +207,21 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     }
   }
 }
+
 template <typename T>
-void parameter_split(const Tensor* weight, const int& gate_num,
-                     const int& layers_num, const int& input_size,
-                     const int& hidden_size, const int& is_bidirec,
-                     std::vector<TensorList>* params_vec) {
-  // if the weight of RNN is flatten, we need to convert the
-  // the flattened weight to single split tensor
-  const auto& weight_numel = weight->numel();
-  // resize the weight tensor, could slice tensor directly
-  const auto& mem_block_size = gate_num * hidden_size;
-  Tensor weight_shared;
-  weight_shared.ShareDataWith(*weight);
-  weight_shared.Resize(framework::make_ddim(
-      {static_cast<int64_t>(weight_numel / mem_block_size), mem_block_size}));
-
-  // the calcluate the offset of tensor
-  const int& direction_num = is_bidirec ? 2 : 1;
-  const int& first_input_w_stride = input_size;
-  const int& other_input_w_stride = hidden_size * direction_num;
-  const int& hidden_w_stride = hidden_size;
-  const int& bias_offset =
-      direction_num *
-      (first_input_w_stride + hidden_w_stride +
-       (layers_num - 1) * (other_input_w_stride + hidden_w_stride));
-
-  for (int i = 0; i < layers_num; ++i) {
-    TensorList tensor_list;
-    // parameter for the w_hi, w_hh, bias_hi, bias_hh
-    const int& weight_size = 4 * direction_num;
-    tensor_list.reserve(weight_size);
-    for (int j = 0; j < weight_size; ++j) {
-      const int& section = j / 4;
-      int k = j % 4;
-      if (k < 2) {
-        int start_idx = 0;
-        int end_idx = 0;
-        if (i == 0) {
-          start_idx = section * (hidden_w_stride + first_input_w_stride) +
-                      (k % 2) * first_input_w_stride;
-          end_idx =
-              start_idx + (k == 0 ? first_input_w_stride : hidden_w_stride);
-        } else {
-          start_idx = direction_num * (hidden_w_stride + first_input_w_stride) +
-                      (i - 1) * direction_num *
-                          (hidden_w_stride + other_input_w_stride) +
-                      section * (hidden_w_stride + other_input_w_stride) +
-                      (k % 2) * other_input_w_stride;
-          end_idx =
-              start_idx + (k == 0 ? other_input_w_stride : hidden_w_stride);
-        }
-        auto tmp_tensor = weight_shared.Slice(start_idx, end_idx);
-        tmp_tensor.Resize(
-            framework::make_ddim({tmp_tensor.dims()[1], tmp_tensor.dims()[0]}));
-        tensor_list.emplace_back(tmp_tensor);
-      } else {
-        const auto& start_idx =
-            bias_offset + i * 2 * direction_num + section * 2 + k % 2;
-        auto tmp_tensor = weight_shared.Slice(start_idx, start_idx + 1);
-        tmp_tensor.Resize(
-            framework::make_ddim({tmp_tensor.dims()[1], tmp_tensor.dims()[0]}));
-        tensor_list.emplace_back(tmp_tensor);
-      }
-    }
-    params_vec->emplace_back(tensor_list);
+void dropout_cpu_grad_function_inplace(
+    const framework::ExecutionContext& context, Tensor* grad_x,
+    const Tensor* mask, const float& dropout_prob) {
+  auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                     .eigen_device();
+  auto M = EigenVector<uint8_t>::Flatten(*mask);
+  auto dX = EigenVector<T>::Flatten(*grad_x);
+  if (dropout_prob == 1.0f) {
+    dX.device(place) = static_cast<T>(0) * dX;
+  } else {
+    dX.device(place) = dX * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
   }
 }
-
-template <typename TensorType>
-void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
-                            const int& num_layers, const int& gate_num,
-                            const bool& is_bidirec,
-                            std::vector<TensorList>* params_vec) {
-  // the parameter raw seuquence is [FWhi, FWhh, BWhi, BWhh] * num_layers
-  // + [FBhi, FBhh, BBhi, BBhh] * num_layers, we will reset the parameter to
-  // ([FWhi, FWhh, FBhi, FBhh] + [BWhi, BWhh, BBhi, BBhh]) * num_layers
-  const int& direction_num = is_bidirec ? 2 : 1;
-  const int& layer_weight_size = 4 * direction_num;
-  const int& all_weight_size = num_layers * layer_weight_size;
-  const int& bias_start_idx = all_weight_size / 2;
-  for (int i = 0; i < num_layers; i++) {
-    TensorList tensor_list;
-    tensor_list.reserve(layer_weight_size);
-    for (int j = 0; j < layer_weight_size; j++) {
-      Tensor tensor_holder;
-      tensor_list.emplace_back(tensor_holder);
-    }
-    for (int j = 0; j < layer_weight_size; j++) {
-      int k = j % 4;
-      const int& section = j / 4;
-      int tensor_idx = i * 2 * direction_num + section * 2 + k % 2;
-      if (k >= 2) {
-        tensor_idx += bias_start_idx;
-      }
-      tensor_list[j].ShareDataWith(*raw_params_vec[tensor_idx]);
-    }
-    params_vec->emplace_back(tensor_list);
-  }
-}
-
-template <typename T>
-struct Cell {
-  virtual ~Cell() {}
-  virtual void operator()(const platform::CPUDeviceContext* device_ctx,
-                          Tensor* input, const Tensor* weight_hh,
-                          const Tensor* init_h, const Tensor* init_c,
-                          Tensor* last_h, Tensor* last_c, Tensor* last_c_act,
-                          Tensor* output) {}
-};
-
-template <typename T, template <typename> class EigenActivationFunctor,
-          math::detail::ActivationType act_type>
-struct SimpleRNNCell : Cell<T> {
-  void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
-                  const Tensor* weight_hh, const Tensor* init_h,
-                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
-                  Tensor* last_c_act, Tensor* output) override {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
-    mat_dim_a.height_ *= mat_dim_a.batch_size_;
-    mat_dim_a.batch_size_ = 0;
-    // convert the batch matmul to matmul, this operator could be speed faster
-    blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
-                input, static_cast<T>(1.0));
-//    size_t frame_size = init_h->dims()[2];
-
-#ifdef __AVX__
-//    if (!(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
-//      // run avx
-//      VLOG(0) << "run avx";
-//      auto start = system_clock::now();
-//      __m256* z = reinterpret_cast<__m256*>(input->data<T>());
-//      __m256* hidden = reinterpret_cast<__m256*>(last_h->data<T>());
-//      int num = input->numel();
-//      for(int i = 0; i < num / 8; ++i) {
-//        hidden[i] = math::detail::forward::activation(z[i], act_type);
-//      }
-//      auto end = system_clock::now();
-//      auto duration = duration_cast<microseconds>(end - start);
-//      microseconds::period::den;
-//      framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx,
-//      output);
-//      return;
-//    }
-#endif
-    //    VLOG(0) << "run eigen";
-    // activate
-    //    auto start = system_clock::now();
-    auto z = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(input, "Input", "z", "Activation"));
-    auto hidden = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(last_h, "Input", "hidden", "Activation"));
-
-    auto* place = device_ctx->eigen_device();
-    EigenActivationFunctor<T> functor;
-    functor(*place, z, hidden);
-    // VLOG(0) << "hidden_data: ";
-    // Print3DTensor<T>(last_h, "last_h");
-    //    auto end = system_clock::now();
-    //    auto duration = duration_cast<microseconds>(end - start);
-    framework::TensorCopy(*last_h, device_ctx->GetPlace(), *device_ctx, output);
-  }
-};
-
-template <typename T>
-struct LSTMCell : Cell<T> {
-  void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
-                  const Tensor* weight_hh, const Tensor* init_h,
-                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
-                  Tensor* last_c_act, Tensor* output) override {
-    // Print3DTensor<T>(input, "Cell Input");
-    // Print3DTensor<T>(init_h, "init_h");
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(*device_ctx);
-    auto mat_dim_a = math::CreateMatrixDescriptor(init_h->dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, true);
-    mat_dim_a.height_ *= mat_dim_a.batch_size_;
-    mat_dim_a.batch_size_ = 0;
-    // convert the batch matmul to matmul, this operator could be speed faster
-    blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
-                input, static_cast<T>(1.0));
-
-    // Print3DTensor<T>(input, "Cell Input after");
-
-    math::LstmMetaValue<T> lstm_value;
-    lstm_value.check_ig = nullptr;
-    lstm_value.check_fg = nullptr;
-    lstm_value.check_og = nullptr;
-
-    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
-    auto cell_act = math::detail::GetActivationType("tanh_v2");
-    auto cand_act = math::detail::GetActivationType("tanh_v2");
-
-    size_t frame_size = init_h->dims()[2];
-    size_t batch_size = init_h->dims()[1];
-
-    Tensor cell_pre_act;
-    if (last_c_act == nullptr) { /* is test */
-      cell_pre_act.mutable_data<T>(init_h->dims(), device_ctx->GetPlace());
-      last_c_act = &cell_pre_act;
-    }
-
-    lstm_value.prev_state_value = init_c->data<T>();
-    lstm_value.gate_value = input->data<T>();
-    lstm_value.output_value = output->data<T>();
-    lstm_value.state_value = last_c->data<T>();
-    lstm_value.state_active_value = last_c_act->data<T>();
-    T cell_clip = 0.0;
-    math::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
-        *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
-        cell_act, cand_act, false);
-    framework::TensorCopy(*output, device_ctx->GetPlace(), *device_ctx, last_h);
-    // Print3DTensor<T>(last_h, "last_h");
-  }
-};
 
 template <typename T, typename CellType>
 struct Layer {
@@ -435,23 +266,21 @@ struct Layer {
                    const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
                    Tensor* last_c, const Tensor& mask_tensor, bool is_lstm) {
     // in the output, if mask flag is 0, we will retun the zero data
+    auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
     auto eigen_output =
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
     auto eigen_mask = framework::EigenMatrix<T>::From(
         mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    auto& place = *context.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    auto eigen_mask_broadcast =
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
-
-    eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
-
     auto eigen_init_h =
         framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
     auto eigen_last_h =
         framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
-    eigen_last_h.device(place) = eigen_last_h * eigen_mask_broadcast +
+    auto eigen_mask_broadcast =
+        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+    eigen_last_h.device(place) = eigen_output * eigen_mask_broadcast +
                                  eigen_init_h * (1 - eigen_mask_broadcast);
+    eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
 
     if (is_lstm) {
       auto eigen_init_c = framework::EigenMatrix<T>::Reshape(
@@ -508,61 +337,90 @@ struct Layer {
       has_sequence_length = true;
     }
     Tensor mask_matrix;
+    int mask_min_length = time_step;
     if (has_sequence_length) {
       mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
 
-      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
-      // Print2DTensor<T>(&mask_matrix, "Mask Matrix");
+      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
+                            &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
 
-    // define the init_h holder for the swap
-    bool has_allocate_mem = false;
+    if (is_reverse) {
+      mask_min_length = mask_min_length - time_step + 1;
+    }
+    bool has_allocate_mem_c = false;
+    bool has_use_last_h_holder = false;
+    const int& reverse_flag = is_reverse ? -1 : 1;
 
-    Tensor* init_h_holder = nullptr;
+    // define the init_h holder for the swap
     Tensor init_h_temp;
-    Tensor* last_h_holder = &(*last_h_ptr)[layer_idx];
+    framework::TensorCopy(*&init_h[layer_idx], context.GetPlace(), dev_ctx,
+                          &init_h_temp);
+    Tensor* init_h_holder = &init_h_temp;
+    Tensor* last_h_holder = nullptr;
+    if (0 < mask_min_length) {
+      last_h_holder = &(output_tensors[0]);
+    } else {
+      last_h_holder = &(*last_h_ptr)[layer_idx];
+      has_use_last_h_holder = true;
+    }
+
     Tensor* init_c_holder = nullptr;
+    const Tensor* init_c_temp_holder = nullptr;
     Tensor init_c_temp;
     Tensor* last_c_holder = nullptr;
-    const Tensor* init_h_temp_holder = &init_h[layer_idx];
-    const Tensor* init_c_temp_holder = nullptr;
 
     if (is_lstm) {
       last_c_holder = &(*last_c_ptr)[layer_idx];
       init_c_temp_holder = &init_c[layer_idx];
     }
-
     for (int i = 0; i < time_step; i++) {
+      bool in_mask = (reverse_flag * i) >= mask_min_length;
       if (i > 0) {
-        if (!has_allocate_mem) {
-          init_h_temp.Resize(init_h[layer_idx].dims());
-          init_h_temp.mutable_data<T>(context.GetPlace());
-          init_h_holder = &init_h_temp;
+        if (!has_allocate_mem_c) {
           if (is_lstm) {
             init_c_temp.Resize(init_c[layer_idx].dims());
             init_c_temp.mutable_data<T>(context.GetPlace());
             init_c_holder = &init_c_temp;
           }
-          has_allocate_mem = true;
+          has_allocate_mem_c = true;
         }
         SwapPoniter(&init_c_holder, &last_c_holder);
-        SwapPoniter(&init_h_holder, &last_h_holder);
-        init_h_temp_holder = init_h_holder;
         init_c_temp_holder = init_c_holder;
       }
-      cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-            init_h_temp_holder, init_c_temp_holder, last_h_holder,
-            last_c_holder, nullptr, &output_tensors[i]);
-      if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[i], init_h_temp_holder,
+      cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4], init_h_holder,
+            init_c_temp_holder, last_h_holder, last_c_holder, nullptr,
+            &output_tensors[i]);
+      if (in_mask) {
+        this->postprocess(context, &output_tensors[i], init_h_holder,
                           init_c_temp_holder, last_h_holder, last_c_holder,
                           mask_tensor_list[i], is_lstm);
       }
+      // prepare next step
+      if (i + 1 < time_step) {
+        bool next_step_mask = (reverse_flag * (i + 1)) >= mask_min_length;
+        if (next_step_mask) {
+          if (!has_use_last_h_holder) {
+            init_h_holder = &(*last_h_ptr)[layer_idx];
+          }
+        } else {
+          init_h_holder = &(output_tensors[i + 1]);
+        }
+        SwapPoniter(&init_h_holder, &last_h_holder);
+      }
     }
+    if (has_sequence_length) {
+      if (last_h_holder != &(*last_h_ptr)[layer_idx]) {
+        framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
+                              &(*last_h_ptr)[layer_idx]);
+      }
+    } else {
+      framework::TensorCopy(output_tensors[time_step - 1], context.GetPlace(),
+                            dev_ctx, &(*last_h_ptr)[layer_idx]);
+    }
+
     if (time_step % 2 == 0) {
-      framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
-                            &(*last_h_ptr)[layer_idx]);
       if (is_lstm) {
         framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
                               &(*last_c_ptr)[layer_idx]);
@@ -612,25 +470,39 @@ struct Layer {
       has_sequence_length = true;
     }
     Tensor mask_matrix;
+    int mask_min_length = time_step;
     if (has_sequence_length) {
       mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
-
-      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
+      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
+                            &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
+    }
+    if (is_reverse) {
+      mask_min_length = mask_min_length - time_step + 1;
     }
 
     // define the init_h holder for the swap
-    bool has_allocate_mem = false;
+    bool has_use_last_h_holder = false;
+    const int& reverse_flag = is_reverse ? -1 : 1;
+
     TensorList cell_value_tensors;
     TensorList cell_act_value_tensors;
 
-    Tensor* init_h_holder = nullptr;
     Tensor init_h_temp;
-    Tensor* last_h_holder = &(*last_h_ptr)[layer_idx];
-    const Tensor* init_c_temp_holder = nullptr;
-    const Tensor* init_h_temp_holder = &init_h[layer_idx];
-    Tensor* last_c_temp_holder = nullptr;
-    Tensor* last_c_act_temp_holder = nullptr;
+    framework::TensorCopy(*&init_h[layer_idx], context.GetPlace(), dev_ctx,
+                          &init_h_temp);
+    Tensor* init_h_holder = &init_h_temp;
+    Tensor* last_h_holder = nullptr;
+    if (0 < mask_min_length) {
+      last_h_holder = &(output_tensors[0]);
+    } else {
+      last_h_holder = &(*last_h_ptr)[layer_idx];
+      has_use_last_h_holder = true;
+    }
+
+    const Tensor* init_c_holder = nullptr;
+    Tensor* last_c_holder = nullptr;
+    Tensor* last_c_act_holder = nullptr;
     if (is_lstm) {
       cell_value->Resize({time_step, cell_value->numel() / time_step});
       cell_value_tensors = Unbind(*cell_value);
@@ -638,40 +510,48 @@ struct Layer {
       cell_act_value_tensors = Unbind(*cell_act_value);
     }
     for (int i = 0; i < time_step; i++) {
-      if (i > 0) {
-        if (!has_allocate_mem) {
-          init_h_temp.Resize(init_h[layer_idx].dims());
-          init_h_temp.mutable_data<T>(context.GetPlace());
-          init_h_holder = &init_h_temp;
-          has_allocate_mem = true;
-        }
-        SwapPoniter(&init_h_holder, &last_h_holder);
-        init_h_temp_holder = init_h_holder;
-      }
+      bool in_mask = (reverse_flag * i) >= mask_min_length;
       if (is_lstm) {
         if (i == 0) {
-          init_c_temp_holder = &init_c[layer_idx];
+          init_c_holder = &init_c[layer_idx];
         } else {
-          init_c_temp_holder = &cell_value_tensors[i - 1];
+          init_c_holder = &cell_value_tensors[i - 1];
         }
         cell_value_tensors[i].Resize(init_c[layer_idx].dims());
         cell_act_value_tensors[i].Resize(init_c[layer_idx].dims());
-        last_c_temp_holder = &cell_value_tensors[i];
-        last_c_act_temp_holder = &cell_act_value_tensors[i];
+        last_c_holder = &cell_value_tensors[i];
+        last_c_act_holder = &cell_act_value_tensors[i];
       }
 
-      cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4],
-            init_h_temp_holder, init_c_temp_holder, last_h_holder,
-            last_c_temp_holder, last_c_act_temp_holder, &output_tensors[i]);
-      if (has_sequence_length) {
-        this->postprocess(context, &output_tensors[i], init_h_temp_holder,
-                          init_c_temp_holder, last_h_holder, last_c_temp_holder,
+      cell_(&dev_ctx, &input_tensors[i], &vec[1 + offset * 4], init_h_holder,
+            init_c_holder, last_h_holder, last_c_holder, last_c_act_holder,
+            &output_tensors[i]);
+      if (in_mask) {
+        this->postprocess(context, &output_tensors[i], init_h_holder,
+                          init_c_holder, last_h_holder, last_c_holder,
                           mask_tensor_list[i], is_lstm);
       }
+      // prepare next step
+      if (i + 1 < time_step) {
+        bool next_step_mask = (reverse_flag * (i + 1)) >= mask_min_length;
+        if (next_step_mask) {
+          if (!has_use_last_h_holder) {
+            init_h_holder = &(*last_h_ptr)[layer_idx];
+          }
+        } else {
+          init_h_holder = &(output_tensors[i + 1]);
+        }
+        SwapPoniter(&init_h_holder, &last_h_holder);
+      }
     }
-    if (time_step % 2 == 0) {
-      framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
-                            &(*last_h_ptr)[layer_idx]);
+    if (has_sequence_length) {
+      if (last_h_holder != &(*last_h_ptr)[layer_idx]) {
+        framework::TensorCopy(*last_h_holder, context.GetPlace(), dev_ctx,
+                              &(*last_h_ptr)[layer_idx]);
+      }
+    } else {
+      framework::TensorCopy(output_tensors[time_step - 1], context.GetPlace(),
+                            dev_ctx, &(*last_h_ptr)[layer_idx]);
     }
     if (is_lstm) {
       framework::TensorCopy(cell_value_tensors[time_step - 1],
@@ -761,7 +641,6 @@ void SplitReserveData(TensorType* reserve_data, Tensor* gate_data,
                       const int& time_step, const int& batch_size,
                       const int& hidden_size, const int& gate_num,
                       const int& num_layers) {
-  /** for lstm and gru **/
   int gate_num_tmp = gate_num;
   if (gate_num_tmp > 0) {
     gate_num_tmp += 1;
@@ -784,6 +663,38 @@ void SplitReserveData(TensorType* reserve_data, Tensor* gate_data,
   }
 }
 
+template <typename TensorType>
+void reset_parameter_vector(const std::vector<TensorType>& raw_params_vec,
+                            const int& num_layers, const int& gate_num,
+                            const bool& is_bidirec,
+                            std::vector<TensorList>* params_vec) {
+  // the parameter raw seuquence is [FWhi, FWhh, BWhi, BWhh] * num_layers
+  // + [FBhi, FBhh, BBhi, BBhh] * num_layers, we will reset the parameter to
+  // ([FWhi, FWhh, FBhi, FBhh] + [BWhi, BWhh, BBhi, BBhh]) * num_layers
+  const int& direction_num = is_bidirec ? 2 : 1;
+  const int& layer_weight_size = 4 * direction_num;
+  const int& all_weight_size = num_layers * layer_weight_size;
+  const int& bias_start_idx = all_weight_size / 2;
+  for (int i = 0; i < num_layers; i++) {
+    TensorList tensor_list;
+    tensor_list.reserve(layer_weight_size);
+    for (int j = 0; j < layer_weight_size; j++) {
+      Tensor tensor_holder;
+      tensor_list.emplace_back(tensor_holder);
+    }
+    for (int j = 0; j < layer_weight_size; j++) {
+      int k = j % 4;
+      const int& section = j / 4;
+      int tensor_idx = i * 2 * direction_num + section * 2 + k % 2;
+      if (k >= 2) {
+        tensor_idx += bias_start_idx;
+      }
+      tensor_list[j].ShareDataWith(*raw_params_vec[tensor_idx]);
+    }
+    params_vec->emplace_back(tensor_list);
+  }
+}
+
 template <typename CellType, typename T>
 void AllocateReserveData(const framework::ExecutionContext& ctx,
                          Tensor* reserve_data, Tensor* gate_data,
@@ -798,9 +709,6 @@ void AllocateReserveData(const framework::ExecutionContext& ctx,
   const int& direction_num = is_bidirec ? 2 : 1;
   const int& time_step = input->dims()[0];
   const int& batch_size = input->dims()[1];
-  // gate_data: 4 * num_layers * block_size
-  // cell_data: num_layers * block_size
-  // hidden_data: (num_layers - 1) * block_size
   const int& block_size = direction_num * time_step * batch_size * hidden_size;
   const int& hidden_data_idx =
       (gate_num_tmp + 1) * num_layers + (num_layers - 1);
@@ -823,7 +731,6 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const bool& is_bidirec, const std::string& cell_type,
              const float& dropout_prob, const bool& is_test, const int& seed,
              Tensor* reserve_data) {
-  // check the dim message of init state
   bool is_lstm = true;
   if (last_c == nullptr && init_c == nullptr) {
     is_lstm = false;
@@ -905,17 +812,12 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       }
       if (!is_test) {
         prev_hidden_data = hidden_data.Slice(i - 1, i);
-        // framework::TensorCopy(
-        //    prev_hidden_data, ctx.GetPlace(),
-        //    ctx.template device_context<platform::CPUDeviceContext>(),
-        //    input_holder);
         input_holder = &prev_hidden_data;
         input_holder->Resize(output->dims());
       } else {
         SwapPoniter(&output_holder, &input_holder);
       }
       if (dropout_prob != 0 && (!is_test)) {
-        // only train mode just need dropout
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
                                         dropout_prob, seed, is_test);
       }
@@ -938,7 +840,6 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              &curr_cell_act_data, is_test);
   }
   if (num_layers % 2 == 0) {
-    // the final result is in output_holder, must copy the data to output
     framework::TensorCopy(
         *output_holder, ctx.GetPlace(),
         ctx.template device_context<platform::CPUDeviceContext>(), output);
@@ -946,75 +847,42 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
 }
 
 template <typename DeviceContext, typename T>
-class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
+class RNNCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const std::string& cell_type = ctx.Attr<std::string>("cell_type");
+    auto* input = ctx.Input<Tensor>("Input");
+    auto pre_state = ctx.MultiInput<Tensor>("PreState");
+    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+    auto state = ctx.MultiOutput<Tensor>("State");
+    auto* output = ctx.Output<Tensor>("Out");
+    auto* dropout_mask = ctx.Output<Tensor>("DropoutState");
+    auto* reserve_data = ctx.Output<Tensor>("Reserve");
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
     const int& input_size = ctx.Attr<int>("input_size");
     const int& hidden_size = ctx.Attr<int>("hidden_size");
     const float& dropout_prob = ctx.Attr<float>("dropout_prob");
+    const std::string& mode = ctx.Attr<std::string>("mode");
     const bool& is_test = ctx.Attr<bool>("is_test");
     const int& seed = ctx.Attr<int>("seed");
-    // get the input and weight tensor for the cacluate rnn cell
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* init_h = ctx.Input<Tensor>("InitH");
-    auto* init_c = ctx.Input<Tensor>("InitC");
-    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
 
     bool has_seq_length = ctx.HasInput("SequenceLength");
     const Tensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
     }
-    // auto* sequence_length = ctx.Input<Tensor>("SequenceLength");
-    auto* last_h = ctx.Output<Tensor>("LastH");
-    auto* last_c = ctx.Output<Tensor>("LastC");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* dropout_mask = ctx.Output<Tensor>("StateOut");
-
-    // store gate value for backward computing
-    auto* reserve_data = ctx.Output<Tensor>("Reserve");
 
     // init the output and allocate the memory
     output->mutable_data<T>(ctx.GetPlace());
-    last_h->mutable_data<T>(ctx.GetPlace());
-
     int gate_num = 4;
-    if (cell_type == "lstm") {
-      last_c->mutable_data<T>(ctx.GetPlace());
+    if (mode == "LSTM") {
+      state[0]->mutable_data<T>(ctx.GetPlace());
+      state[1]->mutable_data<T>(ctx.GetPlace());
       RnnFunc<LSTMCell<T>, Layer, SingleLayer, BidirLayer, T>(
-          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
-          last_c, output, dropout_mask, num_layers, gate_num, input_size,
-          hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
-          reserve_data);
-    } else if (cell_type == "gru") {
-      gate_num = 3;
-      // run gru
-    } else if (cell_type == "rnn_relu") {
-      gate_num = 0;
-      // run rnn
-      last_c = nullptr;
-      init_c = nullptr;
-      RnnFunc<
-          SimpleRNNCell<T, ReluFunctor, math::detail::ActivationType::kReLU>,
-          Layer, SingleLayer, BidirLayer, T>(
-          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
-          last_c, output, dropout_mask, num_layers, gate_num, input_size,
-          hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
-          reserve_data);
-    } else if (cell_type == "rnn_tanh") {
-      gate_num = 0;
-      last_c = nullptr;
-      init_c = nullptr;
-      RnnFunc<
-          SimpleRNNCell<T, TanhFunctor, math::detail::ActivationType::kTanhV2>,
-          Layer, SingleLayer, BidirLayer, T>(
-          ctx, input, weight_list, init_h, init_c, sequence_length, last_h,
-          last_c, output, dropout_mask, num_layers, gate_num, input_size,
-          hidden_size, is_bidirec, cell_type, dropout_prob, is_test, seed,
-          reserve_data);
+          ctx, input, weight_list, pre_state[0], pre_state[1], sequence_length,
+          state[0], state[1], output, dropout_mask, num_layers, gate_num,
+          input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
+          seed, reserve_data);
     }
   }
 };
@@ -1056,8 +924,6 @@ struct GradLayer {
       std::vector<TensorList>* weight_list_grad, const int& layer_idx,
       const int& time_step, const bool& has_sequence_length,
       const bool& is_bidirec, const bool& is_reverse) {
-    Print3DTensor<T>(input_grad, "print after zero step 1");
-
     const int& direction_num = is_bidirec ? 2 : 1;
     const int& current_reverse_idx = is_reverse ? 1 : 0;
     const int& current_layer_idx =
@@ -1069,12 +935,13 @@ struct GradLayer {
 
     Tensor mask_matrix;
     TensorList mask_tensor_list;
+    int mask_min_length = time_step;
     if (has_sequence_length) {
       mask_matrix.Resize(framework::make_ddim({time_step, input->dims()[1]}));
-      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse);
+      create_mask_matrix<T>(context, sequence_length, &mask_matrix, is_reverse,
+                            &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
-    Print2DTensor<T>(&mask_matrix, "mask matrix");
     // create lstm_value and lstm_grad
     math::LstmMetaValue<T> lstm_value;
     math::LstmMetaGrad<T> lstm_grad;
@@ -1089,7 +956,6 @@ struct GradLayer {
     dynamic_grad_last_h->mutable_data<T>(context.GetPlace());
     framework::TensorCopy(last_h_grad_unbind[current_layer_idx],
                           context.GetPlace(), dynamic_grad_last_h);
-    VLOG(0) << "last_c_grad_unbind.size = " << last_c_grad_unbind.size();
     if (last_c_grad_unbind.size() > 0) {
       dynamic_grad_last_c->Resize(last_c_grad_unbind[current_layer_idx].dims());
       dynamic_grad_last_c->mutable_data<T>(context.GetPlace());
@@ -1109,7 +975,6 @@ struct GradLayer {
       dynamic_grad_pre_h->Resize(dynamic_grad_last_h->dims());
       dynamic_grad_pre_h->mutable_data<T>(context.GetPlace());
     }
-    VLOG(0) << "init_c_grad_unbind.size = " << init_c_grad_unbind->size();
     if (init_c_grad_unbind->size() > 0) {
       dynamic_grad_pre_c->ShareDataWith(
           (*init_c_grad_unbind)[current_layer_idx]);
@@ -1147,17 +1012,14 @@ struct GradLayer {
 
     for (int i = time_step - 1; i >= 0; --i) {
       if (has_sequence_length) {
-        VLOG(0) << "in mask preprocess before";
         this->mask_preprocess(context, &(*output_grad_tensor_unbind)[i],
                               dynamic_grad_last_h, dynamic_grad_last_c,
                               dynamic_grad_pre_h, dynamic_grad_pre_c,
                               mask_tensor_list[i]);
-        VLOG(0) << "in mask preprocess after";
       } else {
         this->preprocess(context, &(*output_grad_tensor_unbind)[i],
                          dynamic_grad_last_h);
       }
-      VLOG(0) << "layer_idx:" << layer_idx << ", layer step 5";
       hidden = &(*output_tensor_unbind)[i];
       if (i == 0) {
         pre_hidden = &(*init_h_unbind)[current_layer_idx];
@@ -1179,21 +1041,15 @@ struct GradLayer {
                   weight_grad, dynamic_grad_pre_h, dynamic_grad_pre_c,
                   &lstm_value, &lstm_grad, mask_tensor_list[i],
                   has_sequence_length);
-      VLOG(0) << "layer_idx:" << layer_idx << ", layer step 6";
       SwapPoniter(&dynamic_grad_last_h, &dynamic_grad_pre_h);
       SwapPoniter(&dynamic_grad_last_c, &dynamic_grad_pre_c);
     }
 
-    Print3DTensor<T>(input_grad, "print after zero step 2");
-    Print3DTensor<T>(layer_grad_gate_tensor, "print layer_grad_gate_tensor");
-    Print3DTensor<T>(&(*layer_grad_gate_tensor_unbind)[0],
-                     "double check print layer_grad_gate_tensor");
     // postproces for gradient for w_hi, X, bias_hi, bias_hh
     this->postprocess(context, *layer_grad_gate_tensor, *input, input_grad,
                       parameter_lists[layer_idx],
                       &((*weight_list_grad)[layer_idx]), is_reverse);
 
-    VLOG(0) << "layer_idx:" << layer_idx << ", layer step 7";
     // copy the gradient to init_c init_h
     if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
       framework::TensorCopy(*dynamic_grad_last_h, context.GetPlace(),
@@ -1203,7 +1059,6 @@ struct GradLayer {
       framework::TensorCopy(*dynamic_grad_last_c, context.GetPlace(),
                             &((*init_c_grad_unbind)[current_layer_idx]));
     }
-    VLOG(0) << "layer_idx:" << layer_idx << ", layer step 8";
   }
 
   virtual void operator()(
@@ -1252,8 +1107,6 @@ struct GradLayer {
         eigen_grad_last_h + eigen_grad_output * eigen_mask_broadcast;
     eigen_grad_pre_h.device(place) =
         (1 - eigen_mask_broadcast) * eigen_grad_last_h;
-    Print3DTensor<T>(grad_pre_h, "mask grad_pre_h");
-    Print3DTensor<T>(grad_last_h, "mask grad_last_h");
     eigen_grad_last_h.device(place) = eigen_mask_broadcast * eigen_grad_last_h;
 
     if (grad_last_c && grad_pre_c) {
@@ -1265,7 +1118,6 @@ struct GradLayer {
           (1 - eigen_mask_broadcast) * eigen_grad_last_c;
       eigen_grad_last_c.device(place) =
           eigen_mask_broadcast * eigen_grad_last_c;
-      Print3DTensor<T>(grad_pre_c, "mask grad_pre_c");
     }
   }
 
@@ -1405,10 +1257,8 @@ void split_tensor_at_last_dim(const framework::ExecutionContext& context,
   (*output_vec)[1]->mutable_data<T>(context.GetPlace());
   shape_refer.emplace_back((*output_vec)[0]);
   shape_refer.emplace_back((*output_vec)[1]);
-  VLOG(0) << "before in split functor";
   math::SplitFunctor<platform::CPUDeviceContext, T> functor;
   functor(dev_ctx, *output, shape_refer, axis, output_vec);
-  VLOG(0) << "after in split functor";
 }
 
 template <typename T, typename GradCellType>
@@ -1440,7 +1290,6 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
         context.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, input_grad, static_cast<T>(0.0));
-    Print3DTensor<T>(input_grad, "print after zero");
 
     std::vector<Tensor*> output_vec;
     Tensor forward_output;
@@ -1498,7 +1347,6 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
           {time_step * direction_num, batch_size, hidden_size});
       layer_state_tensor_unbind = Unbind(layer_state_tensor);
     }
-    Print3DTensor<T>(&layer_state_tensor, "layer_state_tensor check");
 
     Tensor layer_act_state_tensor;
     TensorList layer_act_state_tensor_unbind;
@@ -1509,7 +1357,6 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
       layer_act_state_tensor_unbind = Unbind(layer_act_state_tensor);
     }
     const bool& has_sequence_length = sequence_length == nullptr ? false : true;
-    VLOG(0) << "data ready!";
 
     this->run_rnn_grad_function(
         context, device_ctx, input, input_grad, sequence_length, init_h_unbind,
@@ -1520,7 +1367,6 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
         &forward_output_grad_tensor_unbind, last_h_grad_unbind,
         last_c_grad_unbind, parameter_lists, weight_list_grad, layer_idx,
         time_step, has_sequence_length, is_bidirec, false);
-    VLOG(0) << "process forward run!";
 
     this->run_rnn_grad_function(
         context, device_ctx, input, input_grad, sequence_length, init_h_unbind,
@@ -1531,7 +1377,6 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
         &backward_output_grad_tensor_unbind, last_h_grad_unbind,
         last_c_grad_unbind, parameter_lists, weight_list_grad, layer_idx,
         time_step, has_sequence_length, is_bidirec, true);
-    VLOG(0) << "process backward run!";
   }
 };
 
@@ -1570,12 +1415,6 @@ struct SimpleRNNGradCell : GradCell<T> {
       framework::TensorCopy(*grad_pre_hidden, device_ctx.GetPlace(), device_ctx,
                             &grad_pre_hidden_bak);
     }
-    VLOG(0) << "Before bp activate:";
-    Print3DTensor<T>(pre_hidden, "pre_hidden");
-    Print3DTensor<T>(hidden_tensor, "hidden_tensor");
-    Print3DTensor<T>(gate_tensor, "gate_tensor");
-    Print3DTensor<T>(grad_hidden, "grad_hidden");
-    Print3DTensor<T>(grad_gate, "grad_gate");
     // h = act(z)
     // update dz
     auto dz = EigenVector<T>::Flatten(
@@ -1592,15 +1431,6 @@ struct SimpleRNNGradCell : GradCell<T> {
     EigenActivationBackwardFunctor<T> functor;
     functor(*place, z, h, dh, dz);
 
-    VLOG(0) << "After bp activate:";
-    Print3DTensor<T>(gate_tensor, "gate_tensor");
-    Print3DTensor<T>(grad_hidden, "grad_hidden");
-    Print3DTensor<T>(grad_gate, "grad_gate");
-
-    VLOG(0) << "grad gate shape:" << grad_gate->dims();
-    VLOG(0) << "weight_hh shape:" << weight_hh->dims();
-    VLOG(0) << "pre_hidden shape:" << pre_hidden->dims();
-
     // update grad_weight_hh, grad_pre_hidden
     auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, false);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
@@ -1609,7 +1439,6 @@ struct SimpleRNNGradCell : GradCell<T> {
     blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
                 static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
 
-    Print3DTensor<T>(grad_pre_hidden, "cell grad_pre_h before");
     if (has_sequence_length) {
       auto eigen_mask = framework::EigenMatrix<T>::From(
           mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
@@ -1623,8 +1452,6 @@ struct SimpleRNNGradCell : GradCell<T> {
           (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
           eigen_grad_pre_hidden * eigen_mask_broadcast;
     }
-    Print3DTensor<T>(grad_pre_hidden, "cell grad_pre_h");
-    Print3DTensor<T>(grad_hidden, "cell grad_hidden");
 
     auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
     mat_dim_c.height_ *= mat_dim_c.batch_size_;
@@ -1667,14 +1494,6 @@ struct LSTMGradCell : GradCell<T> {
       framework::TensorCopy(*grad_pre_state, device_ctx.GetPlace(), device_ctx,
                             &grad_pre_state_bak);
     }
-    Print3DTensor<T>(state_tensor, "state tensor");
-    Print3DTensor<T>(act_state_tensor, "act_state_tensor");
-    Print3DTensor<T>(gate_tensor, "gate_tensor");
-    Print3DTensor<T>(grad_hidden, "grad_hidden");
-    Print3DTensor<T>(grad_state, "grad_state");
-    Print3DTensor<T>(grad_gate, "grad_gate");
-    Print3DTensor<T>(grad_pre_state, "grad_pre_state");
-
     lstm_value->gate_value = gate_tensor->data<T>();
     lstm_value->state_value = state_tensor->data<T>();
     lstm_value->state_active_value = act_state_tensor->data<T>();
@@ -1701,14 +1520,9 @@ struct LSTMGradCell : GradCell<T> {
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
     mat_dim_a.batch_size_ = 0;
     auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
-    VLOG(0) << "grad gate shape:" << grad_gate->dims();
-    VLOG(0) << "weight_hh shape:" << weight_hh->dims();
-    VLOG(0) << "pre_hidden shape:" << pre_hidden->dims();
     blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
                 static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
 
-    Print3DTensor<T>(grad_pre_hidden, "cell grad_pre_h before");
-    Print3DTensor<T>(grad_pre_state, "cell grad_pre_state before");
     if (has_sequence_length) {
       auto& place =
           *context.template device_context<platform::CPUDeviceContext>()
@@ -1732,11 +1546,7 @@ struct LSTMGradCell : GradCell<T> {
           (1 - eigen_mask_broadcast) * eigen_grad_pre_state_bak +
           eigen_grad_pre_state * eigen_mask_broadcast;
     }
-    Print3DTensor<T>(grad_pre_hidden, "cell grad_pre_h");
-    Print3DTensor<T>(grad_pre_state, "cell grad_pre_state");
-    Print3DTensor<T>(grad_hidden, "cell grad_hidden");
 
-    VLOG(0) << "first blas";
     auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
     mat_dim_c.height_ *= mat_dim_c.batch_size_;
     mat_dim_c.batch_size_ = 0;
@@ -1756,16 +1566,22 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   // get the tensor pointer for the input
   auto* input = context.Input<Tensor>("Input");
   auto weight_list = context.MultiInput<Tensor>("WeightList");
-  auto* init_h = context.Input<Tensor>("InitH");
-  auto* init_c = context.Input<Tensor>("InitC");
+  auto pre_state = context.MultiInput<Tensor>("PreState");
+  const Tensor* init_h = pre_state[0];
+  const Tensor* init_c = nullptr;
+  if (pre_state.size() > 0) {
+    init_c = pre_state[1];
+  }
   auto* reserve_state = context.Input<Tensor>("Reserve");
-  auto* state_out = context.Input<Tensor>("StateOut");
+  auto* dropout_state = context.Input<Tensor>("DropoutState");
   auto* output = context.Input<Tensor>("Out");
   auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-  auto* last_h_grad = context.Input<Tensor>(framework::GradVarName("LastH"));
-  auto* last_c_grad = context.Input<Tensor>(framework::GradVarName("LastC"));
-
-  Print3DTensor<T>(last_h_grad, "last_h_grad");
+  auto state_grad = context.MultiInput<Tensor>(framework::GradVarName("State"));
+  const Tensor* last_h_grad = state_grad[0];
+  const Tensor* last_c_grad = nullptr;
+  if (state_grad.size() > 1) {
+    last_c_grad = state_grad[1];
+  }
 
   bool has_seq_length = context.HasInput("SequenceLength");
   const Tensor* sequence_length = nullptr;
@@ -1777,8 +1593,13 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   auto* input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
   auto weight_grad_list = context.MultiOutput<framework::Tensor>(
       framework::GradVarName("WeightList"));
-  auto* init_h_grad = context.Output<Tensor>(framework::GradVarName("InitH"));
-  auto* init_c_grad = context.Output<Tensor>(framework::GradVarName("InitC"));
+  auto pre_state_grad =
+      context.MultiOutput<Tensor>(framework::GradVarName("PreState"));
+  Tensor* init_h_grad = pre_state_grad[0];
+  Tensor* init_c_grad = nullptr;
+  if (pre_state_grad.size() > 1) {
+    init_c_grad = pre_state_grad[1];
+  }
 
   // get the attributes for the calcluate
   const int& num_layers = context.Attr<int>("num_layers");
@@ -1846,7 +1667,6 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   TensorList last_c_grad_unbind;
   if (last_c_grad) {
     last_c_grad_unbind = Unbind(*last_c_grad);
-    VLOG(0) << "last_c_grad_unbind is not null";
   }
 
   TensorList init_h_unbind, init_c_unbind;
@@ -1896,14 +1716,12 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   bool has_allocate_mem = false;
   for (int i = num_layers - 1; i >= 0; --i) {
     // the layer input output had saved, just use the data
-    VLOG(0) << "layer_idx:" << i << ", step 1";
     if (i > 0) {
       layer_input.ShareDataWith(hidden_tensor_unbind[i - 1]);
     } else {
       layer_input.ShareDataWith(*input);
     }
     layer_output.ShareDataWith(hidden_tensor_unbind[i]);
-    VLOG(0) << "layer_idx:" << i << ", step 2";
     if (num_layers == 1) {
       layer_input_grad_holder = input_grad;
     } else {
@@ -1931,13 +1749,12 @@ void RnnGradFunc(const framework::ExecutionContext& context,
             &parameter_lists_grad, i, gate_num_tmp);
     }
 
-    VLOG(0) << "layer_idx:" << i << ", step 3";
     // calcluate the dropout gradient for the layer_input_grad_holder
-    // state_out save in the forward process
+    // dropout_state save in the forward process
     if (i > 0) {
       if ((!is_test) && (dropout_prob != 0)) {
         dropout_cpu_grad_function_inplace<T>(context, layer_input_grad_holder,
-                                             state_out, dropout_prob);
+                                             dropout_state, dropout_prob);
       }
     }
 
@@ -1956,23 +1773,23 @@ void RnnGradFunc(const framework::ExecutionContext& context,
 }
 
 template <typename DeviceContext, typename T>
-class CudnnLSTMCPUGradKernel : public framework::OpKernel<T> {
+class RNNCPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const std::string& cell_type = ctx.Attr<std::string>("cell_type");
+    const std::string& cell_type = ctx.Attr<std::string>("mode");
     int gate_num = 4;
-    if (cell_type == "lstm") {
+    if (cell_type == "LSTM") {
       RnnGradFunc<LSTMGradCell<T>, SingleGradLayer, BidirGradLayer, T>(
           ctx, gate_num);
-    } else if (cell_type == "gru") {
+    } else if (cell_type == "GRU") {
       gate_num = 3;
       // run gru
-    } else if (cell_type == "rnn_relu") {
+    } else if (cell_type == "RNN_RELU") {
       gate_num = 0;
       RnnGradFunc<SimpleRNNGradCell<T, ReluGradFunctor>, SingleGradLayer,
                   BidirGradLayer, T>(ctx, gate_num);
       // run rnn
-    } else if (cell_type == "rnn_tanh") {
+    } else if (cell_type == "RNN_TANH") {
       gate_num = 0;
       RnnGradFunc<SimpleRNNGradCell<T, TanhGradFunctor>, SingleGradLayer,
                   BidirGradLayer, T>(ctx, gate_num);

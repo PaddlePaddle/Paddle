@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cudnn_lstm_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
@@ -28,21 +27,18 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
 
     OP_INOUT_CHECK(ctx->HasOutput("Reserve"), "Output", "Reserve", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("StateOut"), "Output", "StateOut",
                    "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasOutput("LastH"), "Output", "LastH", "CudnnLSTM");
-
-    const std::string& cell_type = ctx->Attrs().Get<std::string>("cell_type");
-    if (cell_type == "lstm") {
-      OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
-      OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
-    }
+    OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
 
     auto in_dims = ctx->GetInputDim("Input");
     auto init_h_dims = ctx->GetInputDim("InitH");
+    auto init_c_dims = ctx->GetInputDim("InitC");
 
     PADDLE_ENFORCE_EQ(in_dims.size(), 3,
                       platform::errors::InvalidArgument(
@@ -73,24 +69,20 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
             "received in_dims[1] is %d and init_h_dims[1] is %d.",
             in_dims[1], init_h_dims[1]));
 
-    if (cell_type == "lstm") {
-      auto init_c_dims = ctx->GetInputDim("InitC");
-      PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
-                        platform::errors::InvalidArgument(
-                            "The InitC dims and InitH "
-                            "dims should be equal. But "
-                            "received init_c_dims is %d and init_h_dims is %d.",
-                            init_c_dims, init_h_dims));
-    }
+    PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
+                      platform::errors::InvalidArgument(
+                          "The InitC dims and InitH "
+                          "dims should be equal. But "
+                          "received init_c_dims is %d and init_h_dims is %d.",
+                          init_c_dims, init_h_dims));
+
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
     bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
     out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("LastH", init_h_dims);
-    if (cell_type == "lstm") {
-      ctx->SetOutputDim("LastC", init_h_dims);
-    }
+    ctx->SetOutputDim("LastH", init_c_dims);
+    ctx->SetOutputDim("LastC", init_h_dims);
   }
 
  protected:
@@ -126,8 +118,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "input. This is a tensor with shape (num_layers x batch_size x "
              "hidden_size)"
              "and When is_bidirec is True, the shape will be (num_layers*2 x "
-             "batch_size x hidden_size)")
-        .AsDispensable();
+             "batch_size x hidden_size)");
     AddInput("W",
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
@@ -150,8 +141,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput("StateOut",
               "Share memory with State. "
-              "Store the global drop state when training")
-        .AsIntermediate();
+              "Store the global drop state when training");
     AddOutput("Out",
               "(Tensor) the hidden state of LSTM operator. "
               "The shape is ( seq_len x batch_size x hidden_size) if "
@@ -170,9 +160,6 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "is_bidirec is False"
               "and When is_bidirect is True, the shape will be (num_layers*2 x "
               "batch_size x hidden_size*2)");
-    AddAttr<std::string>("cell_type",
-                         "The cell type of RNN, it must be the lstm, rnn, gru")
-        .SetDefault("lstm");
     AddAttr<float>(
         "dropout_prob",
         "dropout prob of the dropout op"
@@ -236,11 +223,7 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTMGrad");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTMGrad");
-
-    const std::string& cell_type = ctx->Attrs().Get<std::string>("cell_type");
-    if (cell_type == "lstm") {
-      OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTMGrad");
-    }
+    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTMGrad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);
@@ -255,9 +238,7 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
                          ctx->GetInputsDim("WeightList"));
     }
     SetOutGradDim("InitH");
-    if (ctx->HasInput("InitC")) {
-      SetOutGradDim("InitC");
-    }
+    SetOutGradDim("InitC");
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -274,14 +255,10 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    const std::string& cell_type =
-        BOOST_GET_CONST(std::string, this->GetAttr("cell_type"));
     op->SetType("cudnn_lstm_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("InitH", this->Input("InitH"));
-    if (cell_type == "lstm") {
-      op->SetInput("InitC", this->Input("InitC"));
-    }
+    op->SetInput("InitC", this->Input("InitC"));
     if (this->HasInput("WeightList")) {
       op->SetInput("WeightList", this->Input("WeightList"));
     }
@@ -292,10 +269,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-
-    if (cell_type == "lstm") {
-      op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
-    }
+    op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
     op->SetInput(framework::GradVarName("LastH"), this->OutputGrad("LastH"));
 
     if (this->HasInput("WeightList")) {
@@ -305,9 +279,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
-    if (cell_type == "lstm") {
-      op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
-    }
+    op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
     op->SetAttrMap(this->Attrs());
   }
 };
@@ -330,15 +302,9 @@ REGISTER_OPERATOR(cudnn_lstm, ops::CudnnLSTMOp, ops::CudnnLSTMOpMaker,
                   ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    cudnn_lstm,
-    ops::CudnnLSTMCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CudnnLSTMCPUKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);
+REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
 
-REGISTER_OP_CPU_KERNEL(
-    cudnn_lstm_grad,
-    ops::CudnnLSTMCPUGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CudnnLSTMCPUGradKernel<paddle::platform::CPUDeviceContext, double>);
 // TODO(Shixiaowei02) Add ModifyInput support
 REGISTER_OP_VERSION(cudnn_lstm)
     .AddCheckpoint(

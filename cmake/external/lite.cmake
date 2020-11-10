@@ -22,7 +22,7 @@ if(XPU_SDK_ROOT)
   set(LITE_WITH_XPU ON)
   include_directories("${XPU_SDK_ROOT}/XTDK/include")
   include_directories("${XPU_SDK_ROOT}/XTCL/include")
-  add_definitions(-DPADDLE_WITH_XPU)
+  add_definitions(-DLITE_SUBGRAPH_WITH_XPU)
   LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/shlib/")
   LINK_DIRECTORIES("${XPU_SDK_ROOT}/XTDK/runtime/shlib/")
 endif()
@@ -62,7 +62,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
+      GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
       PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
@@ -106,7 +106,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
         ${LITE_PROJECT}
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
+        GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
         GIT_TAG             ${LITE_GIT_TAG}
         PREFIX              ${LITE_SOURCES_DIR}
         UPDATE_COMMAND      ""

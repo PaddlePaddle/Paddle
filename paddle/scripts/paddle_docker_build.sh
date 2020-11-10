@@ -15,14 +15,14 @@
 # limitations under the License.
 
 function start_build_docker() {
-    docker pull $IMG
+    docker pull "$IMG"
 
     apt_mirror='s#http://archive.ubuntu.com/ubuntu#mirror://mirrors.ubuntu.com/mirrors.txt#g'
     DOCKER_ENV=$(cat <<EOL
         -e FLAGS_fraction_of_gpu_memory_to_use=0.15 \
         -e CTEST_OUTPUT_ON_FAILURE=1 \
         -e CTEST_PARALLEL_LEVEL=1 \
-        -e APT_MIRROR=${apt_mirror} \
+        -e APT_MIRROR="${apt_mirror}" \
         -e WITH_GPU=ON \
         -e CUDA_ARCH_NAME=Auto \
         -e WITH_AVX=ON \
@@ -39,24 +39,24 @@ EOL
     )
 
     DOCKER_CMD="nvidia-docker"
-    if ! [ -x "$(command -v ${DOCKER_CMD})" ]; then
+    if ! [ -x "$(command -v "${DOCKER_CMD}")" ]; then
         DOCKER_CMD="docker"
     fi
     if [ ! -d "${HOME}/.ccache" ]; then
-        mkdir ${HOME}/.ccache
+        mkdir "${HOME}"/.ccache
     fi
     set -ex
-    ${DOCKER_CMD} run -it \
-        ${DOCKER_ENV} \
-        -e SCRIPT_NAME=$0 \
-        -e CONTENT_DEC_PASSWD=$CONTENT_DEC_PASSWD \
-        -e TRAVIS_BRANCH=$TRAVIS_BRANCH \
-        -e TRAVIS_PULL_REQUEST=$TRAVIS_PULL_REQUEST \
-        -v $PADDLE_ROOT:/paddle \
-        -v ${HOME}/.ccache:/root/.ccache \
+    "${DOCKER_CMD}" run -it \
+        "${DOCKER_ENV}" \
+        -e SCRIPT_NAME="$0" \
+        -e CONTENT_DEC_PASSWD="$CONTENT_DEC_PASSWD" \
+        -e TRAVIS_BRANCH="$TRAVIS_BRANCH" \
+        -e TRAVIS_PULL_REQUEST="$TRAVIS_PULL_REQUEST" \
+        -v "$PADDLE_ROOT":/paddle \
+        -v "${HOME}"/.ccache:/root/.ccache \
         -w /paddle \
-        $IMG \
-        paddle/scripts/paddle_build.sh $@
+        "$IMG" \
+        paddle/scripts/paddle_build.sh "$@"
     set +x
 }
 
@@ -65,7 +65,7 @@ function main() {
     VERSION="latest-dev"
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
     IMG=${DOCKER_REPO}:${VERSION}
-    start_build_docker $@
+    start_build_docker "$@"
 }
 
-main $@
+main "$@"

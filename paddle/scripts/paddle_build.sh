@@ -522,9 +522,11 @@ function run_mac_test() {
 EOF
         #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac. 
         #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
+        set +x
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
+        set -x
 
         set +ex
         if [ "$1" == "cp27-cp27m" ]; then
@@ -601,8 +603,10 @@ EOF
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
+        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
+        set -x
         if [ "$mactest_error" != 0 ];then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
@@ -1196,6 +1200,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1407,7 +1412,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install opencv-python py-cpuinfo==5.0.0 && wget ${ref_web}/${ref_paddle35} && ${ref_paddle35_mv1} pip3 install ${ref_paddle35_whl} ${ref_paddle35_mv2}; apt-get install -f -y && \
+        pip3 install py-cpuinfo==5.0.0 && wget ${ref_web}/${ref_paddle35} && ${ref_paddle35_mv1} pip3 install ${ref_paddle35_whl} ${ref_paddle35_mv2}; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f ${ref_paddle35} && \
         ldconfig
@@ -1429,7 +1434,7 @@ EOF
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
         make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.6.0.tgz
     RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
-        pip3.6 install opencv-python && wget ${ref_web}/${ref_paddle36} && ${ref_paddle36_mv1} pip3.6 install ${ref_paddle36_whl} ${ref_paddle36_mv2}; apt-get install -f -y && \
+        wget ${ref_web}/${ref_paddle36} && ${ref_paddle36_mv1} pip3.6 install ${ref_paddle36_whl} ${ref_paddle36_mv2}; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f ${ref_paddle36} && \
         ldconfig
@@ -1445,7 +1450,7 @@ EOF
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
         make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.7.0.tgz
     RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
-        pip3.7 install opencv-python && wget ${ref_web}/${ref_paddle37} && pip3.7 install ${ref_paddle37_whl}; apt-get install -f -y && \
+        wget ${ref_web}/${ref_paddle37} && pip3.7 install ${ref_paddle37_whl}; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f ${ref_paddle37} && \
         ldconfig
@@ -1461,7 +1466,7 @@ EOF
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
         make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.8.0.tgz
     RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
-        pip3.8 install opencv-python && wget ${ref_web}/${ref_paddle38} && pip3.8 install ${ref_paddle38_whl}; apt-get install -f -y && \
+        wget ${ref_web}/${ref_paddle38} && pip3.8 install ${ref_paddle38_whl}; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f ${ref_paddle38} && \
         ldconfig
@@ -1667,6 +1672,10 @@ function main() {
         gen_fluid_lib ${parallel_number}
         tar_fluid_lib
         test_fluid_lib
+        ;;
+      build_inference_lib)
+        cmake_gen ${PYTHON_ABI:-""}
+        gen_fluid_lib ${parallel_number}
         ;;
       check_style)
         check_style

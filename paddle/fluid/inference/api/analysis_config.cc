@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -222,7 +223,12 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  use_mkldnn_bfloat16_ = true;
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+    use_mkldnn_bfloat16_ = true;
+  } else {
+    LOG(INFO) << "CPU does not support BFLOAT16 calculations";
+    use_mkldnn_bfloat16_ = false;
+  }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
   use_mkldnn_bfloat16_ = false;
@@ -375,7 +381,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#ifndef PADDLE_WITH_XPU
+#ifndef LITE_SUBGRAPH_WITH_XPU
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use an XPU device, but Paddle was not compiled "
         "with XPU-runtime."));

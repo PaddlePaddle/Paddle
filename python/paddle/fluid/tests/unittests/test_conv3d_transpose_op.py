@@ -107,7 +107,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
-class TestConv3dTransposeOp(OpTest):
+class TestConv3DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.use_cudnn = False
@@ -200,7 +200,7 @@ class TestConv3dTransposeOp(OpTest):
         self.op_type = "conv3d_transpose"
 
 
-class TestWithSymmetricPad(TestConv3dTransposeOp):
+class TestWithSymmetricPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.check_no_input = True
         self.pad = [1, 1, 1]
@@ -212,7 +212,7 @@ class TestWithSymmetricPad(TestConv3dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class TestWithAsymmetricPad(TestConv3dTransposeOp):
+class TestWithAsymmetricPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 0, 1, 0, 1, 2]
         self.stride = [1, 1, 1]
@@ -223,7 +223,7 @@ class TestWithAsymmetricPad(TestConv3dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class TestWithSAMEPad(TestConv3dTransposeOp):
+class TestWithSAMEPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.stride = [1, 1, 2]
         self.dilations = [1, 2, 1]
@@ -234,7 +234,7 @@ class TestWithSAMEPad(TestConv3dTransposeOp):
         self.padding_algorithm = 'SAME'
 
 
-class TestWithVALIDPad(TestConv3dTransposeOp):
+class TestWithVALIDPad(TestConv3DTransposeOp):
     def init_test_case(self):
         self.stride = [2, 1, 1]
         self.dilations = [1, 1, 1]
@@ -245,7 +245,7 @@ class TestWithVALIDPad(TestConv3dTransposeOp):
         self.padding_algorithm = 'VALID'
 
 
-class TestWithStride(TestConv3dTransposeOp):
+class TestWithStride(TestConv3DTransposeOp):
     def init_test_case(self):
         self.check_no_filter = True
         self.pad = [1, 1, 1]
@@ -257,7 +257,7 @@ class TestWithStride(TestConv3dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class TestWithGroups(TestConv3dTransposeOp):
+class TestWithGroups(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -268,7 +268,7 @@ class TestWithGroups(TestConv3dTransposeOp):
         self.filter_size = [f_c, 3, 3, 3, 3]
 
 
-class TestWithDilation(TestConv3dTransposeOp):
+class TestWithDilation(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -279,7 +279,7 @@ class TestWithDilation(TestConv3dTransposeOp):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
 
-class Test_NHWC(TestConv3dTransposeOp):
+class Test_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
@@ -294,7 +294,7 @@ class Test_NHWC(TestConv3dTransposeOp):
 # ------------ test_cudnn ------------
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN(TestConv3dTransposeOp):
+class TestCUDNN(TestConv3DTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
@@ -419,7 +419,7 @@ class TestCUDNNWithGroups(TestWithGroups):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN_NHWC(TestConv3dTransposeOp):
+class TestCUDNN_NHWC(TestConv3DTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]

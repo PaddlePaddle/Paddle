@@ -15,11 +15,11 @@ from __future__ import print_function
 
 __all__ = [
     'conv1d',
-    'conv_transpose1d',
+    'conv1d_transpose',
     'conv2d',
-    'conv_transpose2d',
+    'conv2d_transpose',
     'conv3d',
-    'conv_transpose3d',
+    'conv3d_transpose',
 ]
 
 import numpy as np
@@ -405,7 +405,7 @@ def conv2d(x,
             points. If dilation is a tuple, it must contain two integers, (dilation_height, 
             dilation_width). Otherwise, dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
-        groups (int): The groups number of the Conv2d Layer. According to grouped
+        groups (int): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -541,7 +541,7 @@ def conv2d(x,
     return out
 
 
-def conv_transpose1d(x,
+def conv1d_transpose(x,
                      weight,
                      bias=None,
                      stride=1,
@@ -682,7 +682,7 @@ def conv_transpose1d(x,
                       [[4, 2]]]).astype(np.float32)
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
-          y_var = F.conv_transpose1d(x_var, w_var)
+          y_var = F.conv1d_transpose(x_var, w_var)
           y_np = y_var.numpy()
           print y_np
           
@@ -802,7 +802,7 @@ def conv_transpose1d(x,
     return out
 
 
-def conv_transpose2d(x,
+def conv2d_transpose(x,
                      weight,
                      bias=None,
                      stride=1,
@@ -896,7 +896,7 @@ def conv_transpose2d(x,
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -920,7 +920,7 @@ def conv_transpose2d(x,
            None by default.
 
     Returns:
-        A Tensor representing the conv_transpose2d, whose 
+        A Tensor representing the conv2d_transpose, whose
         data type is the same with input and shape is (num_batches, channels, out_h, 
         out_w) or (num_batches, out_h, out_w, channels). The tensor variable storing 
         transposed convolution result.
@@ -946,7 +946,7 @@ def conv_transpose2d(x,
           x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
           w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
-          y_var = F.conv_transpose2d(x_var, w_var)
+          y_var = F.conv2d_transpose(x_var, w_var)
           y_np = y_var.numpy()
 
           print(y_np.shape)
@@ -1122,7 +1122,7 @@ def conv3d(x,
             If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
-        groups (int): The groups number of the Conv3d Layer. According to grouped
+        groups (int): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -1242,7 +1242,7 @@ def conv3d(x,
     return out
 
 
-def conv_transpose3d(x,
+def conv3d_transpose(x,
                      weight,
                      bias=None,
                      stride=1,
@@ -1340,7 +1340,7 @@ def conv_transpose3d(x,
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -1364,7 +1364,7 @@ def conv_transpose3d(x,
            None by default.
 
     Returns:
-        A Tensor representing the conv_transpose3d, whose data 
+        A Tensor representing the conv3d_transpose, whose data
         type is the same with input and shape is (num_batches, channels, out_d, out_h, 
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor 
         variable storing the transposed convolution result, and if act is not None, the tensor 
@@ -1391,7 +1391,7 @@ def conv_transpose3d(x,
           x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
           w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
-          y_var = F.conv_transpose3d(x_var, w_var)
+          y_var = F.conv3d_transpose(x_var, w_var)
           y_np = y_var.numpy()
 
           print(y_np.shape)

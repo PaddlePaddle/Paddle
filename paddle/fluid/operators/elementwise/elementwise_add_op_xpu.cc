@@ -86,30 +86,46 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
       int r = xpu::matrix_vector_add_grad(
           dev_ctx.x_context(), dout->data<T>(), dout->data<T>(),
           dout->data<T>(), dout->data<T>(), dx_data, dy_data, pre, n);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      if (r == xpu::Error_t::INVALID_PARAM) {
+        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          platform::errors::InvalidArgument(
+                              "XPU kernel error of ElementWiseAddOp, error "
+                              "message: INVALID_PARAM, "
+                              "please check your input & output."));
+      } else if (r == xpu::Error_t::RUNTIME_ERROR) {
+        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          platform::errors::Unavailable(
+                              "XPU kernel error of ElementWiseAddOp, error "
+                              "message: RUNTIME_ERROR, "
+                              "please check whether Baidu Kunlun card is "
+                              "properly installed."));
+      } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
+        PADDLE_ENFORCE_EQ(
+            r, xpu::Error_t::SUCCESS,
+            platform::errors::ResourceExhausted(
+                "XPU kernel error of ElementWiseAddOp, error message: "
+                "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
+      }
       return;
     }
 
     if (dx == nullptr) {
       PADDLE_ENFORCE_EQ(
           xpu_malloc(reinterpret_cast<void **>(&dx_data), len * sizeof(float)),
-          XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+          XPU_SUCCESS,
+          platform::errors::ResourceExhausted("XPU has no enough memory"));
     }
 
     if (dy == nullptr) {
       PADDLE_ENFORCE_EQ(
           xpu_malloc(reinterpret_cast<void **>(&dy_data), len * sizeof(float)),
-          XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+          XPU_SUCCESS,
+          platform::errors::ResourceExhausted("XPU has no enough memory"));
     } else {
       if (len != n) {
         PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void **>(&dy_data),
                                      len * sizeof(float)),
-                          XPU_SUCCESS, platform::errors::External(
+                          XPU_SUCCESS, platform::errors::ResourceExhausted(
                                            "XPU has no enough memory"));
       }
     }
@@ -117,22 +133,50 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
     int r = xpu::elementwise_add_grad(
         dev_ctx.x_context(), dout->data<T>() /*x*/, dout->data<T>() /*y*/,
         dout->data<T>() /*out*/, dout->data<T>(), dx_data, dy_data, len);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    if (r == xpu::Error_t::INVALID_PARAM) {
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                        platform::errors::InvalidArgument(
+                            "XPU kernel error of ElementWiseAddOp, error "
+                            "message: INVALID_PARAM, "
+                            "please check your input & output."));
+    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::Unavailable(
+              "XPU kernel error of ElementWiseAddOp, error message: "
+              "RUNTIME_ERROR, "
+              "please check whether Baidu Kunlun card is properly installed."));
+    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::ResourceExhausted(
+              "XPU kernel error of ElementWiseAddOp, error message: "
+              "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
+    }
 
     if ((dy != nullptr) && (len != n)) {
       r = xpu::reduce_ew(dev_ctx.x_context(), dy_data, dy->data<T>(), pre, n,
                          post, xpu::ElementwiseOp::ASSIGN);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU API return wrong value[%d], please check whether "
-              "Baidu Kunlun Card is properly installed.",
-              r));
+      if (r == xpu::Error_t::INVALID_PARAM) {
+        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          platform::errors::InvalidArgument(
+                              "XPU kernel error of ElementWiseAddOp, error "
+                              "message: INVALID_PARAM, "
+                              "please check your input & output."));
+      } else if (r == xpu::Error_t::RUNTIME_ERROR) {
+        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                          platform::errors::Unavailable(
+                              "XPU kernel error of ElementWiseAddOp, error "
+                              "message: RUNTIME_ERROR, "
+                              "please check whether Baidu Kunlun card is "
+                              "properly installed."));
+      } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
+        PADDLE_ENFORCE_EQ(
+            r, xpu::Error_t::SUCCESS,
+            platform::errors::ResourceExhausted(
+                "XPU kernel error of ElementWiseAddOp, error message: "
+                "NO_ENOUGH_WORKSPACE, XPU has no enough memory."));
+      }
       dev_ctx.Wait();
       xpu_free(dy_data);
     }
