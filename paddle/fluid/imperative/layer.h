@@ -73,6 +73,7 @@ class VarBase {
       : var_(std::make_shared<VariableWrapper>(name)),
         grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
     if (has_grad) {
+      grad_var_->var_->SetForwardVar(var_);
       var_->SetGradVar(grad_var_->var_);
     }
 
@@ -229,6 +230,7 @@ class VarBase {
   const std::shared_ptr<VariableWrapper> var_;
 
   std::shared_ptr<VarBase> grad_var_;
+  std::weak_ptr<VarBase> forward_var_;
 
   /**
    * NOTE(zengjinle): should consider whether to implement an inlined vector

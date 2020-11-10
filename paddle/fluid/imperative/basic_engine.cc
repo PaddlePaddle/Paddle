@@ -99,9 +99,13 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       if (tensor && !tensor->IsInitialized()) {
-        VLOG(6) << "Set ungenerated Grad: " << var->Name() << " as zero";
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
-        tensor->mutable_data(op.place(), var->DataType());
+        // NOTE(zhiqiu): since grad var is ungenerated, so
+        auto forward_var = var->GetForwardVar();
+        auto dtype = forward_var ? forward_var->DataType() : var->DataType();
+        VLOG(6) << "Set ungenerated Grad: " << var->Name()
+                << " as zero with dtype " << framework::DataTypeToString(dtype);
+        tensor->mutable_data(op.place(), dtype);
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
