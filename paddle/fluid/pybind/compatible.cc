@@ -95,8 +95,7 @@ void BindOpUpdateType(py::module *m) {
 
 void BindOpUpdateBase(py::module *m) {
   py::class_<OpUpdateBase>(*m, "OpUpdateBase")
-      .def("info", [](const OpUpdateBase &obj) { return obj.info(); },
-           py::return_value_policy::reference)
+      .def("info", &OpUpdateBase::info, py::return_value_policy::reference)
       .def("type", &OpUpdateBase::type);
 }
 
