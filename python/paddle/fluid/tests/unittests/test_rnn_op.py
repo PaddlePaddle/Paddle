@@ -24,10 +24,10 @@ import paddle.fluid.layers as layers
 import random
 import sys
 
+from op_test import OpTest
+sys.path.append("./rnn")
 from rnn_numpy import SimpleRNN, LSTM, GRU
 from convert import get_params_for_net
-sys.path.append("../")
-from op_test import OpTest
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -154,17 +154,12 @@ class TestRNNCpu2(TestRNNCpu):
 
 class TestRNNCpu3(TestRNNCpu):
     def set_attrs(self):
-        self.num_layers = 2
-
-
-class TestRNNCpu4(TestRNNCpu):
-    def set_attrs(self):
         self.is_bidirec = True
         self.num_layers = 2
         self.sequence_length = None
 
 
-class TestRNNCpu5(TestRNNCpu):
+class TestRNNCpu4(TestRNNCpu):
     def set_attrs(self):
         self.is_bidirec = True
         self.num_layers = 2
