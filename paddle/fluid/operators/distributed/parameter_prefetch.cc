@@ -285,18 +285,20 @@ void prefetchs(const std::vector<std::string> &id_var_names,
       std::vector<float> ids_value_vec(ids_size * vec_dim_1);
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        if (padding_idx != distributed::kNoPadding && id == padding_idx) {
-          memset(&ids_value_vec[idx * vec_dim_1], 0, sizeof(float) * vec_dim_1);
-        } else {
-          memcpy(&ids_value_vec[idx * vec_dim_1], &recved_vec_map[id][0],
-                 sizeof(float) * vec_dim_1);
-        }
+        // Todo: Support Padding
+        // if (padding_idx != distributed::kNoPadding && id == padding_idx) {
+        //   memset(&ids_value_vec[idx * vec_dim_1], 0, sizeof(float) *
+        //   vec_dim_1);
+        // } else {
+        memcpy(&ids_value_vec[idx * vec_dim_1], &recved_vec_map[id][0],
+               sizeof(float) * vec_dim_1);
+        // }
       }
       auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
-      auto &cpu_place = paddle::platform::CPUDeviceContext().GetPlace();
-      auto &const_cpu_place = BOOST_GET_CONST(platform::CPUPlace, cpu_place);
+      auto &cpu_place = BOOST_GET_CONST(
+          platform::CPUPlace, paddle::platform::CPUDeviceContext().GetPlace());
       auto stream = context.cuda_device_context().stream();
-      memory::Copy(gpu_place, out_d, const_cpu_place, &ids_value_vec[0],
+      memory::Copy(gpu_place, out_d, cpu_place, &ids_value_vec[0],
                    sizeof(float) * ids_size * vec_dim_1, stream);
 #else
       PADDLE_ENFORCE(true, platform::errors::PermissionDenied(
