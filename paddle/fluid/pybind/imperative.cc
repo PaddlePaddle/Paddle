@@ -685,8 +685,6 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-
                 linear = Linear(32, 64)
                 data = paddle.uniform(shape=[30, 10, 32], -1, 1)
                 x = linear(data)
@@ -704,7 +702,6 @@ void BindImperative(py::module *m_ptr) {
              .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
 
                 inputs = []
                 for _ in range(10):
