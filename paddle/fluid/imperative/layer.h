@@ -230,7 +230,6 @@ class VarBase {
   const std::shared_ptr<VariableWrapper> var_;
 
   std::shared_ptr<VarBase> grad_var_;
-  std::weak_ptr<VarBase> forward_var_;
 
   /**
    * NOTE(zengjinle): should consider whether to implement an inlined vector
