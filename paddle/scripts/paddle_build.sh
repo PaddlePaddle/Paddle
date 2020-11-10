@@ -759,6 +759,18 @@ function check_approvals_of_unittest() {
     set -x
 }
 
+function check_diff_file_for_coverage() {
+    # todo head
+    diff_h_file=$(git diff --name-status test_pr develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test_pr develop | awk '$1 != "D" {print $2}' | grep '\.cc$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cu_file=$(git diff --name-status test_pr develop | awk '$1 != "D" {print $2}' | grep '\.cu$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test_pr develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+
+    export PADDLE_GIT_DIFF_H_FILE=${diff_file_h}
+    export PADDLE_GIT_DIFF_CC_FILE="${diff_file_h},${diff_file_cc}"
+    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file}
+}
+
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
     fetch_upstream_develop_if_not_exist
@@ -1709,6 +1721,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
+        check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
         parallel_test
