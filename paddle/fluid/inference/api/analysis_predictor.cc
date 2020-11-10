@@ -175,7 +175,10 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices(false);
-    scope_.reset(new paddle::framework::Scope());
+    scope_.reset(new paddle::framework::Scope(), [&](framework::Scope *scope) {
+      delete scope;
+      memory::Release(place_);
+    });
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -989,7 +992,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
-  // TODO(wilber): release weight memory.
+
   memory::Release(place_);
 }
 
