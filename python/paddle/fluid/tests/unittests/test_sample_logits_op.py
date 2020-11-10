@@ -16,6 +16,7 @@ import unittest
 import collections
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 class TestSampleLogitsOp(OpTest):
