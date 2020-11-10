@@ -18,14 +18,24 @@ import unittest
 from paddle import nn
 
 
-class Net(nn.Layer):
+class LSTMLayer(nn.Layer):
     def __init__(self, in_channels, hidden_size):
-        super(Net, self).__init__()
-        self.lstm = nn.LSTM(
+        super(LSTMLayer, self).__init__()
+        self.cell = nn.LSTM(
             in_channels, hidden_size, direction='bidirectional', num_layers=2)
 
     def forward(self, x):
-        x, _ = self.lstm(x)
+        x, _ = self.cell(x)
+        return x
+
+
+class Net(nn.Layer):
+    def __init__(self, in_channels, hidden_size):
+        super(Net, self).__init__()
+        self.lstm = LSTMLayer(in_channels, hidden_size)
+
+    def forward(self, x):
+        x = self.lstm(x)
         return x
 
 
@@ -113,6 +123,22 @@ class TestSaveInEvalMode(unittest.TestCase):
             np.allclose(eval_out.numpy(), infer_out.numpy()),
             msg='eval_out is {}\n infer_out is \n{}'.format(eval_out,
                                                             infer_out))
+
+
+class TestEvalAfterSave(unittest.TestCase):
+    def test_eval_after_save(self):
+        x = paddle.randn((2, 10, 12)).astype('float32')
+        net = Net(12, 2)
+        dy_out = net(x)
+        # save model
+        paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
+        load_net = paddle.jit.load('jit.save/lstm')
+        load_out = load_net(x)
+        self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+        # eval
+        net.eval()
+        out = net(x)
+        self.assertTrue(np.allclose(dy_out.numpy(), out.numpy()))
 
 
 if __name__ == "__main__":

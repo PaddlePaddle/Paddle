@@ -82,11 +82,11 @@ if %day_now% NEQ %day_before% (
     goto :mkbuild
 )
 
-git diff HEAD origin/develop --stat --name-only
-git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
-if %ERRORLEVEL% EQU 0 (
-    rmdir build /s/q
-)
+:: git diff HEAD origin/develop --stat --name-only
+:: git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+:: if %ERRORLEVEL% EQU 0 (
+::     rmdir build /s/q
+:: )
 
 :mkbuild
 if not exist build (
@@ -132,7 +132,6 @@ set CLCACHE_HARDLINK=1
 set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
-
 
 rem ------set cache third_party------
 if not exist %cache_dir%\tools (

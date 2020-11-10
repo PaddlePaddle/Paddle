@@ -121,7 +121,8 @@ __all__ = [
         'kron',
         'isfinite',
         'isinf',
-        'isnan'
+        'isnan',
+        'broadcast_shape'
 ]
 # yapf: enable.
 
@@ -386,11 +387,11 @@ def remainder(x, y, name=None):
         out = x \% y
 
     **Note**:
-    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    ``paddle.mod`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be int32, int64.
-        y (Tensor): the input tensor, it's data type should be int32, int64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -402,12 +403,10 @@ def remainder(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([2, 3, 8, 7])
             y = paddle.to_tensor([1, 5, 3, 3])
-            z = paddle.remainder(x, y)
-            print(z.numpy())  # [0, 3, 2, 1]
+            z = paddle.mod(x, y)
+            print(z)  # [0, 3, 2, 1]
 
     """
     op_type = 'elementwise_mod'
@@ -1781,44 +1780,31 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             # the axis is a int element
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
                                   [0.1, 0.2, 0.6, 0.7]])
             out1 = paddle.prod(x)
-            print(out1.numpy())
             # [0.0002268]
 
             out2 = paddle.prod(x, -1)
-            print(out2.numpy())
             # [0.027  0.0084]
 
             out3 = paddle.prod(x, 0)
-            print(out3.numpy())
             # [0.02 0.06 0.3  0.63]
-            print(out3.numpy().dtype)
-            # float32
 
             out4 = paddle.prod(x, 0, keepdim=True)
-            print(out4.numpy())
             # [[0.02 0.06 0.3  0.63]]
 
             out5 = paddle.prod(x, 0, dtype='int64')
-            print(out5.numpy())
             # [0 0 0 0]
-            print(out5.numpy().dtype)
-            # int64
 
             # the axis is list
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]])
             out6 = paddle.prod(y, [0, 1])
-            print(out6.numpy())
             # [105. 384.]
 
             out7 = paddle.prod(y, (1, 2))
-            print(out7.numpy())
             # [  24. 1680.]
 
     """
@@ -2133,3 +2119,30 @@ def any(x, axis=None, keepdim=False, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
+def broadcast_shape(x_shape, y_shape):
+    """
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
+
+    Args:
+        x_shape (list[int]|tuple[int]): A shape of tensor.
+        y_shape (list[int]|tuple[int]): A shape of tensor.
+        
+
+    Returns:
+        list[int], the result shape.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
+            # [2, 3, 3]
+            
+            # shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
+            # ValueError (terminated with error message).
+
+    """
+
+    return core.broadcast_shape(x_shape, y_shape)

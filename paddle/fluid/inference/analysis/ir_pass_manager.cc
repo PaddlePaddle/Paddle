@@ -79,6 +79,10 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cpu_quantize_pass") {
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
+    } else if (pass_name == "cpu_bfloat16_placement_pass") {
+      pass->Set("bfloat16_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->bfloat16_enabled_op_types()));
 #endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
@@ -95,6 +99,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
+      pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
 

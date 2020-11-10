@@ -34,6 +34,12 @@ ExternalProject_Add(
         "${PYBIND_DOWNLOAD_CMD}"
         PREFIX            ${PYBIND_PREFIX_DIR}
         SOURCE_DIR        ${PYBIND_SOURCE_DIR}
+        # If we explicitly leave the `UPDATE_COMMAND` of the ExternalProject_Add
+        # function in CMakeLists blank, it will cause another parameter GIT_TAG
+        # to be modified without triggering incremental compilation, and the
+        # third-party library version changes cannot be incorporated.
+        # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
+        UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""
