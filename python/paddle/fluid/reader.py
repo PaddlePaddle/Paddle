@@ -173,8 +173,8 @@ class DataLoader(object):
     :attr:`collate_fn` or :attr:`default_collate_fn`.
 
     .. :note::
-    When **automatic batching is disabled**, :attr:`default_collate_fn` will
-    do nothing to data from dataset.
+        When automatic batching is disabled, :attr:`default_collate_fn` will
+        do nothing to data from dataset.
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
