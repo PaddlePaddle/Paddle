@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 namespace paddle {
 namespace framework {
+
 class Variable {
  public:
   template <typename T>
@@ -68,22 +69,14 @@ class Variable {
     return holder_->Type();
   }
 
+ private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
-  framework::TensorInplaceVersion& InplaceVersionCounter() {
-    if (IsType<framework::Tensor>()) {
-      return GetMutable<framework::Tensor>()->InplaceVersionCounter();
-    } else if (IsType<framework::LoDTensor>()) {
-      return GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
-    } else if (IsType<framework::SelectedRows>()) {
-      return GetMutable<framework::SelectedRows>()
-          ->mutable_value()
-          ->InplaceVersionCounter();
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Only supports SelectedRows and Tensor."));
-    }
-  }
+  framework::TensorInplaceVersion& InplaceVersionCounter();
+
+ public:
+  uint32_t CurrentInplaceVersion();
+  void BumpInplaceVersion();
 
  private:
   struct Placeholder {
@@ -119,6 +112,46 @@ class Variable {
   // pointers to a PlaceholderImpl object indeed.
   std::shared_ptr<Placeholder> holder_;
 };
+
+inline framework::TensorInplaceVersion& Variable::InplaceVersionCounter() {
+  if (IsType<framework::Tensor>()) {
+    return GetMutable<framework::Tensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::LoDTensor>()) {
+    return GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::SelectedRows>()) {
+    return GetMutable<framework::SelectedRows>()
+        ->mutable_value()
+        ->InplaceVersionCounter();
+  } else if (IsType<framework::LoDTensorArray>()) {
+    auto tensor_array = GetMutable<framework::LoDTensorArray>();
+    return tensor_array->at(0).InplaceVersionCounter();
+  } else {
+    // NOTE(liym27): Other types of data are not supported, like Scope.
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only supports Tensor, LoDTensor, SelectedRows and "
+        "LoDTensorArray to have TensorInplaceVersion."));
+  }
+}
+inline uint32_t Variable::CurrentInplaceVersion() {
+  try {
+    return InplaceVersionCounter().CurrentVersion();
+  } catch (platform::EnforceNotMet& exception) {
+    // Don't print exception.what() because it contains too much information,
+    // including C++ traceback.
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows and "
+               "LoDTensorArray to have TensorInplaceVersion.";
+    return 0;
+  }
+}
+
+inline void Variable::BumpInplaceVersion() {
+  try {
+    InplaceVersionCounter().Bump();
+  } catch (platform::EnforceNotMet& exception) {
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows and "
+               "LoDTensorArray to have TensorInplaceVersion.";
+  }
+}
 
 }  // namespace framework
 }  // namespace paddle

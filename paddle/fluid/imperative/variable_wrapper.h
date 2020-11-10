@@ -27,7 +27,7 @@ class GradOpNode;
 class VariableWrapper {
  public:
   friend class VarBase;
-  VariableWrapper(VariableWrapper&) = default;
+
   explicit VariableWrapper(const std::string& name) : name_(name) {}
 
   const framework::Variable& Var() const { return var_; }
@@ -133,10 +133,10 @@ class VariableWrapper {
     }
   }
 
-  uint32_t InplaceVersion() const { return inplace_version_snapshot_; }
+  uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
 
   void ResetInplaceVersion() {
-    auto new_version = var_.InplaceVersionCounter().CurrentVersion();
+    auto new_version = var_.CurrentInplaceVersion();
 
     VLOG(6) << "The wrapper version of VariableWrapper '" << name_
             << "' will be updated from " << inplace_version_snapshot_ << "to "

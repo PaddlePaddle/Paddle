@@ -56,9 +56,9 @@ class TestInplace(unittest.TestCase):
 
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegexp(
-                    core.EnforceNotMet,
-                    "received tensor_version:{} != wrapper_version:{}".format(
-                        1, 0)):
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
                 loss.backward()
 
     def test_backward_success_1(self):

@@ -218,12 +218,11 @@ void BasicEngine::Execute() {
                  "gradient calculation.";
       for (auto& pair : bwd_ins) {
         for (auto& var_wrapper : pair.second) {
-          auto wrapper_version = var_wrapper->InplaceVersion();
-          auto tensor_version = var_wrapper->MutableVar()
-                                    ->InplaceVersionCounter()
-                                    .CurrentVersion();
+          auto wrapper_version_snapshot = var_wrapper->InplaceVersionSnapshot();
+          auto tensor_version =
+              var_wrapper->MutableVar()->CurrentInplaceVersion();
           PADDLE_ENFORCE_EQ(
-              tensor_version, wrapper_version,
+              tensor_version, wrapper_version_snapshot,
               platform::errors::PermissionDenied(
                   "Tensor '%s' used in gradient computation in grad op '%s' "
                   "has been "
@@ -233,10 +232,10 @@ void BasicEngine::Execute() {
                   "after using the Tensor which will used in gradient "
                   "computation.",
                   var_wrapper->Name(), cur_op.Type(), tensor_version,
-                  wrapper_version));
+                  wrapper_version_snapshot));
 
           VLOG(6) << " The version of Tensor '" << var_wrapper->Name()
-                  << "' is [ " << wrapper_version << " ]";
+                  << "' is [ " << wrapper_version_snapshot << " ]";
         }
       }
 
