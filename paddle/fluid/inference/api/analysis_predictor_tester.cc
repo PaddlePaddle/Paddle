@@ -254,8 +254,7 @@ class MkldnnQuantizerTest : public testing::Test {
  public:
   MkldnnQuantizerTest() {
     AnalysisConfig config(FLAGS_dirname);
-
-    predictor.reset(new AnalysisPredictor(config));
+    predictor = std::move(CreatePaddlePredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
     auto qconfig = new MkldnnQuantizerConfig();
