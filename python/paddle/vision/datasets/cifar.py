@@ -58,9 +58,7 @@ class Cifar10(Dataset):
             default backend is 'pil'. Default: None.
 
     Returns:
-        Dataset: instance of cifar-10 dataset. If transform is None, the shape
-            of each data iterm is [3, 32, 32], and default dtype is float32.
-            The dtype of label is int64.
+        Dataset: instance of cifar-10 dataset.
 
     Examples:
 
