@@ -678,20 +678,20 @@ def nce(input,
     ${comment}
 
     Args:
-        input (Variable): Input variable, 2-D tensor with shape [batch_size, dim], 
+        input (Tensor): Input tensor, 2-D tensor with shape [batch_size, dim], 
             and data type is float32 or float64.
-        label (Variable): Input label, 2-D tensor with shape [batch_size, num_true_class],
+        label (Tensor): Input label, 2-D tensor with shape [batch_size, num_true_class],
             and data type is int64.
         num_total_classes (int):${num_total_classes_comment}.
-        sample_weight (Variable|None): A Variable of shape [batch_size, 1]
+        sample_weight (Tensor|None): A Tensor of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
         param_attr (ParamAttr|None): To specify the weight parameter attribute. 
             Default: None, which means the default weight parameter property is 
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`cn_api_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute. 
             Default: None, which means the default bias parameter property is 
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`cn_api_ParamAttr` .
         num_neg_samples (int): ${num_neg_samples_comment}.
         name(str|None): For detailed information, please refer to 
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
@@ -707,19 +707,21 @@ def nce(input,
             the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default False.
 
     Returns:
-        Variable: The output nce loss.
+        Tensor: The output nce loss.
 
     Examples:
         .. code-block:: python
 
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
+
+            paddle.enable_static()
 
             window_size = 5
             words = []
             for i in range(window_size):
-                words.append(fluid.data(
+                words.append(paddle.static.data(
                     name='word_{0}'.format(i), shape=[-1, 1], dtype='int64'))
 
             dict_size = 10000
@@ -730,18 +732,18 @@ def nce(input,
                 if i == label_word:
                     continue
 
-                emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
-                                   param_attr='embed', is_sparse=True)
+                emb = paddle.static.nn.embedding(input=words[i], size=[dict_size, 32],
+                                    param_attr='embed', is_sparse=True)
                 embs.append(emb)
 
-            embs = fluid.layers.concat(input=embs, axis=1)
-            loss = fluid.layers.nce(input=embs, label=words[label_word],
-                      num_total_classes=dict_size, param_attr='nce.w_0',
-                      bias_attr='nce.b_0')
+            embs = paddle.concat(x=embs, axis=1)
+            loss = paddle.static.nn.nce(input=embs, label=words[label_word],
+                        num_total_classes=dict_size, param_attr='nce.w_0',
+                        bias_attr='nce.b_0')
 
             #or use custom distribution
             dist = np.array([0.05,0.5,0.1,0.3,0.05])
-            loss = fluid.layers.nce(input=embs, label=words[label_word],
+            loss = paddle.static.nn.nce(input=embs, label=words[label_word],
                     num_total_classes=5, param_attr='nce.w_1',
                     bias_attr='nce.b_1',
                     num_neg_samples=3,

@@ -201,7 +201,6 @@ class Uniform(Distribution):
           import paddle
           from paddle.distribution import Uniform
 
-          paddle.disable_static()
           # Without broadcasting, a single uniform distribution [3, 4]:
           u1 = Uniform(low=3.0, high=4.0)
           # 2 distributions [1, 3], [2, 4]
@@ -423,7 +422,6 @@ class Normal(Distribution):
           import paddle
           from paddle.distribution import Normal
 
-          paddle.disable_static()
           # Define a single scalar Normal distribution.
           dist = Normal(loc=0., scale=3.)
           # Define a batch of two scalar valued Normals.
