@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid.core as core
 import sys
 sys.path.append("..")
-from op_test import OpTest
+from op_test_xpu import XPUOpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import time
@@ -47,7 +47,7 @@ class TestMulOpError(unittest.TestCase):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUMulOp1(OpTest):
+class TestXPUMulOp1(XPUOpTest):
     def setUp(self):
         self.op_type = "mul"
         self.dtype = np.float32
@@ -86,12 +86,12 @@ class TestXPUMulOp1(OpTest):
     def test_check_grad_ignore_y(self):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=0.1, no_grad_set=set('Y'))
+            place, ['X'], 'Out', max_relative_error=0.1, no_grad_set=set("Y"))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUMulOp2(OpTest):
+class TestXPUMulOp2(XPUOpTest):
     def setUp(self):
         self.op_type = "mul"
         self.use_xpu = True
