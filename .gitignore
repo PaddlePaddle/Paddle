@@ -11,7 +11,7 @@ build/
 build_doc/
 *.user
 *.tmp
-*.pyc
+tools/static_mode_white_list.pyc
 
 .vscode
 .idea
