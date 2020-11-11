@@ -1,5 +1,4 @@
 @ECHO OFF
-
 rem Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 rem
 rem Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +62,7 @@ setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
-    git diff HEAD last_pr --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+    git diff HEAD last_pr --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
     if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
@@ -74,19 +73,19 @@ if %ERRORLEVEL% EQU 0 (
     git branch last_pr
 )
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
-set day_now=%datetime:~6,2%
-set day_before=-1
-set /p day_before=< %cache_dir%\day.txt
-if %day_now% NEQ %day_before% (
-    echo %day_now% > %cache_dir%\day.txt
-    type %cache_dir%\day.txt
-    rmdir build /s/q
-    goto :mkbuild
-)
+:: for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+:: set day_now=%datetime:~6,2%
+:: set day_before=-1
+:: set /p day_before=< %cache_dir%\day.txt
+:: if %day_now% NEQ %day_before% (
+::     echo %day_now% > %cache_dir%\day.txt
+::     type %cache_dir%\day.txt
+::     rmdir build /s/q
+::     goto :mkbuild
+:: )
 
 :: git diff HEAD origin/develop --stat --name-only
-:: git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+:: git diff HEAD origin/develop --stat --name-only | findstr ".cmake CMakeLists.txt paddle_build.bat"
 :: if %ERRORLEVEL% EQU 0 (
 ::     rmdir build /s/q
 :: )
@@ -120,13 +119,12 @@ pip install gym --user
 pip install -U -r %work_dir%\python\requirements.txt --user
 pip install -U -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
-    call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install requirements.txt failed!
     exit /b 7
 )
 
 rem ------pre install clcache and init config----------
-pip install clcache
+pip install clcache --user
 :: set USE_CLCACHE to enable clcache
 set USE_CLCACHE=1
 :: In some scenarios, CLCACHE_HARDLINK can save one file copy.
@@ -136,6 +134,9 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
+rem ------show summary of current environment----------
+python %work_dir%\tools\summary_env.py
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\get_cpu_info.sh
 
 goto :CASE_%1
 
@@ -157,7 +158,7 @@ call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :unit_test || goto unit_test_error
 call :test_inference || goto test_inference_error
-call :check_change_of_unittest || goto check_change_of_unittest_error
+:: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 :CASE_wincheck_openblas
@@ -172,14 +173,14 @@ set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-call :unit_test || goto unit_test_error
+:: call :unit_test || goto unit_test_error
 :: call :test_inference || goto test_inference_error
+call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem "Other configurations are added here"
 rem :CASE_wincheck_others
 rem call ...
-
 
 rem ---------------------------------------------------------------------------------------------
 :cmake
@@ -325,8 +326,8 @@ python %work_dir%\paddle\scripts\installation_validate.py
 goto:eof
 
 :test_whl_pacakage_error
-echo 1 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
+::echo 1 > %cache_dir%\error_code.txt
+::type %cache_dir%\error_code.txt
 echo Test import paddle failed, will exit!
 exit /b 1
 
@@ -359,6 +360,15 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 
+if "%NIGHTLY_MODE%"=="ON" (
+    set nightly_label="()"
+    ) else (
+    set nightly_label="(RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
+    echo    ========================================
+    echo    "Unittests with nightly labels  are only run at night"
+    echo    ========================================
+)
+
 if "%WITH_GPU%"=="ON" (
     goto:parallel_test_base_gpu
 ) else (
@@ -370,10 +380,10 @@ echo    ========================================
 echo    Running GPU unit tests in parallel way ...
 echo    ========================================
 
-set FLAGS_fraction_of_gpu_memory_to_use=0.7
+set FLAGS_fraction_of_gpu_memory_to_use=0.75
 
 nvidia-smi -L
-for /F %%# in ('nvidia-smi -L ^| find "GPU" /C /I') do set CUDA_DEVICE_COUNT=%%#
+for /F %%# in ('nvidia-smi -L ^| findstr "GPU" /C /I') do set CUDA_DEVICE_COUNT=%%#
 if !errorlevel! NEQ 0 exit /b 8
 
 rem TODO: fix these unittest that is bound to fail
@@ -413,13 +423,13 @@ set parallel_test=''
 
 for /L %%# in (0,1,%end%) do (
     set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R %parallel_test% -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
+    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R %parallel_test% -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
     if !errorlevel! NEQ 0 exit /b 8
 )
 
 for /L %%# in (0,1,%end%) do (
     set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -E "%disable_ut_quickly%|%parallel_test%|%diable_wingpu_test%|%long_time_test%" --output-on-failure -C Release -j 1 --repeat until-pass:4 after-timeout:4
+    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -E "%disable_ut_quickly%|%parallel_test%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 1 --repeat until-pass:4 after-timeout:4
     if !errorlevel! NEQ 0 exit /b 8
 )
 goto:eof
@@ -428,12 +438,13 @@ goto:eof
 echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
-ctest.exe -E "(%disable_ut_quickly%)" --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+
 goto:eof
 
 :unit_test_error
-echo 8 > %cache_dir%\
-type %cache_dir%\error_code.txt
+:: echo 8 > %cache_dir%\error_code.txt
+:: type %cache_dir%\error_code.txt
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "1 card TestCases Total"
@@ -458,8 +469,8 @@ cd %work_dir%\paddle\fluid\inference\api\demo_ci
 goto:eof
 
 :test_inference_error
-echo 1 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
+::echo 1 > %cache_dir%\error_code.txt
+::type %cache_dir%\error_code.txt
 echo Testing fluid library for inference failed!
 exit /b 1
 
@@ -479,6 +490,7 @@ echo BRANCH=%BRANCH%>>  check_change_of_unittest.sh
 echo if [ "${GITHUB_API_TOKEN}" == "" ] ^|^| [ "${GIT_PR_ID}" == "" ];then>> check_change_of_unittest.sh
 echo     exit 0 >>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
+echo set -x>> check_change_of_unittest.sh
 echo cat ^<^<EOF>>  check_change_of_unittest.sh
 echo     ============================================ >>  check_change_of_unittest.sh
 echo     Generate unit tests.spec of this PR.         >>  check_change_of_unittest.sh
@@ -516,8 +528,9 @@ echo spec_path=$(pwd)/UNITTEST_DEV.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
 echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST_DEV.spec $(pwd)/UNITTEST_PR.spec`>>  check_change_of_unittest.sh
 echo if [ "$unittest_spec_diff" != "" ]; then>>  check_change_of_unittest.sh
-echo     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420>>  check_change_of_unittest.sh
+echo     set +x>> check_change_of_unittest.sh
 echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
+echo     set -x>> check_change_of_unittest.sh
 echo     if [ "$approval_line" != "" ]; then>>  check_change_of_unittest.sh
 echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
 echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
@@ -540,13 +553,12 @@ echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
-echo 1 > %cache_dir%\error_code.txt
-type %cache_dir%\error_code.txt
 exit /b 1
 
 
 :timestamp
 setlocal enabledelayedexpansion
+@ECHO OFF
 set start=%~1
 set dd=%start:~2,2%
 set /a dd=100%dd%%%100
