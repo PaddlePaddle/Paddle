@@ -568,7 +568,9 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
+        set -x
         ctest -E "($disable_ut_quickly)" -LE "($nightly_label)" --output-on-failure -j $2 | tee $tmpfile
+        set +x
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
