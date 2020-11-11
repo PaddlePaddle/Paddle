@@ -36,7 +36,9 @@ class PipelineHelper(object):
         self.wait_port = wait_port
         self.role_maker = role_maker
 
-    def update_startup_program(self, startup_program=None):
+    def update_startup_program(self,
+                               startup_program=None,
+                               inner_parallelism=None):
         self.startup_program = startup_program
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
@@ -45,24 +47,29 @@ class PipelineHelper(object):
         current_endpoint = endpoints[self.role_maker._worker_index()]
         node_num = _get_node_num(endpoints)
         assert len(endpoints) % node_num == 0
-        gpus_per_node = len(endpoints) // node_num
+        nranks = self.role_maker._worker_num()
+        rank = self.role_maker._worker_index()
 
-        # Create a global ring for all gpus
-        print("current_endpoint:", current_endpoint)
-        print("endpoints:", endpoints)
-        print("rank:", self.role_maker._worker_index())
-        self._init_communicator(
-            self.startup_program, current_endpoint, endpoints,
-            self.role_maker._worker_index(), 0, self.wait_port)
+        # Create ring 0 for all gpus in a pipeline
+        pipeline_endpoints = []
+        pipeline_rank = rank % inner_parallelism
+        pipeline_id = rank // inner_parallelism
+        for idx, ep in enumerate(endpoints):
+            if idx // inner_parallelism == pipeline_id:
+                pipeline_endpoints.append(ep)
+        self._init_communicator(self.startup_program, current_endpoint,
+                                pipeline_endpoints, pipeline_rank, 0,
+                                self.wait_port)
 
         if node_num == 1: return
         # Create rings for gpus with the same gpu id
         eps = []
-        local_rank = self.role_maker._worker_index() % gpus_per_node
+        local_rank = self.role_maker._worker_index() % inner_parallelism
         ring_id = local_rank + 1
-        for i in range(node_num):
-            eps.append(endpoints[i * gpus_per_node + local_rank])
-        temp_rank = self.role_maker._worker_index() // node_num
+        pipeline_num = len(endpoints) // inner_parallelism
+        for i in range(pipeline_num):
+            eps.append(endpoints[i * inner_parallelism + local_rank])
+        temp_rank = self.role_maker._worker_index() // inner_parallelism
         self._init_communicator(self.startup_program, current_endpoint, eps,
                                 temp_rank, ring_id, self.wait_port)
         self._broadcast_params(ring_id)
@@ -188,6 +195,8 @@ class PipelineOptimizer(MetaOptimizerBase):
         assert prog_list
         self.main_program_list = prog_list
         self.main_program = loss.block.program
+        self.inner_parallelism = loss.block.program._pipeline_opt[
+            'inner_parallelism']
         nranks = len(endpoints)
         self.nranks = nranks
         self.nrings = len(self.main_program_list)
@@ -198,7 +207,8 @@ class PipelineOptimizer(MetaOptimizerBase):
 
         pipeline_helper = PipelineHelper(self.role_maker)
         pipeline_helper.update_startup_program(
-            self.startup_program._pipeline_opt["startup_program"])
+            self.startup_program._pipeline_opt["startup_program"],
+            self.inner_parallelism)
 
         self._transpile_main_program(loss, node_num, gpus_per_node)
         return optimize_ops, params_grads

@@ -4472,10 +4472,13 @@ class PipelineOptimizer(object):
         with open("main_prog_%d" % local_rank, 'w') as f:
             f.writelines(str(program_list[local_rank]['program']))
 
-        startup_program._pipeline_opt = {"startup_program": new_startup_program}
+        startup_program._pipeline_opt = {
+            "startup_program": new_startup_program,
+        }
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
+            "inner_parallelism": len(device_specs),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
             "place_id": place_id_list[local_rank],
