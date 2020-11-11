@@ -50,6 +50,17 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
+
+  std::vector<OpHandleBase *> bootstrap_ops2_;
+  for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
+    int dep = static_cast<int>(op->NotReadyInputSize());
+    op_deps_.emplace(op, dep);
+    if (dep == 0) {
+      bootstrap_ops2_.emplace_back(op);
+    }
+  }
+  bootstrap_ops_ = bootstrap_ops2_;
+
   PADDLE_ENFORCE_GT(op_deps_.size(), 0,
                     platform::errors::PreconditionNotMet(
                         "The graph doesn't have operators."));
