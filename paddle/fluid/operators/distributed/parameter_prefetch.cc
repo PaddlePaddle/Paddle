@@ -285,14 +285,12 @@ void prefetchs(const std::vector<std::string> &id_var_names,
       std::vector<float> ids_value_vec(ids_size * vec_dim_1);
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];
-        // Todo: Support Padding
-        // if (padding_idx != distributed::kNoPadding && id == padding_idx) {
-        //   memset(&ids_value_vec[idx * vec_dim_1], 0, sizeof(float) *
-        //   vec_dim_1);
-        // } else {
-        memcpy(&ids_value_vec[idx * vec_dim_1], &recved_vec_map[id][0],
-               sizeof(float) * vec_dim_1);
-        // }
+        if (padding_idx != distributed::kNoPadding && id == padding_idx) {
+          memset(&ids_value_vec[idx * vec_dim_1], 0, sizeof(float) * vec_dim_1);
+        } else {
+          memcpy(&ids_value_vec[idx * vec_dim_1], &recved_vec_map[id][0],
+                 sizeof(float) * vec_dim_1);
+        }
       }
       auto &gpu_place = BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
       auto &cpu_place = BOOST_GET_CONST(
