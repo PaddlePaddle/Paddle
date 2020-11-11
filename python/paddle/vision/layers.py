@@ -15,4 +15,4 @@
 __all__ = ['yolo_loss', 'decode_yolo_box']
 
 from ..fluid.layers import yolov3_loss as yolo_loss
-from ..fluid.layers import yolo_box as decode_yolo_box
+from ..fluid.layers import yolo_box as yolo_box
