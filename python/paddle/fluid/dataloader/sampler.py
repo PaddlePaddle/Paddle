@@ -242,8 +242,10 @@ class RandomSampler(Sampler):
 def _weighted_sample(probs, num_samples, replacement=True):
     if isinstance(probs, core.LoDTensor):
         probs = probs.numpy()
+    if isinstance(probs, (list, tuple)):
+        probs = np.array(probs)
     assert isinstance(probs, np.ndarray), \
-            "probs should be paddle.Tensor or numpy.ndarray"
+            "probs should be paddle.Tensor, numpy.ndarray, list or tuple"
     assert len(probs.shape) <= 2, \
             "probs should be a 1-D or 2-D array"
     probs = probs.reshape((-1, probs.shape[-1]))
@@ -278,8 +280,8 @@ class WeightedRandomSampler(Sampler):
     multiple times.
 
     Args:
-        weights(numpy.ndarray|paddle.Tensor): sequence of weights, should be
-                                              numpy array or paddle.Tensor
+        weights(numpy.ndarray|paddle.Tensor|list|tuple): sequence of weights,
+                should be numpy array, paddle.Tensor, list or tuple
         num_samples(int): set sample number to draw from sampler.
         replacement(bool): Whether to draw sample with replacements, default True
         
@@ -290,7 +292,7 @@ class WeightedRandomSampler(Sampler):
 
         .. code-block:: python
             
-            from paddle.io import WeightRandomSampler
+            from paddle.io import WeightedRandomSampler
 
             sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
                                             num_samples=5,
