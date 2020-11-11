@@ -25,26 +25,38 @@ namespace detail {
 #ifndef __NVCC__
 
 template <class OpResetOutput, typename T>
-void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
-                                       T *gate_value, T *reset_output_value,
-                                       T *prev_output_value, int frame_size,
-                                       ActivationType active_gate) {
+void hl_naive_gru_forward_reset_output(
+    OpResetOutput op_reset_output, T *gate_value, T *reset_output_value,
+    const T *prev_output_value, int frame_size, ActivationType active_gate,
+    bool old_version = true, const T *reset_bias = nullptr) {
   T r_value_update_gate;
   T r_value_reset_gate;
   T r_value_reset_output;
   T r_prev_out = 0;
-  T *update_gate = gate_value;
-  T *reset_gate = gate_value + frame_size;
-
+  T r_reset_bias = 0;
+  T *update_gate = nullptr;
+  T *reset_gate = nullptr;
+  if (old_version) {
+    update_gate = gate_value;
+    reset_gate = gate_value + frame_size;
+  } else {
+    reset_gate = gate_value;
+    update_gate = gate_value + frame_size;
+  }
   for (int i = 0; i < frame_size; i++) {
     r_value_update_gate = update_gate[i];
     r_value_reset_gate = reset_gate[i];
+    if (!old_version) {
+      r_value_reset_output = reset_output_value[i];
+      r_reset_bias = reset_bias[i];
+    }
     if (prev_output_value) {
       r_prev_out = prev_output_value[i];
     }
 
     op_reset_output(&r_value_update_gate, &r_value_reset_gate, &r_prev_out,
-                    &r_value_reset_output, active_gate);
+                    &r_value_reset_output, active_gate, &r_reset_bias,
+                    old_version);
 
     update_gate[i] = r_value_update_gate;
     reset_gate[i] = r_value_reset_gate;
@@ -53,16 +65,20 @@ void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
 }
 
 template <class OpFinalOutput, typename T>
-void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
-                                       T *gate_value, T *prev_output_value,
-                                       T *output_value, int frame_size,
-                                       ActivationType active_node,
-                                       bool origin_mode) {
+void hl_naive_gru_forward_final_output(
+    OpFinalOutput op_final_output, T *gate_value, const T *prev_output_value,
+    T *output_value, int frame_size, ActivationType active_node,
+    bool origin_mode, bool old_version = true) {
   T r_value_update_gate;
   T r_value_frame_state;
   T r_prev_out = 0;
   T r_output;
-  T *update_gate = gate_value;
+  T *update_gate;
+  if (old_version) {
+    update_gate = gate_value;
+  } else {
+    update_gate = gate_value + frame_size;
+  }
   T *frame_state = gate_value + frame_size * 2;
 
   for (int i = 0; i < frame_size; i++) {
@@ -83,16 +99,26 @@ void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
 template <class OpResetOutput, typename T>
 void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
                                      T *gate_value, T *reset_output_value,
-                                     T *prev_output_value, int frame_size,
-                                     ActivationType active_gate) {
+                                     const T *prev_output_value, int frame_size,
+                                     ActivationType active_gate,
+                                     bool old_version = true,
+                                     const T *reset_bias = nullptr) {
 #ifdef __AVX__
   __m256 r_value_update_gate, r_value_update_gate_last = _mm256_set1_ps(0.0f);
   __m256 r_value_reset_gate, r_value_reset_gate_last = _mm256_set1_ps(0.0f);
   __m256 r_value_reset_output;
   __m256 r_prev_out = _mm256_set1_ps(0.0f),
          r_prev_out_last = _mm256_set1_ps(0.0f);
-  T *update_gate = gate_value;
-  T *reset_gate = gate_value + frame_size;
+  __m256 r_reset_bias = _mm256_set1_ps(0.0f);
+  T *update_gate;
+  T *reset_gate;
+  if (old_version) {
+    update_gate = gate_value;
+    reset_gate = gate_value + frame_size;
+  } else {
+    reset_gate = gate_value;
+    update_gate = gate_value + frame_size;
+  }
   int block = 8;
   const int n = frame_size;
   const int rest = n % block;
@@ -115,9 +141,15 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
     if (prev_output_value) {
       r_prev_out = _mm256_loadu_ps((const float *)(prev_output_value + i));
     }
+    if (!old_version) {
+      r_reset_bias = _mm256_loadu_ps((const float *)(reset_bias + i));
+      r_value_reset_output =
+          _mm256_loadu_ps((const float *)(reset_output_value + i));
+    }
 
     op_reset_output(&r_value_update_gate, &r_value_reset_gate, &r_prev_out,
-                    &r_value_reset_output, active_gate);
+                    &r_value_reset_output, active_gate, &r_reset_bias,
+                    old_version);
 
     _mm256_storeu_ps(reinterpret_cast<float *>(update_gate + i),
                      r_value_update_gate);
@@ -131,7 +163,8 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
     i = n - block;
 
     op_reset_output(&r_value_update_gate_last, &r_value_reset_gate_last,
-                    &r_prev_out_last, &r_value_reset_output, active_gate);
+                    &r_prev_out_last, &r_value_reset_output, active_gate,
+                    &r_reset_bias, old_version);
 
     _mm256_storeu_ps(reinterpret_cast<float *>(update_gate + i),
                      r_value_update_gate_last);
@@ -145,17 +178,24 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
 
 template <class OpFinalOutput, typename T>
 void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
-                                     T *gate_value, T *prev_output_value,
+                                     T *gate_value, const T *prev_output_value,
                                      T *output_value, int frame_size,
                                      ActivationType active_node,
-                                     bool origin_mode) {
+                                     bool origin_mode,
+                                     bool old_version = true) {
 #ifdef __AVX__
   __m256 r_value_update_gate, r_value_update_gate_last = _mm256_set1_ps(0.0f);
   __m256 r_value_frame_state, r_value_frame_state_last = _mm256_set1_ps(0.0f);
   __m256 r_prev_out = _mm256_set1_ps(0.0f),
          r_prev_out_last = _mm256_set1_ps(0.0f);
   __m256 r_output;
-  T *update_gate = gate_value;
+  T *update_gate;
+  if (old_version) {
+    update_gate = gate_value;
+  } else {
+    update_gate = gate_value + frame_size;
+  }
+
   T *frame_state = gate_value + frame_size * 2;
   int block = 8;
   const int n = frame_size;
@@ -205,19 +245,21 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
 template <class OpResetOutput, typename T>
 inline void forward_reset_output(OpResetOutput op_reset_output,
                                  GRUMetaValue<T> value, int frame_size,
-                                 int batch_size, ActivationType active_gate) {
+                                 int batch_size, ActivationType active_gate,
+                                 bool old_version = true) {
   for (int b = 0; b < batch_size; b++) {
     if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
         (sizeof(T) == 4)) {
       hl_avx_gru_forward_reset_output(
           op_reset_output, value.gate_value, value.reset_output_value,
-          value.prev_out_value, frame_size, active_gate);
+          value.prev_out_value, frame_size, active_gate, old_version,
+          value.reset_bias);
     } else {
       hl_naive_gru_forward_reset_output(
           op_reset_output, value.gate_value, value.reset_output_value,
-          value.prev_out_value, frame_size, active_gate);
+          value.prev_out_value, frame_size, active_gate, old_version,
+          value.reset_bias);
     }
-
     value.gate_value += frame_size * 3;
     value.reset_output_value += frame_size;
     if (value.prev_out_value) {
@@ -230,17 +272,19 @@ template <class OpFinalOutput, typename T>
 inline void forward_final_output(OpFinalOutput op_final_output,
                                  GRUMetaValue<T> value, int frame_size,
                                  int batch_size, ActivationType active_node,
-                                 bool origin_mode) {
+                                 bool origin_mode, bool old_version = true) {
   for (int b = 0; b < batch_size; b++) {
     if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
         (sizeof(T) == 4)) {
       hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
                                       value.prev_out_value, value.output_value,
-                                      frame_size, active_node, origin_mode);
+                                      frame_size, active_node, origin_mode,
+                                      old_version);
     } else {
-      hl_naive_gru_forward_final_output(
-          op_final_output, value.gate_value, value.prev_out_value,
-          value.output_value, frame_size, active_node, origin_mode);
+      hl_naive_gru_forward_final_output(op_final_output, value.gate_value,
+                                        value.prev_out_value,
+                                        value.output_value, frame_size,
+                                        active_node, origin_mode, old_version);
     }
 
     value.gate_value += frame_size * 3;
@@ -253,7 +297,7 @@ inline void forward_final_output(OpFinalOutput op_final_output,
 
 template <class OpStateGrad, typename T>
 void hl_naive_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
-                                      T *gate_grad, T *prev_out_value,
+                                      T *gate_grad, const T *prev_out_value,
                                       T *prev_out_grad, T *output_grad,
                                       int frame_size,
                                       ActivationType active_node,
@@ -295,7 +339,7 @@ void hl_naive_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
 
 template <class OpResetGrad, typename T>
 void hl_naive_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
-                                      T *gate_grad, T *prev_out_value,
+                                      T *gate_grad, const T *prev_out_value,
                                       T *prev_out_grad, T *reset_output_grad,
                                       int frame_size,
                                       ActivationType active_gate) {
@@ -340,7 +384,7 @@ void hl_naive_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
 
 template <class OpStateGrad, typename T>
 void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
-                                    T *gate_grad, T *prev_out_value,
+                                    T *gate_grad, const T *prev_out_value,
                                     T *prev_out_grad, T *output_grad,
                                     int frame_size, ActivationType active_node,
                                     bool origin_mode) {
@@ -364,7 +408,7 @@ void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
     r_frame_state_value = frame_state_value[i];
     r_out_grad = (reinterpret_cast<__m256 *>(output_grad))[i];
     if (prev_out_value) {
-      r_prev_out_value = (reinterpret_cast<__m256 *>(prev_out_value))[i];
+      r_prev_out_value = (reinterpret_cast<const __m256 *>(prev_out_value))[i];
     }
     if (prev_out_grad) {
       r_prev_out_grad = (reinterpret_cast<__m256 *>(prev_out_grad))[i];
@@ -385,7 +429,7 @@ void hl_avx_gru_backward_state_grad(OpStateGrad op_state_grad, T *gate_value,
 
 template <class OpResetGrad, typename T>
 void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
-                                    T *gate_grad, T *prev_out_value,
+                                    T *gate_grad, const T *prev_out_value,
                                     T *prev_out_grad, T *reset_output_grad,
                                     int frame_size,
                                     ActivationType active_gate) {
@@ -412,7 +456,7 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
       r_reset_output_grad = (reinterpret_cast<__m256 *>(reset_output_grad))[i];
     }
     if (prev_out_value) {
-      r_prev_out_value = (reinterpret_cast<__m256 *>(prev_out_value))[i];
+      r_prev_out_value = (reinterpret_cast<const __m256 *>(prev_out_value))[i];
     }
     if (prev_out_grad) {
       r_prev_out_grad = (reinterpret_cast<__m256 *>(prev_out_grad))[i];

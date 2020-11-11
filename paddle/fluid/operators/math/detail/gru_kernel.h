@@ -30,10 +30,17 @@ class gru_resetOutput {
  public:
   HOSTDEVICE void operator()(T *value_update_gate, T *value_reset_gate,
                              T *prev_out, T *value_reset_output,
-                             ActivationType act_gate) {
+                             ActivationType act_gate,
+                             T *value_reset_bias = nullptr,
+                             bool old_version = true) {
     *value_update_gate = activation(*value_update_gate, act_gate);
     *value_reset_gate = activation(*value_reset_gate, act_gate);
-    *value_reset_output = (*prev_out) * (*value_reset_gate);
+    if (old_version) {
+      *value_reset_output = (*prev_out) * (*value_reset_gate);
+    } else {
+      *value_reset_output =
+          (*value_reset_output + *value_reset_bias) * (*value_reset_gate);
+    }
   }
 #ifndef __NVCC__
 #ifndef __AVX__
@@ -43,10 +50,19 @@ class gru_resetOutput {
   HOSTDEVICE void operator()(__m256 *value_update_gate,
                              __m256 *value_reset_gate, __m256 *prev_out,
                              __m256 *value_reset_output,
-                             ActivationType act_gate) {
+                             ActivationType act_gate,
+                             __m256 *value_reset_bias = nullptr,
+                             bool old_version = true) {
     *value_update_gate = activation(*value_update_gate, act_gate);
     *value_reset_gate = activation(*value_reset_gate, act_gate);
-    *value_reset_output = _mm256_mul_ps(*prev_out, *value_reset_gate);
+    if (old_version) {
+      *value_reset_output = _mm256_mul_ps(*prev_out, *value_reset_gate);
+    } else {
+      *value_reset_output =
+          _mm256_add_ps(*value_reset_output, *value_reset_bias);
+      *value_reset_output =
+          _mm256_mul_ps(*value_reset_output, *value_reset_gate);
+    }
   }
 #endif
 #endif
