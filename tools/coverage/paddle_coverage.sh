@@ -60,7 +60,7 @@ function gen_full_html_report() {
     mv -f coverage-full.tmp coverage-full.info
 }
 
-# gen_full_html_report || true
+gen_full_html_report || true
 
 # diff html report
 
@@ -116,7 +116,7 @@ function gen_python_full_html_report() {
     mv -f python-coverage-full.tmp python-coverage-full.info
 }
 
-# gen_python_full_html_report || true
+gen_python_full_html_report || true
 
 # python diff html report
 

@@ -766,7 +766,7 @@ function check_diff_file_for_coverage() {
 
     export PADDLE_GIT_DIFF_H_FILE=${diff_file_h}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_file_cc}
-    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file}
+    export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
 
 function check_change_of_unittest() {
