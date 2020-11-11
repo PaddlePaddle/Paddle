@@ -138,7 +138,6 @@ def init_parallel_env():
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
-    wait_server_ready([ParallelEnv().trainer_endpoints[0]])
 
     # 4. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
@@ -166,6 +165,8 @@ def init_parallel_env():
     # dividing init_gloo into two part beacause nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
+    wait_server_ready([ParallelEnv().trainer_endpoints[0]])
+
     gloo_strategy = core.GlooParallelStrategy()
     gloo_strategy.rank = ParallelEnv().rank
     gloo_strategy.rank_num = ParallelEnv().world_size
