@@ -53,7 +53,6 @@ class TestXPUMulOp1(OpTest):
         self.dtype = np.float32
         self.use_xpu = True
         self.init_dtype_type()
-        np.random.seed((int)(time.time()))
         self.inputs = {
             'X': np.random.random((3, 4, 2, 9)).astype(self.dtype),
             'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.dtype)
@@ -98,7 +97,6 @@ class TestXPUMulOp2(OpTest):
         self.use_xpu = True
         self.dtype = np.float32
         self.init_dtype_type()
-        np.random.seed((int)(time.time()))
         self.inputs = {
             'X': np.random.random((20, 5)).astype(self.dtype),
             'Y': np.random.random((5, 21)).astype(self.dtype)
