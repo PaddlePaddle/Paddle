@@ -172,9 +172,11 @@ class DataLoader(object):
     should be batched data and will be processed with function define by
     :attr:`collate_fn` or :attr:`default_collate_fn`.
 
+
     .. note::
         When automatic batching is disabled, :attr:`default_collate_fn` will
         do nothing to data from dataset.
+
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
