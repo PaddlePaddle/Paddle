@@ -42,41 +42,36 @@ class Logic(paddle.nn.Layer):
             return y
 
 
-# export model with InputSpec, which supports set dynamic shape for inputs.
 class TestExportWithTensor(unittest.TestCase):
     def setUp(self):
-        # enable dygraph mode
         self.x_spec = paddle.static.InputSpec(
             shape=[None, 128], dtype='float32')
 
     def test_with_tensor():
         model = LinearNet()
-        paddle.onnx.export(model, 'linear_net.onnx', input_spec=[self.x_spec])
+        paddle.onnx.export(model, 'linear_net', input_spec=[self.x_spec])
 
 
 class TestExportWithTensor(unittest.TestCase):
     def setUp(self):
-        # enable dygraph mode
         self.x = paddle.to_tensor(np.random.random((1, 128)))
 
     def test_with_tensor(self):
         model = LinearNet()
-        paddle.onnx.export(model, 'linear_net.onnx', input_spec=[self.x])
+        paddle.onnx.export(model, 'linear_net', input_spec=[self.x])
 
 
 class TestExportPrunedGraph(unittest.TestCase):
     def setUp(self):
-        # enable dygraph mode
         self.x = paddle.to_tensor(np.array([1]))
         self.y = paddle.to_tensor(np.array([-1]))
 
     def test_prune_graph(self):
         model = Logic()
-        # prune model with input_spec and output_spec, which need to static and run model before export.
         paddle.jit.to_static(model)
         out = model(self.x, self.y, z=True)
         paddle.onnx.export(
-            model, 'pruned.onnx', input_spec=[self.x], output_spec=[out])
+            model, 'pruned', input_spec=[self.x], output_spec=[out])
 
 
 if __name__ == '__main__':

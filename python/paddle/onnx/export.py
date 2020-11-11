@@ -12,33 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from paddle.utils import try_import
 
 __all__ = ['export']
 
 
-def export(layer, save_file, input_spec=None, opset_version=9, **configs):
+def export(layer, path, input_spec=None, opset_version=9, **configs):
     """
-    Export Layer as ONNX format model, which can be used for inference.
-    Now, it supports a limited operater set and dynamic models.(e.g., MobileNet.)
-    More features and introduction, Please reference `Github <https://github.com/PaddlePaddle/paddle2onnx>`_ .
-    
+    Export Layer to ONNX format, which can be inferenced by onnxruntime or other backends.
+    More details, Please refer to `paddle2onnx <https://github.com/PaddlePaddle/paddle2onnx>`_ .
+
     Args:
-        layer (Layer): The Layer to be saved.
-        save_file (str): The file path to save the onnx model. The format is `` dirname/file_name`` or ``file_name``.
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward 
+        layer (Layer): The Layer to be exported.
+        path (str): The path prefix to export model. The format is ``dirname/file_prefix`` or ``file_prefix`` ,
+            and the exported ONNX file suffix is ``.onnx`` . 
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the exported model's forward 
             method, which can be described by InputSpec or example Tensor. If None, all input variables of 
-            the original Layer's forward method would be the inputs of the saved ``ONNX`` model. Default None.
+            the original Layer's forward method would be the inputs of the exported ``ONNX`` model. Default: None.
         opset_version(int, optional): Opset version of exported ONNX model.
-            Now, stable supported opset version include 9, 10, 11. Default 9.
-        **configs (dict, optional): Other save configuration options for compatibility. We do not 
+            Now, stable supported opset version include 9, 10, 11. Default: 9.
+        **configs (dict, optional): Other export configuration options for compatibility. We do not 
             recommend using these configurations, they may be removed in the future. If not necessary, 
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
+            (1) output_spec (list[Tensor]): Selects the output targets of the exported model.
             By default, all return variables of original Layer's forward method are kept as the 
-            output of the saved model. If the provided ``output_spec`` list is not all output variables, 
-            the saved model will be pruned according to the given ``output_spec`` list. 
+            output of the exported model. If the provided ``output_spec`` list is not all output variables, 
+            the exported model will be pruned according to the given ``output_spec`` list. 
     Returns:
         None
     Examples:
@@ -55,14 +56,13 @@ def export(layer, save_file, input_spec=None, opset_version=9, **configs):
                 def forward(self, x):
                     return self._linear(x)
 
-            # export model with InputSpec, which supports set dynamic shape for inputs.
+            # Export model with 'InputSpec' to support dynamic input shape.
             def export_linear_net():
                 model = LinearNet()
                 x_spec = paddle.static.InputSpec(shape=[None, 128], dtype='float32')
-                paddle.onnx.export(model, 'linear_net.onnx', input_spec=[x_spec])
+                paddle.onnx.export(model, 'linear_net', input_spec=[x_spec])
 
             export_linear_net()
-
 
             class Logic(paddle.nn.Layer):
                 def __init__(self):
@@ -74,20 +74,28 @@ def export(layer, save_file, input_spec=None, opset_version=9, **configs):
                     else:
                         return y
 
-            # export model with Tensor, which supports prune model by set 'output_spec' with output of model.
+            # Export model with 'Tensor' to support prune model by set 'output_spec'.
             def export_logic():
                 model = Logic()
                 x = paddle.to_tensor(np.array([1]))
                 y = paddle.to_tensor(np.array([2]))
-                # prune model with input_spec and output_spec, which need to static and run model before export.
+                # Static and run model.
                 paddle.jit.to_static(model)
                 out = model(x, y, z=True)
-                paddle.onnx.export(model, 'pruned.onnx', input_spec=[x], output_spec=[out])
+                paddle.onnx.export(model, 'pruned', input_spec=[x], output_spec=[out])
 
             export_logic()
     """
 
     p2o = try_import('paddle2onnx')
+
+    file_prefix = os.path.basename(path)
+    if file_prefix == "":
+        raise ValueError("The input path MUST be format of dirname/file_prefix "
+                         "[dirname\\file_prefix in Windows system], but "
+                         "the file_prefix is empty in received path: {}".format(
+                             path))
+    save_file = path + '.onnx'
 
     p2o.dygraph2onnx(
         layer,
