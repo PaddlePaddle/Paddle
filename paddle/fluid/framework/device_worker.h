@@ -443,7 +443,7 @@ class SectionWorker : public DeviceWorker {
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
 
   void TrainFiles() override;
-  void TrainFilesWithProfiler() override;
+  void TrainFilesWithProfiler() override{};
 
   void PrintFetchVars() override {}
 
