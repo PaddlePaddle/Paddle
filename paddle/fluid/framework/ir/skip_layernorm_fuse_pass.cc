@@ -135,13 +135,10 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
                               fused_pattern);
 
     // check if is in ernie or not
-    if (2 !=
-        BOOST_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"))) {
-      LOG(INFO)
-          << "The skip_layernorm_fuse_pass only support layer_norm's input dim "
-             "= 3 "
-          << "and begin_norm_axis = 2, which is used in Ernie/Bert model. "
-          << "Just skip this pass.";
+    if (!graph->Has(kEmbEltwiseLayernormPass) ||
+        !graph->Has(kMultiheadMatmulPass)) {
+      LOG(INFO) << "The skip_layernorm_fuse_pass is only supported in "
+                << "Ernie/Bert model. Just skip this pass.";
       return;
     }
 
