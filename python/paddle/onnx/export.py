@@ -20,8 +20,8 @@ __all__ = ['export']
 
 def export(layer, path, input_spec=None, opset_version=9, **configs):
     """
-    Export Layer to ONNX format, which can be inferenced by onnxruntime or other backends.
-    More details, Please refer to `paddle2onnx <https://github.com/PaddlePaddle/paddle2onnx>`_ .
+    Export Layer to ONNX format, which can use for inference via onnxruntime or other backends.
+    For more details, Please refer to `paddle2onnx <https://github.com/PaddlePaddle/paddle2onnx>`_ .
 
     Args:
         layer (Layer): The Layer to be exported.
@@ -74,7 +74,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
                     else:
                         return y
 
-            # Export model with 'Tensor' to support prune model by set 'output_spec'.
+            # Export model with 'Tensor' to support pruned model by set 'output_spec'.
             def export_logic():
                 model = Logic()
                 x = paddle.to_tensor(np.array([1]))
