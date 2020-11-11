@@ -383,11 +383,11 @@ REGISTER_PASS(depthwise_conv_eltwiseadd_bn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("batch_norm", 0));
 REGISTER_PASS_CAPABILITY(conv_eltwiseadd_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("elementwise_add", 0)
             .EQ("batch_norm", 0));

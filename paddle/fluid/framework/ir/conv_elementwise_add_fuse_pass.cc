@@ -94,5 +94,5 @@ REGISTER_PASS(conv_elementwise_add_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_elementwise_add_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("elementwise_add", 0));

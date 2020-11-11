@@ -332,7 +332,7 @@ REGISTER_PASS_CAPABILITY(quant_conv2d_dequant_fuse_pass);
 REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("fc", 0)
             .LE("conv2d_transpose", 1)
             .EQ("fake_quantize_abs_max", 0)

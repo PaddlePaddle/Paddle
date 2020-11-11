@@ -152,7 +152,7 @@ REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_bias_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("elementwise_add", 0));
 
 REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,

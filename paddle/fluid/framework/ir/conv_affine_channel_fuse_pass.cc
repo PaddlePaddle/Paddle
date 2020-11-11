@@ -238,11 +238,11 @@ REGISTER_PASS(conv_eltwiseadd_affine_channel_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_affine_channel_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("affine_channel", 0));
 REGISTER_PASS_CAPABILITY(conv_eltwiseadd_affine_channel_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("elementwise_add", 0)
             .EQ("affine_channel", 0));

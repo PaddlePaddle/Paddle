@@ -130,6 +130,6 @@ REGISTER_PASS(conv_concat_relu_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_concat_relu_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 1)
+            .LE("conv2d", 1)
             .EQ("concat", 0)
             .EQ("relu", 0));
