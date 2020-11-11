@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -115,21 +115,30 @@ class TestSimpleRNNOp(OpTest):
             'Reserve': np.ndarray((400)).astype("uint8"),
             'DropoutState': state_out
         }
+        self.set_place()
 
     def set_attrs(self):
         pass
 
+    def set_place(self):
+        self.place = core.CUDAPlace(0)
+
     def test_output_with_place(self):
-        place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, no_check_set=['Reserve', 'DropoutState'])
+            self.place, no_check_set=['Reserve', 'DropoutState'])
+
+    def test_grad_with_place(self):
+        var_name_list = self.get_weight_names()
+        grad_check_list = ['Input', 'init_h']
+        grad_check_list.extend(var_name_list)
+        self.check_grad_with_place(self.place,
+                                   set(grad_check_list),
+                                   ['Out', 'last_hidden'])
 
 
 class TestSimpleRNNOpCpu(TestSimpleRNNOp):
-    def test_output_with_place(self):
-        place = core.CPUPlace()
-        self.check_output_with_place(
-            place, no_check_set=['Reserve', 'DropoutState'])
+    def set_place(self):
+        self.place = core.CPUPlace()
 
 
 class TestSimpleRNNOpCpu1(TestSimpleRNNOpCpu):

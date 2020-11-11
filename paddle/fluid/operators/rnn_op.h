@@ -1587,7 +1587,7 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   auto pre_state = context.MultiInput<Tensor>("PreState");
   const Tensor* init_h = pre_state[0];
   const Tensor* init_c = nullptr;
-  if (pre_state.size() > 0) {
+  if (pre_state.size() > 1) {
     init_c = pre_state[1];
   }
   auto* reserve_state = context.Input<Tensor>("Reserve");
