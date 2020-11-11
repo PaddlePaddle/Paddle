@@ -111,37 +111,10 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
 #ifndef __NVCC__
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     if (value.prev_out_value) {
-      blas.GEMM(CblasNoTrans, CblasTrans, batch_size, frame_size * 2,
-                frame_size, 1, value.prev_out_value, value.gate_weight, 1,
-                value.gate_value);
-
       blas.GEMM(CblasNoTrans, CblasTrans, batch_size, frame_size, frame_size, 1,
                 value.prev_out_value, value.state_weight, 0,
                 value.reset_output_value);
-      // blas.GEMM(false, true, batch_size/*M*/, frame_size * 2/*N*/,
-      // frame_size/*K*/, 1,
-      //          value.prev_out_value, frame_size, value.gate_weight,
-      //          frame_size, 1, value.gate_value, frame_size * 2);
-
-      // blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,
-      //          value.prev_out_value, frame_size, value.state_weight,
-      //          frame_size, 0, value.reset_output_value, frame_size);
     }
-    VLOG(0) << "GRUUnitFunctorV2";
-    VLOG(0) << "reset output:";
-    std::string msg = "";
-    for (int i = 0; i < frame_size * batch_size; ++i) {
-      msg += std::to_string(value.reset_output_value[i]) + " ";
-    }
-    VLOG(0) << msg;
-
-    VLOG(0) << "gate output:";
-    msg = "";
-    for (int i = 0; i < frame_size * batch_size; ++i) {
-      msg += std::to_string(value.gate_value[i]) + " ";
-    }
-    VLOG(0) << msg;
-
     detail::forward_reset_output(detail::forward::gru_resetOutput<T>(), value,
                                  frame_size, batch_size, active_gate, false);
 
@@ -153,16 +126,6 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
       cell_state_value += frame_size * 3;
       reset_output_value += frame_size;
     }
-
-    cell_state_value = value.gate_value + 2 * frame_size;
-    msg = "";
-    VLOG(0) << "cell state value after add reset_output:";
-    for (int b = 0; b < batch_size; ++b) {
-      for (int i = 0; i < frame_size; ++i) {
-        msg += std::to_string(cell_state_value[b * frame_size * 3 + i]) + " ";
-      }
-    }
-    VLOG(0) << msg;
 
     detail::forward_final_output(detail::forward::gru_finalOutput<T>(), value,
                                  frame_size, batch_size, active_node, true,
