@@ -13,20 +13,28 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
 import numpy as np
+import sys
 sys.path.append("..")
-from op_test import OpTest
+from paddle.fluid.op import Operator
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+import paddle
+from op_test import OpTest
+
+paddle.enable_static()
 
 
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestTopkOp(OpTest):
     def setUp(self):
         self.variable_k = False
+        self.use_xpu = True
         self.set_args()
         self.op_type = "top_k"
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.init_dtype()
 
         k = self.top_k
@@ -48,17 +56,21 @@ class TestTopkOp(OpTest):
         self.outputs = {'Out': output, 'Indices': indices}
 
     def init_dtype(self):
-        pass
+        self.dtype = np.float32
 
     def set_args(self):
         self.row = 100
         self.top_k = 1
 
     def test_check_output(self):
-        self.check_output()
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out')
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
