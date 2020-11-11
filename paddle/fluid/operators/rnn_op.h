@@ -165,43 +165,47 @@ template <typename T>
 void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
                                   Tensor* x, Tensor* mask,
                                   const float& dropout_prob,
-                                  const int& seed_number, const bool& is_test) {
+                                  const int& seed_number, const bool& is_test,
+                                  bool* is_has_reset) {
+  if (is_test) {
+    return;
+  }
   auto* x_data = x->data<T>();
-  if (!is_test) {
-    size_t size = framework::product(x->dims());
-
-    if (!mask->IsInitialized()) {
-      auto mask_data =
-          mask->mutable_data<uint8_t>(x->dims(), context.GetPlace());
-      // Special case when dropout_prob is 1.0
-      if (dropout_prob == 1.0f) {
-        std::fill(x_data, x_data + size, static_cast<T>(0));
-        std::fill(mask_data, mask_data + size, static_cast<T>(0));
-        return;
-      }
-      auto engine = framework::GetCPURandomEngine(seed_number);
-      std::uniform_real_distribution<float> dist(0, 1);
-      for (size_t i = 0; i < size; ++i) {
-        if (dist(*engine) < dropout_prob) {
-          mask_data[i] = 0;
-          x_data[i] = static_cast<T>(0);
-        } else {
-          mask_data[i] = 1;
-          x_data[i] /= static_cast<T>(1.0f - dropout_prob);
-        }
-      }
+  size_t size = framework::product(x->dims());
+  if (!mask->IsInitialized()) {
+    mask->mutable_data<uint8_t>(x->dims(), context.GetPlace());
+  }
+  auto* mask_data = mask->data<uint8_t>();
+  if (!(*is_has_reset)) {
+    // Special case when dropout_prob is 1.0
+    if (dropout_prob == 1.0f) {
+      std::fill(x_data, x_data + size, static_cast<T>(0));
+      std::fill(mask_data, mask_data + size, static_cast<T>(0));
+      *is_has_reset = true;
       return;
     }
-    auto mask_data = mask->data<uint8_t>();
+    auto engine = framework::GetCPURandomEngine(seed_number);
+    std::uniform_real_distribution<float> dist(0, 1);
+    for (size_t i = 0; i < size; ++i) {
+      if (dist(*engine) < dropout_prob) {
+        mask_data[i] = 0;
+        x_data[i] = static_cast<T>(0);
+      } else {
+        mask_data[i] = 1;
+        x_data[i] /= static_cast<T>(1.0f - dropout_prob);
+      }
+    }
+    *is_has_reset = true;
+  } else {
     if (dropout_prob == 1.0f) {
       std::fill(x_data, x_data + size, static_cast<T>(0));
       return;
     }
     for (size_t i = 0; i < size; ++i) {
-      if (mask_data[i] == 1) {
-        x_data[i] /= static_cast<T>(1.0f - dropout_prob);
-      } else {
+      if (mask_data[i] == 0) {
         x_data[i] = static_cast<T>(0);
+      } else {
+        x_data[i] /= static_cast<T>(1.0f - dropout_prob);
       }
     }
   }
@@ -788,6 +792,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
 
   Tensor curr_gate_data, curr_cell_data, curr_cell_act_data;
   Tensor curr_hidden_data, prev_hidden_data;
+  bool has_dropout_reset = false;
   for (int i = 0; i < num_layers; i++) {
     if (!is_test) {
       if (cell_data.numel() > 0) /** for lstm, gru **/ {
@@ -818,7 +823,8 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       }
       if (dropout_prob != 0 && (!is_test)) {
         dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
-                                        dropout_prob, seed, is_test);
+                                        dropout_prob, seed, is_test,
+                                        &has_dropout_reset);
       }
     }
     const Tensor* input_temp_holder = input;
