@@ -404,7 +404,8 @@ test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imp
 test_lstm_cudnn_op^|test_masked_select_op^|test_matmul_v2_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
 test_normal^|test_pool3d_op^|test_pool2d_op^|test_prroi_pool_op^|test_regularizer^|test_regularizer_api^|test_sgd_op^|test_softmax_with_cross_entropy_op^|test_static_save_load^|^
 test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_weight_decay^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|test_imperative_out_scale^|^
-test_imperative_qat^|test_imperative_qat_channelwise^|test_quantization_pass
+test_imperative_qat^|test_imperative_qat_channelwise^|test_quantization_pass^|test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|^
+test_graph^|test_user_defined_quantization
 
 set /a end=CUDA_DEVICE_COUNT-1
 
