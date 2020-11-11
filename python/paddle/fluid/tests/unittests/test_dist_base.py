@@ -978,6 +978,47 @@ class TestDistBase(unittest.TestCase):
             print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
+    def _run_pipeline(self, model, envs, check_error_log, log_name):
+        # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
+        worker_endpoints = self._ps_endpoints.split(",")
+        update_method = "nccl2"
+
+        trainer_num = len(worker_endpoints)
+
+        procs = []
+        pipes = []
+        for i in range(0, trainer_num):
+            tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
+                model, worker_endpoints[i], update_method, i, trainer_num)
+            tr_env.update(envs)
+            print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
+
+            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
+
+            print_to_err(
+                type(self).__name__,
+                "going to start process {} with nccl2".format(i))
+            tr_proc = subprocess.Popen(
+                tr_cmd.strip().split(" "),
+                stdout=subprocess.PIPE,
+                stderr=tr_pipe,
+                env=tr_env)
+
+            procs.append(tr_proc)
+            pipes.append(tr_pipe)
+
+        outs = []
+        for i in range(0, trainer_num):
+            tr_out, tr_err = procs[i].communicate()
+            outs.append(tr_out)
+            pipes[i].close()
+            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+
+        if check_error_log:
+            print("outs[0]:", outs[0])
+            print("outs[1]:", outs[1])
+        return pickle.loads(outs[0]), pickle.loads(outs[1])
+
     def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
@@ -1032,6 +1073,9 @@ class TestDistBase(unittest.TestCase):
                     False,
                     check_error_log,
                     log_name=log_name)
+        elif self._pipeline_mode:
+            tr0_losses, tr1_losses = self._run_pipeline(
+                model_file, required_envs, check_error_log, log_name=log_name)
         else:
             tr0_losses, tr1_losses = self._run_cluster(
                 model_file, required_envs, check_error_log, log_name=log_name)
@@ -1040,7 +1084,10 @@ class TestDistBase(unittest.TestCase):
             local_loss = local_losses[step_id]
             tr0_loss = tr0_losses[step_id]
             tr1_loss = tr1_losses[step_id]
-            dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
+            if self._pipeline_mode:
+                dist_loss = np.array([tr1_loss])
+            else:
+                dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
 
