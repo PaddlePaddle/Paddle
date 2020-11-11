@@ -27,8 +27,6 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import paddle.reader
-import paddle.dataset
 import paddle.batch
 batch = batch.batch
 from .fluid import monkey_patch_variable
