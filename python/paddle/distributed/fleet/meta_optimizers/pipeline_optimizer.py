@@ -61,12 +61,12 @@ class PipelineHelper(object):
                                 pipeline_endpoints, pipeline_rank, 0,
                                 self.wait_port)
 
-        if node_num == 1: return
+        pipeline_num = len(endpoints) // inner_parallelism
+        if pipeline_num == 1: return
         # Create rings for gpus with the same gpu id
         eps = []
         local_rank = self.role_maker._worker_index() % inner_parallelism
         ring_id = local_rank + 1
-        pipeline_num = len(endpoints) // inner_parallelism
         for i in range(pipeline_num):
             eps.append(endpoints[i * inner_parallelism + local_rank])
         temp_rank = self.role_maker._worker_index() // inner_parallelism
