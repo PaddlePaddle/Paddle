@@ -53,7 +53,9 @@ class Cifar10(Dataset):
             :attr:`data_file` is not set. Default True
 
     Returns:
-        Dataset: instance of cifar-10 dataset
+        Dataset: instance of cifar-10 dataset. If transform is None, the shape
+            of each data iterm is [3, 32, 32], and default dtype is float32.
+            The dtype of label is int64.
 
     Examples:
 
