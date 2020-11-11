@@ -1129,7 +1129,7 @@ class Executor(object):
         else:
             fetch_list = []
 
-        if program._pipeline_opt:
+        if isinstance(program, Program) and program._pipeline_opt:
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:

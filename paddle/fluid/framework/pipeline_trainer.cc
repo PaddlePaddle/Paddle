@@ -136,12 +136,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 
 void PipelineTrainer::Run() {
   VLOG(5) << "Going to run PipelineTrainer::Run()";
-  if (!debug_) {
-    section_thread_ = std::async(&DeviceWorker::TrainFiles, worker_.get());
-  } else {
-    section_thread_ =
-        std::async(&DeviceWorker::TrainFilesWithProfiler, worker_.get());
-  }
+  section_thread_ = std::async(&DeviceWorker::TrainFiles, worker_.get());
 }
 
 void PipelineTrainer::Finalize() {
