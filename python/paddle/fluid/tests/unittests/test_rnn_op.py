@@ -61,7 +61,7 @@ class TestRNNOp(OpTest):
         direction = "bidirectional" if self.is_bidirec else "forward"
         seq_length = 12
         batch_size = 5
-        input_size = 4
+        input_size = 3
         hidden_size = 2
 
         input = np.random.uniform(

@@ -58,7 +58,7 @@ class TestSimpleRNNOp(OpTest):
         direction = "bidirectional" if self.is_bidirec else "forward"
         seq_length = 12
         batch_size = 5
-        input_size = 4
+        input_size = 3
         hidden_size = 2
 
         input = np.random.uniform(
@@ -128,12 +128,13 @@ class TestSimpleRNNOp(OpTest):
             self.place, no_check_set=['Reserve', 'DropoutState'])
 
     def test_grad_with_place(self):
-        var_name_list = self.get_weight_names()
-        grad_check_list = ['Input', 'init_h']
-        grad_check_list.extend(var_name_list)
-        self.check_grad_with_place(self.place,
-                                   set(grad_check_list),
-                                   ['Out', 'last_hidden'])
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input', 'init_h']
+            grad_check_list.extend(var_name_list)
+            self.check_grad_with_place(self.place,
+                                       set(grad_check_list),
+                                       ['Out', 'last_hidden'])
 
 
 class TestSimpleRNNOpCpu(TestSimpleRNNOp):
@@ -150,6 +151,24 @@ class TestSimpleRNNOpCpu2(TestSimpleRNNOpCpu):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
+
+
+class TestSimpleRNNOpCpu3(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.sequence_length = None
+        self.is_test = True
+
+
+class TestSimpleRNNOpCpu4(TestSimpleRNNOpCpu):
+    def set_attrs(self):
+        self.sequence_length = None
+        self.is_bidirec = True
+        self.is_test = True
+
+
+class TestSimpleRNNOpCpu5(TestSimpleRNNOp):
+    def set_attrs(self):
+        self.mode = "RNN_RELU"
 
 
 if __name__ == '__main__':
