@@ -993,7 +993,7 @@ class TestDistBase(unittest.TestCase):
             tr_env.update(envs)
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
+            tr_pipe = open("/tmp/" + "_tr{}_err.log".format(i), "wb")
 
             print_to_err(
                 type(self).__name__,

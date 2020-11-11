@@ -29,7 +29,7 @@ import os
 import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
-from paddle.distributed import fleet, DistributedStrategy
+import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 
@@ -106,7 +106,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         if dist_strategy:
             dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=dist_strategy)
+                optimizer=opt, strategy=fleet.DistributedStrategy())
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
