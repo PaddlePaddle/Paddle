@@ -500,8 +500,21 @@ def _construct_program_holders(model_path, model_filename=None):
         # [compatible] if assign model_filename, only can load one program as Layer.forward
         model_filename = os.path.basename(model_filename)
         model_file_path = os.path.join(model_path, model_filename)
-        program_holder_dict['forward'] = _ProgramHolder(
-            _load_program_desc(model_file_path))
+        model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
+        #Load every file that meets the requirements in the directory model_path.
+        for filename in os.listdir(model_path):
+            if model_filename == filename:
+                func_name = 'forward'
+                model_file_path = os.path.join(model_path, model_filename)
+            elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
+                    model_name):
+                func_name = filename[len(model_name) + 1:-len(
+                    INFER_MODEL_SUFFIX)]
+                model_file_path = os.path.join(model_path, filename)
+            else:
+                continue
+            program_holder_dict[func_name] = _ProgramHolder(
+                _load_program_desc(model_file_path))
     else:
         for _, _, file_names in os.walk(model_path):
             for name in file_names:
@@ -524,9 +537,23 @@ def _construct_params_and_buffers(model_path,
                                   append_suffix=True):
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
+
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
                                           programs['forward'], params_filename)
+        model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
+        #Load every file that meets the requirements in the directory model_path.
+        for file_name in os.listdir(model_path):
+            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
+                    model_name) and file_name != params_filename:
+                func_name = file_name[len(model_name) + 1:-len(
+                    INFER_PARAMS_SUFFIX)]
+            else:
+                continue
+            var_info_path = os.path.join(model_path, var_info_filename)
+            var_dict.update(
+                _load_persistable_vars(model_path, var_info_path, programs[
+                    func_name], file_name))
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)

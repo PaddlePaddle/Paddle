@@ -81,8 +81,6 @@ def elu(x, alpha=1.0, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
             out = F.elu(x, alpha=0.2)
             # [[-0.12642411  6.        ]
@@ -134,8 +132,6 @@ def gelu(x, approximate=False, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
             out1 = F.gelu(x) # [-0.158655 0.345731 0.841345 1.39979]
@@ -236,8 +232,6 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
             out = F.hardtanh(x) # [-1., 0.3, 1.]
@@ -439,8 +433,6 @@ def prelu(x, weight, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
                                [ 3.0, -4.0,  5.0, -6.0],
                                [-7.0, -8.0,  8.0,  9.0]],
@@ -512,8 +504,6 @@ def relu(x, name=None):
             import paddle.nn.functional as F
             import numpy as np
 
-            paddle.disable_static()
-
             x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
             out = F.relu(x) # [0., 0., 1.]
     """
@@ -549,8 +539,6 @@ def log_sigmoid(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-
-            paddle.disable_static()
 
             x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
@@ -823,12 +811,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
-            type of the output tensor. If dtype is specified, ``x`` is casted
-            to ``dtype`` before the operation is performed. This is useful for
-            preventing data type overflows. Supported dtype: float32, float64.
-            If ``dtype`` is None, the output Tensor has the same dtype as x.
-            Default is None.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -842,8 +825,6 @@ def softmax(x, axis=-1, dtype=None, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-
-            paddle.disable_static()
 
             x = np.array([[[2.0, 3.0, 4.0, 5.0],
                         [3.0, 4.0, 5.0, 6.0],
