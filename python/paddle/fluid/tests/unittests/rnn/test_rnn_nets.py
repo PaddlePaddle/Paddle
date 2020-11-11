@@ -284,6 +284,7 @@ class TestLSTM(unittest.TestCase):
 
 def predict_test_util(place, mode, dtype="float32", stop_gradient=True):
     place = paddle.set_device(place)
+    paddle.set_default_dtype(dtype)
     paddle.seed(123)
     np.random.seed(123)
 
@@ -299,7 +300,7 @@ def predict_test_util(place, mode, dtype="float32", stop_gradient=True):
         def forward(self, input):
             return self.rnn(input)
 
-    x = paddle.randn((4, 10, 16), dtype=dtype)
+    x = paddle.randn((4, 10, 16))
     x.stop_gradient = stop_gradient
     seq_len = paddle.to_tensor(np.array([10, 6, 8, 5]))
     mask = sequence_mask(seq_len, maxlen=10, dtype=x.dtype)
