@@ -16,8 +16,11 @@ from __future__ import print_function
 from __future__ import division
 
 import numpy as np
+from .. import core
 
-__all__ = ["Sampler", "SequenceSampler", "RandomSampler"]
+__all__ = [
+    "Sampler", "SequenceSampler", "RandomSampler", "WeightedRandomSampler"
+]
 
 
 class Sampler(object):
@@ -234,3 +237,83 @@ class RandomSampler(Sampler):
 
     def __len__(self):
         return self.num_samples
+
+
+def _weighted_sample(probs, num_samples, replacement=True):
+    if isinstance(probs, core.LoDTensor):
+        probs = probs.numpy()
+    assert isinstance(probs, np.ndarray), \
+            "probs should be paddle.Tensor or numpy.ndarray"
+    assert len(probs.shape) <= 2, \
+            "probs should be a 1-D or 2-D array"
+    probs = probs.reshape((-1, probs.shape[-1]))
+    assert np.all(probs >= 0.), \
+            "probs should be positive value"
+    assert not np.any(probs == np.inf), \
+            "probs shoule not be INF"
+    assert not np.any(probs == np.nan), \
+            "probs shoule not be NaN"
+
+    non_zeros = np.sum(probs > 0., axis=1)
+    assert np.all(non_zeros > 0), \
+            "probs should have positive values"
+    if not replacement:
+        assert np.all(non_zeros >= num_samples), \
+            "probs positive value number should not " \
+            "less than num_samples when replacement=False"
+
+    probs = probs / probs.sum(axis=1)
+    rets = []
+    for i in range(probs.shape[0]):
+        ret = np.random.choice(probs.shape[1], num_samples, replacement,
+                               probs[i])
+        rets.append(ret)
+    return np.array(rets)
+
+
+class WeightedRandomSampler(Sampler):
+    """
+    Random sample with give weights (probabilities), sampe index will be in range
+    [0, len(weights) - 1], if :attr:`replacement` is True, index can be sampled
+    multiple times.
+
+    Args:
+        weights(numpy.ndarray|paddle.Tensor): sequence of weights, should be
+                                              numpy array or paddle.Tensor
+        num_samples(int): set sample number to draw from sampler.
+        replacement(bool): Whether to draw sample with replacements, default True
+        
+    Returns:
+        Sampler: a Sampler yield sample index randomly by given weights
+
+    Examples:
+
+        .. code-block:: python
+            
+            from paddle.io import WeightRandomSampler
+
+            sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
+                                            num_samples=5,
+                                            replacement=True)
+
+            for index in sampler:
+                print(index)
+    """
+
+    def __init__(self, weights, num_samples, replacement=True):
+        if not isinstance(num_samples, (int, long)) or num_samples <= 0:
+            raise ValueError("num_samples should be a positive integer")
+        if not isinstance(replacement, bool):
+            raise ValueError("replacement should be a boolean value")
+        self.weights = weights
+        self.num_samples = num_samples
+        self.replacement = replacement
+
+    def __iter__(self):
+        idxs = _weighted_sample(self.weights, self.num_samples,
+                                self.replacement)
+        return iter(idxs.reshape((-1)).tolist())
+
+    def __len__(self):
+        mul = np.prod(self.weights.shape) // self.weights.shape[-1]
+        return self.num_samples * mul
