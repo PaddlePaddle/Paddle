@@ -32,6 +32,8 @@ class TestMultinomialOp(OpTest):
     def init_data(self):
         # input probability is a vector, and replacement is True
         self.input_np = np.random.rand(4)
+        while 0.0 in self.input_np:
+            self.input_np = np.random.rand(4)
         self.outputs = {"Out": np.zeros(100000).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
@@ -58,6 +60,8 @@ class TestMultinomialOp2(TestMultinomialOp):
     def init_data(self):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4)
+        while 0.0 in self.input_np:
+            self.input_np = np.random.rand(3, 4)
         self.outputs = {"Out": np.zeros((3, 100000)).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
@@ -76,6 +80,8 @@ class TestMultinomialOp3(TestMultinomialOp):
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000)
+        while 0.0 in self.input_np:
+            self.input_np = np.random.rand(1000)
         self.outputs = {"Out": np.zeros(100).astype("int64")}
         self.attrs = {"num_samples": 100, "replacement": False}
 
@@ -91,9 +97,11 @@ class TestMultinomialApi(unittest.TestCase):
     def test_dygraph(self):
         # input probability is a vector, and replacement is True
         paddle.disable_static()
-        x = paddle.rand([4])
+        x_numpy = np.random.rand(4)
+        while 0.0 in x_numpy:
+            x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
-        x_numpy = x.numpy()
         paddle.enable_static()
 
         sample_prob = np.unique(
@@ -109,9 +117,11 @@ class TestMultinomialApi(unittest.TestCase):
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
         paddle.disable_static()
-        x = paddle.rand([3, 4])
+        x_numpy = np.random.rand(3, 4)
+        while 0.0 in x_numpy:
+            x_numpy = np.random.rand(3, 4)
+        x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
-        x_numpy = x.numpy()
 
         out_list = np.split(out.numpy(), 3, axis=0)
         count_array = [0] * 3
@@ -131,9 +141,11 @@ class TestMultinomialApi(unittest.TestCase):
     def test_dygraph3(self):
         # replacement is False. number of samples must be less than number of categories.
         paddle.disable_static()
-        x = paddle.rand([1000])
+        x_numpy = np.random.rand(1000)
+        while 0.0 in x_numpy:
+            x_numpy = np.random.rand(1000)
+        x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100, replacement=False)
-        x_numpy = x.numpy()
 
         unique_out = np.unique(out.numpy())
         self.assertEqual(
@@ -156,6 +168,8 @@ class TestMultinomialApi(unittest.TestCase):
 
         exe.run(startup_program)
         x_np = np.random.rand(4).astype('float32')
+        while 0.0 in x_np:
+            x_np = np.random.rand(4).astype('float32')
         out = exe.run(train_program, feed={'x': x_np}, fetch_list=[out])
 
         sample_prob = np.unique(out, return_counts=True)[1].astype("float32")
