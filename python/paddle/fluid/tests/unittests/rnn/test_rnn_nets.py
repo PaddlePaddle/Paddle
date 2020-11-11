@@ -272,8 +272,7 @@ class TestLSTM(unittest.TestCase):
 
     def test_predict(self):
         predict_test_util(self.place, "LSTM")
-        predict_test_util(self.place, "LSTM", "float64", stop_gradient=False)
-        predict_test_util(self.place, "LSTM", "float32", stop_gradient=False)
+        predict_test_util(self.place, "LSTM", False)
 
     def runTest(self):
         self.test_with_initial_state()
@@ -282,9 +281,8 @@ class TestLSTM(unittest.TestCase):
         self.test_predict()
 
 
-def predict_test_util(place, mode, dtype="float32", stop_gradient=True):
+def predict_test_util(place, mode, stop_gradient=True):
     place = paddle.set_device(place)
-    paddle.set_default_dtype(dtype)
     paddle.seed(123)
     np.random.seed(123)
 
