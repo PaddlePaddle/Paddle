@@ -906,6 +906,7 @@ class RNNBase(LayerList):
         self.could_use_cudnn = True
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
             2 if direction in bidirectional_list else 1)
+            
 
         # Expose params as RNN's attribute, which can make it compatible when
         # replacing small ops composed rnn with cpp rnn kernel.
