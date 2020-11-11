@@ -415,14 +415,18 @@ class SimpleRNN(RNNMixin):
 
         if direction in ["forward", "backward"]:
             is_reverse = direction == "backward"
-            cell = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            cell = SimpleRNNCell(
+                input_size, hidden_size, nonlinearity=nonlinearity)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
-                cell = SimpleRNNCell(hidden_size, hidden_size, nonlinearity)
+                cell = SimpleRNNCell(
+                    hidden_size, hidden_size, nonlinearity=nonlinearity)
                 self.append(RNN(cell, is_reverse, time_major))
         elif direction == "bidirectional":
-            cell_fw = SimpleRNNCell(input_size, hidden_size, nonlinearity)
-            cell_bw = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            cell_fw = SimpleRNNCell(
+                input_size, hidden_size, nonlinearity=nonlinearity)
+            cell_bw = SimpleRNNCell(
+                input_size, hidden_size, nonlinearity=nonlinearity)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
                 cell_fw = SimpleRNNCell(2 * hidden_size, hidden_size,

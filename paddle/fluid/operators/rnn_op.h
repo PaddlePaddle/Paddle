@@ -1,11 +1,8 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,6 +34,17 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 using TensorList = std::vector<framework::Tensor>;
+
+#define DEFINE_MODE_DETECTOR(MODE_NAME, MODE_STR)                      \
+  inline bool is_##MODE_NAME(const framework::ExecutionContext& ctx) { \
+    const std::string& mode = ctx.Attr<std::string>("mode");           \
+    return mode == #MODE_STR;                                          \
+  }
+
+DEFINE_MODE_DETECTOR(lstm, LSTM);
+DEFINE_MODE_DETECTOR(gru, GRU);
+DEFINE_MODE_DETECTOR(rnn_relu, RNN_RELU);
+DEFINE_MODE_DETECTOR(rnn_tanh, RNN_TANH);
 
 void SwapPoniter(Tensor** a, Tensor** b) {
   Tensor* c = *a;
@@ -267,7 +275,7 @@ struct Layer {
 
   void postprocess(const framework::ExecutionContext& context, Tensor* output,
                    const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                   Tensor* last_c, const Tensor& mask_tensor, bool is_lstm) {
+                   Tensor* last_c, const Tensor& mask_tensor) {
     // in the output, if mask flag is 0, we will retun the zero data
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
@@ -285,7 +293,7 @@ struct Layer {
                                  eigen_init_h * (1 - eigen_mask_broadcast);
     eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
 
-    if (is_lstm) {
+    if (is_lstm(context)) {
       auto eigen_init_c = framework::EigenMatrix<T>::Reshape(
           *init_c, init_c->dims().size() - 1);
       auto eigen_last_c = framework::EigenMatrix<T>::Reshape(
@@ -317,10 +325,6 @@ struct Layer {
       if (offset > 0) {
         is_reverse = true;
       }
-    }
-    bool is_lstm = false;
-    if (init_c.size() > 0 && last_c_ptr->size() > 0) {
-      is_lstm = true;
     }
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -374,7 +378,7 @@ struct Layer {
     Tensor init_c_temp;
     Tensor* last_c_holder = nullptr;
 
-    if (is_lstm) {
+    if (is_lstm(context)) {
       last_c_holder = &(*last_c_ptr)[layer_idx];
       init_c_temp_holder = &init_c[layer_idx];
     }
@@ -382,7 +386,7 @@ struct Layer {
       bool in_mask = (reverse_flag * i) >= mask_min_length;
       if (i > 0) {
         if (!has_allocate_mem_c) {
-          if (is_lstm) {
+          if (is_lstm(context)) {
             init_c_temp.Resize(init_c[layer_idx].dims());
             init_c_temp.mutable_data<T>(context.GetPlace());
             init_c_holder = &init_c_temp;
@@ -398,7 +402,7 @@ struct Layer {
       if (in_mask) {
         this->postprocess(context, &output_tensors[i], init_h_holder,
                           init_c_temp_holder, last_h_holder, last_c_holder,
-                          mask_tensor_list[i], is_lstm);
+                          mask_tensor_list[i]);
       }
       // prepare next step
       if (i + 1 < time_step) {
@@ -424,7 +428,7 @@ struct Layer {
     }
 
     if (time_step % 2 == 0) {
-      if (is_lstm) {
+      if (is_lstm(context)) {
         framework::TensorCopy(*last_c_holder, context.GetPlace(), dev_ctx,
                               &(*last_c_ptr)[layer_idx]);
       }
@@ -450,10 +454,6 @@ struct Layer {
       if (offset > 0) {
         is_reverse = true;
       }
-    }
-    bool is_lstm = false;
-    if (init_c.size() > 0 && last_c_ptr->size() > 0) {
-      is_lstm = true;
     }
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -506,7 +506,7 @@ struct Layer {
     const Tensor* init_c_holder = nullptr;
     Tensor* last_c_holder = nullptr;
     Tensor* last_c_act_holder = nullptr;
-    if (is_lstm) {
+    if (is_lstm(context)) {
       cell_value->Resize({time_step, cell_value->numel() / time_step});
       cell_value_tensors = Unbind(*cell_value);
       cell_act_value->Resize({time_step, cell_value->numel() / time_step});
@@ -514,7 +514,7 @@ struct Layer {
     }
     for (int i = 0; i < time_step; i++) {
       bool in_mask = (reverse_flag * i) >= mask_min_length;
-      if (is_lstm) {
+      if (is_lstm(context)) {
         if (i == 0) {
           init_c_holder = &init_c[layer_idx];
         } else {
@@ -532,7 +532,7 @@ struct Layer {
       if (in_mask) {
         this->postprocess(context, &output_tensors[i], init_h_holder,
                           init_c_holder, last_h_holder, last_c_holder,
-                          mask_tensor_list[i], is_lstm);
+                          mask_tensor_list[i]);
       }
       // prepare next step
       if (i + 1 < time_step) {
@@ -556,7 +556,7 @@ struct Layer {
       framework::TensorCopy(output_tensors[time_step - 1], context.GetPlace(),
                             dev_ctx, &(*last_h_ptr)[layer_idx]);
     }
-    if (is_lstm) {
+    if (is_lstm(context)) {
       framework::TensorCopy(cell_value_tensors[time_step - 1],
                             context.GetPlace(), dev_ctx,
                             &(*last_c_ptr)[layer_idx]);
@@ -734,10 +734,6 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
              const bool& is_bidirec, const std::string& cell_type,
              const float& dropout_prob, const bool& is_test, const int& seed,
              Tensor* reserve_data) {
-  bool is_lstm = true;
-  if (last_c == nullptr && init_c == nullptr) {
-    is_lstm = false;
-  }
   const int& direction_num = is_bidirec ? 2 : 1;
   const auto& init_h_dims = init_h->dims();
   PADDLE_ENFORCE_EQ(init_h_dims[0], num_layers * direction_num,
@@ -746,7 +742,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
                         "first dim of init hidden, but received"
                         " num_layers:%d, dim:%d",
                         num_layers, init_h_dims[0]));
-  if (is_lstm) {
+  if (is_lstm(ctx)) {
     const auto& init_c_dims = init_c->dims();
     PADDLE_ENFORCE_EQ(init_c_dims[0], num_layers * direction_num,
                       platform::errors::InvalidArgument(
@@ -785,7 +781,7 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
   auto init_h_unbind = Unbind(*init_h);
   auto last_h_unbind = Unbind(*last_h);
   TensorList init_c_unbind, last_c_unbind;
-  if (is_lstm) {
+  if (is_lstm(ctx)) {
     init_c_unbind = Unbind(*init_c);
     last_c_unbind = Unbind(*last_c);
   }
@@ -881,14 +877,14 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     int gate_num = 4;
     state[0]->mutable_data<T>(ctx.GetPlace());
-    if (mode == "LSTM") {
+    if (is_lstm(ctx)) {
       state[1]->mutable_data<T>(ctx.GetPlace());
       RnnFunc<LSTMCell<T>, Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, pre_state[0], pre_state[1], sequence_length,
           state[0], state[1], output, dropout_mask, num_layers, gate_num,
           input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
           seed, reserve_data);
-    } else if (mode == "RNN_RELU") {
+    } else if (is_rnn_relu(ctx)) {
       gate_num = 0;
       RnnFunc<
           SimpleRNNCell<T, ReluFunctor, math::detail::ActivationType::kReLU>,
@@ -897,7 +893,7 @@ class RNNCPUKernel : public framework::OpKernel<T> {
           state[0], nullptr, output, dropout_mask, num_layers, gate_num,
           input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
           seed, reserve_data);
-    } else if (mode == "RNN_TANH") {
+    } else if (is_rnn_tanh(ctx)) {
       gate_num = 0;
       RnnFunc<
           SimpleRNNCell<T, TanhFunctor, math::detail::ActivationType::kTanhV2>,
@@ -906,7 +902,7 @@ class RNNCPUKernel : public framework::OpKernel<T> {
           state[0], nullptr, output, dropout_mask, num_layers, gate_num,
           input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
           seed, reserve_data);
-    } else if (mode == "GRU") {
+    } else if (is_gru(ctx)) {
     }
   }
 };
@@ -1003,9 +999,12 @@ struct GradLayer {
       dynamic_grad_pre_c->ShareDataWith(
           (*init_c_grad_unbind)[current_layer_idx]);
     } else {
-      // dynamic_grad_pre_c->Resize(dynamic_grad_last_c->dims());
-      // dynamic_grad_pre_c->mutable_data<T>(context.GetPlace());
-      dynamic_grad_pre_c = nullptr;
+      if (is_lstm(context)) {
+        dynamic_grad_pre_c->Resize(dynamic_grad_last_c->dims());
+        dynamic_grad_pre_c->mutable_data<T>(context.GetPlace());
+      } else {
+        dynamic_grad_pre_c = nullptr;
+      }
     }
 
     if (is_reverse) {
@@ -1591,9 +1590,10 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   auto* input = context.Input<Tensor>("Input");
   auto weight_list = context.MultiInput<Tensor>("WeightList");
   auto pre_state = context.MultiInput<Tensor>("PreState");
+
   const Tensor* init_h = pre_state[0];
   const Tensor* init_c = nullptr;
-  if (pre_state.size() > 0) {
+  if (is_lstm(context)) {
     init_c = pre_state[1];
   }
   auto* reserve_state = context.Input<Tensor>("Reserve");
@@ -1603,7 +1603,7 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   auto state_grad = context.MultiInput<Tensor>(framework::GradVarName("State"));
   const Tensor* last_h_grad = state_grad[0];
   const Tensor* last_c_grad = nullptr;
-  if (state_grad.size() > 1) {
+  if (is_lstm(context)) {
     last_c_grad = state_grad[1];
   }
 
@@ -1619,10 +1619,13 @@ void RnnGradFunc(const framework::ExecutionContext& context,
       framework::GradVarName("WeightList"));
   auto pre_state_grad =
       context.MultiOutput<Tensor>(framework::GradVarName("PreState"));
-  Tensor* init_h_grad = pre_state_grad[0];
+  Tensor* init_h_grad = nullptr;
   Tensor* init_c_grad = nullptr;
-  if (pre_state_grad.size() > 1) {
-    init_c_grad = pre_state_grad[1];
+  if (pre_state_grad.size() > 0) {  // has gradient
+    init_h_grad = pre_state_grad[0];
+    if (is_lstm(context)) {
+      init_c_grad = pre_state_grad[1];
+    }
   }
 
   // get the attributes for the calcluate
@@ -1636,7 +1639,6 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   const int& batch_size = input->dims()[1];
   const int& hidden_size = context.Attr<int>("hidden_size");
   const int& direction_num = is_bidirec ? 2 : 1;
-
   // allocate the memory and initization the input_grad
   input_grad->mutable_data<T>(input->dims(), context.GetPlace());
 
@@ -1800,20 +1802,19 @@ template <typename DeviceContext, typename T>
 class RNNCPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const std::string& cell_type = ctx.Attr<std::string>("mode");
     int gate_num = 4;
-    if (cell_type == "LSTM") {
+    if (is_lstm(ctx)) {
       RnnGradFunc<LSTMGradCell<T>, SingleGradLayer, BidirGradLayer, T>(
           ctx, gate_num);
-    } else if (cell_type == "GRU") {
+    } else if (is_gru(ctx)) {
       gate_num = 3;
       // run gru
-    } else if (cell_type == "RNN_RELU") {
+    } else if (is_rnn_relu(ctx)) {
       gate_num = 0;
       RnnGradFunc<SimpleRNNGradCell<T, ReluGradFunctor>, SingleGradLayer,
                   BidirGradLayer, T>(ctx, gate_num);
       // run rnn
-    } else if (cell_type == "RNN_TANH") {
+    } else if (is_rnn_tanh(ctx)) {
       gate_num = 0;
       RnnGradFunc<SimpleRNNGradCell<T, TanhGradFunctor>, SingleGradLayer,
                   BidirGradLayer, T>(ctx, gate_num);
