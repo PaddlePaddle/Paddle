@@ -58,7 +58,7 @@ class TestSimpleRNNOp(OpTest):
         direction = "bidirectional" if self.is_bidirec else "forward"
         seq_length = 12
         batch_size = 5
-        input_size = 4
+        input_size = 3
         hidden_size = 2
 
         input = np.random.uniform(
@@ -164,6 +164,11 @@ class TestSimpleRNNOpCpu4(TestSimpleRNNOpCpu):
         self.sequence_length = None
         self.is_bidirec = True
         self.is_test = True
+
+
+class TestSimpleRNNOpCpu5(TestSimpleRNNOp):
+    def set_attrs(self):
+        self.mode = "RNN_RELU"
 
 
 if __name__ == '__main__':
