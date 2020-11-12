@@ -13,13 +13,13 @@ about: 您可以提问文档相关的问题。 You could use this template for r
 ### 文档问题描述：
 
 #### API文档描述是否清晰？
-如：文档描述看不懂，不知道这个API该什么用；文档公式错误；
+如：文档描述看不懂，不知道这个API该怎么用；文档公式错误；
 
 #### 参数说明是否清晰
-如：没有解释清楚这个参数的作用以及使用场景；参数说明有误；
+如：参数未解释清楚，包括用法、使用场景、默认值等
 
 #### 返回/形状说明是否清晰
-如：返回说明错误；形状描述不清楚；
+如：API返回值、数据的形状描述错误、不清楚
 
 #### 示例代码是否有效？
 如：没有示例代码；示例代码没有可指导性；示例代码跑不通；示例代码格式有问题；示例代码没有注释；
@@ -31,35 +31,29 @@ about: 您可以提问文档相关的问题。 You could use this template for r
 如：文档页面打不开；文档缺失；文档中有死链；
 
 
-Thank you for submitting a PaddlePaddle documentation issue. We will listen to your opinions carefully and make improvements.
+Thanks for opening a document issue. We will listen to your opinions carefully and make improvements.
 
 In order to quickly solve your problem, when creating an issue, please provide the following information:
 **Document Information**
 - Title：Please include the keyword "XXX document issue", such as "add document issue" or "paddle.add document issue"
 - Doc Version：Please provide the version of the document, such as develop, 1.8, 2.0RC;
 
-### Document problem description：
+### Describe the problem：
 
-#### Documentat description is clear?
-For example: I don’t understand this document, I don’t know how to use this API; the document formula is wrong;
+#### Document description is clear?
+For example: I don’t understand this document, I don’t know how to use this API; The formula in this doc is unclear;
 
 #### Parameter description is clear?
-For example: the function and usage scenarios of this parameter are not explained clearly; the parameter description is incorrect;
+For example: The parameters are confusing, including usage, scenarios, default values, etc.
 
 #### Return/Shape description is clear
-For example: return/shape description error; shape description is not clear;
+For example: Data returned this doc is error, shape returned is not clear.
 
-#### Sample code is clear?
-For example: there is no sample code; the sample code is not instructable; the sample code does not work; the sample code format is problematic; the sample code has no comments;
+#### The sample code is clear?
+For example: no sample code; The sample code is not helpful; The sample code not run well; Format of the sample is not reasonable; The sample code has no comments.
 
 #### Chinese content and English content is consistent?
-For example: Chinese and English API descriptions are inconsistent; Chinese and English API parameters are inconsistent;
+For example:Chinese API in this doc is inconsistent with English API, including params, description, sample code, formula, etc.
 
 #### Other
-For example: the document page cannot be opened; the document is missing; there is a dead link in document;
-
-**To Reproduce**
-Steps to reproduce the behavior
-**Describe your current behavior**
-**Code to reproduce the issue**
-**Other info / logs**
+For example: The doc link is broken; The doc page is missing; Dead link in docs.
