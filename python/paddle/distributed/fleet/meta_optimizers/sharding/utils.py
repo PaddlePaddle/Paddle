@@ -290,3 +290,65 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
                 attrs={'scale': scale,
                        OP_ROLE_KEY: OpRole.Backward})
 
+
+def add_sync_comm_for_test(program, dist_strategy):
+    """
+    When clone a test prog by clone from the sharding main prog, 
+    part of the sync_comm op maybe be pruned by mistake, this function
+    add the sync_comm op for the test prog.
+
+    """
+    #NOTE (liangjianzhong): only support one comm stream by now, use more than one 
+    # comm streams will cause error. should be revise in future.
+
+    block = program.global_block()
+    not_sync_vars = set([])
+    for op in block.ops:
+        if op.type in ["c_broadcast", "c_allreduce"]:
+            for input_name in op.desc.input_arg_names():
+                not_sync_vars.add(input_name)
+        if op.type == "c_sync_comm_stream":
+            for input_name in op.desc.input_arg_names():
+                not_sync_vars.remove(input_name)
+    if not_sync_vars:
+        for nccl_id in range(dist_strategy.nccl_comm_num):
+            block.append_op(
+                type='c_sync_comm_stream',
+                inputs={'X': list(not_sync_vars)},
+                outputs={'Out': list(not_sync_vars)},
+                attrs={'ring_id': nccl_id,
+                    'op_role': core.op_proto_and_checker_maker.OpRole.Forward})
+    return
+        
+
+def sharding_save_persistables(exe, dirname, main_program, filename=None):
+    """
+    When use sharding, part of persistable vars are unique and are partitioned in different ranks,
+    and part of persistable vars are duplicated and exist in all the ranks with different values.
+    This function handles the model saving for sharding training.
+    """
+
+    def is_opt_vars(var):
+        # NOTE(liangjianzhong): The checks should be updated when add new compatible optimizer
+        # now only Momentum and adam are compatible with sharding
+        checks = [
+                "_moment1_0", "_moment2_0", "_beta1_pow_acc_0",
+                "_beta2_pow_acc_0", "_velocity_0"
+                ]
+        for check in checks:
+            if var.name.endswith(check):
+                return True
+        return False
+
+    def is_trainable(var):
+        return isinstance(var, paddle.fluid.framework.Parameter) and var.trainable 
+
+    def sharding_predicate(var):
+        return is_trainable(var) or is_opt_vars(var)
+
+    if int(os.environ.get('FLAGS_selected_gpus', 0)) == 0:
+        paddle.fluid.io.save_persistables(exe, dirname, main_program=model.main_prog, filename=None)
+    else:
+        paddle.fluid.io.save_vars(exe, dirname, main_program=model.main_prog, predicate = sharding_predicate, filename=None)
+    
+    return
