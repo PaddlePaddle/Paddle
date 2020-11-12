@@ -148,14 +148,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
         sync_allreduce = dist_strategy.sync_nccl_allreduce
         if sync_allreduce:
-            exe_strategy.num_threads = local_build_strategy.nccl_comm_num + 1
-            if local_build_strategy.use_hierarchical_allreduce:
-                exe_strategy.num_threads = 2 * local_build_strategy.nccl_comm_num + 1
-            if exe_strategy.num_threads > 4:
-                logging.warn(
-                    "if you use hierachical_allreduce or "
-                    "with multi nccl comm, please set distributed_strategy.sync_nccl_allreduce=False"
-                )
+            exe_strategy.num_threads = max(
+                local_build_strategy.nccl_comm_num + 1,
+                exe_strategy.num_threads)
 
         sync_batch_norm = local_build_strategy.sync_batch_norm
         if sync_batch_norm:
@@ -175,6 +170,11 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         local_build_strategy.trainers_endpoints = self.role_maker._get_trainer_endpoints(
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
+
+        # NOTE. compatible with compiler, otherwise these values will be overwritten
+        main_program._nccl_comm_num = local_build_strategy.nccl_comm_num
+        main_program._use_hierarchical_allreduce = local_build_strategy.use_hierarchical_allreduce
+        main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
