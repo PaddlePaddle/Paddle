@@ -23,6 +23,33 @@ import paddle
 import paddle.fluid as fluid
 
 
+def calculate_momentum_by_numpy(param,
+                                grad,
+                                mu,
+                                velocity,
+                                use_nesterov,
+                                learning_rate,
+                                regularization_method=None,
+                                regularization_coeff=1.0):
+    if regularization_method == "l2_decay":
+        grad = grad + regularization_coeff * param
+
+        velocity_out = mu * velocity + grad
+        if use_nesterov:
+            param_out = param - (grad + velocity_out * mu) * learning_rate
+        else:
+            param_out = param - learning_rate * velocity_out
+    else:
+        velocity_out = mu * velocity + grad
+        if use_nesterov:
+            param_out = param - grad * learning_rate - \
+                        velocity_out * mu * learning_rate
+        else:
+            param_out = param - learning_rate * velocity_out
+
+    return param_out, velocity_out
+
+
 class TestMomentumOp1(OpTest):
     def setUp(self):
         self.op_type = "momentum"
@@ -45,12 +72,13 @@ class TestMomentumOp1(OpTest):
 
         self.attrs = {'mu': mu}
 
-        velocity_out = mu * velocity + grad
-        if use_nesterov:
-            param_out = param - grad * learning_rate - \
-                        velocity_out * mu * learning_rate
-        else:
-            param_out = param - learning_rate * velocity_out
+        param_out, velocity_out = calculate_momentum_by_numpy(
+            param=param,
+            grad=grad,
+            mu=mu,
+            velocity=velocity,
+            use_nesterov=use_nesterov,
+            learning_rate=learning_rate)
 
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
@@ -92,12 +120,13 @@ class TestMomentumOp2(OpTest):
 
         self.attrs = {'mu': mu, 'use_nesterov': use_nesterov}
 
-        velocity_out = mu * velocity + grad
-        if use_nesterov:
-            param_out = param - grad * learning_rate - \
-                        velocity_out * mu * learning_rate
-        else:
-            param_out = param - learning_rate * velocity_out
+        param_out, velocity_out = calculate_momentum_by_numpy(
+            param=param,
+            grad=grad,
+            mu=mu,
+            velocity=velocity,
+            use_nesterov=use_nesterov,
+            learning_rate=learning_rate)
 
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
@@ -218,27 +247,18 @@ class __TestSparseMomentumOpCommon(unittest.TestCase):
         for i in range(len(rows)):
             _grad_np_array[rows[i]] = grad_np_array[i]
 
-        if regularization_method == "l2_decay":
-            _param = param_array
+        _param = param_array
 
-            _param_decay = regularization_coeff * _param
-            _grad_np_array_new = _grad_np_array + _param_decay
-            _grad_np_array = _grad_np_array_new
+        _param_out, _velocity_out = calculate_momentum_by_numpy(
+            param=_param,
+            grad=_grad_np_array,
+            mu=mu,
+            velocity=velocity_np_array,
+            use_nesterov=use_nesterov,
+            learning_rate=lr_array,
+            regularization_method=regularization_method,
+            regularization_coeff=regularization_coeff)
 
-            _velocity_out = mu * velocity_np_array + _grad_np_array
-            if use_nesterov:
-                _param_out = _param - (_grad_np_array + _velocity_out * mu
-                                       ) * lr_array
-            else:
-                _param_out = _param - lr_array * _velocity_out
-        else:
-            _velocity_out = mu * velocity_np_array + _grad_np_array
-            _param = param_array
-            if use_nesterov:
-                _param_out = _param - (_grad_np_array + _velocity_out * mu
-                                       ) * lr_array
-            else:
-                _param_out = _param - lr_array * _velocity_out
         self.assertTrue((_velocity_out == velocity_out_np_array).all())
         self.assertTrue((_param_out == param_out_np_array).all())
 
@@ -339,16 +359,15 @@ class TestMomentumOpWithDecay(OpTest):
             'regularization_coeff': regularization_coeff
         }
 
-        param_decay = regularization_coeff * param
-        grad_new = grad + param_decay
-        grad = grad_new
+        grad = grad + regularization_coeff * param
 
-        velocity_out = mu * velocity + grad
-        if use_nesterov:
-            param_out = param - grad * learning_rate - \
-                        velocity_out * mu * learning_rate
-        else:
-            param_out = param - learning_rate * velocity_out
+        param_out, velocity_out = calculate_momentum_by_numpy(
+            param=param,
+            grad=grad,
+            mu=mu,
+            velocity=velocity,
+            use_nesterov=use_nesterov,
+            learning_rate=learning_rate)
 
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
@@ -433,10 +452,9 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
 
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
-    def __get_loss(self, momentum):
+    def __get_loss(self, momentum, linear):
         inp = paddle.full(
             shape=[2, 2], fill_value=1.0, dtype='float32').astype("float32")
-        linear = paddle.nn.Linear(2, 2)
         inp = paddle.to_tensor(inp)
         out = linear(inp)
         loss = paddle.mean(out)
@@ -445,14 +463,18 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
 
     def test_vs(self):
         paddle.disable_static()
-        linear = paddle.nn.Linear(2, 2)
+        linear = paddle.nn.Linear(
+            2,
+            2,
+            weight_attr=paddle.nn.initializer.Constant(value=2.0),
+            bias_attr=paddle.nn.initializer.Constant(value=2.0))
         momentum_old = paddle.fluid.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear.parameters(),
             regularization=paddle.fluid.regularizer.L2Decay(
                 regularization_coeff=0.1))
-        loss_old = self.__get_loss(momentum=momentum_old)
+        loss_old = self.__get_loss(momentum=momentum_old, linear=linear)
         loss_old = loss_old.numpy()
 
         momentum_new = paddle.fluid.contrib.optimizer.Momentum(
@@ -461,8 +483,11 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             parameter_list=linear.parameters(),
             regularization=paddle.fluid.regularizer.L2Decay(
                 regularization_coeff=0.1))
-        loss_new = self.__get_loss(momentum=momentum_new)
+        loss_new = self.__get_loss(momentum=momentum_new, linear=linear)
         loss_new = loss_new.numpy()
+
+        self.assertEqual(loss_old, loss_new,
+                         'the loss of two Momentum optimizers should equal')
 
 
 if __name__ == "__main__":
