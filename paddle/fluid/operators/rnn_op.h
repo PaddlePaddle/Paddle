@@ -1508,16 +1508,46 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
 };
 
 template <typename T>
+void backup_tensor(const framework::ExecutionContext& context, Tensor* dst,
+                   Tensor* src) {
+  auto& device_ctx =
+      context.template device_context<platform::CPUDeviceContext>();
+  dst->Resize(src->dims());
+  dst->mutable_data<T>(context.GetPlace());
+  framework::TensorCopy(*src, device_ctx.GetPlace(), device_ctx, dst);
+}
+
+template <typename T>
 struct GradCell {
   virtual ~GradCell() {}
-  virtual void operator()(
-      const framework::ExecutionContext& context, Tensor* gate_tensor,
-      Tensor* state_tensor, Tensor* act_state_tensor, Tensor* hidden_tensor,
-      const Tensor* weight_hh, Tensor* pre_hidden, Tensor* pre_state,
-      Tensor* grad_hidden, Tensor* grad_state, Tensor* grad_gate,
-      Tensor* grad_weight_hh, Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-      math::LstmMetaValue<T>* lstm_value, math::LstmMetaGrad<T>* lstm_grad,
-      const Tensor& mask_tensor, bool has_sequence_length) {}
+  virtual void operator()(const framework::ExecutionContext& context,
+                          Tensor* gate_tensor, Tensor* state_tensor,
+                          Tensor* act_state_tensor, Tensor* hidden_tensor,
+                          const Tensor* weight_hh, Tensor* pre_hidden,
+                          Tensor* pre_state, Tensor* grad_hidden,
+                          Tensor* grad_state, Tensor* grad_gate,
+                          Tensor* grad_weight_hh, Tensor* grad_pre_hidden,
+                          Tensor* grad_pre_state, void* meta_value,
+                          void* meta_grad, const Tensor& mask_tensor,
+                          bool has_sequence_length) const {}
+
+  virtual void update_pre_hidden_grad() const {}
+
+  virtual void update_weight_hh_grad(const framework::ExecutionContext& context,
+                                     Tensor* grad_gate, Tensor* pre_hidden,
+                                     Tensor* grad_weight_hh) const {
+    auto& device_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
+    mat_dim_c.height_ *= mat_dim_c.batch_size_;
+    mat_dim_c.batch_size_ = 0;
+    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
+    mat_dim_d.height_ *= mat_dim_d.batch_size_;
+    mat_dim_d.batch_size_ = 0;
+    blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
+                static_cast<T>(1.0), grad_weight_hh, static_cast<T>(1.0));
+  }
 };
 
 template <typename T, template <typename> class EigenActivationBackwardFunctor>
@@ -1529,18 +1559,14 @@ struct SimpleRNNGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  math::LstmMetaValue<T>* lstm_value,
-                  math::LstmMetaGrad<T>* lstm_grad, const Tensor& mask_tensor,
-                  bool has_sequence_length) override {
+                  void* meta_value, void* meta_grad, const Tensor& mask_tensor,
+                  bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     Tensor grad_pre_hidden_bak;
     if (has_sequence_length) {
-      grad_pre_hidden_bak.Resize(grad_pre_hidden->dims());
-      grad_pre_hidden_bak.mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*grad_pre_hidden, device_ctx.GetPlace(), device_ctx,
-                            &grad_pre_hidden_bak);
+      backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
     }
     // h = act(z)
     // update dz
@@ -1579,15 +1605,7 @@ struct SimpleRNNGradCell : GradCell<T> {
           (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
           eigen_grad_pre_hidden * eigen_mask_broadcast;
     }
-
-    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
-    mat_dim_c.height_ *= mat_dim_c.batch_size_;
-    mat_dim_c.batch_size_ = 0;
-    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
-    mat_dim_d.height_ *= mat_dim_d.batch_size_;
-    mat_dim_d.batch_size_ = 0;
-    blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
-                static_cast<T>(1.0), grad_weight_hh, static_cast<T>(1.0));
+    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh);
   }
 };
 
@@ -1600,26 +1618,24 @@ struct LSTMGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  math::LstmMetaValue<T>* lstm_value,
-                  math::LstmMetaGrad<T>* lstm_grad, const Tensor& mask_tensor,
-                  bool has_sequence_length) override {
+                  void* meta_value, void* meta_grad, const Tensor& mask_tensor,
+                  bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     size_t frame_size = state_tensor->dims()[2];
     size_t batch_size = state_tensor->dims()[1];
 
+    math::LstmMetaValue<T>* lstm_value =
+        reinterpret_cast<math::LstmMetaValue<T>*>(meta_value);
+    math::LstmMetaGrad<T>* lstm_grad =
+        reinterpret_cast<math::LstmMetaGrad<T>*>(meta_grad);
+
     Tensor grad_pre_hidden_bak;
     Tensor grad_pre_state_bak;
     if (has_sequence_length) {
-      grad_pre_hidden_bak.Resize(grad_pre_hidden->dims());
-      grad_pre_hidden_bak.mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*grad_pre_hidden, device_ctx.GetPlace(), device_ctx,
-                            &grad_pre_hidden_bak);
-      grad_pre_state_bak.Resize(grad_pre_state->dims());
-      grad_pre_state_bak.mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*grad_pre_state, device_ctx.GetPlace(), device_ctx,
-                            &grad_pre_state_bak);
+      backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
+      backup_tensor<T>(context, &grad_pre_state_bak, grad_pre_state);
     }
     lstm_value->gate_value = gate_tensor->data<T>();
     lstm_value->state_value = state_tensor->data<T>();
@@ -1673,15 +1689,7 @@ struct LSTMGradCell : GradCell<T> {
           (1 - eigen_mask_broadcast) * eigen_grad_pre_state_bak +
           eigen_grad_pre_state * eigen_mask_broadcast;
     }
-
-    auto mat_dim_c = math::CreateMatrixDescriptor(grad_gate->dims(), 0, true);
-    mat_dim_c.height_ *= mat_dim_c.batch_size_;
-    mat_dim_c.batch_size_ = 0;
-    auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
-    mat_dim_d.height_ *= mat_dim_d.batch_size_;
-    mat_dim_d.batch_size_ = 0;
-    blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
-                static_cast<T>(1.0), grad_weight_hh, T(1.0));
+    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh);
   }
 };
 
@@ -1784,6 +1792,8 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   if (state_tensor.numel() > 0) {
     state_tensor.Resize(
         {num_layers, time_step * direction_num, batch_size, hidden_size});
+  }
+  if (act_state_tensor.numel() > 0) {
     act_state_tensor.Resize(
         {num_layers, time_step * direction_num, batch_size, hidden_size});
   }
