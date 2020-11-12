@@ -51,10 +51,9 @@ class AllReduceDepsPass : public ir::Pass {
                               platform::errors::InvalidArgument(
                                   "Op handle must be NCCLOpHandleBase."));
       // When multi trainer call collective function, they need run the same
-      // order.
-      // Or the program will hang.So we use allreduce_deps_pass to set this
-      // run_order_.
-      // As well, we use run_order to select nccl_comm, that is
+      // order. Or the program will hang. So we use allreduce_deps_pass to
+      // set this run_order_.
+      // At the same time, we use run_order to select nccl_comm, that is
       // ctxs_[run_order % nccl_comm_num]
       op_handle->SetRunEnv(i, use_hierarchical_allreduce);
     }
@@ -63,7 +62,7 @@ class AllReduceDepsPass : public ir::Pass {
     PADDLE_ENFORCE_GT(nccl_comm_num, 0,
                       platform::errors::InvalidArgument(
                           "nccl_comm_num must > 1, but got %d", nccl_comm_num));
-    // If the same nccl comm is used, the order must be consistent.
+    // For the same nccl comm, the order must be consistent.
     // For different nccl comms, since allreduce has no dependency, the order
     // can be different.
     interval = nccl_comm_num;

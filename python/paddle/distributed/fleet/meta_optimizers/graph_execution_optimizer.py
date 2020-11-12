@@ -171,7 +171,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
-        # NOTE. compatible with compiler, otherwise these values will be overwritten
+        # NOTE. compatible with compiler, otherwise these values will be overwritten by compiler
         main_program._nccl_comm_num = local_build_strategy.nccl_comm_num
         main_program._use_hierarchical_allreduce = local_build_strategy.use_hierarchical_allreduce
         main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
