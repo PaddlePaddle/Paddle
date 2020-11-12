@@ -5459,7 +5459,7 @@ def transpose(x, perm, name=None):
 
     Args:
         x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
-        perm (list): Permute the input according to the data of perm.
+        perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -5509,7 +5509,7 @@ def transpose(x, perm, name=None):
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'transpose')
-    check_type(perm, 'perm', list, 'transpose')
+    check_type(perm, 'perm', (list, tuple), 'transpose')
 
     if len(perm) != len(x.shape):
         raise ValueError(
