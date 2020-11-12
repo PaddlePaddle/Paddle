@@ -1698,6 +1698,55 @@ class TestLog2(TestActivation):
         self.assertTrue(np.allclose(np_z, z_expected))
 
 
+class TestLog10(TestActivation):
+    def setUp(self):
+        self.op_type = "log10"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.log10(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+    def test_error(self):
+        in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
+        in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
+
+        self.assertRaises(TypeError, paddle.log10, in1)
+        self.assertRaises(TypeError, paddle.log10, in2)
+
+    def test_api(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = paddle.static.data(
+                name="data_x", shape=[11, 17], dtype="float64")
+
+            out1 = paddle.log10(data_x)
+            exe = paddle.static.Executor(place=fluid.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            res1 = exe.run(paddle.static.default_main_program(),
+                           feed={"data_x": input_x},
+                           fetch_list=[out1])
+        expected_res = np.log10(input_x)
+        self.assertTrue(np.allclose(res1, expected_res))
+
+        # dygraph
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = paddle.to_tensor(np_x)
+            z = paddle.log10(data_x)
+            np_z = z.numpy()
+            z_expected = np.array(np.log10(np_x))
+        self.assertTrue(np.allclose(np_z, z_expected))
+
+
 class TestLog1p(TestActivation):
     def setUp(self):
         self.op_type = "log1p"
@@ -2432,6 +2481,7 @@ create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
 create_test_act_fp16_class(TestLog2, atol=5e-2)
+create_test_act_fp16_class(TestLog10, atol=5e-2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
 create_test_act_fp16_class(TestPow, atol=5e-2)
