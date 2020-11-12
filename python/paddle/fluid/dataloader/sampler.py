@@ -15,7 +15,6 @@
 from __future__ import print_function
 from __future__ import division
 
-import six
 import numpy as np
 from .. import core
 
@@ -304,7 +303,7 @@ class WeightedRandomSampler(Sampler):
     """
 
     def __init__(self, weights, num_samples, replacement=True):
-        if not isinstance(num_samples, six.types.IntType) or num_samples <= 0:
+        if not isinstance(num_samples, int) or num_samples <= 0:
             raise ValueError("num_samples should be a positive integer")
         if not isinstance(replacement, bool):
             raise ValueError("replacement should be a boolean value")
