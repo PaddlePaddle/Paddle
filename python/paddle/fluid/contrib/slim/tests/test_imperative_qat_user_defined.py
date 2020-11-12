@@ -141,11 +141,12 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                     avg_loss.backward()
                     adam.minimize(avg_loss)
                     model.clear_gradients()
-                    if batch_id % 100 == 0:
+                    if batch_id % 50 == 0:
                         _logger.info(
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".
                             format(epoch, batch_id,
                                    avg_loss.numpy(), acc.numpy()))
+                        break
 
         def test(model):
             model.eval()
@@ -170,11 +171,10 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                             batch_id, acc_top1.numpy(), acc_top5.numpy()))
 
         train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=64, drop_last=True)
-        test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=64)
+            paddle.dataset.mnist.train(), batch_size=512, drop_last=True)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=512)
         train(lenet)
         test(lenet)
-        print(paddle.summary(lenet, (1, 1, 28, 28)))
 
         paddle.jit.save(
             layer=lenet,
