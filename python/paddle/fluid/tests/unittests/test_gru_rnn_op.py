@@ -31,8 +31,6 @@ np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestGRUOp(OpTest):
     def get_weight_names(self, direction_num):
         weight_names = []
@@ -116,42 +114,32 @@ class TestGRUOp(OpTest):
             'Reserve': np.ndarray((400)).astype("uint8"),
             'DropoutState': state_out
         }
-        self.set_place()
-
-    def set_place(self):
-        self.place = core.CUDAPlace(0)
 
     def set_attrs(self):
         pass
 
-    def test_output_with_place(self):
-        self.check_output_with_place(
-            self.place, no_check_set=['Reserve', 'DropoutState'])
+    def test_output(self):
+        self.check_output(no_check_set=['Reserve', 'DropoutState'])
 
 
-class TestGRUOpCpu(TestGRUOp):
-    def set_place(self):
-        self.place = core.CPUPlace()
-
-
-class TestGRUOpCpu1(TestGRUOpCpu):
+class TestGRUOp1(TestGRUOp):
     def set_attrs(self):
         self.sequence_length = None
 
 
-class TestGRUOpCpu2(TestGRUOpCpu):
+class TestGRUOp2(TestGRUOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
-class TestGRUOpCpu3(TestGRUOpCpu):
+class TestGRUOp3(TestGRUOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_test = True
 
 
-class TestGRUOpCpu4(TestGRUOpCpu):
+class TestGRUOpCpu4(TestGRUOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
