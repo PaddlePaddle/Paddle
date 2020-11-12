@@ -224,7 +224,6 @@ def full_like(x, fill_value, dtype=None, name=None):
           import paddle
           import numpy as np
           
-          paddle.disable_static()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           # [[2. 2. 2.]
@@ -277,7 +276,6 @@ def ones(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle 
-          paddle.disable_static()
           
           # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
@@ -361,7 +359,6 @@ def zeros(shape, dtype=None, name=None):
 
           import paddle
           
-          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') 
           # [[0. 0.]
           #  [0. 0.]
@@ -446,7 +443,6 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           
           import paddle
 
-          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
           # [[1 0 0]
           #  [0 1 0]
@@ -493,7 +489,6 @@ def full(shape, fill_value, dtype=None, name=None):
 
           import paddle
 
-          paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
           #[[0]
           # [0]]
@@ -957,7 +952,6 @@ def empty(shape, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()   # Now we are in imperative mode
           paddle.set_device("cpu")  # and use cpu device
 
           # example 1: argument ``shape`` is a list which doesn't contain Tensor.
@@ -1041,7 +1035,6 @@ def empty_like(x, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()   # Now we are in imperative mode
           paddle.set_device("cpu")  # and use cpu device
 
           x = paddle.randn([2, 3], 'float32')
