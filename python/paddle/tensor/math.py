@@ -79,6 +79,7 @@ __all__ = [
         'floor',
         'increment',
         'log',
+        'log2',
         'logsumexp',
         'mul',
         'multiplex',
@@ -121,7 +122,8 @@ __all__ = [
         'kron',
         'isfinite',
         'isinf',
-        'isnan'
+        'isnan',
+        'broadcast_shape'
 ]
 # yapf: enable.
 
@@ -272,18 +274,15 @@ def _elementwise_op(helper):
 
 def add(x, y, name=None):
     """
-Examples:
+    Examples:
 
     ..  code-block:: python
 
         import paddle
-
-        paddle.disable_static()
         x = paddle.to_tensor([2, 3, 4], 'float64')
         y = paddle.to_tensor([1, 5, 2], 'float64')
         z = paddle.add(x, y)
-        np_z = z.numpy()
-        print(np_z)  # [3., 8., 6. ]
+        print(z)  # [3., 8., 6. ]
 
     """
     op_type = 'elementwise_add'
@@ -386,11 +385,11 @@ def remainder(x, y, name=None):
         out = x \% y
 
     **Note**:
-    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    ``paddle.mod`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, it's data type should be int32, int64.
-        y (Tensor): the input tensor, it's data type should be int32, int64.
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -402,12 +401,10 @@ def remainder(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([2, 3, 8, 7])
             y = paddle.to_tensor([1, 5, 3, 3])
-            z = paddle.remainder(x, y)
-            print(z.numpy())  # [0, 3, 2, 1]
+            z = paddle.mod(x, y)
+            print(z)  # [0, 3, 2, 1]
 
     """
     op_type = 'elementwise_mod'
@@ -628,7 +625,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             # x is a Tensor with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
@@ -719,37 +715,41 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
-    ${comment}
+    This OP is used to sum one or more Tensor of the input.
+    
+    For example:
 
-    Case 1:
-    ::
-        Input:
-            Input. Shape = [2, 3]
-            Input = [[1, 2, 3],
-                     [4, 5, 6]]
+    .. code-block:: text
+    
+        Case 1:
 
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[1, 2, 3],
-                      [4, 5, 6]]
+            Input:
+                input.shape = [2, 3]
+                input = [[1, 2, 3],
+                         [4, 5, 6]]
 
-    Case 2:
-    ::
-        Input:
-            First input:
-            Input1. Shape = [2, 3]
-            Input1 = [[1, 2, 3],
-                      [4, 5, 6]]
+            Output:
+                output.shape = [2, 3]
+                output = [[1, 2, 3],
+                          [4, 5, 6]]
 
-        The second input:
-            Input2. Shape = [2, 3]
-            Input2 = [[7, 8, 9],
-                      [10, 11, 12]]
+        Case 2:
+       
+            Input:
+                First input:
+                    input1.shape = [2, 3]
+                    Input1 = [[1, 2, 3],
+                              [4, 5, 6]]
 
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[8, 10, 12],
-                      [14, 16, 18]]
+                The second input:
+                    input2.shape = [2, 3]
+                    input2 = [[7, 8, 9],
+                              [10, 11, 12]]
+
+                Output:
+                    output.shape = [2, 3]
+                    output = [[8, 10, 12],
+                              [14, 16, 18]]
 
     Args:
         inputs (Tensor|list(Tensor)):  A Tensor list. The shape and data type of the list elements should be consistent.
@@ -1313,6 +1313,54 @@ def log1p(x, name=None):
     helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
     return out
 
+def log2(x, name=None):
+    """
+    Calculates the log to the base 2 of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\log_2x
+
+    Args:
+        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        Tensor: The log to the base 2 of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import paddle
+
+            # example 1: x is a float
+            x_i = paddle.to_tensor([[1.0], [2.0]])
+            res = paddle.log2(x_i) # [[0.], [1.0]]
+
+            # example 2: x is float32
+            x_i = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            paddle.to_tensor(x_i)
+            res = paddle.log2(x_i)
+            print(res) # [1.0]
+
+            # example 3: x is float64
+            x_i = paddle.full(shape=[1], fill_value=2, dtype='float64')
+            paddle.to_tensor(x_i)
+            res = paddle.log2(x_i)
+            print(res) # [1.0]
+    """
+    if in_dygraph_mode():
+        return core.ops.log2(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log2")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log2', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
+    return out
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
@@ -1360,9 +1408,6 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
 
 def clip(x, min=None, max=None, name=None):
     """
-        :alias_main: paddle.clip
-        :alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
-
     **clip layer**
 
     This operator clip all elements in input into the range [ min, max ] and return
@@ -1389,15 +1434,13 @@ def clip(x, min=None, max=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
             x1 = paddle.to_tensor([[1.2, 3.5], [4.5, 6.4]], 'float32')
             out1 = paddle.clip(x1, min=3.5, max=5.0)
             out2 = paddle.clip(x1, min=2.5)
-            print(out1.numpy())
+            print(out1)
             # [[3.5, 3.5]
             # [4.5, 5.0]]
-            print(out2.numpy())
+            print(out2)
             # [[2.5, 3.5]
             # [[4.5, 6.4]
     """
@@ -1781,44 +1824,31 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             # the axis is a int element
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
                                   [0.1, 0.2, 0.6, 0.7]])
             out1 = paddle.prod(x)
-            print(out1.numpy())
             # [0.0002268]
 
             out2 = paddle.prod(x, -1)
-            print(out2.numpy())
             # [0.027  0.0084]
 
             out3 = paddle.prod(x, 0)
-            print(out3.numpy())
             # [0.02 0.06 0.3  0.63]
-            print(out3.numpy().dtype)
-            # float32
 
             out4 = paddle.prod(x, 0, keepdim=True)
-            print(out4.numpy())
             # [[0.02 0.06 0.3  0.63]]
 
             out5 = paddle.prod(x, 0, dtype='int64')
-            print(out5.numpy())
             # [0 0 0 0]
-            print(out5.numpy().dtype)
-            # int64
 
             # the axis is list
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]])
             out6 = paddle.prod(y, [0, 1])
-            print(out6.numpy())
             # [105. 384.]
 
             out7 = paddle.prod(y, (1, 2))
-            print(out7.numpy())
             # [  24. 1680.]
 
     """
@@ -2133,3 +2163,30 @@ def any(x, axis=None, keepdim=False, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
+def broadcast_shape(x_shape, y_shape):
+    """
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
+
+    Args:
+        x_shape (list[int]|tuple[int]): A shape of tensor.
+        y_shape (list[int]|tuple[int]): A shape of tensor.
+        
+
+    Returns:
+        list[int], the result shape.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
+            # [2, 3, 3]
+            
+            # shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
+            # ValueError (terminated with error message).
+
+    """
+
+    return core.broadcast_shape(x_shape, y_shape)

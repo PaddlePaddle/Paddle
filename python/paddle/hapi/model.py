@@ -460,7 +460,8 @@ class StaticGraphAdapter(object):
                 rets.insert(i, feed[name])
 
         # step learning rate scheduler on each batch end
-        if self.model._optimizer and \
+        if self.model._optimizer and self.mode == 'train' and \
+                hasattr(self.model._optimizer, '_learning_rate') and \
                 isinstance(self.model._optimizer._learning_rate,
                            paddle.optimizer.lr.LRScheduler):
             self.model._optimizer._learning_rate.step()
@@ -842,6 +843,7 @@ class Model(object):
 
         import paddle
         import paddle.nn as nn
+        import paddle.vision.transforms as T
         from paddle.static import InputSpec
 
         device = paddle.set_device('cpu') # or 'gpu'
@@ -863,7 +865,11 @@ class Model(object):
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
         
-        data = paddle.vision.datasets.MNIST(mode='train')
+        transform = T.Compose([
+            T.Transpose(),
+            T.Normalize([127.5], [127.5])
+        ])
+        data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
         model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
@@ -1072,6 +1078,7 @@ class Model(object):
 
                 import paddle
                 import paddle.nn as nn
+                import paddle.vision.transforms as T
                 from paddle.static import InputSpec
 
                 class Mnist(nn.Layer):
@@ -1098,7 +1105,13 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                data = paddle.vision.datasets.MNIST(mode='train')
+                
+                transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+                data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+                
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
@@ -1358,14 +1371,19 @@ class Model(object):
             .. code-block:: python
 
               import paddle
+              import paddle.vision.transforms as T
               from paddle.static import InputSpec
 
               dynamic = True
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device) if dynamic else None
-           
-              train_dataset = paddle.vision.datasets.MNIST(mode='train')
-              val_dataset = paddle.vision.datasets.MNIST(mode='test')
+              
+              transform = T.Compose([
+                  T.Transpose(),
+                  T.Normalize([127.5], [127.5])
+              ])
+              train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+              val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
@@ -1391,16 +1409,21 @@ class Model(object):
             .. code-block:: python
 
               import paddle
+              import paddle.vision.transforms as T
               from paddle.static import InputSpec
 
               dynamic = True
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device) if dynamic else None
-           
-              train_dataset = paddle.vision.datasets.MNIST(mode='train')
+              
+              transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+              train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
               train_loader = paddle.io.DataLoader(train_dataset,
                   places=device, batch_size=64)
-              val_dataset = paddle.vision.datasets.MNIST(mode='test')
+              val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
               val_loader = paddle.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
@@ -1527,10 +1550,15 @@ class Model(object):
         .. code-block:: python
 
             import paddle
+            import paddle.vision.transforms as T
             from paddle.static import InputSpec
 
             # declarative mode
-            val_dataset = paddle.vision.datasets.MNIST(mode='test')
+            transform = T.Compose([
+                    T.Transpose(),
+                    T.Normalize([127.5], [127.5])
+                ])
+            val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             label = InputSpec([None, 1], 'int64', 'label')

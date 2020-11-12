@@ -82,11 +82,11 @@ if %day_now% NEQ %day_before% (
     goto :mkbuild
 )
 
-git diff HEAD origin/develop --stat --name-only
-git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
-if %ERRORLEVEL% EQU 0 (
-    rmdir build /s/q
-)
+:: git diff HEAD origin/develop --stat --name-only
+:: git diff HEAD origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+:: if %ERRORLEVEL% EQU 0 (
+::     rmdir build /s/q
+:: )
 
 :mkbuild
 if not exist build (
@@ -132,7 +132,6 @@ set CLCACHE_HARDLINK=1
 set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
-
 
 rem ------set cache third_party------
 if not exist %cache_dir%\tools (
@@ -340,7 +339,16 @@ if %errorlevel%==0 (
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-ctest.exe -E "(%disable_ut_quickly%)" --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+if "%NIGHTLY_MODE%"=="ON" (
+    set nightly_label="()"
+    ) else (
+    set nightly_label="(RUN_TYPE=NIGHTLY^|RUN_TYPE=DIST:NIGHTLY^|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
+    echo    ========================================
+    echo    "Unittests with nightly labels  are only run at night"
+    echo    ========================================
+)
+
+ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 goto:eof
 
 :unit_test_error
