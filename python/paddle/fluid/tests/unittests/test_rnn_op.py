@@ -17,7 +17,6 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import math
-import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -34,8 +33,6 @@ np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestRNNOp(OpTest):
     def get_weight_names(self):
         weight_names = []
@@ -118,60 +115,39 @@ class TestRNNOp(OpTest):
             'DropoutState': state_out
         }
 
-    def test_output_with_place(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, no_check_set=['Reserve', 'DropoutState'])
+    def test_output(self):
+        self.check_output(no_check_set=['Reserve', 'DropoutState'])
 
     def set_attrs(self):
         pass
 
-    def test_grad_with_place(self):
+    def test_grad(self):
         if not self.is_test:
-            place = core.CUDAPlace(0)
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
-            self.check_grad_with_place(place,
-                                       set(grad_check_list),
-                                       ['Out', 'last_hidden', 'last_cell'])
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell'])
 
 
-class TestRNNCpu(TestRNNOp):
-    def test_output_with_place(self):
-        place = core.CPUPlace()
-        self.check_output_with_place(
-            place, no_check_set=['Reserve', 'DropoutState'])
-
-    def test_grad_with_place(self):
-        if not self.is_test:
-            place = core.CPUPlace()
-            var_name_list = self.get_weight_names()
-            grad_check_list = ['Input', 'init_h', 'init_c']
-            grad_check_list.extend(var_name_list)
-            self.check_grad_with_place(place,
-                                       set(grad_check_list),
-                                       ['Out', 'last_hidden', 'last_cell'])
-
-
-class TestRNNCpu1(TestRNNCpu):
+class TestRNNOp1(TestRNNOp):
     def set_attrs(self):
         self.sequence_length = None
 
 
-class TestRNNCpu2(TestRNNCpu):
+class TestRNNOp2(TestRNNOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
-class TestRNNCpu3(TestRNNCpu):
+class TestRNNOp3(TestRNNOp):
     def set_attrs(self):
         self.is_test = True
         self.sequence_length = None
 
 
-class TestRNNCpu4(TestRNNCpu):
+class TestRNNOp4(TestRNNOp):
     def set_attrs(self):
         self.is_test = True
         self.sequence_length = None
