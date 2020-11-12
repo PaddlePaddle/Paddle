@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['yolo_loss', 'decode_yolo_box']
+__all__ = ['yolo_loss', 'yolo_box']
 
 from ..fluid.layers import yolov3_loss as yolo_loss
 from ..fluid.layers import yolo_box as yolo_box
