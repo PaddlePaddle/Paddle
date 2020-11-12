@@ -58,7 +58,7 @@ class Cifar10(Dataset):
             default backend is 'pil'. Default: None.
 
     Returns:
-        Dataset: instance of cifar-10 dataset.
+        Dataset: instance of cifar-10 dataset
 
     Examples:
 

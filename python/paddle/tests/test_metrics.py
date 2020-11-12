@@ -141,7 +141,10 @@ class TestAccuracyDynamicMultiTopk(TestAccuracyDynamic):
 
 class TestAccuracyStatic(TestAccuracyDynamic):
     def setUp(self):
-        super().setUp()
+        self.topk = (1, )
+        self.class_num = 5
+        self.sample_num = 1000
+        self.name = None
         self.squeeze_label = True
 
     def test_main(self):
