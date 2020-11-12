@@ -466,6 +466,17 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
+    def test_tensor_str_scaler(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor(np.array(False))
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
+       False)'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
 
 class TestVarBaseSetitem(unittest.TestCase):
     def setUp(self):

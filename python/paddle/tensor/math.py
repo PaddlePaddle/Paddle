@@ -627,7 +627,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             # x is a Tensor with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
@@ -718,37 +717,41 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
-    ${comment}
+    This OP is used to sum one or more Tensor of the input.
+    
+    For example:
 
-    Case 1:
-    ::
-        Input:
-            Input. Shape = [2, 3]
-            Input = [[1, 2, 3],
-                     [4, 5, 6]]
+    .. code-block:: text
+    
+        Case 1:
 
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[1, 2, 3],
-                      [4, 5, 6]]
+            Input:
+                input.shape = [2, 3]
+                input = [[1, 2, 3],
+                         [4, 5, 6]]
 
-    Case 2:
-    ::
-        Input:
-            First input:
-            Input1. Shape = [2, 3]
-            Input1 = [[1, 2, 3],
-                      [4, 5, 6]]
+            Output:
+                output.shape = [2, 3]
+                output = [[1, 2, 3],
+                          [4, 5, 6]]
 
-        The second input:
-            Input2. Shape = [2, 3]
-            Input2 = [[7, 8, 9],
-                      [10, 11, 12]]
+        Case 2:
+       
+            Input:
+                First input:
+                    input1.shape = [2, 3]
+                    Input1 = [[1, 2, 3],
+                              [4, 5, 6]]
 
-        Output:
-            The output. Shape = [2, 3]
-            Output = [[8, 10, 12],
-                      [14, 16, 18]]
+                The second input:
+                    input2.shape = [2, 3]
+                    input2 = [[7, 8, 9],
+                              [10, 11, 12]]
+
+                Output:
+                    output.shape = [2, 3]
+                    output = [[8, 10, 12],
+                              [14, 16, 18]]
 
     Args:
         inputs (Tensor|list(Tensor)):  A Tensor list. The shape and data type of the list elements should be consistent.
