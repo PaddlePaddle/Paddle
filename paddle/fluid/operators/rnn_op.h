@@ -180,9 +180,6 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
   }
   auto* x_data = x->data<T>();
   size_t size = framework::product(x->dims());
-  if (!mask->IsInitialized()) {
-    mask->mutable_data<uint8_t>(x->dims(), context.GetPlace());
-  }
   auto* mask_data = mask->data<uint8_t>();
   if (!(*is_has_reset)) {
     // Special case when dropout_prob is 1.0
@@ -871,6 +868,9 @@ class RNNCPUKernel : public framework::OpKernel<T> {
     const Tensor* sequence_length = nullptr;
     if (has_seq_length) {
       sequence_length = ctx.Input<Tensor>("SequenceLength");
+    }
+    if (!dropout_mask->IsInitialized()) {
+      dropout_mask->mutable_data<uint8_t>(output->dims(), ctx.GetPlace());
     }
 
     // init the output and allocate the memory
