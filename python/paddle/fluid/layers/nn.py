@@ -9747,18 +9747,18 @@ def prelu(x, mode, param_attr=None, name=None):
         channel: Elements in same channel share same alpha.
         element: All elements do not share alpha. Each element has its own alpha.
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor or LoDTensor with data type float32.
         mode (str): The mode for weight sharing.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha), it can be create by ParamAttr. None by default.
-          For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+            weight (alpha), it can be create by ParamAttr. None by default.
+            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
         name(str|None): For detailed information, please refer
-          to :ref:`api_guide_Name`. Usually name is no need to set and
-          None by default.
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Returns:
-        A tensor or LoDTensor with the same shape as x. The data type is float32.
+        Tensor: A tensor with the same shape and data type as x.
 
     Examples:
 

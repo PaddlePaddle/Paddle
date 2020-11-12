@@ -320,7 +320,7 @@ def ones_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
@@ -395,7 +395,7 @@ def zeros_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
@@ -539,8 +539,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     Returns: 
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
-            taken with common difference ``step`` beginning from ``start``. Its
-            data type is set by ``dtype``.
+        taken with common difference ``step`` beginning from ``start``. Its
+        data type is set by ``dtype``.
 
     Raises:
         TypeError: If ``dtype`` is not int32, int64, float32, float64.
