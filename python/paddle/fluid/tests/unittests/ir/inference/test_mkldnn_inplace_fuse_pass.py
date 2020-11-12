@@ -30,14 +30,18 @@ class MkldnnInplacePassTest(InferencePassTest):
             paddle.enable_static()
             data = fluid.data(
                 name="data", shape=[-1, 3, 100, 100], dtype="float32")
-            conv_out = fluid.layers.conv2d(
+            conv_out_1 = fluid.layers.conv2d(
                 data, num_filters=3, filter_size=3, bias_attr=False)
-            softmax_out = fluid.layers.softmax(conv_out)
+            softmax_out = fluid.layers.softmax(conv_out_1)
+            relu_out = fluid.layers.relu(conv_out_1)
+            eltwise_out = fluid.layers.elementwise_add(
+                softmax_out, relu_out, axis=-1)
+
         self.pass_name = 'mkldnn_inplace_pass'
         self.feeds = {
             "data": np.random.random((1, 3, 100, 100)).astype("float32")
         }
-        self.fetch_list = [softmax_out]
+        self.fetch_list = [softmax_out, relu_out, eltwise_out]
         self.enable_mkldnn = True
 
     def test_check_output(self):

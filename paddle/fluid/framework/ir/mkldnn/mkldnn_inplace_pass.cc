@@ -219,5 +219,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
 REGISTER_PASS(mkldnn_inplace_pass, paddle::framework::ir::MKLDNNInPlacePass);
 REGISTER_PASS_CAPABILITY(mkldnn_inplace_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "softmax", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("softmax", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("tanh", 0));
