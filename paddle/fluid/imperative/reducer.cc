@@ -27,8 +27,10 @@ namespace imperative {
 std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
 Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
-                 const std::vector<std::vector<size_t>> &group_indices)
-    : vars_(vars), group_indices_(group_indices) {
+                 const std::vector<std::vector<size_t>> &group_indices,
+                 std::shared_ptr<imperative::ParallelContext> parallel_ctx)
+    : vars_(vars), group_indices_(group_indices), parallel_ctx_(parallel_ctx) {
+  // parallel_ctx->Print_ParallelStrategy();
   VLOG(3) << "Start construct the Reducer ...";
   // initialize groups
   initialize_groups(group_indices);

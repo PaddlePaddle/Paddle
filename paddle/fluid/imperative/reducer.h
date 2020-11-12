@@ -52,7 +52,8 @@ class Reducer {
  public:
   explicit Reducer(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
-      const std::vector<std::vector<size_t>>& group_indices);
+      const std::vector<std::vector<size_t>>& group_indices,
+      std::shared_ptr<imperative::ParallelContext> parallel_ctx);
 
   virtual ~Reducer() {}
 
@@ -78,9 +79,11 @@ class Reducer {
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
-      const std::vector<std::vector<size_t>>& group_indices) {
+      const std::vector<std::vector<size_t>>& group_indices,
+      std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
     if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::imperative::Reducer(vars, group_indices));
+      s_instance_.reset(
+          new paddle::imperative::Reducer(vars, group_indices, parallel_ctx));
     }
     return s_instance_;
   }
@@ -104,6 +107,7 @@ class Reducer {
   platform::Place place_;
   std::unique_ptr<paddle::platform::CUDADeviceContext> dev_ctx_;
   std::once_flag once_flag_;
+  std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 };
 
 std::vector<std::vector<size_t>> assign_group_by_size(

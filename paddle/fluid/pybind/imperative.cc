@@ -1179,10 +1179,12 @@ void BindImperative(py::module *m_ptr) {
       py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)
-  py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
-                                                       "NCCLParallelContext");
-
-  nccl_ctx
+  py::class_<imperative::ParallelContext,
+             std::shared_ptr<imperative::ParallelContext>>(m,
+                                                           "ParallelContext");
+  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::NCCLParallelContext>>(
+      m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
@@ -1193,8 +1195,10 @@ void BindImperative(py::module *m_ptr) {
       m, "Reducer", R"DOC()DOC")
       .def(py::init(
           [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
-             const std::vector<std::vector<size_t>> &group_indices) {
-            return imperative::Reducer::SetInstance(vars, group_indices);
+             const std::vector<std::vector<size_t>> &group_indices,
+             std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
+            return imperative::Reducer::SetInstance(vars, group_indices,
+                                                    parallel_ctx);
           }))
       .def("prepare_for_backward", &imperative::Reducer::prepare_for_backward,
            py::call_guard<py::gil_scoped_release>());

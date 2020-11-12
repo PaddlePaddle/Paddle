@@ -440,8 +440,13 @@ class DataParallel(layers.Layer):
         ]
         self.group_indices = core.assign_group_by_size(trainable_parameters,
                                                        self.group_size_limits)
+
+        assert parallel_helper.__parallel_ctx__clz__ is not None, \
+            "ParallelContext must be initialized before."
+
         self._reducer = core.Reducer(trainable_parameters,
-                                     list(reversed(self.group_indices)))
+                                     list(reversed(self.group_indices)),
+                                     parallel_helper.__parallel_ctx__clz__)
 
     def forward(self, *inputs, **kwargs):
         # prepare the backward
