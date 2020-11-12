@@ -5510,7 +5510,8 @@ def transpose(x, perm, name=None):
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'transpose')
     check_type(perm, 'perm', (list, tuple), 'transpose')
-
+    if isinstance(perm, tuple):
+        perm = list(perm)
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(x), "
