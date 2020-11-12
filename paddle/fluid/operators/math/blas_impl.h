@@ -298,19 +298,16 @@ struct CBlas<platform::complex64> {
     //cblas_dcopy(args...);
   }
 
-  /*
   template <typename... ARGS>
   static void VADD(ARGS... args) {
     platform::dynload::vcAdd(args...);
   }
-  */
 
   template<typename... ARGS>
-  static void VADD(int n, const paddle::platform::complex64* a, const 
-    paddle::platform::complex64* b, paddle::platform::complex64* y) {
-      platform::dynload::vcAdd(n, reinterpret_cast<const MKL_Complex8*>(a), 
-        reinterpret_cast<const MKL_Complex8*>(b), reinterpret_cast<MKL_Complex8*>(y));
+  static void VSUB(ARGS... args) {
+    platform::dynload::vcSub(args...);
   }
+
 };
 
 #else

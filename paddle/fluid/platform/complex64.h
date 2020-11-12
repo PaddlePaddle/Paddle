@@ -512,3 +512,5 @@ HOSTDEVICE inline complex64 abs(const complex64& a) {
 
 }  // namespace numext
 }  // namespace Eigen
+
+#define MKL_Complex8 paddle::platform::complex64

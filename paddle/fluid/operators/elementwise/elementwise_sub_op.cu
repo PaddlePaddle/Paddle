@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -94,6 +95,7 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub,
+    ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, paddle::platform::complex64>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext,
                               paddle::platform::float16>,
@@ -102,6 +104,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad,
+    ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, paddle::platform::complex64>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
                                   paddle::platform::float16>,
@@ -111,6 +114,8 @@ REGISTER_OP_CUDA_KERNEL(
                                   int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad_grad,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex64>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         float>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
