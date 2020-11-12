@@ -35,8 +35,8 @@ from paddle.fluid.framework import _current_expected_place as _get_device
 
 __all__ = ['Layer']
 
-_first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-_all_cap_re = re.compile('([a-z])([A-Z])')
+_first_cap_re = re.compile(r'(.)([A-Z][a-z]+)')
+_all_cap_re = re.compile(r'([a-z])([A-Z])')
 
 
 def _convert_camel_to_snake(name):
