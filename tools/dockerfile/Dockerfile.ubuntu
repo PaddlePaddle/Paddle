@@ -217,7 +217,6 @@ RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-CMD source ~/.bashrc
 
 # ccache 3.7.9
 RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
