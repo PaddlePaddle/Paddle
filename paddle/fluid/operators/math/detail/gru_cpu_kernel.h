@@ -475,6 +475,79 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
 #endif
 }
 
+template <class OpGruGrad, typename T>
+inline void hl_naive_gru_backward(OpGruGrad op_gru_grad, T *gate_value,
+                                  T *gate_grad, T *prev_out_value,
+                                  T *prev_out_grad, T *reset_output_value,
+                                  T *reset_output_grad, T *output_grad,
+                                  int frame_size, ActivationType active_node,
+                                  ActivationType active_gate) {
+  T r_value_reset_gate;
+  T r_grad_reset_gate;
+  T r_value_update_gate;
+  T r_grad_update_gate;
+  T r_value_frame_state;
+  T r_grad_frame_state;
+  T r_value_prev_out = 0;
+  T r_grad_prev_out = 0;
+  T r_grad_output;
+  T r_value_reset_output;
+  T r_grad_reset_output = 0;
+  T *reset_gate_value = gate_value;
+  T *reset_gate_grad = gate_grad;
+  T *update_gate_value = gate_value + frame_size;
+  T *update_gate_grad = gate_grad + frame_size;
+  T *frame_state_value = gate_value + 2 * frame_size;
+  T *frame_state_grad = gate_grad + 2 * frame_size;
+
+  for (int i = 0; i < frame_size; ++i) {
+    r_value_reset_gate = reset_gate_value[i];
+    r_grad_reset_gate = reset_gate_grad[i];
+    r_value_update_gate = update_gate_value[i];
+    r_grad_update_gate = update_gate_grad[i];
+    r_value_frame_state = frame_state_value[i];
+    r_grad_frame_state = frame_state_grad[i];
+    if (prev_out_value) {
+      r_value_prev_out = prev_out_value[i];
+    }
+    if (prev_out_grad) {
+      r_grad_prev_out = prev_out_grad[i];
+    }
+    r_grad_output = output_grad[i];
+    r_value_reset_output = reset_output_value[i];
+    if (prev_out_value && prev_out_grad) {
+      r_grad_reset_output = reset_output_grad[i];
+    }
+
+    op_gru_grad(&r_value_reset_gate, &r_grad_reset_gate, &r_value_update_gate,
+                &r_grad_update_gate, &r_value_frame_state, &r_grad_frame_state,
+                &r_value_prev_out, &r_grad_prev_out, &r_grad_output,
+                &r_value_reset_output, &r_grad_reset_output, active_node,
+                active_gate);
+
+    reset_gate_grad[i] = r_grad_reset_gate;
+    update_gate_grad[i] = r_grad_update_gate;
+    frame_state_grad[i] = r_grad_frame_state;
+    if (prev_out_grad) {
+      prev_out_grad[i] = r_grad_prev_out;
+    }
+    if (prev_out_value && prev_out_grad) {
+      reset_output_grad[i] = r_grad_reset_output;
+    }
+  }
+}
+
+template <class OpGruGrad, typename T>
+inline void hl_avx_gru_backward(OpGruGrad op_gru_grad, T *gate_value,
+                                T *gate_grad, T *prev_out_value,
+                                T *prev_out_grad, T *reset_output_value,
+                                T *reset_output_grad, T *output_grad,
+                                int frame_size, ActivationType active_node,
+                                ActivationType active_gate) {
+#ifdef __AVX__
+#endif
+}
+
 template <class OpStateGrad, typename T>
 inline void backward_state_grad(OpStateGrad op_state_grad,
                                 GRUMetaValue<T> value, GRUMetaGrad<T> grad,
@@ -528,6 +601,39 @@ inline void backward_reset_grad(OpResetGrad op_reset_grad,
     }
 
     grad.gate_grad += frame_size * 3;
+    grad.reset_output_grad += frame_size;
+    if (grad.prev_out_grad) {
+      grad.prev_out_grad += frame_size;
+    }
+  }
+}
+
+template <class OpGruGrad, typename T>
+inline void cpu_gru_backward(OpGruGrad op_gru_grad, GRUMetaValue<T> value,
+                             GRUMetaGrad<T> grad, int frame_size,
+                             int batch_size, ActivationType active_node,
+                             ActivationType active_gate) {
+  for (int b = 0; b < batch_size; ++b) {
+    if (OpGruGrad::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
+      hl_avx_gru_backward(
+          op_gru_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
+          grad.prev_out_grad, value.reset_output_value, grad.reset_output_grad,
+          grad.output_grad, frame_size, active_node, active_gate);
+    } else {
+      hl_naive_gru_backward(
+          op_gru_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
+          grad.prev_out_grad, value.reset_output_value, grad.reset_output_grad,
+          grad.output_grad, frame_size, active_node, active_gate);
+    }
+
+    value.gate_value += frame_size * 3;
+    value.reset_output_value += frame_size;
+    if (value.prev_out_value) {
+      value.prev_out_value += frame_size;
+    }
+
+    grad.gate_grad += frame_size * 3;
+    grad.output_grad += frame_size;
     grad.reset_output_grad += frame_size;
     if (grad.prev_out_grad) {
       grad.prev_out_grad += frame_size;
