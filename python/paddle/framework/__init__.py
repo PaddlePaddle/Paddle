@@ -38,7 +38,7 @@ from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
 from ..fluid.core import VarBase  #DEFINE_ALIAS
 
 from paddle.fluid import core  #DEFINE_ALIAS
-from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
+from ..fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
 from .io import save
