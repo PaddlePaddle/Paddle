@@ -23,7 +23,6 @@ import paddle.fluid.core as core
 
 class SkipLayerNormFusePassTest(PassTest):
     def setUp(self):
-        paddle.enable_static()
         with fluid.program_guard(self.main_program, self.startup_program):
             x = fluid.data(
                 name="x", shape=[128, 768], dtype="float32", lod_level=0)
