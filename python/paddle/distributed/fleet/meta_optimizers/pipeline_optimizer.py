@@ -144,13 +144,8 @@ class PipelineOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(PipelineOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        num_microbatches = user_defined_strategy.pipeline_configs['micro_batch']
-        endpoints = role_maker._get_trainer_endpoints()
-        current_endpoint = endpoints[role_maker._worker_index()]
-        self.local_rank = self._get_local_rank(current_endpoint, endpoints)
-        self.wrapped_opt = PO(self.inner_opt,
-                              num_microbatches=num_microbatches,
-                              start_cpu_core_id=self.local_rank)
+        self.num_microbatches = user_defined_strategy.pipeline_configs[
+            'micro_batch']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -179,6 +174,10 @@ class PipelineOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
+        self.local_rank = self._get_local_rank(current_endpoint, endpoints)
+        self.wrapped_opt = PO(self.inner_opt,
+                              num_microbatches=self.num_microbatches,
+                              start_cpu_core_id=self.local_rank)
         node_num = _get_node_num(endpoints)
         gpus_per_node = len(endpoints) // node_num
         self.startup_program = startup_program
