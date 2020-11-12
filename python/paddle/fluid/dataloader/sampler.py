@@ -240,43 +240,43 @@ class RandomSampler(Sampler):
         return self.num_samples
 
 
-def _weighted_sample(probs, num_samples, replacement=True):
-    if isinstance(probs, core.LoDTensor):
-        probs = probs.numpy()
-    if isinstance(probs, (list, tuple)):
-        probs = np.array(probs)
-    assert isinstance(probs, np.ndarray), \
-            "probs should be paddle.Tensor, numpy.ndarray, list or tuple"
-    assert len(probs.shape) <= 2, \
-            "probs should be a 1-D or 2-D array"
-    probs = probs.reshape((-1, probs.shape[-1]))
-    assert np.all(probs >= 0.), \
-            "probs should be positive value"
-    assert not np.any(probs == np.inf), \
-            "probs shoule not be INF"
-    assert not np.any(probs == np.nan), \
-            "probs shoule not be NaN"
+def _weighted_sample(weights, num_samples, replacement=True):
+    if isinstance(weights, core.LoDTensor):
+        weights = weights.numpy()
+    if isinstance(weights, (list, tuple)):
+        weights = np.array(weights)
+    assert isinstance(weights, np.ndarray), \
+            "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
+    assert len(weights.shape) <= 2, \
+            "weights should be a 1-D or 2-D array"
+    weights = weights.reshape((-1, weights.shape[-1]))
+    assert np.all(weights >= 0.), \
+            "weights should be positive value"
+    assert not np.any(weights == np.inf), \
+            "weights shoule not be INF"
+    assert not np.any(weights == np.nan), \
+            "weights shoule not be NaN"
 
-    non_zeros = np.sum(probs > 0., axis=1)
+    non_zeros = np.sum(weights > 0., axis=1)
     assert np.all(non_zeros > 0), \
-            "probs should have positive values"
+            "weights should have positive values"
     if not replacement:
         assert np.all(non_zeros >= num_samples), \
-            "probs positive value number should not " \
+            "weights positive value number should not " \
             "less than num_samples when replacement=False"
 
-    probs = probs / probs.sum(axis=1)
+    weights = weights / weights.sum(axis=1)
     rets = []
-    for i in range(probs.shape[0]):
-        ret = np.random.choice(probs.shape[1], num_samples, replacement,
-                               probs[i])
+    for i in range(weights.shape[0]):
+        ret = np.random.choice(weights.shape[1], num_samples, replacement,
+                               weights[i])
         rets.append(ret)
     return np.array(rets)
 
 
 class WeightedRandomSampler(Sampler):
     """
-    Random sample with give weights (probabilities), sampe index will be in range
+    Random sample with given weights (probabilities), sampe index will be in range
     [0, len(weights) - 1], if :attr:`replacement` is True, index can be sampled
     multiple times.
 
