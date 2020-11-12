@@ -401,13 +401,15 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
       }
     }
   }
-  ++cur_cnt_;
 
   if (var_->Var().IsType<framework::LoDTensor>()) {
     var_->SetType(framework::proto::VarType::LOD_TENSOR);
   } else if (var_->Var().IsType<framework::SelectedRows>()) {
     var_->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
+
+  // Increase count & call post hooks
+  IncreaseCurCnt();
 }
 
 void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
@@ -519,6 +521,11 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
     var_->SetType(framework::proto::VarType::LOD_TENSOR);
   } else if (var_->Var().IsType<framework::SelectedRows>()) {
     var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+  }
+
+  // call post hooks
+  if (HasReduceHook()) {
+    CallReduceHook();
   }
 }
 

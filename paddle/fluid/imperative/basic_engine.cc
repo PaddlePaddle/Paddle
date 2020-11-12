@@ -114,6 +114,15 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       accumulator->IncreaseRefCnt();
 
+      if (var->HasGradReduceHook()) {
+        VLOG(3) << "Grad var has reduce hook.";
+        PADDLE_ENFORCE_NE(
+            var->HasGradNode(), true,
+            platform::errors::PermissionDenied(
+                "Only leaf Tensor's gradient can append reduce hook."));
+        accumulator->SetReduceHook(var->GradReduceHook());
+      }
+
       VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
               << var.get() << ")  with reference count "
               << accumulator->RefCnt();
@@ -204,6 +213,7 @@ void BasicEngine::Execute() {
                                          var->Name()));
 
           if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
+            no_need_run_accumulators_.emplace_back(iter->second.get());
             continue;
           }
 
@@ -220,12 +230,19 @@ void BasicEngine::Execute() {
                     cur_op.place());
       }
 
-      // Step 2: Sum Gradient
+      // Step 2: Sum Gradient & Call Accumulator Hooks
+      for (auto* accumulator : no_need_run_accumulators_) {
+        if (accumulator->HasReduceHook()) {
+          accumulator->CallReduceHook();
+        }
+      }
+
       for (auto& pair : need_accu_var_list_) {
         pair.first->Add(std::move(pair.second), cur_op.id());
       }
 
       need_accu_var_list_.clear();
+      no_need_run_accumulators_.clear();
 
       VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
       if (!retain_graph_) {
@@ -258,6 +275,7 @@ void BasicEngine::Clear() {
   node_deps_.clear();
   accumulators_.clear();
   need_accu_var_list_.clear();
+  no_need_run_accumulators_.clear();
 }
 
 }  // namespace imperative

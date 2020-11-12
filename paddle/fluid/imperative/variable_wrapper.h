@@ -16,11 +16,14 @@
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/hooks.h"
 
 namespace paddle {
 namespace imperative {
 
+class LambdaGradAccumulatorPostHook;
 class VarBase;
 class GradOpNode;
 
@@ -133,6 +136,26 @@ class VariableWrapper {
     }
   }
 
+  /* Hook related method */
+
+  bool HasGradReduceHook() const { return grad_reduce_hook_ != nullptr; }
+
+  void SetGradReduceHook(LambdaGradAccumulatorPostHook* hook) {
+    auto grad_var = GetGradVar();
+    PADDLE_ENFORCE_NOT_NULL(grad_var,
+                            platform::errors::PermissionDenied(
+                                "Cannot add grad hook on no grad var."));
+    grad_var->grad_reduce_hook_.reset(hook);
+  }
+
+  const std::shared_ptr<LambdaGradAccumulatorPostHook>& GradReduceHook() const {
+    return grad_reduce_hook_;
+  }
+
+  std::shared_ptr<LambdaGradAccumulatorPostHook>& GradReduceHook() {
+    return grad_reduce_hook_;
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
@@ -173,6 +196,8 @@ class VariableWrapper {
 
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;
+
+  std::shared_ptr<LambdaGradAccumulatorPostHook> grad_reduce_hook_;
 };
 
 }  // namespace imperative

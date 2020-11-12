@@ -17,6 +17,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
+#include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 
 namespace paddle {
@@ -35,9 +37,35 @@ class GradientAccumulator {
 
   inline size_t RefCnt() const { return ref_cnt_; }
 
+  /* Hook related methods */
+  inline bool HasReduceHook() const { return !reduce_hook_.expired(); }
+
+  inline void SetReduceHook(
+      const std::shared_ptr<LambdaGradAccumulatorPostHook>& hook) {
+    if (!hook) {
+      reduce_hook_.reset();
+      return;
+    }
+
+    auto shared_hook = reduce_hook_.lock();
+    if (shared_hook != hook) {
+      PADDLE_ENFORCE_EQ(
+          shared_hook, nullptr,
+          platform::errors::PermissionDenied("Cannot set post hooks twice"));
+      reduce_hook_ = hook;
+    }
+  }
+
+  inline void CallReduceHook() {
+    auto shared_hook = reduce_hook_.lock();
+    (*shared_hook)(var_);
+  }
+
  protected:
   VariableWrapper* var_;
   size_t ref_cnt_{0};
+
+  std::weak_ptr<LambdaGradAccumulatorPostHook> reduce_hook_;
 };
 
 class EagerGradientAccumulator : public GradientAccumulator {
@@ -46,6 +74,18 @@ class EagerGradientAccumulator : public GradientAccumulator {
 
   void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id,
            bool unchange_input) override;
+
+ private:
+  inline bool AccumulateCompleted() const { return cur_cnt_ == ref_cnt_; }
+
+  void IncreaseCurCnt() {
+    ++cur_cnt_;
+    VLOG(0) << "IncreaseCurCnt: cur_cnt " << cur_cnt_ << "ref_cnt " << ref_cnt_;
+    // After all tmp gradient being accumulated to grad var, run hooks
+    if (AccumulateCompleted() && HasReduceHook()) {
+      CallReduceHook();
+    }
+  }
 
  private:
   size_t cur_cnt_{0};
