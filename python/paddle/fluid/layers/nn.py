@@ -5492,14 +5492,12 @@ def transpose(x, perm, name=None):
 
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra
-            # batch size in shape
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 4],
-                            dtype='float32', append_batch_size=False)
-            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
-            print x_transposed.shape
-            #(3L, 2L, 4L)
+            import paddle
+
+            x = paddle.randn([2, 3, 4])
+            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
+            print(x_transposed.shape)
+            # [3L, 2L, 4L]
 
     """
     if in_dygraph_mode():
