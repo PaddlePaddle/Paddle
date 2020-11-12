@@ -27,7 +27,7 @@ namespace paddle {
 namespace imperative {
 
 struct Group {
-  framework::Tensor contents;
+  framework::Variable contents;
 
   std::vector<size_t> offset_;
   std::vector<size_t> length_;
@@ -59,7 +59,7 @@ class Reducer {
 
   void initialize_groups(const std::vector<std::vector<size_t>>& group_indices);
 
-  void set_grad_space(const Group& group);
+  void set_grad_space(Group* p_group);
 
   void set_gradient_space(VariableWrapper* var_warpper);
 
@@ -73,8 +73,6 @@ class Reducer {
   void mark_group_ready(size_t group_index);
 
   void finalize_backward();
-
-  void ReleaseDevCtx();
 
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
@@ -105,7 +103,6 @@ class Reducer {
   size_t next_group_ = 0;
   std::unordered_map<std::string, VariableIndex> varname2index_;
   platform::Place place_;
-  std::unique_ptr<paddle::platform::CUDADeviceContext> dev_ctx_;
   std::once_flag once_flag_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 };

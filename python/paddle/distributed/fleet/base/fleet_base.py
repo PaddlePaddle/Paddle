@@ -587,7 +587,7 @@ class Fleet(object):
         return self
 
     @dygraph_only
-    def distributed_model(self, model, group_size_limits=[25 * 1024 * 1024]):
+    def distributed_model(self, model, group_size_limits=25):
         """
         Return distributed data parallel model (Only work in dygraph mode)
 

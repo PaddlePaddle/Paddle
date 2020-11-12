@@ -29,15 +29,19 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
+
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/fluid/string/string_helper.h"
+
 // #include "paddle/fluid/framework/var_type_traits.h"
 
 namespace paddle {
@@ -65,7 +69,8 @@ class ParallelContext {
                          framework::Variable* dst, int ring_id = 0,
                          bool use_calc_stream = false) = 0;
   virtual void SyncCalcStream(const platform::Place& place) = 0;
-  virtual void SyncCommStream(const platform::Place& place, int ring_id) = 0;
+  virtual void SyncCommStream(const platform::Place& place,
+                              int ring_id = 0) = 0;
 
   // virtual void Print_ParallelStrategy() = 0;
 
@@ -94,14 +99,14 @@ class NCCLParallelContext : public ParallelContext {
   void Init() override;
 
   void AllReduce(const framework::Tensor& src, framework::Tensor* dst,
-                 const ParallelStrategy& strategy, cudaStream_t stream);
+                 paddle::platform::NCCLComm* comm, cudaStream_t stream);
   void AllReduce(const framework::SelectedRows& src,
                  framework::SelectedRows* dst, const ParallelStrategy& strategy,
-                 cudaStream_t stream);
-  const platform::Place& GetVarPlace(const framework::Variable& src);
+                 cudaStream_t stream, paddle::platform::NCCLComm* comm);
   void AllReduce(const framework::Variable& src, framework::Variable* dst,
                  int ring_id, bool use_calc_stream) override;
 
+  const platform::Place& GetVarPlace(const framework::Variable& src);
   void SyncCalcStream(const platform::Place& place) override;
 
   void SyncCommStream(const platform::Place& place, int ring_id) override;

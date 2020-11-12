@@ -409,10 +409,7 @@ class DataParallel(layers.Layer):
                 # train()
     """
 
-    def __init__(self,
-                 layers,
-                 strategy=None,
-                 group_size_limits=[25 * 1024 * 1024]):
+    def __init__(self, layers, strategy=None, group_size_limits=25):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -427,7 +424,8 @@ class DataParallel(layers.Layer):
         else:
             self._strategy = _build_default_parallel_strategy()
 
-        self.group_size_limits = group_size_limits
+        # convert group_size_limits MB
+        self.group_size_limits = [group_size_limits * 1024 * 1024]
         self.init_reducer()
 
     def init_reducer(self):

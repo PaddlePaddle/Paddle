@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#include "paddle/fluid/platform/collective_helper.h"
-
 namespace paddle {
 namespace imperative {
 #if defined(PADDLE_WITH_NCCL)
@@ -182,33 +180,28 @@ void NCCLParallelContext::Init() {
 
 void NCCLParallelContext::AllReduce(const framework::Tensor &src,
                                     framework::Tensor *dst,
-                                    const ParallelStrategy &strategy,
+                                    paddle::platform::NCCLComm *comm,
                                     cudaStream_t stream) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
       platform::is_gpu_place(place), true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
-
   const void *src_ptr = src.data<void>();
-
   dst->Resize(src.dims());
   auto *dst_ptr = dst->mutable_data(src.place(), src.type());
-
   auto nccl_dtype = platform::ToNCCLDataType(src.type());
-  auto comm = static_cast<platform::CUDADeviceContext *>(
-                  platform::DeviceContextPool::Instance().Get(place))
-                  ->nccl_comm();
-
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-      src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm, stream));
+      src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm->comm(),
+      stream));
 }
 
 #if NCCL_VERSION_CODE >= 2212
 void NCCLParallelContext::AllReduce(const framework::SelectedRows &src,
                                     framework::SelectedRows *dst,
                                     const ParallelStrategy &strategy,
-                                    cudaStream_t stream) {
+                                    cudaStream_t stream,
+                                    paddle::platform::NCCLComm *comm) {
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
   const auto &place = src_tensor.place();
@@ -219,9 +212,6 @@ void NCCLParallelContext::AllReduce(const framework::SelectedRows &src,
 
   auto dtype = src_tensor.type();
   auto nccl_dtype = platform::ToNCCLDataType(dtype);
-  auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto comm = dev_ctx->nccl_comm();
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
@@ -231,11 +221,7 @@ void NCCLParallelContext::AllReduce(const framework::SelectedRows &src,
   auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
       gpu_rows_num_ptr + strategy.local_rank_, gpu_rows_num_ptr, 1, ncclInt64,
-      comm, stream));
-
-  if (stream != dev_ctx->stream()) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-  }
+      comm->comm(), stream));
 
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
   auto rows_num =
@@ -267,13 +253,13 @@ void NCCLParallelContext::AllReduce(const framework::SelectedRows &src,
       // 2. Broadcast the rows of SelectedRows
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBroadcast(
           src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
-          ncclInt64, i, comm, stream));
+          ncclInt64, i, comm->comm(), stream));
       // 3. Broadcast the tensor data of SelectedRows
       auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
                                row_offset * feature_size * sizeof_dtype;
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBroadcast(
           src_tensor_ptr, dst_tensor_ptr_i, cpu_rows_num_ptr[i] * feature_size,
-          nccl_dtype, i, comm, stream));
+          nccl_dtype, i, comm->comm(), stream));
       row_offset += cpu_rows_num_ptr[i];
     }
   }
@@ -324,7 +310,7 @@ void NCCLParallelContext::AllReduce(const framework::Variable &src,
       dst->Clear();
     }
     AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), strategy_, stream);
+              dst->GetMutable<framework::LoDTensor>(), comm, stream);
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     if (&src != dst) {
@@ -332,13 +318,14 @@ void NCCLParallelContext::AllReduce(const framework::Variable &src,
         dst->Clear();
       }
       AllReduce(src.Get<framework::SelectedRows>(),
-                dst->GetMutable<framework::SelectedRows>(), strategy_, stream);
+                dst->GetMutable<framework::SelectedRows>(), strategy_, stream,
+                comm);
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
       AllReduce(src.Get<framework::SelectedRows>(),
                 tmp_dst.GetMutable<framework::SelectedRows>(), strategy_,
-                stream);
+                stream, comm);
       *dst = std::move(tmp_dst);
     }
 #endif

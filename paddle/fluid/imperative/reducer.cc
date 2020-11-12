@@ -49,17 +49,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       }
     }
   }
-
-  // initialize DeviceContext
-  int device_id = BOOST_GET_CONST(platform::CUDAPlace, place_).GetDeviceId();
-  std::unique_ptr<paddle::platform::CUDADeviceContext> dev_ctx(
-      new paddle::platform::CUDADeviceContext(platform::CUDAPlace(device_id)));
-  dev_ctx_ = std::move(dev_ctx);
-
-  // release DeviceContext
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { Reducer::GetInstance()->ReleaseDevCtx(); });
-  });
 }
 
 void Reducer::initialize_groups(
@@ -114,7 +103,8 @@ void Reducer::initialize_groups(
     }
 
     // Alloc the continuous space
-    group.contents.Resize(framework::make_ddim({all_length}))
+    auto tensor = group.contents.GetMutable<framework::LoDTensor>();
+    tensor->Resize(framework::make_ddim({all_length}))
         .mutable_data(place_, group.dtype);
 
     // Debug Message For Reducer
@@ -129,18 +119,23 @@ void Reducer::initialize_groups(
   }
 }
 
-void Reducer::set_grad_space(const Group &group) {
-  const std::vector<size_t> &global_indices = group.variable_indices_;
-  const auto &offset = group.offset_;
-  const auto &length = group.length_;
+void Reducer::set_grad_space(Group *p_group) {
+  const std::vector<size_t> &global_indices = p_group->variable_indices_;
+  const auto &offset = p_group->offset_;
+  const auto &length = p_group->length_;
   for (size_t index = 0; index < global_indices.size(); ++index) {
     const auto &var = vars_[global_indices[index]];  // varbase of var
     auto &grad_var = var->GradVarBase();             // varbase of var grad
     auto grad_tensor =
         grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto &contents = p_group->contents;
+
+    PADDLE_ENFORCE_EQ(
+        contents.IsInitialized(), true,
+        platform::errors::PreconditionNotMet("Bucket must be initialized."));
     auto dim = grad_tensor->dims();
     grad_tensor
-        ->ShareDataWith(group.contents.Slice(
+        ->ShareDataWith(contents.GetMutable<framework::LoDTensor>()->Slice(
             static_cast<int64_t>(offset[index]),
             static_cast<int64_t>(offset[index] + length[index])))
         .Resize(dim);
@@ -186,15 +181,16 @@ void Reducer::mark_variable_ready(const VariableIndex &var_index,
   auto &group = groups_[group_index];
   auto offset = group.offset_[variable_index];
   auto length = group.length_[variable_index];
-  auto &contents = group.contents;
+  // auto &contents = group.contents;
+  auto contents_tensor = group.contents.GetMutable<framework::LoDTensor>();
 
   auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
   const auto &var_dtype = var_warpper->DataType();
   void *src_data = tensor->mutable_data(var_warpper->Place(), var_dtype);
 
-  void *dst_data = contents
-                       .Slice(static_cast<int64_t>(offset),
-                              static_cast<int64_t>(offset + length))
+  void *dst_data = contents_tensor
+                       ->Slice(static_cast<int64_t>(offset),
+                               static_cast<int64_t>(offset + length))
                        .mutable_data(place_, group.dtype);
   // use cal_stream
   auto *cal_stream = static_cast<platform::CUDADeviceContext *>(
@@ -209,23 +205,20 @@ void Reducer::mark_group_ready(size_t group_index) {
   if (group_index > next_group_) return;
   for (; next_group_ < groups_.size() && groups_[next_group_].pending == 0;
        ++next_group_) {
-    SyncCalStream(place_);
-    AllReduce(groups_[next_group_].contents, &(groups_[next_group_].contents),
-              dev_ctx_);
+    parallel_ctx_->SyncCalcStream(place_);
+    parallel_ctx_->AllReduce(groups_[next_group_].contents,
+                             &(groups_[next_group_].contents));
   }
 }
 
 void Reducer::finalize_backward() {
-  SyncCommStream(dev_ctx_);
-
+  parallel_ctx_->SyncCommStream(place_);
   VLOG(3) << "set gradient space by group";
   for (auto &group : groups_) {
-    set_grad_space(group);
+    set_grad_space(&group);
   }
   VLOG(3) << "finalize_backward is finished...";
 }
-
-void Reducer::ReleaseDevCtx() { dev_ctx_.reset(); }
 
 std::vector<std::vector<size_t>> assign_group_by_size(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
