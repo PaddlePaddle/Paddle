@@ -560,7 +560,15 @@ EOF
         set +ex
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
-        ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
+        if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
+            nightly_label=""
+        else
+            nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+            echo "========================================="
+            echo "Unittests with nightly labels  are only run at night"
+            echo "========================================="
+        fi
+        ctest -E "($disable_ut_quickly)" -LE "($nightly_label)" --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -741,14 +749,14 @@ function check_approvals_of_unittest() {
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
             set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
