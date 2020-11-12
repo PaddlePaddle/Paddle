@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import paddle
 from paddle.fluid import core
 from functools import reduce
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 
 import re
+import os
 
 
 def check_broadcast(block):
@@ -125,12 +126,28 @@ def check_allreduce_sum(block):
                     var_status[output_name] = 0
     return
 
+def get_valid_op_role(block, insert_idx):
+    """
+    return OpRole.Forward or OpRole.Backward
+    """
+    if insert_idx >= len(block.ops):
+        return OpRole.Backward
+
+    op_role = block.ops[insert_idx].attr('op_role')
+    if op_role == int(OpRole.Forward):
+        return OpRole.Forward
+    if op_role in [int(OpRole.Backward), int(OpRole.Optimize)]:
+        return OpRole.Backward
+    if op_role == int(OpRole.Loss):
+        return OpRole.Forward
+    return get_valid_op_role(block, insert_idx + 1)
+
 
 def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     """
     _insert_sync_calc_op
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     block._insert_op_without_sync(
         insert_idx,
         type='c_sync_calc_stream',
@@ -144,7 +161,7 @@ def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars):
     """
     _insert_sync_comm_ops
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for i in range(nrings):
         block._insert_op_without_sync(
             insert_idx,
@@ -160,7 +177,7 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
     """
     _add_fill_constant_ops
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name in fill_constant_vars:
         broadcast_var = block.var(broadcast_name)
         block._insert_op_without_sync(
@@ -180,7 +197,7 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     """
     _add_cast_ops
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for fp16_name, fp32_name in cast_ops.items():
         block._insert_op_without_sync(
             insert_idx,
@@ -217,7 +234,7 @@ def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
     _add_broadcast_ops
     """
     ring_id = -1
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name, root_device in broadcast2root:
         ring_id = (ring_id + 1) % nrings
         block._insert_op_without_sync(
@@ -272,3 +289,4 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
                 outputs={'Out': loss_grad_var},
                 attrs={'scale': scale,
                        OP_ROLE_KEY: OpRole.Backward})
+
