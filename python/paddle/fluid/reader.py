@@ -165,7 +165,7 @@ class DataLoader(object):
 
     **Disable automatic batching**
 
-    In certain cases such as some NLP task, instead of automatic batching,
+    In certain cases such as some NLP tasks, instead of automatic batching,
     handling batching manually in dataset is needed by users. For these
     cases, automatic batching is disabled if both :attr:`batch_size` and
     :attr:`batch_sampler` is set as None, each data got from :attr:`dataset`
