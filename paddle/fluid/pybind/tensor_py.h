@@ -79,8 +79,7 @@ struct npy_format_descriptor<paddle::platform::bfloat16> {
   static constexpr auto name = _("bfloat16");
 };
 
-
-//todo 
+// todo
 // we register paddle::platform::complex64 as numpy.complex64.
 template <>
 struct npy_format_descriptor<paddle::platform::complex64> {
@@ -88,15 +87,16 @@ struct npy_format_descriptor<paddle::platform::complex64> {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX64);
     return reinterpret_borrow<py::dtype>(ptr);
   }
-  //todo  which char to return?
+  // todo  which char to return?
   static std::string format() {
     // Note: "F" represents complex64.
-    // Details at: 
-    //https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
-    //for k, v in np.sctypeDict.iteritems(): print '{0:14s} : {1:40s}'.format(str(k), v)
+    // Details at:
+    // https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
+    // for k, v in np.sctypeDict.iteritems(): print '{0:14s} :
+    // {1:40s}'.format(str(k), v)
     return "F";
   }
-  static PYBIND11_DESCR name() { return _("complext64"); }
+  static constexpr auto name = _("complext64");
 };
 
 }  // namespace detail
@@ -310,7 +310,7 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::complex64>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::complex64, P>(self, array, place,
-                                                        zero_copy);
+                                                          zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // since there is still no support for bfloat16 in NumPy,
     // uint16 is used for casting bfloat16

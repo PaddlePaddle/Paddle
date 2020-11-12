@@ -22,6 +22,10 @@
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include <thrust/complex.h>
+#endif  // PADDLE_WITH_CUDA
+
 #include <cstring>
 
 #include "paddle/fluid/platform/hostdevice.h"
@@ -41,13 +45,28 @@ struct PADDLE_ALIGN(8) complex64 {
   float imag;
 
   complex64() = default;
-  complex64(float real, float imag): real(real), imag(imag) {}
   complex64(const complex64& o) = default;
   complex64& operator=(const complex64& o) = default;
   complex64(complex64&& o) = default;
   complex64& operator=(complex64&& o) = default;
   ~complex64() = default;
 
+  HOSTDEVICE complex64(float real, float imag) : real(real), imag(imag) {}
+#if defined(__CUDA_ARCH__)
+
+  HOSTDEVICE inline explicit complex64(const thrust::complex<float>& c) {
+    real = c.real();
+    imag = c.imag();
+  }
+
+  HOSTDEVICE inline explicit operator thrust::complex<float>() const {
+    return static_cast<thrust::complex<float>>(
+        thrust::complex<float>(real, imag));
+  }
+
+#endif
+
+  // todo
   HOSTDEVICE inline explicit complex64(float val) {
     std::memcpy(&real, &val, 4);
   }
@@ -112,12 +131,10 @@ struct PADDLE_ALIGN(8) complex64 {
     return *this;
   }
 
-  HOSTDEVICE inline explicit operator float() const {
-    return this->real;
-  }
+  HOSTDEVICE inline explicit operator float() const { return this->real; }
 
-  HOSTDEVICE inline explicit operator bool() const { 
-    return bool(this->real) || bool(this->imag); 
+  HOSTDEVICE inline explicit operator bool() const {
+    return bool(this->real) || bool(this->imag);
   }
 
   HOSTDEVICE inline explicit operator int8_t() const {
@@ -158,52 +175,100 @@ struct PADDLE_ALIGN(8) complex64 {
 };
 
 HOSTDEVICE inline complex64 operator+(const complex64& a, const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::complex<float>(a) + thrust::complex<float>(b));
+#else
   return complex64(a.real + b.real, a.imag + b.imag);
+#endif
 }
 
 HOSTDEVICE inline complex64 operator-(const complex64& a, const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::complex<float>(a) - thrust::complex<float>(b));
+#else
   return complex64(a.real - b.real, a.imag - b.imag);
+#endif
 }
 
 HOSTDEVICE inline complex64 operator*(const complex64& a, const complex64& b) {
-  return complex64(a.real * b.real - a.imag * b.imag, a.imag * b.real + b.imag * a.real);
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::complex<float>(a) * thrust::complex<float>(b));
+#else
+  return complex64(a.real * b.real - a.imag * b.imag,
+                   a.imag * b.real + b.imag * a.real);
+#endif
 }
 
 HOSTDEVICE inline complex64 operator/(const complex64& a, const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  return complex64(thrust::complex<float>(a) / thrust::complex<float>(b));
+#else
   float denominator = b.real * b.real + b.imag * b.imag;
-  return complex64((a.real * b.real + a.imag * b.imag)/ denominator, (a.imag * b.real - a.real * b.imag)/ denominator);
+  return complex64((a.real * b.real + a.imag * b.imag) / denominator,
+                   (a.imag * b.real - a.real * b.imag) / denominator);
+#endif
 }
 
 HOSTDEVICE inline complex64 operator-(const complex64& a) {
+#if defined(__CUDA_ARCH__)
+  return complex64(-thrust::complex<float>(a));
+#else
   complex64 res;
-  res.real = 0 - a.real;
+  res.real = -a.real;
+  res.imag = -a.imag;
   return res;
+#endif
 }
 
 HOSTDEVICE inline complex64& operator+=(complex64& a,  // NOLINT
-                                       const complex64& b) {
-  a = complex64(a.real + b.real, a.imag + b.imag);
+                                        const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  a = complex64(thrust::complex<float>(a) += thrust::complex<float>(b));
   return a;
+#else
+  a.real += b.real;
+  a.imag += b.imag;
+  return a;
+#endif
 }
 
 HOSTDEVICE inline complex64& operator-=(complex64& a,  // NOLINT
-                                       const complex64& b) {
-  a = complex64(a.real - b.real, a.imag - b.imag);
+                                        const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  a = complex64(thrust::complex<float>(a) -= thrust::complex<float>(b));
   return a;
+#else
+  a.real -= b.real;
+  a.imag -= b.imag;
+  return a;
+#endif
 }
 
 HOSTDEVICE inline complex64& operator*=(complex64& a,  // NOLINT
-                                       const complex64& b) {
-  a = complex64(a.real * b.real - a.imag * b.imag, a.imag * b.real + b.imag * a.real);
+                                        const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  a = complex64(thrust::complex<float>(a) *= thrust::complex<float>(b));
   return a;
+#else
+  a.real = a.real * b.real - a.imag * b.imag;
+  a.imag = a.imag * b.real + b.imag * a.real;
+  return a;
+#endif
 }
 
 HOSTDEVICE inline complex64& operator/=(complex64& a,  // NOLINT
-                                       const complex64& b) {
-  float denominator = b.real * b.real + b.imag * b.imag;
-  a = complex64((a.real * b.real + a.imag * b.imag)/ denominator, (a.imag * b.real - a.real * b.imag)/ denominator);
+                                        const complex64& b) {
+#if defined(__CUDA_ARCH__)
+  a = complex64(thrust::complex<float>(a) /= thrust::complex<float>(b));
   return a;
+#else
+  float denominator = b.real * b.real + b.imag * b.imag;
+  a.real = (a.real * b.real + a.imag * b.imag) / denominator;
+  a.imag = (a.imag * b.real - a.real * b.imag) / denominator;
+  return a;
+#endif
 }
+
 HOSTDEVICE inline complex64 raw_uint16_to_complex64(uint16_t a) {
   complex64 res;
   res.real = a;
@@ -287,10 +352,10 @@ inline bool isinf(const paddle::platform::complex64& a) {
   return paddle::platform::isinf(a);
 }
 
+/*
 template <>
 struct numeric_limits<paddle::platform::complex64> {
-  static const bool is_specialized = true;
-  //static const bool is_signed = true;
+  static const bool is_specialized = false;
   static const bool is_signed = false;
   static const bool is_integer = false;
   static const bool is_exact = false;
@@ -342,9 +407,9 @@ struct numeric_limits<paddle::platform::complex64> {
     return paddle::platform::raw_uint16_to_complex64(0x0001);
   }
 };
+*/
 
 }  // namespace std
-
 namespace Eigen {
 
 using complex64 = paddle::platform::complex64;
@@ -436,7 +501,8 @@ HOSTDEVICE inline complex64 round(const complex64& a) {
 
 template <>
 HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
-  return complex64(::powf(static_cast<float>(a.real), static_cast<float>(b.real)));
+  return complex64(
+      ::powf(static_cast<float>(a.real), static_cast<float>(b.real)));
 }
 
 template <>
