@@ -21,18 +21,14 @@ import unittest
 import logging
 import paddle
 import paddle.nn as nn
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.framework import IrGraph
+from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.nn import Conv2D
-from paddle.fluid.dygraph.nn import Pool2D
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Sequential
+from paddle.fluid.dygraph import Conv2D
+from paddle.nn import Pool2D
+from paddle.fluid.dygraph import Linear
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 os.environ["CPU_NUM"] = "1"
 
@@ -56,7 +52,7 @@ class PACT(nn.Layer):
         return x
 
 
-class ImperativeLenet(fluid.dygraph.Layer):
+class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super(ImperativeLenet, self).__init__()
         self.features = Sequential(
@@ -89,7 +85,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = self.features(inputs)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1)
         x = self.fc(x)
         return x
 
@@ -103,8 +99,8 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         imperative_qat = self.imperative_qat
         seed = 1
         np.random.seed(seed)
-        fluid.default_main_program().random_seed = seed
-        fluid.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
+        paddle.static.default_startup_program().random_seed = seed
         lenet = ImperativeLenet()
         fixed_state = {}
         param_init_map = {}
@@ -122,13 +118,11 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         lenet.set_dict(fixed_state)
 
         imperative_qat.quantize(lenet)
-        adam = AdamOptimizer(
-            learning_rate=0.001, parameter_list=lenet.parameters())
+        adam = Adam(learning_rate=0.001, parameters=lenet.parameters())
         dynamic_loss_rec = []
 
         def train(model):
-            adam = AdamOptimizer(
-                learning_rate=0.001, parameter_list=model.parameters())
+            adam = Adam(learning_rate=0.001, parameters=model.parameters())
             epoch_num = 1
             for epoch in range(epoch_num):
                 model.train()
@@ -138,12 +132,12 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                     y_data = np.array(
                         [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-                    img = fluid.dygraph.to_variable(x_data)
-                    label = fluid.dygraph.to_variable(y_data)
+                    img = paddle.to_tensor(x_data)
+                    label = paddle.to_tensor(y_data)
                     out = model(img)
-                    acc = fluid.layers.accuracy(out, label)
-                    loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.mean(loss)
+                    acc = paddle.metric.accuracy(out, label, k=1)
+                    loss = nn.functional.loss.cross_entropy(out, label)
+                    avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     adam.minimize(avg_loss)
                     model.clear_gradients()
@@ -162,12 +156,12 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                 y_data = np.array(
                     [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-                img = fluid.dygraph.to_variable(x_data)
-                label = fluid.dygraph.to_variable(y_data)
+                img = paddle.to_tensor(x_data)
+                label = paddle.to_tensor(y_data)
 
                 out = model(img)
-                acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+                acc_top1 = paddle.metric.accuracy(input=out, label=label, k=1)
+                acc_top5 = paddle.metric.accuracy(input=out, label=label, k=5)
                 avg_acc[0].append(acc_top1.numpy())
                 avg_acc[1].append(acc_top5.numpy())
                 if batch_id % 100 == 0:
