@@ -113,7 +113,7 @@ class GradAccumulatorPostHook {
  */
 class LambdaGradAccumulatorPostHook : public GradAccumulatorPostHook {
  public:
-  explict LambdaGradAccumulatorPostHook(
+  explicit LambdaGradAccumulatorPostHook(
       std::function<void(VariableWrapper*)> fn)
       : fn_(std::move(fn)) {}
 
