@@ -18,7 +18,6 @@ import math
 
 from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import random
@@ -115,58 +114,46 @@ class TestSimpleRNNOp(OpTest):
             'Reserve': np.ndarray((400)).astype("uint8"),
             'DropoutState': state_out
         }
-        self.set_place()
 
     def set_attrs(self):
         pass
 
-    def set_place(self):
-        self.place = core.CUDAPlace(0)
-
     def test_output_with_place(self):
-        self.check_output_with_place(
-            self.place, no_check_set=['Reserve', 'DropoutState'])
+        self.check_output(no_check_set=['Reserve', 'DropoutState'])
 
     def test_grad_with_place(self):
         if not self.is_test:
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h']
             grad_check_list.extend(var_name_list)
-            self.check_grad_with_place(self.place,
-                                       set(grad_check_list),
-                                       ['Out', 'last_hidden'])
+            self.check_grad(set(grad_check_list), ['Out', 'last_hidden'])
 
 
-class TestSimpleRNNOpCpu(TestSimpleRNNOp):
-    def set_place(self):
-        self.place = core.CPUPlace()
-
-
-class TestSimpleRNNOpCpu1(TestSimpleRNNOpCpu):
+class TestSimpleRNNOp1(TestSimpleRNNOp):
     def set_attrs(self):
         self.sequence_length = None
 
 
-class TestSimpleRNNOpCpu2(TestSimpleRNNOpCpu):
+class TestSimpleRNNOp2(TestSimpleRNNOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
-class TestSimpleRNNOpCpu3(TestSimpleRNNOpCpu):
+class TestSimpleRNNOp3(TestSimpleRNNOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_test = True
 
 
-class TestSimpleRNNOpCpu4(TestSimpleRNNOpCpu):
+class TestSimpleRNNOp4(TestSimpleRNNOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
         self.is_test = True
 
 
-class TestSimpleRNNOpCpu5(TestSimpleRNNOp):
+class TestSimpleRNNOp5(TestSimpleRNNOp):
     def set_attrs(self):
         self.mode = "RNN_RELU"
 
