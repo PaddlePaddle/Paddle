@@ -15,6 +15,7 @@
 from __future__ import division
 from __future__ import print_function
 
+import os
 import sys
 
 import paddle.fluid as fluid
@@ -92,7 +93,7 @@ cfg.ignore_thresh = .7
 # SOLVER options
 #
 # batch size
-cfg.batch_size = 2 if sys.platform == 'darwin' else 4 
+cfg.batch_size = 2 if sys.platform == 'darwin' or os.name == 'nt' else 4 
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
