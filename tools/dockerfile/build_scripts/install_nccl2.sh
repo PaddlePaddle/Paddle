@@ -1,11 +1,55 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 VERSION=$(nvcc --version | grep release | grep -oEi "release ([0-9]+)\.([0-9])"| sed "s/release //")
 if [ "$VERSION" == "10.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
 elif [ "$VERSION" == "10.2" ]; then
-  DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
+  if [ -f "ls /etc/redhat-release " ];then
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm 
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/include/nccl.h
+    exit 0
+  fi
+  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda11.0_1-1_amd64.deb"
+elif [ "$VERSION" == "10.2" ]; then
+  if [ -f "ls /etc/redhat-release " ];then
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/include/nccl.h
+    exit 0
+  fi
+  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"
 elif [ "$VERSION" == "10.1" ]; then
-  DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
+  if [ -f "ls /etc/redhat-release " ];then
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm 
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
+    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/include/nccl.h
+    exit 0
+  fi 
+  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb"
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else
