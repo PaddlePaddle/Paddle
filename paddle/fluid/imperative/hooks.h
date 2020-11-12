@@ -58,14 +58,10 @@ class OpBasePreHook {
 
 /**
  * @brief GradAccumulatorPostHook is the Hook that operates on the current
- * gradient
- *        after the GradientAccumulator has accumulated the gradient. Leaf
- * GradVarBase
- *        has no next OpBase, if we want to register hook for it, we also need
- * to wait
- *        until the leaf GradVarBase accumulation is completed, so we can add
- * post hook
- *        to GradientAccumulator.
+ *        gradientafter the GradientAccumulator has accumulated the gradient.
+ *        Leaf GradVarBase has no next OpBase, if we want to register hook
+ *        for it, we also need to wait until the leaf GradVarBase accumulation
+ *        is completed, so we can add post hook to GradientAccumulator.
  *
  * @note  GradAccumulatorPostHook will change the grad VarBase value.
  *
@@ -80,12 +76,12 @@ class GradAccumulatorPostHook {
 /** [ Hook for cpp functions ]
  *
  * Here we design three C++ hooks；
- * 1. CppOpBasePreHook (Implement later): used for developer-defined C++
- * interior VarBase hooks
- * 2. CppGradAccumulatorPostHook (Implement later): used for developer-defined
- * C++ leaf VarBase hooks
- * 3. LambdaGradAccumulatorPostHook: used for VarBase reduce in parallel
- * training
+ * 1. CppOpBasePreHook (Implement later):
+ *    - used for developer-defined C++ interior VarBase hooks
+ * 2. CppGradAccumulatorPostHook (Implement later):
+ *    - used for developer-defined C++ leaf VarBase hooks
+ * 3. LambdaGradAccumulatorPostHook:
+ *    - used for VarBase reduce in parallel training
  *
  * @note  [Why need two types of GradAccumulatorPostHook? ]
  *
@@ -103,9 +99,8 @@ class GradAccumulatorPostHook {
  *              [ Gradient reduce / allreduce]
  *
  *        Because we currently intend to accumulate these two gradient
- * accumulation
- *        in one GradientAccumulator, We must distinguish between two types of
- * hooks.
+ *        accumulation in one GradientAccumulator, We must distinguish between
+ *        two types of hooks.
  *
  *        And the LambdaGradAccumulatorPostHook does not allow users to register
  *        directly, and is currently only used to support the reduce strategy of
