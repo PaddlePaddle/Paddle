@@ -1531,7 +1531,47 @@ struct GradCell {
                           void* meta_grad, const Tensor& mask_tensor,
                           bool has_sequence_length) const {}
 
-  virtual void update_pre_hidden_grad() const {}
+  virtual void update_pre_hidden_grad(
+      const framework::ExecutionContext& context, Tensor* grad_gate,
+      const Tensor* weight_hh, Tensor* grad_pre_hidden,
+      Tensor* grad_pre_hidden_bak, Tensor* grad_pre_state,
+      Tensor* grad_pre_state_bak, const Tensor& mask_tensor,
+      bool has_sequence_length) const {
+    auto& device_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, false);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
+                static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
+    if (has_sequence_length) {
+      auto& place =
+          *context.template device_context<platform::CPUDeviceContext>()
+               .eigen_device();
+      auto eigen_mask = framework::EigenMatrix<T>::From(
+          mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
+      auto eigen_mask_broadcast = eigen_mask.broadcast(
+          Eigen::DSizes<int, 2>(1, grad_pre_hidden->dims()[2]));
+      auto eigen_grad_pre_hidden = framework::EigenMatrix<T>::Reshape(
+          *grad_pre_hidden, grad_pre_hidden->dims().size() - 1);
+      auto eigen_grad_pre_hidden_bak = framework::EigenMatrix<T>::Reshape(
+          *grad_pre_hidden_bak, grad_pre_hidden_bak->dims().size() - 1);
+      eigen_grad_pre_hidden.device(place) =
+          (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
+          eigen_grad_pre_hidden * eigen_mask_broadcast;
+      if (grad_pre_state) {
+        auto eigen_grad_pre_state = framework::EigenMatrix<T>::Reshape(
+            *grad_pre_state, grad_pre_state->dims().size() - 1);
+        auto eigen_grad_pre_state_bak = framework::EigenMatrix<T>::Reshape(
+            *grad_pre_state_bak, grad_pre_state_bak->dims().size() - 1);
+        eigen_grad_pre_state.device(place) =
+            (1 - eigen_mask_broadcast) * eigen_grad_pre_state_bak +
+            eigen_grad_pre_state * eigen_mask_broadcast;
+      }
+    }
+  }
 
   virtual void update_weight_hh_grad(const framework::ExecutionContext& context,
                                      Tensor* grad_gate, Tensor* pre_hidden,
@@ -1563,7 +1603,6 @@ struct SimpleRNNGradCell : GradCell<T> {
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     Tensor grad_pre_hidden_bak;
     if (has_sequence_length) {
       backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
@@ -1585,26 +1624,9 @@ struct SimpleRNNGradCell : GradCell<T> {
     functor(*place, z, h, dh, dz);
 
     // update grad_weight_hh, grad_pre_hidden
-    auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, false);
-    mat_dim_a.height_ *= mat_dim_a.batch_size_;
-    mat_dim_a.batch_size_ = 0;
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
-    blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
-                static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
-
-    if (has_sequence_length) {
-      auto eigen_mask = framework::EigenMatrix<T>::From(
-          mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-      auto eigen_mask_broadcast = eigen_mask.broadcast(
-          Eigen::DSizes<int, 2>(1, grad_hidden->dims()[2]));
-      auto eigen_grad_pre_hidden = framework::EigenMatrix<T>::Reshape(
-          *grad_pre_hidden, grad_pre_hidden->dims().size() - 1);
-      auto eigen_grad_pre_hidden_bak = framework::EigenMatrix<T>::Reshape(
-          grad_pre_hidden_bak, grad_pre_hidden_bak.dims().size() - 1);
-      eigen_grad_pre_hidden.device(*place) =
-          (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
-          eigen_grad_pre_hidden * eigen_mask_broadcast;
-    }
+    this->update_pre_hidden_grad(context, grad_gate, weight_hh, grad_pre_hidden,
+                                 &grad_pre_hidden_bak, nullptr, nullptr,
+                                 mask_tensor, has_sequence_length);
     this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh);
   }
 };
@@ -1622,7 +1644,6 @@ struct LSTMGradCell : GradCell<T> {
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
     size_t frame_size = state_tensor->dims()[2];
     size_t batch_size = state_tensor->dims()[1];
 
@@ -1658,37 +1679,9 @@ struct LSTMGradCell : GradCell<T> {
     math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
         device_ctx, *lstm_value, *lstm_grad, frame_size, batch_size, cell_clip,
         gate_act, state_act, cand_act, false);
-
-    auto mat_dim_a = math::CreateMatrixDescriptor(grad_gate->dims(), 0, false);
-    mat_dim_a.height_ *= mat_dim_a.batch_size_;
-    mat_dim_a.batch_size_ = 0;
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
-    blas.MatMul(*grad_gate, mat_dim_a, *weight_hh, mat_dim_b,
-                static_cast<T>(1.0), grad_pre_hidden, static_cast<T>(0.0));
-
-    if (has_sequence_length) {
-      auto& place =
-          *context.template device_context<platform::CPUDeviceContext>()
-               .eigen_device();
-      auto eigen_mask = framework::EigenMatrix<T>::From(
-          mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-      auto eigen_mask_broadcast = eigen_mask.broadcast(
-          Eigen::DSizes<int, 2>(1, grad_hidden->dims()[2]));
-      auto eigen_grad_pre_hidden = framework::EigenMatrix<T>::Reshape(
-          *grad_pre_hidden, grad_pre_hidden->dims().size() - 1);
-      auto eigen_grad_pre_hidden_bak = framework::EigenMatrix<T>::Reshape(
-          grad_pre_hidden_bak, grad_pre_hidden_bak.dims().size() - 1);
-      auto eigen_grad_pre_state = framework::EigenMatrix<T>::Reshape(
-          *grad_pre_state, grad_pre_state->dims().size() - 1);
-      auto eigen_grad_pre_state_bak = framework::EigenMatrix<T>::Reshape(
-          grad_pre_state_bak, grad_pre_state_bak.dims().size() - 1);
-      eigen_grad_pre_hidden.device(place) =
-          (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
-          eigen_grad_pre_hidden * eigen_mask_broadcast;
-      eigen_grad_pre_state.device(place) =
-          (1 - eigen_mask_broadcast) * eigen_grad_pre_state_bak +
-          eigen_grad_pre_state * eigen_mask_broadcast;
-    }
+    this->update_pre_hidden_grad(
+        context, grad_gate, weight_hh, grad_pre_hidden, &grad_pre_hidden_bak,
+        grad_pre_state, &grad_pre_state_bak, mask_tensor, has_sequence_length);
     this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh);
   }
 };
