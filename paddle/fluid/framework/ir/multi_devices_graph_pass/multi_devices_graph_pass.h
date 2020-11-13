@@ -40,7 +40,7 @@ class Graph;
 namespace paddle {
 namespace platform {
 class NCCLContextMap;
-class NCCLCommunicator;
+class BKCLContextMap;
 }
 
 namespace framework {
@@ -69,6 +69,10 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   virtual void InsertPostprocessOps(ir::Graph *result) const = 0;
 
   bool UseGPU() const;
+
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  bool UseXPU() const;
+#endif
 
   virtual bool NeedCollectiveForGrad(const std::string &grad_name,
                                      std::vector<ir::Node *> ops) const;
@@ -114,6 +118,9 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 #if defined(PADDLE_WITH_NCCL)
   mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
   mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  mutable platform::BKCLContextMap *bkcl_ctxs_{nullptr};
+  mutable platform::BKCLCommunicator *multi_bkcl_ctxs_{nullptr};
 #endif
 
   mutable std::string loss_var_name_;

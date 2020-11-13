@@ -38,6 +38,8 @@ struct NCCLContextMap;
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -52,6 +54,12 @@ struct FusedBroadcastOpHandle : public BroadcastOpHandle {
                          const std::vector<platform::Place> &places,
                          const platform::NCCLContextMap *nccl_ctx)
       : BroadcastOpHandle(node, local_scopes, places, nccl_ctx) {}
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  FusedBroadcastOpHandle(ir::Node *node,
+                         const std::vector<Scope *> local_scopes,
+                         const std::vector<platform::Place> &places,
+                         const platform::BKCLContextMap *bkcl_ctx)
+      : BroadcastOpHandle(node, local_scopes, places, bkcl_ctx) {}
 #else
   FusedBroadcastOpHandle(ir::Node* node, const std::vector<Scope*> local_scopes,
                          const std::vector<platform::Place>& places)

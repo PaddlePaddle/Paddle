@@ -41,6 +41,8 @@ class NCCLCommunicator;
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -147,6 +149,7 @@ struct BuildStrategy {
 
   // NCCL config
   size_t nccl_comm_num_{1};
+  size_t bkcl_comm_num_{1};
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
   bool use_hierarchical_allreduce_{false};
@@ -183,6 +186,9 @@ struct BuildStrategy {
 #if defined(PADDLE_WITH_NCCL)
                    const bool use_cuda,
                    platform::NCCLCommunicator *nccl_ctxs) const;
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+                   const bool use_cuda, const bool use_xpu,
+                   platform::BKCLCommunicator *bkcl_ctxs) const;
 #else
                    const bool use_cuda) const;
 #endif

@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/xpu_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
@@ -1059,12 +1060,21 @@ bool ParallelExecutor::EnableParallelGraphExecution(
     }
   }
 
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  if (!member_->use_all_reduce_ || !member_->use_xpu_) {
+    if (build_strategy.enable_sequential_execution_ ||
+        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
+      enable_parallel_graph = false;
+    }
+  }
+#else
   if (!member_->use_all_reduce_ || !member_->use_cuda_) {
     if (build_strategy.enable_sequential_execution_ ||
         exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
       enable_parallel_graph = false;
     }
   }
+#endif
 
 #ifdef WIN32
   VLOG(1) << "Windows has no support to parallel graph, enable_parallel_graph "

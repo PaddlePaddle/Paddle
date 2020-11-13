@@ -30,6 +30,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/data_layout.h"
@@ -98,7 +102,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 class XPUDeviceContext : public DeviceContext {
  public:
   XPUDeviceContext();
-  explicit XPUDeviceContext(XPUPlace place);
+  explicit XPUDeviceContext(XPUPlace place, int l3_size = 0);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   Place GetPlace() const override;
@@ -107,9 +111,22 @@ class XPUDeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+#ifdef PADDLE_WITH_XPU_BKCL
+  /*! \brief  Return nccl context. */
+  BKCLContext_t bkcl_context() const { return bkcl_context_; }
+
+  /*! \brief  Set bkcl context. */ |
+      void set_bkcl_context(BKCLContext_t context) {
+    bkcl_context_ = context;
+  }
+#endif
+
  private:
   XPUPlace place_;
   xpu::Context* context_;
+#ifdef PADDLE_WITH_XPU_BKCL
+  BKCLContext_t bkcl_context_;
+#endif
 
   // Need to be the same with other DeviceContext,
   // Eventhough eigen_device_ is not used in XPU
@@ -125,6 +142,7 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 
 #ifdef PADDLE_WITH_CUDA
 
+class EigenCudaStreamDevice;
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
 
@@ -388,6 +406,9 @@ class CUDADeviceContext : public DeviceContext {
   int max_threads_per_block_;
   dim3 max_grid_dim_size_;
 
+  // StreamCallbackManager is thread-safe
+  std::unique_ptr<StreamCallbackManager> callback_manager_;
+
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
 
@@ -562,6 +583,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
+  static thread_local int device_context_index;
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
   static DeviceContextPool& Instance() {
@@ -595,8 +617,11 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
+  std::vector<
+      std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>>
       device_contexts_;
+  int device_contexts_num;
+  int multi_stream_num;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

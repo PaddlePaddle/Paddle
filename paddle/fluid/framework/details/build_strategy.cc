@@ -315,6 +315,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 #if defined(PADDLE_WITH_NCCL)
                                 const bool use_cuda,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+                                const bool use_cuda, const bool use_xpu,
+                                platform::BKCLCommunicator *bkcl_ctxs) const {
 #else
                                 const bool use_cuda) const {
 #endif
@@ -339,6 +342,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      // ToDo: more check
+      platform::BKCLCommunicator *bkcl_ctx = use_xpu ? bkcl_ctxs : nullptr;
+      pass->Erase(kBKCLCtxs);
+      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, bkcl_ctx);
 #endif
     } else if (pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kNRanks);
@@ -355,6 +363,15 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kUseHierarchicalAllReduce);
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      platform::BKCLCommunicator *nctx = use_xpu ? bkcl_ctxs : nullptr;
+      pass->Erase(kBKCLCtxs);
+      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
+      pass->Erase(kUseHierarchicalAllReduce);
+      PADDLE_ENFORCE(!use_hierarchical_allreduce_,
+                     "xpu doesn't support hierarchical_allreduce");
+      pass->Set<bool>(kUseHierarchicalAllReduce,
+                      new bool(use_hierarchical_allreduce_));
 #endif
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
       pass->Erase(kNRanks);
@@ -368,6 +385,15 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
+      pass->Set<bool>(kUseHierarchicalAllReduce,
+                      new bool(use_hierarchical_allreduce_));
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      platform::BKCLCommunicator *nctx = use_xpu ? bkcl_ctxs : nullptr;
+      pass->Erase(kBKCLCtxs);
+      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
+      pass->Erase(kUseHierarchicalAllReduce);
+      PADDLE_ENFORCE(!use_hierarchical_allreduce_,
+                     "xpu doesn't support hierarchical_allreduce");
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif

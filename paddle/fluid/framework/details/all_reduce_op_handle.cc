@@ -43,6 +43,14 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                         "number of local scopes is %d.",
                         places_.size(), local_scopes_.size()));
 }
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
+                                     const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places,
+                                     const platform::BKCLCommunicator *ctxs)
+    : BKCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+}
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
@@ -98,6 +106,9 @@ void AllReduceOpHandle::AllReduceImpl(
   places.reserve(num_places);
   int64_t numel = -1;
   bool is_gpu_place = false;
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  bool is_xpu_place = false;
+#endif
   auto dtype = static_cast<framework::proto::VarType::Type>(0);
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
     auto &local_scope = local_exec_scopes_[i];
@@ -117,6 +128,9 @@ void AllReduceOpHandle::AllReduceImpl(
               in_var_handles[i]->name(), numel));
       dtype = lod_tensor.type();
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      is_xpu_place = platform::is_xpu_place(lod_tensor.place());
+#endif
     }
     PADDLE_ENFORCE_EQ(
         numel, static_cast<int64_t>(lod_tensor.numel()),
@@ -128,6 +142,9 @@ void AllReduceOpHandle::AllReduceImpl(
         platform::errors::PreconditionNotMet(
             "The dtype of tensors of the same variable in different local "
             "scopes should be equal."));
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+    PADDLE_ENFORCE_EQ(is_xpu_place, platform::is_xpu_place(lod_tensor.place()));
+#endif
     PADDLE_ENFORCE_EQ(is_gpu_place, platform::is_gpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
@@ -180,6 +197,22 @@ void AllReduceOpHandle::AllReduceFunc(
     PADDLE_THROW(
         platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
+  } else if (is_xpu_place(places[0])) {
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+    PADDLE_ENFORCE_NOT_NULL(bkcl_ctxs_, "bkcl_ctxs should not be nullptr.");
+    BKCLDataType bkcl_dtype = platform::ToBKCLDataType(dtype);
+    std::vector<std::function<void()>> all_reduce_calls;
+    for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
+      auto &p = places[i];
+      void *buffer = const_cast<void *>(lod_tensor_data.at(i));
+      all_reduce_calls.emplace_back([=] {
+        BKCLAllReduce(p, buffer, buffer, numel, bkcl_dtype, BKCL_ADD);
+      });
+    }
+    BKCLAllReduceFunc(all_reduce_calls);
+#else
+    PADDLE_THROW("Not compiled with XPU BKCL.");
+#endif
   } else {  // Special handle CPU only Operator's gradient. Like CRF
     auto &trg = *local_exec_scopes_[0]
                      ->FindVar(out_var_names[0])
@@ -204,6 +237,24 @@ void AllReduceOpHandle::AllReduceFunc(
   }
   VLOG(10) << Name() << " size:" << numel * SizeOfType(dtype);
 }
+
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+void AllReduceOpHandle::BKCLAllReduceFunc(
+    const std::vector<std::function<void()>> &all_reduce_calls) {
+  this->RunAndRecordEvent([&] {
+    if (all_reduce_calls.size() == 1UL) {
+      all_reduce_calls[0]();
+    } else {
+      PADDLE_ENFORCE(bkcl_group_start() == BKCL_SUCCESS,
+                     "bkcl_group_start failed");
+      for (auto &call : all_reduce_calls) {
+        call();
+      }
+      PADDLE_ENFORCE(bkcl_group_end() == BKCL_SUCCESS, "bkcl_group_end failed");
+    }
+  });
+}
+#endif
 
 #if defined(PADDLE_WITH_NCCL)
 void AllReduceOpHandle::NCCLAllReduceFunc(

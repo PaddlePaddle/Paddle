@@ -139,6 +139,15 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
         strategy_, local_scopes_, local_exec_scopes, {places_[i]},
         graphs_.at(i).get()));
   }
+#if defined(PADDLE_WITH_XPU)
+  if (places.size() > 0 && platform::is_xpu_place(places[0])) {
+    for (size_t i = 0; i < places.size(); ++i) {
+      xpu_executors_.emplace_back(new details::XPUThreadedSSAGraphExecutor(
+          strategy_, local_scopes_, local_exec_scopes, {places_[i]},
+          graphs_.at(i).get()));
+    }
+  }
+#endif
 }
 
 std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {
@@ -170,26 +179,21 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   fetch_data.reserve(place_num);
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < place_num; ++i) {
-    auto call = [&, i]() -> FetchResultType {
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto call = [this, i, &fetch_tensors]() -> FeedFetchList {
       try {
-        if (!support_partial_feed_ || !has_feed ||
-            feed_status_[i] == FeedStatus::kHasFeed) {
-          return executors_[i]->Run(fetch_tensors, return_merged);
+#if defined(PADDLE_WITH_XPU)
+        if (platform::is_xpu_place(places_[0])) {
+          return xpu_executors_[i]->Run(fetch_tensors);
+        } else {
+          return executors_[i]->Run(fetch_tensors);
         }
-      } catch (platform::EOFException &) {
-        exception_status[i] = ExceptionStatus::kEOF;
-        exception_holder_.Catch(std::current_exception());
+#endif
+        return executors_[i]->Run(fetch_tensors);
       } catch (...) {
-        exception_status[i] = ExceptionStatus::kOther;
         exception_holder_.Catch(std::current_exception());
       }
-
-      if (return_merged) {
-        return FetchList();
-      } else {
-        return FetchUnmergedList();
-      }
+      return FeedFetchList();
     };
 
     if (pool_) {

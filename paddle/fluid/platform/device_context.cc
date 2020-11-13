@@ -46,6 +46,10 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
         desired_dev_ctx, size);
   }
 #else
+  if (platform::is_xpu_place(place)) {
+    LOG(WARNING) << "Should consider xpu stream later";
+    return Alloc(place, size);
+  }
   return Alloc(place, size);
 #endif
 }
@@ -57,6 +61,7 @@ namespace paddle {
 namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
+thread_local int DeviceContextPool::device_context_index = 0;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
@@ -181,12 +186,33 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "Baidu Kunlun Card is properly installed.",
                         ret));
   context_ = xpu::create_context();
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+  auto str = std::getenv("XPU_PADDLE_L3_SIZE");
+#ifdef PADDLE_WITH_XPU_BKCL
+  bkcl_context_ = nullptr;
+#endif
+  int multi_stream_num = 1;
+  if (std::getenv("XPU_PADDLE_MULTI_STREAM_NUM") != nullptr) {
+    sscanf(std::getenv("XPU_PADDLE_MULTI_STREAM_NUM"), "%d", &multi_stream_num);
+  }
+
+  // for virtualization, the non-zero device id should has its own stream
+  if (multi_stream_num > 1 ||
+      std::getenv("XPU_PADDLE_MAIN_STREAM") != nullptr || place.device != 0) {
+    XPUStream s;
+    xpu_stream_create(&s);
+    context_->xpu_stream = s;
+  }
+  if (l3_size > 0) {
+    xpu::set_workspace_l3_size(context_, l3_size);
+    LOG(INFO) << "XPU_PADDLE_TRAIN_L3_SIZE = " << l3_size;
+  } else if (str) {
+    int size = std::stoi(str, nullptr, 0);
+    xpu::set_workspace_l3_size(context_, size);
+    LOG(INFO) << "XPU_PADDLE_L3_SIZE = " << size;
+  } else {
+    LOG(WARNING) << "no L3 workspace set";
+  }
+  PADDLE_ENFORCE(xpu_set_device(dev_id) == XPU_SUCCESS);
 }
 
 void XPUDeviceContext::Wait() const {
@@ -364,12 +390,47 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
           << "Please recompile or reinstall Paddle with compatible CUDA "
              "version.";
     }
+
+    if (dynload::HasCUDNN()) {
+      auto local_cudnn_version = cudnn_dso_ver / 100;
+      auto compile_cudnn_version = CUDNN_VERSION / 100;
+      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "WARNING: device: " << place_.device
+            << ". The installed Paddle is compiled with CUDNN "
+            << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
+            << ", but CUDNN version in your machine is "
+            << local_cudnn_version / 10 << "." << local_cudnn_version % 10
+            << ", which may cause serious incompatible bug. "
+            << "Please recompile or reinstall Paddle with compatible CUDNN "
+               "version.";
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnCreate(&cudnn_handle_),
+          "Failed to create Cudnn handle in DeviceContext");
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnSetStream(cudnn_handle_, stream_),
+          "Failed to set stream for Cudnn handle in DeviceContext");
+    } else {
+      cudnn_handle_ = nullptr;
+    }
   }
   default_ctx_.reset(new CUDAContext(place_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
+  Wait();
+  WaitStreamCallback();
+  cublas_handle_.reset();
+  cublas_tensor_core_handle_.reset();
+  eigen_stream_.reset();
+  eigen_device_.reset();
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+  if (cudnn_handle_) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
+                                "Failed to destory Cudnn handle");
+  }
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
