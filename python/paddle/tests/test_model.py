@@ -295,6 +295,12 @@ class TestModel(unittest.TestCase):
         np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
         fluid.disable_dygraph()
 
+    def test_summary_gpu(self):
+        paddle.disable_static(self.device)
+        rnn = paddle.nn.LSTM(16, 32, 2)
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+
 
 class MyModel(paddle.nn.Layer):
     def __init__(self):
