@@ -268,6 +268,7 @@ from .fluid.layers import crop_tensor as crop  #DEFINE_ALIAS
 from . import jit
 from . import static
 from . import amp
+from . import onnx
 
 # high-level api
 from .hapi import Model
