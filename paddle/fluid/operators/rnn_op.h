@@ -1066,12 +1066,6 @@ struct GradLayer {
                             &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
-    // create lstm_value and lstm_grad
-    math::LstmMetaValue<T> lstm_value;
-    math::LstmMetaGrad<T> lstm_grad;
-    create_lstm_value(&lstm_value);
-    create_lstm_grad(&lstm_grad);
-
     // copy the last_h, last_c for swaping pointer
     Tensor a, b;
     Tensor* dynamic_grad_last_h = &a;
@@ -1166,8 +1160,7 @@ struct GradLayer {
                   pre_hidden, pre_state, dynamic_grad_last_h,
                   dynamic_grad_last_c, &(*layer_grad_gate_tensor_unbind)[i],
                   weight_grad, dynamic_grad_pre_h, dynamic_grad_pre_c,
-                  &lstm_value, &lstm_grad, mask_tensor_list[i],
-                  has_sequence_length);
+                  mask_tensor_list[i], has_sequence_length);
       SwapPoniter(&dynamic_grad_last_h, &dynamic_grad_pre_h);
       SwapPoniter(&dynamic_grad_last_c, &dynamic_grad_pre_c);
     }
@@ -1527,8 +1520,7 @@ struct GradCell {
                           Tensor* pre_state, Tensor* grad_hidden,
                           Tensor* grad_state, Tensor* grad_gate,
                           Tensor* grad_weight_hh, Tensor* grad_pre_hidden,
-                          Tensor* grad_pre_state, void* meta_value,
-                          void* meta_grad, const Tensor& mask_tensor,
+                          Tensor* grad_pre_state, const Tensor& mask_tensor,
                           bool has_sequence_length) const {}
 
   virtual void update_pre_hidden_grad(
@@ -1599,7 +1591,7 @@ struct SimpleRNNGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  void* meta_value, void* meta_grad, const Tensor& mask_tensor,
+                  const Tensor& mask_tensor,
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -1632,6 +1624,19 @@ struct SimpleRNNGradCell : GradCell<T> {
 };
 
 template <typename T>
+struct GRUGradCell : GradCell<T> {
+  void operator()(const framework::ExecutionContext& context,
+                  Tensor* gate_tensor, Tensor* state_tensor,
+                  Tensor* act_state_tensor, Tensor* hidden_tensor,
+                  const Tensor* weight_hh, Tensor* pre_hidden,
+                  Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
+                  Tensor* grad_gate, Tensor* grad_weight_hh,
+                  Tensor* grad_pre_hidden, Tensor* grad_pre_state,
+                  const Tensor& mask_tensor,
+                  bool has_sequence_length) const override {}
+};
+
+template <typename T>
 struct LSTMGradCell : GradCell<T> {
   void operator()(const framework::ExecutionContext& context,
                   Tensor* gate_tensor, Tensor* state_tensor,
@@ -1640,17 +1645,12 @@ struct LSTMGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  void* meta_value, void* meta_grad, const Tensor& mask_tensor,
+                  const Tensor& mask_tensor,
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     size_t frame_size = state_tensor->dims()[2];
     size_t batch_size = state_tensor->dims()[1];
-
-    math::LstmMetaValue<T>* lstm_value =
-        reinterpret_cast<math::LstmMetaValue<T>*>(meta_value);
-    math::LstmMetaGrad<T>* lstm_grad =
-        reinterpret_cast<math::LstmMetaGrad<T>*>(meta_grad);
 
     Tensor grad_pre_hidden_bak;
     Tensor grad_pre_state_bak;
@@ -1658,18 +1658,23 @@ struct LSTMGradCell : GradCell<T> {
       backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
       backup_tensor<T>(context, &grad_pre_state_bak, grad_pre_state);
     }
-    lstm_value->gate_value = gate_tensor->data<T>();
-    lstm_value->state_value = state_tensor->data<T>();
-    lstm_value->state_active_value = act_state_tensor->data<T>();
-    lstm_value->prev_state_value = pre_state->data<T>();
 
-    lstm_grad->state_grad = grad_state->data<T>();
-    lstm_grad->gate_grad = grad_gate->data<T>();
-    lstm_grad->output_grad = grad_hidden->data<T>();
-    lstm_grad->prev_state_grad = grad_pre_state->data<T>();
+    math::LstmMetaValue<T> lstm_value;
+    math::LstmMetaGrad<T> lstm_grad;
+    create_lstm_value(&lstm_value);
+    create_lstm_grad(&lstm_grad);
+    lstm_value.gate_value = gate_tensor->data<T>();
+    lstm_value.state_value = state_tensor->data<T>();
+    lstm_value.state_active_value = act_state_tensor->data<T>();
+    lstm_value.prev_state_value = pre_state->data<T>();
 
-    lstm_value->output_value = nullptr;
-    lstm_grad->state_active_grad = nullptr;
+    lstm_grad.state_grad = grad_state->data<T>();
+    lstm_grad.gate_grad = grad_gate->data<T>();
+    lstm_grad.output_grad = grad_hidden->data<T>();
+    lstm_grad.prev_state_grad = grad_pre_state->data<T>();
+
+    lstm_value.output_value = nullptr;
+    lstm_grad.state_active_grad = nullptr;
 
     auto gate_act = math::detail::GetActivationType("sigmoid_v2");
     auto state_act = math::detail::GetActivationType("tanh_v2");
@@ -1677,7 +1682,7 @@ struct LSTMGradCell : GradCell<T> {
 
     T cell_clip = 0.0;
     math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
-        device_ctx, *lstm_value, *lstm_grad, frame_size, batch_size, cell_clip,
+        device_ctx, lstm_value, lstm_grad, frame_size, batch_size, cell_clip,
         gate_act, state_act, cand_act, false);
     this->update_pre_hidden_grad(
         context, grad_gate, weight_hh, grad_pre_hidden, &grad_pre_hidden_bak,
