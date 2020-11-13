@@ -477,7 +477,7 @@ void hl_avx_gru_backward_reset_grad(OpResetGrad op_reset_grad, T *gate_value,
 
 template <class OpGruGrad, typename T>
 inline void hl_naive_gru_backward(OpGruGrad op_gru_grad, T *gate_value,
-                                  T *gate_grad, T *prev_out_value,
+                                  T *gate_grad, const T *prev_out_value,
                                   T *prev_out_grad, T *reset_output_value,
                                   T *reset_output_grad, T *output_grad,
                                   int frame_size, ActivationType active_node,
@@ -539,7 +539,7 @@ inline void hl_naive_gru_backward(OpGruGrad op_gru_grad, T *gate_value,
 
 template <class OpGruGrad, typename T>
 inline void hl_avx_gru_backward(OpGruGrad op_gru_grad, T *gate_value,
-                                T *gate_grad, T *prev_out_value,
+                                T *gate_grad, const T *prev_out_value,
                                 T *prev_out_grad, T *reset_output_value,
                                 T *reset_output_grad, T *output_grad,
                                 int frame_size, ActivationType active_node,

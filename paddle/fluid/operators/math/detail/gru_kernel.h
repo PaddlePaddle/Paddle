@@ -221,7 +221,7 @@ class gru {
     *grad_update_gate =
         activation((*grad_output) * ((*value_prev_out) - (*value_frame_state)),
                    (*value_update_gate), act_gate);
-    //    *grad_prev_out += (*grad_output * (*value_update_gate));
+    *grad_prev_out += (*grad_output * (*value_update_gate));
     *grad_frame_state =
         activation(*grad_output * (static_cast<T>(1.0) - (*value_update_gate)),
                    *value_frame_state, act_node);
@@ -247,8 +247,8 @@ class gru {
         _mm256_mul_ps(*grad_output,
                       _mm256_sub_ps(*value_prev_out, *value_frame_state)),
         *value_update_gate, act_gate);
-    //    *grad_prev_out = _mm256_add_ps(
-    //        *grad_prev_out, _mm256_mul_ps(*grad_output, *value_update_gate));
+    *grad_prev_out = _mm256_add_ps(
+        *grad_prev_out, _mm256_mul_ps(*grad_output, *value_update_gate));
     *grad_frame_state = activation(
         _mm256_mul_ps(*grad_output,
                       _mm256_sub_ps(_mm256_set1_ps(1.0f), *value_update_gate)),
