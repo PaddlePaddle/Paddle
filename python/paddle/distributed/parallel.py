@@ -224,4 +224,4 @@ def get_world_size():
             # The world_size is 4
     """
 
-    return parallel_env.world_size if parallel_env else 0
+    return parallel_env.world_size if parallel_env else 1
