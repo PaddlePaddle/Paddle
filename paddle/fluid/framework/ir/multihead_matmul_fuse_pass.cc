@@ -694,7 +694,11 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
-  patterns::BuildFusionV2(graph, name_scope_, scope);
+  int fusion_count = patterns::BuildFusionV2(graph, name_scope_, scope);
+  if (fusion_count > 0) {
+    graph->Set(kMultiheadMatmulPass, new bool(true));
+  }
+  AddStatis(fusion_count);
 }
 
 }  // namespace ir

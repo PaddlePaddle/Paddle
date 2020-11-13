@@ -132,6 +132,14 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
                               fused_pattern);
 
+    // check if is in ernie or not
+    if (!graph->Has(kEmbEltwiseLayernormPass) ||
+        !graph->Has(kMultiheadMatmulPass)) {
+      LOG(INFO) << "The skip_layernorm_fuse_pass is only supported in "
+                << "Ernie/Bert model. Just skip this pass.";
+      return;
+    }
+
     std::unordered_set<const Node *> del_node_set;
 
     // Create an SkipLayerNorm op node
