@@ -226,14 +226,15 @@ class NoamDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -251,7 +252,7 @@ class NoamDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -259,7 +260,8 @@ class NoamDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
     """
 
@@ -322,14 +324,15 @@ class PiecewiseDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -347,7 +350,7 @@ class PiecewiseDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -355,7 +358,8 @@ class PiecewiseDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
@@ -403,14 +407,15 @@ class NaturalExpDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -428,7 +433,7 @@ class NaturalExpDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -436,7 +441,8 @@ class NaturalExpDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
@@ -481,14 +487,15 @@ class InverseTimeDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -506,7 +513,7 @@ class InverseTimeDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -514,7 +521,8 @@ class InverseTimeDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
     """
 
@@ -576,14 +584,15 @@ class PolynomialDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.5, decay_steps=20, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -601,7 +610,7 @@ class PolynomialDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -609,7 +618,8 @@ class PolynomialDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self,
@@ -691,14 +701,15 @@ class LinearWarmup(LRScheduler):
                     learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -717,7 +728,7 @@ class LinearWarmup(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -725,7 +736,8 @@ class LinearWarmup(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self,
@@ -814,14 +826,15 @@ class ExponentialDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.5, gamma=0.9, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -839,7 +852,7 @@ class ExponentialDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -847,7 +860,8 @@ class ExponentialDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
@@ -901,14 +915,15 @@ class MultiStepDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -926,7 +941,7 @@ class MultiStepDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -934,7 +949,8 @@ class MultiStepDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self,
@@ -1008,14 +1024,15 @@ class StepDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -1033,7 +1050,7 @@ class StepDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -1041,7 +1058,8 @@ class StepDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
     """
 
     def __init__(self,
@@ -1102,14 +1120,15 @@ class LambdaDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.LambdaDecay(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -1127,7 +1146,7 @@ class LambdaDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -1135,7 +1154,8 @@ class LambdaDecay(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()
+                    scheduler.step()    # If you update learning rate each step
+              # scheduler.step()        # If you update learning rate each epoch
 
     """
 
@@ -1200,14 +1220,15 @@ class ReduceOnPlateau(LRScheduler):
             scheduler = paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
                     loss.backward()
                     sgd.step()
                     sgd.clear_gradients()
-                scheduler.step(loss)
+                    scheduler.step(loss)    # If you update learning rate each step
+              # scheduler.step(loss)        # If you update learning rate each epoch
 
             # train on static graph mode
             paddle.enable_static()
@@ -1225,7 +1246,7 @@ class ReduceOnPlateau(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
@@ -1233,7 +1254,8 @@ class ReduceOnPlateau(LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step(out[0])
+                    scheduler.step(out[0])    # If you update learning rate each step
+              # scheduler.step(out[0])        # If you update learning rate each epoch
 
     """
 
@@ -1268,7 +1290,6 @@ class ReduceOnPlateau(LRScheduler):
                 "The type of 'learning_rate' in 'ReduceOnPlateau' must be 'float', but received %s."
                 % type(learning_rate))
 
-        self.verbose = verbose
         self.patience = patience
         self.threshold = threshold
         self.threshold_mode = threshold_mode
@@ -1406,7 +1427,7 @@ class CosineAnnealingDecay(LRScheduler):
             scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.5, T_max=10, verbose=True)
             sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameters=linear.parameters())
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     x = paddle.uniform([10, 10])
                     out = linear(x)
                     loss = paddle.mean(out)
@@ -1431,7 +1452,7 @@ class CosineAnnealingDecay(LRScheduler):
             exe = paddle.static.Executor()
             exe.run(start_prog)
             for epoch in range(20):
-                for batch_id in range(2):
+                for batch_id in range(5):
                     out = exe.run(
                         main_prog,
                         feed={
