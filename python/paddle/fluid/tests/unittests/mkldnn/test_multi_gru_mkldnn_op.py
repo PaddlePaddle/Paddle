@@ -245,5 +245,4 @@ class TestMultiGruMkldnnInt8OpOriginModeForceFP32Output(
 
 
 if __name__ == "__main__":
-    disable_dygraph()
     unittest.main()
