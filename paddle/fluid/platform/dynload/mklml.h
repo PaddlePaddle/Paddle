@@ -85,8 +85,10 @@ extern void* mklml_dso_handle;
   __macro(vcSub);                   \
   __macro(vsMul);                   \
   __macro(vdMul);                   \
+  __macro(vcMul);                   \
   __macro(vsDiv);                   \
   __macro(vdDiv);                   \
+  __macro(vcDiv);                   \
   __macro(vsExp);                   \
   __macro(vdExp);                   \
   __macro(vsSqr);                   \

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <mkl.h>
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
+
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/complex64.h"
-#include "mkl.h"
 
 namespace paddle {
 namespace operators {
@@ -291,11 +292,11 @@ struct CBlas<double> {
 
 template <>
 struct CBlas<platform::complex64> {
-//struct CBlas<std::complex<float>> {
+  // struct CBlas<std::complex<float>> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    //platform::dynload::cblas_dcopy(args...);
-    //cblas_dcopy(args...);
+    // platform::dynload::cblas_dcopy(args...);
+    // cblas_dcopy(args...);
   }
 
   template <typename... ARGS>
@@ -303,11 +304,20 @@ struct CBlas<platform::complex64> {
     platform::dynload::vcAdd(args...);
   }
 
-  template<typename... ARGS>
+  template <typename... ARGS>
   static void VSUB(ARGS... args) {
     platform::dynload::vcSub(args...);
   }
 
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vcMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vcDiv(args...);
+  }
 };
 
 #else

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -97,12 +98,16 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul, ops::ElementwiseMulKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext,
+                              paddle::platform::complex64>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
+                                  paddle::platform::complex64>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
@@ -110,6 +115,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad_grad,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
+                                        paddle::platform::complex64>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
