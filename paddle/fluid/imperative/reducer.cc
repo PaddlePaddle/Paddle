@@ -222,7 +222,13 @@ void Reducer::finalize_backward() {
 
 std::vector<std::vector<size_t>> assign_group_by_size(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
+    const std::vector<bool> &is_sparse_gradient,
     const std::vector<size_t> &group_size_limits) {
+  PADDLE_ENFORCE_EQ(vars.size(), is_sparse_gradient.size(),
+                    platform::errors::PreconditionNotMet(
+                        "vars len must be equal to is_sparse_gradient len, but "
+                        "[%lu] != [%lu]",
+                        vars.size(), is_sparse_gradient.size()));
   // the return vector
   std::vector<std::vector<size_t>> res;
 
@@ -237,7 +243,7 @@ std::vector<std::vector<size_t>> assign_group_by_size(
 
   for (size_t i = 0; i < vars.size(); ++i) {
     const auto &var = vars[i];
-    if (var->Var().IsType<framework::SelectedRows>()) {
+    if (is_sparse_gradient[i]) {
       // we keep sparse var a single group
       res.push_back({i});
       continue;

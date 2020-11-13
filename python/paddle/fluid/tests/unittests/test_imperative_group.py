@@ -54,7 +54,8 @@ class TestDataParallelBucket(unittest.TestCase):
             self.create_varbase(core.VarDesc.VarType.FP32, [2, 100]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        res = core.assign_group_by_size(var_list, [400])
+        res = core.assign_group_by_size(var_list, [False, False, False, False],
+                                        [400])
         self.assertEqual([[0], [1], [2], [3]], res)
 
     def test_construct_group1(self):
@@ -66,7 +67,8 @@ class TestDataParallelBucket(unittest.TestCase):
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(var_list, [400])
+        res = core.assign_group_by_size(
+            var_list, [False, False, False, False, False, False], [400])
         self.assertEqual([[0, 2], [1, 3], [4], [5]], res)
 
     def test_construct_group2(self):
@@ -76,7 +78,8 @@ class TestDataParallelBucket(unittest.TestCase):
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        res = core.assign_group_by_size(var_list, [400, 800])
+        res = core.assign_group_by_size(var_list, [False, False, False, False],
+                                        [400, 800])
         self.assertEqual([[0], [1, 2], [3]], res)
 
     def test_construct_group3(self):
@@ -88,7 +91,8 @@ class TestDataParallelBucket(unittest.TestCase):
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(var_list, [200, 400])
+        res = core.assign_group_by_size(
+            var_list, [False, False, False, False, False, False], [200, 400])
         self.assertEqual([[0], [1], [2, 4], [3, 5]], res)
 
     def test_construct_group4(self):
@@ -100,7 +104,8 @@ class TestDataParallelBucket(unittest.TestCase):
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(var_list, [0])
+        res = core.assign_group_by_size(
+            var_list, [False, False, False, False, False, False], [0])
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
     def test_construct_group5(self):
@@ -112,8 +117,43 @@ class TestDataParallelBucket(unittest.TestCase):
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
         var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(var_list, [10000])
+        res = core.assign_group_by_size(
+            var_list, [False, False, False, False, False, False], [10000])
         self.assertEqual([[0, 2, 4], [1, 3, 5]], res)
+
+    def test_construct_bucket6(self):
+        # multi dtype & limit capability & multi tensor type
+        var_list = []
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP32, [1, 50],
+                                core.VarDesc.VarType.SELECTED_ROWS))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP64, [1, 25],
+                                core.VarDesc.VarType.SELECTED_ROWS))
+        res = core.assign_group_by_size(
+            var_list, [True, False, False, False, False, True], [400])
+        self.assertEqual([[0], [1, 3], [2, 4], [5]], res)
+
+    def test_construct_bucket7(self):
+        # multi dtype & multi limit capability & multi tensor type
+        var_list = []
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP32, [1, 50],
+                                core.VarDesc.VarType.SELECTED_ROWS))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
+        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
+        var_list.append(
+            self.create_varbase(core.VarDesc.VarType.FP64, [1, 25],
+                                core.VarDesc.VarType.SELECTED_ROWS))
+        res = core.assign_group_by_size(
+            var_list, [True, False, False, False, False, True], [200, 400])
+        self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
 
 class TestDataParallelStateDict(unittest.TestCase):
