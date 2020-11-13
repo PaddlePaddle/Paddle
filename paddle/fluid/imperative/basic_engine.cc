@@ -114,13 +114,14 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       accumulator->IncreaseRefCnt();
 
-      if (var->HasGradReduceHook()) {
-        VLOG(3) << "Grad var has reduce hook.";
-        PADDLE_ENFORCE_NE(
-            var->HasGradNode(), true,
-            platform::errors::PermissionDenied(
-                "Only leaf Tensor's gradient can append reduce hook."));
-        accumulator->SetReduceHook(var->GradReduceHook());
+      if (var->HasLeafHooks()) {
+        VLOG(3) << "Grad variable wrapper (" << var->Name()
+                << ") has leaf grad hooks.";
+        PADDLE_ENFORCE_NE(var->HasGradNode(), true,
+                          platform::errors::PermissionDenied(
+                              "Only leaf Tensor's gradient can append hook to "
+                              "Gradientaccumulator."));
+        accumulator->SetPostHooks(var->GetLeafHooks());
       }
 
       VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
@@ -232,8 +233,8 @@ void BasicEngine::Execute() {
 
       // Step 2: Sum Gradient & Call Accumulator Hooks
       for (auto* accumulator : no_need_run_accumulators_) {
-        if (accumulator->HasReduceHook()) {
-          accumulator->CallReduceHook();
+        if (accumulator->HasPostHooks()) {
+          accumulator->CallPostHooks();
         }
       }
 

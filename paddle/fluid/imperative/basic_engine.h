@@ -50,7 +50,7 @@ class BasicEngine : public Engine {
   std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
   // Accumulators that does not need to perform accumulation operations,
-  // corresponding to need_accu_var_list_
+  // the ref_cnt_=1, corresponding to need_accu_var_list_
   std::vector<GradientAccumulator*> no_need_run_accumulators_;
   bool retain_graph_;
 };
