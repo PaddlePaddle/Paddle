@@ -529,6 +529,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_converter"] = ""
         opt_info["dump_fields"] = strategy.get("dump_fields", [])
         opt_info["dump_file_num"] = strategy.get("dump_file_num", 16)
+        opt_info["user_define_dump_filename"] = strategy.get(
+            "user_define_dump_filename", "")
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         opt_info["worker_places"] = strategy.get("worker_places", [])

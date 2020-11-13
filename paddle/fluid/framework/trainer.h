@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -69,6 +70,7 @@ class TrainerBase {
 
   // For dump param or field
   bool need_dump_field_ = false;
+  std::string user_define_dump_filename_;
   bool need_dump_param_ = false;
   std::string dump_fields_path_;
   std::string dump_converter_;
