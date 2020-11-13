@@ -118,10 +118,10 @@ class TestSimpleRNNOp(OpTest):
     def set_attrs(self):
         pass
 
-    def test_output_with_place(self):
+    def test_output(self):
         self.check_output(no_check_set=['Reserve', 'DropoutState'])
 
-    def test_grad_with_place(self):
+    def test_grad(self):
         if not self.is_test:
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h']
