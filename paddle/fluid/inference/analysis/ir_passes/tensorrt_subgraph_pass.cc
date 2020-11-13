@@ -123,13 +123,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     auto *op = block_desc.AppendOp();
     *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
-    if (!has_fused_embedding_eltwise_layernorm &&
-        op->Type() == "fused_embedding_eltwise_layernorm") {
-      has_fused_embedding_eltwise_layernorm = true;
-    }
-    if (!has_multihead_matmul && op->Type() == "multihead_matmul") {
-      has_multihead_matmul = true;
-    }
   }
 
   // Then, we will use the input_names_with_id and output_names_with_id to
