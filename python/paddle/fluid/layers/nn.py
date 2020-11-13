@@ -9750,12 +9750,11 @@ def prelu(x, mode, param_attr=None, name=None):
     Parameters:
         x (Tensor): The input Tensor or LoDTensor with data type float32.
         mode (str): The mode for weight sharing.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
             weight (alpha), it can be create by ParamAttr. None by default.
             For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        name(str|None): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.

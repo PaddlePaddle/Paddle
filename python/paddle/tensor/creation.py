@@ -545,7 +545,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     Raises:
         TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
-    examples:
+    Examples:
         .. code-block:: python
 
             import paddle
