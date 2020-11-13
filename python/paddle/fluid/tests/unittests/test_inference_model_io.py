@@ -23,6 +23,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 import warnings
 
+import paddle
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
@@ -31,14 +32,14 @@ from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
 from paddle.fluid.transpiler import memory_optimize
 
+class InferModel(object):
+    def __init__(self, list):
+        self.program = list[0]
+        self.feed_var_names = list[1]
+        self.fetch_vars = list[2]
+
 
 class TestBook(unittest.TestCase):
-    class InferModel(object):
-        def __init__(self, list):
-            self.program = list[0]
-            self.feed_var_names = list[1]
-            self.fetch_vars = list[2]
-
     def test_fit_line_inference_model(self):
         MODEL_DIR = "./tmp/inference_model"
         UNI_MODEL_DIR = "./tmp/inference_model1"
@@ -88,10 +89,10 @@ class TestBook(unittest.TestCase):
 
         six.moves.reload_module(executor)  # reload to build a new scope
 
-        model_0 = self.InferModel(load_inference_model(MODEL_DIR, exe))
+        model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
             model_str = f.read()
-        model_1 = self.InferModel(
+        model_1 = InferModel(
             load_inference_model(None, exe, model_str, params_str))
 
         for model in [model_0, model_1]:
@@ -190,6 +191,63 @@ class TestInstance(unittest.TestCase):
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+
+
+class TestSaveInferenceModelNew(unittest.TestCase):
+    def test_save_and_load_inference_model(self):
+        MODEL_DIR = "./tmp/inference_model5"
+        init_program = fluid.default_startup_program()
+        program = fluid.default_main_program()
+
+        # fake program without feed/fetch
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(cost)
+
+            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_cost, init_program)
+
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        exe.run(init_program, feed={}, fetch_list=[])
+
+        tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
+        tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={'x': tensor_x,
+                          'y': tensor_y},
+                    fetch_list=[avg_cost])
+
+        paddle.static.io.save_inference_model(MODEL_DIR, [x, y], [avg_cost], exe)
+
+        self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
+        self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
+
+        expected = exe.run(program,
+                           feed={'x': tensor_x,
+                                 'y': tensor_y},
+                           fetch_list=[avg_cost])[0]
+
+        six.moves.reload_module(executor)  # reload to build a new scope
+        model = InferModel(paddle.static.io.load_inference_model(MODEL_DIR, exe))
+
+        outs = exe.run(model.program,
+                       feed={
+                           model.feed_var_names[0]: tensor_x,
+                           model.feed_var_names[1]: tensor_y
+                       },
+                       fetch_list=model.fetch_vars)
+        actual = outs[0]
+
+        self.assertEqual(model.feed_var_names, ["x", "y"])
+        self.assertEqual(len(model.fetch_vars), 1)
+        self.assertEqual(expected, actual)
 
 
 class TestLoadInferenceModelError(unittest.TestCase):

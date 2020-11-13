@@ -55,23 +55,16 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
     """
     :api_attr: Static Graph
 
-    Save current model and its parameters to given path.
-    If you just want to save parameters of your trained model, please use the
-    :ref:`api_fluid_io_save_params` . You can refer to :ref:`api_guide_model_save_reader_en`
-    for more details.
-
-    Note:
-        The :code:`dirname` is used to specify the folder where inference model
-        structure and parameters are going to be saved. If you would like to save params of
-        Program in separate files, set `params_filename` None; if you would like to save all
-        params of Program in a single file, use `params_filename` to specify the file name.
+    Save current model and its parameters to given path. i.e.
+    Given path_prefix = "/path/to/modelname", after invoking
+    save_inference_model(path_prefix, feed_vars, fetch_vars, executor),
+    you will find two files named modelname.pdmodel and modelname.pdiparams
+    under "/path/to", which represent your model and parameters respectively.
 
     Args:
-        path(str): The directory path to save the inference model.
-        feed_vars(Variable | list[str]): Variable or list of Variable. Variables needed by
-                                     inference.
-        fetch_vars(Variable | list[Variable]): Variable or list of Variable. Variables returned by
-                                     inference.
+        path_prefix(str): Directory path to save model + model name without suffix.
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
     Returns:
@@ -355,7 +348,6 @@ def load_inference_model(path_prefix, executor, **configs):
             program_desc_str = f.read()
         load_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)
-
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
