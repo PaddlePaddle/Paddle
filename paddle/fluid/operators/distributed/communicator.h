@@ -122,95 +122,96 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename T>
-inline void SplitVars(const Variable &src_var, const CommContext &rpc_ctx,
-                      Scope *scope) {
-  // outs->clear();
-  // outs->reserve(rpc_ctx.splited_varnames.size());
+// template <typename T>
+// inline void SplitVars(const Variable &src_var, const CommContext &rpc_ctx,
+//                       Scope *scope) {
+//   // outs->clear();
+//   // outs->reserve(rpc_ctx.splited_varnames.size());
 
-  VLOG(2) << "begin to splitvars, " << rpc_ctx.print();
+//   VLOG(2) << "begin to splitvars, " << rpc_ctx.print();
 
-  if (src_var.IsType<framework::SelectedRows>()) {
-    auto &send_slr = src_var.Get<framework::SelectedRows>();
-    auto &send_rows = send_slr.rows();
-    auto dims = send_slr.GetCompleteDims();
-    auto row_numel = send_slr.value().numel() / send_slr.value().dims()[0];
-    VLOG(2) << "row_numel: " << row_numel;
-    auto *src = send_slr.value().data<T>();
+//   if (src_var.IsType<framework::SelectedRows>()) {
+//     auto &send_slr = src_var.Get<framework::SelectedRows>();
+//     auto &send_rows = send_slr.rows();
+//     auto dims = send_slr.GetCompleteDims();
+//     auto row_numel = send_slr.value().numel() / send_slr.value().dims()[0];
+//     VLOG(2) << "row_numel: " << row_numel;
+//     auto *src = send_slr.value().data<T>();
 
-    std::vector<std::vector<size_t>> outs_rows_idx;
-    std::vector<std::vector<size_t>> outs_dense_idx;
-    auto pserver_num = rpc_ctx.epmap.size();
-    outs_rows_idx.resize(pserver_num);
-    outs_dense_idx.resize(pserver_num);
+//     std::vector<std::vector<size_t>> outs_rows_idx;
+//     std::vector<std::vector<size_t>> outs_dense_idx;
+//     auto pserver_num = rpc_ctx.epmap.size();
+//     outs_rows_idx.resize(pserver_num);
+//     outs_dense_idx.resize(pserver_num);
 
-    std::stringstream ss1;
-    for (size_t i = 0; i < send_rows.size(); ++i) {
-      ss1 << send_rows[i] << " ";
-    }
-    VLOG(2) << "send_rows(" << send_rows.size() << "): " << ss1.str();
-    VLOG(2) << "pserver_num: " << pserver_num
-            << "; is_distributed: " << rpc_ctx.is_distributed;
-    ss1.clear();
+//     std::stringstream ss1;
+//     for (size_t i = 0; i < send_rows.size(); ++i) {
+//       ss1 << send_rows[i] << " ";
+//     }
+//     VLOG(2) << "send_rows(" << send_rows.size() << "): " << ss1.str();
+//     VLOG(2) << "pserver_num: " << pserver_num
+//             << "; is_distributed: " << rpc_ctx.is_distributed;
+//     ss1.clear();
 
-    if (!rpc_ctx.is_distributed) {
-      // split rows index into output sparse vars
-      for (size_t i = 0; i < send_rows.size(); ++i) {
-        auto ep_idx = send_rows[i] % pserver_num;
-        auto id = send_rows[i] / pserver_num;
-        outs_rows_idx[ep_idx].push_back(id);
-        outs_dense_idx[ep_idx].push_back(i);
-      }
-    } else {
-      for (size_t i = 0; i < send_rows.size(); ++i) {
-        auto out_idx = send_rows[i] % pserver_num;
-        outs_rows_idx[out_idx].push_back(send_rows[i]);
-        outs_dense_idx[out_idx].push_back(i);
-      }
-    }
+//     if (!rpc_ctx.is_distributed) {
+//       // split rows index into output sparse vars
+//       for (size_t i = 0; i < send_rows.size(); ++i) {
+//         auto ep_idx = send_rows[i] % pserver_num;
+//         auto id = send_rows[i] / pserver_num;
+//         outs_rows_idx[ep_idx].push_back(id);
+//         outs_dense_idx[ep_idx].push_back(i);
+//       }
+//     } else {
+//       for (size_t i = 0; i < send_rows.size(); ++i) {
+//         auto out_idx = send_rows[i] % pserver_num;
+//         outs_rows_idx[out_idx].push_back(send_rows[i]);
+//         outs_dense_idx[out_idx].push_back(i);
+//       }
+//     }
 
-    for (size_t out_idx = 0; out_idx < rpc_ctx.splited_varnames.size();
-         out_idx++) {
-      auto rows_idx = outs_rows_idx[out_idx];
-      dims[0] = rows_idx.size();
+//     for (size_t out_idx = 0; out_idx < rpc_ctx.splited_varnames.size();
+//          out_idx++) {
+//       auto rows_idx = outs_rows_idx[out_idx];
+//       dims[0] = rows_idx.size();
 
-      ss1.clear();
-      for (size_t i = 0; i < rows_idx.size(); ++i) {
-        ss1 << rows_idx[i] << " ";
-      }
-      VLOG(2) << rpc_ctx.splited_varnames[out_idx] << "; send_rows("
-              << rows_idx.size() << "): " << ss1.str();
+//       ss1.clear();
+//       for (size_t i = 0; i < rows_idx.size(); ++i) {
+//         ss1 << rows_idx[i] << " ";
+//       }
+//       VLOG(2) << rpc_ctx.splited_varnames[out_idx] << "; send_rows("
+//               << rows_idx.size() << "): " << ss1.str();
 
-      auto *tmp_var_slr = scope->Var(rpc_ctx.splited_varnames[out_idx])
-                              ->GetMutable<framework::SelectedRows>();
-      tmp_var_slr->set_height(rpc_ctx.height_sections[out_idx]);
-      tmp_var_slr->mutable_rows()->clear();
-      tmp_var_slr->mutable_value()->mutable_data<T>(dims, send_slr.place());
+//       auto *tmp_var_slr = scope->Var(rpc_ctx.splited_varnames[out_idx])
+//                               ->GetMutable<framework::SelectedRows>();
+//       tmp_var_slr->set_height(rpc_ctx.height_sections[out_idx]);
+//       tmp_var_slr->mutable_rows()->clear();
+//       tmp_var_slr->mutable_value()->mutable_data<T>(dims, send_slr.place());
 
-      if (rows_idx.size() > 0) {
-        for (auto idx : rows_idx) {
-          tmp_var_slr->mutable_rows()->push_back(idx);
-        }
-        auto dst =
-            tmp_var_slr->mutable_value()->mutable_data<T>(platform::CPUPlace());
-        for (size_t j = 0; j < rows_idx.size(); j++) {
-          memory::Copy(platform::CPUPlace(), dst + j * row_numel,
-                       platform::CPUPlace(),
-                       src + outs_dense_idx[out_idx][j] * row_numel,
-                       sizeof(T) * row_numel);
-        }
-      }
-      // outs->push_back(out);
-      PADDLE_ENFORCE_EQ(rows_idx.size(), tmp_var_slr->rows().size(),
-                        platform::errors::InvalidArgument(
-                            "rows should has the same size with tensor dim 0"));
-    }
-  } else {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Unknown variable type to copy."));
-  }
-  return;
-}
+//       if (rows_idx.size() > 0) {
+//         for (auto idx : rows_idx) {
+//           tmp_var_slr->mutable_rows()->push_back(idx);
+//         }
+//         auto dst =
+//             tmp_var_slr->mutable_value()->mutable_data<T>(platform::CPUPlace());
+//         for (size_t j = 0; j < rows_idx.size(); j++) {
+//           memory::Copy(platform::CPUPlace(), dst + j * row_numel,
+//                        platform::CPUPlace(),
+//                        src + outs_dense_idx[out_idx][j] * row_numel,
+//                        sizeof(T) * row_numel);
+//         }
+//       }
+//       // outs->push_back(out);
+//       PADDLE_ENFORCE_EQ(rows_idx.size(), tmp_var_slr->rows().size(),
+//                         platform::errors::InvalidArgument(
+//                             "rows should has the same size with tensor dim
+//                             0"));
+//     }
+//   } else {
+//     PADDLE_THROW(
+//         platform::errors::Unavailable("Unknown variable type to copy."));
+//   }
+//   return;
+// }
 
 template <typename T>
 inline void MergeVars(const std::string &var_name,
@@ -316,12 +317,6 @@ class Communicator {
 
   virtual void InitEnvs() = 0;
 
-  virtual int CheckToStart() = 0;
-
-  virtual void QueuePop(
-      std::shared_ptr<std::vector<std::shared_ptr<Variable>>> vars,
-      const std::string var_name, int batches) = 0;
-
   virtual void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                         const RpcCtxMap &recv_varname_to_ctx,
                         Scope *recv_scope) {}
@@ -338,7 +333,6 @@ class Communicator {
       const std::map<std::string, std::string> &envs) {
     std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>, send_ctx,
                    recv_ctx, recv_scope, std::ref(envs));
-    VLOG(0) << "finish init communicator instance";
     return communicator_.get();
   }
 
@@ -380,13 +374,8 @@ class AsyncCommunicator : public Communicator {
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
-    trainer_id_ = std::stoi(envs.at("trainer_id"));
-    auto pserver_strings = envs.at("pserver_endpoints");
-    pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
     VLOG(0) << "AsyncCommunicator Initialized";
   }
-
-  int CheckToStart() { return 1; }
 
   void Start() override;
 
@@ -399,23 +388,17 @@ class AsyncCommunicator : public Communicator {
   void InitParams();
 
   virtual void MainThread();
-  virtual void RecvThread();
 
   void Send(const std::vector<std::string> &var_names,
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  virtual void SendByCommunicator(int batches);
-  virtual void SendDense(const std::string &varname);
+  virtual void SendByCommunicator();
   virtual void SendGlobalStep(int batches);
-  virtual void SendSparse(const std::string &varname);
 
   virtual void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
-
-  void QueuePop(std::shared_ptr<std::vector<std::shared_ptr<Variable>>> vars,
-                const std::string var_name, int batches);
 
   virtual void BarrierSend() {}
 
@@ -431,8 +414,6 @@ class AsyncCommunicator : public Communicator {
   int send_queue_size_;
   int trainer_id_ = 0;
   bool need_global_step_ = false;
-  int send_var_nums_ = 0;
-  std::vector<std::string> pserver_endpoints_{};
 
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
@@ -440,7 +421,6 @@ class AsyncCommunicator : public Communicator {
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
   std::unique_ptr<std::thread> main_thread_{nullptr};
-  std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope *recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
@@ -467,18 +447,9 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
 
-  int CheckToStart() {
-    while (running_) {
-      if (barrier_counter_.load() >= barrier_trigger_.load() &&
-          barrier_trigger_.load() != 0) {
-        break;
-      } else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-    }
+  void MainThread() override;
 
-    return barrier_counter_.load();
-  }
+  void SendByCommunicator() override;
 
   void Clean() override;
 
@@ -487,6 +458,8 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
   void BarrierTriggerDecrement() override;
 
   void BarrierTriggerReset(int initial_val) override;
+
+  int BatchesCounter();
 
   void BarrierWeakUp();
 
@@ -525,8 +498,8 @@ class SyncCommunicator : public HalfAsyncCommunicator {
 
   void BarrierRecv();
 
- protected:
-  bool need_barrier_ = true;
+ private:
+  std::vector<std::string> pserver_endpoints_{};
 };
 
 class GeoCommunicator : public AsyncCommunicator {
@@ -557,7 +530,7 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches) { return; }
+  void SendByCommunicator() { return; }
 
   std::vector<int64_t> MergeSparseIds(const std::string &send_varname);
 
@@ -565,6 +538,8 @@ class GeoCommunicator : public AsyncCommunicator {
                   const std::vector<int64_t> &sparse_ids);
 
   void SendDense(const std::string &varname);
+
+  void SendGlobalStep(int batches) override {}
 
   void RecvByCommunicator() override;
 
@@ -590,6 +565,8 @@ class GeoCommunicator : public AsyncCommunicator {
 
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
+
+  int send_var_nums_ = 0;
 
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
 

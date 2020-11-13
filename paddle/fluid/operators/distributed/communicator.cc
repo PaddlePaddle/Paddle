@@ -65,11 +65,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   } else {
     send_scope_.reset(new Scope());
     for (auto &iter : send_varname_to_ctx_) {
-      auto &send_ctx = iter.second;
-      send_var_nums_ += send_ctx.splited_varnames.size();
-      if (iter.first == STEP_COUNTER && !need_global_step_) {
-        continue;
-      }
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
               send_queue_size_);
@@ -93,13 +88,6 @@ AsyncCommunicator::~AsyncCommunicator() {
   if (main_thread_) main_thread_->join();
 }
 
-void AsyncCommunicator::SendSparse(const std::string &varname) {
-  auto &ctx = send_varname_to_ctx_.at(varname);
-  auto send_functor = distributed::ParameterSend<float>();
-  send_functor(rpc_ctx, *send_scope_, true, 1);
-  return;
-}
-
 void AsyncCommunicator::SendGlobalStep(int batches) {
   if (!need_global_step_) {
     return;
@@ -120,35 +108,57 @@ void AsyncCommunicator::SendGlobalStep(int batches) {
   send_functor(ctx, *send_scope_, true, 1);
 }
 
-void AsyncCommunicator::SendDense(const std::string &varname) {
-  auto &ctx = send_varname_to_ctx_.at(varname);
-  auto send_functor = distributed::ParameterSend<float>();
-  send_functor(rpc_ctx, *send_scope_, true, 1);
-  return;
-}
-
-void AsyncCommunicator::SendByCommunicator(int batches) {
+void AsyncCommunicator::SendByCommunicator() {
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(send_varname_to_ctx_.size());
-  VLOG(1) << "run send graph begin";
+  VLOG(3) << "run send graph";
 
   auto before_run_send_graph = GetCurrentUS();
   for (auto &iter : send_varname_to_queue_) {
-    auto &varname = iter.first;
-    auto send_task = [this, &varname, batches] {
-      auto vars = std::make_shared<std::vector<std::shared_ptr<Variable>>>();
-      QueuePop(vars, varname, batches);
-      if (varname == STEP_COUNTER) {
-        SendGlobalStep(static_cast<int>(vars->size()));
-      } else {
-        auto &send_ctx = send_varname_to_ctx_[varname];
-        MergeVars<float>(varname, *vars, send_scope_.get(), send_ctx.merge_add);
-        if (send_ctx.is_sparse) {
-          SendSparse(varname);
+    auto &var_name = iter.first;
+    auto &var_queue = iter.second;
+
+    auto send_task = [this, &var_name, &var_queue] {
+      VLOG(1) << var_name << " merge and send; ";
+      std::vector<std::shared_ptr<Variable>> vars;
+
+      int merged_var_num = 0;
+      int wait_times = 0;
+      while (merged_var_num < max_merge_var_num_) {
+        if (var_queue->Size() == 0) {
+          VLOG(4) << "wait_times -> " << wait_times;
+          if (wait_times >= send_wait_times_) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          wait_times++;
+          continue;
         } else {
-          SendDense(varname);
+          wait_times = 0;
+
+          vars.push_back(var_queue->Pop());
+          merged_var_num++;
         }
       }
+
+      if (var_name == STEP_COUNTER) {
+        SendGlobalStep(merged_var_num);
+        return;
+      }
+
+      auto &ctx = send_varname_to_ctx_.at(var_name);
+
+      auto before_merge = GetCurrentUS();
+      MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
+      auto after_merge = GetCurrentUS();
+      VLOG(1) << "merge " << merged_var_num << " " << var_name << " use time "
+              << after_merge - before_merge;
+
+      auto send_functor = distributed::ParameterSend<float>();
+      send_functor(ctx, *send_scope_, true, 1);
+      auto after_send = GetCurrentUS();
+      VLOG(1) << "send " << var_name << " use time "
+              << after_send - after_merge;
     };
     task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
   }
@@ -157,7 +167,76 @@ void AsyncCommunicator::SendByCommunicator(int batches) {
   }
   auto after_run_send_graph = GetCurrentUS();
 
-  VLOG(1) << "run send graph use time "
+  VLOG(3) << "run send graph use time "
+          << (after_run_send_graph - before_run_send_graph);
+}
+
+void HalfAsyncCommunicator::SendByCommunicator() {
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(send_varname_to_ctx_.size());
+  VLOG(3) << "run send graph";
+
+  int batches = BatchesCounter();
+  if (batches <= 0) return;
+
+  auto before_run_send_graph = GetCurrentUS();
+  for (auto &iter : send_varname_to_queue_) {
+    auto &var_name = iter.first;
+    auto &var_queue = iter.second;
+
+    auto send_task = [this, batches, &var_name, &var_queue] {
+      VLOG(1) << var_name << " merge and send; ";
+      auto before_task = GetCurrentUS();
+      std::vector<std::shared_ptr<Variable>> vars;
+      vars.reserve(batches);
+
+      for (int i = 0; i < batches; ++i) {
+        vars.push_back(var_queue->Pop());
+      }
+
+      if (var_name == STEP_COUNTER) {
+        SendGlobalStep(batches);
+        auto end_task = GetCurrentUS();
+        VLOG(1) << "merge " << batches << " " << var_name << " use time "
+                << end_task - before_task;
+        return;
+      }
+
+      auto &ctx = send_varname_to_ctx_.at(var_name);
+
+      auto before_merge = GetCurrentUS();
+      MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
+      auto after_merge = GetCurrentUS();
+      VLOG(1) << "merge " << batches << " " << var_name << " use time "
+              << after_merge - before_merge;
+
+      auto send_functor = distributed::ParameterSend<float>();
+      send_functor(ctx, *send_scope_, true, 1);
+      auto after_send = GetCurrentUS();
+      VLOG(1) << "send " << var_name << " use time "
+              << after_send - before_task;
+
+      if (var_name.rfind("@GRAD") != var_name.size() - 5) return;
+
+      auto recv_param = var_name.substr(0, var_name.size() - 5);
+      if (recv_varname_to_ctx_.find(recv_param) == recv_varname_to_ctx_.end())
+        return;
+
+      auto recv_functor = distributed::ParameterRecv<float>();
+      recv_functor(recv_varname_to_ctx_.at(recv_param), *recv_scope_);
+      auto after_recv = GetCurrentUS();
+      VLOG(1) << "recv " << recv_param << " use time "
+              << after_recv - after_send;
+      return;
+    };
+    task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
+  }
+  for (auto &task_f : task_futures) {
+    task_f.wait();
+  }
+  auto after_run_send_graph = GetCurrentUS();
+
+  VLOG(3) << "run send graph use time "
           << (after_run_send_graph - before_run_send_graph);
 }
 
@@ -170,16 +249,29 @@ void AsyncCommunicator::MainThread() {
   }
 
   while (running_) {
-    int need_merge_num = CheckToStart();
-    if (need_merge_num > 0) {
-      SendByCommunicator(need_merge_num);
-      BarrierSend();
-      RecvByCommunicator();
-      BarrierRecv();
-      BarrierWeakUp();
-    } else {
-      VLOG(1) << "nothing to do";
-    }
+    SendByCommunicator();
+    BarrierSend();
+    // RecvByCommunicator();
+    // BarrierRecv();
+    // BarrierWeakUp();
+  }
+  VLOG(1) << "communicator stopped, send thread exit";
+}
+
+void HalfAsyncCommunicator::MainThread() {
+  VLOG(3) << "MainThread start and wait";
+
+  while (waiting_ && running_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    VLOG(3) << "wait for running";
+  }
+
+  while (running_) {
+    SendByCommunicator();
+    BarrierSend();
+    RecvByCommunicator();
+    BarrierRecv();
+    BarrierWeakUp();
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
@@ -197,10 +289,13 @@ void AsyncCommunicator::RecvNoBarrier() {
 
   for (auto &iter : recv_varname_to_ctx_) {
     auto recv_task = [this, &iter] {
+      auto before_task = GetCurrentUS();
       auto &var_name = iter.first;
-      VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
       recv_functor(iter.second, *recv_scope_);
+      auto end_task = GetCurrentUS();
+      VLOG(1) << "recv var " << var_name << " use time "
+              << (end_task - before_task);
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -208,41 +303,6 @@ void AsyncCommunicator::RecvNoBarrier() {
   for (auto &task : task_futures) {
     task.wait();
   }
-}
-
-void AsyncCommunicator::QueuePop(
-    std::shared_ptr<std::vector<std::shared_ptr<Variable>>> vars,
-    const std::string var_name, int batches) {
-  auto &queue = send_varname_to_queue_.at(var_name);
-
-  size_t merged_var_num = vars->size();
-  size_t wait_times = 0;
-
-  while (merged_var_num < static_cast<size_t>(batches)) {
-    while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
-      if (queue->Size() == 0) {
-        VLOG(3) << "wait_times -> " << wait_times;
-        if (wait_times >= static_cast<size_t>(send_wait_times_)) {
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        wait_times++;
-        continue;
-      } else {
-        if (var_name != STEP_COUNTER)
-          vars->push_back(queue->Pop());
-        else
-          queue->Pop();
-        wait_times = 0;
-        merged_var_num++;
-      }
-    }
-    if (merged_var_num < static_cast<size_t>(batches)) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-  }
-
-  return;
 }
 
 void AsyncCommunicator::Start() {
@@ -257,8 +317,6 @@ void AsyncCommunicator::Start() {
     // start send and recv thread
     main_thread_.reset(
         new std::thread(std::bind(&AsyncCommunicator::MainThread, this)));
-    recv_thread_.reset(
-        new std::thread(std::bind(&AsyncCommunicator::RecvThread, this));)
   }
 }
 
@@ -287,13 +345,11 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
       platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
   auto table_name = var_tables[0];
-  if (table_name == STEP_COUNTER && !need_global_step_) return;
 
   auto before_send_op = GetCurrentUS();
   auto &queue = send_varname_to_queue_.at(table_name);
 
   if (table_name == STEP_COUNTER) {
-    // auto &queue = send_varname_to_queue_.at(table_name);
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
     tensor->Resize(framework::make_ddim({1}));
@@ -346,6 +402,19 @@ void HalfAsyncCommunicator::Clean() {
 
     VLOG(3) << "clean var: " << var_name << " done";
   }
+}
+
+int HalfAsyncCommunicator::BatchesCounter() {
+  while (running_) {
+    if (barrier_counter_.load() >= barrier_trigger_.load() &&
+        barrier_trigger_.load() != 0) {
+      break;
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+
+  return barrier_counter_.load();
 }
 
 void HalfAsyncCommunicator::Barrier() {
