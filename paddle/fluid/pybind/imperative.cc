@@ -1204,7 +1204,7 @@ void BindImperative(py::module *m_ptr) {
            py::call_guard<py::gil_scoped_release>());
 
   m.def("assign_group_by_size", &imperative::assign_group_by_size,
-        py::arg("vars"),
+        py::arg("vars"), py::arg("is_sparse_gradient"),
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
         py::call_guard<py::gil_scoped_release>());
 
