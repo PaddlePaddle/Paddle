@@ -43,6 +43,8 @@ from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
+from paddle.utils import deprecated
+from paddle.fluid.framework import static_only
 
 batch = paddle.batch
 
@@ -202,7 +204,7 @@ def _load_program_scope(main=None, startup=None, scope=None):
                     yield
 
 
-def _get_valid_program(main_program):
+def _get_valid_program(main_program=None):
     if main_program is None:
         main_program = default_main_program()
     elif isinstance(main_program, CompiledProgram):
@@ -1160,7 +1162,8 @@ def append_fetch_ops(inference_program,
             attrs={'col': i})
 
 
-@dygraph_not_support
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.save_inference_model")
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -1370,7 +1373,8 @@ def save_inference_model(dirname,
     return target_var_name_list
 
 
-@dygraph_not_support
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.load_inference_model")
 def load_inference_model(dirname,
                          executor,
                          model_filename=None,
