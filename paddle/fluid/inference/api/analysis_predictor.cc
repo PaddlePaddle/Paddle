@@ -175,7 +175,10 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices(false);
-    scope_.reset(new paddle::framework::Scope());
+    scope_.reset(new paddle::framework::Scope(), [&](framework::Scope *scope) {
+      delete scope;
+      memory::Release(place_);
+    });
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -591,7 +594,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--allocator_strategy=thread_local");
         process_level_allocator_enabled = false;
       } else {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
         process_level_allocator_enabled = true;
       }
 
@@ -890,6 +892,11 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+uint64_t AnalysisPredictor::TryShrinkMemory() {
+  ClearIntermediateTensor();
+  return paddle::memory::Release(place_);
+}
+
 void AnalysisPredictor::ClearIntermediateTensor() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           platform::errors::PreconditionNotMet(
@@ -985,6 +992,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
+
+  memory::Release(place_);
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -1141,6 +1150,8 @@ std::unique_ptr<Predictor> Predictor::Clone() {
 void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
+
+uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

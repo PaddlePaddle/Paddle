@@ -175,7 +175,7 @@ call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 :: call :unit_test || goto unit_test_error
 :: call :test_inference || goto test_inference_error
-call :check_change_of_unittest || goto check_change_of_unittest_error
+:: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem "Other configurations are added here"
@@ -193,7 +193,8 @@ call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd6
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0"
+@ECHO ON
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
 set PATH=%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
 set CUDA_PATH=%CUDA_TOOLKIT_ROOT_DIR%
 
@@ -504,8 +505,8 @@ echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_un
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
 echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
 echo     git remote add upstream $UPSTREAM_URL.git>>  check_change_of_unittest.sh
-echo elif [ "$origin_upstream_url" != "$UPSTREAM_URL" ] \>>  check_change_of_unittest.sh
-echo         ^&^& [ "$origin_upstream_url" != "$UPSTREAM_URL.git" ]; then>>  check_change_of_unittest.sh
+echo elif [ "$origin_upstream_url" ^!= "$UPSTREAM_URL" ] ^\>>  check_change_of_unittest.sh
+echo         ^&^& [ "$origin_upstream_url" ^!= "$UPSTREAM_URL.git" ]; then>>  check_change_of_unittest.sh
 echo     git remote remove upstream>>  check_change_of_unittest.sh
 echo     git remote add upstream $UPSTREAM_URL.git>>  check_change_of_unittest.sh
 echo fi>>  check_change_of_unittest.sh
@@ -527,11 +528,11 @@ echo EOF>>  check_change_of_unittest.sh
 echo spec_path=$(pwd)/UNITTEST_DEV.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
 echo unittest_spec_diff=`python $(pwd)/../tools/diff_unittest.py $(pwd)/UNITTEST_DEV.spec $(pwd)/UNITTEST_PR.spec`>>  check_change_of_unittest.sh
-echo if [ "$unittest_spec_diff" != "" ]; then>>  check_change_of_unittest.sh
+echo if [ "$unittest_spec_diff" ^!= "" ]; then>>  check_change_of_unittest.sh
 echo     set +x>> check_change_of_unittest.sh
 echo     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`>>  check_change_of_unittest.sh
 echo     set -x>> check_change_of_unittest.sh
-echo     if [ "$approval_line" != "" ]; then>>  check_change_of_unittest.sh
+echo     if [ "$approval_line" ^!= "" ]; then>>  check_change_of_unittest.sh
 echo         APPROVALS=`echo ${approval_line} ^|python $(pwd)/../tools/check_pr_approval.py 1 22165420 52485244 6836917`>>  check_change_of_unittest.sh
 echo         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}">>  check_change_of_unittest.sh
 echo         if [ "${APPROVALS}" == "FALSE" ]; then>>  check_change_of_unittest.sh

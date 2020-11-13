@@ -394,5 +394,5 @@ REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
             .EQ("square", 0)
             .EQ("elementwise_mul", 0)
             .EQ("elementwise_sub", 0)
-            .EQ("fill_constant", 0)
+            .EQ("fill_constant", 1)
             .EQ("fusion_squared_mat_sub", 0));
