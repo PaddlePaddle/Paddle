@@ -2615,6 +2615,20 @@ PDNode *patterns::MultiGruSeq::operator()() {
   return h2;
 }
 
+PDNode *patterns::MultiGru::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "multi_gru", "X");
+  auto gru = pattern->NewNode(gru_repr())->assert_is_op("multi_gru");
+  auto wx = pattern->NewNode(wx_repr())->AsInput()->assert_is_op_nth_input(
+      "multi_gru", "WeightX", 0);
+  auto wh = pattern->NewNode(wh_repr())->AsInput()->assert_is_op_nth_input(
+      "multi_gru", "WeightH", 0);
+  auto h = pattern->NewNode(h_repr())->AsOutput()->assert_is_op_output(
+      "multi_gru", "Hidden");
+  gru->LinksFrom({x, wx, wh}).LinksTo({h});
+  return h;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
