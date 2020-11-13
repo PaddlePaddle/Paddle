@@ -721,14 +721,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           << "drop_last=False for DataLoader is not supported in training "
              "network. It is automatically turned to drop_last=True.";
       if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-        VLOG(1) << "use ThreadedSSAGraphExecutor, num_threads="
-                << exec_strategy.num_threads_;
+        VLOG(3) << "use ThreadedSSAGraphExecutor";
         member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
             exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
             member_->places_, graph));
       } else {
-        VLOG(1) << "use FastThreadedSSAGraphExecutor, num_thread="
-                << exec_strategy.num_threads_;
+        VLOG(3) << "use FastThreadedSSAGraphExecutor";
         member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
             exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
             member_->places_, graph));

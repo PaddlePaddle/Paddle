@@ -370,6 +370,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kUseHierarchicalAllReduce);
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
+      pass->Erase(kNcclCommNum);
       pass->Set<size_t>(kNcclCommNum, new size_t(nccl_comm_num_));
 #endif
       VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
