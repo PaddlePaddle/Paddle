@@ -68,9 +68,6 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
     Returns:
-        The fetch variables' name list
-
-     Return Type:
         None
 
     Raises:
@@ -82,7 +79,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
 
             import paddle.fluid as fluid
 
-            path = "./infer_model"
+            path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
@@ -99,16 +96,12 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
             # Feed data and train process
 
             # Save inference model. Note we don't save label and loss in this example
-            fluid.io.save_inference_model(dirname=path,
-                                          feeded_var_names=['img'],
-                                          fetch_vars=[predict],
-                                          executor=exe)
+            paddle.static.io.save_inference_model(path_prefix, [image], [predict], exe)
 
             # In this example, the save_inference_mode inference will prune the default
             # main program according to the network's input node (img) and output node(predict).
-            # The pruned inference program is going to be saved in the "./infer_model/__model__"
-            # and parameters are going to be saved in separate files under folder
-            # "./infer_model".
+            # The pruned inference program is going to be saved in file "./infer_model.pdmodel"
+            # and parameters are going to be saved in file "./infer_model.pdiparams".
 
     """
     # check path_prefix, set model_path and params_path
@@ -201,33 +194,15 @@ def load_inference_model(path_prefix, executor, **configs):
     """
     :api_attr: Static Graph
 
-    Load the inference model from a given directory. By this API, you can get the model
-    structure(Inference Program) and model parameters. If you just want to load
-    parameters of the pre-trained model, please use the :ref:`api_fluid_io_load_params` API.
-    You can refer to :ref:`api_guide_model_save_reader_en` for more details.
+    Load inference model from a given path. By this API, you can get the model
+    structure(Inference Program) and model parameters.
 
     Args:
-        dirname(str): One of the following:
-          - The given directory path.
+        path_prefix(str | None): One of the following:
+          - Directory path to save model + model name without suffix.
           - Set to None when reading the model from memory.
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
-        model_filename(str, optional): One of the following:
-          - The name of file to load the inference program.
-          - If it is None, the default filename ``__model__`` will be used.
-          - When ``dirname`` is ``None``, it must be set to a string containing model.
-          Default: ``None``.
-        params_filename(str, optional): It is only used for the case that all
-            parameters were saved in a single binary file. One of the following:
-          - The name of file to load all parameters.  
-          - When ``dirname`` is ``None``, it must be set to a string containing all the parameters.
-          - If parameters were saved in separate files, set it as ``None``.
-            Default: ``None``.
-
-        pserver_endpoints(list, optional): It is only needed by the distributed inference.
-                                    If using a distributed look up table during the training,
-                                    this table is also needed by the inference process. Its value is
-                                    a list of pserver endpoints.
 
     Returns:
         list: The return of this API is a list with three elements:
@@ -239,7 +214,7 @@ def load_inference_model(path_prefix, executor, **configs):
         we can get inference results.
 
     Raises:
-        ValueError: If `dirname` is not a existing directory.
+        ValueError: If `path_prefix.pdmodel` or `path_prefix.pdiparams`  doesn't exist.
 
     Examples:
         .. code-block:: python
@@ -248,47 +223,35 @@ def load_inference_model(path_prefix, executor, **configs):
             import numpy as np
 
             # Build the model
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
+            startup_prog = fluid.default_startup_program()
+            main_prog = fluid.default_main_program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+                image = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
                 w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
                 b = fluid.layers.create_parameter(shape=[200], dtype='float32')
-                hidden_w = fluid.layers.matmul(x=data, y=w)
+                hidden_w = fluid.layers.matmul(x=image, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(startup_prog)
 
             # Save the inference model
-            path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
-                         fetch_vars=[hidden_b], executor=exe, main_program=main_prog)
+            path_prefix = "./infer_model"
+            fluid.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
-            # Demo one. Not need to set the distributed look up table, because the
-            # training doesn't use a distributed look up table.
             [inference_program, feed_target_names, fetch_targets] = (
-                fluid.io.load_inference_model(dirname=path, executor=exe))
+                fluid.io.load_inference_model(path_prefix, exe))
             tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-            # Demo two. If the training uses a distributed look up table, the pserver
-            # endpoints list should be supported when loading the inference model.
-            # The below is just an example.
-            endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
-            [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (
-                fluid.io.load_inference_model(dirname=path,
-                                              executor=exe,
-                                              pserver_endpoints=endpoints))
-
-            # In this example, the inference program was saved in the file
-            # "./infer_model/__model__" and parameters were saved in
-            # separate files under the directory "./infer_model".
+            # In this example, the inference program was saved in file
+            # "./infer_model.pdmodel" and parameters were saved in file
+            # " ./infer_model.pdiparams".
             # By the inference program, feed_target_names and
             # fetch_targets, we can use an executor to run the inference
-            # program for getting the inference result.
+            # program to get the inference result.
     """
     # check configs
     supported_args = ('model_filename', 'params_filename')
