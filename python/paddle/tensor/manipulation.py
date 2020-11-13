@@ -787,7 +787,8 @@ def gather(x, index, axis=None, name=None):
     axis_tensor = axis
     if not isinstance(axis, Variable):
         with device_guard("cpu"):
-            axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+            axis_tensor = fill_constant(
+                shape=[1], dtype='int64', value=axis, force_cpu=False)
     if in_dygraph_mode():
         return core.ops.gather(x, index, axis_tensor)
 
