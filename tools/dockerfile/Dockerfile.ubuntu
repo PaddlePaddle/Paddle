@@ -131,7 +131,7 @@ RUN curl -s -q https://glide.sh/get | sh
 # Downgrade TensorRT 
 COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_trt.sh && \
-    bash /build_scripts/install_nccl2.sh
+    bash -x /build_scripts/install_nccl2.sh
 RUN rm -rf /build_scripts
 
 # git credential to skip password typing
