@@ -685,8 +685,6 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-
                 linear = Linear(32, 64)
                 data = paddle.uniform(shape=[30, 10, 32], -1, 1)
                 x = linear(data)
@@ -704,19 +702,13 @@ void BindImperative(py::module *m_ptr) {
              .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-
-                inputs = []
-                for _ in range(10):
-                    tmp = paddle.ones([2, 2])
-                    tmp.stop_gradient=False
-                    inputs.append(tmp)
-                ret = paddle.sums(inputs2)
-                loss = paddle.sum(ret)
-                loss.backward()
-                print("Before clear_gradient {}".format(loss.grad))
-                loss.clear_gradient()
-                print("After clear_gradient {}".format(loss.grad))
+                input = paddle.uniform([10, 2])
+                linear = paddle.nn.Linear(2, 3)
+                out = linear(input)
+                out.backward()
+                print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+                linear.weight.clear_gradient()
+                print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
