@@ -103,7 +103,8 @@ class InferencePassTest(unittest.TestCase):
     def _get_analysis_config(self,
                              use_gpu=False,
                              use_trt=False,
-                             use_mkldnn=False):
+                             use_mkldnn=False,
+                             use_bfloat16=False):
         '''
         Return a new object of AnalysisConfig. 
         '''
@@ -125,6 +126,8 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_calib_mode)
         elif use_mkldnn:
             config.enable_mkldnn()
+            if use_bfloat16:
+                config.enable_mkldnn_bfloat16()
 
         return config
 
@@ -144,7 +147,8 @@ class InferencePassTest(unittest.TestCase):
                                  use_gpu,
                                  atol=1e-5,
                                  flatten=False,
-                                 quant=False):
+                                 quant=False,
+                                 bfloat16=False):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT 
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
@@ -245,12 +249,16 @@ class InferencePassTest(unittest.TestCase):
         if (not use_gpu) and self.enable_mkldnn:
             mkldnn_outputs = self._get_analysis_outputs(
                 self._get_analysis_config(
-                    use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn))
+                    use_gpu=use_gpu,
+                    use_mkldnn=self.enable_mkldnn,
+                    use_bfloat16=bfloat16))
 
             self.assertTrue(
                 len(outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ")
 
+            if bfloat16:
+                atol = 0.01
             for out, mkldnn_output in zip(outs, mkldnn_outputs):
                 self.assertTrue(
                     np.allclose(
