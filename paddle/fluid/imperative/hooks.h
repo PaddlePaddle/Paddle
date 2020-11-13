@@ -15,18 +15,20 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
 
 class VariableWrapper;
 
-/* Basic hook class */
-
-/**
+/** [ Basic hook classes ]
+ * s
  * @brief OpBasePreHook is executed before the grad OpBase is executed,
  *        taking the input of the current grad OpBase as input, and
  *        executing python hooks (user-defined) or C++ hooks (developer-defined)
@@ -126,6 +128,104 @@ class LambdaGradAccumulatorPostHook : public GradAccumulatorPostHook {
  * - PyGradAccumulatorPostHook (Implement later): used for user-defined leaf
  * python VarBase hooks
  */
+
+/** [ Hook Package classes ]
+ *
+ * @note  [Why need hook package classes?]
+ *
+ *        There are 2 purposes for adding Hook Package here:
+ *
+ *        1. Make the code implementation cleaner.
+ *
+ *          If there are no Hook Package, we need to add 3 hook vector into
+ *          VariableWrapper, 1 hook vector into OpBase, 2 hook vector into
+ *          GradientAccumulator, like:
+ *
+ *          - VariableWrapper:
+ *            std::vector<std::shared_ptr<OpBasePreHook>>
+ *              interior_var_hooks_;
+ *            std::vector<std::shared_ptr<GradAccumulatorPostHook>>
+ *              leaf_var_hooks_;
+ *            std::vector<std::shared_ptr<GradAccumulatorPostHook>>
+ *              backward_hooks_;
+ *
+ *          - OpBase:
+ *            std::vector<std::weak_ptr<OpBasePreHook>>
+ *              interior_var_hooks_;
+ *
+ *          - GradientAccumulator:
+ *            std::vector<std::weak_ptr<GradAccumulatorPostHook>>
+ *              leaf_var_hooks_;
+ *            std::vector<std::weak_ptr<GradAccumulatorPostHook>>
+ *              backward_hooks_;
+ *
+ *          This seems more complicated, and std::vector<std::weak_ptr<...>>
+ *          is not easy to destruct.
+ *
+ *        2. Make the code easier to understand.
+ *
+ *          From these two packages, we can clearly understand that we
+ *          have two types of Hooks, respectively for the interior
+ *          gradient var and leaf gradient var inside the backward
+ *          calculation graph.
+ */
+
+class InteriorVarHookPackage {
+ public:
+  InteriorVarHookPackage() = default;
+
+  void add_hook(std::unique_ptr<OpBasePreHook>&& hook) {
+    hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::unique_ptr<OpBasePreHook>>& hooks() const {
+    return hooks_;
+  }
+
+  std::vector<std::unique_ptr<OpBasePreHook>>& hooks() { return hooks_; }
+
+ private:
+  std::vector<std::unique_ptr<OpBasePreHook>> hooks_;
+
+  DISABLE_COPY_AND_ASSIGN(InteriorVarHookPackage);
+};
+
+class LeafVarHookPackage {
+ public:
+  LeafVarHookPackage() = default;
+
+  void add_hook(std::unique_ptr<GradAccumulatorPostHook>&& hook) {
+    hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::unique_ptr<GradAccumulatorPostHook>>& hooks() const {
+    return hooks_;
+  }
+
+  std::vector<std::unique_ptr<GradAccumulatorPostHook>>& hooks() {
+    return hooks_;
+  }
+
+  void add_backward_hook(std::unique_ptr<GradAccumulatorPostHook>&& hook) {
+    backward_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::unique_ptr<GradAccumulatorPostHook>>& backward_hooks()
+      const {
+    return backward_hooks_;
+  }
+
+  std::vector<std::unique_ptr<GradAccumulatorPostHook>>& backward_hooks() {
+    return backward_hooks_;
+  }
+
+ private:
+  std::vector<std::unique_ptr<GradAccumulatorPostHook>> hooks_;
+  // executed after backward calc end.
+  std::vector<std::unique_ptr<GradAccumulatorPostHook>> backward_hooks_;
+
+  DISABLE_COPY_AND_ASSIGN(LeafVarHookPackage);
+};
 
 }  // namespace imperative
 }  // namespace paddle

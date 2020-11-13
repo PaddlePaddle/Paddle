@@ -38,34 +38,48 @@ class GradientAccumulator {
   inline size_t RefCnt() const { return ref_cnt_; }
 
   /* Hook related methods */
-  inline bool HasReduceHook() const { return !reduce_hook_.expired(); }
+  inline bool HasPostHooks() const { return !post_hooks_.expired(); }
 
-  inline void SetReduceHook(
-      const std::shared_ptr<LambdaGradAccumulatorPostHook>& hook) {
-    if (!hook) {
-      reduce_hook_.reset();
+  void SetPostHooks(const std::shared_ptr<LeafVarHookPackage>& hooks) {
+    if (!hooks) {
+      post_hooks_.reset();
       return;
     }
 
-    auto shared_hook = reduce_hook_.lock();
-    if (shared_hook != hook) {
+    auto shared_hooks = post_hooks_.lock();
+    if (shared_hooks != hooks) {
       PADDLE_ENFORCE_EQ(
-          shared_hook, nullptr,
-          platform::errors::PermissionDenied("Cannot set post hooks twice"));
-      reduce_hook_ = hook;
+          shared_hooks, nullptr,
+          platform::errors::PermissionDenied(
+              "Cannot set post hooks twice to GradientAccumulator."));
+      post_hooks_ = hooks;
     }
   }
 
-  inline void CallReduceHook() {
-    auto shared_hook = reduce_hook_.lock();
-    (*shared_hook)(var_);
+  void CallPostHooks() {
+    PADDLE_ENFORCE_NE(
+        post_hooks_.expired(), true,
+        platform::errors::NotFound(
+            "The post hooks of GradientAccumulator for Tensor `%s` expired.",
+            var_->Name()));
+    auto shared_hooks = post_hooks_.lock();
+    // 1. call var post hooks
+    for (const auto& hook : shared_hooks->hooks()) {
+      (*hook)(var_);
+    }
+    // 2. accumulate gradient across batchs
+    // 3. call backward post hooks, such as reduce hook
+    for (const auto& hook : shared_hooks->backward_hooks()) {
+      VLOG(3) << "call gradient accumulator backward hooks.";
+      (*hook)(var_);
+    }
   }
 
  protected:
   VariableWrapper* var_;
   size_t ref_cnt_{0};
 
-  std::weak_ptr<LambdaGradAccumulatorPostHook> reduce_hook_;
+  std::weak_ptr<LeafVarHookPackage> post_hooks_;
 };
 
 class EagerGradientAccumulator : public GradientAccumulator {
@@ -80,10 +94,11 @@ class EagerGradientAccumulator : public GradientAccumulator {
 
   void IncreaseCurCnt() {
     ++cur_cnt_;
-    VLOG(0) << "IncreaseCurCnt: cur_cnt " << cur_cnt_ << "ref_cnt " << ref_cnt_;
+    VLOG(3) << "IncreaseCurCnt: cur_cnt " << cur_cnt_ << ", ref_cnt "
+            << ref_cnt_;
     // After all tmp gradient being accumulated to grad var, run hooks
-    if (AccumulateCompleted() && HasReduceHook()) {
-      CallReduceHook();
+    if (AccumulateCompleted() && HasPostHooks()) {
+      CallPostHooks();
     }
   }
 
