@@ -282,7 +282,8 @@ endforeach()
 if(NOT WIN32)
     set_tests_properties(test_post_training_quantization_mobilenetv1 PROPERTIES TIMEOUT 250 LABELS "RUN_TYPE=NIGHTLY")
 	set_tests_properties(test_post_training_quantization_resnet50 PROPERTIES TIMEOUT 200 LABELS "RUN_TYPE=NIGHTLY")
-    set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT 120)
+    # TODO(wozna) remove after generating new mnist model after merge #27777
+	# set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT 120)
     set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT 120)
 endif()
 
