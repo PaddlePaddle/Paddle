@@ -25,7 +25,7 @@ from paddle.fluid import Program, program_guard
 
 class TestWhereIndexOp(OpTest):
     def setUp(self):
-        self.op_type = "where_index"
+        self.op_type = "where"
         self.init_config()
 
     def test_check_output(self):
@@ -39,7 +39,7 @@ class TestWhereIndexOp(OpTest):
 
 class TestAllFalse(unittest.TestCase):
     def setUp(self):
-        self.op_type = "where_index"
+        self.op_type = "where"
         self.init_config()
 
     def check_with_place(self, place):
@@ -50,7 +50,7 @@ class TestAllFalse(unittest.TestCase):
         out = scope.var("Out").get_tensor()
         out.set(np.full(self.shape, 0).astype('int64'), place)
 
-        op = Operator("where_index", Condition="Condition", Out="Out")
+        op = Operator("where", Condition="Condition", Out="Out")
         op.run(scope, place)
 
         out_array = np.array(out)

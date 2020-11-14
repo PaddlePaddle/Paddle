@@ -401,7 +401,7 @@ def nonzero(x, as_tuple=False):
     rank = len(shape)
 
     if in_dygraph_mode():
-        outs = core.ops.where_index(x)
+        outs = core.ops.where(x)
     else:
         outs = layers.where(x)
 
@@ -545,13 +545,13 @@ def where(condition, x, y, name=None):
     y_shape = list(y.shape)
     if x_shape == y_shape:
         if in_dygraph_mode():
-            return core.ops.where(condition, x, y)
+            return core.ops.where_v2(condition, x, y)
         else:
             helper = LayerHelper("where", **locals())
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
             helper.append_op(
-                type='where',
+                type='where_v2',
                 inputs={'Condition': condition,
                         'X': x,
                         'Y': y},

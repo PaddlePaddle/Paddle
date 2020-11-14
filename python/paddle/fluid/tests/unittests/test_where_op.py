@@ -28,7 +28,7 @@ from paddle.fluid.backward import append_backward
 
 class TestWhereOp(OpTest):
     def setUp(self):
-        self.op_type = "where"
+        self.op_type = "where_v2"
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}

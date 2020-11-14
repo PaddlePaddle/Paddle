@@ -14080,18 +14080,16 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    helper = LayerHelper("where_index", **locals())
+    helper = LayerHelper("where", **locals())
 
     if in_dygraph_mode():
-        return core.ops.where_index(condition)
+        return core.ops.where(condition)
 
     out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)
 
     helper.append_op(
-        type='where_index',
-        inputs={'Condition': condition},
-        outputs={'Out': [out]})
+        type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
     return out
 
 
