@@ -159,6 +159,10 @@ class PipelineOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline = False
         dist_strategy.pipeline_configs = {}
 
+    def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.pipeline = True
+        dist_strategy.pipeline_configs = {"micro_batch": 1, }
+
     def _get_local_rank(self, current_endpoint, endpoints):
         cur_node_endpoints = []
         cur_ip = current_endpoint.split(':')[0].strip()
