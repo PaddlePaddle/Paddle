@@ -607,6 +607,7 @@ class TestDistBase(unittest.TestCase):
         self._dc_asgd = False  # must use with async mode
         self._use_reader_alloc = True
         self._nccl2_mode = False
+        self._pipeline_mode = False
         self._mp_mode = False
         # FIXME(typhoonzero): I added this stupid argument to enable
         # testing allreduce layers, which users can call layers.allreduce
