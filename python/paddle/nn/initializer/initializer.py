@@ -24,7 +24,7 @@ def set_global_initializer(weight_init, bias_init=None):
     After this API is invoked, the global initializer will takes effect in subsequent code.
 
     The model parameters include ``weight`` and ``bias`` . In the framework, they correspond 
-    to ``fluid.Parameter`` , which is inherited from ``fluid.Variable`` , and is a persistable Variable.
+    to ``paddle.ParamAttr`` , which is inherited from ``paddle.Tensor`` , and is a persistable Variable.
     This API only takes effect for model parameters, not for variables created through apis such as 
     :ref:`api_fluid_layers_create_global_var` , :ref:`api_fluid_layers_create_tensor`.
     
@@ -51,12 +51,12 @@ def set_global_initializer(weight_init, bias_init=None):
 
             # The weight of conv1 is initialized by Uniform
             # The bias of conv1 is initialized by Constant
-            conv1 = fluid.layers.conv2d(x, 5, 3)
+            conv1 = paddle.nn.functional.conv2d(x, 5, 3)
 
             # If set param_attr/bias_attr too, global initializer will not take effect
             # The weight of conv2 is initialized by Xavier
             # The bias of conv2 is initialized by Normal
-            conv2 = fluid.layers.conv2d(conv1, 5, 3, 
+            conv2 = paddle.nn.functional.conv2d(conv1, 5, 3, 
                 param_attr=nn.initializer.XavierUniform(), 
                 bias_attr=nn.initializer.Normal())
 
