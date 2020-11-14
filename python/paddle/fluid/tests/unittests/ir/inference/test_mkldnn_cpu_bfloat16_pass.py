@@ -43,14 +43,14 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
     def init_data(self):
         self.bs = 8
         self.d_type = np.float32
-        self.shape_x = [12, 1, 1]
+        self.shape_x = [12, 10, 1]
         self.shape_y = [12, 1, 64]
         self.enable_mkldnn = True
+        self.enable_mkldnn_bfloat16 = True
 
     def test_check_output(self):
-        self.enable_mkldnn = True
         use_gpu = False
-        self.check_output_with_option(use_gpu, flatten=True, bfloat16=True)
+        self.check_output_with_option(use_gpu, flatten=True)
         self.assertTrue(PassVersionChecker.IsCompatible('cpu_bfloat16_pass'))
 
 
