@@ -128,10 +128,12 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
 // in-place ops.
 std::map<std::string, std::set<std::string>> op_inplace_passing_outs_map = {
     {"squeeze2", {"Out"}},  // "X" -> "Out"
+    {"reshape2", {"Out"}},
 };
 std::map<std::string, std::map<std::string, std::string>>
     op_reuse_buffer_inplace_passing_outs_map = {
         {"squeeze2", {{"Out", "X"}}},  // "X" -> "Out"
+        {"reshape2", {{"Out", "X"}}},
 };
 
 // clang-format off

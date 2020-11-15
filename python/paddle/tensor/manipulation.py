@@ -43,6 +43,7 @@ __all__ = [
     'gather',
     'gather_nd',
     'reshape',
+    'reshape_',
     'reverse',
     'scatter',
     'scatter_nd_add',
@@ -1400,6 +1401,20 @@ def reshape(x, shape, name=None):
             # the shape is [8, 6].
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
+
+
+def reshape_(x, shape, name=None):
+    """
+    only used in dygraph
+    """
+    assert in_dygraph_mode(), "reshape_ can't be used in static mode"
+    if isinstance(shape, (list, tuple)):
+        shape = [
+            item.numpy().item(0) if isinstance(item, Variable) else item
+            for item in shape
+        ]
+        core.ops.reshape2_(x, x, 'shape', shape)
+        return x
 
 
 def gather_nd(x, index, name=None):

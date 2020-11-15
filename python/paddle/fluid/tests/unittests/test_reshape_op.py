@@ -22,6 +22,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
+paddle.enable_static()
+
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
 class TestReshapeOp(OpTest):
@@ -393,6 +395,32 @@ class TestReshapeOpError(unittest.TestCase):
     def test_fluid_api_error(self):
         self._set_fluid_api()
         self._test_errors()
+
+
+class TestReshapeInplaceApi(unittest.TestCase):
+    def test_reshape(self):
+        paddle.disable_static()
+        x = paddle.rand([2, 3, 4])
+        y = paddle.reshape(x, [6, 4])
+        y[0] = 2.
+        self.assertNotEqual(x.shape, y.shape)
+
+        x_numpy = x.numpy()
+        y_numpy = y.numpy()
+        self.assertTrue(np.array_equal(x_numpy.reshape([6, 4]), y_numpy))
+        paddle.enable_static()
+
+    def test_squeeze_(self):
+        paddle.disable_static()
+        x = paddle.rand([2, 3, 4])
+        y = x.reshape_([6, 4])
+        y[0] = 2.
+        self.assertEqual(x.shape, y.shape)
+
+        x_numpy = x.numpy()
+        y_numpy = y.numpy()
+        self.assertTrue(np.array_equal(x_numpy, y_numpy))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
