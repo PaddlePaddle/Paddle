@@ -603,7 +603,7 @@ def cloud_ps_heter_env_set(args):
     avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
     assert len(
         avilable_ports
-    ) > 3, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
+    ) >= 2, "set paddle_ports_num >= 2 in config.ini for paddlecloud job submit"
 
     # hard code for paddlecloud custom-framework
     trainers_num = len(paddle_pserver_endpoints.split(","))
@@ -894,7 +894,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_server.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": "1",
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "PADDLE_GLOO_HTTP_ENDPOINT": self.http_port
@@ -958,7 +958,7 @@ class ParameterServerLauncher(object):
                 self.heter_worker_endpoints,
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
-                "PADDLE_WITH_GLOO": "1",
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",
@@ -1014,7 +1014,8 @@ class ParameterServerLauncher(object):
         elif fluid.core.is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
-        assert heter_device_num != 0
+        if heter_device_num == 0:
+            return
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
             device_id = str(device_list[idx % heter_device_num])
@@ -1027,7 +1028,7 @@ class ParameterServerLauncher(object):
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "POD_IP": cur_heter_worker.endpoint.split(":")[0],
-                "PADDLE_WITH_GLOO": "1",
+                "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "1")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
                 "FLAGS_selected_gpus": "0",

@@ -22,19 +22,15 @@ namespace dynload {
 std::once_flag tensorrt_dso_flag;
 void* tensorrt_dso_handle;
 
+std::once_flag tensorrt_plugin_dso_flag;
+void* tensorrt_plugin_dso_handle;
+
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 TENSORRT_RAND_ROUTINE_EACH(DEFINE_WRAP);
+TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
-void* GetTensorRtHandle() {
-#if defined(__APPLE__) || defined(__OSX__)
-  std::string dso_name = "libnvinfer.dylib";
-#elif defined(_WIN32)
-  std::string dso_name = "nvinfer.dll";
-#else
-  std::string dso_name = "libnvinfer.so";
-#endif
-
+void* GetDsoHandle(const std::string& dso_name) {
 #if !defined(_WIN32)
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
 #else
@@ -49,8 +45,29 @@ void* GetTensorRtHandle() {
         "library is not found. Ignore this if TensorRT is not needed.";
     std::cerr << error_msg;
   }
-
   return dso_handle;
+}
+
+void* GetTensorRtHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  std::string dso_name = "libnvinfer.dylib";
+#elif defined(_WIN32)
+  std::string dso_name = "nvinfer.dll";
+#else
+  std::string dso_name = "libnvinfer.so";
+#endif
+  return GetDsoHandle(dso_name);
+}
+
+void* GetTensorRtPluginHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  std::string dso_name = "libnvinfer_plugin.dylib";
+#elif defined(_WIN32)
+  std::string dso_name = "nvinfer_plugin.dll";
+#else
+  std::string dso_name = "libnvinfer_plugin.so";
+#endif
+  return GetDsoHandle(dso_name);
 }
 
 }  // namespace dynload

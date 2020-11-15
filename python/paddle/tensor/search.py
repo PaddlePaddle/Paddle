@@ -62,7 +62,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         and with data type int64).
 
     Examples:
+
         .. code-block:: python
+
             import paddle
             
             paddle.disable_static()
@@ -278,8 +280,6 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 def index_select(x, index, axis=0, name=None):
     """
-	:alias_main: paddle.index_select
-	:alias: paddle.tensor.index_select, paddle.tensor.search.index_select
 
     Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using 
     the entries in ``index`` which is a Tensor. The returned tensor has the same number 
@@ -302,7 +302,6 @@ def index_select(x, index, axis=0, name=None):
             
             import paddle
 
-            paddle.disable_static()  # Now we are in imperative mode
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],
                                   [9.0, 10.0, 11.0, 12.0]])
@@ -357,6 +356,7 @@ def nonzero(x, as_tuple=False):
     Examples:
     
         .. code-block:: python
+
 
             import paddle
 
@@ -677,7 +677,6 @@ def masked_select(x, mask, name=None):
 
             import paddle
 
-            paddle.disable_static()
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],

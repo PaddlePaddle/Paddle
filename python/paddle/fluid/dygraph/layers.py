@@ -1023,13 +1023,20 @@ class Layer(core.Layer):
                         self._non_persistable_buffer_names_set.add(name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
-                    if value is not None:
+                    # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in 
+                    # decorated function, such as `self.buffer = new_tensor`. So we update its
+                    # value via `assign`.
+                    if type(value) == framework.Variable:
+                        from paddle import assign
+                        assign(value, _buffers[name])
+                    elif value is not None:
                         raise TypeError(
                             "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
                             .format(name, type(value).__name__))
-                    # Assigning None will remove the buffer, but if re-assign a new varBase to it,
-                    # it will be remarked as a buffer with same `persistable` attribute.
-                    _buffers[name] = None
+                    else:
+                        # Assigning None will remove the buffer, but if re-assign a new varBase to it,
+                        # it will be remarked as a buffer with same `persistable` attribute.
+                        _buffers[name] = None
                 else:
                     object.__setattr__(self, name, value)
 
@@ -1058,7 +1065,7 @@ class Layer(core.Layer):
                         super(Mylayer, self).__init__()
                         self.linear1 = paddle.nn.Linear(10, 10)
                         self.linear2 = paddle.nn.Linear(5, 5)
-                        self.conv2d = paddle.nn.Conv2d(3, 2, 3)
+                        self.conv2d = paddle.nn.Conv2D(3, 2, 3)
                         self.embedding = paddle.nn.Embedding(128, 16)
                         self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
 

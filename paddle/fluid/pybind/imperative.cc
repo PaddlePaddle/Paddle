@@ -685,8 +685,6 @@ void BindImperative(py::module *m_ptr) {
             .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-
                 linear = Linear(32, 64)
                 data = paddle.uniform(shape=[30, 10, 32], -1, 1)
                 x = linear(data)
@@ -704,19 +702,13 @@ void BindImperative(py::module *m_ptr) {
              .. code-block:: python
 
                 import paddle
-                paddle.disable_static()
-
-                inputs = []
-                for _ in range(10):
-                    tmp = paddle.ones([2, 2])
-                    tmp.stop_gradient=False
-                    inputs.append(tmp)
-                ret = paddle.sums(inputs2)
-                loss = paddle.sum(ret)
-                loss.backward()
-                print("Before clear_gradient {}".format(loss.grad))
-                loss.clear_gradient()
-                print("After clear_gradient {}".format(loss.grad))
+                input = paddle.uniform([10, 2])
+                linear = paddle.nn.Linear(2, 3)
+                out = linear(input)
+                out.backward()
+                print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+                linear.weight.clear_gradient()
+                print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
       )DOC")
       .def("clone",
            [](std::shared_ptr<imperative::VarBase> &self) {
@@ -836,6 +828,127 @@ void BindImperative(py::module *m_ptr) {
              }
            },
            py::call_guard<py::gil_scoped_release>())
+      .def("cpu",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+             if (platform::is_cpu_place(self->Place())) {
+               return self;
+             } else {
+               auto new_var = self->NewVarBase(platform::CPUPlace(), true);
+               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+               return new_var;
+             }
+           },
+           R"DOC(
+        Returns a copy of this Tensor in CPU memory.
+
+        If this Tensor is already in CPU memory, then no copy is performed and the original Tensor is returned.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              x = paddle.to_tensor(1.0, place=paddle.CUDAPlace(0))
+              print(x.place)    # CUDAPlace(0)
+              
+              y = x.cpu()
+              print(y.place)    # CPUPlace
+
+              )DOC")
+      .def("pin_memory",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+#ifndef PADDLE_WITH_CUDA
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Cannot copy this Tensor to pinned memory in CPU version "
+                 "Paddle, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
+#endif
+             if (platform::is_cuda_pinned_place(self->Place())) {
+               return self;
+             } else {
+               auto new_var =
+                   self->NewVarBase(platform::CUDAPinnedPlace(), true);
+               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+               return new_var;
+             }
+           },
+           R"DOC(
+        Returns a copy of this Tensor in pin memory.
+
+        If this Tensor is already in pin memory, then no copy is performed and the original Tensor is returned.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              x = paddle.to_tensor(1.0, place=paddle.CUDAPlace(0))
+              print(x.place)      # CUDAPlace(0)
+
+              y = x.pin_memory()
+              print(y.place)      # CUDAPinnedPlace
+
+      )DOC")
+      .def("cuda",
+           [](const std::shared_ptr<imperative::VarBase> &self, int device_id,
+              bool blocking) {
+#ifndef PADDLE_WITH_CUDA
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Cannot copy this Tensor to GPU in CPU version Paddle, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
+#else
+             int device_count = platform::GetCUDADeviceCount();
+             if (device_id == -1) {
+               if (platform::is_gpu_place(self->Place())) {
+                 return self;
+               } else {
+                 device_id = 0;
+               }
+             }
+             PADDLE_ENFORCE_GE(
+                 device_id, 0,
+                 platform::errors::InvalidArgument(
+                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                     "must inside [0, %d)",
+                     device_id, device_count));
+             PADDLE_ENFORCE_LT(
+                 device_id, device_count,
+                 platform::errors::InvalidArgument(
+                     "Can not copy Tensor to Invalid CUDAPlace(%d), device id "
+                     "must inside [0, %d)",
+                     device_id, device_count));
+             platform::CUDAPlace place = platform::CUDAPlace(device_id);
+             if (platform::is_same_place(self->Place(), place)) {
+               return self;
+             } else {
+               auto new_var = self->NewVarBase(place, blocking);
+               new_var->SetOverridedStopGradient(self->OverridedStopGradient());
+               return new_var;
+             }
+#endif
+           },
+           py::arg("device_id") = -1, py::arg("blocking") = true, R"DOC(
+        Returns a copy of this Tensor in GPU memory.
+
+        If this Tensor is already in GPU memory and device_id is default, 
+        then no copy is performed and the original Tensor is returned.
+        
+        Args:
+            device_id(int, optional): The destination GPU device id. Defaults to the current device.
+            blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
+              asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
+              print(x.place)        # CPUPlace
+
+              y = x.cuda()
+              print(y.place)        # CUDAPlace(0)
+
+              y = x.cuda(1)
+              print(y.place)        # CUDAPlace(1)
+       )DOC")
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },
@@ -950,12 +1063,14 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::Tracer &self,
              std::unordered_set<std::string> &allow_ops,
              std::unordered_set<std::string> &block_ops) {
-            // NOTE(zhiqiu): The automatic conversion in pybind11 between c++
+            // NOTE(zhiqiu): The automatic conversion in pybind11 between
+            // c++
             // STL and python set/list/dict involve a copy operation that
             // prevents pass-by-reference semantics, so it is ok to swap.
             // The reaseon why not directly pass
             // std::shared_ptr<std::unordered_set<std::string>>
-            // is that pybind11 forbid shared_ptr<T> where T is not custom type.
+            // is that pybind11 forbid shared_ptr<T> where T is not custom
+            // type.
             imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
             imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
           })

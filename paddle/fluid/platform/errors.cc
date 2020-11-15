@@ -68,7 +68,7 @@ std::string error_name(Code code) {
   }
 }
 
-std::string ErrorSummary::ToString() const {
+std::string ErrorSummary::to_string() const {
   std::string result(error_name(code()));
   result += ": ";
   result += error_message();

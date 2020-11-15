@@ -612,6 +612,55 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.recompute_configs, configs)
 
     @property
+    def sharding(self):
+        """
+        Indicating whether we are using sharding Optimizer for memory
+        optimization
+
+        Default value: False
+
+        Examples:
+          .. code-block:: python
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sharding = True
+        """
+        return self.strategy.sharding
+
+    @sharding.setter
+    @is_strict_auto
+    def sharding(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.sharding = flag
+        else:
+            print("WARNING: sharding should have value of bool type")
+
+    @property
+    def sharding_configs(self):
+        """
+        Set sharding configurations.
+
+        **Note**:
+            fuse_broadcast_MB(float): size of a fused group of broadcasted parameters.
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sharding = True
+            strategy.sharding_configs = {"fuse_broadcast_MB": 32}
+        """
+        return get_msg_dict(self.strategy.sharding_configs)
+
+    @sharding_configs.setter
+    @is_strict_auto
+    def sharding_configs(self, configs):
+        check_configs_key(self.strategy.sharding_configs, configs,
+                          "sharding_configs")
+        assign_configs_value(self.strategy.sharding_configs, configs)
+
+    @property
     def pipeline(self):
         """
         Indicating whether we are using pipeline parallelism for distributed training.
@@ -1073,8 +1122,12 @@ class DistributedStrategy(object):
 
             import paddle
             import paddle.distributed.fleet as fleet
+            paddle.enable_static()
+
             strategy = fleet.DistributedStrategy()
             strategy.auto = True
+            # if set other strategy at the same time, auto will not apply
+            # strategy.amp = True
 
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(optimizer, strategy)
