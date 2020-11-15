@@ -75,8 +75,6 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
 endif()
 
-#TODO(sunxiaolong01): Fix this unitest failed on GCC8.
-LIST(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
@@ -341,7 +339,6 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
-list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)

@@ -479,7 +479,7 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 5, 5, 5, 3]  # NCDHW
+        self.input_size = [2, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3, 3]
         self.data_format = 'NHWC'
@@ -497,7 +497,7 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 2
-        self.input_size = [2, 5, 5, 5, 4]  # NCHW
+        self.input_size = [2, 5, 5, 5, 2]  # NDHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 3, 3, 3, 3]
         self.data_format = 'NHWC'
