@@ -28,7 +28,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        with paddle.fluid.device_guard("cpu"):
+        with paddle.fluid.device_guard("gpu:0"):
             input_x = paddle.fluid.layers.data(
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
@@ -40,7 +40,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 iterable=False)
             fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
 
-        with paddle.fluid.device_guard("gpu:0"):
+        with paddle.fluid.device_guard("gpu:1"):
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
             prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                 size=2,
