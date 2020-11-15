@@ -22,6 +22,26 @@ from op_test import OpTest
 import numpy as np
 
 
+def sample_output_one_dimension(out, dim):
+    # count numbers of different categories
+    sample_prob = np.zeros(dim).astype("float32")
+    sample_index_prob = np.unique(out, return_counts=True)
+    sample_prob[sample_index_prob[0]] = sample_index_prob[1]
+    sample_prob /= sample_prob.sum()
+    return sample_prob
+
+
+def sample_output_two_dimension(out, shape):
+    num_dist = shape[0]
+    out_list = np.split(out, num_dist, axis=0)
+    sample_prob = np.zeros(shape).astype("float32")
+    for i in range(num_dist):
+        sample_index_prob = np.unique(out_list[i], return_counts=True)
+        sample_prob[i][sample_index_prob[0]] = sample_index_prob[1]
+    sample_prob /= sample_prob.sum(axis=-1, keepdims=True)
+    return sample_prob
+
+
 class TestMultinomialOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -32,8 +52,6 @@ class TestMultinomialOp(OpTest):
     def init_data(self):
         # input probability is a vector, and replacement is True
         self.input_np = np.random.rand(4)
-        while 0.0 in self.input_np:
-            self.input_np = np.random.rand(4)
         self.outputs = {"Out": np.zeros(100000).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
@@ -41,10 +59,7 @@ class TestMultinomialOp(OpTest):
         self.check_output_customized(self.verify_output)
 
     def sample_output(self, out):
-        # count numbers of different categories
-        sample_prob = np.unique(out, return_counts=True)[1].astype("float32")
-        sample_prob /= sample_prob.sum()
-        return sample_prob
+        return sample_output_one_dimension(out, 4)
 
     def verify_output(self, outs):
         # normalize the input to get the probability
@@ -60,28 +75,17 @@ class TestMultinomialOp2(TestMultinomialOp):
     def init_data(self):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4)
-        while 0.0 in self.input_np:
-            self.input_np = np.random.rand(3, 4)
         self.outputs = {"Out": np.zeros((3, 100000)).astype("int64")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
     def sample_output(self, out):
-        out_list = np.split(out, 3, axis=0)
-        count_array = [0] * 3
-        for i in range(3):
-            count_array[i] = np.unique(
-                out_list[i], return_counts=True)[1].astype("float32")
-        sample_prob = np.stack(count_array, axis=0)
-        sample_prob /= sample_prob.sum(axis=-1, keepdims=True)
-        return sample_prob
+        return sample_output_two_dimension(out, [3, 4])
 
 
 class TestMultinomialOp3(TestMultinomialOp):
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000)
-        while 0.0 in self.input_np:
-            self.input_np = np.random.rand(1000)
         self.outputs = {"Out": np.zeros(100).astype("int64")}
         self.attrs = {"num_samples": 100, "replacement": False}
 
@@ -98,16 +102,11 @@ class TestMultinomialApi(unittest.TestCase):
         # input probability is a vector, and replacement is True
         paddle.disable_static()
         x_numpy = np.random.rand(4)
-        while 0.0 in x_numpy:
-            x_numpy = np.random.rand(4)
         x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
         paddle.enable_static()
 
-        sample_prob = np.unique(
-            out.numpy(), return_counts=True)[1].astype("float32")
-        sample_prob /= sample_prob.sum()
-
+        sample_prob = sample_output_one_dimension(out.numpy(), 4)
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
         self.assertTrue(
             np.allclose(
@@ -118,19 +117,10 @@ class TestMultinomialApi(unittest.TestCase):
         # input probability is a matrix, and replacement is True
         paddle.disable_static()
         x_numpy = np.random.rand(3, 4)
-        while 0.0 in x_numpy:
-            x_numpy = np.random.rand(3, 4)
         x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
-        out_list = np.split(out.numpy(), 3, axis=0)
-        count_array = [0] * 3
-        for i in range(3):
-            count_array[i] = np.unique(
-                out_list[i], return_counts=True)[1].astype("float32")
-        sample_prob = np.stack(count_array, axis=0)
-        sample_prob /= sample_prob.sum(axis=-1, keepdims=True)
-
+        sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
         self.assertTrue(
             np.allclose(
@@ -142,8 +132,6 @@ class TestMultinomialApi(unittest.TestCase):
         # replacement is False. number of samples must be less than number of categories.
         paddle.disable_static()
         x_numpy = np.random.rand(1000)
-        while 0.0 in x_numpy:
-            x_numpy = np.random.rand(1000)
         x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100, replacement=False)
 
@@ -168,13 +156,9 @@ class TestMultinomialApi(unittest.TestCase):
 
         exe.run(startup_program)
         x_np = np.random.rand(4).astype('float32')
-        while 0.0 in x_np:
-            x_np = np.random.rand(4).astype('float32')
         out = exe.run(train_program, feed={'x': x_np}, fetch_list=[out])
 
-        sample_prob = np.unique(out, return_counts=True)[1].astype("float32")
-        sample_prob /= sample_prob.sum()
-
+        sample_prob = sample_output_one_dimension(out, 4)
         prob = x_np / x_np.sum(axis=-1, keepdims=True)
         self.assertTrue(
             np.allclose(
