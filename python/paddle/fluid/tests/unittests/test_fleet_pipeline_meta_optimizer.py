@@ -16,6 +16,8 @@ import unittest
 import paddle
 import os
 
+paddle.enable_static()
+
 
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
