@@ -308,6 +308,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
+  trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetWithErnie(
+      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      graph->Has(framework::ir::kMultiheadMatmulPass));
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {
@@ -386,4 +390,5 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("instance_norm", 0)
             .EQ("gelu", 0)
             .EQ("layer_norm", 0)
-            .EQ("scale", 0));
+            .EQ("scale", 0)
+            .EQ("matmul", 0));
