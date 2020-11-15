@@ -27,16 +27,21 @@ namespace paddle {
 namespace imperative {
 
 struct Group {
-  framework::Variable contents;
+  // Here, we use dense_contents & sparse_contents to
+  // achieve the tensor fuse. When is_sparse_ is true, sparse_contents work,
+  // conversely, dense_contents works. It is mutex relationship.
+  framework::Variable dense_contents;
+  framework::Variable* sparse_contents = nullptr;
+  bool is_sparse_ = false;
 
   std::vector<size_t> offset_;
   std::vector<size_t> length_;
   // Global indices of participating variables in the group
   std::vector<size_t> variable_indices_;
 
-  // Number of params that haven't been ready
+  // Number of params that haven't been ready. When it is 0, it means
+  // the group is ready.
   size_t pending = -1;
-  bool is_sparse_ = false;
 
   // external message of group
   framework::proto::VarType::Type dtype;
@@ -53,35 +58,35 @@ class Reducer {
   explicit Reducer(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
+      const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx);
 
   virtual ~Reducer() {}
 
-  void initialize_groups(const std::vector<std::vector<size_t>>& group_indices);
+  void InitializeGroups(const std::vector<std::vector<size_t>>& group_indices);
 
-  void set_grad_space(Group* p_group);
+  void SetGradSpace(Group* p_group);
 
-  void set_gradient_space(VariableWrapper* var_warpper);
+  void PrepareForBackward();
 
-  void prepare_for_backward();
+  void AddDistHook(VariableWrapper* var_warpper);
 
-  void add_dist_hook(VariableWrapper* var_warpper);
+  void MarkVariableReady(const VariableIndex& var_index,
+                         VariableWrapper* var_warpper);
 
-  void mark_variable_ready(const VariableIndex& var_index,
-                           VariableWrapper* var_warpper);
+  void MarkGroupReady(size_t group_index);
 
-  void mark_group_ready(size_t group_index);
-
-  void finalize_backward();
+  void FinalizeBackward();
 
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
       const std::vector<std::shared_ptr<imperative::VarBase>>& vars,
       const std::vector<std::vector<size_t>>& group_indices,
+      const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
     if (NULL == s_instance_) {
-      s_instance_.reset(
-          new paddle::imperative::Reducer(vars, group_indices, parallel_ctx));
+      s_instance_.reset(new paddle::imperative::Reducer(
+          vars, group_indices, is_sparse_gradient, parallel_ctx));
     }
     return s_instance_;
   }
@@ -93,21 +98,20 @@ class Reducer {
     return s_instance_;
   }
 
- protected:
+ private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
-
- private:
   static std::shared_ptr<Reducer> s_instance_;
   std::vector<Group> groups_;
   size_t next_group_ = 0;
   std::unordered_map<std::string, VariableIndex> varname2index_;
   platform::Place place_;
   std::once_flag once_flag_;
+  std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 };
 
-std::vector<std::vector<size_t>> assign_group_by_size(
+std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>>& tensors,
     const std::vector<bool>& is_sparse_gradient,
     const std::vector<size_t>& group_size_limits);

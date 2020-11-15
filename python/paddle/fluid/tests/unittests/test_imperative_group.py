@@ -41,7 +41,7 @@ class MLP(fluid.Layer):
         return y
 
 
-class TestDataParallelBucket(unittest.TestCase):
+class TestDataParallelGroup(unittest.TestCase):
     def create_varbase(self, dtype, shape,
                        type=core.VarDesc.VarType.LOD_TENSOR):
         return core.VarBase(dtype, shape, "", type, True)
@@ -154,31 +154,6 @@ class TestDataParallelBucket(unittest.TestCase):
         res = core.assign_group_by_size(
             var_list, [True, False, False, False, False, True], [200, 400])
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
-
-
-class TestDataParallelStateDict(unittest.TestCase):
-    def test_data_parallel_state_dict(self):
-        with fluid.dygraph.guard():
-            strategy = paddle.distributed.prepare_context()
-            mlp = MLP()
-            parallel_mlp = dygraph.parallel.DataParallel(mlp, strategy)
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=parallel_mlp.parameters())
-            epoch_num = 2
-            for epoch in range(epoch_num):
-                data_numpy = np.random.random([1, 784])
-                lablel_numpy = np.random.randint(1, 5, [10, 1])
-                data_numpy = data_numpy.astype("float32")
-                lablel_numpy = lablel_numpy.astype("float32")
-                img = paddle.to_tensor(data_numpy)
-                label = paddle.to_tensor(lablel_numpy)
-
-                out = parallel_mlp(img)
-                mse_loss = paddle.nn.loss.MSELoss()
-                loss = mse_loss(input=out, label=label)
-                loss.backward()
-                sgd.minimize(loss)
-                parallel_mlp.clear_gradients()
 
 
 if __name__ == '__main__':

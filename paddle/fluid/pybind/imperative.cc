@@ -1196,15 +1196,16 @@ void BindImperative(py::module *m_ptr) {
       .def(py::init(
           [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
              const std::vector<std::vector<size_t>> &group_indices,
+             const std::vector<bool> &is_sparse_gradient,
              std::shared_ptr<imperative::ParallelContext> parallel_ctx) {
-            return imperative::Reducer::SetInstance(vars, group_indices,
-                                                    parallel_ctx);
+            return imperative::Reducer::SetInstance(
+                vars, group_indices, is_sparse_gradient, parallel_ctx);
           }))
-      .def("prepare_for_backward", &imperative::Reducer::prepare_for_backward,
+      .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
            py::call_guard<py::gil_scoped_release>());
 
-  m.def("assign_group_by_size", &imperative::assign_group_by_size,
-        py::arg("vars"), py::arg("is_sparse_gradient"),
+  m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
+        py::arg("is_sparse_gradient"),
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
         py::call_guard<py::gil_scoped_release>());
 

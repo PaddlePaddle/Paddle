@@ -24,6 +24,7 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
+from paddle.fluid.dygraph import nn
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -429,21 +430,33 @@ class DataParallel(layers.Layer):
         self.init_reducer()
 
     def init_reducer(self):
-        # Build list of parameters which is trainable.
-        trainable_parameters = [
-            param
-            for _, param in filter(
-                lambda (_, param): param.trainable,
-                self.named_parameters(include_sublayers=True))
+        layers_param = [(sublayer, param)
+                        for sublayer in self.sublayers() for param in filter(
+                            lambda (_, param): param.trainable,
+                            sublayer.named_parameters(include_sublayers=False))]
+        trainable_parameters = [param[1] for _, param in layers_param]
+
+        # NOTE(shenliang03): Here we can only use the attributes to judge whether
+        # parameter is sparse(or SelectedRows). The reason is that the sparse message
+        # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
+        # we should add the layer here like "nn.Embedding".
+        def check_layer_sparse(sublayer):
+            if isinstance(sublayer, nn.Embedding):
+                return sublayer._is_sparse
+            return False
+
+        is_sparse_gradient = [
+            check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
-        self.group_indices = core.assign_group_by_size(trainable_parameters,
-                                                       self.group_size_limits)
+        self.group_indices = core.assign_group_by_size(
+            trainable_parameters, is_sparse_gradient, self.group_size_limits)
 
         assert parallel_helper.__parallel_ctx__clz__ is not None, \
             "ParallelContext must be initialized before."
 
         self._reducer = core.Reducer(trainable_parameters,
                                      list(reversed(self.group_indices)),
+                                     is_sparse_gradient,
                                      parallel_helper.__parallel_ctx__clz__)
 
     def forward(self, *inputs, **kwargs):
