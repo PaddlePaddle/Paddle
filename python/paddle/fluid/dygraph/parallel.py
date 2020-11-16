@@ -25,6 +25,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from paddle.fluid.dygraph import nn
+import warnings
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -427,7 +428,14 @@ class DataParallel(layers.Layer):
 
         # convert group_size_limits MB
         self.group_size_limits = [group_size_limits * 1024 * 1024]
-        self.init_reducer()
+        if self._strategy.nranks > 1:
+            self.init_reducer()
+        else:
+            warnings.warn(
+                "nranks is less than 2, "
+                "maybe you need to check the current system environment."
+                " Need to use spawn or fleetrun to "
+                "start distributed programs. ")
 
     def init_reducer(self):
         layers_param = [(sublayer, param)
@@ -461,7 +469,8 @@ class DataParallel(layers.Layer):
 
     def forward(self, *inputs, **kwargs):
         # prepare the backward
-        self._reducer.prepare_for_backward()
+        if self._strategy.nranks > 1:
+            self._reducer.prepare_for_backward()
 
         return self._layers(*inputs, **kwargs)
 

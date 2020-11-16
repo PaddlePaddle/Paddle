@@ -34,7 +34,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx) {
-  // parallel_ctx->Print_ParallelStrategy();
   VLOG(3) << "Start construct the Reducer ...";
   // initialize groups
   InitializeGroups(group_indices);
@@ -154,7 +153,7 @@ void Reducer::SetGradSpace(Group *p_group) {
 
     PADDLE_ENFORCE_EQ(
         contents.IsInitialized(), true,
-        platform::errors::PreconditionNotMet("Bucket must be initialized."));
+        platform::errors::PreconditionNotMet("Group must be initialized."));
     auto dim = grad_tensor->dims();
     grad_tensor
         ->ShareDataWith(contents.GetMutable<framework::LoDTensor>()->Slice(
@@ -233,11 +232,13 @@ void Reducer::MarkGroupReady(size_t group_index) {
     if (groups_[next_group_].is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
       parallel_ctx_->AllReduceByStream(*groups_[next_group_].sparse_contents,
-                                       groups_[next_group_].sparse_contents);
+                                       groups_[next_group_].sparse_contents, 0,
+                                       false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
       parallel_ctx_->AllReduceByStream(groups_[next_group_].dense_contents,
-                                       &(groups_[next_group_].dense_contents));
+                                       &(groups_[next_group_].dense_contents),
+                                       0, false);
     }
   }
 }

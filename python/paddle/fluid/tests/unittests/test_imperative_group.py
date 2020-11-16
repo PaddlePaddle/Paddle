@@ -121,7 +121,7 @@ class TestDataParallelGroup(unittest.TestCase):
             var_list, [False, False, False, False, False, False], [10000])
         self.assertEqual([[0, 2, 4], [1, 3, 5]], res)
 
-    def test_construct_bucket6(self):
+    def test_construct_group6(self):
         # multi dtype & limit capability & multi tensor type
         var_list = []
         var_list.append(
@@ -138,7 +138,7 @@ class TestDataParallelGroup(unittest.TestCase):
             var_list, [True, False, False, False, False, True], [400])
         self.assertEqual([[0], [1, 3], [2, 4], [5]], res)
 
-    def test_construct_bucket7(self):
+    def test_construct_group7(self):
         # multi dtype & multi limit capability & multi tensor type
         var_list = []
         var_list.append(
