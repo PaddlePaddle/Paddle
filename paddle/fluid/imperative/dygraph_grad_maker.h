@@ -212,6 +212,7 @@ class TracedGradOp {
   template <TracedVarRole kRole>
   void SetInput(const std::string& name,
                 const TracedVarList<VarBase, kRole>& vars) {
+    VLOG(1) << " Set Input '" << name << "' for op : " << op_->Type();
     if (vars.empty()) {
       return;
     }
@@ -219,6 +220,7 @@ class TracedGradOp {
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
+          VLOG(1) << "      var name is  " << var->Name();
           var->SetGradNode(node_);
         }
       }

@@ -198,9 +198,7 @@ const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 const char* REUSE_BUFFER_INPLACE_TEMPLATE =
 R"(
     auto inplace_varbase_%s = std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()));
-    auto *out_tensor_%s = inplace_varbase_%s->MutableVar()->GetMutable<framework::LoDTensor>();
-    auto *in_tensor_%s = %s->MutableVar()->GetMutable<framework::LoDTensor>();
-    out_tensor_%s->ShareBufferWith(*in_tensor_%s);
+    inplace_varbase_%s->MutableVar()->SharePlaceholderWith(%s->Var());
 )";
 
 const char* OP_FUNCTION_TEMPLATE =
@@ -356,10 +354,9 @@ std::string GenerateOpFunctionsBody(
       } else {
         std::string reuse_buffer_in_name =
             op_reuse_buffer_inplace_passing_outs_map[op_type][out_name];
-        reuse_buffer_inplace_str += paddle::string::Sprintf(
-            REUSE_BUFFER_INPLACE_TEMPLATE, out_name, out_name, out_name,
-            reuse_buffer_in_name, reuse_buffer_in_name, out_name,
-            reuse_buffer_in_name);
+        reuse_buffer_inplace_str +=
+            paddle::string::Sprintf(REUSE_BUFFER_INPLACE_TEMPLATE, out_name,
+                                    out_name, reuse_buffer_in_name);
         outs_initializer += paddle::string::Sprintf(
             OUT_INPLACE_INITIALIZER_TEMPLATE, out_name, out_name);
       }

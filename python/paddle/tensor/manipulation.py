@@ -588,6 +588,7 @@ def squeeze_(x, axis=None, name=None):
 
     assert in_dygraph_mode(), "squeeze_ can't be used in static mode"
     core.ops.squeeze2_(x, x, 'axes', axis)
+    x._bump_inplace_version()
     return x
 
 

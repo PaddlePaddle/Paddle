@@ -237,12 +237,13 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
     auto* dst_tensor =
         new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    dst_tensor->set_lod(src_tensor.lod());
+    //    dst_tensor->set_lod(src_tensor.lod());
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
     new_var->SetType(Type());
     if (share_memory) {
-      dst_tensor->ShareDataWith(src_tensor);
+      new_var->MutableVar()->SharePlaceholderWith(Var());
+      //      dst_tensor->ShareDataWith(src_tensor);
       VLOG(3) << new_var->Name() << " share data with " << Name();
     } else {
       framework::TensorCopy(src_tensor, dst_place, dst_tensor);

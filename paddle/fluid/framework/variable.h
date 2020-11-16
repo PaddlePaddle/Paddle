@@ -69,6 +69,8 @@ class Variable {
     return holder_->Type();
   }
 
+  void SharePlaceholderWith(const Variable& src);
+
  private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
@@ -113,6 +115,14 @@ class Variable {
   std::shared_ptr<Placeholder> holder_;
 };
 
+inline void Variable::SharePlaceholderWith(const Variable& var) {
+  PADDLE_ENFORCE_EQ(var.IsInitialized(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Variable holds no memory. "
+                        "Call Variable::GetMutable() firstly."));
+  holder_ = var.holder_;
+}
+
 inline framework::TensorInplaceVersion& Variable::InplaceVersionCounter() {
   if (IsType<framework::Tensor>()) {
     return GetMutable<framework::Tensor>()->InplaceVersionCounter();
@@ -132,6 +142,7 @@ inline framework::TensorInplaceVersion& Variable::InplaceVersionCounter() {
         "LoDTensorArray to have TensorInplaceVersion."));
   }
 }
+
 inline uint32_t Variable::CurrentInplaceVersion() {
   try {
     return InplaceVersionCounter().CurrentVersion();

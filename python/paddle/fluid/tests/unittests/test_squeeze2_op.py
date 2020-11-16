@@ -78,9 +78,9 @@ class TestSqueezeApi(unittest.TestCase):
         paddle.disable_static()
         x = paddle.rand([1, 2, 3, 1])
         y = paddle.squeeze(x)
+
         y[0] = 2.
         self.assertNotEqual(x.shape, y.shape)
-
         x_numpy = x.numpy()
         y_numpy = y.numpy()
         self.assertTrue(np.array_equal(x_numpy.squeeze(), y_numpy))
@@ -90,6 +90,7 @@ class TestSqueezeApi(unittest.TestCase):
         paddle.disable_static()
         x = paddle.rand([1, 2, 3, 1])
         y = x.squeeze_()
+        assert id(x) == id(y)
         y[0] = 2.
         self.assertEqual(x.shape, y.shape)
 
