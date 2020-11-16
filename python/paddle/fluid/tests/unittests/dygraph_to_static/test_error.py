@@ -154,11 +154,11 @@ class TestErrorBase(unittest.TestCase):
 
         if disable_new_error:
             # If disable new error, 'In user code:' should not in error_message.
-            self.assertNotIn('In user code:', error_message)
+            self.assertNotIn('In transformed code:', error_message)
         else:
             # 1. 'In user code:' must be in error_message because it indicates that
             #  this is an optimized error message
-            self.assertIn('In user code:', error_message)
+            self.assertIn('In transformed code:', error_message)
 
             # 2. Check whether the converted static graph code is mapped to the dygraph code.
             for m in self.expected_message:
