@@ -77,7 +77,8 @@ template <typename DeviceContext, typename T>
 class Flatten2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &axes = context.Attr<int>("axis");
+    auto &start_axis = context.Attr<int>("start_axis");
+    auto &stop_axis = context.Attr<int>("stop_axis");
 
     auto *in = context.Input<framework::LoDTensor>("X");
     auto x_dims = in->dims();
@@ -85,13 +86,34 @@ class Flatten2Kernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::LoDTensor>("Out");
 
     auto out_dims = framework::make_ddim(
-        FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
+        FlattenKernel<DeviceContext, T>::GetOutputShape(start_axis, stop_axis, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
+  }
+  static std::vector<int32_t> GetOutputShape(const int start_axis,
+                                             const int stop_axis,
+                                             const framework::DDim &in_dims) {
+    int64_t outer = 1;
+    std::vector<int32_t> out_shape;
+    int in_dims_size = in_dims.size();
+    out_shape.reserve(in_dims_size - stop_axis + start_axis);
+
+    for (int i = 0; i < start_axis; ++i) {
+      out_shape.push_back(in_dims[i]));
+    }
+    for (int i = start_axis; i <= stop_axis; i++) {
+      outer *= in_dims[i];
+    }
+    out_shape.push_back(outer);
+    for (int i = stop_axis+1; i < in_dims_size; i++) {
+      out_shape.push_back(in_dims[i]);
+    }
+
+    return out_shape;
   }
 };
 
