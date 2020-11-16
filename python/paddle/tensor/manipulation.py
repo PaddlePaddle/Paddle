@@ -153,7 +153,7 @@ def flip(x, axis, name=None):
     """
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
-    dtype = helper.input_dtype(input_param_name='x')
+    dtype = helper.input_dtype('x')
     check_dtype(dtype, 'X',
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'flip')
