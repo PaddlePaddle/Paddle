@@ -152,6 +152,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 local_build_strategy.nccl_comm_num + 1,
                 exe_strategy.num_threads)
 
+            # if nccl_comm_num >= 2, use async to overlap multi comm
+            dist_strategy.sync_nccl_allreduce = (
+                local_build_strategy.nccl_comm_num == 1)
+
         sync_batch_norm = local_build_strategy.sync_batch_norm
         if sync_batch_norm:
             local_build_strategy.nccl_comm_num = 1
@@ -162,6 +166,11 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 "set num_threads=1, nccl_comm_num=1, hierachical_allreduce=False."
             )
 
+        # NOTE. compatible with compiler, otherwise these values will be overwritten by compiler
+        main_program._nccl_comm_num = local_build_strategy.nccl_comm_num
+        main_program._use_hierarchical_allreduce = local_build_strategy.use_hierarchical_allreduce
+        main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
+
         # TODO(guru4elephant): should be an independent optimizer
         self._setup_nccl_op(startup_program, main_program, local_build_strategy)
 
@@ -170,11 +179,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         local_build_strategy.trainers_endpoints = self.role_maker._get_trainer_endpoints(
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
-
-        # NOTE. compatible with compiler, otherwise these values will be overwritten by compiler
-        main_program._nccl_comm_num = local_build_strategy.nccl_comm_num
-        main_program._use_hierarchical_allreduce = local_build_strategy.use_hierarchical_allreduce
-        main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 

@@ -39,8 +39,6 @@ class AllReduceDepsPass : public ir::Pass {
     std::vector<details::OpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
-    size_t interval = 1;
-
 #if defined(PADDLE_WITH_NCCL)
     auto use_hierarchical_allreduce =
         Get<bool>(details::kUseHierarchicalAllReduce);
@@ -57,22 +55,13 @@ class AllReduceDepsPass : public ir::Pass {
       // ctxs_[run_order % nccl_comm_num]
       op_handle->SetRunEnv(i, use_hierarchical_allreduce);
     }
-
-    auto nccl_comm_num = Get<size_t>(details::kNcclCommNum);
-    PADDLE_ENFORCE_GT(nccl_comm_num, 0,
-                      platform::errors::InvalidArgument(
-                          "nccl_comm_num must > 1, but got %d", nccl_comm_num));
-    // For the same nccl comm, the order must be consistent.
-    // For different nccl comms, since allreduce has no dependency, the order
-    // can be different.
-    interval = nccl_comm_num;
 #endif
 
-    for (size_t i = interval; i < all_reduce_op_handles.size(); ++i) {
+    for (size_t i = 1; i < all_reduce_op_handles.size(); ++i) {
       auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
       graph->Get<details::GraphDepVars>(details::kGraphDepVars)
           .emplace(dep_var);
-      all_reduce_op_handles[i - interval]->AddOutput(dep_var);
+      all_reduce_op_handles[i - 1]->AddOutput(dep_var);
       all_reduce_op_handles[i]->AddInput(dep_var);
     }
 

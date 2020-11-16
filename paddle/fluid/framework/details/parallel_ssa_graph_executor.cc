@@ -123,9 +123,7 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
 
   auto seq_allreduce_pass =
       ir::PassRegistry::Instance().Get("all_reduce_deps_pass");
-  // use only one flat comm in pg model
   seq_allreduce_pass->Set<bool>(kUseHierarchicalAllReduce, new bool(false));
-  seq_allreduce_pass->Set<size_t>(kNcclCommNum, new size_t(1));
   for (size_t i = 0; i < graphs_.size(); ++i) {
     graphs_[i].reset(seq_allreduce_pass->Apply(graphs_[i].release()));
   }
