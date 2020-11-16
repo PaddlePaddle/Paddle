@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@ np.random.random(123)
 _set_use_system_allocator(True)
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
     def __assert_close(self, tensor, np_array, msg, rtol=2e-02, atol=2):
         self.assertTrue(
