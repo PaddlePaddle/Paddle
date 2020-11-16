@@ -115,10 +115,8 @@ class XPUDeviceContext : public DeviceContext {
   /*! \brief  Return nccl context. */
   BKCLContext_t bkcl_context() const { return bkcl_context_; }
 
-  /*! \brief  Set bkcl context. */ |
-      void set_bkcl_context(BKCLContext_t context) {
-    bkcl_context_ = context;
-  }
+  /*! \brief  Set bkcl context. */
+  void set_bkcl_context(BKCLContext_t context) { bkcl_context_ = context; }
 #endif
 
  private:

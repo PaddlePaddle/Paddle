@@ -622,6 +622,21 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         graph, member_->places_, loss_var_name, member_->local_scopes_,
         member_->nranks_, member_->use_cuda_, member_->nccl_ctxs_);
   }
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  if (member_->build_strategy_.async_mode_) {
+    VLOG(3) << "use local async mode";
+    graph = member_->build_strategy_.Apply(
+        graph, {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, 1, false, member_->use_xpu_,
+        member_->bkcl_ctxs_);
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
+      graphs[i] = member_->build_strategy_.Apply(
+          graphs[i], {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, 1, false, member_->use_xpu_,
+          member_->bkcl_ctxs_);
+      async_graphs[i] = graphs[i];
+    }
+  }
 #else
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";

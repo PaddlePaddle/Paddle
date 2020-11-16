@@ -138,7 +138,7 @@ struct BKCLContextMap {
         paras[i].bkcl_id = bkcl_id_;
         paras[i].ctx = &comms[i];
         PADDLE_ENFORCE(pthread_create(&pids[i], nullptr, init_bkcl_context_func,
-                                      reinterpret_cast<void *> & paras[i]) == 0,
+                                      reinterpret_cast<void *>(&paras[i])) == 0,
                        "pthread_create failed");
       }
       for (size_t i = 0; i < order_.size(); i++) {
