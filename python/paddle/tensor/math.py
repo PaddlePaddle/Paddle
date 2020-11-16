@@ -423,7 +423,7 @@ mod = remainder  #DEFINE_ALIAS
 floor_mod = remainder  #DEFINE_ALIAS
 
 
-def multiply(x, y, axis=-1, name=None):
+def multiply(x, y, name=None):
     """
     multiply two tensors element-wise. The equation is:
 
@@ -473,7 +473,7 @@ def multiply(x, y, axis=-1, name=None):
         if not isinstance(y, (paddle.Tensor)):
             y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+            x, y, axis=-1, act=act, op_name=op_type)
 
     if not isinstance(x, (paddle.Tensor, Variable)):
         x = paddle.static.data(
