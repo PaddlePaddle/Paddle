@@ -179,21 +179,32 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   fetch_data.reserve(place_num);
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto call = [this, i, &fetch_tensors]() -> FeedFetchList {
+  for (size_t i = 0; i < place_num; ++i) {
+    auto call = [&, i]() -> FetchResultType {
       try {
 #if defined(PADDLE_WITH_XPU)
         if (platform::is_xpu_place(places_[0])) {
-          return xpu_executors_[i]->Run(fetch_tensors);
+          return xpu_executors_[i]->Run(fetch_tensors, return_merged);
         } else {
-          return executors_[i]->Run(fetch_tensors);
+          return executors_[i]->Run(fetch_tensors, return_merged);
+
+          // if (!support_partial_feed_ || !has_feed ||
+          //     feed_status_[i] == FeedStatus::kHasFeed) {
+          //   return executors_[i]->Run(fetch_tensors, return_merged);
         }
 #endif
-        return executors_[i]->Run(fetch_tensors);
+      } catch (platform::EOFException &) {
+        exception_status[i] = ExceptionStatus::kEOF;
+        exception_holder_.Catch(std::current_exception());
       } catch (...) {
+        exception_status[i] = ExceptionStatus::kOther;
         exception_holder_.Catch(std::current_exception());
       }
-      return FeedFetchList();
+      if (return_merged) {
+        return FetchList();
+      } else {
+        return FetchUnmergedList();
+      }
     };
 
     if (pool_) {

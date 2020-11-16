@@ -45,12 +45,18 @@ class XPUThreadedSSAGraphExecutor : public SSAGraphExecutor {
                               const std::vector<Scope *> &local_exec_scopes,
                               const std::vector<platform::Place> &places,
                               ir::Graph *graph);
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  // FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  // Run a SSAGraph by a thread pool
+  // Use topological sort algorithm
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
   const ir::Graph &Graph() const override;
 
  private:
-  FeedFetchList RunMainStream(const std::vector<std::string> &fetch_tensors);
-  FeedFetchList RunMultiStream(const std::vector<std::string> &fetch_tensors);
+  FetchResultType RunMainStream(const std::vector<std::string> &fetch_tensors,
+                                bool return_merged);
+  FetchResultType RunMultiStream(const std::vector<std::string> &fetch_tensors,
+                                 bool return_merged);
 
   // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
   // be destroyed first.
@@ -98,7 +104,7 @@ class XPUThreadedSSAGraphExecutor : public SSAGraphExecutor {
   inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
   void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+      const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
       std::unordered_map<std::string, std::vector<VarHandleBase *>>
           *fetched_vars,
       std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,

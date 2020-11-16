@@ -348,7 +348,7 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
     VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
+      op->Run(strategy_.use_cuda_, strategy_.use_xpu_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;

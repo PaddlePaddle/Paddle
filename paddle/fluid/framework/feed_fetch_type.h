@@ -20,6 +20,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+// using FeedFetchType = LoDTensor;
+// using FeedFetchList = std::vector<FeedFetchType>;
+
 using FeedType = LoDTensor;
 using FeedList = std::vector<FeedType>;
 

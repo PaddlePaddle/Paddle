@@ -37,6 +37,9 @@ class SSAGraphExecutor {
 
   virtual FetchResultType Run(const std::vector<std::string>& fetch_tensors,
                               bool return_merged = true) = 0;
+
+  // virtual FeedFetchList Run(const std::vector<std::string>& fetch_tensors)
+  // =0;
 };
 
 void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops);

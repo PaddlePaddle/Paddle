@@ -30,7 +30,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static std::atomic<int> exec_op_count_;
+static std::atomic<unsigned int> exec_op_count_;
 static std::atomic<int> error_state;
 
 XPUThreadedSSAGraphExecutor::XPUThreadedSSAGraphExecutor(
@@ -112,28 +112,32 @@ int XPUThreadedSSAGraphExecutor::get_pool_thread_index(int device_id) {
   return cur_index + index;
 }
 
-FeedFetchList XPUThreadedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType XPUThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter XPUThreadedSSAGraphExecutor Run";
   if (std::getenv("XPU_PADDLE_MULTI_STREAM") != nullptr) {
-    return RunMultiStream(fetch_tensors);
+    return RunMultiStream(fetch_tensors, return_merged);
   } else {
-    return RunMainStream(fetch_tensors);
+    return RunMainStream(fetch_tensors, return_merged);
   }
 }
 
 // use 2 streams to run op. The first stream is main stream and will run
 // most op exclude op depending on multi device(e.g., all_reduce, fetch op)
-FeedFetchList XPUThreadedSSAGraphExecutor::RunMainStream(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType XPUThreadedSSAGraphExecutor::RunMainStream(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter MainStream Run";
   std::unique_ptr<std::unordered_map<OpHandleBase *, struct RunningItem>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
 
   error_state = 0;
-  paddle::framework::FeedFetchList fetches;
-  fetches.resize(fetch_tensors.size());
+  paddle::framework::FetchResultType fetches;
+  if (return_merged) {
+    fetches = FetchList(fetch_tensors.size());
+  } else {
+    fetches = FetchUnmergedList(fetch_tensors.size());
+  }
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
@@ -153,7 +157,7 @@ FeedFetchList XPUThreadedSSAGraphExecutor::RunMainStream(
   exec_op_count_ = 0;
 
   platform::XPUPlace cur_place;
-  int cur_count = 0;
+  std::size_t cur_count = 0;
   while (cur_count < op_deps_.size()) {
     cur_count++;
     auto cur_op = ready_ops->Pop();
@@ -188,16 +192,21 @@ FeedFetchList XPUThreadedSSAGraphExecutor::RunMainStream(
 }
 
 // multi stream run
-FeedFetchList XPUThreadedSSAGraphExecutor::RunMultiStream(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType XPUThreadedSSAGraphExecutor::RunMultiStream(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter MultiStream Run";
   std::unique_ptr<std::unordered_map<OpHandleBase *, struct RunningItem>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
 
   error_state = 0;
-  paddle::framework::FeedFetchList fetches;
-  fetches.resize(fetch_tensors.size());
+  paddle::framework::FetchResultType fetches;
+  if (return_merged) {
+    fetches = FetchList(fetch_tensors.size());
+  } else {
+    fetches = FetchUnmergedList(fetch_tensors.size());
+  }
+  // fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
@@ -288,7 +297,7 @@ FeedFetchList XPUThreadedSSAGraphExecutor::RunMultiStream(
 }
 
 void XPUThreadedSSAGraphExecutor::InsertFetchOps(
-    const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+    const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
     std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
     std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
@@ -317,7 +326,7 @@ void XPUThreadedSSAGraphExecutor::InsertFetchOps(
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
     auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_);
+                                 &local_exec_scopes_, true);
     fetch_ops->emplace_back(op);
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -339,8 +348,8 @@ void XPUThreadedSSAGraphExecutor::InsertFetchOps(
 }
 
 void XPUThreadedSSAGraphExecutor::RunOpAsync(
-    OpHandleBase *op, std::vector<std::shared_ptr<sem_t>> &signals,
-    std::vector<std::shared_ptr<sem_t>> &waits, int index,
+    OpHandleBase *op, const std::vector<std::shared_ptr<sem_t>> &signals,
+    const std::vector<std::shared_ptr<sem_t>> &waits, int index,
     platform::XPUPlace place) {
   pool_[index]->enqueue([=] {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

@@ -64,14 +64,18 @@ DeviceContextPool* DeviceContextPool::pool = nullptr;
 thread_local int DeviceContextPool::device_context_index = 0;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
-  auto it = device_contexts_.find(place);
-  if (it == device_contexts_.end()) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU or WITH_XPU option or check that your train process "
-        "hold the "
-        "correct gpu_id if you use Executor.",
-        place));
+  PADDLE_ENFORCE(device_context_index < multi_stream_num,
+                 "index %d bigger than stream_num %d\n", device_context_index,
+                 multi_stream_num);
+  auto it = device_contexts_[device_context_index].find(place);
+  if (it == device_contexts_[device_context_index].end()) {
+    PADDLE_THROW(
+        "Place %s is not supported, Please check that your paddle compiles "
+        "with WITH_GPU or WITH_XPU "
+        "option or check that your train process hold the correct "
+        "gpu_id/xpu_id if "
+        "you use Executor",
+        place);
   }
   return it->second.get().get();
 }
@@ -80,58 +84,86 @@ template <typename DevCtx, typename PlaceType>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         map_ptr,
-    platform::Place p) {
+    platform::Place p, int l3_size = 0) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
-                     // lazy evaluation. i.e., only create device context at
-                     // first `Get`
-                     return PtrType(new DevCtx(BOOST_GET_CONST(PlaceType, p)));
-                   }));
+  if (platform::is_xpu_place(p)) {
+    map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
+                       // lazy evaluation. i.e., only create device context at
+                       // first `Get`
+                       return PtrType(new XPUDeviceContext(
+                           boost::get<XPUPlace>(p), l3_size));
+                     }));
+  } else {
+    map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
+                       // lazy evaluation. i.e., only create device context at
+                       // first `Get`
+                       return PtrType(new DevCtx(boost::get<PlaceType>(p)));
+                     }));
+  }
 }
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(
-      places.size(), 0,
-      platform::errors::InvalidArgument("The number of platform places should "
-                                        "be larger than 0. But received %d.",
-                                        places.size()));
+  PADDLE_ENFORCE_GT(places.size(), 0);
+  multi_stream_num = 1;
+  if (std::getenv("XPU_PADDLE_MULTI_STREAM_NUM") != nullptr) {
+    sscanf(std::getenv("XPU_PADDLE_MULTI_STREAM_NUM"), "%d", &multi_stream_num);
+  }
+  PADDLE_ENFORCE(multi_stream_num >= 1, "%d less than 1", multi_stream_num);
   std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
   }
-  for (auto& p : set) {
-    if (platform::is_cpu_place(p)) {
+  for (int i = 0; i < multi_stream_num; i++) {
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>> tmp;
+    device_contexts_.push_back(tmp);
+    for (auto& p : set) {
+      if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(&device_contexts_, p);
+        EmplaceDeviceContext<MKLDNNDeviceContext, CPUPlace>(
+            &device_contexts_[i], p);
 #else
-      EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_, p);
+        EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_[i],
+                                                         p);
 #endif
-    } else if (platform::is_gpu_place(p)) {
-#ifdef PADDLE_WITH_CUDA
-      EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
-#else
-      PADDLE_THROW(
-          platform::errors::Unimplemented("CUDAPlace is not supported. Please "
-                                          "re-compile with WITH_GPU option."));
-#endif
-    } else if (platform::is_cuda_pinned_place(p)) {
-#ifdef PADDLE_WITH_CUDA
-      EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
-          &device_contexts_, p);
-#else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
-          "option."));
-#endif
-    } else if (platform::is_xpu_place(p)) {
+      } else if (platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
-      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_, p);
+        if (i == 0) {
+          int l3_size = -1;
+          if (std::getenv("XPU_PADDLE_TRAIN_L3_SIZE") != nullptr) {
+            auto str = std::getenv("XPU_PADDLE_TRAIN_L3_SIZE");
+            l3_size = std::stoi(str, nullptr, 0);
+          }
+          EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_[i],
+                                                           p, l3_size);
+        } else {
+          EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_[i],
+                                                           p, -1);
+        }
 #else
-      PADDLE_THROW(
-          platform::errors::Unimplemented("XPUPlace is not supported. Please "
-                                          "re-compile with WITH_XPU option."));
+        PADDLE_THROW(
+            "'XPUPlace' is not supported, Please re-compile with WITH_XPU "
+            "option");
 #endif
+      } else if (platform::is_gpu_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+        EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_[i],
+                                                           p);
+#else
+        PADDLE_THROW(
+            "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+            "option");
+#endif
+      } else if (platform::is_cuda_pinned_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+        EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
+            &device_contexts_[i], p);
+#else
+        PADDLE_THROW(
+            "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+            "option");
+#endif
+      }
     }
   }
 }
@@ -167,11 +199,45 @@ Eigen::ThreadPoolDevice* CPUDeviceContext::eigen_pool_device() const {
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
+XPUDeviceContext::XPUDeviceContext() {
+  context_ = xpu::create_context();
+  auto str = std::getenv("XPU_PADDLE_L3_SIZE");
+  int dev_id = -1;
+  PADDLE_ENFORCE(xpu_current_device(&dev_id) == XPU_SUCCESS);
 
-XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
+  int multi_stream_num = 1;
+  if (std::getenv("XPU_PADDLE_MULTI_STREAM_NUM") != nullptr) {
+    sscanf(std::getenv("XPU_PADDLE_MULTI_STREAM_NUM"), "%d", &multi_stream_num);
+  }
+  // don't use default stream when multi_stream is enabled or virtual device is
+  // enabled
+  if (multi_stream_num > 1 ||
+      std::getenv("XPU_PADDLE_MAIN_STREAM") != nullptr || dev_id != 0) {
+    XPUStream s;
+    xpu_stream_create(&s);
+    context_->xpu_stream = s;
+  }
 
-XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
+#ifdef PADDLE_WITH_XPU_BKCL
+  bkcl_context_ = nullptr;
+#endif
+
+  if (str) {
+    int size = std::stoi(str, nullptr, 0);
+    xpu::set_workspace_l3_size(context_, size);
+    LOG(INFO) << "XPU_PADDLE_L3_SIZE = " << size;
+  }
+}
+
+XPUDeviceContext::~XPUDeviceContext() {
+  if (context_->workspace_l3_ptr) {
+    xpu_free(context_->workspace_l3_ptr);
+  }
+  xpu::destroy_context(context_);
+}
+
+XPUDeviceContext::XPUDeviceContext(XPUPlace place, int l3_size)
+    : place_(place) {
   int dev_id = -1;
   int ret = xpu_current_device(&dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,

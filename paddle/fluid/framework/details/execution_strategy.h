@@ -25,6 +25,9 @@ struct ExecutionStrategy {
   // num_threads indicates the size of thread pool.
   size_t num_threads_{0};
   bool use_cuda_{true};
+#if defined(PADDLE_WITH_XPU)
+  bool use_xpu_{false};
+#endif
   // Note that allow_op_delay is invalid now.
   bool allow_op_delay_{false};
   // num_iteration_per_drop_scope indicates how many

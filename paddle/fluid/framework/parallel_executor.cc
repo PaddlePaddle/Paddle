@@ -278,8 +278,14 @@ class ParallelExecutorPrivate {
 #if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+  platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
+#endif
   bool own_local_scope_;
   bool use_cuda_;
+#if defined(PADDLE_WITH_XPU)
+  bool use_xpu_;
+#endif
   bool use_all_reduce_;
   size_t nranks_;
 
