@@ -32,6 +32,8 @@ from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
 from paddle.fluid.transpiler import memory_optimize
 
+paddle.enable_static()
+
 class InferModel(object):
     def __init__(self, list):
         self.program = list[0]
