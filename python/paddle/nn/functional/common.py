@@ -1277,9 +1277,6 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     unsqueezed_dim = []
 
     if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
-        print(
-            "When the mode is constant and pad length is twice as x dimension, the padding will be started from the last dimension and moved forward onto x."
-        )
         return layers.pad(x, pad, pad_value=value)
 
     if isinstance(pad, Variable):
