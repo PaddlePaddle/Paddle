@@ -216,7 +216,20 @@ def equal(x, y, name=None):
           result1 = paddle.equal(x, y)
           print(result1.numpy())  # result1 = [True False False]
     """
-    out = fluid.layers.equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    helper = LayerHelper("equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='equal', inputs={'X': [x],
+                              'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
@@ -247,7 +260,22 @@ def greater_equal(x, y, name=None):
             result1 = paddle.greater_equal(x, y)
             print(result1.numpy())  # result1 = [True False True]
     """
-    out = fluid.layers.greater_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.greater_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    helper = LayerHelper("greater_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='greater_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]})
     return out
 
 
@@ -278,7 +306,22 @@ def greater_than(x, y, name=None):
             result1 = paddle.greater_than(x, y)
             print(result1.numpy())  # result1 = [False False True]
     """
-    out = fluid.layers.greater_than(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.greater_than(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    helper = LayerHelper("greater_than", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='greater_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]})
     return out
 
 
@@ -310,7 +353,20 @@ def less_equal(x, y, name=None):
             result1 = paddle.less_equal(x, y)
             print(result1.numpy())  # result1 = [True True False]
     """
-    out = fluid.layers.less_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.less_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    helper = LayerHelper("less_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='less_equal', inputs={'X': [x],
+                                   'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
@@ -342,7 +398,20 @@ def less_than(x, y, name=None):
             result1 = paddle.less_than(x, y)
             print(result1.numpy())  # result1 = [False True False]
     """
-    out = fluid.layers.less_than(x, y, force_cpu=False, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.less_than(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    helper = LayerHelper("less_than", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='less_than', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
@@ -375,7 +444,20 @@ def not_equal(x, y, name=None):
             result1 = paddle.not_equal(x, y)
             print(result1.numpy())  # result1 = [False True True]
     """
-    out = fluid.layers.not_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.not_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    helper = LayerHelper("not_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='not_equal', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
