@@ -85,7 +85,7 @@ class NameVisitor(gast.NodeVisitor):
         self.condition_vars = defaultdict(set)
         self.in_condition = False
 
-        # Some names are types, we shouldn't record them as var names.
+        # Some names are types, we shouldn't record them as loop var names.
         self.type_vars = set()
 
         self.static_analysis_visitor = StaticAnalysisVisitor(root_node)
