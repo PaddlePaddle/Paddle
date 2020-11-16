@@ -35,11 +35,6 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
                 name="y", shape=[1], dtype='int64')
-            data_loader = paddle.fluid.io.DataLoader.from_generator(
-                feed_list=[input_x, input_y],
-                capacity=64,
-                use_double_buffer=True,
-                iterable=False)
             fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
 
         with paddle.fluid.device_guard("gpu:1"):
