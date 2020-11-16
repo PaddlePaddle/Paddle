@@ -252,7 +252,7 @@ def avg_pool1d(x,
             "use_cudnn": True,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
-            "exclusive": not exclusive,
+            "exclusive": exclusive,
             "data_format": data_format,
         })
 
@@ -1262,7 +1262,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
               #
               import paddle
               import numpy as np
-              
+
               input_data = np.random.rand(2, 3, 32, 32)
               x = paddle.to_tensor(input_data)
               # x.shape is [2, 3, 32, 32]
@@ -1352,7 +1352,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
               #
               import paddle
               import numpy as np
-              
+
               input_data = np.random.rand(2, 3, 8, 32, 32)
               x = paddle.to_tensor(input_data)
               # x.shape is [2, 3, 8, 32, 32]
