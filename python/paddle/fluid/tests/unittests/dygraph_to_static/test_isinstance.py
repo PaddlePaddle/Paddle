@@ -29,30 +29,34 @@ import unittest
 import paddle
 import paddle.nn as nn
 
+
 class SimpleReturnLayer(nn.Layer):
     def forward(self, x):
         return x
 
+
 class AddAttrLayer(nn.Layer):
     def __init__(self):
         super(AddAttrLayer, self).__init__()
-        self.attr = None 
+        self.attr = None
 
     def forward(self, x):
         out = x + self.attr
         return out
+
 
 class IsInstanceLayer(nn.Layer):
     def __init__(self, layer):
         super(IsInstanceLayer, self).__init__()
         self.layer = layer
 
-    @paddle.jit.to_static    
+    @paddle.jit.to_static
     def forward(self, x):
         if isinstance(self.layer, (AddAttrLayer, )):
             self.layer.attr = x
         res = self.layer(x)
         return res
+
 
 class SequentialLayer(nn.Layer):
     def __init__(self, layers):
@@ -68,14 +72,16 @@ class SequentialLayer(nn.Layer):
             res = layer(res)
         return res
 
+
 def train(model, to_static):
     prog_trans = paddle.jit.ProgramTranslator.get_instance()
     prog_trans.enable(to_static)
 
     x = paddle.ones(shape=[2, 3], dtype='int32')
     out = model(x)
- 
+
     return out.numpy()
+
 
 class TestIsinstance(unittest.TestCase):
     def test_isinstance_simple_return_layer(self):
@@ -104,4 +110,3 @@ class TestIsinstance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
