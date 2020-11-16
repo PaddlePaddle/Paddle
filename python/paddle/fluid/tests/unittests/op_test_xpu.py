@@ -37,7 +37,7 @@ from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
 from white_list import op_threshold_white_list, no_grad_set_white_list
-import op_test
+from op_test import OpTest, _set_use_system_allocator, get_numeric_gradient
 
 
 class XPUOpTest(OpTest):
