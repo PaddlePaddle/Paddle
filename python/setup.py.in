@@ -213,6 +213,7 @@ packages=['paddle',
           'paddle.static',
           'paddle.static.nn',
           'paddle.tensor',
+          'paddle.onnx',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
