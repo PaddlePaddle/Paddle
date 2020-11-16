@@ -153,7 +153,7 @@ def flip(x, axis, name=None):
     """
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
-    dtype = helper.input_dtype('x')
+    dtype = helper.input_dtype(input_param_name='x')
     check_dtype(dtype, 'X',
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'flip')
@@ -808,7 +808,7 @@ def gather(x, index, axis=None, name=None):
         check_type(axis, 'axis', (int), 'gather')
 
     helper = LayerHelper('gather', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
