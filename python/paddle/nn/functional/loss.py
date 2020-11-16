@@ -169,7 +169,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
     if weight is not None:
         if isinstance(weight, paddle.static.Variable):
             weight_name = name if reduction is 'none' else None
-            out = paddle.multiply(out, weight, axis=-1, name=weight_name)
+            out = paddle.multiply(out, weight, name=weight_name)
         else:
             raise ValueError(
                 "The weight is not a Tensor, please convert to Tensor.")
