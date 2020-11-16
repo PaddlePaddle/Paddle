@@ -905,7 +905,6 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               #
               import paddle
               import paddle.nn.functional as F
-              paddle.disable_static()
               data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
               pool_out = F.adaptive_average_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
@@ -982,7 +981,6 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             #
             import paddle
             import numpy as np
-            paddle.disable_static()
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 32, 32]
@@ -1086,7 +1084,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-            paddle.disable_static()
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]

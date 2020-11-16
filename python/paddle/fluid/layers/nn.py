@@ -5704,15 +5704,14 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
     Examples:
         >>>  # for LodTensor inputs
-        >>> import paddle.fluid as fluid
         >>> import paddle
         >>> paddle.enable_static()
-        >>> x = fluid.data(name='x', shape=[9, 16],
+        >>> x = paddle.static.data(name='x', shape=[9, 16],
         >>>                        dtype='float32', lod_level=1)
-        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
+        >>> out = paddle.static.nn.row_conv(input=x, future_context_size=2)
         >>> # for Tensor inputs
-        >>> x = fluid.data(name='x', shape=[9, 4, 16], dtype='float32')
-        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
+        >>> x = paddle.static.data(name='x', shape=[9, 4, 16], dtype='float32')
+        >>> out = paddle.static.nn.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')

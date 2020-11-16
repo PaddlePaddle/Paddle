@@ -995,32 +995,11 @@ def mse_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-
-
-            # static graph mode
-            paddle.enable_static()
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.fluid.data(name="input", shape=[1])
-            label = paddle.fluid.data(name="label", shape=[1])
-            place = paddle.CPUPlace()
-
-            output = mse_loss(input,label)
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            output_data = exe.run(
-                paddle.static.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
-            print(output_data)
-            # [array([0.04000002], dtype=float32)]
-
-            # dynamic graph mode
-            paddle.disable_static()
             input = paddle.to_tensor(1.5)
             label = paddle.to_tensor(1.7)
             output = mse_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [0.04000002]
 
     """
