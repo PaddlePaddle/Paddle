@@ -285,7 +285,7 @@ struct Layer {
     auto eigen_last_h =
         framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
     auto eigen_mask_broadcast =
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[2]));
     eigen_last_h.device(place) = eigen_output * eigen_mask_broadcast +
                                  eigen_init_h * (1 - eigen_mask_broadcast);
     eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
