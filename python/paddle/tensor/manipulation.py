@@ -878,6 +878,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
     
     .. code-block:: python
+    
         import numpy as np
         #input:
         x = np.array([[1, 1], [2, 2], [3, 3]])
@@ -918,7 +919,6 @@ def scatter(x, index, updates, overwrite=True, name=None):
         .. code-block:: python
             
             import paddle
-            paddle.disable_static()
 
             x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
             index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
