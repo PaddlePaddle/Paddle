@@ -244,6 +244,7 @@ class Accuracy(Metric):
             Tensor: Correct mask, a tensor with shape [batch_size, topk].
         """
         pred = paddle.argsort(pred, descending=True)[:, :self.maxk]
+        label = paddle.reshape(label, (-1, 1))
         correct = pred == label
         return paddle.cast(correct, dtype='float32')
 
