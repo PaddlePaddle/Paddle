@@ -263,6 +263,7 @@ class NameVisitor(gast.NodeVisitor):
                     self.type_vars.add(ast_to_source_code(element))
             else:
                 self.type_vars.add(ast_to_source_code(type_node))
+        self.generic_visit(node)
 
     def _var_nodes_to_names(self, node_set, ctx_filter_set=None):
         ret = set()
@@ -376,8 +377,13 @@ class NameVisitor(gast.NodeVisitor):
                     loop_node]:
                 target_vars_of_for_node.add(var)
 
-        # 3. Var type names are stored in self.type_vars
-        removed_vars = target_vars_of_for_node | vars_of_list_generator | self.type_vars
+        removed_vars = target_vars_of_for_node | vars_of_list_generator
+
+        # 3. Remove var type names which are stored in self.type_vars
+        for var in loop_vars:
+            if ast_to_source_code(var) in self.type_vars:
+                removed_vars.add(var)
+
         return loop_vars - removed_vars
 
 

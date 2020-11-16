@@ -92,7 +92,6 @@ class TestIsinstance(unittest.TestCase):
             layers.append(SimpleReturnLayer())
             layers.append(AddAttrLayer())
         model = SequentialLayer(layers)
-        print(model.forward.code)
         self._test_model(model)
 
     def _test_model(self, model):
