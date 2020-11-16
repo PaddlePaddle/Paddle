@@ -69,7 +69,7 @@ namespace platform {
  *      }
  *    }
  *
-*/
+ */
 #define CUDA_KERNEL_LOOP(i, num)                             \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
   for (int i = __index__; __index__ < (num);                 \
@@ -84,6 +84,9 @@ class CublasHandleHolder {
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
+    } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
     }
 #endif
   }

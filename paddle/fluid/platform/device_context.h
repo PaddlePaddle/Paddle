@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/tf32_utils.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -189,12 +190,20 @@ class CUDAContext {
   void InitEigenContext();
 
   void InitCuBlasContext() {
+    cublasMath_t math_type;
     cublas_handle_.reset(
         new CublasHandleHolder(RawStream(), CUBLAS_DEFAULT_MATH));
     if (TensorCoreAvailable()) {
 #if CUDA_VERSION >= 9000
+      math_type = CUBLAS_TENSOR_OP_MATH;
+#if CUDA_VERSION >= 11000
+      // if tf32 switch is on, set math_type a new value as below
+      if (paddle::platform::get_tf32_switch()) {
+        math_type = CUBLAS_TF32_TENSOR_OP_MATH;
+      }
+#endif
       cublas_tensor_core_handle_.reset(
-          new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
+          new CublasHandleHolder(RawStream(), math_type));
 #endif
     }
   }
