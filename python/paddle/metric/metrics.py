@@ -213,10 +213,12 @@ class Accuracy(Metric):
 
           import paddle
           from paddle.static import InputSpec
+          from paddle.vision.datasets import MNIST
              
           input = InputSpec([None, 1, 28, 28], 'float32', 'image')
           label = InputSpec([None, 1], 'int64', 'label')
-          train_dataset = paddle.vision.datasets.MNIST(mode='train')
+          transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+          train_dataset = MNIST(mode='train', transform=transform)
 
           model = paddle.Model(paddle.vision.LeNet(), input, label)
           optim = paddle.optimizer.Adam(
