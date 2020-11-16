@@ -27,6 +27,7 @@ import tempfile
 import tarfile
 import os
 import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 
 __all__ = ['train', 'test']
 
@@ -83,6 +84,10 @@ def load_data(filename, feature_num=14, ratio=0.8):
     UCI_TEST_DATA = data[offset:]
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.UCIHousing",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
     """
     UCI_HOUSING training set creator.
@@ -103,6 +108,10 @@ def train():
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.UCIHousing",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
     UCI_HOUSING test set creator.
@@ -134,6 +143,10 @@ def fluid_model():
     return dirpath
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.UCIHousing",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def predict_reader():
     """
     It returns just one tuple data to do inference.
@@ -146,5 +159,9 @@ def predict_reader():
     return (UCI_TEST_DATA[0][:-1], )
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.UCIHousing",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
