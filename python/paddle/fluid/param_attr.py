@@ -79,7 +79,7 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 do_model_average=False,
+                 do_model_average=True,
                  need_clip=True):
 
         if sys.version_info.major == 2:
