@@ -86,7 +86,7 @@ class TestXPUMulOp1(XPUOpTest):
     def test_check_grad_ignore_y(self):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', max_relative_error=0.1, no_grad_set=set("Y"))
+            place, ['X'], 'Out', max_relative_error=0.1, no_grad_set=set('Y'))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
