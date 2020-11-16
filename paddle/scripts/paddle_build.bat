@@ -173,9 +173,9 @@ set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-:: call :unit_test || goto unit_test_error
-:: call :test_inference || goto test_inference_error
-:: call :check_change_of_unittest || goto check_change_of_unittest_error
+call :unit_test || goto unit_test_error
+call :test_inference || goto test_inference_error
+call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem "Other configurations are added here"
@@ -265,7 +265,12 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
+if "%WITH_GPU%"=="OFF" (
+    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+) else (
+    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
+)
+
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 1 (
