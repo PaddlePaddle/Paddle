@@ -292,7 +292,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
 
 def comm_analyse(main_program):
     """
-    Analyse the parameter size that need to be broadcast during sharding training 
+    Analyse the parameter size that need to be broadcast/allreduce during sharding training 
     """
     reduce_vars = {}
     broadcast_vars = {}
