@@ -176,7 +176,7 @@ class OpBase {
   platform::Place place_;
   size_t id_{-1UL};
 
-  std::weak_ptr<InteriorVarHookPackage> pre_hooks_;
+  std::weak_ptr<InteriorVarHookPipeline> pre_hooks_;
 };
 
 class GradOpNode {

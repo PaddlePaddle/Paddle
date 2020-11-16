@@ -40,11 +40,10 @@ class GradientAccumulator {
   /* Hook related methods */
   inline bool HasPostHooks() const { return !post_hooks_.expired(); }
 
-  void SetPostHooks(const std::shared_ptr<LeafVarHookPackage>& hooks) {
-    if (!hooks) {
-      post_hooks_.reset();
-      return;
-    }
+  void SetPostHooks(const std::shared_ptr<LeafVarHookPipeline>& hooks) {
+    PADDLE_ENFORCE_NOT_NULL(
+        hooks, platform::errors::InvalidArgument(
+                   "The hook set to GradientAccumulator is nullptr."));
 
     auto shared_hooks = post_hooks_.lock();
     if (shared_hooks != hooks) {
@@ -56,19 +55,14 @@ class GradientAccumulator {
     }
   }
 
-  void CallPostHooks() {
+  // call backward post hooks, such as reduce hook
+  void CallBackwardPostHooks() {
     PADDLE_ENFORCE_NE(
         post_hooks_.expired(), true,
         platform::errors::NotFound(
             "The post hooks of GradientAccumulator for Tensor `%s` expired.",
             var_->Name()));
     auto shared_hooks = post_hooks_.lock();
-    // 1. call var post hooks
-    for (const auto& hook : shared_hooks->hooks()) {
-      (*hook)(var_);
-    }
-    // 2. accumulate gradient across batchs
-    // 3. call backward post hooks, such as reduce hook
     for (const auto& hook : shared_hooks->backward_hooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";
       (*hook)(var_);
@@ -79,7 +73,7 @@ class GradientAccumulator {
   VariableWrapper* var_;
   size_t ref_cnt_{0};
 
-  std::weak_ptr<LeafVarHookPackage> post_hooks_;
+  std::weak_ptr<LeafVarHookPipeline> post_hooks_;
 };
 
 class EagerGradientAccumulator : public GradientAccumulator {
@@ -98,7 +92,7 @@ class EagerGradientAccumulator : public GradientAccumulator {
             << ref_cnt_;
     // After all tmp gradient being accumulated to grad var, run hooks
     if (AccumulateCompleted() && HasPostHooks()) {
-      CallPostHooks();
+      CallBackwardPostHooks();
     }
   }
 

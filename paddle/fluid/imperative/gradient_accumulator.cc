@@ -525,7 +525,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
 
   // call post hooks
   if (HasPostHooks()) {
-    CallPostHooks();
+    CallBackwardPostHooks();
   }
 }
 

@@ -234,7 +234,7 @@ void BasicEngine::Execute() {
       // Step 2: Sum Gradient & Call Accumulator Hooks
       for (auto* accumulator : no_need_run_accumulators_) {
         if (accumulator->HasPostHooks()) {
-          accumulator->CallPostHooks();
+          accumulator->CallBackwardPostHooks();
         }
       }
 

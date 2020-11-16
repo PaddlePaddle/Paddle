@@ -129,15 +129,15 @@ class LambdaGradAccumulatorPostHook : public GradAccumulatorPostHook {
  * python VarBase hooks
  */
 
-/** [ Hook Package classes ]
+/** [ Hook Pipeline classes ]
  *
- * @note  [Why need hook package classes?]
+ * @note  [Why need hook pipeline classes?]
  *
- *        There are 2 purposes for adding Hook Package here:
+ *        There are 2 purposes for adding Hook pipeline here:
  *
  *        1. Make the code implementation cleaner.
  *
- *          If there are no Hook Package, we need to add 3 hook vector into
+ *          If there are no Hook pipeline, we need to add 3 hook vector into
  *          VariableWrapper, 1 hook vector into OpBase, 2 hook vector into
  *          GradientAccumulator, like:
  *
@@ -170,9 +170,9 @@ class LambdaGradAccumulatorPostHook : public GradAccumulatorPostHook {
  *          calculation graph.
  */
 
-class InteriorVarHookPackage {
+class InteriorVarHookPipeline {
  public:
-  InteriorVarHookPackage() = default;
+  InteriorVarHookPipeline() = default;
 
   void add_hook(std::unique_ptr<OpBasePreHook>&& hook) {
     hooks_.emplace_back(std::move(hook));
@@ -187,12 +187,12 @@ class InteriorVarHookPackage {
  private:
   std::vector<std::unique_ptr<OpBasePreHook>> hooks_;
 
-  DISABLE_COPY_AND_ASSIGN(InteriorVarHookPackage);
+  DISABLE_COPY_AND_ASSIGN(InteriorVarHookPipeline);
 };
 
-class LeafVarHookPackage {
+class LeafVarHookPipeline {
  public:
-  LeafVarHookPackage() = default;
+  LeafVarHookPipeline() = default;
 
   void add_hook(std::unique_ptr<GradAccumulatorPostHook>&& hook) {
     hooks_.emplace_back(std::move(hook));
@@ -221,10 +221,12 @@ class LeafVarHookPackage {
 
  private:
   std::vector<std::unique_ptr<GradAccumulatorPostHook>> hooks_;
-  // executed after backward calc end.
+  // NOTE: the `backward` here means the `whole backward process`,
+  // the `backward_hooks_` need to be executed after the `whole backward
+  // process`.
   std::vector<std::unique_ptr<GradAccumulatorPostHook>> backward_hooks_;
 
-  DISABLE_COPY_AND_ASSIGN(LeafVarHookPackage);
+  DISABLE_COPY_AND_ASSIGN(LeafVarHookPipeline);
 };
 
 }  // namespace imperative
