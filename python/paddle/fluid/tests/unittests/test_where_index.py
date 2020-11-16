@@ -110,5 +110,13 @@ class TestWhereRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
 
+class TestWhereDygraphAPI(unittest.TestCase):
+    def test_api(self):
+        with fluid.dygraph.guard():
+            cond_i = np.array([False, False, True, True]).astype("bool")
+            cond = fluid.dygraph.to_variable(cond_i)
+            out = fluid.layers.where(cond)
+
+
 if __name__ == "__main__":
     unittest.main()
