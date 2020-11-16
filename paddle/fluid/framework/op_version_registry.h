@@ -308,7 +308,7 @@ class PassVersionCheckerRegistrar {
   bool IsPassCompatible(const std::string& fuse_pass_name) const {
     auto iter = pass_version_checkers_map_.find(fuse_pass_name);
     if (iter == pass_version_checkers_map_.end()) {
-      return true;
+      return false;
     }
     return iter->second.IsPassCompatible();
   }

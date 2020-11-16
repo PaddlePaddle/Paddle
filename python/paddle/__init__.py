@@ -151,6 +151,7 @@ from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
+from .tensor.math import log2  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
@@ -262,12 +263,12 @@ from .device import XPUPlace
 from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
-from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 from .fluid.layers import crop_tensor as crop  #DEFINE_ALIAS
 
 from . import jit
 from . import static
 from . import amp
+from . import onnx
 
 # high-level api
 from .hapi import Model

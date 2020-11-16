@@ -107,10 +107,7 @@ cfgs = {
 
 
 def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
-    model = VGG(make_layers(
-        cfgs[cfg], batch_norm=batch_norm),
-                num_classes=1000,
-                **kwargs)
+    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
 
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
