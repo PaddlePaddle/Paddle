@@ -77,7 +77,10 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
 
             path_prefix = "./infer_model"
 
@@ -219,8 +222,11 @@ def load_inference_model(path_prefix, executor, **configs):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
+
+            paddle.enable_static()
 
             # Build the model
             startup_prog = fluid.default_startup_program()
@@ -237,10 +243,10 @@ def load_inference_model(path_prefix, executor, **configs):
 
             # Save the inference model
             path_prefix = "./infer_model"
-            fluid.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
+            paddle.static.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
             [inference_program, feed_target_names, fetch_targets] = (
-                fluid.io.load_inference_model(path_prefix, exe))
+                fluid.static.io.load_inference_model(path_prefix, exe))
             tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
