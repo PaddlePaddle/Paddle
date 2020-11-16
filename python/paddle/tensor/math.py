@@ -275,18 +275,15 @@ def _elementwise_op(helper):
 
 def add(x, y, name=None):
     """
-Examples:
+    Examples:
 
     ..  code-block:: python
 
         import paddle
-
-        paddle.disable_static()
         x = paddle.to_tensor([2, 3, 4], 'float64')
         y = paddle.to_tensor([1, 5, 2], 'float64')
         z = paddle.add(x, y)
-        np_z = z.numpy()
-        print(np_z)  # [3., 8., 6. ]
+        print(z)  # [3., 8., 6. ]
 
     """
     op_type = 'elementwise_add'
@@ -1463,9 +1460,6 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
 
 def clip(x, min=None, max=None, name=None):
     """
-        :alias_main: paddle.clip
-        :alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
-
     **clip layer**
 
     This operator clip all elements in input into the range [ min, max ] and return
@@ -1492,15 +1486,13 @@ def clip(x, min=None, max=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
             x1 = paddle.to_tensor([[1.2, 3.5], [4.5, 6.4]], 'float32')
             out1 = paddle.clip(x1, min=3.5, max=5.0)
             out2 = paddle.clip(x1, min=2.5)
-            print(out1.numpy())
+            print(out1)
             # [[3.5, 3.5]
             # [4.5, 5.0]]
-            print(out2.numpy())
+            print(out2)
             # [[2.5, 3.5]
             # [[4.5, 6.4]
     """
