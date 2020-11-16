@@ -173,7 +173,11 @@ class TestWeightDecay(unittest.TestCase):
             param_sum2 = self.check_weight_decay2(place, model)
 
             for i in range(len(param_sum1)):
-                assert np.isclose(a=param_sum1[i], b=param_sum2[i], rtol=5e-5)
+                np.testing.assert_array_equal(
+                    param_sum1[i],
+                    param_sum2[i],
+                    err_msg="current place {}".format(place))
+                # assert np.isclose(a=param_sum1[i], b=param_sum2[i], rtol=5e-5)
 
 
 if __name__ == '__main__':
