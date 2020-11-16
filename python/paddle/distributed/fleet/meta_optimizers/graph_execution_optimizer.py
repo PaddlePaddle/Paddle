@@ -152,10 +152,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 local_build_strategy.nccl_comm_num + 1,
                 exe_strategy.num_threads)
 
-            # if nccl_comm_num >= 2, use async to overlap multi comm
-            dist_strategy.sync_nccl_allreduce = (
-                local_build_strategy.nccl_comm_num == 1)
-
         sync_batch_norm = local_build_strategy.sync_batch_norm
         if sync_batch_norm:
             local_build_strategy.nccl_comm_num = 1
