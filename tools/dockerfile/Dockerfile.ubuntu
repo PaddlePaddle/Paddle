@@ -85,7 +85,6 @@ RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz && tar -
 WORKDIR /home/Python-$version
 RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15 && make && make install
 
-RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc && echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc && echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc && echo "export CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH" >> ~/.bashrc
 ENV PATH=/usr/local/python2.7.15/include:${PATH}
 ENV PATH=/usr/local/python2.7.15/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
