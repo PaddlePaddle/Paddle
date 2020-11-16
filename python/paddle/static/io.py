@@ -246,7 +246,7 @@ def load_inference_model(path_prefix, executor, **configs):
             paddle.static.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
             [inference_program, feed_target_names, fetch_targets] = (
-                fluid.static.io.load_inference_model(path_prefix, exe))
+                paddle.static.io.load_inference_model(path_prefix, exe))
             tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
