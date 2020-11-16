@@ -1381,7 +1381,7 @@ def log10(x, name=None):
 
 
     Returns:
-        Tensor: The log to the base 2 of the input Tensor computed element-wise.
+        Tensor: The log to the base 10 of the input Tensor computed element-wise.
 
     Examples:
 
