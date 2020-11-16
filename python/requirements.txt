@@ -13,4 +13,3 @@ six
 decorator
 prettytable
 astor
-pathlib
