@@ -452,7 +452,7 @@ def multiply(x, y, name=None):
 
             x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
             y = paddle.to_tensor([1, 2])
-            res = paddle.multiply(x, y, axis=1)
+            res = paddle.multiply(x, y)
             print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
     """
