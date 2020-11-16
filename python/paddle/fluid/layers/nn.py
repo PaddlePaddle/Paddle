@@ -5459,7 +5459,7 @@ def transpose(x, perm, name=None):
 
     Args:
         x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
-        perm (list): Permute the input according to the data of perm.
+        perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -5492,14 +5492,12 @@ def transpose(x, perm, name=None):
 
         .. code-block:: python
 
-            # use append_batch_size=False to avoid prepending extra
-            # batch size in shape
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 4],
-                            dtype='float32', append_batch_size=False)
-            x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
-            print x_transposed.shape
-            #(3L, 2L, 4L)
+            import paddle
+
+            x = paddle.randn([2, 3, 4])
+            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
+            print(x_transposed.shape)
+            # [3L, 2L, 4L]
 
     """
     if in_dygraph_mode():
@@ -5509,8 +5507,9 @@ def transpose(x, perm, name=None):
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'transpose')
-    check_type(perm, 'perm', list, 'transpose')
-
+    check_type(perm, 'perm', (list, tuple), 'transpose')
+    if isinstance(perm, tuple):
+        perm = list(perm)
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(x), "
