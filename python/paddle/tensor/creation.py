@@ -328,8 +328,8 @@ def ones_like(x, dtype=None, name=None):
             import paddle
 
             x = paddle.to_tensor([1,2,3])
-            out1 = paddle.zeros_like(x) # [1., 1., 1.]
-            out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
+            out1 = paddle.ones_like(x) # [1., 1., 1.]
+            out2 = paddle.ones_like(x, dtype='int32') # [1, 1, 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)

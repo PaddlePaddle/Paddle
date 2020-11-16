@@ -9731,7 +9731,7 @@ def swish(x, beta=1.0, name=None):
     return out
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.prelu")
+@deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, name=None):
     """
     prelu activation.
