@@ -13551,6 +13551,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             # example 1:
             import paddle
             import six
+            import numpy as np
 
             paddle.enable_static()
 
@@ -13604,6 +13605,8 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])
             print(out)
+
+        .. code-block:: python
 
             # example 2:
             # This example shows how to turn Tensor into numpy array and
