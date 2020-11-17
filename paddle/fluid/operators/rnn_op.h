@@ -1031,7 +1031,8 @@ void create_tensor_by_list(const framework::ExecutionContext& context,
   int tensor_size = v.size();
   dst->Resize({tensor_size});
   dst->mutable_data<T>(context.GetPlace());
-  for (int i = 0; i < v.size(); ++i) {
+  int size = v.size();
+  for (int i = 0; i < size; ++i) {
     dst->data<T>()[i] = v[i];
   }
 }

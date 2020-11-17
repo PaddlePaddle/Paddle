@@ -44,7 +44,7 @@ class TestGRUOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
-        self.dtype = np.float64
+        self.dtype = "float64"
         self.sequence_length = np.array(
             [12, 11, 10, 9, 8, 7, 6, 5], dtype=np.int32)
         self.num_layers = 1
@@ -52,14 +52,14 @@ class TestGRUOp(OpTest):
         self.is_test = False
         self.mode = "GRU"
         self.dropout = 0.
+        seq_length = 12
+        batch_size = 8
+        input_size = 4
+        self.hidden_size = 2
         self.set_attrs()
 
         self.direction_num = 2 if self.is_bidirec else 1
         direction = "bidirectional" if self.is_bidirec else "forward"
-        seq_length = 12
-        batch_size = 8
-        input_size = 4
-        hidden_size = 2
 
         input = np.random.uniform(
             low=-0.1, high=0.1,
@@ -72,18 +72,19 @@ class TestGRUOp(OpTest):
             input[1][4:][:] = 0
 
         rnn1 = GRU(input_size,
-                   hidden_size,
+                   self.hidden_size,
                    num_layers=self.num_layers,
                    time_major=True,
                    direction=direction,
-                   dropout=self.dropout)
+                   dropout=self.dropout,
+                   dtype=self.dtype)
 
         flat_w = get_params_for_net(rnn1)
 
         output, last_hidden = rnn1(input, sequence_length=self.sequence_length)
 
         init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
+                           self.hidden_size)).astype(self.dtype)
 
         state_out = np.ndarray((300)).astype("uint8")
 
@@ -103,7 +104,7 @@ class TestGRUOp(OpTest):
             'dropout_prob': self.dropout,
             'is_bidirec': self.is_bidirec,
             'input_size': input_size,
-            'hidden_size': hidden_size,
+            'hidden_size': self.hidden_size,
             'num_layers': self.num_layers,
             'is_test': self.is_test,
             'mode': self.mode
@@ -151,6 +152,12 @@ class TestGRUOp4(TestGRUOp):
         self.sequence_length = None
         self.is_bidirec = True
         self.is_test = True
+
+
+class TestGRUOpAvx(TestGRUOp):
+    def set_attrs(self):
+        self.dtype = "float32"
+        self.hidden_size = 8
 
 
 if __name__ == '__main__':

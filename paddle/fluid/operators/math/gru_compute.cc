@@ -167,7 +167,6 @@ template struct GRUUnitGradFunctor<platform::CPUDeviceContext, double>;
 
 template struct GRUUnitFunctorV2<platform::CPUDeviceContext, float>;
 template struct GRUUnitFunctorV2<platform::CPUDeviceContext, double>;
-
 template struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, float>;
 template struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, double>;
 

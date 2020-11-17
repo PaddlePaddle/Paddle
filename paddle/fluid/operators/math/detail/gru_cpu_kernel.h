@@ -545,6 +545,62 @@ inline void hl_avx_gru_backward(OpGruGrad op_gru_grad, T *gate_value,
                                 int frame_size, ActivationType active_node,
                                 ActivationType active_gate) {
 #ifdef __AVX__
+  __m256 r_value_reset_gate;
+  __m256 r_grad_reset_gate;
+  __m256 r_value_update_gate;
+  __m256 r_grad_update_gate;
+  __m256 r_value_frame_state;
+  __m256 r_grad_frame_state;
+  __m256 r_value_prev_out = _mm256_set1_ps(0.0f);
+  __m256 r_grad_prev_out = _mm256_set1_ps(0.0f);
+  __m256 r_grad_output;
+  __m256 r_value_reset_output;
+  __m256 r_grad_reset_output = _mm256_set1_ps(0.0f);
+  __m256 *reset_gate_value = reinterpret_cast<__m256 *>(gate_value);
+  __m256 *reset_gate_grad = reinterpret_cast<__m256 *>(gate_grad);
+  __m256 *update_gate_value =
+      reinterpret_cast<__m256 *>(gate_value + frame_size);
+  __m256 *update_gate_grad = reinterpret_cast<__m256 *>(gate_grad + frame_size);
+  __m256 *frame_state_value =
+      reinterpret_cast<__m256 *>(gate_value + 2 * frame_size);
+  __m256 *frame_state_grad =
+      reinterpret_cast<__m256 *>(gate_grad + 2 * frame_size);
+
+  for (int i = 0; i < frame_size / 8; ++i) {
+    r_value_reset_gate = reset_gate_value[i];
+    r_grad_reset_gate = reset_gate_grad[i];
+    r_value_update_gate = update_gate_value[i];
+    r_grad_update_gate = update_gate_grad[i];
+    r_value_frame_state = frame_state_value[i];
+    r_grad_frame_state = frame_state_grad[i];
+    if (prev_out_value) {
+      r_value_prev_out = (reinterpret_cast<const __m256 *>(prev_out_value))[i];
+    }
+    if (prev_out_grad) {
+      r_grad_prev_out = (reinterpret_cast<__m256 *>(prev_out_grad))[i];
+    }
+    r_grad_output = (reinterpret_cast<__m256 *>(output_grad))[i];
+    r_value_reset_output = (reinterpret_cast<__m256 *>(reset_output_value))[i];
+    if (prev_out_value && prev_out_grad) {
+      r_grad_reset_output = (reinterpret_cast<__m256 *>(reset_output_grad))[i];
+    }
+
+    op_gru_grad(&r_value_reset_gate, &r_grad_reset_gate, &r_value_update_gate,
+                &r_grad_update_gate, &r_value_frame_state, &r_grad_frame_state,
+                &r_value_prev_out, &r_grad_prev_out, &r_grad_output,
+                &r_value_reset_output, &r_grad_reset_output, active_node,
+                active_gate);
+
+    reset_gate_grad[i] = r_grad_reset_gate;
+    update_gate_grad[i] = r_grad_update_gate;
+    frame_state_grad[i] = r_grad_frame_state;
+    if (prev_out_grad) {
+      (reinterpret_cast<__m256 *>(prev_out_grad))[i] = r_grad_prev_out;
+    }
+    if (prev_out_value && prev_out_grad) {
+      (reinterpret_cast<__m256 *>(reset_output_grad))[i] = r_grad_reset_output;
+    }
+  }
 #endif
 }
 

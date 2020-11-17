@@ -254,8 +254,9 @@ class gru {
         _mm256_mul_ps(*grad_output,
                       _mm256_sub_ps(_mm256_set1_ps(1.0f), *value_update_gate)),
         *value_frame_state, act_node);
+    __m256 reset_output = _mm256_div_ps(*value_reset_output, *value_reset_gate);
     *grad_reset_gate =
-        activation(_mm256_mul_ps(*value_reset_output, *grad_frame_state),
+        activation(_mm256_mul_ps(reset_output, *grad_frame_state),
                    *value_reset_gate, act_gate);
     *grad_reset_output = _mm256_mul_ps(*value_reset_gate, *grad_frame_state);
   }
