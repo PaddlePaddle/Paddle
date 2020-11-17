@@ -786,7 +786,7 @@ def gather(x, index, axis=None, name=None):
         axis = 0
     axis_tensor = axis
     if not isinstance(axis, Variable) and axis == 0:
-        return paddle.fluid.layers.gather(input=x, index=index, overwrite=True)
+        return paddle.fluid.layers.gather(input=x, index=index, overwrite=False)
     if not isinstance(axis, Variable):
         with device_guard("cpu"):
             axis_tensor = fill_constant(
