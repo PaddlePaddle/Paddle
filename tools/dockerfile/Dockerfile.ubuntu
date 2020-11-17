@@ -85,6 +85,7 @@ RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz && tar -
 WORKDIR /home/Python-$version
 RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15 && make && make install
 
+RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc && echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc && echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc && echo "export CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH" >> ~/.bashrc
 ENV PATH=/usr/local/python2.7.15/include:${PATH}
 ENV PATH=/usr/local/python2.7.15/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
@@ -130,7 +131,7 @@ RUN curl -s -q https://glide.sh/get | sh
 # Downgrade TensorRT 
 COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_trt.sh && \
-    bash -x /build_scripts/install_nccl2.sh
+    bash /build_scripts/install_nccl2.sh
 RUN rm -rf /build_scripts
 
 # git credential to skip password typing
@@ -216,6 +217,7 @@ RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+CMD source ~/.bashrc
 
 # ccache 3.7.9
 RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
