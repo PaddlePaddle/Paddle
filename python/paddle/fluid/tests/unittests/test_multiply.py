@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.tensor as tensor
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.static import Program, program_guard
 
 
 class TestMultiplyApi(unittest.TestCase):
@@ -33,10 +33,10 @@ class TestMultiplyApi(unittest.TestCase):
                 name='y', shape=y_data.shape, dtype=y_data.dtype)
             res = tensor.multiply(x, y)
 
-            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            outs = exe.run(fluid.default_main_program(),
+            place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            outs = exe.run(paddle.static.default_main_program(),
                            feed={'x': x_data,
                                  'y': y_data},
                            fetch_list=[res])
@@ -48,10 +48,10 @@ class TestMultiplyApi(unittest.TestCase):
             paddle.enable_static()
 
             res = tensor.multiply(x_data, y_data)
-            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            outs = exe.run(fluid.default_main_program(),
+            place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            outs = exe.run(paddle.static.default_main_program(),
                            feed={'x': x_data,
                                  'y': y_data},
                            fetch_list=[res])
