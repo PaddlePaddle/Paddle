@@ -281,7 +281,7 @@ __global__ void SoftmaxKernelWithEltadd2<half2>(half2 *qk_buf_, const half2 *bia
                                          const int batch_size,
                                          const int head_num, const int seq_len,
                                          const unsigned mask) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600 && CUDA_VERSION >= 10000
   int qk_offset = blockIdx.x * seq_len;
   int idx = threadIdx.x;
   assert(blockDim.x % 32 == 0);
@@ -564,7 +564,7 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num, int hidden, cons
                                      const half2 *input2, half2 *output,
                                      const float2 *scale, const float2 *bias,
                                      float eps) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600 && CUDA_VERSION >= 10000
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
   cub::Sum pair_sum;
