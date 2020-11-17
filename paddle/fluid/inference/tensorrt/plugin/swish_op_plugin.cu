@@ -78,7 +78,7 @@ __global__ void swish_kernel<half>(int num, const half *input, half *output, hal
 #if __CUDA_ARCH__ >= 600
     output[index] =
         __ldg(input + index) /
-        (static_cast<half>(1.0) + math_exp<T>(-beta * __ldg(input + index)));
+        (static_cast<half>(1.0) + math_exp<half>(-beta * __ldg(input + index)));
 #endif
   }
 }
