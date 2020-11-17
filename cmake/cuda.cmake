@@ -62,10 +62,6 @@ function(detect_installed_gpus out_variable)
   if(NOT CUDA_gpu_detect_output)
     message(STATUS "Automatic GPU detection failed. Building for all known architectures.")
     set(${out_variable} ${paddle_known_gpu_archs} PARENT_SCOPE)
-    #Todo: fix Automatic GPU detection failed on windows
-    if(WIN32)
-      set(${out_variable} "61 75" PARENT_SCOPE)
-    endif()
   else()
     set(${out_variable} ${CUDA_gpu_detect_output} PARENT_SCOPE)
   endif()
@@ -189,7 +185,9 @@ elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.x
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
 endif()
 
-add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
+add_definitions("-DCUDA_VERSION_MAJOR=\"${CUDA_VERSION_MAJOR}\"")
+add_definitions("-DCUDA_VERSION_MINOR=\"${CUDA_VERSION_MINOR}\"")
+add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")
 
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
@@ -240,3 +238,4 @@ endif()
 
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)
 mark_as_advanced(CUDA_SDK_ROOT_DIR CUDA_SEPARABLE_COMPILATION)
+

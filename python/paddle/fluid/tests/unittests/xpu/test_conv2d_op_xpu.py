@@ -159,7 +159,7 @@ def create_test_padding_VALID_class(parent):
     globals()[cls_name] = TestPaddingVALIDCase
 
 
-class TestConv2dOp(OpTest):
+class TestConv2DOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -274,7 +274,7 @@ class TestConv2dOp(OpTest):
         pass
 
 
-class TestWithPad(TestConv2dOp):
+class TestWithPad(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -284,7 +284,7 @@ class TestWithPad(TestConv2dOp):
         self.filter_size = [6, f_c, 3, 3]
 
 
-class TestWithStride(TestConv2dOp):
+class TestWithStride(TestConv2DOp):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -294,7 +294,7 @@ class TestWithStride(TestConv2dOp):
         self.filter_size = [6, f_c, 3, 3]
 
 
-class TestWithGroup(TestConv2dOp):
+class TestWithGroup(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -305,7 +305,7 @@ class TestWithGroup(TestConv2dOp):
         self.filter_size = [18, f_c, 3, 3]
 
 
-class TestWith1x1(TestConv2dOp):
+class TestWith1x1(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -318,7 +318,7 @@ class TestWith1x1(TestConv2dOp):
         self.groups = 3
 
 
-class TestWithDilation(TestConv2dOp):
+class TestWithDilation(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -334,7 +334,7 @@ class TestWithDilation(TestConv2dOp):
         self.groups = 3
 
 
-class TestWithInput1x1Filter1x1(TestConv2dOp):
+class TestWithInput1x1Filter1x1(TestConv2DOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -356,7 +356,7 @@ class TestWithInput1x1Filter1x1(TestConv2dOp):
 # ---- test asymmetric padding ----
 
 
-class TestConv2dOp_v2(OpTest):
+class TestConv2DOp_v2(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -482,13 +482,13 @@ class TestConv2dOp_v2(OpTest):
         pass
 
 
-class TestConv2dOp_AsyPadding(TestConv2dOp_v2):
+class TestConv2DOp_AsyPadding(TestConv2DOp_v2):
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithPad_AsyPadding(TestConv2dOp_v2):
+class TestWithPad_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -501,7 +501,7 @@ class TestWithPad_AsyPadding(TestConv2dOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithStride_AsyPadding(TestConv2dOp_v2):
+class TestWithStride_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
@@ -514,7 +514,7 @@ class TestWithStride_AsyPadding(TestConv2dOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithGroup_AsyPadding(TestConv2dOp_v2):
+class TestWithGroup_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 2]
@@ -525,7 +525,7 @@ class TestWithGroup_AsyPadding(TestConv2dOp_v2):
         self.filter_size = [24, f_c, 4, 3]
 
 
-class TestWith1x1_AsyPadding(TestConv2dOp_v2):
+class TestWith1x1_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -541,7 +541,7 @@ class TestWith1x1_AsyPadding(TestConv2dOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithDilation_AsyPadding(TestConv2dOp_v2):
+class TestWithDilation_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
@@ -560,7 +560,7 @@ class TestWithDilation_AsyPadding(TestConv2dOp_v2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithInput1x1Filter1x1_AsyPadding(TestConv2dOp_v2):
+class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
         self.input_size = [40, 3, 1, 1]  # NCHW
@@ -577,20 +577,20 @@ class TestWithInput1x1Filter1x1_AsyPadding(TestConv2dOp_v2):
 
 
 #---------- test SAME VALID -----------
-create_test_padding_SAME_class(TestConv2dOp_AsyPadding)
+create_test_padding_SAME_class(TestConv2DOp_AsyPadding)
 create_test_padding_SAME_class(TestWithPad_AsyPadding)
 create_test_padding_SAME_class(TestWithStride_AsyPadding)
 create_test_padding_SAME_class(TestWithGroup_AsyPadding)
 create_test_padding_SAME_class(TestWithInput1x1Filter1x1_AsyPadding)
 
-create_test_padding_VALID_class(TestConv2dOp_AsyPadding)
+create_test_padding_VALID_class(TestConv2DOp_AsyPadding)
 create_test_padding_VALID_class(TestWithPad_AsyPadding)
 create_test_padding_VALID_class(TestWithStride_AsyPadding)
 create_test_padding_VALID_class(TestWithGroup_AsyPadding)
 create_test_padding_VALID_class(TestWithInput1x1Filter1x1_AsyPadding)
 
 # ------------ test channel last ---------
-create_test_channel_last_class(TestConv2dOp_AsyPadding)
+create_test_channel_last_class(TestConv2DOp_AsyPadding)
 create_test_channel_last_class(TestWithPad_AsyPadding)
 create_test_channel_last_class(TestWithGroup_AsyPadding)
 create_test_channel_last_class(TestWith1x1_AsyPadding)

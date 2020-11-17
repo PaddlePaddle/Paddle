@@ -35,6 +35,7 @@ from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 
 class InferencePassTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
+        paddle.enable_static()
         super(InferencePassTest, self).__init__(methodName)
         paddle.enable_static()
         self.main_program = fluid.Program()
@@ -43,6 +44,7 @@ class InferencePassTest(unittest.TestCase):
         self.fetch_list = None
 
         self.enable_mkldnn = False
+        self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
         self.trt_parameters = None
         self.dynamic_shape_params = None
@@ -134,6 +136,8 @@ class InferencePassTest(unittest.TestCase):
 
         elif use_mkldnn:
             config.enable_mkldnn()
+            if self.enable_mkldnn_bfloat16:
+                config.enable_mkldnn_bfloat16()
 
         return config
 
@@ -222,6 +226,7 @@ class InferencePassTest(unittest.TestCase):
             if flatten:
                 out = out.flatten()
                 analysis_output = analysis_output.flatten()
+
             self.assertTrue(
                 np.allclose(
                     out, analysis_output, atol=atol),
@@ -249,6 +254,7 @@ class InferencePassTest(unittest.TestCase):
                 if flatten:
                     out = out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
+
                 self.assertTrue(
                     np.allclose(
                         out, tensorrt_output, atol=atol),
@@ -264,6 +270,8 @@ class InferencePassTest(unittest.TestCase):
                 len(outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ")
 
+            if self.enable_mkldnn_bfloat16:
+                atol = 0.01
             for out, mkldnn_output in zip(outs, mkldnn_outputs):
                 self.assertTrue(
                     np.allclose(

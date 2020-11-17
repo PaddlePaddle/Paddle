@@ -286,7 +286,7 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
         self.assertRaises(TypeError, test_invalid_offset)
 
 
-class TestDeformConv2dAPI(unittest.TestCase):
+class TestDeformConv2DAPI(unittest.TestCase):
     def test_api(self):
         def test_deform_conv2d_v1():
             paddle.enable_static()

@@ -74,7 +74,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         try:
             paddle.disable_static()
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
@@ -93,7 +93,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CUDAPlace(0)
 
         paddle.disable_static(place)
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         mlp = MLP()
@@ -142,7 +142,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         paddle.enable_static()
         with new_program_scope():
-            paddle.manual_seed(seed)
+            paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
             if place == None:

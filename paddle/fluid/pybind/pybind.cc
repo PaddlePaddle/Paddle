@@ -54,6 +54,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -465,6 +466,12 @@ PYBIND11_MODULE(core_noavx, m) {
             << ", edgeitems=" << print_opt.edgeitems
             << ", linewidth=" << print_opt.linewidth
             << ", sci_mode=" << print_opt.sci_mode;
+  });
+
+  m.def("broadcast_shape", [](const std::vector<int64_t> &x_dim,
+                              const std::vector<int64_t> &y_dim) {
+    return vectorize(operators::details::BroadcastTwoDims(
+        make_ddim(x_dim), make_ddim(y_dim), -1));
   });
 
   m.def(
@@ -1421,6 +1428,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_get_device_id",
            [](platform::CUDAPlace &self) -> int { return self.GetDeviceId(); })
 #endif
+      .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<platform::XPUPlace>(m, "XPUPlace", R"DOC(
@@ -1479,6 +1487,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_device_id",
            [](const platform::XPUPlace &self) { return self.GetDeviceId(); })
 #endif
+      .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1500,6 +1509,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::CPUPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CPUPlace, platform::CUDAPinnedPlace>)
+      .def("__repr__", string::to_string<const platform::CPUPlace &>)
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
@@ -1536,6 +1546,7 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::CUDAPinnedPlace, platform::CUDAPinnedPlace>)
+      .def("__repr__", string::to_string<const platform::CUDAPinnedPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
 
   py::class_<platform::Place>(m, "Place")
@@ -1578,10 +1589,13 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
            })
-      .def("set_place", [](platform::Place &self,
-                           const platform::CUDAPinnedPlace &cuda_pinned_place) {
-        self = cuda_pinned_place;
-      });
+      .def("set_place",
+           [](platform::Place &self,
+              const platform::CUDAPinnedPlace &cuda_pinned_place) {
+             self = cuda_pinned_place;
+           })
+      .def("__repr__", string::to_string<const platform::Place &>)
+      .def("__str__", string::to_string<const platform::Place &>);
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static(
@@ -2492,6 +2506,31 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_bn_act_ops = True
+                     )DOC")
+      .def_property(
+          "fuse_bn_add_act_ops",
+          [](const BuildStrategy &self) { return self.fuse_bn_add_act_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_bn_add_act_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_bn_add_act_ops indicate whether
+                to fuse batch_norm, elementwise_add and activation_op,
+                it may make the execution faster. Default is True
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_bn_add_act_ops = True
                      )DOC")
       .def_property(
           "enable_auto_fusion",
