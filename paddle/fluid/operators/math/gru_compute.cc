@@ -135,6 +135,16 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
+std::string get_list(T *arr, int num) {
+  std::string msg = "";
+  for (int i = 0; i < num; ++i) {
+    msg += std::to_string(arr[i]);
+    msg += " ";
+  }
+  return msg;
+}
+
+template <typename T>
 struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, T> {
   static void compute(const platform::CPUDeviceContext &context,
                       GRUMetaValue<T> value, GRUMetaGrad<T> grad,
@@ -146,21 +156,6 @@ struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, T> {
     // grad_reset_output, grad_reset_gate
     detail::cpu_gru_backward(detail::backward::gru<T>(), value, grad,
                              frame_size, batch_size, active_node, active_gate);
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    // update state_weight_grad
-    // update state_bias_grad
-    T *reset_output_grad = grad.reset_output_grad;
-    blas.VCOPY(frame_size, reset_output_grad, grad.state_bias_grad);
-    for (int b = 1; b < batch_size; ++b) {
-      reset_output_grad += frame_size;
-      blas.VADD(frame_size, grad.state_bias_grad, reset_output_grad,
-                grad.state_bias_grad);
-    }
-    if (value.prev_out_value) {
-      blas.GEMM(CblasTrans, CblasNoTrans, batch_size, frame_size, frame_size, 1,
-                grad.reset_output_grad, value.prev_out_value, 1,
-                grad.state_weight_grad);
-    }
 #endif
   }
 };

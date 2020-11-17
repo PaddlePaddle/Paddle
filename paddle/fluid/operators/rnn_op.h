@@ -57,55 +57,6 @@ void SwapPoniter(Tensor** a, Tensor** b) {
 }
 
 template <typename T>
-void Print1DTensor(const Tensor* a, std::string name) {
-  const int& size = a->dims()[0];
-  std::string message = "print value, name is " + name + "\n";
-  for (int i = 0; i < size; i++) {
-    message += std::to_string(a->data<T>()[i]) + " ";
-  }
-  message += "\n";
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-
-template <typename T>
-void Print2DTensor(const Tensor* a, std::string name) {
-  const int& heigth = a->dims()[0];
-  const int& width = a->dims()[1];
-  std::string message = "print value, name is " + name + "\n";
-  for (int i = 0; i < heigth; i++) {
-    for (int j = 0; j < width; j++) {
-      message += std::to_string(a->data<T>()[i * width + j]) + " ";
-    }
-    message += "\n";
-  }
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-
-template <typename T>
-void Print3DTensor(const Tensor* a, std::string name) {
-  const int& row = a->dims()[0];
-  const int& heigth = a->dims()[1];
-  const int& width = a->dims()[2];
-  std::string message = "print value, name is " + name + "\n";
-  for (int r = 0; r < row; r++) {
-    for (int i = 0; i < heigth; i++) {
-      for (int j = 0; j < width; j++) {
-        message +=
-            std::to_string(a->data<T>()[r * heigth * width + i * width + j]) +
-            " ";
-      }
-      message += "\n";
-    }
-    message += "*******\n";
-  }
-
-  VLOG(0) << message;
-  VLOG(0) << "----------------------------";
-}
-
-template <typename T>
 void create_mask_matrix(const framework::ExecutionContext& context,
                         const Tensor* sequence_length, Tensor* mask_matrix,
                         const bool& is_reverse, int* min_seq_len) {
@@ -395,7 +346,7 @@ struct Layer {
     auto eigen_last_h =
         framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
     auto eigen_mask_broadcast =
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[1]));
+        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[2]));
     eigen_last_h.device(place) = eigen_output * eigen_mask_broadcast +
                                  eigen_init_h * (1 - eigen_mask_broadcast);
     eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
@@ -1087,25 +1038,15 @@ void create_tensor_by_list(const framework::ExecutionContext& context,
 
 template <typename T>
 void make_grad_gate_buf(const framework::ExecutionContext& context,
-                        Tensor* grad_gate, Tensor* grad_gate_buf) {
-  VLOG(0) << "grad_gate_buf numel: " << grad_gate_buf->numel();
-  VLOG(0) << "grad_gate numel: " << grad_gate->numel();
+                        Tensor* grad_gate, Tensor* grad_gate_buf,
+                        Tensor* reset_output_grad = nullptr) {
   int dim_size = grad_gate->dims().size();
   int batch_size = grad_gate->dims()[dim_size - 2];
   int frame_size = grad_gate->dims()[dim_size - 1];
-  VLOG(0) << "batch_size: " << batch_size;
-  VLOG(0) << "frame_size: " << frame_size;
 
   Tensor grad_gate_mask;
-  // std::vector<T> mask_list{1, 1, 0};
-  // create_tensor_by_list<T>(context, &grad_gate_mask, mask_list);
-  grad_gate_mask.Resize({3});
-  grad_gate_mask.mutable_data<T>(context.GetPlace());
-  grad_gate_mask.data<T>()[0] = 1;
-  grad_gate_mask.data<T>()[1] = 1;
-  grad_gate_mask.data<T>()[2] = 0;
+  create_tensor_by_list<T>(context, &grad_gate_mask, {1, 1, 0});
 
-  VLOG(0) << "after create_tensor_by_list";
   auto& place = *context.template device_context<platform::CPUDeviceContext>()
                      .eigen_device();
   auto eigen_grad_gate_mask = framework::EigenMatrix<T>::From(
@@ -1120,17 +1061,25 @@ void make_grad_gate_buf(const framework::ExecutionContext& context,
       *grad_gate, framework::make_ddim({batch_size, frame_size}));
   eigen_grad_gate_buf.device(place) =
       eigen_grad_gate * eigen_grad_gate_mask_broadcast;
-  VLOG(0) << grad_gate_mask.dims();
-  VLOG(0) << grad_gate->dims();
-  VLOG(0) << grad_gate_buf->dims();
 
-  Print1DTensor<T>(&grad_gate_mask, "grad_gate_mask");
-  if (grad_gate->dims().size() == 2) {
-    Print2DTensor<T>(grad_gate, "grad_gate");
-    Print2DTensor<T>(grad_gate_buf, "grad_gate_buf");
-  } else if (grad_gate->dims().size() == 3) {
-    Print3DTensor<T>(grad_gate, "grad_gate");
-    Print3DTensor<T>(grad_gate_buf, "grad_gate_buf");
+  if (reset_output_grad) {
+    Tensor grad_reset_output_mask;
+    create_tensor_by_list<T>(context, &grad_reset_output_mask, {0, 0, 1});
+    auto eigen_grad_reset_output_mask = framework::EigenMatrix<T>::From(
+        grad_reset_output_mask, framework::make_ddim({3, 1}));
+    auto eigen_grad_reset_output_mask_broadcast =
+        eigen_grad_reset_output_mask
+            .broadcast(Eigen::DSizes<int, 2>(1, frame_size / 3))
+            .reshape(Eigen::DSizes<int, 1>(frame_size))
+            .broadcast(Eigen::DSizes<int, 2>(batch_size, 1));
+    auto eigen_grad_reset_output =
+        framework::EigenMatrix<T>::Reshape(*reset_output_grad,
+                                           reset_output_grad->dims().size() - 1)
+            .broadcast(Eigen::DSizes<int, 3>(1, 3, 1))
+            .reshape(Eigen::DSizes<int, 2>(batch_size, frame_size));
+    eigen_grad_gate_buf.device(place) =
+        eigen_grad_gate_buf +
+        eigen_grad_reset_output_mask_broadcast * eigen_grad_reset_output;
   }
 }
 
@@ -1195,12 +1144,14 @@ struct GradLayer {
     Tensor c, d;
     Tensor* dynamic_grad_pre_h = &c;
     Tensor* dynamic_grad_pre_c = &d;
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
     if (init_h_grad_unbind->size() > 0) {
       dynamic_grad_pre_h->ShareDataWith(
           (*init_h_grad_unbind)[current_layer_idx]);
     } else {
       dynamic_grad_pre_h->Resize(dynamic_grad_last_h->dims());
       dynamic_grad_pre_h->mutable_data<T>(context.GetPlace());
+      zero(device_ctx, dynamic_grad_pre_h, static_cast<T>(0.0));
     }
     if (init_c_grad_unbind->size() > 0) {
       dynamic_grad_pre_c->ShareDataWith(
@@ -1236,7 +1187,6 @@ struct GradLayer {
     Tensor* weight_grad =
         &((*weight_list_grad)[layer_idx][current_reverse_idx * 4 + 1]);
     weight_grad->mutable_data<T>(context.GetPlace());
-    math::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, weight_grad, static_cast<T>(0.0));
 
     Tensor* pre_hidden = nullptr;
@@ -1250,7 +1200,6 @@ struct GradLayer {
       grad_gate_buf_unbind = Unbind(grad_gate_buf);
     }
     for (int i = time_step - 1; i >= 0; --i) {
-      VLOG(0) << "time step:" << i;
       if (has_sequence_length) {
         this->mask_preprocess(context, &(*output_grad_tensor_unbind)[i],
                               dynamic_grad_last_h, dynamic_grad_last_c,
@@ -1279,13 +1228,12 @@ struct GradLayer {
           &(parameter_lists[layer_idx][current_reverse_idx * 4 + 1]),
           pre_hidden, pre_state, dynamic_grad_last_h, dynamic_grad_last_c,
           &(*layer_grad_gate_tensor_unbind)[i], weight_grad, dynamic_grad_pre_h,
-          dynamic_grad_pre_c, &grad_gate_buf_unbind[0],
+          dynamic_grad_pre_c, &grad_gate_buf_unbind[i],
           &((*weight_list_grad)[layer_idx][current_reverse_idx * 4 + 3]),
           mask_tensor_list[i], has_sequence_length);
       SwapPoniter(&dynamic_grad_last_h, &dynamic_grad_pre_h);
       SwapPoniter(&dynamic_grad_last_c, &dynamic_grad_pre_c);
     }
-    VLOG(0) << "3333333333333333";
     // postproces for gradient for w_hi, X, bias_hi, bias_hh
     this->postprocess(context, *layer_grad_gate_tensor, *input, input_grad,
                       parameter_lists[layer_idx],
@@ -1294,10 +1242,8 @@ struct GradLayer {
 
     // copy the gradient to init_c init_h
     if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
-      VLOG(0) << "init_h_grad_unbind: 555555555555555555555555555555";
       framework::TensorCopy(*dynamic_grad_last_h, context.GetPlace(),
                             &((*init_h_grad_unbind)[current_layer_idx]));
-      VLOG(0) << "init_h_grad_unbind: 6666666666666666666666666666";
     }
     if ((*init_c_grad_unbind).size() > 0 && time_step % 2 == 0) {
       framework::TensorCopy(*dynamic_grad_last_c, context.GetPlace(),
@@ -1409,12 +1355,10 @@ struct GradLayer {
     tmp_grad_gate.Resize(
         {grad_gate.dims()[0] * grad_gate.dims()[1], grad_gate.dims()[2]});
     col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 2]));
+
     // Bias_hh
     if (is_gru(context)) {
-      VLOG(0) << "grad postprocess";
-      VLOG(0) << "grad_gate_buf size:" << grad_gate_buf->numel();
       grad_gate_buf->Resize(tmp_grad_gate.dims());
-      // make_grad_gate_buf<T>(context, &tmp_grad_gate, grad_gate_buf);
       col_sum(device_ctx, *grad_gate_buf, &((*grad_parameters)[begin_idx + 3]));
     } else {
       col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 3]));
@@ -1670,9 +1614,9 @@ struct GradCell {
     Tensor* grad_gate_tmp = grad_gate;
     if (is_gru(context)) {
       beta = 1.0;
-      // make_grad_gate_buf<T>(context, grad_gate, grad_gate_buf);
       grad_gate_tmp = grad_gate_buf;
     }
+
     auto mat_dim_a =
         math::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
     mat_dim_a.height_ *= mat_dim_a.batch_size_;
@@ -1724,7 +1668,6 @@ struct GradCell {
     Tensor* grad_gate_tmp = grad_gate;
     if (is_gru(context)) {
       grad_gate_tmp = grad_gate_buf;
-      // make_grad_gate_buf<T>(context, grad_gate, grad_gate_buf);
     }
     blas.MatMul(*grad_gate_tmp, mat_dim_c, *pre_hidden, mat_dim_d,
                 static_cast<T>(1.0), grad_weight_hh, static_cast<T>(1.0));
@@ -1791,14 +1734,12 @@ struct GRUGradCell : GradCell<T> {
     size_t frame_size = pre_hidden->dims()[2];
     size_t batch_size = pre_hidden->dims()[1];
     Tensor grad_pre_hidden_bak;
-    VLOG(0) << "GRUGradCell 0000000000";
     if (has_sequence_length) {
       backup_tensor<T>(context, &grad_pre_hidden_bak, grad_pre_hidden);
-      // zero pre_hidden
-      math::SetConstant<platform::CPUDeviceContext, T> zero;
-      zero(device_ctx, grad_pre_hidden, static_cast<T>(0.0));
     }
-    VLOG(0) << "GRUGradCell 1111111111";
+    // zero pre_hidden
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    zero(device_ctx, grad_pre_hidden, static_cast<T>(0.0));
     math::GRUMetaValue<T> gru_value;
     math::GRUMetaGrad<T> gru_grad;
     gru_value.gate_value = gate_tensor->data<T>();
@@ -1814,21 +1755,19 @@ struct GRUGradCell : GradCell<T> {
         grad_weight_hh->data<T>() + 2 * frame_size * frame_size;
     gru_grad.state_bias_grad = grad_bias_hh->data<T>() + 2 * frame_size;
 
-    VLOG(0) << "GRUGradCell 222222222";
     auto act_gate = math::detail::GetActivationType("sigmoid_v2");
     auto act_node = math::detail::GetActivationType("tanh_v2");
     math::GRUUnitGradFunctorV2<platform::CPUDeviceContext, T>::compute(
         device_ctx, gru_value, gru_grad, frame_size, batch_size, act_node,
         act_gate);
-    VLOG(0) << "GRUGradCell 333333333333";
+
+    make_grad_gate_buf<T>(context, grad_gate, grad_gate_buf, grad_state);
 
     this->update_pre_hidden_grad(
         context, grad_gate, weight_hh, grad_pre_hidden, &grad_pre_hidden_bak,
         nullptr, nullptr, grad_gate_buf, mask_tensor, has_sequence_length);
-    VLOG(0) << "GRUGradCell 444444444444444";
     this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh,
                                 grad_gate_buf);
-    VLOG(0) << "GRUGradCell 555555555555555";
   }
 };
 
@@ -2024,6 +1963,8 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   }
   if (state_tensor.numel() > 0) {
     state_tensor_unbind = Unbind(state_tensor);
+  }
+  if (act_state_tensor.numel() > 0) {
     act_state_tensor_unbind = Unbind(act_state_tensor);
   }
   if (num_layers > 1) {

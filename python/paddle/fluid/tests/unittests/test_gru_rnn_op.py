@@ -32,13 +32,13 @@ paddle.enable_static()
 
 
 class TestGRUOp(OpTest):
-    def get_weight_names(self, direction_num):
+    def get_weight_names(self):
         weight_names = []
         for i in range(self.num_layers):
-            for j in range(0, 2 * direction_num):
+            for j in range(0, 2 * self.direction_num):
                 weight_names.append("{}.weight_{}".format(i, j))
         for i in range(self.num_layers):
-            for j in range(0, 2 * direction_num):
+            for j in range(0, 2 * self.direction_num):
                 weight_names.append("{}.bias_{}".format(i, j))
         return weight_names
 
@@ -54,7 +54,7 @@ class TestGRUOp(OpTest):
         self.dropout = 0.
         self.set_attrs()
 
-        direction_num = 2 if self.is_bidirec else 1
+        self.direction_num = 2 if self.is_bidirec else 1
         direction = "bidirectional" if self.is_bidirec else "forward"
         seq_length = 12
         batch_size = 8
@@ -82,7 +82,7 @@ class TestGRUOp(OpTest):
 
         output, last_hidden = rnn1(input, sequence_length=self.sequence_length)
 
-        init_h = np.zeros((self.num_layers * direction_num, batch_size,
+        init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
                            hidden_size)).astype(self.dtype)
 
         state_out = np.ndarray((300)).astype("uint8")
@@ -121,6 +121,13 @@ class TestGRUOp(OpTest):
     def test_output(self):
         self.check_output(no_check_set=['Reserve', 'DropoutState'])
 
+    def test_grad(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input', 'init_h']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(set(grad_check_list), ['Out', 'last_hidden'])
+
 
 class TestGRUOp1(TestGRUOp):
     def set_attrs(self):
@@ -139,7 +146,7 @@ class TestGRUOp3(TestGRUOp):
         self.is_test = True
 
 
-class TestGRUOpCpu4(TestGRUOp):
+class TestGRUOp4(TestGRUOp):
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True

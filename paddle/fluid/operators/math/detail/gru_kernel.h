@@ -225,7 +225,8 @@ class gru {
     *grad_frame_state =
         activation(*grad_output * (static_cast<T>(1.0) - (*value_update_gate)),
                    *value_frame_state, act_node);
-    *grad_reset_gate = activation((*value_reset_output) * (*grad_frame_state),
+    T reset_output = (*value_reset_output) / (*value_reset_gate);
+    *grad_reset_gate = activation(reset_output * (*grad_frame_state),
                                   *value_reset_gate, act_gate);
     *grad_reset_output = (*value_reset_gate) * (*grad_frame_state);
   }
