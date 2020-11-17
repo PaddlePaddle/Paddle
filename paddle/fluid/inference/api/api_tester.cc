@@ -60,6 +60,7 @@ TEST(paddle_inference_api, demo) {
   auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> outputs;
   predictor->Run({}, &outputs);
+  predictor->TryShrinkMemory();
 }
 
 TEST(paddle_inference_api, get_version) {

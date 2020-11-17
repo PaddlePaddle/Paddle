@@ -98,25 +98,27 @@ def convert_call(func):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph.dygraph_to_static import convert_call
+            import paddle
+            from paddle.jit.dy2static import convert_call
 
-          def dyfunc(x):
-              if fluid.layers.mean(x) < 0:
-                  x_v = x - 1
-              else:
-                  x_v = x + 1
+            paddle.enable_static()
+            def dyfunc(x):
+                if paddle.mean(x) < 0:
+                    x_v = x - 1
+                else:
+                    x_v = x + 1
+                return x_v
 
-               return x_v
-          new_func = convert_call(dyfunc)
-          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
-          x_v = new_func(x)
-          exe = fluid.Executor(fluid.CPUPlace())
-          out = exe.run(fetch_list=[x_v])
-          print(out[0])
-          # [[1. 1. 1.]
-          #  [1. 1. 1.]
-          #  [1. 1. 1.]]
+            new_func = convert_call(dyfunc)
+            x = paddle.tensor.manipulation.fill_constant(shape=[3, 3], value=0, dtype='float64')
+            x_v = new_func(x)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            out = exe.run(fetch_list=[x_v])
+            print(out[0])
+            # [[1. 1. 1.]
+            #  [1. 1. 1.]
+            #  [1. 1. 1.]]
 
     """
     translator_logger.log(1,
@@ -142,7 +144,7 @@ def convert_call(func):
             # Note(Aurelius84): Because `@declarative` returns a class instance instead of
             # a function. This will modify the value referring to itself in `__globals__`.
 
-            # For example: 
+            # For example:
             #
             #      @declarative
             #      def foo(x):
@@ -150,7 +152,7 @@ def convert_call(func):
             #
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
-            # `foo` function. So `isinstance(fn, StaticFunction)` is added here. 
+            # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
             global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
@@ -193,8 +195,10 @@ def convert_call(func):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
                 forward_func = convert_to_static(forward_func)
-                setattr(func, 'forward', forward_func)
-                func_self = func
+                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # So descriptor mechanism is used to bound `self` instance on function to
+                # keep it as bound method.
+                setattr(func, 'forward', forward_func.__get__(func))
             except Exception:
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
