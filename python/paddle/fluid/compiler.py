@@ -316,7 +316,7 @@ class CompiledProgram(object):
             "Subclass of CompiledProgram should implement _with_distributed method."
         )
 
-    def _compile_data_parallel(self, places, use_cuda=False, scope=None):
+    def _compile_data_parallel(self, places, use_cuda=False, scope=None, use_xpu=False):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
@@ -343,9 +343,10 @@ class CompiledProgram(object):
         if self._exec_strategy is None:
             self._exec_strategy = ExecutionStrategy()
         self._exec_strategy.use_cuda = use_cuda
+        self._exec_strategy.use_xpu = use_xpu
 
         if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy.use_cuda:
+            if self._exec_strategy.use_cuda or self._exec_strategy.use_xpu:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
                 self._exec_strategy.num_threads = len(places) * 4
@@ -450,6 +451,7 @@ class CompiledProgram(object):
 
             self._executor = self._compile_data_parallel(
                 use_cuda=isinstance(self._place, core.CUDAPlace),
+                use_xpu=isinstance(self._place, core.XPUPlace),
                 scope=self._scope,
                 places=self._places)
         return self

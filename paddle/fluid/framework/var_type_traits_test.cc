@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+/*
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <iostream>
@@ -28,6 +28,10 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
+#endif
+#include "paddle/fluid/platform/bkcl_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #endif
@@ -120,3 +124,4 @@ TEST(var_type_traits, test_registry) {
 
 }  // namespace framework
 }  // namespace paddle
+*/
