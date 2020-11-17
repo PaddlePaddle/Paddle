@@ -268,7 +268,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertRaises(ValueError, paddle.static.load_inference_model,
                 MODEL_DIR + "/", exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
-                MODEL_DIR.encode(), exe, )
+                [MODEL_DIR], exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
                 MODEL_DIR, exe, pserver_endpoints=None)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
