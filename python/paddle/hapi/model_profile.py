@@ -17,6 +17,8 @@ import paddle.nn as nn
 import numpy as np
 from prettytable import PrettyTable
 
+__all__ = ['flops']
+
 default_dtype = 'float32'
 
 
