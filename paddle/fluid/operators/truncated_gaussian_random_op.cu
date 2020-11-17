@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 
 namespace paddle {
 namespace operators {
