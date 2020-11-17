@@ -229,7 +229,8 @@ def floor_division(x, y):
     Returns:
         division result of x // y
     """
-    return x // y
+    a = x // y
+    return a
 
 
 # exception related functions
