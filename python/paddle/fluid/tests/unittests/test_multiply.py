@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.tensor as tensor
-import paddle.fluid as fluid
 from paddle.static import Program, program_guard
 
 
@@ -33,8 +32,9 @@ class TestMultiplyApi(unittest.TestCase):
                 name='y', shape=y_data.shape, dtype=y_data.dtype)
             res = tensor.multiply(x, y)
 
-            place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else paddle.CPUPlace()
+            place = paddle.CUDAPlace(
+                0) if paddle.fluid.core.is_compiled_with_cuda(
+                ) else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             outs = exe.run(paddle.static.default_main_program(),
                            feed={'x': x_data,
@@ -48,8 +48,9 @@ class TestMultiplyApi(unittest.TestCase):
             paddle.enable_static()
 
             res = tensor.multiply(x_data, y_data)
-            place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else paddle.CPUPlace()
+            place = paddle.CUDAPlace(
+                0) if paddle.fluid.core.is_compiled_with_cuda(
+                ) else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             outs = exe.run(paddle.static.default_main_program(),
                            feed={'x': x_data,
@@ -74,7 +75,6 @@ class TestMultiplyApi(unittest.TestCase):
         return res.numpy()
 
     def test_multiply(self):
-        """test_multiply."""
         np.random.seed(7)
 
         # test static computation graph: 1-d array
