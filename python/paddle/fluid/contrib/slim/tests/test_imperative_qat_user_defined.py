@@ -52,6 +52,54 @@ class PACT(nn.Layer):
         return x
 
 
+class CustomQAT(nn.Layer):
+    def __init__(self):
+        super(CustomQAT, self).__init__()
+        attr = paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=1.0))
+        self.u_param = self.create_parameter(
+            shape=[1], attr=attr, dtype='float32')
+        self.l_param = self.create_parameter(
+            shape=[1], attr=attr, dtype='float32')
+        self.alpha_param = self.create_parameter(
+            shape=[1], attr=attr, dtype='float32')
+        self.upper = self.create_parameter(
+            shape=[1], attr=attr, dtype='float32')
+        self.upper.stop_gradient = True
+        self.lower = self.create_parameter(
+            shape=[1], attr=attr, dtype='float32')
+        self.lower.stop_gradient = True
+
+    def forward(self, x):
+        def clip(x, upper, lower):
+            x = x + paddle.nn.functional.relu(lower - x)
+            x = x - paddle.nn.functional.relu(x - upper)
+            return x
+
+        def phi_function(x, mi, alpha, delta):
+            s = 1 / (1 - alpha)
+            k = paddle.log(2 / alpha - 1) * (1 / delta)
+            x = (paddle.tanh((x - mi) * k)) * s
+            return x
+
+        def dequantize(x, lower_bound, delta, interval):
+            x = ((x + 1) / 2 + interval) * delta + lower_bound
+            return x
+
+        bit = 8
+        bit_range = 2**bit - 1
+
+        paddle.assign(self.upper * 0.9 + self.u_param * 0.1, self.upper)
+        paddle.assign(self.lower * 0.9 + self.l_param * 0.1, self.lower)
+        x = clip(x, self.upper, self.lower)
+        delta = (self.upper - self.lower) / bit_range
+        interval = (x - self.lower) / delta
+        mi = (interval + 0.5) * delta + self.l_param
+        x = phi_function(x, mi, self.alpha_param, delta)
+        x = dequantize(x, self.l_param, delta, interval)
+        return x
+
+
 class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super(ImperativeLenet, self).__init__()
@@ -93,7 +141,7 @@ class ImperativeLenet(paddle.nn.Layer):
 class TestUserDefinedActPreprocess(unittest.TestCase):
     def setUp(self):
         _logger.info("test act_preprocess")
-        self.imperative_qat = ImperativeQuantAware(act_preprocess=PACT)
+        self.imperative_qat = ImperativeQuantAware(act_preprocess_layer=PACT)
 
     def test_quant_aware_training(self):
         imperative_qat = self.imperative_qat
@@ -176,31 +224,24 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         train(lenet)
         test(lenet)
 
-        paddle.jit.save(
-            layer=lenet,
-            path="./dynamic_quant_user_defined/model",
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32')
-            ])
-
 
 class TestUserDefinedWeightPreprocess(TestUserDefinedActPreprocess):
     def setUp(self):
         _logger.info("test weight_preprocess")
-        self.imperative_qat = ImperativeQuantAware(weight_preprocess=PACT)
+        self.imperative_qat = ImperativeQuantAware(weight_preprocess_layer=PACT)
 
 
 class TestUserDefinedActQuantize(TestUserDefinedActPreprocess):
     def setUp(self):
         _logger.info("test act_quantize")
-        self.imperative_qat = ImperativeQuantAware(act_quantize=PACT)
+        self.imperative_qat = ImperativeQuantAware(act_quantize_layer=CustomQAT)
 
 
 class TestUserDefinedWeightQuantize(TestUserDefinedActPreprocess):
     def setUp(self):
         _logger.info("test weight_quantize")
-        self.imperative_qat = ImperativeQuantAware(weight_quantize=PACT)
+        self.imperative_qat = ImperativeQuantAware(
+            weight_quantize_layer=CustomQAT)
 
 
 if __name__ == '__main__':
