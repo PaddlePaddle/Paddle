@@ -5,7 +5,6 @@ foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 
-list(REMOVE_ITEM DIST_TEST_OPS test_mnist)
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900)
