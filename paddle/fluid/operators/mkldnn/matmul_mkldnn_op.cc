@@ -330,8 +330,8 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto batch_size = ctx.Input<Tensor>("X")->dims()[0];
 
-  const std::string key =
-      platform::CreateKey(platform::ThreadIDasStr(), batch_size, out_name);
+  const std::string key = platform::CreateKey(
+      platform::ThreadIDasStr(), dev_ctx.GetKeySuffix(), batch_size, out_name);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
