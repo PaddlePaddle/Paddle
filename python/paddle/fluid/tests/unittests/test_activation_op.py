@@ -1729,7 +1729,7 @@ class TestLog10(TestActivation):
                 name="data_x", shape=[11, 17], dtype="float64")
 
             out1 = paddle.log10(data_x)
-            exe = paddle.static.Executor(place=fluid.CPUPlace())
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
             res1 = exe.run(paddle.static.default_main_program(),
                            feed={"data_x": input_x},
