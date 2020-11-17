@@ -18,13 +18,36 @@ import time
 import random
 import tempfile
 import shutil
-import paddle
+import numpy as np
 
+import paddle
 from paddle import Model
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
 from paddle.hapi.callbacks import config_callbacks
 import paddle.vision.transforms as T
+from paddle.vision.datasets import MNIST
+from paddle.metric import Accuracy
+from paddle.nn.layer.loss import CrossEntropyLoss
+
+
+class MnistDataset(MNIST):
+    def __init__(self, mode, return_label=True, sample_num=None):
+        super(MnistDataset, self).__init__(mode=mode)
+        self.return_label = return_label
+        if sample_num:
+            self.images = self.images[:sample_num]
+            self.labels = self.labels[:sample_num]
+
+    def __getitem__(self, idx):
+        img, label = self.images[idx], self.labels[idx]
+        img = np.reshape(img, [1, 28, 28])
+        if self.return_label:
+            return img, np.array(self.labels[idx]).astype('int64')
+        return img,
+
+    def __len__(self):
+        return len(self.images)
 
 
 class TestCallbacks(unittest.TestCase):
@@ -133,6 +156,50 @@ class TestCallbacks(unittest.TestCase):
                   eval_dataset,
                   batch_size=64,
                   callbacks=callback)
+
+    def test_earlystopping(self):
+        for dynamic in [True, False]:
+            paddle.enable_static if not dynamic else None
+            device = paddle.set_device('cpu')
+            sample_num = 200
+            train_dataset = MnistDataset(mode='train', sample_num=sample_num)
+            val_dataset = MnistDataset(mode='test', sample_num=sample_num)
+            test_dataset = MnistDataset(
+                mode='test', return_label=False, sample_num=sample_num)
+
+            train_loader = paddle.io.DataLoader(
+                train_dataset, places=device, return_list=True, batch_size=64)
+            val_loader = paddle.io.DataLoader(
+                val_dataset, places=device, return_list=True, batch_size=64)
+            test_loader = paddle.io.DataLoader(
+                test_dataset, places=device, return_list=True, batch_size=64)
+
+            net = LeNet()
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=net.parameters())
+
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+
+            model = Model(net, inputs=inputs, labels=labels)
+            model.prepare(
+                optim,
+                loss=CrossEntropyLoss(reduction="sum"),
+                metrics=[Accuracy()])
+            callbacks = paddle.callbacks.EarlyStopping(
+                'loss',
+                0,
+                patience=2,
+                verbose=1,
+                mode='min',
+                baseline=None,
+                save_best_model=True)
+            model.fit(train_loader,
+                      val_loader,
+                      save_freq=10,
+                      save_dir=self.save_dir,
+                      epochs=20,
+                      callbacks=[callbacks])
 
 
 if __name__ == '__main__':

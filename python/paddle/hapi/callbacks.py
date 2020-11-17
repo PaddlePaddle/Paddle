@@ -14,13 +14,18 @@
 
 import os
 import numbers
+import warnings
+
+import numpy as np
 
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = ['Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL']
+__all__ = [
+    'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'EarlyStopping'
+]
 
 
 def config_callbacks(callbacks=None,
@@ -41,6 +46,10 @@ def config_callbacks(callbacks=None,
 
     if not any(isinstance(k, ModelCheckpoint) for k in cbks):
         cbks = cbks + [ModelCheckpoint(save_freq, save_dir)]
+
+    for k in cbks:
+        if isinstance(k, EarlyStopping):
+            k.save_dir = save_dir
 
     cbk_list = CallbackList(cbks)
     cbk_list.set_model(model)
@@ -483,6 +492,86 @@ class ModelCheckpoint(Callback):
             path = '{}/final'.format(self.save_dir)
             print('save checkpoint at {}'.format(os.path.abspath(path)))
             self.model.save(path)
+
+
+class EarlyStopping(Callback):
+    """
+    Stop training when the given monitor stopped improving.
+    """
+
+    def __init__(self,
+                 monitor='loss',
+                 min_delta=0,
+                 patience=0,
+                 verbose=1,
+                 mode='auto',
+                 baseline=None,
+                 save_best_model=True):
+        super(EarlyStopping, self).__init__()
+        self.monitor = monitor
+        self.patience = patience
+        self.verbose = verbose
+        self.baseline = baseline
+        self.min_delta = abs(min_delta)
+        self.wait_epoch = 0
+        self.best_weights = None
+        self.stopped_epoch = 0
+        self.save_best_model = save_best_model
+        self.save_dir = None  # `save_dir` is get from `config_callbacks`
+        if mode not in ['auto', 'min', 'max']:
+            warnings.warn('EarlyStopping mode %s is unknown, '
+                          'fallback to auto mode.' % mode)
+            mode = 'auto'
+        if mode == 'min' or 'loss' in self.monitor:
+            self.monitor_op = np.less
+        elif mode == 'max' or 'acc' in self.monitor:
+            self.monitor_op = np.greater
+        else:
+            self.monitor_op = np.greater
+
+        if self.monitor_op == np.greater:
+            self.min_delta *= 1
+        else:
+            self.min_delta *= -1
+
+    def on_train_begin(self, logs=None):
+        self.wait_epoch = 0
+        if self.baseline is not None:
+            self.best_value = self.baseline
+        else:
+            self.best_value = np.inf if self.monitor_op == np.less else -np.inf
+            self.best_weights = None
+
+    def on_eval_end(self, logs=None):
+        if logs is None or self.monitor not in logs:
+            warnings.warn(
+                'Monitor of EarlyStopping should be loss or metric name.')
+            return
+        current = logs[self.monitor]
+        if isinstance(current, (list, tuple)):
+            current = current[0]
+        elif isinstance(current, numbers.Number):
+            current = current
+        else:
+            return
+
+        if self.monitor_op(current - self.min_delta, self.best_value):
+            self.best_value = current
+            self.wait_epoch = 0
+            if self.save_best_model and self.save_dir is not None:
+                path = os.path.join(self.save_dir, 'best_model')
+                self.model.save(path)
+        else:
+            self.wait_epoch += 1
+        if self.wait_epoch >= self.patience:
+            self.model.stop_training = True
+            if self.verbose > 0:
+                print('Epoch %d: Early stopping.' % (self.stopped_epoch + 1))
+                if self.save_best_model and self.save_dir is not None:
+                    print('Best checkpoint has been saved at %s' %
+                          (os.path.abspath(
+                              os.path.join(self.save_dir, 'best_model'))))
+        self.stopped_epoch += 1
 
 
 class VisualDL(Callback):
