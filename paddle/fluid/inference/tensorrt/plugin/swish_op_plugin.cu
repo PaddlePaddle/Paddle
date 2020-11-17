@@ -46,7 +46,9 @@ __device__ T math_exp(T a);
 
 template <>
 __device__ half math_exp<half>(half a) {
+#if __CUDA_ARCH__ >= 600
   return hexp(a);
+#endif
 }
 
 template <>
@@ -65,6 +67,18 @@ __global__ void swish_kernel(int num, const T *input, T *output, T beta) {
 #else
     output[index] = input[index] /
                     (static_cast<T>(1.0) + math_exp<T>(-beta * input[index]));
+#endif
+  }
+}
+
+template <>
+__global__ void swish_kernel<half>(int num, const half *input, half *output, half beta) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index < num) {
+#if __CUDA_ARCH__ >= 600
+    output[index] =
+        __ldg(input + index) /
+        (static_cast<half>(1.0) + math_exp<T>(-beta * __ldg(input + index)));
 #endif
   }
 }

@@ -87,6 +87,7 @@ __device__ half do_tanh<half>(half a) {
 template <typename T, unsigned TPB>
 __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
                                      const T* input, T* output) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];
@@ -94,6 +95,7 @@ __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
     const T cdf = a + a * do_tanh<T>(tmp);
     output[idx] = in * cdf;
   }
+#endif
 }
 
 int GeluPlugin::enqueue(int batch_size, const void* const* inputs,

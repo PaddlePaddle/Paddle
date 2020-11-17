@@ -137,7 +137,17 @@ struct KeyValuePair<half> {
   operator+(const KeyValuePair &a) const {
     const half2 a2 = __halves2half2(key, value);
     const half2 b2 = __halves2half2(a.key, a.value);
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
     const half2 res = __hadd2(a2, b2);
+#else
+    float a2_1 = __low2float(a2);
+    float a2_2 = __high2float(a2);
+    float b2_1 = __low2float(b2);
+    float b2_2 = __high2float(b2);
+    float r1 = a2_1 + b2_1;
+    float r2 = a2_2 + b2_2;
+    const half2 res = __floats2half2_rn(r1, r2);
+#endif
     return KeyValuePair(res.x, res.y);
   }
 };
