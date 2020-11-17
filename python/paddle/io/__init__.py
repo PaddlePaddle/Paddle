@@ -27,9 +27,10 @@ __all__ = [
     'Sampler',
     'SequenceSampler',
     'RandomSampler',
+    'WeightedRandomSampler',
 ]
 
 from ..fluid.io import DataLoader
 from ..fluid.dataloader import Dataset, IterableDataset, BatchSampler, get_worker_info, \
         TensorDataset, Sampler, SequenceSampler, RandomSampler, DistributedBatchSampler, \
-        ComposeDataset, ChainDataset
+        ComposeDataset, ChainDataset, WeightedRandomSampler
