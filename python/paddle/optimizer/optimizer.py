@@ -349,7 +349,6 @@ class Optimizer(object):
                 },
                 stop_gradient=True)
 
-    @framework.dygraph_only
     def get_lr(self):
         """
         :api_attr: imperative
