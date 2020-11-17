@@ -131,7 +131,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         seed = 1000
         lr = 0.1
 
-        imperative_out_scale = ImperativeQuantAware(is_calc_out_scale=True)
+        imperative_out_scale = ImperativeQuantAware()
 
         with fluid.dygraph.guard():
             np.random.seed(seed)

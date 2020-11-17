@@ -201,8 +201,7 @@ class ImperativeQuantAware(object):
         """
         According to weights' and activations' quantization types, the model will be added some fake
         quant ops, such as fake_quantize_dequantize_moving_average_abs_max, fake_quantize_dequantize_abs_max
-        and so on. At the same time, it would judge whether to calculate the output outscale according to the 
-        value of is_calc_out_scale.
+        and so on. At the same time, the out_scale value of outputs would be calculated.
 
         Args:
             model(fluid.dygraph.Layer): the model to be quantized.
