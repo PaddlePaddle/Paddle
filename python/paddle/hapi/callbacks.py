@@ -497,14 +497,91 @@ class ModelCheckpoint(Callback):
 class EarlyStopping(Callback):
     """
     Stop training when the given monitor stopped improving.
+    Args:
+        monitor(str): Quantity to be monitored. Default: 'loss'.
+        mode(str|None): Mode should be one of `auto`, `min` or `max`. In `min`
+            mode, training will stop until monitored quantity has stopped
+            increasing. In 'max' mode, training will stop until monitored
+            quantity has stopped decreasing. In 'auto' mode, exact mode can be
+            inferred by the name of monitor. Default: 'auto'.
+        patience(int): Number of epochs with no improvement after which training
+            will be stopped. Default: 0.
+        verbose(int): The verbosity mode, should be 0 or 1. When verbose=0,
+            logs will not be printed. When verbose=1, logs will be printed.
+            Default: 1.
+        min_delta(int|float): The minimum change of monitored quantity. If
+            the change is less than min_delta, model could be considered as no
+            improvement. Default: 0.
+        baseline(int|float|None):  Baseline value for the monitored quantity.
+            Training will stop if the model doesn't show improvement over the
+            baseline. Default: None.
+        save_best_model(bool): Whether to save best model. Default: True.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle import Model
+            from paddle.static import InputSpec
+            from paddle.vision.models import LeNet
+            from paddle.vision.datasets import MNIST
+            from paddle.metric import Accuracy
+            from paddle.nn.layer.loss import CrossEntropyLoss
+
+            device = paddle.set_device('cpu')
+            sample_num = 200
+            save_dir = './early_stop_path'
+            train_dataset = MNIST(mode='train')
+            val_dataset = MNIST(mode='test')
+            test_dataset = MNIST(mode='test')
+
+            train_loader = paddle.io.DataLoader(train_dataset,
+                                                places=device,
+                                                return_list=True,
+                                                batch_size=64)
+            val_loader = paddle.io.DataLoader(val_dataset,
+                                            places=device,
+                                            return_list=True,
+                                            batch_size=64)
+            test_loader = paddle.io.DataLoader(test_dataset,
+                                            places=device,
+                                            return_list=True,
+                                            batch_size=64)
+
+            net = LeNet()
+            optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                            parameters=net.parameters())
+
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+
+            model = Model(net, inputs=inputs, labels=labels)
+            model.prepare(optim,
+                        loss=CrossEntropyLoss(reduction="sum"),
+                        metrics=[Accuracy()])
+            callbacks = paddle.callbacks.EarlyStopping('loss',
+                                                    0,
+                                                    patience=2,
+                                                    verbose=1,
+                                                    mode='min',
+                                                    baseline=None,
+                                                    save_best_model=True)
+            model.fit(train_loader,
+                    val_loader,
+                    log_freq=200,
+                    save_freq=10,
+                    save_dir=save_dir,
+                    epochs=20,
+                    callbacks=[callbacks])
+
     """
 
     def __init__(self,
                  monitor='loss',
-                 min_delta=0,
+                 mode='auto',
                  patience=0,
                  verbose=1,
-                 mode='auto',
+                 min_delta=0,
                  baseline=None,
                  save_best_model=True):
         super(EarlyStopping, self).__init__()
