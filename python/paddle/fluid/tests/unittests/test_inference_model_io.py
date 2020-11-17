@@ -273,7 +273,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                 MODEL_DIR, exe, pserver_endpoints=None)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
                 MODEL_DIR, exe, unsupported_param=None)
-        self.assertRaises(TypeError, paddle.static.load_inference_model,
+        self.assertRaises((TypeError, ValueError), paddle.static.load_inference_model,
                 None, exe, model_filename="illegal", params_filename="illegal")
 
         model = InferModel(paddle.static.io.load_inference_model(MODEL_DIR, exe))
