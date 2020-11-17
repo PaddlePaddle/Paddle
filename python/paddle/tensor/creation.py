@@ -47,7 +47,8 @@ __all__ = [
     'empty_like',
     'triu',
     'tril',
-    'meshgrid'
+    'meshgrid',
+    'assign',
 ]
 
 
@@ -89,61 +90,38 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     .. code-block:: python
 
         import paddle
-        import numpy as np
-        paddle.disable_static()
                 
         type(paddle.to_tensor(1))
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor: generated_tensor_0
-        # - place: CUDAPlace(0)   # allocate on global default place CPU:0
-        # - shape: [1]
-        # - layout: NCHW
-        # - dtype: int64_t
-        # - data: [1]
+        # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+        #        [1])
 
         x = paddle.to_tensor(1)
         paddle.to_tensor(x, dtype='int32', place=paddle.CPUPlace()) # A new tensor will be constructed due to different dtype or place
-        # Tensor: generated_tensor_01
-        # - place: CPUPlace
-        # - shape: [1]
-        # - layout: NCHW
-        # - dtype: int
-        # - data: [1]
+        # Tensor(shape=[1], dtype=int32, place=CPUPlace, stop_gradient=True,
+        #        [1])
 
         paddle.to_tensor((1.1, 2.2), place=paddle.CUDAPinnedPlace())
-        # Tensor: generated_tensor_1
-        #   - place: CUDAPinnedPlace
-        #   - shape: [2]
-        #   - layout: NCHW
-        #   - dtype: double
-        #   - data: [1.1 2.2]
+        # Tensor(shape=[1], dtype=float32, place=CUDAPinnedPlace, stop_gradient=True,
+        #        [1])
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CUDAPlace(0), stop_gradient=False)
-        # Tensor: generated_tensor_2
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: double
-        #   - data: [0.1 0.2 0.3 0.4]
+        # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        #        [[0.10000000, 0.20000000],
+        #         [0.30000001, 0.40000001]])
 
         type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]]), dtype='complex64')
         # <class 'paddle.ComplexTensor'>
 
         paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # ComplexTensor[real]: generated_tensor_0.real
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: float
-        #   - data: [1 2 3 4]
-        # ComplexTensor[imag]: generated_tensor_0.imag
-        #   - place: CUDAPlace(0)
-        #   - shape: [2, 2]
-        #   - layout: NCHW
-        #   - dtype: float
-        #   - data: [1 0 2 0]
+        # ComplexTensor[real](shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #                     [[1., 2.],
+        #                      [3., 4.]])
+        # ComplexTensor[imag](shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+        #                     [[1., 0.],
+        #                      [2., 0.]])
     """
 
     if place is None:
@@ -246,7 +224,6 @@ def full_like(x, fill_value, dtype=None, name=None):
           import paddle
           import numpy as np
           
-          paddle.disable_static()  # Now we are in imperative mode 
           input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
           output = paddle.full_like(input, 2.0)
           # [[2. 2. 2.]
@@ -299,7 +276,6 @@ def ones(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle 
-          paddle.disable_static()
           
           # default dtype for ones OP
           data1 = paddle.ones(shape=[3, 2]) 
@@ -312,7 +288,7 @@ def ones(shape, dtype=None, name=None):
           #  [1 1]]
           
           # shape is a Tensor
-          shape = paddle.fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
           data3 = paddle.ones(shape=shape, dtype='int32') 
           # [[1 1]
           #  [1 1]]
@@ -324,9 +300,6 @@ def ones(shape, dtype=None, name=None):
 
 def ones_like(x, dtype=None, name=None):
     """
-	:alias_main: paddle.ones_like
-	:alias: paddle.tensor.ones_like, paddle.tensor.creation.ones_like
-
     This OP returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -347,18 +320,16 @@ def ones_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([1,2,3])
-            out1 = paddle.zeros_like(x) # [1., 1., 1.]
-            out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
+            out1 = paddle.ones_like(x) # [1., 1., 1.]
+            out2 = paddle.ones_like(x, dtype='int32') # [1, 1, 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
@@ -383,7 +354,6 @@ def zeros(shape, dtype=None, name=None):
 
           import paddle
           
-          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.zeros(shape=[3, 2], dtype='float32') 
           # [[0. 0.]
           #  [0. 0.]
@@ -393,7 +363,7 @@ def zeros(shape, dtype=None, name=None):
           #  [0. 0.]]
           
           # shape is a Tensor
-          shape = paddle.fluid.layers.fill_constant(shape=[2], dtype='int32', value=2)
+          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
           data3 = paddle.zeros(shape=shape, dtype='int32') 
           # [[0 0]
           #  [0 0]]
@@ -405,9 +375,6 @@ def zeros(shape, dtype=None, name=None):
 
 def zeros_like(x, dtype=None, name=None):
     """
-	:alias_main: paddle.zeros_like
-	:alias: paddle.tensor.zeros_like, paddle.tensor.creation.zeros_like
-
     This OP returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -428,16 +395,14 @@ def zeros_like(x, dtype=None, name=None):
 
     Raise:
         TypeError: If ``dtype`` is not None and is not bool, float16, float32,
-            float64, int32 or int64.
+        float64, int32 or int64.
 
     Examples:
         .. code-block:: python
 
             import paddle
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor([1,2,3])
+            x = paddle.to_tensor([1, 2, 3])
             out1 = paddle.zeros_like(x) # [0., 0., 0.]
             out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -468,7 +433,6 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           
           import paddle
 
-          paddle.disable_static()  # Now we are in imperative mode
           data = paddle.eye(3, dtype='int32')
           # [[1 0 0]
           #  [0 1 0]
@@ -515,24 +479,23 @@ def full(shape, fill_value, dtype=None, name=None):
 
           import paddle
 
-          paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') 
           #[[0]
           # [0]]
 
           # attr shape is a list which contains Tensor.
-          positive_2 = paddle.fluid.layers.fill_constant([1], "int32", 2)
+          positive_2 = paddle.full([1], 2, "int32")
           data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
           # [[1.5 1.5]]
 
           # attr shape is a Tensor.
-          shape = paddle.fluid.layers.fill_constant([2], "int32", 2)
+          shape = paddle.full([2], 2, "int32")
           data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
           # [[True True] 
           #  [True True]]
           
           # attr fill_value is a Tensor.
-          val = paddle.fluid.layers.fill_constant([1], "float32", 2.0)
+          val = paddle.full([1], 2.0, "float32")
           data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
           # [[2.0] 
           #  [2.0]]
@@ -546,9 +509,6 @@ def full(shape, fill_value, dtype=None, name=None):
 
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
-	:alias_main: paddle.arange
-	:alias: paddle.tensor.arange, paddle.tensor.creation.arange
-
     This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
@@ -579,33 +539,30 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     Returns: 
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
-            taken with common difference ``step`` beginning from ``start``. Its
-            data type is set by ``dtype``.
+        taken with common difference ``step`` beginning from ``start``. Its
+        data type is set by ``dtype``.
 
     Raises:
         TypeError: If ``dtype`` is not int32, int64, float32, float64.
 
-    examples:
-
+    Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        paddle.disable_static()
+            out1 = paddle.arange(5)
+            # [0, 1, 2, 3, 4]
 
-        out1 = paddle.arange(5)
-        # [0, 1, 2, 3, 4]
+            out2 = paddle.arange(3, 9, 2.0)
+            # [3, 5, 7]
 
-        out2 = paddle.arange(3, 9, 2.0)
-        # [3, 5, 7]
+            # use 4.999 instead of 5.0 to avoid floating point rounding errors
+            out3 = paddle.arange(4.999, dtype='float32')
+            # [0., 1., 2., 3., 4.]
 
-        # use 4.999 instead of 5.0 to avoid floating point rounding errors
-        out3 = paddle.arange(4.999, dtype='float32')
-        # [0., 1., 2., 3., 4.]
-
-        start_var = paddle.to_tensor([3])
-        out4 = paddle.arange(start_var, 7)
-        # [3, 4, 5, 6]
+            start_var = paddle.to_tensor([3])
+            out4 = paddle.arange(start_var, 7)
+            # [3, 4, 5, 6]
              
     """
     if dtype is None:
@@ -979,7 +936,6 @@ def empty(shape, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()   # Now we are in imperative mode
           paddle.set_device("cpu")  # and use cpu device
 
           # example 1: argument ``shape`` is a list which doesn't contain Tensor.
@@ -1063,7 +1019,6 @@ def empty_like(x, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()   # Now we are in imperative mode
           paddle.set_device("cpu")  # and use cpu device
 
           x = paddle.randn([2, 3], 'float32')
@@ -1106,3 +1061,77 @@ def empty_like(x, dtype=None, name=None):
         stop_gradient=True)
     out.stop_gradient = True
     return out
+
+
+def assign(x, output=None):
+    """
+ 
+ 
+    The OP copies the :attr:`x` to the :attr:`output`.
+ 
+    Parameters:
+        x (Tensor|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+            float16, float32, float64, int32 and int64.
+        output (Tensor, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
+ 
+    Returns:
+        Tensor: A tensor with the same shape, data type and value as :attr:`x`.
+ 
+    Examples:
+        .. code-block:: python
+ 
+          import paddle
+          import numpy as np
+          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array = np.array([[1, 1],
+                            [3, 4],
+                            [1, 3]]).astype(np.int64)
+          result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+          paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
+          result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+    """
+    helper = LayerHelper('assign', **locals())
+    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    if isinstance(x, Variable):
+        check_dtype(
+            x.dtype, 'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+            'assign', '(When the type of input in assign is Variable.)')
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
+    elif isinstance(x, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(x.dtype)
+        if dtype == VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [bool(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.INT32:
+            value_name = "int32_values"
+            values = [int(v) for v in x.flat]
+        elif dtype == VarDesc.VarType.INT64:
+            value_name = "int64_values"
+            values = [int(v) for v in x.flat]
+        else:
+            raise TypeError(
+                "When the type of 'x' in assign is numpy.ndarray, "
+                "the data type of 'x' must be bool, float32, int32 or int64, but "
+                "received %s." % convert_dtype(dtype))
+        if x.size > 1024 * 1024:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+        if output is None:
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={'dtype': dtype,
+                   'shape': list(x.shape),
+                   value_name: values})
+
+    return output

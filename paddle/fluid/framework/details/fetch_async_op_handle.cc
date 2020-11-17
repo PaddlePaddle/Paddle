@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
+
 #include <string>
 #include <utility>
+
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -195,7 +197,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 
 void FetchAsyncOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
-  WaitInputVarGenerated();
+  WaitInputVarGenerated(true);
 
   // get src vars
   auto &scopes = *local_exec_scopes_;

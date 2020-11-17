@@ -57,7 +57,7 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            paddle.manual_seed(self.seed)
+            paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             yield
 
@@ -77,7 +77,7 @@ class LayerTest(unittest.TestCase):
     def dynamic_graph(self, force_to_use_cpu=False):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
-            paddle.manual_seed(self.seed)
+            paddle.seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
             yield
 
@@ -312,23 +312,6 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             dy_ret = layers.relu(base.to_variable(t))
-            dy_ret_value = dy_ret.numpy()
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-
-    def test_pad2d(self):
-        with self.static_graph():
-            t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
-            ret = layers.pad2d(t, paddings=[1, 1, 1, 1])
-            static_ret = self.get_static_graph_result(
-                feed={'t': np.ones(
-                    [3, 3, 5, 5], dtype='float32')},
-                fetch_list=[ret])[0]
-
-        with self.dynamic_graph():
-            t = np.ones([3, 3, 5, 5], dtype='float32')
-            my_pad2d = paddle.nn.layer.Pad2D(paddings=1)
-            dy_ret = my_pad2d(base.to_variable(t))
             dy_ret_value = dy_ret.numpy()
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))

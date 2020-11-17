@@ -54,17 +54,17 @@ from ...fluid.dygraph.base import no_grad
 from .. import functional as F
 
 __all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1d',
-    'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d', 'InstanceNorm2d',
-    'InstanceNorm3d', 'SyncBatchNorm', 'LocalResponseNorm'
+    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1D',
+    'BatchNorm2D', 'BatchNorm3D', 'InstanceNorm1D', 'InstanceNorm2D',
+    'InstanceNorm3D', 'SyncBatchNorm', 'LocalResponseNorm'
 ]
 
 
 class _InstanceNormBase(layers.Layer):
     """
-    This class is based class for InstanceNorm1d, 2d, 3d. 
+    This class is based class for InstanceNorm1D, 2d, 3d. 
 
-    See InstaceNorm1d, InstanceNorm2d or InstanceNorm3d for more details.
+    See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
     def __init__(self,
@@ -73,7 +73,6 @@ class _InstanceNormBase(layers.Layer):
                  momentum=0.9,
                  weight_attr=None,
                  bias_attr=None,
-                 track_running_stats=False,
                  data_format="NCHW",
                  name=None):
         super(_InstanceNormBase, self).__init__()
@@ -109,7 +108,7 @@ class _InstanceNormBase(layers.Layer):
             input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
 
-class InstanceNorm1d(_InstanceNormBase):
+class InstanceNorm1D(_InstanceNormBase):
     """
     Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
@@ -135,9 +134,6 @@ class InstanceNorm1d(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -159,9 +155,6 @@ class InstanceNorm1d(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
-
 
     Examples:
 
@@ -174,7 +167,7 @@ class InstanceNorm1d(_InstanceNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm1d(2)
+          instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
           print(instance_norm_out.numpy())
@@ -187,7 +180,7 @@ class InstanceNorm1d(_InstanceNormBase):
                 len(input.shape)))
 
 
-class InstanceNorm2d(_InstanceNormBase):
+class InstanceNorm2D(_InstanceNormBase):
     """
     Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
@@ -214,9 +207,6 @@ class InstanceNorm2d(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -237,8 +227,6 @@ class InstanceNorm2d(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -251,7 +239,7 @@ class InstanceNorm2d(_InstanceNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm2d(2)
+          instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
           print(instance_norm_out.numpy())
@@ -263,7 +251,7 @@ class InstanceNorm2d(_InstanceNormBase):
                 len(input.shape)))
 
 
-class InstanceNorm3d(_InstanceNormBase):
+class InstanceNorm3D(_InstanceNormBase):
     """
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
@@ -290,9 +278,6 @@ class InstanceNorm3d(_InstanceNormBase):
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        track_running_stats(bool, optional): Whether to use global mean and
-            variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: False.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
@@ -313,8 +298,6 @@ class InstanceNorm3d(_InstanceNormBase):
     Returns:
         None.
 
-    **Note**:
-        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -327,7 +310,7 @@ class InstanceNorm3d(_InstanceNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm = paddle.nn.InstanceNorm3d(2)
+          instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
           print(instance_norm_out.numpy())
@@ -570,7 +553,6 @@ class _BatchNormBase(layers.Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 track_running_stats=True,
                  name=None):
         super(_BatchNormBase, self).__init__()
         self._num_features = num_features
@@ -636,7 +618,6 @@ class _BatchNormBase(layers.Layer):
         self._momentum = momentum
         self._epsilon = epsilon
         self._fuse_with_relu = False
-        self._track_running_stats = track_running_stats
         self._name = name
 
     def _check_input_dim(self, input):
@@ -651,11 +632,7 @@ class _BatchNormBase(layers.Layer):
 
         self._check_input_dim(input)
 
-        if not self.training and not self._track_running_stats:
-            raise ValueError(
-                'When inference, expected track_running_stats is True.')
-
-        if self.training and not self._track_running_stats:
+        if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
@@ -671,7 +648,7 @@ class _BatchNormBase(layers.Layer):
             data_format=self._data_format)
 
 
-class BatchNorm1d(_BatchNormBase):
+class BatchNorm1D(_BatchNormBase):
     """
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -719,21 +696,16 @@ class BatchNorm1d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Defalut "NCL".
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Defalut "NCL".
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length).
+        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length) when data_format is "NC" or "NCL",
+            (batch, length, num_features) when data_format is "NLC".
         - output: 3-D tensor with same shape as input x.
 
     Returns:
         None.
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
     
 
     Examples:
@@ -746,7 +718,7 @@ class BatchNorm1d(_BatchNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm1d(1)
+          batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
           print(batch_norm_out.numpy())
@@ -755,8 +727,11 @@ class BatchNorm1d(_BatchNormBase):
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
+        elif input == "NHWC" or input == 'NLC':
+            self._data_format = "NHWC"
         else:
-            raise ValueError('expected NC , NCL or None for data_format input')
+            raise ValueError(
+                'expected NC , NCL, NLC or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
@@ -764,7 +739,7 @@ class BatchNorm1d(_BatchNormBase):
                 len(input.shape)))
 
 
-class BatchNorm2d(_BatchNormBase):
+class BatchNorm2D(_BatchNormBase):
     """
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -812,21 +787,16 @@ class BatchNorm2d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCHW". Default: NCHW.
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
+        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 4-D tensor with shape: (batch, num_features, height, weight).
+        - x: 4-D tensor with shape: (batch, num_features, height, weight) when data_format is "NCHW",
+            or (batch, height, weight, num_features) when data_format is "NHWC".
         - output: 4-D tensor with same shape as input x.
 
     Returns:
         None
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
 
     Examples:
         .. code-block:: python
@@ -838,7 +808,7 @@ class BatchNorm2d(_BatchNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm2d(1)
+          batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
           print(batch_norm_out.numpy())
@@ -847,8 +817,10 @@ class BatchNorm2d(_BatchNormBase):
     def _check_data_format(self, input):
         if input == 'NCHW':
             self._data_format = input
+        elif input == "NHWC":
+            self._data_format = input
         else:
-            raise ValueError('expected NCHW for data_format input')
+            raise ValueError('expected NCHW or NHWC for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
@@ -856,7 +828,7 @@ class BatchNorm2d(_BatchNormBase):
                 len(input.shape)))
 
 
-class BatchNorm3d(_BatchNormBase):
+class BatchNorm3D(_BatchNormBase):
     """
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -904,21 +876,16 @@ class BatchNorm3d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCDHW". Default: NCDHW.
-        track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
-            True will track global mean and variance used for inference. When inference, track_running_stats must be 
-            True. Default: True.
+        data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
+        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight) when data_format is "NCDHW",
+            or (batch, dims, height, weight, num_features) when data_format is "NDHWC".
         - output: 5-D tensor with same shape as input x.
 
     Returns:
         None
-
-    **Note**:
-        Now track_running_stats is actucal always true. The next version will fix the problem .
 
     Examples:
         .. code-block:: python
@@ -930,7 +897,7 @@ class BatchNorm3d(_BatchNormBase):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          batch_norm = paddle.nn.BatchNorm3d(1)
+          batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
           print(batch_norm_out.numpy())
@@ -939,8 +906,11 @@ class BatchNorm3d(_BatchNormBase):
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
+        elif input == "NHWC" or input == "NDHWC":
+            self._data_format = 'NHWC'
         else:
-            raise ValueError('expected NCDHW or None for data_format input')
+            raise ValueError(
+                'expected NCDHW, NDHWC or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
@@ -1013,8 +983,6 @@ class SyncBatchNorm(_BatchNormBase):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not 
              have trainable bias parameter. Default: None.
-        track_running_stats(bool, optional): Whether to compute global stats, which including running mean and 
-             running variance. Default: True.
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
@@ -1044,11 +1012,10 @@ class SyncBatchNorm(_BatchNormBase):
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
-                 track_running_stats=True,
                  name=None):
         super(SyncBatchNorm,
               self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, track_running_stats, name)
+                             bias_attr, data_format, name)
 
     def forward(self, x):
         # create output
@@ -1130,16 +1097,16 @@ class SyncBatchNorm(_BatchNormBase):
                 import paddle.nn as nn
 
                 paddle.disable_static()
-                model = nn.Sequential(nn.Conv2d(3, 5, 3), nn.BatchNorm2d(5))
+                model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm2D(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            layer_output = SyncBatchNorm(
-                layer._num_features, layer._momentum, layer._epsilon,
-                layer._weight_attr, layer._bias_attr, layer._data_format,
-                layer._track_running_stats, layer._name)
+            layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
+                                         layer._epsilon, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():

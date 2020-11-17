@@ -30,22 +30,21 @@ class ConvBNLayer(fluid.Layer):
                  filter_size,
                  stride=1,
                  groups=1,
-                 act=None,
-                 use_cudnn=False):
+                 data_format="NCHW"):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            act=None,
             bias_attr=False,
-            use_cudnn=use_cudnn)
+            data_format=data_format)
 
-        self._batch_norm = fluid.dygraph.BatchNorm(num_filters, act=act)
+        self._batch_norm = paddle.nn.BatchNorm(
+            num_filters, data_layout=data_format)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -53,19 +52,20 @@ class ConvBNLayer(fluid.Layer):
         return y
 
 
-def create_program():
+def create_program(data_format="NCHW"):
     main = fluid.Program()
     startup = fluid.Program()
     with fluid.program_guard(main, startup):
         x = fluid.data(name='img', shape=[-1, 3, 224, 224])
         x.stop_gradient = False
+        if data_format == "NHWC":
+            x = paddle.transpose(x, [0, 2, 3, 1])
         x = fluid.layers.prelu(x, mode="channel")
         conv = ConvBNLayer(
             num_channels=3,
             num_filters=3,
             filter_size=1,
-            act='relu',
-            use_cudnn=True)
+            data_format=data_format)
         y = conv(x) + x
 
         loss = fluid.layers.reduce_sum(y)
@@ -77,15 +77,15 @@ def create_program():
 
 
 class TestInplaceAddto(unittest.TestCase):
-    def test_result(self):
+    def check_result(self, data_format="NCHW"):
         def run_program(enable_addto):
             np.random.seed(10)
-            paddle.manual_seed(10)
+            paddle.seed(10)
             paddle.framework.random._manual_program_seed(10)
             if fluid.core.is_compiled_with_cuda():
                 fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
-            loss, main, startup, w = create_program()
+            loss, main, startup, w = create_program(data_format=data_format)
             place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -98,7 +98,7 @@ class TestInplaceAddto(unittest.TestCase):
             exe.run(startup)
             img = np.random.uniform(-128, 128,
                                     [8, 3, 224, 224]).astype(np.float32)
-            for i in range(2):
+            for i in range(10):
                 res = exe.run(compiled,
                               feed={'img': img},
                               fetch_list=[loss.name, w.name])
@@ -106,9 +106,16 @@ class TestInplaceAddto(unittest.TestCase):
 
         res1, w1 = run_program(True)
         res2, w2 = run_program(False)
-        print(res1, res2)
+
         self.assertTrue(np.array_equal(res1, res2))
+
+    def test_nchw(self):
+        self.check_result()
+
+    def test_nhwc(self):
+        self.check_result("NHWC")
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

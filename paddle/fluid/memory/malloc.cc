@@ -31,5 +31,9 @@ AllocationPtr Alloc(const platform::Place &place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
 }
 
+uint64_t Release(const platform::Place &place) {
+  return allocation::AllocatorFacade::Instance().Release(place);
+}
+
 }  // namespace memory
 }  // namespace paddle

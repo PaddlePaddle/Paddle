@@ -125,7 +125,7 @@ def init_parallel_env():
     if ParallelEnv().world_size < 2:
         return
 
-    # 3: init gloo context
+    # 3: init gloo context (step 1: httpsever start)
     ep_rank_0 = ParallelEnv().trainer_endpoints[0].split(":")
     ep_rank = ParallelEnv().trainer_endpoints[ParallelEnv().rank].split(":")
     manager = Manager()
@@ -138,6 +138,33 @@ def init_parallel_env():
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
+
+    # 4. init NCCL ParallelStrategy
+    strategy = ParallelStrategy()
+    if parallel_helper._is_parallel_ctx_initialized():
+        warnings.warn("The parallel environment has been initialized.")
+    strategy.nranks = ParallelEnv().world_size
+    strategy.local_rank = ParallelEnv().rank
+    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+    strategy.current_endpoint = ParallelEnv().current_endpoint
+
+    # NOTE(chenweihang): [ why config global place here? ]
+    # the dygraph mode will be set to default mode,
+    # users will not call `dygraph.guard` or `enable_dygraph`
+    # directly, if they want to switch default place,
+    # they need to call a function to change default place,
+    # here just set correctly place to users
+    place = core.CUDAPlace(ParallelEnv().device_id)
+    _set_expected_place(place)
+
+    # init nccl context
+    parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
+    parallel_helper._init_parallel_ctx()
+
+    # 5: init gloo context (step 2: gloo init)
+    # dividing init_gloo into two part beacause nccl and gloo
+    # are separately looking for free ports which sometimes
+    # leads to port-conflict.
     wait_server_ready([ParallelEnv().trainer_endpoints[0]])
 
     gloo_strategy = core.GlooParallelStrategy()
@@ -154,28 +181,6 @@ def init_parallel_env():
     if ParallelEnv().rank == 0:
         http_server_d["running"] = False
         http_server.join()
-
-    # 4. init NCCL ParallelStrategy
-    strategy = ParallelStrategy()
-    if parallel_helper._is_parallel_ctx_initialized():
-        warnings.warn("The parallel environment has been initialized.")
-    strategy.nranks = ParallelEnv().world_size
-    strategy.local_rank = ParallelEnv().rank
-    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-    strategy.current_endpoint = ParallelEnv().current_endpoint
-
-    # NOTE(chenweihang): [ why config global place here? ]
-    # the dygraph mode will be set to default mode, 
-    # users will not call `dygraph.guard` or `enable_dygraph`
-    # directly, if they want to switch default place,
-    # they need to call a function to change default place,
-    # here just set correctly place to users
-    place = core.CUDAPlace(ParallelEnv().device_id)
-    _set_expected_place(place)
-
-    # init nccl context
-    parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
-    parallel_helper._init_parallel_ctx()
 
 
 def get_rank():

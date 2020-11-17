@@ -73,12 +73,12 @@ from .common import interpolate  #DEFINE_ALIAS
 from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
-from .conv import conv_transpose1d  #DEFINE_ALIAS
+from .conv import conv1d_transpose  #DEFINE_ALIAS
 from .common import linear  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
-from .conv import conv_transpose2d  #DEFINE_ALIAS
+from .conv import conv2d_transpose  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
-from .conv import conv_transpose3d  #DEFINE_ALIAS
+from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
 # from .extension import continuous_value_model  #DEFINE_ALIAS
@@ -216,3 +216,4 @@ from .vision import pixel_shuffle  #DEFINE_ALIAS
 # from .vision import yolov3_loss  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
 from .input import embedding  #DEFINE_ALIAS
+from ...fluid.layers import gather_tree

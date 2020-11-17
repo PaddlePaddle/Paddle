@@ -450,7 +450,7 @@ def do_train(args, to_static):
     place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
     ) else fluid.CPUPlace()
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         reader = get_random_input_data(args.batch_size, args.vocab_size,

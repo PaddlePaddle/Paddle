@@ -20,6 +20,7 @@ import inspect
 import six
 import textwrap
 import threading
+import warnings
 import weakref
 
 from paddle.fluid import framework
@@ -174,7 +175,7 @@ class CacheKey(object):
         # 1. filter `self` in args
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
-        # 2. convert tensor and numpy array into InputSpec 
+        # 2. convert tensor and numpy array into InputSpec
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
         input_with_spec = function_spec.args_to_input_spec(_args, _kwargs)
 
@@ -298,7 +299,11 @@ class StaticFunction(object):
 
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_to_static:
-            logging_utils.warn(
+            # NOTE(liym27):
+            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
+            # will show up **only once**. StaticFunction.__call__ will run many times, it is appropriate to
+            # display this warning message only once.
+            warnings.warn(
                 "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
                 "ProgramTranslator.enable(True)")
@@ -592,9 +597,8 @@ class ConcreteProgram(object):
                     inputs = tuple([class_instance] + list(inputs))
 
                 # 2. Gets all ParamBases and buffered VarBases in the function
-                all_parameters_and_buffers = list(
-                    get_parameters(class_instance).values()) + list(
-                        get_buffers(class_instance).values())
+                all_parameters_and_buffers = _extract_indeed_params_buffers(
+                    class_instance)
 
                 # 3. Builds program only once and returns the output Variables.
                 with param_guard(get_parameters(
@@ -607,9 +611,11 @@ class ConcreteProgram(object):
                         error.attach_error_data(e)
                         raise
 
-                if not isinstance(outputs,
-                                  (tuple, list)) and outputs is not None:
-                    outputs = [outputs]
+                if outputs is not None:
+                    need_wrap_into_list = not isinstance(outputs, (
+                        tuple, list)) or len(outputs) == 1
+                    if need_wrap_into_list:
+                        outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
 
@@ -620,6 +626,17 @@ class ConcreteProgram(object):
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
+
+
+def _extract_indeed_params_buffers(class_instance):
+    """
+    To filter not initialzed buffers.
+    """
+    params = list(get_parameters(class_instance).values())
+    buffers = list(get_buffers(class_instance).values())
+    buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
+
+    return params + buffers
 
 
 class ProgramCache(object):
@@ -772,7 +789,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 # ProgramTranslator is disabled so the func is run in dygraph
-                print(func(x).numpy())  # [[0. 0.]]
+                print(func(x))  # [[0. 0.]]
 
         """
         check_type(enable_to_static, "enable_to_static", bool,
@@ -811,7 +828,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 x_v = prog_trans.get_output(func, x)
-                print(x_v.numpy())  # [[0. 0.]]
+                print(x_v)  # [[0. 0.]]
 
         """
         assert callable(
@@ -819,7 +836,9 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
 
         if not self.enable_to_static:
-            logging_utils.warn(
+            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
+            # will show up **only once**.
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."

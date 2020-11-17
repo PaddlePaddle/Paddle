@@ -66,6 +66,7 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
              --infer_data=${data_path}
              --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
+             --enable_int8=true
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
@@ -81,6 +82,7 @@ function(inference_analysis_api_bfloat16_test_run TARGET_NAME test_binary model_
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
              --batch_size=50
+             --enable_bf16=true
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
@@ -92,6 +94,7 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_bi
              --infer_data=${data_path}
              --warmup_batch_size=10
              --batch_size=300
+             --enable_int8=true
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=1)
 endfunction()
@@ -115,6 +118,7 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --int8_model=${int8_model_dir}
              --infer_data=${data_path}
              --batch_size=50
+             --enable_int8=true
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
@@ -525,6 +529,15 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 
+    set(TEST_TRT_TRANSFORMER_PRUNE_MODEL "${TRT_MODEL_INSTALL_DIR}/transformer_prune")
+    if (NOT EXISTS ${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune.tar.gz)
+        inference_download_and_uncompress(${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test "transformer_prune.tar.gz")
+    endif()
+
+    #inference_analysis_test(test_trt_dynamic_shape_transformer_prune SRCS trt_dynamic_shape_transformer_prune_test.cc
+    #        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+    #        ARGS --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
+
     set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
     if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
@@ -576,4 +589,39 @@ if(WITH_GPU)
   inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
+endif()
+
+if(WITH_GPU AND TENSORRT_FOUND)
+    set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 120)
+endif()
+
+if(WITH_MKLDNN)
+    set_tests_properties(test_analyzer_int8_resnet50 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_int8_mobilenet_ssd PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_quant_performance_benchmark PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
+endif()
+
+set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
+set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT 120)
+if(WITH_GPU AND TENSORRT_FOUND)
+    set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
+endif()
+if(ON_INFER OR WITH_GPU)
+    set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()

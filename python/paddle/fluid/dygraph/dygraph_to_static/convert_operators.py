@@ -24,7 +24,7 @@ def convert_while_loop(cond, body, loop_vars):
     A function representation of a Python ``while`` statement.
 
     Args:
-        cond(Callable): A callable object that returns a boolean variable to control whether to  execute the loop body.  It takes  ``loop_vars`` as arguments.
+        cond(Callable): A callable object that returns a boolean variable to control whether to execute the loop body.  It takes  ``loop_vars`` as arguments.
         body(Callable): A callable object that returns a tuple or list of variables with the same arguments ``loops_vars`` as ``cond`` .
         loop_vars(list|tuple): A list or tuple of variables passed to ``cond`` and ``body`` .
 
@@ -44,7 +44,7 @@ def convert_while_loop(cond, body, loop_vars):
 
 
 def _run_paddle_while_loop(cond, body, loop_vars):
-    # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Variable.
+    # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     loop_vars = [to_static_variable(var) for var in loop_vars]
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
     return loop_vars
@@ -61,8 +61,8 @@ def convert_logical_and(x, y):
     A function representation of a Python ``and`` statement.
 
     Args:
-        x(bool|Variable): Left hand operand of ``and`` operator.
-        y(bool|Variable): Right hand operand of ``and`` operator.
+        x(bool|Tensor): Left hand operand of ``and`` operator.
+        y(bool|Tensor): Right hand operand of ``and`` operator.
 
     Returns:
         A python bool variable or a bool Tensor.
@@ -94,8 +94,8 @@ def convert_logical_or(x, y):
     A function representation of a Python ``or`` statement.
 
     Args:
-        x(bool|Variable): Left hand operand of ``or`` operator.
-        y(bool|Variable): Right hand operand of ``or`` operator.
+        x(bool|Tensor): Left hand operand of ``or`` operator.
+        y(bool|Tensor): Right hand operand of ``or`` operator.
 
     Returns:
         A python bool variable or a bool Tensor.
@@ -127,7 +127,7 @@ def convert_logical_not(x):
     A function representation of a Python ``not`` statement.
 
     Args:
-        x(bool|Variable): Operand of of ``not`` operator.
+        x(bool|Tensor): Operand of of ``not`` operator.
 
     Returns:
         A python bool variable or a bool Tensor.
@@ -153,7 +153,7 @@ def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
     A function representation of a Python ``if/else`` statement.
 
     Args:
-        pred(bool|Variable): A boolean variable which determines whether to return the result of ``true_fn`` or ``false_fn`` .
+        pred(bool|Tensor): A boolean Tensor which determines whether to return the result of ``true_fn`` or ``false_fn`` .
         true_fn(callable): A callable to be performed if ``pred`` is true.
         false_fn(callable): A callable to be performed if ``pred`` is false.
         true_args(tuple): Parameters of ``true_fn``.
@@ -175,7 +175,7 @@ def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
                      return_vars):
 
     return_var_ids = [id(var) for var in return_vars]
-    # NOTE 1: return vars of Paddle op `control_flow.cond` must be Paddle Variable
+    # NOTE 1: Returned vars of Paddle op `control_flow.cond` must be Paddle Tensors
     # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
     #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
     true_args = [
