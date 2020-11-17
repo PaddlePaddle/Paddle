@@ -1098,7 +1098,6 @@ def tile(x, repeat_times, name=None):
 
             import paddle
 
-            paddle.disable_static()
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.tile(data, repeat_times=[2, 1])
             np_out = out.numpy()
@@ -1192,8 +1191,6 @@ def expand_as(x, y, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
 
             data_x = paddle.to_tensor([1, 2, 3], 'int32')
             data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
