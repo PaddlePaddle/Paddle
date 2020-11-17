@@ -20,11 +20,12 @@ import paddle
 from paddle.fluid import dygraph, core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
+from paddle.fluid.dygraph import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
+from .. import quantization_pass
 
 __all__ = ['ImperativeQuantAware', 'ImperativeCalcOutScale']
 
@@ -60,8 +61,7 @@ class ImperativeQuantAware(object):
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  moving_rate=0.9,
-                 quantizable_layer_type=['Conv2D', 'Linear'],
-                 is_calc_out_scale=False):
+                 quantizable_layer_type=['Conv2D', 'Linear']):
         """
         The constructor for ImperativeQuantAware.
 
@@ -83,10 +83,6 @@ class ImperativeQuantAware(object):
             quantizable_op_type(list[str]): List the type of layers that will be quantized. 
                 Default is ['Conv2D', 'Linear']. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
-            is_calc_out_scale(bool):Whether calculate the out_scale of the outputs in the Layer 
-                which would use in inference process. Now Supported Layers: BatchNorm, Conv2D, 
-                Conv2DTranspose, LeakyReLU, Linear, PReLU, Pool2D, ReLU, ReLU6, Sigmoid, Softmax, 
-                Swish, Tanh.
 
         Note:
             If user sets attribute 'skip_quant' to a Layer that support dynamic quantization and sets 
@@ -106,8 +102,7 @@ class ImperativeQuantAware(object):
 
             imperative_qat = ImperativeQuantAware(
                 weight_quantize_type='abs_max',
-                activation_quantize_type='moving_average_abs_max',
-                is_calc_out_scale=True)
+                activation_quantize_type='moving_average_abs_max')
             
             # Add the fake quant logical.
             # The original model will be rewrite.
@@ -172,9 +167,7 @@ class ImperativeQuantAware(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
-        self._is_calc_out_scale = is_calc_out_scale
-        if is_calc_out_scale:
-            self._out_scale = ImperativeCalcOutScale()
+        self._out_scale = ImperativeCalcOutScale()
 
         quant_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
@@ -233,8 +226,7 @@ class ImperativeQuantAware(object):
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
 
-        if self._is_calc_out_scale:
-            self._out_scale.calc_out_scale(model)
+        self._out_scale.calc_out_scale(model)
 
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
@@ -258,11 +250,7 @@ class ImperativeQuantAware(object):
         return quantized_layer
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        if self._is_calc_out_scale:
-            self._out_scale.save_quantized_model(layer, path, input_spec,
-                                                 **config)
-        else:
-            paddle.jit.save(layer, path, input_spec, **config)
+        self._out_scale.save_quantized_model(layer, path, input_spec, **config)
 
 
 class ImperativeCalcOutScale(object):
@@ -301,20 +289,6 @@ class ImperativeCalcOutScale(object):
                 self._forward_post_hook)
             self._register_hook_handle_list.append(forward_post_hook_handle)
 
-    # Get the output var name of the op
-    def _get_op_output_names(self, op):
-        assert isinstance(
-            op, framework.Operator), "The input op should be Operator."
-        var_names = []
-        name_list = _op_real_in_out_name[op.type][1]
-        for name in name_list:
-            var_name = op.output(name)
-            if isinstance(var_name, list):
-                var_names.extend(var_name)
-            else:
-                var_names.append(var_name)
-        return var_names
-
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
@@ -340,6 +314,7 @@ class ImperativeCalcOutScale(object):
 
         assert isinstance(
             layer, dygraph.Layer), "model must be the instance of dygraph.Layer"
+        is_dynamic_mode = False
         with dygraph.guard():
             layer.eval()
             for handle in self._register_hook_handle_list:
@@ -349,6 +324,10 @@ class ImperativeCalcOutScale(object):
                                                   .numpy())
 
         paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
+
+        if paddle.in_dynamic_mode():
+            is_dynamic_mode = True
+            paddle.enable_static()
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -374,7 +353,8 @@ class ImperativeCalcOutScale(object):
         for block in inference_program.blocks:
             for op in block.ops:
                 if op.type in _op_real_in_out_name:
-                    output_var_names = self._get_op_output_names(op)
+                    output_var_names = quantization_pass._get_op_output_var_names(
+                        op)
                     for output_var_name in output_var_names:
                         output_var_tensor = block.var(output_var_name)
                         if output_var_tensor.dtype not in [
@@ -391,6 +371,8 @@ class ImperativeCalcOutScale(object):
                         # to dygraph Layer by the name of output. And use dict to save
                         # the corresponding relationship between the dygraph Layer and the
                         # static graph op that needs to set the outscale attribute.
+                        if '.' not in output_var_name:
+                            continue
                         dynamic_layer_name, var_name_suffix = output_var_name.split(
                             ".")
                         if dynamic_layer_name in layer_var_dict:
@@ -424,6 +406,9 @@ class ImperativeCalcOutScale(object):
             main_program=inference_program.clone(),
             model_filename=model_filename,
             params_filename=params_filename)
+
+        if is_dynamic_mode:
+            paddle.disable_static()
 
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(

@@ -198,7 +198,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        imperative_out_scale = ImperativeQuantAware(is_calc_out_scale=True)
+        imperative_out_scale = ImperativeQuantAware()
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
