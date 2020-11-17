@@ -13,18 +13,18 @@
 # limitations under the License.
 
 from __future__ import print_function
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.tensor as tensor
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-import numpy as np
-import unittest
 
 
-class TestMultiplyAPI(unittest.TestCase):
-    """TestMultiplyAPI."""
-
-    def __run_static_graph_case(self, x_data, y_data):
+class TestMultiplyApi(unittest.TestCase):
+    def _run_static_graph_case(self, x_data, y_data):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             x = paddle.static.data(
@@ -43,7 +43,7 @@ class TestMultiplyAPI(unittest.TestCase):
             res = outs[0]
             return res
 
-    def __run_static_graph_case_with_numpy_input(self, x_data, y_data):
+    def _run_static_graph_case_with_numpy_input(self, x_data, y_data):
         with program_guard(Program(), Program()):
             paddle.enable_static()
 
@@ -58,14 +58,14 @@ class TestMultiplyAPI(unittest.TestCase):
             res = outs[0]
             return res
 
-    def __run_dynamic_graph_case(self, x_data, y_data):
+    def _run_dynamic_graph_case(self, x_data, y_data):
         paddle.disable_static()
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         res = paddle.multiply(x, y)
         return res.numpy()
 
-    def __run_dynamic_graph_case_with_numpy_input(
+    def _run_dynamic_graph_case_with_numpy_input(
             self,
             x_data,
             y_data, ):
@@ -80,81 +80,78 @@ class TestMultiplyAPI(unittest.TestCase):
         # test static computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
-        res = self.__run_static_graph_case(x_data, y_data)
+        res = self._run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
-        res = self.__run_static_graph_case_with_numpy_input(x_data, y_data)
+        res = self._run_static_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: 2-d array
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(2, 500)
-        res = self.__run_static_graph_case(x_data, y_data)
+        res = self._run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph with_primitives: 2-d array
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(2, 500)
-        res = self.__run_static_graph_case_with_numpy_input(x_data, y_data)
+        res = self._run_static_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
-        res = self.__run_static_graph_case(x_data, y_data)
+        res = self._run_static_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test static computation graph with_primitives: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
-        res = self.__run_static_graph_case_with_numpy_input(x_data, y_data)
+        res = self._run_static_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
-        res = self.__run_dynamic_graph_case(x_data, y_data)
+        res = self._run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic numpy input computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
-        res = self.__run_dynamic_graph_case_with_numpy_input(x_data, y_data)
+        res = self._run_dynamic_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: 2-d array
         x_data = np.random.rand(20, 50)
         y_data = np.random.rand(20, 50)
-        res = self.__run_dynamic_graph_case(x_data, y_data)
+        res = self._run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic numpy input computation graph: 1-d array
         x_data = np.random.rand(20, 50)
         y_data = np.random.rand(20, 50)
-        res = self.__run_dynamic_graph_case_with_numpy_input(x_data, y_data)
+        res = self._run_dynamic_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
-        res = self.__run_dynamic_graph_case(x_data, y_data)
+        res = self._run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph with numpy tensor: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
-        res = self.__run_dynamic_graph_case_with_numpy_input(x_data, y_data)
+        res = self._run_dynamic_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
 
 class TestMultiplyError(unittest.TestCase):
-    """TestMultiplyError."""
-
     def test_errors(self):
-        """test_errors."""
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
         with program_guard(Program(), Program()):
