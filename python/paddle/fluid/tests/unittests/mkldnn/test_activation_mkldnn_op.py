@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
@@ -77,6 +77,44 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "approximate": True}
+
+
+class TestMKLDNNGeluBf16Dim2(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, False))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
+
+
+class TestMKLDNNGeluBf16Dim2Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, True))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNTanhDim2(TestTanh):
@@ -185,6 +223,44 @@ class TestMKLDNNGeluDim4Approx(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "approximate": True}
+
+
+class TestMKLDNNGeluBf16Dim4(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, False))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
+
+
+class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.uint16
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = convert_float_to_uint16(gelu(x, True))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad(self):
+        pass
 
 
 class TestMKLDNNTanhDim4(TestTanh):

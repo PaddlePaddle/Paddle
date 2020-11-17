@@ -495,9 +495,8 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         mean = np.float32(np.array(mean).reshape(1, 1, -1))
         std = np.float32(np.array(std).reshape(1, 1, -1))
     if to_rgb:
-        cv2 = try_import('cv2')
         # inplace
-        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
+        img = img[..., ::-1]
 
     img = (img - mean) / std
     return img

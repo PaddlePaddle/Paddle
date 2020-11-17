@@ -744,7 +744,6 @@ class Pad1D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
@@ -752,7 +751,7 @@ class Pad1D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[0. 1. 2. 3. 0. 0.]
             #   [0. 4. 5. 6. 0. 0.]]]
     """
@@ -821,14 +820,13 @@ class Pad2D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             mode = "constant"
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[0. 0. 0. 0.]
             #    [0. 1. 2. 3.]
             #    [0. 4. 5. 6.]
@@ -906,7 +904,7 @@ class Pad3D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[[0. 0. 0. 0.]
             #     [0. 1. 2. 3.]
             #     [0. 4. 5. 6.]
@@ -968,7 +966,6 @@ class CosineSimilarity(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -978,7 +975,7 @@ class CosineSimilarity(layers.Layer):
 
             cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
     """
 
