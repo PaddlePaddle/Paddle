@@ -662,48 +662,48 @@ void BindImperative(py::module *m_ptr) {
 
        )DOC")
       .def("detach",
-           [](const imperative::VarBase &self) {
+           [](const imperative::VarBase
+                  &self) -> std::shared_ptr<imperative::VarBase> {
              PADDLE_ENFORCE_EQ(
                  self.Var().IsInitialized() &&
                      (self.Var().IsType<framework::LoDTensor>() ||
-                      self.Var().IsType<framework::SelectedRows>),
+                      self.Var().IsType<framework::SelectedRows>()),
                  true, platform::errors::InvalidArgument(
-                           "Tensor %s has not been initialized!", Name()));
-
+                           "Tensor %s has not been initialized!", self.Name()));
              auto detach_var = std::make_shared<imperative::VarBase>(
-                 true, "detach_" + Name() + std::to_string(copied_counter_++));
+                 true, "detach_" + self.Name());
              detach_var->SetPersistable(self.Persistable());
              detach_var->SetType(self.Type());
              detach_var->SetDataType(self.DataType());
              if (self.Var().IsType<framework::LoDTensor>()) {
-               const auto &origin_tensor = self.Var().Get<framework::LoDTensor>;
+               const auto &origin_tensor =
+                   self.Var().Get<framework::LoDTensor>();
                PADDLE_ENFORCE_EQ(
                    origin_tensor.IsInitialized(), true,
                    platform::errors::InvalidArgument(
-                       "Tensor %s has not been initialized!", Name()));
+                       "Tensor %s has not been initialized!", self.Name()));
 
                auto *detach_tensor =
                    detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
-               detach_tensor->ShareDateWith(origin_tensor);
-
+               detach_tensor->ShareDataWith(origin_tensor);
              } else {
                const auto &origin_selected_rows =
-                   self.Var().Get<framework::SelectedRows>;
+                   self.Var().Get<framework::SelectedRows>();
                PADDLE_ENFORCE_EQ(
                    origin_selected_rows.value().IsInitialized(), true,
                    platform::errors::InvalidArgument(
-                       "Tensor %s has not been initialized!", Name()));
+                       "Tensor %s has not been initialized!", self.Name()));
 
                auto *detach_selected_rows =
                    detach_var->MutableVar()
                        ->GetMutable<framework::SelectedRows>();
                detach_selected_rows->set_height(origin_selected_rows.height());
                detach_selected_rows->set_rows(origin_selected_rows.rows());
-               detach_selected_rows->mutable_value()->ShareDateWith(
+               detach_selected_rows->mutable_value()->ShareDataWith(
                    origin_selected_rows.value());
              }
-             VLOG(3) << "Tensor(" << detach_var->Name() << ") share data with "
-                     << Name();
+             VLOG(3) << "The detached Tensor(" << detach_var->Name()
+                     << ") share data with " << self.Name();
              return detach_var;
            },
            py::return_value_policy::take_ownership, R"DOC(
