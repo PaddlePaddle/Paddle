@@ -241,20 +241,19 @@ class DatasetBase(object):
 class InMemoryDataset(DatasetBase):
     """
     :api_attr: Static Graph
+    
+    It will load data into memory and shuffle data before training.
 
-    InMemoryDataset, it will load data into memory
-    and shuffle data before training.
-
-    Example:
+    Examples:
         .. code-block:: python
 
-        import paddle
-        paddle.enable_static()
-        dataset = paddle.distributed.InMemoryDataset()
+            import paddle
+            paddle.enable_static()
+            dataset = paddle.distributed.InMemoryDatas
+
     """
 
     def __init__(self):
-        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
@@ -333,11 +332,11 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called in user's python scripts to update setings of dataset instance
+        should be called in user's python scripts to update setings of dataset instance.
+
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs,
                     including single node settings and advanced distributed related settings:
-
             batch_size(int): batch size. It will be effective during training. default is 1.
             thread_num(int): thread num, it is the num of readers. default is 1.
             use_var(list): list of variables. Variables which you will use. default is [].
@@ -363,22 +362,22 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle    
-              paddle.enable_static()
+                import paddle    
+                paddle.enable_static()
 
-              dataset = paddle.distributed.InMemoryDataset()
-              dataset.init(
+                dataset = paddle.distributed.InMemoryDataset()
+                dataset.init(
                     batch_size=1,
                     thread_num=2,
                     input_type=1,
                     pipe_command="cat",
                     use_var=[])
-              dataset._init_distributed_settings(
+                dataset._init_distributed_settings(
                     parse_ins_id=True,
                     parse_content=True,
                     fea_eval=True,
                     candidate_size=10000)
-              dataset.update_settings(batch_size=2)
+                dataset.update_settings(batch_size=2)
             
         """
         for key in kwargs:
@@ -415,6 +414,7 @@ class InMemoryDataset(DatasetBase):
         :api_attr: Static Graph
 
         should be called only once in user's python scripts to initialize setings of dataset instance
+        
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
             
@@ -438,16 +438,10 @@ class InMemoryDataset(DatasetBase):
                 paddle.enable_static()
 
                 with open("test_queue_dataset_run_a.txt", "w") as f:
-                    data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
-                    data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
-                    data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
-                    data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+                    data = "2 1 2 2 5 4 2 2 7 2 1 3"
                     f.write(data)
                 with open("test_queue_dataset_run_b.txt", "w") as f:
-                    data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
-                    data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
-                    data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
-                    data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+                    data = "2 1 2 2 5 4 2 2 7 2 1 3"
                     f.write(data)
 
                 slots = ["slot1", "slot2", "slot3", "slot4"]
