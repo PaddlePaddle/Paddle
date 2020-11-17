@@ -18,6 +18,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -817,3 +819,36 @@ REGISTER_OP_CPU_KERNEL(
     conv3d_grad_grad,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(conv2d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));
+
+REGISTER_OP_VERSION(depthwise_conv2d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade depthwise_conv2d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));
+
+REGISTER_OP_VERSION(conv3d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv3d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));

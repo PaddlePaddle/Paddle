@@ -36,6 +36,9 @@ struct PassRegistrar;
 
 typedef std::unordered_set<std::string> PassRecorder;
 constexpr char kPassRecorder[] = "pass_recorder";
+constexpr char kEmbEltwiseLayernormPass[] =
+    "embedding_eltwise_layernorm_fuse_pass_flag";
+constexpr char kMultiheadMatmulPass[] = "multihead_matmul_fuse_pass_flag";
 
 class Pass {
  public:

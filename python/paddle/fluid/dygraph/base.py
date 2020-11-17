@@ -272,8 +272,6 @@ class no_grad_:
         import numpy as np
         import paddle
 
-        paddle.disable_static()
-
         # use as generator
 
         data = np.array([[2, 3], [4, 5]]).astype('float32')
