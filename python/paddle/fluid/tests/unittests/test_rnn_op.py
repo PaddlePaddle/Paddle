@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import math
+import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -33,6 +34,8 @@ np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestRNNOp(OpTest):
     def get_weight_names(self):
         weight_names = []

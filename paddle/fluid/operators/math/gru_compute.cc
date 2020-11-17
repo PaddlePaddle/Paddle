@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/gru_compute.h"
 
+#include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"
@@ -101,10 +102,73 @@ struct GRUUnitGradFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
+template <typename T>
+struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext &context,
+                      GRUMetaValue<T> value, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
+#ifndef __NVCC__
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    if (value.prev_out_value) {
+      blas.GEMM(CblasNoTrans, CblasTrans, batch_size, frame_size, frame_size, 1,
+                value.prev_out_value, value.state_weight, 0,
+                value.reset_output_value);
+    }
+    detail::forward_reset_output(detail::forward::gru_resetOutput<T>(), value,
+                                 frame_size, batch_size, active_gate, false);
+
+    T *cell_state_value = value.gate_value + 2 * frame_size;
+    T *reset_output_value = value.reset_output_value;
+    for (int b = 0; b < batch_size; ++b) {
+      blas.VADD(frame_size, cell_state_value, reset_output_value,
+                cell_state_value);
+      cell_state_value += frame_size * 3;
+      reset_output_value += frame_size;
+    }
+
+    detail::forward_final_output(detail::forward::gru_finalOutput<T>(), value,
+                                 frame_size, batch_size, active_node, true,
+                                 false);
+#endif
+  }
+};
+
+template <typename T>
+std::string get_list(T *arr, int num) {
+  std::string msg = "";
+  for (int i = 0; i < num; ++i) {
+    msg += std::to_string(arr[i]);
+    msg += " ";
+  }
+  return msg;
+}
+
+template <typename T>
+struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext &context,
+                      GRUMetaValue<T> value, GRUMetaGrad<T> grad,
+                      int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
+#ifndef __NVCC__
+    // calculate grad_update_gate, grad_frame_state,
+    // grad_reset_output, grad_reset_gate
+    detail::cpu_gru_backward(detail::backward::gru<T>(), value, grad,
+                             frame_size, batch_size, active_node, active_gate);
+#endif
+  }
+};
+
 template struct GRUUnitFunctor<platform::CPUDeviceContext, float>;
 template struct GRUUnitFunctor<platform::CPUDeviceContext, double>;
 template struct GRUUnitGradFunctor<platform::CPUDeviceContext, float>;
 template struct GRUUnitGradFunctor<platform::CPUDeviceContext, double>;
+
+template struct GRUUnitFunctorV2<platform::CPUDeviceContext, float>;
+template struct GRUUnitFunctorV2<platform::CPUDeviceContext, double>;
+template struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, float>;
+template struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators
