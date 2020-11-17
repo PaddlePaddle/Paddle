@@ -804,7 +804,7 @@ def gather(x, index, axis=None, name=None):
         check_type(axis, 'axis', (int), 'gather')
 
     helper = LayerHelper('gather', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
