@@ -64,7 +64,7 @@ class VGG(nn.Layer):
         if with_pool:
             self.avgpool = nn.AdaptiveAvgPool2D((7, 7))
 
-        if num_classes > 1000:
+        if num_classes > 0:
             self.classifier = nn.Sequential(
                 nn.Linear(512 * 7 * 7, 4096),
                 nn.ReLU(),
