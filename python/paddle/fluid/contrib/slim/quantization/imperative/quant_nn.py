@@ -333,10 +333,10 @@ class QuantizedConv2D(layers.Layer):
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
                  activation_quantize_type='abs_max',
-                 weight_preprocess=None,
-                 act_preprocess=None,
-                 weight_quantize=None,
-                 act_quantize=None):
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
         super(QuantizedConv2D, self).__init__()
         # For Conv2D
         self._groups = getattr(layer, '_groups')
@@ -352,8 +352,8 @@ class QuantizedConv2D(layers.Layer):
         # For FakeQuant
         self._conv2d_quant_axis = 0
 
-        if weight_quantize is not None:
-            self._fake_quant_weight = weight_quantize()
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
         else:
             self._fake_quant_weight = _get_fake_quant_type(
                 weight_quantize_type,
@@ -364,8 +364,8 @@ class QuantizedConv2D(layers.Layer):
                 quant_on_weight=True,
                 channel_num=self.weight.shape[self._conv2d_quant_axis],
                 quant_axis=self._conv2d_quant_axis)
-        if act_quantize is not None:
-            self._fake_quant_input = act_quantize()
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
         else:
             self._fake_quant_input = _get_fake_quant_type(
                 activation_quantize_type,
@@ -375,20 +375,18 @@ class QuantizedConv2D(layers.Layer):
                 dtype=self._dtype,
                 quant_on_weight=False)
 
-        self.do_act_preprocess = True if act_preprocess is not None else False
-        self.do_weight_preprocess = True if weight_preprocess is not None else False
-        if self.do_act_preprocess:
-            self._act_preprocess = act_preprocess()
-        if self.do_weight_preprocess:
-            self._weight_preprocess = weight_preprocess()
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
 
     def forward(self, input):
-        if self.do_act_preprocess:
+        if self._act_preprocess is not None:
             input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
 
         weight = self.weight
-        if self.do_weight_preprocess:
+        if self._weight_preprocess is not None:
             weight = self._weight_preprocess(self.weight)
         quant_weight = self._fake_quant_weight(weight)
 
@@ -453,10 +451,10 @@ class QuantizedLinear(layers.Layer):
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
                  activation_quantize_type='abs_max',
-                 weight_preprocess=None,
-                 act_preprocess=None,
-                 weight_quantize=None,
-                 act_quantize=None):
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
         super(QuantizedLinear, self).__init__()
         # For Linear
         self._act = getattr(layer, '_act')
@@ -466,8 +464,8 @@ class QuantizedLinear(layers.Layer):
         # For FakeQuant
         self._linear_quant_axis = 1
 
-        if weight_quantize is not None:
-            self._fake_quant_weight = weight_quantize()
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
         else:
             self._fake_quant_weight = _get_fake_quant_type(
                 weight_quantize_type,
@@ -479,8 +477,8 @@ class QuantizedLinear(layers.Layer):
                 channel_num=self.weight.shape[self._linear_quant_axis],
                 quant_axis=self._linear_quant_axis)
 
-        if act_quantize is not None:
-            self._fake_quant_input = act_quantize()
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
         else:
             self._fake_quant_input = _get_fake_quant_type(
                 activation_quantize_type,
@@ -490,20 +488,18 @@ class QuantizedLinear(layers.Layer):
                 dtype=self._dtype,
                 quant_on_weight=False)
 
-        self.do_act_preprocess = True if act_preprocess is not None else False
-        self.do_weight_preprocess = True if weight_preprocess is not None else False
-        if self.do_act_preprocess:
-            self._act_preprocess = act_preprocess()
-        if self.do_weight_preprocess:
-            self._weight_preprocess = weight_preprocess()
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
 
     def forward(self, input):
-        if self.do_act_preprocess:
+        if self._act_preprocess is not None:
             input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
 
         weight = self.weight
-        if self.do_weight_preprocess:
+        if self._weight_preprocess is not None:
             weight = self._weight_preprocess(self.weight)
         quant_weight = self._fake_quant_weight(weight)
 
