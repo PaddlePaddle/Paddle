@@ -22,6 +22,7 @@ set(BOOST_PROJECT       "extern_boost")
 # version of boost, say, 1.66.0, doesn't build on CentOS 6.  We
 # checked that the devtools package of CentOS 6 installs boost 1.41.0.
 # So we use 1.41.0 here.
+
 set(BOOST_VER   "1.41.0")
 set(BOOST_TAR   "boost_1_41_0" CACHE STRING "" FORCE)
 set(BOOST_URL   "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
