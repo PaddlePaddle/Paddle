@@ -79,7 +79,10 @@ struct NCCLContext {
   ncclComm_t comm_;
 
   explicit NCCLContext(int dev_id)
-      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
+      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {
+    // communication stream use high priority
+    ctx_->ResetDefaultContext(platform::stream::Priority::kHigh);
+  }
 
   cudaStream_t stream() const { return ctx_->stream(); }
   ncclComm_t comm() const { return comm_; }
