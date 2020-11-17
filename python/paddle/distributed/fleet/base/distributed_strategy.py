@@ -1236,11 +1236,6 @@ class DistributedStrategy(object):
 
     def _enable_env(self):
         strategy = self.strategy
-        sync_allreduce = strategy.sync_nccl_allreduce
-        if sync_allreduce:
-            # if nccl_comm_num >= 2, use async to overlap multi comm
-            sync_allreduce = (strategy.nccl_comm_num == 1)
-
         keys = [
             "FLAGS_cudnn_batchnorm_spatial_persistent",
             "FLAGS_conv_workspace_size_limit",
@@ -1253,7 +1248,7 @@ class DistributedStrategy(object):
             bool(strategy.cudnn_batchnorm_spatial_persistent),
             int(strategy.conv_workspace_size_limit),
             bool(strategy.cudnn_exhaustive_search),
-            bool(sync_allreduce),
+            bool(strategy.sync_nccl_allreduce),
             int(strategy.fuse_grad_size_in_MB),
             int(strategy.fuse_grad_size_in_TFLOPS),
         ]

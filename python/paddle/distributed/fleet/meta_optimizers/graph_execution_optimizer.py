@@ -151,6 +151,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             exe_strategy.num_threads = max(
                 local_build_strategy.nccl_comm_num + 1,
                 exe_strategy.num_threads)
+            if local_build_strategy.nccl_comm_num > 1:
+                logging.warn(
+                    "nccl_comm_num > 1, you may need to set sync_nccl_allreduce=False to ensure that different nccl comms can overlap"
+                )
 
         sync_batch_norm = local_build_strategy.sync_batch_norm
         if sync_batch_norm:
