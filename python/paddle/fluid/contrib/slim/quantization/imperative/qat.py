@@ -411,7 +411,7 @@ class ImperativeCalcOutScale(object):
 
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
-            output, core.VarBase
+            output, (core.VarBase, framework.Variable)
         ), "Multiple outputs are not currently supported in ImperativeOutScale."
         if output.dtype not in [
                 core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
