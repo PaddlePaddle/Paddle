@@ -31,6 +31,7 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
 from paddle.fluid.transpiler import memory_optimize
+paddle.enable_static()
 
 
 class InferModel(object):
@@ -225,6 +226,31 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                           'y': tensor_y},
                     fetch_list=[avg_cost])
 
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                None, ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR + "/", [x, y], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR, ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR, 'x', [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR, [x, y], ['avg_cost'], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR, [x, y], 'avg_cost', exe)
+
+        model_path = MODEL_DIR + "_isdir.pdmodel"
+        os.makedirs(model_path)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+        os.rmdir(model_path)
+
+        params_path = MODEL_DIR + "_isdir.pdmodel"
+        os.makedirs(params_path)
+        self.assertRaises(ValueError, paddle.static.save_inference_model,
+                MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+        os.rmdir(params_path)
+
         paddle.static.io.save_inference_model(MODEL_DIR, [x, y], [avg_cost], exe)
 
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
@@ -236,6 +262,20 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                            fetch_list=[avg_cost])[0]
 
         six.moves.reload_module(executor)  # reload to build a new scope
+
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                None, exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                MODEL_DIR + "/", exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                MODEL_DIR.encode(), exe, )
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                MODEL_DIR, exe, pserver_endpoints=None)
+        self.assertRaises(ValueError, paddle.static.load_inference_model,
+                MODEL_DIR, exe, unsupported_param=None)
+        self.assertRaises(TypeError, paddle.static.load_inference_model,
+                None, exe, model_filename="illegal", params_filename="illegal")
+
         model = InferModel(paddle.static.io.load_inference_model(MODEL_DIR, exe))
 
         outs = exe.run(model.program,
@@ -249,6 +289,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertEqual(model.feed_var_names, ["x", "y"])
         self.assertEqual(len(model.fetch_vars), 1)
         self.assertEqual(expected, actual)
+
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
