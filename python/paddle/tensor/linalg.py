@@ -646,12 +646,11 @@ def t(input, name=None):
      Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3],
-                            dtype='float32')
+
+            x = paddle.ones(shape=[2, 3], dtype='int32')
             x_transposed = paddle.t(x)
-            print x_transposed.shape
-            #(3L, 2L)
+            print(x_transposed.shape)
+            # [3, 2]
     """
     if len(input.shape) > 2:
         raise ValueError(
