@@ -128,34 +128,34 @@ class TestCallbacks(unittest.TestCase):
         self.verbose = 2
         self.run_callback()
 
-    # def test_visualdl_callback(self):
-    #     # visualdl not support python2
-    #     if sys.version_info < (3, ):
-    #         return
+    def test_visualdl_callback(self):
+        # visualdl not support python2
+        if sys.version_info < (3, ):
+            return
 
-    #     inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
-    #     labels = [InputSpec([None, 1], 'int64', 'label')]
+        inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
 
-    #     transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
-    #     train_dataset = paddle.vision.datasets.MNIST(
-    #         mode='train', transform=transform)
-    #     eval_dataset = paddle.vision.datasets.MNIST(
-    #         mode='test', transform=transform)
+        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=transform)
+        eval_dataset = paddle.vision.datasets.MNIST(
+            mode='test', transform=transform)
 
-    #     net = paddle.vision.LeNet()
-    #     model = paddle.Model(net, inputs, labels)
+        net = paddle.vision.LeNet()
+        model = paddle.Model(net, inputs, labels)
 
-    #     optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-    #     model.prepare(
-    #         optimizer=optim,
-    #         loss=paddle.nn.CrossEntropyLoss(),
-    #         metrics=paddle.metric.Accuracy())
+        optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
+        model.prepare(
+            optimizer=optim,
+            loss=paddle.nn.CrossEntropyLoss(),
+            metrics=paddle.metric.Accuracy())
 
-    #     callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
-    #     model.fit(train_dataset,
-    #               eval_dataset,
-    #               batch_size=64,
-    #               callbacks=callback)
+        callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
+        model.fit(train_dataset,
+                  eval_dataset,
+                  batch_size=64,
+                  callbacks=callback)
 
     def test_earlystopping(self):
         paddle.seed(2020)
@@ -165,9 +165,6 @@ class TestCallbacks(unittest.TestCase):
             sample_num = 200
             train_dataset = MnistDataset(mode='train', sample_num=sample_num)
             val_dataset = MnistDataset(mode='test', sample_num=sample_num)
-            test_dataset = MnistDataset(
-                mode='test', return_label=False, sample_num=sample_num)
-
             train_loader = paddle.io.DataLoader(
                 train_dataset, places=device, return_list=True, batch_size=64)
             val_loader = paddle.io.DataLoader(

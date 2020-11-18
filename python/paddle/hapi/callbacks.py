@@ -527,13 +527,14 @@ class EarlyStopping(Callback):
             from paddle.vision.datasets import MNIST
             from paddle.metric import Accuracy
             from paddle.nn.layer.loss import CrossEntropyLoss
+            import paddle.vision.transforms as T
 
             device = paddle.set_device('cpu')
             sample_num = 200
             save_dir = './best_model_checkpoint'
-            train_dataset = MNIST(mode='train')
-            val_dataset = MNIST(mode='test')
-            test_dataset = MNIST(mode='test')
+            transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+            train_dataset = MNIST(mode='train', transform=transform)
+            val_dataset = MNIST(mode='test', transform=transform)
 
             train_loader = paddle.io.DataLoader(
                 train_dataset, places=device, return_list=True, batch_size=64)
