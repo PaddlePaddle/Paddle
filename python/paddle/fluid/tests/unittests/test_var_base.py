@@ -40,6 +40,9 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(np.array_equal(x.numpy(), [1]))
                 self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
 
+                y = paddle.to_tensor(2, place=x.place)
+                self.assertEqual(str(x.place), str(y.place))
+
                 # set_default_dtype should not take effect on numpy
                 x = paddle.to_tensor(
                     np.array([1.2]).astype('float16'),
