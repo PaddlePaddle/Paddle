@@ -596,7 +596,7 @@ REGISTER_OP_CPU_KERNEL(set_lod_level_test,
                            paddle::platform::CPUDeviceContext, float>);
 
 void SetGetLoDLevelTestMain(std::string op_type) {
-  paddle::framework::InitDevices(false, {});
+  paddle::framework::InitDevices({});
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type(op_type);
   BuildVar("X", {"x.0"}, op_desc.add_inputs());
