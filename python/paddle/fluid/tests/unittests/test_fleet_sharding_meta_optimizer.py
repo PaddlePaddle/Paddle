@@ -17,8 +17,11 @@ import paddle
 import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid.core as core
+import paddle.fluid as fluid
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import add_sync_comm_for_test, sharding_save_persistables, comm_analyse
 
 paddle.enable_static()
 
@@ -270,6 +273,25 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'momentum'
         ])
 
+    def test_sharding_clone_for_test(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'sharding')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        comm_analyse(train_prog)
+        test_prog = train_prog.clone(for_test=True)
+        add_sync_comm_for_test(test_prog, strategy)
+        ops = [op.type for op in test_prog.global_block().ops]
 
+        self.assertEqual(ops, ['fill_constant', 'fill_constant', 'fill_constant', 'c_sync_calc_stream', 'c_broadcast', 
+        'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream', 'mul', 
+        'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'softmax', 
+        'cross_entropy2', 'mean'])
+
+        
+
+
+        
 if __name__ == "__main__":
     unittest.main()
