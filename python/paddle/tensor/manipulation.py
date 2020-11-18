@@ -67,8 +67,6 @@ __all__ = [
 
 def concat(x, axis=0, name=None):
     """
-	:alias_main: paddle.concat
-	:alias: paddle.tensor.concat, paddle.tensor.manipulation.concat
 
     This OP concatenates the input along the axis.
 
@@ -91,7 +89,6 @@ def concat(x, axis=0, name=None):
             
             import paddle
             
-            paddle.disable_static()  # Now we are in imperative mode
             x1 = paddle.to_tensor([[1, 2, 3],
                                    [4, 5, 6]])
             x2 = paddle.to_tensor([[11, 12, 13],
@@ -465,7 +462,6 @@ def split(x, num_or_sections, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
@@ -608,7 +604,6 @@ def unique(x,
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [1 2 3 5]
@@ -744,9 +739,6 @@ def unsqueeze(x, axis, name=None):
 
 def gather(x, index, axis=None, name=None):
     """
-
-    **Gather Layer**
-
     Output is obtained by gathering entries of ``axis``
     of ``x`` indexed by ``index`` and concatenate them together.
 
@@ -765,7 +757,8 @@ def gather(x, index, axis=None, name=None):
                 Then:
 
                 out = [[3, 4],
-                       [5, 6]]
+                       [5, 6]] 
+
     Args:
         x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
@@ -784,7 +777,6 @@ def gather(x, index, axis=None, name=None):
 
             import paddle
 
-            paddle.disable_static()
             input = paddle.to_tensor([[1,2],[3,4],[5,6]])
             index = paddle.to_tensor([0,1])
             output = paddle.gather(input, index, axis=0)
@@ -793,9 +785,12 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
     axis_tensor = axis
+    if not isinstance(axis, Variable) and axis == 0:
+        return paddle.fluid.layers.gather(input=x, index=index, overwrite=False)
     if not isinstance(axis, Variable):
         with device_guard("cpu"):
-            axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+            axis_tensor = fill_constant(
+                shape=[1], dtype='int64', value=axis, force_cpu=True)
     if in_dygraph_mode():
         return core.ops.gather(x, index, axis_tensor)
 
@@ -809,7 +804,7 @@ def gather(x, index, axis=None, name=None):
         check_type(axis, 'axis', (int), 'gather')
 
     helper = LayerHelper('gather', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
@@ -1059,7 +1054,6 @@ def chunk(x, chunks, axis=0, name=None):
             import numpy as np
             import paddle
             
-            paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
@@ -1104,7 +1098,6 @@ def tile(x, repeat_times, name=None):
 
             import paddle
 
-            paddle.disable_static()
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.tile(data, repeat_times=[2, 1])
             np_out = out.numpy()
@@ -1198,8 +1191,6 @@ def expand_as(x, y, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
 
             data_x = paddle.to_tensor([1, 2, 3], 'int32')
             data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
@@ -1452,7 +1443,6 @@ def gather_nd(x, index, name=None):
             
             import paddle
             
-            paddle.disable_static()
             x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]],
                                   [[7, 8], [9, 10], [11, 12]]])
             index = paddle.to_tensor([[0, 1]])

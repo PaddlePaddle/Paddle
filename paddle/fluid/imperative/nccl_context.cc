@@ -49,16 +49,20 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   address.sin_port = htons(port);
 
   int try_times = 0;
+  int retry_time = 0;
   while (true) {
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+      retry_time = 3 * (try_times + 1);
       LOG(WARNING) << "Socket bind worker " << ep
-                   << (try_times < 5 ? " failed, try again after 3 seconds."
-                                     : " failed, try again after 3 seconds. "
-                                       "Bind on endpoint %s failed. "
-                                       "Please confirm whether the "
-                                       "communication port or GPU card is "
-                                       "occupied.");
-      std::this_thread::sleep_for(std::chrono::seconds(3));
+                   << (try_times < 9
+                           ? " failed, try again after " +
+                                 std::to_string(retry_time) + " seconds."
+                           : " failed, try again after " +
+                                 std::to_string(retry_time) +
+                                 " seconds. Bind on endpoint " + ep +
+                                 " failed. Please confirm whether the "
+                                 "communication port or GPU card is occupied.");
+      std::this_thread::sleep_for(std::chrono::seconds(retry_time));
       ++try_times;
       continue;
     }
@@ -129,16 +133,20 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   }
 
   int try_times = 0;
+  int retry_time = 0;
   while (true) {
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+      retry_time = 3 * (try_times + 1);
       LOG(WARNING)
           << "Socket connect worker " << ep
-          << (try_times < 5
-                  ? " failed, try again after 3 seconds."
-                  : " failed, try again after 3 seconds. Maybe that "
-                    "some process is occupied the GPUs of this node "
-                    "now, and you should kill those process manually.");
-      std::this_thread::sleep_for(std::chrono::seconds(3));
+          << (try_times < 9
+                  ? " failed, try again after " + std::to_string(retry_time) +
+                        " seconds."
+                  : " failed, try again after " + std::to_string(retry_time) +
+                        " seconds. Maybe that some process is occupied the "
+                        "GPUs of this node now, and you should kill those "
+                        "process manually.");
+      std::this_thread::sleep_for(std::chrono::seconds(retry_time));
       ++try_times;
       continue;
     }

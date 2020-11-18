@@ -332,7 +332,11 @@ class QuantizedConv2D(layers.Layer):
                  activation_bits=8,
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
-                 activation_quantize_type='abs_max'):
+                 activation_quantize_type='abs_max',
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
         super(QuantizedConv2D, self).__init__()
         # For Conv2D
         self._groups = getattr(layer, '_groups')
@@ -347,26 +351,44 @@ class QuantizedConv2D(layers.Layer):
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
         self._conv2d_quant_axis = 0
-        self._fake_quant_weight = _get_fake_quant_type(
-            weight_quantize_type,
-            name=self.weight.name,
-            moving_rate=moving_rate,
-            quant_bits=weight_bits,
-            dtype=self._dtype,
-            quant_on_weight=True,
-            channel_num=self.weight.shape[self._conv2d_quant_axis],
-            quant_axis=self._conv2d_quant_axis)
-        self._fake_quant_input = _get_fake_quant_type(
-            activation_quantize_type,
-            name=layer.full_name(),
-            moving_rate=moving_rate,
-            quant_bits=activation_bits,
-            dtype=self._dtype,
-            quant_on_weight=False)
+
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
+        else:
+            self._fake_quant_weight = _get_fake_quant_type(
+                weight_quantize_type,
+                name=self.weight.name,
+                moving_rate=moving_rate,
+                quant_bits=weight_bits,
+                dtype=self._dtype,
+                quant_on_weight=True,
+                channel_num=self.weight.shape[self._conv2d_quant_axis],
+                quant_axis=self._conv2d_quant_axis)
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
+        else:
+            self._fake_quant_input = _get_fake_quant_type(
+                activation_quantize_type,
+                name=layer.full_name(),
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                dtype=self._dtype,
+                quant_on_weight=False)
+
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
 
     def forward(self, input):
+        if self._act_preprocess is not None:
+            input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
-        quant_weight = self._fake_quant_weight(self.weight)
+
+        weight = self.weight
+        if self._weight_preprocess is not None:
+            weight = self._weight_preprocess(self.weight)
+        quant_weight = self._fake_quant_weight(weight)
 
         if in_dygraph_mode() and self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
@@ -428,7 +450,11 @@ class QuantizedLinear(layers.Layer):
                  activation_bits=8,
                  moving_rate=0.9,
                  weight_quantize_type='abs_max',
-                 activation_quantize_type='abs_max'):
+                 activation_quantize_type='abs_max',
+                 weight_pre_layer=None,
+                 act_pre_layer=None,
+                 weight_quant_layer=None,
+                 act_quant_layer=None):
         super(QuantizedLinear, self).__init__()
         # For Linear
         self._act = getattr(layer, '_act')
@@ -437,26 +463,46 @@ class QuantizedLinear(layers.Layer):
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
         self._linear_quant_axis = 1
-        self._fake_quant_weight = _get_fake_quant_type(
-            weight_quantize_type,
-            name=self.weight.name,
-            moving_rate=moving_rate,
-            quant_bits=weight_bits,
-            dtype=self._dtype,
-            quant_on_weight=True,
-            channel_num=self.weight.shape[self._linear_quant_axis],
-            quant_axis=self._linear_quant_axis)
-        self._fake_quant_input = _get_fake_quant_type(
-            activation_quantize_type,
-            name=layer.full_name(),
-            moving_rate=moving_rate,
-            quant_bits=activation_bits,
-            dtype=self._dtype,
-            quant_on_weight=False)
+
+        if weight_quant_layer is not None:
+            self._fake_quant_weight = weight_quant_layer()
+        else:
+            self._fake_quant_weight = _get_fake_quant_type(
+                weight_quantize_type,
+                name=self.weight.name,
+                moving_rate=moving_rate,
+                quant_bits=weight_bits,
+                dtype=self._dtype,
+                quant_on_weight=True,
+                channel_num=self.weight.shape[self._linear_quant_axis],
+                quant_axis=self._linear_quant_axis)
+
+        if act_quant_layer is not None:
+            self._fake_quant_input = act_quant_layer()
+        else:
+            self._fake_quant_input = _get_fake_quant_type(
+                activation_quantize_type,
+                name=layer.full_name(),
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                dtype=self._dtype,
+                quant_on_weight=False)
+
+        self._act_preprocess = act_pre_layer(
+        ) if act_pre_layer is not None else None
+        self._weight_preprocess = weight_pre_layer(
+        ) if weight_pre_layer is not None else None
 
     def forward(self, input):
+        if self._act_preprocess is not None:
+            input = self._act_preprocess(input)
         quant_input = self._fake_quant_input(input)
-        quant_weight = self._fake_quant_weight(self.weight)
+
+        weight = self.weight
+        if self._weight_preprocess is not None:
+            weight = self._weight_preprocess(self.weight)
+        quant_weight = self._fake_quant_weight(weight)
+
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
             core.ops.matmul(quant_input, quant_weight, pre_bias, 'transpose_X',

@@ -895,8 +895,6 @@ def kl_div(input, label, reduction='mean', name=None):
             import numpy as np
             import paddle.nn.functional as F
 
-            paddle.disable_static()
-
             shape = (5, 20)
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')

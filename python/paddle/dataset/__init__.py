@@ -29,18 +29,5 @@ import paddle.dataset.flowers
 import paddle.dataset.voc2012
 import paddle.dataset.image
 
-__all__ = [
-    'mnist',
-    'imikolov',
-    'imdb',
-    'cifar',
-    'movielens',
-    'conll05',
-    'uci_housing',
-    'wmt14',
-    'wmt16',
-    'mq2007',
-    'flowers',
-    'voc2012',
-    'image',
-]
+# set __all__ as empty for not showing APIs under paddle.dataset
+__all__ = []

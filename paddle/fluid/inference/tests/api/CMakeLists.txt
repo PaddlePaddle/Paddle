@@ -529,6 +529,15 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 
+    set(TEST_TRT_TRANSFORMER_PRUNE_MODEL "${TRT_MODEL_INSTALL_DIR}/transformer_prune")
+    if (NOT EXISTS ${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune.tar.gz)
+        inference_download_and_uncompress(${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test "transformer_prune.tar.gz")
+    endif()
+
+    #inference_analysis_test(test_trt_dynamic_shape_transformer_prune SRCS trt_dynamic_shape_transformer_prune_test.cc
+    #        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+    #        ARGS --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
+
     set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
     if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
@@ -610,9 +619,9 @@ set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_bert PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT 120)
 if(WITH_GPU AND TENSORRT_FOUND)
-set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
-set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
 endif()
 if(ON_INFER OR WITH_GPU)
-set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()

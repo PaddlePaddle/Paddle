@@ -39,7 +39,7 @@ from . import functional_tensor as F_t
 __all__ = [
     'to_tensor', 'hflip', 'vflip', 'resize', 'pad', 'rotate', 'to_grayscale',
     'crop', 'center_crop', 'adjust_brightness', 'adjust_contrast', 'adjust_hue',
-    'to_grayscale', 'normalize'
+    'normalize'
 ]
 
 
@@ -283,13 +283,11 @@ def center_crop(img, output_size):
         return F_cv2.center_crop(img, output_size)
 
 
-def hflip(img, backend='pil'):
+def hflip(img):
     """Horizontally flips the given Image or np.array.
 
     Args:
         img (PIL.Image|np.array): Image to be flipped.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-            `cv2`. Default: 'pil'. 
 
     Returns:
         PIL.Image or np.array:  Horizontall flipped image.
@@ -576,8 +574,6 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
-        backend (str, optional): The image proccess backend type. Options are `pil`, 
-                    `cv2`. Default: 'pil'. 
 
     Returns:
         PIL.Image or np.array: Grayscale version of the image.
@@ -624,7 +620,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             this option will be igored. Default: False.
 
     Returns:
-        Tensor: Normalized mage. Data format is same as input img.
+        np.ndarray or Tensor: Normalized mage. Data format is same as input img.
     
     Examples:
         .. code-block:: python
