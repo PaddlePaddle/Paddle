@@ -35,7 +35,7 @@ class MatrixGenerate:
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestFcBf16MklDNNOp(OpTest):
-    def create_data(self):
+    def generate_data(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
         self.bias = np.random.random(15).astype("float32")
 
@@ -44,7 +44,7 @@ class TestFcBf16MklDNNOp(OpTest):
         self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False
-        self.create_data()
+        self.generate_data()
 
         self.output = fully_connected_naive(self.matrix.input,
                                             self.matrix.weights, self.bias)
@@ -75,7 +75,7 @@ class TestFcBf16MklDNNOp(OpTest):
 
 
 class TestFCMKLDNNOp1(TestFcBf16MklDNNOp):
-    def create_data(self):
+    def generate_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
         self.bias = np.random.random(48).astype(np.float32)
 

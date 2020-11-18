@@ -29,7 +29,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         self.mkldnn_data_type = "bfloat16"
         self.axis = -1
 
-        self.create_data()
+        self.generate_data()
         self.inputs = {
             'X': convert_float_to_uint16(self.x),
             'Y': convert_float_to_uint16(self.y)
@@ -37,7 +37,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
-    def create_data(self):
+    def generate_data(self):
         self.x = np.random.random(100, ).astype(np.float32)
         self.y = np.random.random(100, ).astype(np.float32)
         self.out = np.add(self.x, self.y)
