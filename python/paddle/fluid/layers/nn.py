@@ -1111,12 +1111,12 @@ def chunk_eval(input,
     type correctly.
 
     Args:
-        input (Variable): A Tensor or LoDTensor, representing the predicted labels
+        input (Tensor): A Tensor or LoDTensor, representing the predicted labels
             from the network. When it is a Tensor, its shape would be `[N, M, 1]`,
             where `N` stands for batch size, `M` for sequence length; When it is
             a LoDTensor, its shape would be `[N, 1]` where `N` stands for the total
             sequence lengths in this mini-batch. The data type should be int64.
-        label (Variable): A Tensor or LoDTensor representing the ground-truth labels.
+        label (Tensor): A Tensor or LoDTensor representing the ground-truth labels.
             It should have the same shape, lod and data type as ``input`` .
         chunk_scheme (str): Indicate the tagging schemes used here. The value must
             be IOB, IOE, IOBES or plain.
@@ -1124,7 +1124,7 @@ def chunk_eval(input,
         excluded_chunk_types (list, optional): Indicate the chunk types shouldn't
             be taken into account. It should be a list of chunk type ids(integer).
             Default None.
-        seq_length(Variable, optional): A 1D Tensor containing the length of each
+        seq_length(Tensor, optional): A 1D Tensor containing the length of each
             sequence when ``input`` and ``label`` are Tensor. It needn't be
             provided if ``input`` and ``label`` are LoDTensor. Default None.
 
@@ -1275,7 +1275,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Args:
-        input (Variable): The input variable. A multi-dimension ``Tensor`` with type float32 or float64.
+        input (Tensor): The input tensor. A multi-dimension ``Tensor`` with type float32 or float64.
         use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn \
             library is installed. To improve numerical stability, set use_cudnn to \
             False by default.
@@ -1283,10 +1283,10 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             will be named automatically. Default: None.
         axis (int, optional): The index of dimension to perform softmax calculations, it should
             be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
-            input variable. Default: -1. -1 means the last dimension.
+            input tensor. Default: -1. -1 means the last dimension.
 
     Returns:
-        Variable: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input`` .
+        Tensor: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input`` .
 
     Examples:
 
@@ -1392,7 +1392,7 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
+        input (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1445,9 +1445,9 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv2d, whose data type is the
-        same with input. If act is None, the tensor variable storing the convolution
-        result, and if act is not None, the tensor variable storing convolution
+        A tensor epresenting the conv2d, whose data type is the
+        same with input. If act is None, the tensor storing the convolution
+        result, and if act is not None, the tensor storing convolution
         and non-linearity activation result.
 
     Raises:
@@ -1665,7 +1665,7 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data
+        input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1718,9 +1718,9 @@ def conv3d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d, whose data type is
-        the same with input. If act is None, the tensor variable storing the
-        convolution result, and if act is not None, the tensor variable storing
+        A tensor representing the conv3d, whose data type is
+        the same with input. If act is None, the tensor storing the
+        convolution result, and if act is not None, the tensor storing
         convolution and non-linearity activation result.
 
     Raises:
@@ -12179,11 +12179,10 @@ def logical_and(x, y, out=None, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([True])
             y = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_and(x, y)
-            print(res.numpy()) # [True False True False]
+            print(res) # [True False True False]
     """
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
@@ -12217,13 +12216,12 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x_data = np.array([True, False], dtype=np.bool).reshape(2, 1)
             y_data = np.array([True, False, True, False], dtype=np.bool).reshape(2, 2)
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_or(x, y)
-            print(res.numpy()) # [[ True  True] [ True False]]
+            print(res) # [[ True  True] [ True False]]
     """
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
@@ -12257,13 +12255,12 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x_data = np.array([True, False], dtype=np.bool).reshape([2, 1])
             y_data = np.array([True, False, True, False], dtype=np.bool).reshape([2, 2])
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_xor(x, y)
-            print(res.numpy()) # [[False,  True], [ True, False]]
+            print(res) # [[False,  True], [ True, False]]
     """
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
@@ -12295,10 +12292,9 @@ def logical_not(x, out=None, name=None):
         .. code-block:: python
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_not(x)
-            print(res.numpy()) # [False  True False  True]
+            print(res) # [False  True False  True]
     """
 
     return _logical_op(
@@ -12379,7 +12375,6 @@ def clip_by_norm(x, max_norm, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             input = paddle.to_tensor(data=np.array([[0.1, 0.2], [0.3, 0.4]]), dtype="float32")
             reward = paddle.nn.clip_by_norm(x=input, max_norm=1.0)
     """

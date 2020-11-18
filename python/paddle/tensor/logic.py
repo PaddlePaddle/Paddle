@@ -54,9 +54,6 @@ __all__ = [
 
 def equal_all(x, y, name=None):
     """
-	:alias_main: paddle.equal_all
-	:alias: paddle.equal_all,paddle.tensor.equal_all,paddle.tensor.logic.equal_all
-
     This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
     **NOTICE**: The output of this OP has no gradient.
@@ -75,14 +72,13 @@ def equal_all(x, y, name=None):
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([1, 2, 3])
           y = paddle.to_tensor([1, 2, 3])
           z = paddle.to_tensor([1, 4, 3])
           result1 = paddle.equal_all(x, y)
-          print(result1.numpy()) # result1 = [True ]
+          print(result1) # result1 = [True ]
           result2 = paddle.equal_all(x, z)
-          print(result2.numpy()) # result2 = [False ]
+          print(result2) # result2 = [False ]
     """
 
     helper = LayerHelper("equal_all", **locals())
@@ -121,8 +117,6 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         .. code-block:: python
 
           import paddle
-
-          paddle.disable_static()
 
           x = paddle.to_tensor([10000., 1e-07])
           y = paddle.to_tensor([10000.1, 1e-08])
@@ -189,8 +183,6 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 @templatedoc()
 def equal(x, y, name=None):
     """
-	:alias_main: paddle.equal
-	:alias: paddle.equal,paddle.tensor.equal,paddle.tensor.logic.equal
 
     This layer returns the truth value of :math:`x == y` elementwise.
     **NOTICE**: The output of this OP has no gradient.
@@ -210,11 +202,10 @@ def equal(x, y, name=None):
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([1, 2, 3])
           y = paddle.to_tensor([1, 3, 2])
           result1 = paddle.equal(x, y)
-          print(result1.numpy())  # result1 = [True False False]
+          print(result1)  # result1 = [True False False]
     """
     if in_dygraph_mode():
         return core.ops.equal(x, y)
@@ -236,9 +227,6 @@ def equal(x, y, name=None):
 @templatedoc()
 def greater_equal(x, y, name=None):
     """
-    :alias_main: paddle.greater_equal
-	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
-
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
     **NOTICE**: The output of this OP has no gradient.
 
@@ -254,11 +242,10 @@ def greater_equal(x, y, name=None):
         .. code-block:: python
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_equal(x, y)
-            print(result1.numpy())  # result1 = [True False True]
+            print(result1)  # result1 = [True False True]
     """
     if in_dygraph_mode():
         return core.ops.greater_equal(x, y)
@@ -282,9 +269,6 @@ def greater_equal(x, y, name=None):
 @templatedoc()
 def greater_than(x, y, name=None):
     """
-    :alias_main: paddle.greater_than
-	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
-
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
     **NOTICE**: The output of this OP has no gradient.
 
@@ -300,11 +284,10 @@ def greater_than(x, y, name=None):
         .. code-block:: python
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_than(x, y)
-            print(result1.numpy())  # result1 = [False False True]
+            print(result1)  # result1 = [False False True]
     """
     if in_dygraph_mode():
         return core.ops.greater_than(x, y)
@@ -328,9 +311,6 @@ def greater_than(x, y, name=None):
 @templatedoc()
 def less_equal(x, y, name=None):
     """
-    :alias_main: paddle.less_equal
-	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
-
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
     **NOTICE**: The output of this OP has no gradient.
 
@@ -347,11 +327,10 @@ def less_equal(x, y, name=None):
         .. code-block:: python
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_equal(x, y)
-            print(result1.numpy())  # result1 = [True True False]
+            print(result1)  # result1 = [True True False]
     """
     if in_dygraph_mode():
         return core.ops.less_equal(x, y)
@@ -373,9 +352,6 @@ def less_equal(x, y, name=None):
 @templatedoc()
 def less_than(x, y, name=None):
     """
-    :alias_main: paddle.less_than
-	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
-
     This OP returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
     **NOTICE**: The output of this OP has no gradient.
 
@@ -392,11 +368,10 @@ def less_than(x, y, name=None):
         .. code-block:: python
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_than(x, y)
-            print(result1.numpy())  # result1 = [False True False]
+            print(result1)  # result1 = [False True False]
     """
     if in_dygraph_mode():
         return core.ops.less_than(x, y)
@@ -418,9 +393,6 @@ def less_than(x, y, name=None):
 @templatedoc()
 def not_equal(x, y, name=None):
     """
-    :alias_main: paddle.not_equal
-	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
-
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
     **NOTICE**: The output of this OP has no gradient.
 
@@ -438,11 +410,10 @@ def not_equal(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.not_equal(x, y)
-            print(result1.numpy())  # result1 = [False True True]
+            print(result1)  # result1 = [False True True]
     """
     if in_dygraph_mode():
         return core.ops.not_equal(x, y)
