@@ -34,8 +34,6 @@ np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestRNNOp(OpTest):
     def get_weight_names(self):
         weight_names = []
