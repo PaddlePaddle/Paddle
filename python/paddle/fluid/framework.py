@@ -2764,6 +2764,78 @@ class Block(object):
                 kwargs['initializer'](var, self)
         return var
 
+    def append_op_from_desc_static(self, op_desc):
+        op_type = op_desc.type()
+        op_append = self.desc.append_op()
+        op_append.copy_from(op_desc)
+        op = Operator(
+            block=self,
+            desc=op_append,
+            type=op_type,
+            inputs=None,
+            outputs=None,
+            attrs=None)
+        self.ops.append(op)
+        return op
+
+    def append_op_from_block_desc_static(self, src_block_desc):
+        ops = []
+        for i in range(src_block_desc.op_size()):
+            ops.append(self.append_op_from_desc_static(src_block_desc.op(i)))
+        return ops
+
+    def append_var_from_block_desc_static(self,
+                                          src_block_desc,
+                                          include=None,
+                                          exclude=None):
+        '''
+        shape=None,
+                 dtype=None,
+                 lod_level=None,
+                 capacity=None,
+                 persistable=None,
+                 error_clip=None,
+                 stop_gradient=False,
+                 is_data=False,
+                 need_check_feed=False,
+                 belong_to_optimizer=False,
+        '''
+        for var_desc in src_block_desc.all_vars():
+            var_desc_name = var_desc.name()
+            if not self.has_var(var_desc_name) and (
+                    include is None or var_desc_name in include) and (
+                        exclude is None or var_desc_name not in exclude):
+
+                var_type = var_desc.type()
+                # set list of type according to "paddle/fluid/framework/var_desc.cc:213"
+                if var_type in [
+                        core.VarDesc.VarType.SELECTED_ROWS,
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                ]:
+                    data_type = var_desc.dtype()
+                    var_shape = var_desc.shape()
+                else:
+                    data_type = None
+                    var_shape = None
+                # set list of type according to "paddle/fluid/framework/var_desc.cc:175"
+                if var_type in [
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                ]:
+                    lod_level = var_desc.lod_level()
+                else:
+                    lod_level = None
+
+                self.create_var(
+                    name=var_desc.name(),
+                    dtype=data_type,
+                    type=var_type,
+                    shape=var_shape,
+                    lod_level=lod_level,
+                    persistable=var_desc.persistable(),
+                    set_need_check_feed=var_desc.need_check_feed())
+
     def has_var(self, name):
         return name in self.vars
 
@@ -4640,6 +4712,7 @@ class Program(object):
                 # variable here.
                 target_op = None
                 global_block = self.global_block()
+
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
                         # NOTE(zhiqiu): Find op that generate target name.
