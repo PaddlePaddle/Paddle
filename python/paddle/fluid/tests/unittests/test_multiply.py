@@ -47,9 +47,8 @@ class TestMultiplyApi(unittest.TestCase):
             paddle.enable_static()
 
             res = tensor.multiply(x_data, y_data)
-            place = paddle.CUDAPlace(
-                0) if paddle.fluid.core.is_compiled_with_cuda(
-                ) else paddle.CPUPlace()
+            place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
+            ) else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             outs = exe.run(paddle.static.default_main_program(),
                            feed={'x': x_data,
