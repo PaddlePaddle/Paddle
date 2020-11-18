@@ -457,6 +457,7 @@ def multiply(x, y, name=None):
     """
     op_type = 'elementwise_mul'
     act = None
+    axis = -1
 
     if x.dtype != y.dtype:
         raise TypeError(
@@ -469,7 +470,7 @@ def multiply(x, y, name=None):
         if not isinstance(y, (paddle.Tensor)):
             y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
-            x, y, axis=-1, act=act, op_name=op_type)
+            x, y, axis=axis, act=act, op_name=op_type)
 
     if not isinstance(x, (paddle.Tensor, Variable)):
         x = paddle.static.data(
