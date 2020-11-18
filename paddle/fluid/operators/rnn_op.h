@@ -1466,7 +1466,6 @@ template <typename T, typename GradCellType>
 struct BidirGradLayer : GradLayer<T, GradCellType> {
   explicit BidirGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  // explicit BidirGradLayer(GradCellType& cell) : cell_(cell) {}
   virtual ~BidirGradLayer() {}
   void operator()(
       const framework::ExecutionContext& context, const Tensor* input,
@@ -1891,6 +1890,10 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   const int& hidden_size = context.Attr<int>("hidden_size");
   const int& direction_num = is_bidirec ? 2 : 1;
   // allocate the memory and initization the input_grad
+  Tensor input_grad_value;
+  if (!input_grad) {
+    input_grad = &input_grad_value;
+  }
   input_grad->mutable_data<T>(input->dims(), context.GetPlace());
 
   if (init_h_grad) {
