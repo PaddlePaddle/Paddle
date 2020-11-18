@@ -261,7 +261,10 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     auto rank = std::max(x_dims.size(), y_dims.size());
     framework::DDim x_new_dims = GetNewDims(x_dims, rank);
     framework::DDim y_new_dims = GetNewDims(y_dims, rank);
-    bool use_eigen = UseEigenBroadcast(x_new_dims, y_new_dims);
+    bool use_eigen = false;
+    if (axis == -1) {
+      use_eigen = UseEigenBroadcast(x_new_dims, y_new_dims);
+    }
     if (use_eigen) {
       VLOG(3) << "====ues eigen grad function====";
       ElementwiseSubGradEigenFunction<DeviceContext, T>(ctx);
