@@ -175,9 +175,15 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices(false);
-    scope_.reset(new paddle::framework::Scope(), [&](framework::Scope *scope) {
+    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
       delete scope;
-      memory::Release(place_);
+#ifdef PADDLE_WITH_CUDA
+      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
+           ++dev_id) {
+        memory::Release(platform::CUDAPlace(dev_id));
+      }
+#endif
+      memory::Release(platform::CPUPlace());
     });
     status_is_cloned_ = false;
   }

@@ -107,7 +107,6 @@ def broadcast(tensor, src, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -165,7 +164,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
             from paddle.distributed import ReduceOp
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -240,7 +238,6 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -323,7 +320,6 @@ def all_gather(tensor_list, tensor, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             tensor_list = []
@@ -397,7 +393,6 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             if paddle.distributed.ParallelEnv().local_rank == 0:
@@ -463,7 +458,6 @@ def barrier(group=0):
             import paddle
             from paddle.distributed import init_parallel_env
 
-            paddle.disable_static()
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
             init_parallel_env()
             paddle.distributed.barrier()

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/quant_conv2d_dequant_fuse_pass.h"
+
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/quant_conv2d_dequant_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -326,11 +327,12 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(quant_conv2d_dequant_fuse_pass,
               paddle::framework::ir::QuantDequantFusePass);
+REGISTER_PASS_CAPABILITY(quant_conv2d_dequant_fuse_pass);
 
 REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("fc", 0)
             .LE("conv2d_transpose", 1)
             .EQ("fake_quantize_abs_max", 0)

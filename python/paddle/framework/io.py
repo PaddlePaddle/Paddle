@@ -225,12 +225,9 @@ def save(obj, path):
 
             import paddle
 
-            paddle.disable_static()
-
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
             paddle.save(layer_state_dict, "emb.pdparams")
-
             scheduler = paddle.optimizer.lr.NoamDecay(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
@@ -318,13 +315,10 @@ def load(path, **configs):
         .. code-block:: python
 
             import paddle
-            
-            paddle.disable_static()
 
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
             paddle.save(layer_state_dict, "emb.pdparams")
-
             scheduler = paddle.optimizer.lr.NoamDecay(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(

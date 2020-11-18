@@ -50,9 +50,9 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         """Setup."""
         #self.dtype = np.float32
         self.dtype = np.float64
-        self.N = 32
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
@@ -196,9 +196,9 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
     def setUp(self):
         """Setup."""
         self.dtype = np.float16
-        self.N = 32
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
