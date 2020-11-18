@@ -2,6 +2,8 @@
 
 set +ex
 
+[ -z "$PADDLE_ROOT" ] && PADDLE_ROOT=$(cd $(dirname ${BASH_SOURCE[0]})/.. && pwd)
+
 # Paddle repo file name -> op name
 declare -A PADDLE_FILENAME_OP_MAP
 PADDLE_FILENAME_OP_MAP=(
@@ -133,16 +135,29 @@ function run_op_benchmark_test {
                                 tests_v2/configs \
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
-                                "dummy" \
-                                "dummy" \
-                                $api_info_file
+                                "gpu" \
+                                "both" \
+                                $api_info_file \
+                                "paddle"
     popd > /dev/null
   done
 }
 
 # diff benchmakr result and miss op
 function summary_problems {
-  LOG "[DEBUG] Skip."
+  local op_name
+  LOG "[DEBUG] Check benchmark result."
+  python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
+      --develop_logs_dir $(pwd)/logs-develop \
+      --pr_logs_dir $(pwd)/logs-test_pr
+  LOG "[DEBUG] Check missing benchmark scripts or mapping."
+  for op_name in ${!CHANGE_OP_MAP[@]}
+  do
+    if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
+    then
+      LOG "[WARNING] Missing ${op_name}'s test script in benchmark."
+    fi
+  done
 }
 
 function main {
