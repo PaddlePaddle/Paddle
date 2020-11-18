@@ -444,7 +444,6 @@ def multiply(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([[1, 2], [3, 4]])
             y = paddle.to_tensor([[5, 6], [7, 8]])
             res = paddle.multiply(x, y)
