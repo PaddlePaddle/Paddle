@@ -1273,6 +1273,26 @@ struct FirstBfloat16Ops : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
+struct DuplicatedInputs : public PatternBase {
+  DuplicatedInputs(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_inputs_op") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(op);
+};
+
+struct UnnecessaryReorders : public PatternBase {
+  UnnecessaryReorders(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "unnecessary_reorders") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+};
+
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
 struct MKLDNNInPlace : public PatternBase {

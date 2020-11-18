@@ -2108,6 +2108,10 @@ PDNode *patterns::Bfloat16Placement::operator()(
     supported_op_types = bfloat16_enabled_op_types;
   }
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+           node->Op()->Type() == "reshape2";
+  });
   return op;
 }
 
@@ -2174,6 +2178,36 @@ PDNode *patterns::FirstBfloat16Ops::operator()() {
   prev_op->LinksTo({op_in});
   op->LinksFrom({op_in});
   return op;
+}
+
+PDNode *patterns::DuplicatedInputs::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_ops({"concat", "sum"});
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  return op;
+}
+
+PDNode *patterns::UnnecessaryReorders::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+
+  auto *quant_in = pattern->NewNode(quant_in_repr())
+                       ->assert_is_op_input("quantize", "Input");
+
+  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->assert_is_op_output("quantize", "Output");
+
+  prev_op->LinksTo({quant_in});
+  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
+
+  return quant_out;
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
