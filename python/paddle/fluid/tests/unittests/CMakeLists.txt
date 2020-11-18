@@ -621,11 +621,14 @@ endif()
 if (WITH_DISTRIBUTE)
     set_tests_properties(test_communicator_half_async PROPERTIES TIMEOUT 120)
 endif()
+
 if (WITH_DISTRIBUTE AND NOT APPLE)
+    if(WITH_GPU)
+        set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_launch PROPERTIES TIMEOUT 120)
+    endif()
     set_tests_properties(test_fleet_launch PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_launch PROPERTIES TIMEOUT 120)
 endif()
 
 # setting timeout value as 15S
