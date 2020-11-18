@@ -27,9 +27,10 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.nn import Conv2D
+from paddle.nn import Linear, Conv2D, Softmax
+#from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.dygraph.nn import Pool2D
-from paddle.fluid.dygraph.nn import Linear
+#from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -105,45 +106,46 @@ class ImperativeLenet(fluid.dygraph.Layer):
         fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
+        self.conv = Conv2D(in_channels=1, out_channels=6, kernel_size=1)
         self.features = Sequential(
             Conv2D(
-                num_channels=1,
-                num_filters=6,
-                filter_size=3,
+                in_channels=1,
+                out_channels=6,
+                kernel_size=3,
                 stride=1,
                 padding=1,
-                param_attr=conv2d_w1_attr,
+                weight_attr=conv2d_w1_attr,
                 bias_attr=conv2d_b1_attr),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2),
             Conv2D(
-                num_channels=6,
-                num_filters=16,
-                filter_size=5,
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
                 stride=1,
                 padding=0,
-                param_attr=conv2d_w2_attr,
+                weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2))
 
         self.fc = Sequential(
             Linear(
-                input_dim=400,
-                output_dim=120,
-                param_attr=fc_w1_attr,
+                in_features=400,
+                out_features=120,
+                weight_attr=fc_w1_attr,
                 bias_attr=fc_b1_attr),
             Linear(
-                input_dim=120,
-                output_dim=84,
-                param_attr=fc_w2_attr,
+                in_features=120,
+                out_features=84,
+                weight_attr=fc_w2_attr,
                 bias_attr=fc_b2_attr),
             Linear(
-                input_dim=84,
-                output_dim=num_classes,
-                act=classifier_activation,
-                param_attr=fc_w3_attr,
-                bias_attr=fc_b3_attr))
+                in_features=84,
+                out_features=num_classes,
+                weight_attr=fc_w3_attr,
+                bias_attr=fc_b3_attr),
+            Softmax())
 
     def forward(self, inputs):
         x = self.features(inputs)
