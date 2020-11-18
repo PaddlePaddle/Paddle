@@ -28,7 +28,6 @@ function make_ubuntu_dockerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \\
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \\
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
-    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget --no-proxy https://nccl2-deb.cdn.bcebos.com/nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
     RUN dpkg -i nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb \\
@@ -44,8 +43,6 @@ function make_centos_dockerfile(){
   sed -i "${dockerfile_line}i RUN ln -s /usr/lib64/libz.so /usr/local/lib/libz.so \\
     RUN ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/ \\
     RUN rm -rf /usr/include/NvInfer*" ${dockerfile_name}
-  sed -i $"${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \\
-    RUN tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
   sed -i "s#RUN bash build_scripts/install_nccl2.sh##g" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm \\
     RUN wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm \\
