@@ -472,8 +472,8 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
   // using tensor cores in volta GPUs.
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
   CUBlas<platform::complex64>::GEMM_EX(
-      &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B, CUDA_R_16F, ldb, A,
-      CUDA_R_16F, lda, &c_beta, C, CUDA_R_16F, N, CUDA_R_32F);
+      &cuda_ctx, cuTransB, cuTransA, N, M, K, &c_alpha, B, CUDA_C_32F, ldb, A,
+      CUDA_C_32F, lda, &c_beta, C, CUDA_C_32F, N, CUDA_C_32F);
 #else
   // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
 
