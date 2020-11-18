@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+
 #include <algorithm>
 #include <map>
 #include <set>
@@ -20,7 +22,6 @@
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
@@ -309,6 +310,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
+
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
@@ -367,13 +369,13 @@ REGISTER_PASS(tensorrt_subgraph_pass,
 REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("pool2d", 0)
             .EQ("relu", 0)
             .EQ("softmax", 0)
             .EQ("sigmoid", 0)
             .EQ("hard_swish", 0)
-            .EQ("depthwise_conv2d", 0)
+            .LE("depthwise_conv2d", 1)
             .EQ("batch_norm", 0)
             .EQ("concat", 0)
             .EQ("tanh", 0)

@@ -62,14 +62,14 @@ __global__ void DequantizeOneScaleQuantAxis1(const T* in, const T* scale,
                                              T max_range, const int num,
                                              const int cin, const int cout,
                                              T* out) {
-  int cout_wh_size = num / cin;
-  int wh_size = cout_wh_size / cout;
+  int bid = blockIdx.x;
+  T s = scale[bid % cout];
 
-  T s = scale[blockIdx.x];
-  const T* in_current = in + threadIdx.x * cout_wh_size + blockIdx.x * wh_size;
-  T* out_current = out + threadIdx.x * cout_wh_size + blockIdx.x * wh_size;
+  int wh_size = num / (cin * cout);
+  const T* in_current = in + bid * wh_size;
+  T* out_current = out + bid * wh_size;
 
-  for (int i = 0; i < wh_size; i++) {
+  for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
     out_current[i] = in_current[i] * s / max_range;
   }
 }
@@ -107,8 +107,8 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
             in_data, scale_factor, max_range, num, in_dims[0], out_data);
       } else if (quant_axis == 1) {
         // Dequantize weight of Cin * Cout * W * H
-        int grid = in_dims[1];
-        int block = in_dims[0];
+        int grid = in_dims[0] * in_dims[1];
+        int block = 1024;
         DequantizeOneScaleQuantAxis1<T><<<grid, block, 0, dev_ctx.stream()>>>(
             in_data, scale_factor, max_range, num, in_dims[0], in_dims[1],
             out_data);

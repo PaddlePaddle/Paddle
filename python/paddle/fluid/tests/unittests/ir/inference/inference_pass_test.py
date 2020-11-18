@@ -43,6 +43,7 @@ class InferencePassTest(unittest.TestCase):
         self.fetch_list = None
 
         self.enable_mkldnn = False
+        self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
         self.trt_parameters = None
         self.enable_lite = False
@@ -125,6 +126,8 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_calib_mode)
         elif use_mkldnn:
             config.enable_mkldnn()
+            if self.enable_mkldnn_bfloat16:
+                config.enable_mkldnn_bfloat16()
 
         return config
 
@@ -251,6 +254,8 @@ class InferencePassTest(unittest.TestCase):
                 len(outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ")
 
+            if self.enable_mkldnn_bfloat16:
+                atol = 0.01
             for out, mkldnn_output in zip(outs, mkldnn_outputs):
                 self.assertTrue(
                     np.allclose(
