@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/tf32_utils.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -178,7 +179,10 @@ class CUDAContext {
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    if (cublas_tensor_core_handle_) {
+    if (cublas_tf32_tensor_core_handle_ &&
+        paddle::platform::get_tf32_switch()) {
+      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
+    } else if (cublas_tensor_core_handle_) {
       cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
     } else {
       cublas_handle_->Call(std::forward<Callback>(callback));
@@ -195,7 +199,11 @@ class CUDAContext {
 #if CUDA_VERSION >= 9000
       cublas_tensor_core_handle_.reset(
           new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
-#endif
+#if CUDA_VERSION >= 11000
+      cublas_tf32_tensor_core_handle_.reset(
+          new CublasHandleHolder(RawStream(), CUBLAS_TF32_TENSOR_OP_MATH));
+#endif  // CUDA_VERSION >= 11000
+#endif  // CUDA_VERSION >= 9000
     }
   }
 
@@ -238,6 +246,7 @@ class CUDAContext {
   void DestoryCuBlasContext() {
     cublas_handle_.reset();
     cublas_tensor_core_handle_.reset();
+    cublas_tf32_tensor_core_handle_.reset();
   }
 
   void DestoryCuSolverContext() {
@@ -254,6 +263,7 @@ class CUDAContext {
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
   cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
