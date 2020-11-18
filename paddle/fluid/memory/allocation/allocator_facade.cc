@@ -37,8 +37,8 @@
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
@@ -278,10 +278,11 @@ AllocatorFacade::~AllocatorFacade() {}
 void InitP2P() {
 #ifdef PADDLE_WITH_CUDA
   std::call_once(p2p_init_flag, [&]() {
+    std::vector<int> devices;
     try {
       // use user specified GPUs in single-node multi-process mode.
       devices = platform::GetSelectedDevices();
-    } catch (const std::exception &exp) {
+    } catch (const std::exception& exp) {
       LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
     }
 
