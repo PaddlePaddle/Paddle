@@ -35,7 +35,7 @@ function LOG {
 # Load ops that will run benchmark test
 function load_CHANGE_OP_MAP {
   local op_name change_file change_file_name
-  for change_file in $(git diff --name-only)
+  for change_file in $(git diff --name-only origin/develop)
   do
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
