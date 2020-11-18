@@ -1082,7 +1082,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]
