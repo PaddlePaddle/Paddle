@@ -1320,6 +1320,13 @@ class OpTest(unittest.TestCase):
         cache_list = None
         if hasattr(self, "cache_name_list"):
             cache_list = self.cache_name_list
+
+        # oneDNN numeric gradient should use CPU kernel
+        use_onednn = False
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+            op_attrs["use_mkldnn"] = False
+            use_onednn = True
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -1327,6 +1334,9 @@ class OpTest(unittest.TestCase):
             op_outputs,
             op_attrs,
             cache_list=cache_list)
+
+        if use_onednn:
+            op_attrs["use_mkldnn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

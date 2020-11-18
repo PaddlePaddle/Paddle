@@ -289,6 +289,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb16a;
         }
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::Abcde16a;
+        }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {

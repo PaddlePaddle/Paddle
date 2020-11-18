@@ -43,12 +43,14 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool is_test = context.Attr<bool>("is_test");
     bool adaptive = context.Attr<bool>("adaptive");
-    PADDLE_ENFORCE_EQ(!adaptive, true,
-                      platform::errors::InvalidArgument(
-                          "XPU does not support adaptive == true!"));
-    PADDLE_ENFORCE_EQ(ksize.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "XPU only support 2 dimension pooling!"));
+    PADDLE_ENFORCE_EQ(
+        !adaptive, true,
+        platform::errors::InvalidArgument(
+            "The Pool2d XPU OP does not support adaptive == true!"));
+    PADDLE_ENFORCE_EQ(
+        ksize.size(), 2,
+        platform::errors::InvalidArgument(
+            "The Pool2d XPU OP only support 2 dimension pooling!"));
     int* index_data = nullptr;
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
@@ -80,7 +82,10 @@ class PoolXPUKernel : public framework::OpKernel<T> {
         stride_w, out_h, out_w);
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
-        platform::errors::InvalidArgument("pool2d XPU kernel error!"));
+        platform::errors::External(
+            "The pool2d XPU API return wrong value[%d], please check "
+            "where Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 template <typename DeviceContext, typename T>
@@ -99,12 +104,15 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
     const int* index_data = nullptr;
-    PADDLE_ENFORCE_EQ(!adaptive, true,
-                      platform::errors::InvalidArgument(
-                          "XPU does not support adaptive == true!"));
-    PADDLE_ENFORCE_EQ(ksize.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "XPU only support 2 dimension pooling!"));
+    PADDLE_ENFORCE_EQ(
+        !adaptive, true,
+        platform::errors::InvalidArgument(
+            "The Pool2d XPU OP does not support adaptive == true!"));
+    PADDLE_ENFORCE_EQ(ksize.size(), 2, platform::errors::InvalidArgument(
+                                           "The Pool2d XPU OP only support 2 "
+                                           "dimension pooling!, but received "
+                                           "%d-dimension pool kernel size",
+                                           ksize.size()));
     if (context.Attr<bool>("global_pooling")) {
       for (size_t i = 0; i < ksize.size(); ++i) {
         paddings[i] = 0;
@@ -139,16 +147,22 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     int r =
         xpu::memset(dev_ctx.x_context(), reinterpret_cast<void**>(input_grad),
                     zero, in_x_grad->numel() * sizeof(float));
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument(
-                          "There are pool2d grad XPU kernel error raised!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "The Pool2d XPU OP return wrong value[%d], please check "
+            "where Baidu Kunlun Card is properly installed.",
+            r));
     r = xpu::pooling_backward(dev_ctx.x_context(), input, output, index_data,
                               output_grad, input_grad, pool_type, c, in_h, in_w,
                               pad_left, pad_right, pad_up, pad_down, win_h,
                               win_w, stride_h, stride_w, out_h, out_w);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                      platform::errors::InvalidArgument(
-                          "There are pool2d grad XPU kernel error raised!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "The Pool2d XPU OP return wrong value[%d], please check "
+            "where Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 

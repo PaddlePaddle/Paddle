@@ -64,10 +64,16 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
             }
           }
         }
-        PADDLE_ENFORCE(
+        PADDLE_ENFORCE_EQ(
             xpu_malloc(reinterpret_cast<void**>(&mask_data_table),
-                       max_data_size * sizeof(float)) == xpu::Error_t::SUCCESS,
-            "XPU no enough memory");
+                       max_data_size * sizeof(float)),
+            XPU_SUCCESS,
+            platform::errors::ResourceExhausted(
+                "\n\nOut of memory error on XPU, Cannot"
+                "allocate %s memory on XPU. \n\nPlease "
+                "check whether there is any other process "
+                "using XPU.\n",
+                string::HumanReadableSize(max_data_size * sizeof(void*))));
         memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
                      mask_data_table, platform::CPUPlace(), mask_data_host,
                      max_data_size * sizeof(float));
@@ -84,8 +90,12 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       auto& dev_ctx = context.template device_context<DeviceContext>();
       int r = xpu::dropout(dev_ctx.x_context(), mask_data_table, x_data,
                            mask_data, y_data, max_data_size, size);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::InvalidArgument("XPU kernel error!"));
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "XPU dropout return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     } else {  // Infer
       float scale = 0.0f;
       if (dropout_implementation == "upscale_in_train") {
@@ -96,8 +106,12 @@ class DropoutXPUKernel : public framework::OpKernel<T> {
       auto& dev_ctx = context.template device_context<DeviceContext>();
       int r = xpu::scale(dev_ctx.x_context(), x->numel(), scale, 0.0f, 0,
                          x_data, y_data);
-      PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                        platform::errors::InvalidArgument("XPU kernel error!"));
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External(
+              "XPU dropout return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     }
   }
 };
@@ -105,8 +119,9 @@ template <typename DeviceContext, typename T>
 class DropoutGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
-                   "GradOp is only callable when is_test is false");
+    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"), true,
+                      platform::errors::InvalidArgument(
+                          "GradOp is only callable when is_test is false"));
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
@@ -115,8 +130,12 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
     int r = xpu::elementwise_mul(dev_ctx.x_context(), grad_y->data<T>(),
                                  mask->data<T>(), grad_x->data<T>(),
                                  grad_y->numel());
-    PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                      platform::errors::InvalidArgument("XPU kernel error!"));
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU dropout return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 }  // namespace operators
