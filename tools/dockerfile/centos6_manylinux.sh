@@ -40,7 +40,7 @@ function make_cuda102cudnn7() {
 
 function make_cuda11cudnn8() {
   sed 's/<baseimg>/11.0-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#COPY build_scripts /build_scripts#COPY build_scripts /build_scripts \nRUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/build.sh \nRUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
 }
 
 function main() {
