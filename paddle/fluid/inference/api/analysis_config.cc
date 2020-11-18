@@ -170,7 +170,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 #undef CP_MEMBER
 
-  Update();
+  // Update();
+  // Update() will reset all the passes, when some tensorRT pass is deleted in
+  // other.pass_builder(), it will set again, so just copy the passes.
+  pass_builder_->ClearPasses();
+  for (const std::string &pass : other.pass_builder()->AllPasses()) {
+    pass_builder_->AppendPass(pass);
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {

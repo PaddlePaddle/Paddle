@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from pass_test import PassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -34,6 +35,10 @@ class SkipLayerNormFusePassTest(PassTest):
         self.pass_names = "skip_layernorm_fuse_pass"
         self.fused_op_type = "skip_layernorm"
         self.num_fused_ops = 1
+        self.graph_attrs = {
+            "embedding_eltwise_layernorm_fuse_pass_flag": True,
+            "multihead_matmul_fuse_pass_flag": True
+        }
 
     def test_check_program(self):
         use_gpu_set = [False]
