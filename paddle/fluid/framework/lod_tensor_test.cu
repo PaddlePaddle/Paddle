@@ -26,7 +26,7 @@ __global__ void test(size_t* a, int size) {
 }
 
 TEST(LoD, data) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   paddle::framework::LoD lod{{0, 1, 2}};
   lod.push_back({0, 2, 4, 5});
