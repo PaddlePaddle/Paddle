@@ -62,7 +62,7 @@ def count_avgpool(m, x, y):
 
 
 def count_adap_avgpool(m, x, y):
-    kernel = np.array([*(x[0].shape[2:])]) // np.array([*(y.shape[2:])])
+    kernel = np.array(x[0].shape[2:]) // np.array(y.shape[2:])
     total_add = np.product(kernel)
     total_div = 1
     kernel_ops = total_add + total_div
