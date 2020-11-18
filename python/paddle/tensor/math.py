@@ -465,20 +465,8 @@ def multiply(x, y, name=None):
             % (x.dtype, y.dtype))
 
     if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor)):
-            x = paddle.to_tensor(x)
-        if not isinstance(y, (paddle.Tensor)):
-            y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
-
-    if not isinstance(x, (paddle.Tensor, Variable)):
-        x = paddle.static.data(
-            name='x', shape=x.shape, dtype=x.dtype)
-    if not isinstance(y, (paddle.Tensor, Variable)):
-        y = paddle.static.data(
-            name='y', shape=y.shape, dtype=y.dtype)
-
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, axis=-1, name=None):
