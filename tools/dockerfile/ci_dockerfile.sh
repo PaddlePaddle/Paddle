@@ -54,7 +54,6 @@ function make_centos_dockerfile(){
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
     RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
-    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \\
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \\
     RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
