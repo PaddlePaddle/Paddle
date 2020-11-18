@@ -1158,6 +1158,9 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     """
     Pad tensor according to 'pad' and 'mode'.
+    If mode is 'constant' and length of pad is twice as length of x dimension,
+    then the padding will be started from the first dimension and moved back onto x
+    according to 'pad' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
@@ -1272,6 +1275,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         x_dim, supported_format_map[x_dim], data_format)
 
     unsqueezed_dim = []
+
+    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+        return layers.pad(x, pad, pad_value=value)
 
     if isinstance(pad, Variable):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
