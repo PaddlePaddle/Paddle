@@ -61,7 +61,8 @@ XPUThreadedSSAGraphExecutor::XPUThreadedSSAGraphExecutor(
                                                                : "MAIN_STREAM");
   int index = 0;
   for (uint32_t i = 0; i < places.size(); i++) {
-    int id = boost::get<platform::XPUPlace>(places[i]).device;
+    //int id = boost::get<platform::XPUPlace>(places[i]).device;
+    int id = BOOST_GET_CONST(platform::XPUPlace, places_[i]).device;
     if (place_to_index_.find(id) == place_to_index_.end()) {
       place_to_index_[id] = index;
       index++;

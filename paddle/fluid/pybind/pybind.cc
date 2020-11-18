@@ -2100,6 +2100,12 @@ All parameter, weight, gradient are variables in Paddle.
                     exec_strategy.num_threads = 4
             )DOC")
       .def_property(
+          "use_xpu",
+          [](const ExecutionStrategy &self) { return self.use_xpu_; },
+          [](ExecutionStrategy &self, bool use_xpu) {
+            self.use_xpu_ = use_xpu;
+          })
+      .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
           [](ExecutionStrategy &self, bool use_cuda) {

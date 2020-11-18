@@ -18,7 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places
+from .framework import cuda_places, cpu_places, xpu_places
 
 from . import core
 
@@ -401,6 +401,7 @@ class CompiledProgram(object):
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
+
         return core.ParallelExecutor(
             places, self._persistable_vars,
             cpt.to_text(self._loss_name)
@@ -463,7 +464,11 @@ class CompiledProgram(object):
                 assert p._type() == place._type(), \
                     "Place type not match. You may set wrong type of places."
         else:
-            place_list = cuda_places() if isinstance(
-                place, core.CUDAPlace) else cpu_places()
+            if isinstance(place, core.CUDAPlace):
+                place_list = cuda_places()
+            elif isinstance(place, core.XPUPlace):
+                place_list = xpu_places()
+            else:
+                place_list = cpu_places()
         assert place_list, "No places for execution."
         return place_list

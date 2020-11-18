@@ -41,7 +41,7 @@ namespace platform {
 inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
     return BKCL_FLOAT;
-  } else {
+  }else {
     PADDLE_THROW("Not supported");
   }
 }

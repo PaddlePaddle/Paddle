@@ -562,9 +562,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
-                 platform::errors::Unavailable(
-                     "XPU is not supported in ParallelExecutor"));
+//  PADDLE_ENFORCE(places.size() > 1 && !is_xpu_place(places[0]),
+//                 platform::errors::Unavailable(
+//                     "XPU is not supported in ParallelExecutor"));
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
   member_->use_cuda_ = exec_strategy.use_cuda_;
@@ -885,6 +885,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           member_->executor_.reset(new details::XPUThreadedSSAGraphExecutor(
               exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
               member_->places_, graph));
+
+          VLOG(1) << "end XPUThreadedSSAGraphExecutor";
       } else {
           VLOG(3) << "use FastThreadedSSAGraphExecutor";
           member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
@@ -941,6 +943,9 @@ void ParallelExecutor::BCastParamsToDevices(
       continue;
     }
     auto &dims = main_tensor.dims();
+
+    VLOG(1) << "bcast var=" << var;
+
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
 #if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
@@ -983,7 +988,8 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
+      BKCLDataType data_type = BKCL_FLOAT;
+      // BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -1008,6 +1014,9 @@ void ParallelExecutor::BCastParamsToDevices(
                 "bkcl_group_start failed");
         for (size_t i = 0; i < member_->places_.size(); ++i) {
             auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
+            if (main_tensor.type() == framework::proto::VarType::INT64){
+                numel *= 2;
+            }
             PADDLE_ENFORCE(bkcl_broadcast(bkcl_ctx.comm(), buffers[i], buffers[i],
                 numel, data_type, 0, NULL) == BKCL_SUCCESS,
                 "bkcl_broadcast failed");

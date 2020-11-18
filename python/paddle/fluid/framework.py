@@ -46,6 +46,7 @@ __all__ = [
     'name_scope',
     'cuda_places',
     'cpu_places',
+    'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
@@ -353,6 +354,17 @@ def _cuda_ids():
         device_ids = six.moves.range(core.get_cuda_device_count())
     return device_ids
 
+def _xpu_ids():
+    gpus_env = os.getenv("FLAGS_selected_xpus")
+    if gpus_env:
+        device_ids = [int(s) for s in gpus_env.split(",")]
+    else:
+        try:
+            device_ids = six.moves.range(core.get_xpu_device_count())
+        except:
+            print('fake xpu device 0, 1')
+            device_ids = [0, 1]
+    return device_ids
 
 def is_compiled_with_xpu():
     """
@@ -428,6 +440,52 @@ def cuda_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
+
+def xpu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    This function creates a list of :code:`paddle.CUDAPlace` objects.
+
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_gpus` would be checked first. For example, if
+    :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
+    be [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
+    If :code:`FLAGS_selected_gpus` is not set, all visible
+    gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
+
+    If :code:`device_ids` is not None, it should be the device
+    ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of GPU device ids.
+
+    Returns:
+        list of paddle.CUDAPlace: Created GPU place list.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+
+            cuda_places = static.cuda_places()
+
+    """
+    assert core.is_compiled_with_xpu(), \
+        "Not compiled with XPU"
+    if device_ids is None:
+        device_ids = _xpu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.XPUPlace(dev_id) for dev_id in device_ids]
+
 
 
 def cpu_places(device_count=None):
