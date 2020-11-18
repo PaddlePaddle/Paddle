@@ -523,6 +523,12 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
       offset += len;
     }
 
+    Tensor input_grad_value;
+    if (!in_grad) {
+      in_grad = &input_grad_value;
+      in_grad->Resize(input->dims());
+    }
+
     auto *init_h_data = pre_state[0]->data<T>();
     // auto *last_h_data = state[0]->data<T>();
     auto *last_h_grad_data = state_grad[0]->data<T>();

@@ -74,6 +74,9 @@ DEVICE T Sigmoid(const T a) {
   return static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-tmp));
 }
 
+/*
+ * Don't limit input in a threshold range.
+ */
 template <typename T>
 DEVICE T SigmoidV2(const T a) {
   return static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-a));
@@ -86,6 +89,9 @@ DEVICE T Tanh(const T a) {
   return (2.0 / (1.0 + exp(tmp))) - 1.0;
 }
 
+/*
+ * Don't limit input in a threshold range.
+ */
 template <typename T>
 DEVICE T TanhV2(const T a) {
   T tmp = -2.0 * a;

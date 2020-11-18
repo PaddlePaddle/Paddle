@@ -135,16 +135,6 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-std::string get_list(T *arr, int num) {
-  std::string msg = "";
-  for (int i = 0; i < num; ++i) {
-    msg += std::to_string(arr[i]);
-    msg += " ";
-  }
-  return msg;
-}
-
-template <typename T>
 struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, T> {
   static void compute(const platform::CPUDeviceContext &context,
                       GRUMetaValue<T> value, GRUMetaGrad<T> grad,
