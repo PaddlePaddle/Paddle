@@ -128,34 +128,34 @@ class TestCallbacks(unittest.TestCase):
         self.verbose = 2
         self.run_callback()
 
-    def test_visualdl_callback(self):
-        # visualdl not support python2
-        if sys.version_info < (3, ):
-            return
+    # def test_visualdl_callback(self):
+    #     # visualdl not support python2
+    #     if sys.version_info < (3, ):
+    #         return
 
-        inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
-        labels = [InputSpec([None, 1], 'int64', 'label')]
+    #     inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
+    #     labels = [InputSpec([None, 1], 'int64', 'label')]
 
-        transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
-        train_dataset = paddle.vision.datasets.MNIST(
-            mode='train', transform=transform)
-        eval_dataset = paddle.vision.datasets.MNIST(
-            mode='test', transform=transform)
+    #     transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+    #     train_dataset = paddle.vision.datasets.MNIST(
+    #         mode='train', transform=transform)
+    #     eval_dataset = paddle.vision.datasets.MNIST(
+    #         mode='test', transform=transform)
 
-        net = paddle.vision.LeNet()
-        model = paddle.Model(net, inputs, labels)
+    #     net = paddle.vision.LeNet()
+    #     model = paddle.Model(net, inputs, labels)
 
-        optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-        model.prepare(
-            optimizer=optim,
-            loss=paddle.nn.CrossEntropyLoss(),
-            metrics=paddle.metric.Accuracy())
+    #     optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
+    #     model.prepare(
+    #         optimizer=optim,
+    #         loss=paddle.nn.CrossEntropyLoss(),
+    #         metrics=paddle.metric.Accuracy())
 
-        callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
-        model.fit(train_dataset,
-                  eval_dataset,
-                  batch_size=64,
-                  callbacks=callback)
+    #     callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
+    #     model.fit(train_dataset,
+    #               eval_dataset,
+    #               batch_size=64,
+    #               callbacks=callback)
 
     def test_earlystopping(self):
         paddle.seed(2020)
@@ -185,7 +185,7 @@ class TestCallbacks(unittest.TestCase):
                 optim,
                 loss=CrossEntropyLoss(reduction="sum"),
                 metrics=[Accuracy()])
-            callbacks = paddle.callbacks.EarlyStopping(
+            callbacks_0 = paddle.callbacks.EarlyStopping(
                 'loss',
                 mode='min',
                 patience=2,
@@ -193,12 +193,43 @@ class TestCallbacks(unittest.TestCase):
                 min_delta=0,
                 baseline=None,
                 save_best_model=True)
+            callbacks_1 = paddle.callbacks.EarlyStopping(
+                'acc',
+                mode='auto',
+                patience=2,
+                verbose=1,
+                min_delta=0,
+                baseline=0,
+                save_best_model=True)
+            callbacks_2 = paddle.callbacks.EarlyStopping(
+                'loss',
+                mode='auto_',
+                patience=2,
+                verbose=1,
+                min_delta=0,
+                baseline=None,
+                save_best_model=True)
+            callbacks_3 = paddle.callbacks.EarlyStopping(
+                'acc_',
+                mode='max',
+                patience=2,
+                verbose=1,
+                min_delta=0,
+                baseline=0,
+                save_best_model=True)
+            model.fit(
+                train_loader,
+                val_loader,
+                save_freq=10,
+                save_dir=self.save_dir,
+                epochs=20,
+                callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3])
+            # Test for no val_loader
             model.fit(train_loader,
-                      val_loader,
                       save_freq=10,
                       save_dir=self.save_dir,
                       epochs=20,
-                      callbacks=[callbacks])
+                      callbacks=[callbacks_0])
 
 
 if __name__ == '__main__':
