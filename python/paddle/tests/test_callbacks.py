@@ -158,6 +158,7 @@ class TestCallbacks(unittest.TestCase):
                   callbacks=callback)
 
     def test_earlystopping(self):
+        paddle.seed(2020)
         for dynamic in [True, False]:
             paddle.enable_static if not dynamic else None
             device = paddle.set_device('cpu')
@@ -171,8 +172,6 @@ class TestCallbacks(unittest.TestCase):
                 train_dataset, places=device, return_list=True, batch_size=64)
             val_loader = paddle.io.DataLoader(
                 val_dataset, places=device, return_list=True, batch_size=64)
-            test_loader = paddle.io.DataLoader(
-                test_dataset, places=device, return_list=True, batch_size=64)
 
             net = LeNet()
             optim = paddle.optimizer.Adam(
@@ -188,10 +187,10 @@ class TestCallbacks(unittest.TestCase):
                 metrics=[Accuracy()])
             callbacks = paddle.callbacks.EarlyStopping(
                 'loss',
-                0,
+                mode='min',
                 patience=2,
                 verbose=1,
-                mode='min',
+                min_delta=0,
                 baseline=None,
                 save_best_model=True)
             model.fit(train_loader,
