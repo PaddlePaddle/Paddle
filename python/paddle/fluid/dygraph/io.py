@@ -721,7 +721,6 @@ class TranslatedLayer(layers.Layer):
             params_filename = configs.params_filename
 
         # 1. load program desc & construct _ProgramHolder
-
         programs = _construct_program_holders(model_path, model_filename)
 
         # 2. load layer parameters & buffers

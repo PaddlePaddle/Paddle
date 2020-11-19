@@ -4640,7 +4640,6 @@ class Program(object):
                 # variable here.
                 target_op = None
                 global_block = self.global_block()
-
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
                         # NOTE(zhiqiu): Find op that generate target name.
