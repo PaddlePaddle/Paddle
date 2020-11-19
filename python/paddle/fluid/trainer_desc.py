@@ -17,7 +17,7 @@ import sys
 import os
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
-    'HeterXpuTrainer', 'GpsWorker'
+    'HeterXpuTrainer', 'GpuWorker'
 ]
 
 
@@ -343,23 +343,23 @@ class HeterXpuTrainer(TrainerDesc):
         self._device_worker._gen_worker_desc(self.proto_desc)
 
 
-class GpsTrainer(TrainerDesc):
+class GpuTrainer(TrainerDesc):
     """
-    Implement of GpsTrainer.
+    Implement of GpuTrainer.
     It's for Distributed training.
     """
 
     def __init__(self):
-        super(GpsTrainer, self).__init__()
+        super(GpuTrainer, self).__init__()
         pass
 
     def _set_program(self, program):
-        super(GpsTrainer, self)._set_program(program)
+        super(GpuTrainer, self)._set_program(program)
         self._program = program
 
     def _gen_trainer_desc(self):
-        super(GpsTrainer, self)._gen_trainer_desc()
-        self.proto_desc.class_name = "GpsTrainer"
+        super(GpuTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "GpuTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

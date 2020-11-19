@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 
 #ifdef PADDLE_WITH_PSLIB
 
@@ -29,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void GpsWorker::Initialize(const TrainerDesc& desc) {
+void GpuWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
@@ -130,17 +131,17 @@ void GpsWorker::Initialize(const TrainerDesc& desc) {
   push_queue_ = paddle::framework::MakeChannel<std::shared_ptr<HeterTask>>();
 }
 
-void GpsWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
+void GpuWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
-void GpsWorker::SetNeedDump(bool need_dump_field) {
+void GpuWorker::SetNeedDump(bool need_dump_field) {
   need_dump_field_ = need_dump_field;
 }
 
-void GpsWorker::DumpParam() {}
+void GpuWorker::DumpParam() {}
 
-void GpsWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
+void GpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
                                       size_t table_idx) {
   if (no_cvm_) {
     return;
@@ -198,7 +199,7 @@ void GpsWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
       << "expect fea info size:" << feature.size() << " real:" << global_index;
 }
 
-void GpsWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
+void GpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
                                      size_t table_idx) {
   uint64_t table_id = static_cast<uint64_t>(
       param_.program_config(0).pull_sparse_table_id(table_idx));
@@ -288,7 +289,7 @@ void GpsWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
   }
 }
 
-void GpsWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
+void GpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
 #ifdef _LINUX
   // check var and tensor not null
   Scope* scope = task->scope_;
@@ -364,7 +365,7 @@ void GpsWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
 #endif
 }
 
-void GpsWorker::TrainFiles() {
+void GpuWorker::TrainFiles() {
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
 //  int batch_cnt = 0;
@@ -435,7 +436,7 @@ void HeterTask::PackGpuTask(Scope* thread_scope, DataFeed* reader,
   VLOG(3) << "pack task " << cur_batch_;
 }
 
-void GpsWorker::ResetStat() {
+void GpuWorker::ResetStat() {
   total_time_ = 0;
   read_time_ = 0;
   pack_time_ = 0;
@@ -452,7 +453,7 @@ void GpsWorker::ResetStat() {
   total_inst_ = 0;
 }
 
-void GpsWorker::ProduceTasks() {
+void GpuWorker::ProduceTasks() {
   VLOG(3) << "Begin to produce";
 //  platform::SetNumThreads(1);
   VLOG(3) << "reader ready";
@@ -661,6 +662,9 @@ void GpsWorker::ProduceTasks() {
           } else {
             dest_scope = src_scope->kids().front();
           }
+          auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+          platform::CUDADeviceGuard guard(dev_id);
+          VLOG(0) << "wxx dev id: " << dev_id;
 
           for (const std::string& name : sparse_grad_names_[tid]) {
             const LoDTensor& src_tensor = src_scope->FindVar(name)->Get<LoDTensor>();
@@ -730,8 +734,8 @@ void GpsWorker::ProduceTasks() {
     done_cnt_.fetch_add(1, std::memory_order_relaxed);
     if (thread_id_ == 0) {
       // should be configured here
-      //if (done_cnt_ > 0 && done_cnt_ % 100 == 0) {
-      if (done_cnt_ > 0) {
+      if (done_cnt_ > 0 && done_cnt_ % 100 == 0) {
+      //if (done_cnt_ > 0) {
         fprintf(stderr, "cpu_2_gpu total time: %fs\n",
                 cpu_2_gpu_time_ / done_cnt_);
         fprintf(stderr, "gpu_2_cpu run total time: %fs\n",
@@ -779,6 +783,7 @@ void GpsWorker::ProduceTasks() {
     }
 
     VLOG(3) << "done taskid = " << task->taskid_;
+    task->scope_->DropKids();
     object_pool_.Push(task);
     // ++batch_cnt;
       

@@ -66,7 +66,7 @@ REGISTER_TRAINER_CLASS(DistMultiTrainer);
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
     (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(HeterXpuTrainer);
-REGISTER_TRAINER_CLASS(GpsTrainer);
+REGISTER_TRAINER_CLASS(GpuTrainer);
 #endif
 #if defined(PADDLE_WITH_NCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);

@@ -225,10 +225,10 @@ class HeterXpuTrainer : public TrainerBase {
 #endif
 };
 
-class GpsTrainer : public TrainerBase {
+class GpuTrainer : public TrainerBase {
  public:
-  GpsTrainer() {}
-  virtual ~GpsTrainer() {}
+  GpuTrainer() {}
+  virtual ~GpuTrainer() {}
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place);

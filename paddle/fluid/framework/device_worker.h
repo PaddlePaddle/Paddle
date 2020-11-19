@@ -92,6 +92,7 @@ class PullDenseWorker {
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
   void CreatePinVar();
+  void MergeDenseParam();
   int GetThreadIdByScope(const Scope* scope);
   void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
@@ -433,10 +434,10 @@ class HeterCpuWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
-class GpsWorker : public HogwildWorker {
+class GpuWorker : public HogwildWorker {
  public:
-  GpsWorker() {}
-  virtual ~GpsWorker() {}
+  GpuWorker() {}
+  virtual ~GpuWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void SetNeedDump(bool need_dump_field);

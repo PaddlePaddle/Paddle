@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void GpsTrainer::Initialize(const TrainerDesc& trainer_desc,
+void GpuTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   param_ = trainer_desc.downpour_param();
@@ -88,16 +88,16 @@ void GpsTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
 }
 
-void GpsTrainer::DumpWork(int tid) {}
+void GpuTrainer::DumpWork(int tid) {}
 
-void GpsTrainer::RegisterHeterCallback() {
+void GpuTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
   fleet_ptr->RegisterHeterCallback([this](int worker, int taskid) {
     // workers_[worker]->Schedule(taskid);
   });
 }
 
-void GpsTrainer::InitTrainerEnv(const ProgramDesc& main_program,
+void GpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
     workers_[i]->SetPlace(places_[i]);
@@ -112,6 +112,7 @@ void GpsTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 #endif
   }
   for (size_t num = 0; num < places_.size(); ++num) {
+    
     auto place = places_[num];
     Scope* scope = workers_[num]->GetThreadScope();
     auto stream = copy_streams_[num];
@@ -147,7 +148,7 @@ void GpsTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 template <typename T>
-void GpsTrainer::HeterMemCpy(LoDTensor* thread_tensor,
+void GpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
                                   LoDTensor* root_tensor,
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
@@ -165,7 +166,7 @@ void GpsTrainer::HeterMemCpy(LoDTensor* thread_tensor,
   }
 }
 
-void GpsTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+void GpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->CreatePinVar();
   for (size_t i = 0; i < places_.size(); ++i) {
@@ -175,20 +176,20 @@ void GpsTrainer::InitOtherEnv(const ProgramDesc& main_program) {
     pull_dense_worker_->AddStream(copy_streams_[i]);
 #endif
   }
-  pull_dense_worker_->PullDense(true);
+  //pull_dense_worker_->PullDense(true);
 #ifdef PADDLE_WITH_CUDA
-  for (auto& stream : copy_streams_) {
-    cudaStreamSynchronize(stream);
-  }
+  //for (auto& stream : copy_streams_) {
+  //  cudaStreamSynchronize(stream);
+  //}
 #endif
   VLOG(3) << "init other env done.";
 }
 
-void GpsTrainer::Run() {
+void GpuTrainer::Run() {
   int pull_thread_num = 3 * places_.size();
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
     workers_[thidx]->device_reader_->Start();
-    std::dynamic_pointer_cast<paddle::framework::GpsWorker>(workers_[thidx])->ResetStat();
+    std::dynamic_pointer_cast<paddle::framework::GpuWorker>(workers_[thidx])->ResetStat();
   }
   for (int i = 0; i < pull_thread_num; ++i) {
     int worker_id = i % places_.size();
@@ -201,7 +202,7 @@ void GpsTrainer::Run() {
 }
 
 template <typename T>
-void GpsTrainer::MergeToRootScope(LoDTensor* root_tensor,
+void GpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
                                        LoDTensor* tensor) {
   LoDTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
@@ -215,9 +216,9 @@ void GpsTrainer::MergeToRootScope(LoDTensor* root_tensor,
   TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
 }
 
-Scope* GpsTrainer::GetWorkerScope(int thread_id) { return nullptr; }
+Scope* GpuTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
-void GpsTrainer::Finalize() {
+void GpuTrainer::Finalize() {
   for (auto &th : pull_threads_) {
     th.join();
   }
@@ -255,6 +256,7 @@ void GpsTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
+  pull_dense_worker_->MergeDenseParam();
   root_scope_->DropKids();
 }
 }  // namespace framework
