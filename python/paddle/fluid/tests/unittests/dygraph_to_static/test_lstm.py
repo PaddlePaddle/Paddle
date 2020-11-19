@@ -61,17 +61,21 @@ class TestLstm(unittest.TestCase):
             msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
                                                                 static_out))
 
-    def test_save_in_eval(self):
+    def test_save_in_eval(self, with_training=True):
         paddle.jit.ProgramTranslator().enable(True)
         net = Net(12, 2)
         x = paddle.randn((2, 10, 12))
-        dygraph_out = net(x)
+        if with_training:
+            dygraph_out = net(x)
         # switch eval mode firstly
         net.eval()
 
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])])
         paddle.jit.save(net, 'simple_lstm')
+
+        if not with_training:
+            dygraph_out = net(x)
         # load saved model
         load_net = paddle.jit.load('simple_lstm')
 
@@ -87,6 +91,9 @@ class TestLstm(unittest.TestCase):
             np.allclose(dygraph_out.numpy(), train_out.numpy()),
             msg='dygraph_out is {}\n static_out is \n{}'.format(dygraph_out,
                                                                 train_out))
+
+    def test_save_without_training(self):
+        self.test_save_in_eval(with_training=False)
 
 
 class LinearNet(nn.Layer):
