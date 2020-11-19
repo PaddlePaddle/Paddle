@@ -38,10 +38,6 @@ if [ "$HTTPS_PROXY" ]; then
     echo "using https proxy: $HTTPS_PROXY"
 fi
 
-if [ "$PIP_INDEX" ]; then
-    ENV_ARGS+=("--env" "PIP_INDEX=$PIP_INDEX")
-fi
-
 echo "compile paddle in docker"
 echo "docker image: $BUILD_IMAGE"
 
@@ -57,7 +53,6 @@ echo "container name: $BUILD_NAME"
 
 MOUNT_DIR="/paddle"
 echo "mount paddle: $PADDLE_DIR => $MOUNT_DIR"
-
 
 if [ "$BUILD_AUTO" -eq "1" ]; then
     echo "enter automatic build mode"

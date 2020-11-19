@@ -20,5 +20,14 @@ CUR_DIR=$(realpath "$CUR_DIR")
 # shellcheck disable=2034
 PADDLE_DIR=$(realpath "$CUR_DIR/../../../")
 
+PYTHON_REQ="$PADDLE_DIR/python/requirements.txt"
+
+PACKAGE_REQ="$CUR_DIR/package.txt"
+
+image_name(){
+    CHKSUM=$(cat "$PACKAGE_REQ" "$PYTHON_REQ"| md5sum - | cut -b-8)
+    echo "paddle-musl-build:$CHKSUM"
+}
+
 # shellcheck disable=2034
-BUILD_IMAGE="paddle-musl-build:2.0"
+BUILD_IMAGE=$(image_name)

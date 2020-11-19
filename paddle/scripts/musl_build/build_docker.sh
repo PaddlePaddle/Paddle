@@ -23,28 +23,45 @@ source "$CUR_DIR/config.sh"
 # exit when any command fails
 set -e
 
-declare -a ENV_ARGS
-if [ "$HTTP_PROXY" ]; then
-    ENV_ARGS+=("--build-arg" "http_proxy=$HTTP_PROXY")
-    echo "using http proxy: $HTTP_PROXY"
-fi
+remove_image(){
+    echo "clean up docker images: $BUILD_IMAGE"
+    docker rmi -f "$BUILD_IMAGE"
+}
 
-if [ "$HTTPS_PROXY" ]; then
-    ENV_ARGS+=("--build-arg" "https_proxy=$HTTPS_PROXY")
-    echo "using https proxy: $HTTPS_PROXY"
-fi
+build_image(){
+    declare -a BUILD_ARGS
+    
+    if [ "$HTTP_PROXY" ]; then
+        BUILD_ARGS+=("--build-arg" "http_proxy=$HTTP_PROXY")
+        echo "using http proxy: $HTTP_PROXY"
+    fi
 
-echo "clean up docker images: $BUILD_IMAGE"
-docker rmi -f "$BUILD_IMAGE"
+    if [ "$HTTPS_PROXY" ]; then
+        BUILD_ARGS+=("--build-arg" "https_proxy=$HTTPS_PROXY")
+        echo "using https proxy: $HTTPS_PROXY"
+    fi
 
-echo "build docker image: $BUILD_IMAGE"
+    echo "with package requirement: $PACKAGE_REQ"
+    PACKAGE_B64="$(base64 -w0 $PACKAGE_REQ)"
+    BUILD_ARGS+=("--build-arg" package="$PACKAGE_B64")
 
-# shellcheck disable=2086
-docker build \
-    -t "$BUILD_IMAGE" \
-    -f "$CUR_DIR/Dockerfile" \
-    --rm=false \
-    --network host \
-    ${ENV_ARGS[*]} \
-    --output type=tar,dest=build.tar \
-    .
+    if [ ! "$WITHOUT_REQUIREMENT" ]; then
+        echo "with python requirement: $PACKAGE_REQ"
+        PYTHON_B64="$(base64 -w0 $PYTHON_REQ)"
+        BUILD_ARGS+=("--build-arg" requirement="$PYTHON_B64")
+    fi
+
+    echo "build docker image: $BUILD_IMAGE"
+
+    # shellcheck disable=2086
+    docker build \
+        -t "$BUILD_IMAGE" \
+        -f "$CUR_DIR/Dockerfile" \
+        --rm=false \
+        --network host \
+        ${BUILD_ARGS[*]} \
+        --output type=tar,dest=build.tar \
+        .
+}
+
+build_image
