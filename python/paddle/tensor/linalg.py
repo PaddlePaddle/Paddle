@@ -613,19 +613,16 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
-	:alias_main: paddle.t
-	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
-
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
-    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    the paddle.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
 
