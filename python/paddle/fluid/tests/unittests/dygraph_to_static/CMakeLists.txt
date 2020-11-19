@@ -1,7 +1,8 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-list(REMOVE_ITEM DIST_TEST_OPS test_mnist)
+# disable for cuda11
+list(REMOVE_ITEM TEST_OPS test_mnist)
 
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
