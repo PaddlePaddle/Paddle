@@ -24,13 +24,11 @@ import paddle.fluid as fluid
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
-from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
-from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
@@ -46,7 +44,6 @@ __all__ = [
     'cross_entropy',
     'dice_loss',
     'hsigmoid_loss',
-    'iou_similarity',
     'kl_div',
     'l1_loss',
     'log_loss',
@@ -59,7 +56,6 @@ __all__ = [
     'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
-    'ssd_loss',
     'ctc_loss',
 ]
 
