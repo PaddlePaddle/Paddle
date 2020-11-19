@@ -856,6 +856,16 @@ class TranslatedLayer(layers.Layer):
 
     @classmethod
     def _collect_parent_var(cls, program, block_idx):
+        '''
+        Get variables in current block and its parent block.
+        
+        Args:
+            program(Program): The program containing the current block.
+            block_idx(int): index of current block.
+
+        Returns:
+            List: list of variable.
+        '''
         vars = []
         if block_idx < 0:
             return vars
@@ -874,6 +884,16 @@ class TranslatedLayer(layers.Layer):
             program_holder,
             input_names,
             output_names, ):
+        '''
+        Append Variables and Operators in 'src_program_desc' to dest_program.
+        
+        Args:
+            dest_program(Program): Variables and Operators are appended to it.
+            src_program_desc(ProgramDesc): index of current block.
+            program_holder(_ProgramHolder): program_holder of TranslatedLayer
+            input_names(list): list of input variables
+            output_names(list): list of output names
+        '''
 
         origin_block_idx = dest_program.current_block_idx
         param_var_names = cls._collect_parent_var(dest_program,
@@ -927,6 +947,9 @@ class TranslatedLayer(layers.Layer):
         dest_program.current_block_idx = origin_block_idx
 
     def get_output_from_program(self, program, program_holder):
+        """
+            Get output name of 'program' according to program_holder
+        """
         outs = list()
         for var in program_holder.output_descs:
             for idx in range(program.num_blocks):
@@ -1086,15 +1109,16 @@ class TranslatedLayer(layers.Layer):
 
 
 def append_op_from_block_desc_static(block, src_block_desc):
-    '''
-    Append OP of 'src_block_desc' to current block.
+    """
+    Append Operators of 'src_block_desc' to current block.
 
     Args:
+        block(Block): append OP of  'src_block_desc' to it.
         src_block_desc(BlockDesc): append var of  'src_block_desc'
 
     Returns:
         List: list of the OP that are append to current block.
-    '''
+    """
     ops = []
     for i in range(src_block_desc.op_size()):
         ops.append(append_op_from_desc_static(block, src_block_desc.op(i)))
@@ -1102,6 +1126,16 @@ def append_op_from_block_desc_static(block, src_block_desc):
 
 
 def append_op_from_desc_static(block, op_desc):
+    """
+    Append Operators to 'block' according to 'op_desc'.
+
+    Args:
+        block(Block): append OP of  'src_block_desc' to it.
+        op_desc(OpDesc): create OP according to it.
+
+    Returns:
+        Operator: OP appended to 'block'.
+    """
     op_type = op_desc.type()
     op_append = block.desc.append_op()
     op_append.copy_from(op_desc)
@@ -1120,19 +1154,20 @@ def append_var_from_block_desc_static(block,
                                       src_block_desc,
                                       include=None,
                                       exclude=None):
-    '''
-    Append variables of 'src_block_desc' to current block.
+    """
+    Append Variables of 'src_block_desc' to current block.
     If 'include' is not `None`,variables that are not in include are not append.
     If 'exclude' is not `None`,variables that are in exclude will are not append.
 
     Args:
+        block(Block): append Variables of  'src_block_desc' to it.
         src_block_desc(BlockDesc): append var of  'src_block_desc'
         include(List):list of names of variables
         exclude(List):list of names of variables
 
     Returns:
         List: list of the variables that are append to current block.
-    '''
+    """
     vars_append = []
     for var_desc in src_block_desc.all_vars():
         var_desc_name = var_desc.name()

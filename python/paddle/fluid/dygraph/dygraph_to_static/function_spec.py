@@ -47,7 +47,7 @@ class FunctionSpec(object):
 
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
-        # 
+        # parse *args
         self._args_name = parse_args(function)
         if self._args_name is not None and isinstance(function.__self__,
                                                       TranslatedLayer):
