@@ -260,9 +260,9 @@ class NameVisitor(gast.NodeVisitor):
             type_node = node.args[1]
             if isinstance(type_node, gast.Tuple):
                 for element in type_node.elts:
-                    self.type_vars.add(ast_to_source_code(element))
+                    self.type_vars.add(ast_to_source_code(element).strip())
             else:
-                self.type_vars.add(ast_to_source_code(type_node))
+                self.type_vars.add(ast_to_source_code(type_node).strip())
         self.generic_visit(node)
 
     def _var_nodes_to_names(self, node_set, ctx_filter_set=None):
@@ -381,7 +381,7 @@ class NameVisitor(gast.NodeVisitor):
 
         # 3. Remove var type names which are stored in self.type_vars
         for var in loop_vars:
-            if ast_to_source_code(var) in self.type_vars:
+            if ast_to_source_code(var).strip() in self.type_vars:
                 removed_vars.add(var)
 
         return loop_vars - removed_vars
