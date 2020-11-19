@@ -366,10 +366,18 @@ def interpolate(x,
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable):
+
+        if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
+
         else:
+            if in_dygraph_mode():
+                if isinstance(out_shape, Variable):
+                    out_shape = list(out_shape.numpy())
+                for i, dim in enumerate(out_shape):
+                    if isinstance(dim, Variable):
+                        out_shape[i] = dim.numpy()[0]
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -435,6 +443,8 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[2]
 
     else:
+        if in_dygraph_mode() and isinstance(scale, Variable):
+            scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
@@ -1240,7 +1250,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
-
+            
             # example 2
             x_shape = (1, 1, 2, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
@@ -1364,7 +1374,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Examples:
         .. code-block:: text
-        
+
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
                      [0.48949873 0.5797396  0.65444374 0.66510963]
@@ -1380,7 +1390,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
