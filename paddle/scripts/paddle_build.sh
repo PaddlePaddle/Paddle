@@ -768,9 +768,9 @@ function check_approvals_of_unittest() {
 }
 
 function check_diff_file_for_coverage() {
-    diff_h_file=$(git diff --name-status test_pr develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_cc_file=$(git diff --name-status test_pr develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|cu|c)$' | awk -F "/" '{printf "%s,",$NF}')
-    diff_py_file=$(git diff --name-status test_pr develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
+    diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|cu|c)$' | awk -F "/" '{printf "%s,",$NF}')
+    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
 
     echo "${diff_file_h}"
     echo "${diff_file_cc}"
