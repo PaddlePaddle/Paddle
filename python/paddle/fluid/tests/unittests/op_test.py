@@ -76,12 +76,9 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
             out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
 
             if out_dtype != expect_dtype:
-                paddle.disable_static()
                 raise ValueError(
                     "Expected out.dtype is {}, but got {} from {}.".format(
                         expect_dtype, out_dtype, api_fn.__name__))
-
-    paddle.disable_static()
 
 
 def _set_use_system_allocator(value=None):
