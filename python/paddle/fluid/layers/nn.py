@@ -7108,7 +7108,6 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
             import paddle
             import paddle.nn.functional as F
 
-            paddle.disable_static()
             x = paddle.randn((3,224,224,2))
             label = paddle.randint(high=2, shape=(3,224,224,1))
             predictions = F.softmax(x)
@@ -13076,7 +13075,6 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           import paddle
           import paddle.nn.functional as F
 
-          paddle.disable_static()
           label = paddle.randn((10,1))
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
@@ -14478,7 +14476,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Parameters:
-        x(Varaible):              4-D Tensor, input tensor of format [N, C, H, W],
+        x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
@@ -14501,22 +14499,24 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Returns:
-        The tensor variable corresponding to the sliding local blocks.
+        The tensor corresponding to the sliding local blocks.
         The output shape is [N, Cout, Lout] as decriabled above.
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
 
     Return Type:
-        Variable
+        Tensor
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name = 'data', shape = [100, 3, 224, 224], dtype = 'float32')
-            y = fluid.layers.unfold(x, [3, 3], 1, 1, 1)
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.randn((100,3,224,224))
+            y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
     helper = LayerHelper("unfold", **locals())
