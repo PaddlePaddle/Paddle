@@ -772,10 +772,6 @@ function check_diff_file_for_coverage() {
     diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|cu|c)$' | awk -F "/" '{printf "%s,",$NF}')
     diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
 
-    echo "${diff_h_file}"
-    echo "${diff_cc_file}"
-    echo "${diff_py_file}"
-
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
