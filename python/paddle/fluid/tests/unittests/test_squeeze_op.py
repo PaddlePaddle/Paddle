@@ -119,6 +119,24 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             expected_out = np.squeeze(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
 
+    def test_out_int8(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int8")
+            input = paddle.to_tensor(input_1)
+            output = paddle.squeeze(input, axis=[1])
+            out_np = output.numpy()
+            expected_out = np.squeeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_uint8(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("uint8")
+            input = paddle.to_tensor(input_1)
+            output = paddle.squeeze(input, axis=[1])
+            out_np = output.numpy()
+            expected_out = np.squeeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
     def test_axis_not_list(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([5, 1, 10]).astype("int32")
