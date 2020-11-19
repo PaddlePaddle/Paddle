@@ -628,23 +628,26 @@ def t(input, name=None):
         Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
+
         .. code-block:: text
 
-        # Example 1 (0-D tensor)
-         x = tensor([0.79])
-         paddle.t(x) = tensor([0.79])
-         # Example 2 (1-D tensor)
-         x = tensor([0.79, 0.84, 0.32])
-         paddle.t(x) = tensor([0.79, 0.84, 0.32])
-        
-         # Example 3 (2-D tensor)
-         x = tensor([0.79, 0.84, 0.32],
-                    [0.64, 0.14, 0.57])
-         paddle.t(x) = tensor([0.79, 0.64],
-                              [0.84, 0.14],
-                              [0.32, 0.57])
-    
+             # Example 1 (0-D tensor)
+             x = tensor([0.79])
+             paddle.t(x) = tensor([0.79])
+
+             # Example 2 (1-D tensor)
+             x = tensor([0.79, 0.84, 0.32])
+             paddle.t(x) = tensor([0.79, 0.84, 0.32])
+
+             # Example 3 (2-D tensor)
+             x = tensor([0.79, 0.84, 0.32],
+                        [0.64, 0.14, 0.57])
+             paddle.t(x) = tensor([0.79, 0.64],
+                                  [0.84, 0.14],
+                                  [0.32, 0.57])
+
      Examples:
+
         .. code-block:: python
 
             import paddle
