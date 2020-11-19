@@ -53,10 +53,8 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 
   // Need get from device
   const int thread_per_block = std::min(1024, context.GetMaxThreadsPerBlock());
-  // Suppose block count small than factor * sm, factor is a experiments value.
-  int factor = 4;
   const int block_count =
-      std::min(DivUp(physical_thread_count, thread_per_block), factor * sm);
+      std::min(DivUp(physical_thread_count, thread_per_block), sm);
 
   GpuLaunchConfig config;
   config.theory_thread_count.x = theory_thread_count;

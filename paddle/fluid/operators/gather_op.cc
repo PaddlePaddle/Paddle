@@ -66,6 +66,15 @@ class GatherOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class GatherGradOp : public framework::OperatorWithKernel {
@@ -83,6 +92,15 @@ class GatherGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Axis") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -166,6 +184,6 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);
 REGISTER_OP_VERSION(gather)
-    .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
-                   paddle::framework::compatible::OpVersionDesc().NewAttr(
-                       "axis", "Specify the axis of gather operation.", {}));
+    .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewInput(
+                       "Axis", "Specify the axis of gather operation."));

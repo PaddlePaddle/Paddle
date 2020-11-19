@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include "xpu/refactor/nn.h"
 
 namespace paddle {
 namespace operators {
@@ -72,10 +73,10 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
       auto* variance_out_data = variance_out->data<T>();
       auto* saved_mean_data = saved_mean->data<T>();
       auto* saved_variance_data = saved_variance->data<T>();
-      int r = xpu::batch_norm_train_forward(
-          dev_ctx.x_context(), epsilon, momentum, N, C, H, W, x_data, y_data,
-          scale_data, bias_data, mean_out_data, variance_out_data,
-          saved_mean_data, saved_variance_data);
+      int r = xpu::batch_norm<T>(dev_ctx.x_context(), x_data, y_data, N, C, H,
+                                 W, epsilon, momentum, scale_data, bias_data,
+                                 saved_mean_data, saved_variance_data,
+                                 mean_out_data, variance_out_data, true);
       PADDLE_ENFORCE_EQ(
           r, XPU_SUCCESS,
           platform::errors::External("XPU API(batch_norm_train_forward) return "

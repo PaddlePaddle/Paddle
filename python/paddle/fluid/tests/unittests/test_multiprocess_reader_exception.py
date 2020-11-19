@@ -98,7 +98,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                             exe.run(feed=data, fetch_list=[image_p_1])
                             num += 1
                         self.assertEquals(num, batch_num)
-                    except fluid.core.EnforceNotMet as ex:
+                    except SystemError as ex:
                         self.assertEquals(num, 0)
                         raise ReaderException()
             else:
@@ -113,7 +113,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                         reader.reset()
                         self.assertFalse(self.raise_exception)
                         self.assertEquals(num, batch_num)
-                    except fluid.core.EnforceNotMet as ex:
+                    except SystemError as ex:
                         self.assertTrue(self.raise_exception)
                         self.assertEquals(num, 0)
                         raise ReaderException()
@@ -152,4 +152,5 @@ class TestCase3(TestMultiprocessReaderException):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

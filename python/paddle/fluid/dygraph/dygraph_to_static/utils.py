@@ -29,6 +29,28 @@ import numpy as np
 
 from paddle.fluid import unique_name
 
+
+class BaseNodeVisitor(gast.NodeVisitor):
+    """
+    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Ancestor nodes are traced to easily support more operations of currently
+    visited node.
+    """
+
+    def __init__(self):
+        self.ancestor_nodes = []
+
+    def visit(self, node):
+        """Visit a node."""
+        self.ancestor_nodes.append(node)
+
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        ret = visitor(node)
+        self.ancestor_nodes.pop()
+        return ret
+
+
 # imp is deprecated in python3
 if six.PY2:
     import imp
@@ -127,7 +149,14 @@ def _is_api_in_module_helper(obj, module_prefix):
 
 def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
+
+    # Python can have gast.Call as function, for example: covert_call(func)(x)
+    # We only check the most outside function
+    func_node = node.func
+    while isinstance(func_node, gast.Call):
+        func_node = func_node.func
+
+    func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
         # TODO(liym27):
         #  Consider a better to import modules like:

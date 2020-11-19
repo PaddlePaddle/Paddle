@@ -21,6 +21,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 
+paddle.enable_static()
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "Paddle core is not compiled with CUDA")
@@ -120,24 +122,23 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 param_attr=self.conv_param_attr1,
                 bias_attr=False,
                 data_format='NHWC')
-            conv1_2 = fluid.layers.conv2d(
-                input=x,
-                filter_size=3,
-                num_filters=32,
-                stride=1,
-                padding=1,
-                act=None,
-                param_attr=self.conv_param_attr2,
-                bias_attr=False,
-                data_format='NHWC')
             bn1 = fluid.layers.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr1,
                 bias_attr=self.bn_bias_attr1,
                 act=None,
                 data_layout='NHWC')
+            conv1_2 = fluid.layers.conv2d(
+                input=conv1_1,
+                filter_size=1,
+                num_filters=32,
+                stride=1,
+                act=None,
+                param_attr=self.conv_param_attr2,
+                bias_attr=False,
+                data_format='NHWC')
             bn2 = fluid.layers.batch_norm(
-                input=conv1_2,
+                input=conv1_1,
                 param_attr=self.bn_param_attr2,
                 bias_attr=self.bn_bias_attr2,
                 act=None,
@@ -155,7 +156,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
             sgd.minimize(loss)
 
-        return x, y, loss
+        return loss
 
     def check(self, place, use_cuda):
         paddle.seed(1)
@@ -163,42 +164,46 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         iters = 5
         batch_size = 16
 
-        # build_fused_program
+        # build_fused_program: turn on fuse_bn_add_act_ops
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        x, y, loss = self.build_fused_program(main_program, startup_program,
-                                              use_cuda)
-        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
+        loss = self.build_origin_program(main_program, startup_program,
+                                         use_cuda)
+        build_strategy_fused = fluid.BuildStrategy()
+        build_strategy_fused.fuse_bn_add_act_ops = True
+        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy_fused)
         exe = fluid.Executor(place)
         loss_vals_fused = []
+        x_data = []
+        y_data = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
-                data = next(train_reader())
-                loss_v = exe.run(main_program,
-                                 feed=feeder.feed(data),
+                x = np.random.random((batch_size, 1, 28, 28)).astype("float32")
+                y = np.random.random((batch_size, 1)).astype("int64")
+                x_data.append(x)
+                y_data.append(y)
+                loss_v = exe.run(binary_fused,
+                                 feed={"x": x,
+                                       "y": y},
                                  fetch_list=[loss])
                 loss_vals_fused.append(loss_v[0][0])
 
-        # build_origin_program
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        x, y, loss = self.build_origin_program(main_program, startup_program,
-                                               use_cuda)
-        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size)
+        # build_origin_program: turn off fused_bn_act_ops
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.fuse_bn_add_act_ops = False
+        binary = fluid.CompiledProgram(main_program).with_data_parallel(
+            loss_name=loss.name, build_strategy=build_strategy_fused)
         loss_vals = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
-            for _ in range(iters):
-                data = next(train_reader())
-                loss_v = exe.run(main_program,
-                                 feed=feeder.feed(data),
+            for i in range(iters):
+                loss_v = exe.run(binary,
+                                 feed={"x": x_data[i],
+                                       "y": y_data[i]},
                                  fetch_list=[loss])
                 loss_vals.append(loss_v[0][0])
 
@@ -209,6 +214,25 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def test_fuse_bn_add_act(self):
         place = fluid.CUDAPlace(0)
         self.check(place, use_cuda=True)
+
+    def test_fuse_bn_add_act_API(self):
+        # build_fused_program: use fused_bn_add_act python API
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        place = fluid.CUDAPlace(0)
+        x, y, loss = self.build_fused_program(
+            main_program, startup_program, use_cuda=True)
+        exe = fluid.Executor(place)
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            exe.run(startup_program)
+            for _ in range(5):
+                x = np.random.random((4, 1, 28, 28)).astype("float32")
+                y = np.random.random((4, 1)).astype("int64")
+                loss_v = exe.run(main_program,
+                                 feed={"x": x,
+                                       "y": y},
+                                 fetch_list=[loss])
 
 
 if __name__ == '__main__':
