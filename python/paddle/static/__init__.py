@@ -23,8 +23,8 @@ __all__ = [
 ]
 
 from . import nn
-from .io import save_inference_model
-from .io import load_inference_model
+from .io import save_inference_model #DEFINE_ALIAS
+from .io import load_inference_model #DEFINE_ALIAS
 from ..fluid import Scope  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS
