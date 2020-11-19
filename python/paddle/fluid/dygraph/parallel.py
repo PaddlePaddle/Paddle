@@ -438,11 +438,15 @@ class DataParallel(layers.Layer):
                 "start distributed programs. ")
 
     def init_reducer(self):
-        layers_param = [(sublayer, param)
-                        for sublayer in self.sublayers() for param in filter(
-                            lambda (_, param): param.trainable,
-                            sublayer.named_parameters(include_sublayers=False))]
-        trainable_parameters = [param[1] for _, param in layers_param]
+        layers_param = []
+        for sublayer in self.sublayers():
+            for _, param in sublayer.named_parameters(include_sublayers=False):
+                if not isinstance(param, core.VarBase):
+                    raise TypeError("The data type of '%s' must be Varbase" %
+                                    param.name)
+                if param.trainable:
+                    layers_param.append((sublayer, param))
+        trainable_parameters = [param for _, param in layers_param]
 
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
