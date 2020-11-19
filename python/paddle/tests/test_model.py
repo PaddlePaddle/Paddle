@@ -566,8 +566,8 @@ class TestModelFunction(unittest.TestCase):
             with fluid.scope_guard(new_scope):
                 exe = fluid.Executor(place)
                 [inference_program, feed_target_names, fetch_targets] = (
-                    fluid.io.load_inference_model(
-                        dirname=save_dir, executor=exe))
+                    paddle.static.io.load_inference_model(
+                        path_prefix=save_dir, executor=exe))
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
