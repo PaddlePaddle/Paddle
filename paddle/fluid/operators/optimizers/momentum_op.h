@@ -47,18 +47,18 @@ template <typename T>
 struct CPUDenseUpdater {
   template <typename G>
   void operator()(const Tensor& param, const Tensor& velocity, const T& mu,
-                  const T& lr, const bool use_nesterov, G&& g,
+                  const T& lr, const bool use_nesterov, G&& grad,
                   Tensor* param_out, Tensor* velocity_out) const {
-    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
-    auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
+    auto param_out_vec = framework::EigenVector<T>::Flatten(*param_out);
+    auto velocity_out_vec = framework::EigenVector<T>::Flatten(*velocity_out);
 
-    auto p = framework::EigenVector<T>::Flatten(param);
-    auto v = framework::EigenVector<T>::Flatten(velocity);
-    v_out = v * mu + g;
+    auto param_vec = framework::EigenVector<T>::Flatten(param);
+    auto velocity_vec = framework::EigenVector<T>::Flatten(velocity);
+    velocity_out_vec = velocity_vec * mu + grad;
     if (use_nesterov) {
-      p_out = p - (g + v_out * mu) * lr;
+      param_out_vec = param_vec - (grad + velocity_out_vec * mu) * lr;
     } else {
-      p_out = p - lr * v_out;
+      param_out_vec = param_vec - lr * velocity_out_vec;
     }
   }
 };
@@ -66,7 +66,7 @@ struct CPUDenseUpdater {
 }  // namespace details
 
 template <typename T>
-using LRType = typename details::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
 enum class RegularizationFlag {
   kNONE = 0,
@@ -164,17 +164,18 @@ class CPUDenseMomentumFunctor {
                   const RegularizationFlag regularization_flag,
                   const T regularization_coeff, Tensor* param_out,
                   Tensor* velocity_out) {
-    auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto* lr = learning_rate->data<LRType<T>>();
+    auto grad_vec = framework::EigenVector<T>::Flatten(*grad);
+    auto* lr = learning_rate->data<MultiPrecisionType<T>>();
 
     details::CPUDenseUpdater<T> updater;
     if (regularization_flag == RegularizationFlag::kL2DECAY) {
-      auto p = framework::EigenVector<T>::Flatten(*param);
+      auto param_vec = framework::EigenVector<T>::Flatten(*param);
       updater(*param, *velocity, mu, static_cast<T>(lr[0]), use_nesterov,
-              p * regularization_coeff + g, param_out, velocity_out);
+              param_vec * regularization_coeff + grad_vec, param_out,
+              velocity_out);
     } else {
-      updater(*param, *velocity, mu, static_cast<T>(lr[0]), use_nesterov, g,
-              param_out, velocity_out);
+      updater(*param, *velocity, mu, static_cast<T>(lr[0]), use_nesterov,
+              grad_vec, param_out, velocity_out);
     }
   }
 };
@@ -188,58 +189,60 @@ class DenseMomentumFunctor;
 template <typename T, typename MT>
 class DenseMomentumFunctor<T, MT, UseNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const MT* v_;
-  const LRType<MT>* lr_;
-  const MT* mp_;
+  const T* param_;
+  const T* grad_;
+  const MT* velocity_;
+  const MultiPrecisionType<MT>* lr_;
+  const MT* master_param_;
   const MT mu_;
   const MT rescale_grad_;
   const int64_t num_;
-  T* p_out_;
-  MT* v_out_;
-  MT* mp_out_;
+  T* param_out_;
+  MT* velocity_out_;
+  MT* master_param_out_;
   const RegularizationFlag regularization_flag_;
   const MT regularization_coeff_;
 
  public:
-  DenseMomentumFunctor(const T* p, const T* g, const MT* v,
-                       const LRType<MT>* learning_rate, const MT* mp,
-                       const MT mu, const MT rescale_grad, const int64_t num,
+  DenseMomentumFunctor(const T* param, const T* grad, const MT* velocity,
+                       const MultiPrecisionType<MT>* learning_rate,
+                       const MT* master_param, const MT mu,
+                       const MT rescale_grad, const int64_t num,
                        const RegularizationFlag regularization_flag,
-                       const MT regularization_coeff, T* p_out, MT* v_out,
-                       MT* mp_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+                       const MT regularization_coeff, T* param_out,
+                       MT* velocity_out, MT* master_param_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(learning_rate),
-        mp_(mp),
+        master_param_(master_param),
         mu_(mu),
         rescale_grad_(rescale_grad),
         num_(num),
-        p_out_(p_out),
-        v_out_(v_out),
-        mp_out_(mp_out),
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        master_param_out_(master_param_out),
         regularization_flag_(regularization_flag),
         regularization_coeff_(regularization_coeff) {}
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
-    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
-    MT g = static_cast<MT>(g_[i]) * rescale_grad_;
+    const MT param =
+        master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
+    MT grad = static_cast<MT>(grad_[i]) * rescale_grad_;
     const MT lr = static_cast<MT>(lr_[0]);
-    const MT v = v_[i];
+    const MT velocity = velocity_[i];
 
-    g = regularization_flag_ == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff_ * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    MT v_out = v * mu_ + g;
-    MT p_out = p - (g + v_out * mu_) * lr;
+    MT velocity_out = velocity * mu_ + grad;
+    MT param_out = param - (grad + velocity_out * mu_) * lr;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = static_cast<T>(p_out);
-    if (mp_out_) {
-      mp_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = static_cast<T>(param_out);
+    if (master_param_out_) {
+      master_param_out_[i] = param_out;
     }
   }
 };
@@ -247,58 +250,60 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
 template <typename T, typename MT>
 class DenseMomentumFunctor<T, MT, NoNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const MT* v_;
-  const LRType<MT>* lr_;
-  const MT* mp_;
+  const T* param_;
+  const T* grad_;
+  const MT* velocity_;
+  const MultiPrecisionType<MT>* lr_;
+  const MT* master_param_;
   const MT mu_;
   const MT rescale_grad_;
   const int64_t num_;
-  T* p_out_;
-  MT* v_out_;
-  MT* mp_out_;
+  T* param_out_;
+  MT* velocity_out_;
+  MT* master_param_out_;
   const RegularizationFlag regularization_flag_;
   const MT regularization_coeff_;
 
  public:
-  DenseMomentumFunctor(const T* p, const T* g, const MT* v,
-                       const LRType<MT>* learning_rate, const MT* mp,
-                       const MT mu, const MT rescale_grad, const int64_t num,
+  DenseMomentumFunctor(const T* param, const T* grad, const MT* velocity,
+                       const MultiPrecisionType<MT>* learning_rate,
+                       const MT* master_param, const MT mu,
+                       const MT rescale_grad, const int64_t num,
                        const RegularizationFlag regularization_flag,
-                       const MT regularization_coeff, T* p_out, MT* v_out,
-                       MT* mp_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+                       const MT regularization_coeff, T* param_out,
+                       MT* velocity_out, MT* master_param_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(learning_rate),
-        mp_(mp),
+        master_param_(master_param),
         mu_(mu),
         rescale_grad_(rescale_grad),
         num_(num),
-        p_out_(p_out),
-        v_out_(v_out),
-        mp_out_(mp_out),
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        master_param_out_(master_param_out),
         regularization_flag_(regularization_flag),
         regularization_coeff_(regularization_coeff) {}
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
-    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
-    MT g = static_cast<MT>(g_[i]) * rescale_grad_;
+    const MT param =
+        master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
+    MT grad = static_cast<MT>(grad_[i]) * rescale_grad_;
     const MT lr = static_cast<MT>(lr_[0]);
-    const MT v = v_[i];
+    const MT velocity = velocity_[i];
 
-    g = regularization_flag_ == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff_ * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    MT v_out = v * mu_ + g;
-    MT p_out = p - lr * v_out;
+    MT velocity_out = velocity * mu_ + grad;
+    MT param_out = param - lr * velocity_out;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = static_cast<T>(p_out);
-    if (mp_out_) {
-      mp_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = static_cast<T>(param_out);
+    if (master_param_out_) {
+      master_param_out_[i] = param_out;
     }
   }
 };
@@ -309,69 +314,72 @@ class SparseMomentumFunctor;
 template <typename T, typename MT>
 class SparseMomentumFunctor<T, MT, UseNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const MT* v_;
-  const LRType<MT>* lr_;
-  const MT* mp_;
+  const T* param_;
+  const T* grad_;
+  const MT* velocity_;
+  const MultiPrecisionType<MT>* lr_;
+  const MT* master_param_;
   const MT mu_;
   const MT rescale_grad_;
   const int64_t* rows_;
   const int64_t row_numel_;
   const int64_t row_height_;
-  T* p_out_;
-  MT* v_out_;
-  MT* mp_out_;
+  T* param_out_;
+  MT* velocity_out_;
+  MT* master_param_out_;
   const RegularizationFlag regularization_flag_;
   const MT regularization_coeff_;
 
  public:
-  SparseMomentumFunctor(const T* p, const T* g, const MT* v,
-                        const LRType<MT>* lr, const MT* mp, const MT mu,
+  SparseMomentumFunctor(const T* param, const T* grad, const MT* velocity,
+                        const MultiPrecisionType<MT>* lr,
+                        const MT* master_param, const MT mu,
                         const MT rescale_grad, const int64_t* rows,
                         int64_t row_numel, int64_t row_height,
                         const RegularizationFlag regularization_flag,
-                        const MT regularization_coeff, T* p_out, MT* v_out,
-                        MT* mp_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+                        const MT regularization_coeff, T* param_out,
+                        MT* velocity_out, MT* master_param_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(lr),
-        mp_(mp),
+        master_param_(master_param),
         mu_(mu),
         rescale_grad_(rescale_grad),
         rows_(rows),
         row_numel_(row_numel),
         row_height_(row_height),
-        p_out_(p_out),
-        v_out_(v_out),
-        mp_out_(mp_out),
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        master_param_out_(master_param_out),
         regularization_flag_(regularization_flag),
         regularization_coeff_(regularization_coeff) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    MT g = row_idx >= 0
-               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_]) *
-                     rescale_grad_
-               : static_cast<MT>(0);
+    MT grad =
+        row_idx >= 0
+            ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
+                  rescale_grad_
+            : static_cast<MT>(0);
     // put memory access in register
-    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
+    const MT param =
+        master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
     const MT lr = static_cast<MT>(lr_[0]);
-    const MT v = v_[i];
+    const MT velocity = velocity_[i];
 
-    g = regularization_flag_ == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff_ * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    MT v_out = v * mu_ + g;
-    MT p_out = p - (g + v_out * mu_) * lr;
+    MT velocity_out = velocity * mu_ + grad;
+    MT param_out = param - (grad + velocity_out * mu_) * lr;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = static_cast<T>(p_out);
-    if (mp_out_) {
-      mp_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = static_cast<T>(param_out);
+    if (master_param_out_) {
+      master_param_out_[i] = param_out;
     }
   }
 };
@@ -379,78 +387,82 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 template <typename T, typename MT>
 class SparseMomentumFunctor<T, MT, NoNesterov> {
  private:
-  const T* p_;
-  const T* g_;
-  const MT* v_;
-  const LRType<MT>* lr_;
-  const MT* mp_;
+  const T* param_;
+  const T* grad_;
+  const MT* velocity_;
+  const MultiPrecisionType<MT>* lr_;
+  const MT* master_param_;
   const MT mu_;
   const MT rescale_grad_;
   const int64_t* rows_;
   const int64_t row_numel_;
   const int64_t row_height_;
-  T* p_out_;
-  MT* v_out_;
-  MT* mp_out_;
+  T* param_out_;
+  MT* velocity_out_;
+  MT* master_param_out_;
   const RegularizationFlag regularization_flag_;
   const MT regularization_coeff_;
 
  public:
-  SparseMomentumFunctor(const T* p, const T* g, const MT* v,
-                        const LRType<MT>* lr, const MT* mp, const MT mu,
+  SparseMomentumFunctor(const T* param, const T* grad, const MT* velocity,
+                        const MultiPrecisionType<MT>* lr,
+                        const MT* master_param, const MT mu,
                         const MT rescale_grad, const int64_t* rows,
                         int64_t row_numel, int64_t row_height,
                         const RegularizationFlag regularization_flag,
-                        const MT regularization_coeff, T* p_out, MT* v_out,
-                        MT* mp_out)
-      : p_(p),
-        g_(g),
-        v_(v),
+                        const MT regularization_coeff, T* param_out,
+                        MT* velocity_out, MT* master_param_out)
+      : param_(param),
+        grad_(grad),
+        velocity_(velocity),
         lr_(lr),
-        mp_(mp),
+        master_param_(master_param),
         mu_(mu),
         rescale_grad_(rescale_grad),
         rows_(rows),
         row_numel_(row_numel),
         row_height_(row_height),
-        p_out_(p_out),
-        v_out_(v_out),
-        mp_out_(mp_out),
+        param_out_(param_out),
+        velocity_out_(velocity_out),
+        master_param_out_(master_param_out),
         regularization_flag_(regularization_flag),
         regularization_coeff_(regularization_coeff) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    MT g = row_idx >= 0
-               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_]) *
-                     rescale_grad_
-               : static_cast<MT>(0);
+    MT grad =
+        row_idx >= 0
+            ? static_cast<MT>(grad_[row_idx * row_numel_ + i % row_numel_]) *
+                  rescale_grad_
+            : static_cast<MT>(0);
     // put memory access in register
-    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
+    const MT param =
+        master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
     const MT lr = static_cast<MT>(lr_[0]);
-    const MT v = v_[i];
+    const MT velocity = velocity_[i];
 
-    g = regularization_flag_ == RegularizationFlag::kL2DECAY
-            ? g + regularization_coeff_ * p
-            : g;
+    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+               ? grad + regularization_coeff_ * param
+               : grad;
 
-    MT v_out = v * mu_ + g;
-    MT p_out = p - v_out * lr;
+    MT velocity_out = velocity * mu_ + grad;
+    MT param_out = param - velocity_out * lr;
     // write reigster to memory
-    v_out_[i] = v_out;
-    p_out_[i] = static_cast<T>(p_out);
-    if (mp_out_) {
-      mp_out_[i] = p_out;
+    velocity_out_[i] = velocity_out;
+    param_out_[i] = static_cast<T>(param_out);
+    if (master_param_out_) {
+      master_param_out_[i] = param_out;
     }
   }
 };
 
 template <typename DeviceContext, typename T>
 class MomentumOpKernel : public framework::OpKernel<T> {
+  using MPDType = MultiPrecisionType<T>;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using MPDType = typename details::MPTypeTrait<T>::Type;
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     if (multi_precision) {
       InnerCompute<MPDType>(ctx, multi_precision);
@@ -519,18 +531,18 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         if (use_nesterov) {
           DenseMomentumFunctor<T, MT, UseNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<MT>(),
-              learning_rate->data<LRType<MT>>(), master_in_data, mu,
-              rescale_grad, param->numel(), regularization_flag,
-              regularization_coeff, param_out->mutable_data<T>(ctx.GetPlace()),
+              learning_rate->data<MPDType>(), master_in_data, mu, rescale_grad,
+              param->numel(), regularization_flag, regularization_coeff,
+              param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<MT>(ctx.GetPlace()), master_out_data);
           for_range(functor);
 
         } else {
           DenseMomentumFunctor<T, MT, NoNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<MT>(),
-              learning_rate->data<LRType<MT>>(), master_in_data, mu,
-              rescale_grad, param->numel(), regularization_flag,
-              regularization_coeff, param_out->mutable_data<T>(ctx.GetPlace()),
+              learning_rate->data<MPDType>(), master_in_data, mu, rescale_grad,
+              param->numel(), regularization_flag, regularization_coeff,
+              param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<MT>(ctx.GetPlace()), master_out_data);
           for_range(functor);
         }
@@ -561,7 +573,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       if (use_nesterov) {
         SparseMomentumFunctor<T, MT, UseNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
-            velocity->data<MT>(), learning_rate->data<LRType<MT>>(),
+            velocity->data<MT>(), learning_rate->data<MPDType>(),
             master_in_data, mu, rescale_grad, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
             regularization_flag, regularization_coeff,
@@ -572,7 +584,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       } else {
         SparseMomentumFunctor<T, MT, NoNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
-            velocity->data<MT>(), learning_rate->data<LRType<MT>>(),
+            velocity->data<MT>(), learning_rate->data<MPDType>(),
             master_in_data, mu, rescale_grad, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
             regularization_flag, regularization_coeff,

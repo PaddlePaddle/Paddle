@@ -206,6 +206,8 @@ def cast_net_to_fp16(main_program):
     for block in main_program.blocks:
         ops = block.ops
         for op in ops:
+            if op.type == 'create_py_reader' or op.type == 'read':
+                continue
             for in_name in op.input_names:
                 if op.type in {'batch_norm', 'fused_bn_add_activation'
                                } and in_name not in {'X', 'Z'}:
