@@ -97,7 +97,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
             # Feed data and train process
 
             # Save inference model. Note we don't save label and loss in this example
-            paddle.static.io.save_inference_model(path_prefix, [image], [predict], exe)
+            paddle.static.save_inference_model(path_prefix, [image], [predict], exe)
 
             # In this example, the save_inference_mode inference will prune the default
             # main program according to the network's input node (img) and output node(predict).
@@ -239,10 +239,10 @@ def load_inference_model(path_prefix, executor, **configs):
 
             # Save the inference model
             path_prefix = "./infer_model"
-            paddle.static.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
+            paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
             [inference_program, feed_target_names, fetch_targets] = (
-                paddle.static.io.load_inference_model(path_prefix, exe))
+                paddle.static.load_inference_model(path_prefix, exe))
             tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
