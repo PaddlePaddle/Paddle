@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
+
 paddle.enable_static()
 
 
@@ -80,11 +82,12 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
 
 class API_TestUnsqueeze(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[-1, 10], dtype='float64')
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data1 = paddle.static.data('data1', shape=[-1, 10], dtype='float64')
             result_squeeze = paddle.unsqueeze(data1, axis=[1])
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
             input = np.squeeze(input1, axis=1)
             result, = exe.run(feed={"data1": input},
@@ -94,10 +97,11 @@ class API_TestUnsqueeze(unittest.TestCase):
 
 class TestUnsqueezeOpError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             # The type of axis in split_op should be int or Variable.
             def test_axes_type():
-                x6 = fluid.layers.data(
+                x6 = paddle.static.data(
                     shape=[-1, 10], dtype='float16', name='x3')
                 paddle.unsqueeze(x6, axis=3.2)
 
@@ -106,12 +110,13 @@ class TestUnsqueezeOpError(unittest.TestCase):
 
 class API_TestUnsqueeze2(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.data('data1', shape=[-1, 10], dtype='float64')
-            data2 = fluid.data('data2', shape=[1], dtype='int32')
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data1 = paddle.static.data('data1', shape=[-1, 10], dtype='float64')
+            data2 = paddle.static.data('data2', shape=[1], dtype='int32')
             result_squeeze = paddle.unsqueeze(data1, axis=data2)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
             input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1, axis=1)
@@ -123,12 +128,13 @@ class API_TestUnsqueeze2(unittest.TestCase):
 
 class API_TestUnsqueeze3(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.data('data1', shape=[-1, 10], dtype='float64')
-            data2 = fluid.data('data2', shape=[1], dtype='int32')
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            data1 = paddle.static.data('data1', shape=[-1, 10], dtype='float64')
+            data2 = paddle.static.data('data2', shape=[1], dtype='int32')
             result_squeeze = paddle.unsqueeze(data1, axis=[data2, 3])
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10, 1]).astype('float64')
             input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1)
@@ -144,7 +150,7 @@ class API_TestDyUnsqueeze(unittest.TestCase):
         with fluid.dygraph.guard():
             input_1 = np.random.random([5, 1, 10]).astype("int32")
             input1 = np.expand_dims(input_1, axis=1)
-            input = fluid.dygraph.to_variable(input_1)
+            input = paddle.to_tensor(input_1)
             output = paddle.unsqueeze(input, axis=[1])
             out_np = output.numpy()
             self.assertTrue(np.array_equal(input1, out_np))
@@ -156,7 +162,7 @@ class API_TestDyUnsqueeze2(unittest.TestCase):
         with fluid.dygraph.guard():
             input1 = np.random.random([5, 10]).astype("int32")
             out1 = np.expand_dims(input1, axis=1)
-            input = fluid.dygraph.to_variable(input1)
+            input = paddle.to_tensor(input1)
             output = paddle.unsqueeze(input, axis=1)
             out_np = output.numpy()
             self.assertTrue(np.array_equal(out1, out_np))
@@ -169,7 +175,7 @@ class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
             input1 = np.random.random([5, 10]).astype("int32")
             out1 = np.expand_dims(input1, axis=1)
             out1 = np.expand_dims(out1, axis=2)
-            input = fluid.dygraph.to_variable(input1)
+            input = paddle.to_tensor(input1)
             output = paddle.unsqueeze(input, axis=paddle.to_tensor([1, 2]))
             out_np = output.numpy()
             self.assertTrue(np.array_equal(out1, out_np))
@@ -183,13 +189,60 @@ class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
             # Actually, expand_dims supports tuple since version 1.18.0
             out1 = np.expand_dims(input1, axis=1)
             out1 = np.expand_dims(out1, axis=2)
-            input = fluid.dygraph.to_variable(input1)
+            input = paddle.to_tensor(input1)
             output = paddle.unsqueeze(
-                fluid.dygraph.to_variable(input1),
+                paddle.to_tensor(input1),
                 axis=[paddle.to_tensor([1]), paddle.to_tensor([2])])
             out_np = output.numpy()
             self.assertTrue(np.array_equal(out1, out_np))
             self.assertEqual(out1.shape, out_np.shape)
+
+
+class API_TestDygraphUnSqueeze(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input = paddle.to_tensor(input_1)
+            output = paddle.unsqueeze(input, axis=[1])
+            out_np = output.numpy()
+            expected_out = np.unsqueeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_int8(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int8")
+            input = paddle.to_tensor(input_1)
+            output = paddle.unsqueeze(input, axis=[1])
+            out_np = output.numpy()
+            expected_out = np.unsqueeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_uint8(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("uint8")
+            input = paddle.to_tensor(input_1)
+            output = paddle.unsqueeze(input, axis=[1])
+            out_np = output.numpy()
+            expected_out = np.unsqueeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_axis_not_list(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input = paddle.to_tensor(input_1)
+            output = paddle.unsqueeze(input, axis=1)
+            out_np = output.numpy()
+            expected_out = np.unsqueeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_dimension_not_1(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input = paddle.to_tensor(input_1)
+            output = paddle.unsqueeze(input, axis=(1, 2))
+            out_np = output.numpy()
+            expected_out = np.unsqueeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
 
 
 if __name__ == "__main__":
