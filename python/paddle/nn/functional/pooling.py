@@ -844,7 +844,7 @@ def max_pool3d(x,
 
     op_type = "max_pool3d_with_index" if return_mask else "pool3d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype(input_param_type='x')
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
