@@ -44,7 +44,12 @@ add_subdirectory(api)
 set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
      zero_copy_tensor reset_tensor_array 
         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
-create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+#TODO(wilber, T8T9): Do we still need to support windows gpu static library?
+if(WIN32 AND WITH_GPU)
+  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
+else()
+  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+endif()
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
