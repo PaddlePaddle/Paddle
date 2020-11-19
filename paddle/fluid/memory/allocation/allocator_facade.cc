@@ -57,8 +57,6 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::once_flag p2p_init_flag;
-
 class AllocatorFacadePrivate {
  public:
   using AllocatorMap = std::map<platform::Place, std::shared_ptr<Allocator>>;
@@ -275,39 +273,7 @@ AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
 // cpp.
 AllocatorFacade::~AllocatorFacade() {}
 
-void InitP2P() {
-#ifdef PADDLE_WITH_CUDA
-  std::call_once(p2p_init_flag, [&]() {
-    std::vector<int> devices;
-    try {
-      // use user specified GPUs in single-node multi-process mode.
-      devices = platform::GetSelectedDevices();
-    } catch (const std::exception& exp) {
-      LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-    }
-
-    int count = devices.size();
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0; j < count; ++j) {
-        if (devices[i] == devices[j]) continue;
-        int can_acess = -1;
-        cudaError_t ret =
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
-        if (ret != cudaSuccess || can_acess != 1) {
-          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
-                       << " to " << devices[j];
-        } else {
-          platform::CUDADeviceGuard guard(devices[i]);
-          cudaDeviceEnablePeerAccess(devices[j], 0);
-        }
-      }
-    }
-  });
-#endif
-}
-
 AllocatorFacade& AllocatorFacade::Instance() {
-  InitP2P();
   static AllocatorFacade instance;
   return instance;
 }

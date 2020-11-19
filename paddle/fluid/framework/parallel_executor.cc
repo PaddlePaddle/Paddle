@@ -55,6 +55,10 @@ static std::once_flag gProfileOnce;
 static bool gProfileStarted = false;
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+std::once_flag p2p_init_flag;
+#endif
+
 class ParallelExecutorPrivate {
  public:
   ParallelExecutorPrivate(const std::vector<platform::Place> &places,
@@ -458,6 +462,37 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
+void InitP2P(const std::vector<platform::Place> &places) {
+#ifdef PADDLE_WITH_CUDA
+  std::call_once(p2p_init_flag, [&]() {
+    std::vector<int> devices;
+    int count = places.size();
+    for (int i = 0; i < count; i++) {
+      if (!is_gpu_place(places[i])) return;
+
+        device = BOOST_GET_CONST(platform::CUDAPlace, places[i]));
+        devices.append(device.GetDeviceId())
+    }
+
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j < count; ++j) {
+        if (devices[i] == devices[j]) continue;
+        int can_acess = -1;
+        cudaError_t ret =
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
+        if (ret != cudaSuccess || can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
+                       << " to " << devices[j];
+        } else {
+          platform::CUDADeviceGuard guard(devices[i]);
+          cudaDeviceEnablePeerAccess(devices[j], 0);
+        }
+      }
+    }
+  });
+#endif
+}
+
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -470,6 +505,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
                  platform::errors::Unavailable(
                      "XPU is not supported in ParallelExecutor"));
+  InitP2P(places);
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
   member_->use_cuda_ = exec_strategy.use_cuda_;
