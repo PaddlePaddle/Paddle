@@ -22,6 +22,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
@@ -83,6 +84,9 @@ class NameVisitor(gast.NodeVisitor):
         self.write_in_loop = defaultdict(set)
         self.condition_vars = defaultdict(set)
         self.in_condition = False
+
+        # Some names are types, we shouldn't record them as loop var names.
+        self.type_vars = set()
 
         self.static_analysis_visitor = StaticAnalysisVisitor(root_node)
         self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
@@ -249,6 +253,18 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
         self.current_loop.pop()
 
+    def visit_Call(self, node):
+        # Store type var names such as "isinstance(x, some_type_names)" and
+        # Remove them later
+        if isinstance(node.func, gast.Name) and node.func.id == 'isinstance':
+            type_node = node.args[1]
+            if isinstance(type_node, gast.Tuple):
+                for element in type_node.elts:
+                    self.type_vars.add(ast_to_source_code(element).strip())
+            else:
+                self.type_vars.add(ast_to_source_code(type_node).strip())
+        self.generic_visit(node)
+
     def _var_nodes_to_names(self, node_set, ctx_filter_set=None):
         ret = set()
         for node in node_set:
@@ -290,6 +306,7 @@ class NameVisitor(gast.NodeVisitor):
         Remove unnecessary vars from before_loop_vars, after_loop_vars or in_loop_vars about loop_node.
             1. Remove target vars of gast.For from before_loop_vars or after_loop_vars.
             2. Remove vars only in gast.comprehension.
+            3. Remove vars that are type names, for example: "isinstance(x, var_type_name)"
         :param loop_vars: before_loop_vars, after_loop_vars or in_loop_vars of loop_node.
         :param loop_node: Current loop node.
         """
@@ -361,6 +378,12 @@ class NameVisitor(gast.NodeVisitor):
                 target_vars_of_for_node.add(var)
 
         removed_vars = target_vars_of_for_node | vars_of_list_generator
+
+        # 3. Remove var type names which are stored in self.type_vars
+        for var in loop_vars:
+            if ast_to_source_code(var).strip() in self.type_vars:
+                removed_vars.add(var)
+
         return loop_vars - removed_vars
 
 
