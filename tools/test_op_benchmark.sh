@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set +ex
 
 [ -z "$PADDLE_ROOT" ] && PADDLE_ROOT=$(cd $(dirname ${BASH_SOURCE[0]})/.. && pwd)
@@ -103,11 +117,12 @@ function compile_install_paddlepaddle {
   export BUILD_TYPE=Release
   export WITH_DISTRIBUTE=OFF
   export PYTHON_ABI=cp37-cp37m
+  export CMAKE_BUILD_TYPE=Release
   [ -d build ] && rm -rf build
   bash paddle/scripts/paddle_build.sh build
   [ $? -ne 0 ] && LOG "[FATAL] compile fail." && exit 7
   LOG "[DEBUG] Uninstall Paddle ..."
-  pip uninstall -y paddlepaddle
+  pip uninstall -y paddlepaddle paddlepaddle_gpu
   LOG "[DEBUG] Install Paddle ..."
   pip install build/python/dist/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
 }
@@ -121,6 +136,7 @@ function run_op_benchmark_test {
   do
     echo "$api_info" >> $api_info_file
   done
+  LOG "[INFO] Uninstall "
   for branch_name in "develop" "test_pr"
   do
     git checkout $branch_name
@@ -146,16 +162,14 @@ function run_op_benchmark_test {
 # diff benchmakr result and miss op
 function summary_problems {
   local op_name
-  LOG "[DEBUG] Check benchmark result."
   python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
       --develop_logs_dir $(pwd)/logs-develop \
       --pr_logs_dir $(pwd)/logs-test_pr
-  LOG "[DEBUG] Check missing benchmark scripts or mapping."
   for op_name in ${!CHANGE_OP_MAP[@]}
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
-      LOG "[WARNING] Missing ${op_name}'s test script in benchmark."
+      LOG "[WARNING] Missing test script of \"${op_name}\" in benchmark."
     fi
   done
 }
