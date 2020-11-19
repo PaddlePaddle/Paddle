@@ -5448,22 +5448,18 @@ def ctc_greedy_decoder(input,
 
 def transpose(x, perm, name=None):
     """
-    :alias_main: paddle.transpose
-	:alias: paddle.transpose,paddle.tensor.transpose,paddle.tensor.linalg.transpose,paddle.tensor.manipulation.transpose
-	:old_api: paddle.fluid.layers.transpose
-
     Permute the data dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
 
     For Example:
 
