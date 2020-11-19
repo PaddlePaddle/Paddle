@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <algorithm>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -141,11 +142,25 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    int axis = ctx.Attr<int>("axis");
+
+    auto x_dims = x->dims();
+    auto y_dims = y->dims();
+    auto rank = std::max(x_dims.size(), y_dims.size());
+    framework::DDim x_new_dims = GetNewDims(x_dims, rank);
+    framework::DDim y_new_dims = GetNewDims(y_dims, rank);
+    bool use_eigen = false;
+    if (axis == -1) {
+      use_eigen = UseEigenBroadcast(x_new_dims, y_new_dims);
+    }
+    if (use_eigen) {
+      VLOG(3) << "====ues eigen grad function====";
+      ElementwiseGradEigenFunction<DeviceContext, T>(ctx, T(1));
+      return;
+    }
+
     // skip out
     auto *out = dout;
-    dx->mutable_data<T>(ctx.GetPlace());
-    dy->mutable_data<T>(ctx.GetPlace());
-    return;
 
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
