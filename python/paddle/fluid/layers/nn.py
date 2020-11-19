@@ -5702,6 +5702,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         ${out_comment}.
 
     Examples:
+
         >>>  # for LodTensor inputs
         >>> import paddle
         >>> paddle.enable_static()
