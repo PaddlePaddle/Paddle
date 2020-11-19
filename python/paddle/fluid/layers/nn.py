@@ -5448,9 +5448,6 @@ def ctc_greedy_decoder(input,
 
 def transpose(x, perm, name=None):
     """
-    :alias_main: paddle.transpose
-	:alias: paddle.transpose,paddle.tensor.transpose,paddle.tensor.linalg.transpose,paddle.tensor.manipulation.transpose
-
     Permute the data dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
