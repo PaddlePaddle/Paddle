@@ -215,10 +215,8 @@ class TestVarBase(unittest.TestCase):
             z = 3 * detach_x**2
             z.backward()
             self.assertTrue(np.array_equal(x.grad, [20.0]))
-            print(x.grad)
-            print(detach_x.grad)
             self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
-            # Due to sharing of data with origin Tensor, There are some unsafe operations:  
+            # Due to sharing of data with origin Tensor, There are some unsafe operations:
             # with self.assertRaises(RuntimeError):
             #     y = 2 * x
             #     detach_x[:] = 5.0
