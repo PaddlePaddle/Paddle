@@ -167,8 +167,10 @@ class DeviceWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {}
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
+#ifdef PADDLE_WITH_CUDA  
   virtual void SetStream(const cudaStream_t stream) {}
   virtual void SetEvent(const cudaEvent_t event) {}
+#endif
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }
