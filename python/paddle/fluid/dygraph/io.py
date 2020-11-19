@@ -846,6 +846,7 @@ class TranslatedLayer(layers.Layer):
     def run_static_graph(self, input, program_holder, trace_program):
         main_program = framework.default_main_program()
         output_names = [var.name() for var in program_holder.output_descs]
+        # append blocks from 'trace_program'
         self.append_block(main_program, trace_program, program_holder, input,
                           output_names)
         main_program._sync_with_cpp()
@@ -854,27 +855,30 @@ class TranslatedLayer(layers.Layer):
             outs = outs[0]
         return outs
 
-    def print_program(self, temp_program):
-        for idx in range(len(temp_program.blocks)):
-            block = temp_program.blocks[idx]
-            print('index: {}, parent: {}, forward: {}, backward: {}, '.format(
-                idx, block.parent_idx, block.forward_block_idx,
-                block.backward_block_idx))
+    @classmethod
+    def _collect_parent_var(cls, program, block_idx):
+        vars = []
+        if block_idx < 0:
+            return vars
+        for var in program.block(block_idx).vars:
+            vars.append(var)
+        parent_idx = program.block(block_idx).parent_idx
+        if parent_idx > -1:
+            vars += cls._collect_parent_var(program, parent_idx)
+        return vars
 
-    @staticmethod
+    @classmethod
     def append_block(
+            cls,
             dest_program,
             src_program_desc,
             program_holder,
             input_names,
             output_names, ):
-        param_var_names = []
-        for block in dest_program.blocks:
-            for k in block.vars:
-                if isinstance(block.vars[k], framework.Parameter):
-                    param_var_names.append(k)
 
         origin_block_idx = dest_program.current_block_idx
+        param_var_names = cls._collect_parent_var(dest_program,
+                                                  origin_block_idx)
         dest_program.block(origin_block_idx).append_var_from_block_desc_static(
             src_program_desc.block(0), exclude=param_var_names)
 
@@ -903,13 +907,9 @@ class TranslatedLayer(layers.Layer):
                     parent_idx = offset_block_idx + parent_idx
                 else:
                     parent_idx = origin_block_idx
-
                 dest_block = dest_program._create_block(parent_idx=parent_idx)
-                # dest_block._set_forward_block_idx(offset_block_idx+src_block.get_forward_block_idx())
-
                 dest_block.append_var_from_block_desc_static(
                     src_block, exclude=param_var_names)
-
                 ops_append += dest_block.append_op_from_block_desc_static(
                     src_block)
 
@@ -924,11 +924,7 @@ class TranslatedLayer(layers.Layer):
                 op._set_attr('sub_block',
                              dest_program.block(offset_block_idx + origin_id))
         dest_program._sync_with_cpp()
-
         dest_program.current_block_idx = origin_block_idx
-
-        # cur_block.append_op_from_block_desc_static(trace_program.block(0))
-        # cur_block.append_var_from_block_desc_static(trace_program.block(0))
 
     def get_output_from_program(self, program, program_holder):
         outs = list()
@@ -940,28 +936,6 @@ class TranslatedLayer(layers.Layer):
                     if out not in outs:
                         outs.append(out)
         return outs
-
-    def replace_input(self, program_holder, program_desc, inputs):
-        name_inp_desc = [inp.name() for inp in program_holder.input_descs]
-        name_inp = [inp.name for inp in inputs]
-        if name_inp_desc == name_inp:
-            return
-        assert len(name_inp_desc) == len(
-            name_inp), 'length of inputs is incorrect!\n'
-
-        for i in range(len(name_inp)):
-            if name_inp[i] != name_inp_desc[i]:
-                program_holder.input_descs[i].set_name(str(name_inp[i]))
-                for idx_block in range(program_desc.num_blocks()):
-                    desc = program_desc.block(idx_block)
-                    print('opsize:', desc.op_size())
-                    for j in range(desc.op_size()):
-                        op = desc.op(j)
-                        for name_arg in op.input_names():
-                            arg = op.input(name_arg)
-                            if name_inp_desc[i] in arg:
-                                arg[arg.index(name_inp_desc[i])] = name_inp[i]
-                                op.set_input(name_arg, arg)
 
     def train(self):
         self._is_test = False
