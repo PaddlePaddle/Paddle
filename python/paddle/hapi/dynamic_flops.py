@@ -19,6 +19,8 @@ import numpy as np
 from prettytable import PrettyTable
 from static_flops import static_flops
 
+__all__ = ['flops']
+
 
 def flops(net, input_size, custom_ops=None, print_detail=False):
     """Prints a table about the flops of network.
