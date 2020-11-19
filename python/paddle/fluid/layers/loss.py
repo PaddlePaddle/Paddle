@@ -333,6 +333,11 @@ def square_error_cost(input, label):
             # [0.01, 0.01]
 
     """
+    if in_dygraph_mode():
+        minus_out = core.ops.elementwise_sub(input, label)
+        square_out = core.ops.square(minus_out)
+        return square_out
+
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
                              'square_error_cost')
     check_variable_and_dtype(label, "label", ['float32', 'float64'],
