@@ -220,7 +220,7 @@ class TestUnsqueezeAPI(unittest.TestCase):
 
         out_1 = paddle.unsqueeze(x, axis=[3, 1, 1])
         out_2 = paddle.unsqueeze(
-            x, axes=[positive_3_int32, positive_1_int64, 1])
+            x, axis=[positive_3_int32, positive_1_int64, 1])
         out_3 = paddle.unsqueeze(x, axis=axes_tensor_int32)
         out_4 = paddle.unsqueeze(x, axis=3)
         out_5 = paddle.unsqueeze(x, axis=axes_tensor_int64)
