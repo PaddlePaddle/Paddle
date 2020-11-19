@@ -223,19 +223,23 @@ class DenseMomentumFunctor<T, MT, UseNesterov> {
         regularization_flag_(regularization_flag),
         regularization_coeff_(regularization_coeff) {}
   inline HOSTDEVICE void operator()(size_t i) const {
-    MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
-    const MT g = static_cast<MT>(g_[i]);
+    // put memory access in register
+    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
+    MT g = static_cast<MT>(g_[i]) * rescale_grad_;
     const MT lr = static_cast<MT>(lr_[0]);
-    MT v = v_[i];
-    const MT wd = regularization_flag_ == RegularizationFlag::kL2DECAY
-                      ? regularization_coeff_
-                      : static_cast<MT>(0);
-    v = mu_ * v - lr * wd * p - lr * rescale_grad_ * g;
-    p = p + mu_ * v - lr * rescale_grad_ * g;
-    v_out_[i] = v;
-    p_out_[i] = static_cast<T>(p);
+    const MT v = v_[i];
+
+    g = regularization_flag_ == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff_ * p
+            : g;
+
+    MT v_out = v * mu_ + g;
+    MT p_out = p - (g + v_out * mu_) * lr;
+    // write reigster to memory
+    v_out_[i] = v_out;
+    p_out_[i] = static_cast<T>(p_out);
     if (mp_out_) {
-      mp_out_[i] = p;
+      mp_out_[i] = p_out;
     }
   }
 };
@@ -278,19 +282,23 @@ class DenseMomentumFunctor<T, MT, NoNesterov> {
         regularization_flag_(regularization_flag),
         regularization_coeff_(regularization_coeff) {}
   inline HOSTDEVICE void operator()(size_t i) const {
-    MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
-    const MT g = static_cast<MT>(g_[i]);
+    // put memory access in register
+    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
+    MT g = static_cast<MT>(g_[i]) * rescale_grad_;
     const MT lr = static_cast<MT>(lr_[0]);
-    MT v = v_[i];
-    const MT wd = regularization_flag_ == RegularizationFlag::kL2DECAY
-                      ? regularization_coeff_
-                      : static_cast<MT>(0);
-    v = mu_ * v - lr * wd * p - lr * rescale_grad_ * g;
-    p = p + v;
-    v_out_[i] = v;
-    p_out_[i] = static_cast<T>(p);
+    const MT v = v_[i];
+
+    g = regularization_flag_ == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff_ * p
+            : g;
+
+    MT v_out = v * mu_ + g;
+    MT p_out = p - lr * v_out;
+    // write reigster to memory
+    v_out_[i] = v_out;
+    p_out_[i] = static_cast<T>(p_out);
     if (mp_out_) {
-      mp_out_[i] = p;
+      mp_out_[i] = p_out;
     }
   }
 };
@@ -344,24 +352,26 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    const MT g =
-        row_idx >= 0
-            ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_])
-            : static_cast<MT>(0);
-    MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
+    MT g = row_idx >= 0
+               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_]) *
+                     rescale_grad_
+               : static_cast<MT>(0);
+    // put memory access in register
+    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
     const MT lr = static_cast<MT>(lr_[0]);
-    MT v = v_[i];
-    const MT wd = regularization_flag_ == RegularizationFlag::kL2DECAY
-                      ? regularization_coeff_
-                      : static_cast<MT>(0);
+    const MT v = v_[i];
 
-    v = mu_ * v - lr * wd * p - lr * rescale_grad_ * g;
-    p = p + mu_ * v - lr * rescale_grad_ * g;
+    g = regularization_flag_ == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff_ * p
+            : g;
 
-    v_out_[i] = v;
-    p_out_[i] = static_cast<T>(p);
+    MT v_out = v * mu_ + g;
+    MT p_out = p - (g + v_out * mu_) * lr;
+    // write reigster to memory
+    v_out_[i] = v_out;
+    p_out_[i] = static_cast<T>(p_out);
     if (mp_out_) {
-      mp_out_[i] = p;
+      mp_out_[i] = p_out;
     }
   }
 };
@@ -412,23 +422,26 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
         math::BinarySearch<int64_t>(rows_, row_height_, i / row_numel_);
-    const MT g =
-        row_idx >= 0
-            ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_])
-            : static_cast<MT>(0);
-    MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
+    MT g = row_idx >= 0
+               ? static_cast<MT>(g_[row_idx * row_numel_ + i % row_numel_]) *
+                     rescale_grad_
+               : static_cast<MT>(0);
+    // put memory access in register
+    const MT p = mp_ ? mp_[i] : static_cast<MT>(p_[i]);
     const MT lr = static_cast<MT>(lr_[0]);
-    MT v = v_[i];
-    const MT wd = regularization_flag_ == RegularizationFlag::kL2DECAY
-                      ? regularization_coeff_
-                      : static_cast<MT>(0);
+    const MT v = v_[i];
 
-    v = mu_ * v - lr * wd * p - lr * rescale_grad_ * g;
-    p = p + v;
-    v_out_[i] = v;
-    p_out_[i] = static_cast<T>(p);
+    g = regularization_flag_ == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff_ * p
+            : g;
+
+    MT v_out = v * mu_ + g;
+    MT p_out = p - v_out * lr;
+    // write reigster to memory
+    v_out_[i] = v_out;
+    p_out_[i] = static_cast<T>(p_out);
     if (mp_out_) {
-      mp_out_[i] = p;
+      mp_out_[i] = p_out;
     }
   }
 };

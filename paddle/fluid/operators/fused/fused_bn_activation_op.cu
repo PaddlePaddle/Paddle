@@ -77,11 +77,6 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
     saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-        functor;
-    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
-    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
@@ -90,6 +85,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
       // skip the batch norm calculation, let y = act(x).

@@ -69,7 +69,7 @@ void MomentumOpMaker::Make() {
                        "(string) regularization_method")
       .SetDefault("");
   AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
-      .SetDefault(1.0);
+      .SetDefault(0.0);
   AddAttr<bool>("multi_precision",
                 "(bool, default false) "
                 "Whether to use multi-precision during weight updating.")
