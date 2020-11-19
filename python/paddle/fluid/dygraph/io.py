@@ -879,8 +879,10 @@ class TranslatedLayer(layers.Layer):
         origin_block_idx = dest_program.current_block_idx
         param_var_names = cls._collect_parent_var(dest_program,
                                                   origin_block_idx)
-        dest_program.block(origin_block_idx).append_var_from_block_desc_static(
-            src_program_desc.block(0), exclude=param_var_names)
+        append_var_from_block_desc_static(
+            dest_program.block(origin_block_idx),
+            src_program_desc.block(0),
+            exclude=param_var_names)
 
         name_inp_desc = [inp.name() for inp in program_holder.input_descs]
         name_inp = [inp.name for inp in input_names]
@@ -892,9 +894,8 @@ class TranslatedLayer(layers.Layer):
                 inputs={'X': [name_inp[i]]},
                 outputs={'Out': [name_inp_desc[i]]})
 
-        ops_append = dest_program.block(
-            origin_block_idx).append_op_from_block_desc_static(
-                src_program_desc.block(0))
+        ops_append = append_op_from_block_desc_static(
+            dest_program.block(origin_block_idx), src_program_desc.block(0))
         dest_program._sync_with_cpp()
 
         offset_block_idx = dest_program.num_blocks - 1
@@ -908,10 +909,10 @@ class TranslatedLayer(layers.Layer):
                 else:
                     parent_idx = origin_block_idx
                 dest_block = dest_program._create_block(parent_idx=parent_idx)
-                dest_block.append_var_from_block_desc_static(
-                    src_block, exclude=param_var_names)
-                ops_append += dest_block.append_op_from_block_desc_static(
-                    src_block)
+                append_var_from_block_desc_static(
+                    dest_block, src_block, exclude=param_var_names)
+                ops_append += append_op_from_block_desc_static(dest_block,
+                                                               src_block)
 
         dest_program._sync_with_cpp()
         for op in ops_append:
@@ -1083,3 +1084,89 @@ class TranslatedLayer(layers.Layer):
             output_spec.append(spec)
 
         return output_spec
+
+
+def append_op_from_block_desc_static(block, src_block_desc):
+    '''
+    Append OP of 'src_block_desc' to current block.
+
+    Args:
+        src_block_desc(BlockDesc): append var of  'src_block_desc'
+
+    Returns:
+        List: list of the OP that are append to current block.
+    '''
+    ops = []
+    for i in range(src_block_desc.op_size()):
+        ops.append(append_op_from_desc_static(block, src_block_desc.op(i)))
+    return ops
+
+
+def append_op_from_desc_static(block, op_desc):
+    op_type = op_desc.type()
+    op_append = block.desc.append_op()
+    op_append.copy_from(op_desc)
+    op = framework.Operator(
+        block=block,
+        desc=op_append,
+        type=op_type,
+        inputs=None,
+        outputs=None,
+        attrs=None)
+    block.ops.append(op)
+    return op
+
+
+def append_var_from_block_desc_static(block,
+                                      src_block_desc,
+                                      include=None,
+                                      exclude=None):
+    '''
+    Append variables of 'src_block_desc' to current block.
+    If 'include' is not `None`,variables that are not in include are not append.
+    If 'exclude' is not `None`,variables that are in exclude will are not append.
+
+    Args:
+        src_block_desc(BlockDesc): append var of  'src_block_desc'
+        include(List):list of names of variables
+        exclude(List):list of names of variables
+
+    Returns:
+        List: list of the variables that are append to current block.
+    '''
+    vars_append = []
+    for var_desc in src_block_desc.all_vars():
+        var_desc_name = var_desc.name()
+        if not block.has_var(var_desc_name) and (
+                include is None or var_desc_name in include) and (
+                    exclude is None or var_desc_name not in exclude):
+
+            var_type = var_desc.type()
+            if var_type in [
+                    core.VarDesc.VarType.SELECTED_ROWS,
+                    core.VarDesc.VarType.LOD_TENSOR,
+                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            ]:
+                data_type = var_desc.dtype()
+                var_shape = var_desc.shape()
+            else:
+                data_type = None
+                var_shape = None
+            if var_type in [
+                    core.VarDesc.VarType.LOD_TENSOR,
+                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            ]:
+                lod_level = var_desc.lod_level()
+            else:
+                lod_level = None
+
+            vars_append.append(
+                block.create_var(
+                    name=var_desc.name(),
+                    dtype=data_type,
+                    type=var_type,
+                    shape=var_shape,
+                    lod_level=lod_level,
+                    persistable=var_desc.persistable(),
+                    set_need_check_feed=var_desc.need_check_feed()))
+    return vars_append
