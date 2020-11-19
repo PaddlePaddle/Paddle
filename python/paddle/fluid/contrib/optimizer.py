@@ -105,10 +105,12 @@ class Momentum(Optimizer):
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
+        predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
+        py_regular = None if predicate(regularization) else regularization
         super(Momentum, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
-            regularization=regularization,
+            regularization=py_regular,
             grad_clip=grad_clip,
             name=name)
         self.type = "momentum"
@@ -168,72 +170,3 @@ class Momentum(Optimizer):
             stop_gradient=True)
 
         return momentum_op
-
-    def apply_gradients(self, params_grads):
-        """
-        Second part of `minimize`, appending optimization operators for
-        given `params_grads` pairs.
-
-        Args:
-            params_grads (list): list of (param, grad) pair to do optimization.
-
-        Returns:
-            list: A list of operators appended to the current program.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                params_grads = optimizer.backward(loss)
-                # you may append operations for params_grads here
-                # ...
-                optimizer.apply_gradients(params_grads)
-        """
-
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
-        # 'optimizer(grad_clip)' or 'set_gradient_clip'
-        if self._grad_clip is not None:
-            params_grads = self._grad_clip(params_grads)
-        else:
-            params_grads = append_gradient_clip_ops(params_grads)
-
-        # Add regularization if any none L2DecayRegularizer
-        if (not isinstance(self.regularization, L2DecayRegularizer)):
-            params_grads = append_regularization_ops(params_grads,
-                                                     self.regularization)
-
-        optimize_ops = self._create_optimization_pass(params_grads)
-        return optimize_ops
-
-    def apply_optimize(self, loss, startup_program, params_grads):
-        """
-        Second part of `minimize`, appending optimization operators for
-        given `params_grads` pairs.
-        Args:
-            loss (Variable): loss variable to run optimizations.
-            startup_program (Program): startup_program for initializing parameters
-                in `parameter_list`.
-            params_grads (list): list of (param, grad) pair to do optimization.
-        Returns:
-            list: A list of operators appended to the current program.
-        """
-        if framework.in_dygraph_mode():
-            with program_guard(framework.default_main_program(),
-                               framework.default_startup_program()):
-                if self._grad_clip is not None:
-                    params_grads = self._grad_clip(params_grads)
-
-                # Add regularization if any none L2DecayRegularizer
-                if (not isinstance(self.regularization, L2DecayRegularizer)):
-                    params_grads = append_regularization_ops(
-                        params_grads, self.regularization)
-
-                optimize_ops = self._create_optimization_pass(params_grads)
-        else:
-            program = loss.block.program
-            with program_guard(program, startup_program):
-                optimize_ops = self.apply_gradients(params_grads)
-        return optimize_ops

@@ -174,7 +174,7 @@ class TestLarsMomentumOp(OpTest):
         self.check_output()
 
 
-class __TestSparseMomentumOpCommon(unittest.TestCase):
+class TestSparseMomentumOp(unittest.TestCase):
     def setUp(self):
         self.use_nesterov = False
         self.regularization_method = ""
@@ -271,10 +271,6 @@ class __TestSparseMomentumOpCommon(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
-
-
-class TestSparseMomentumOp(__TestSparseMomentumOpCommon):
-    pass
 
 
 class TestSparseMomentumOp2(TestSparseMomentumOp):
@@ -393,7 +389,7 @@ class TestMomentumOpWithDecay2(TestMomentumOpWithDecay):
         self.use_nesterov = False
 
 
-class TestSparseMomentumOpWithDecay(__TestSparseMomentumOpCommon):
+class TestSparseMomentumOpWithDecay(TestSparseMomentumOp):
     def setUp(self):
         self.use_nesterov = False
         self.regularization_method = 'l2_decay'
@@ -437,9 +433,9 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_cost = fluid.layers.mean(cost)
 
-            rms_optimizer = paddle.fluid.contrib.optimizer.Momentum(
+            momentum_optimizer = paddle.fluid.contrib.optimizer.Momentum(
                 learning_rate=0.1, momentum=0.9)
-            rms_optimizer.minimize(avg_cost)
+            momentum_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
             train_reader = paddle.batch(
@@ -452,18 +448,20 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
 
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
-    def __get_loss(self, momentum, linear):
-        inp = paddle.full(
-            shape=[2, 2], fill_value=1.0, dtype='float32').astype("float32")
-        inp = paddle.to_tensor(inp)
-        out = linear(inp)
-        loss = paddle.mean(out)
-        momentum.minimize(loss)
-        return loss
+    def __update_params(self, momentum, linear):
+        for i in range(10):
+            inp = paddle.full(
+                shape=[2, 2], fill_value=i, dtype='float32').astype("float32")
+            inp = paddle.to_tensor(inp)
+            out = linear(inp)
+            loss = paddle.mean(out)
+            loss.backward()
+            momentum.minimize(loss)
 
     def test_vs(self):
         paddle.disable_static()
-        linear = paddle.nn.Linear(
+
+        linear_old = paddle.nn.Linear(
             2,
             2,
             weight_attr=paddle.nn.initializer.Constant(value=2.0),
@@ -471,23 +469,28 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
         momentum_old = paddle.fluid.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
-            parameter_list=linear.parameters(),
+            parameter_list=linear_old.parameters(),
             regularization=paddle.fluid.regularizer.L2Decay(
                 regularization_coeff=0.1))
-        loss_old = self.__get_loss(momentum=momentum_old, linear=linear)
-        loss_old = loss_old.numpy()
+        self.__update_params(momentum=momentum_old, linear=linear_old)
 
+        linear_new = paddle.nn.Linear(
+            2,
+            2,
+            weight_attr=paddle.nn.initializer.Constant(value=2.0),
+            bias_attr=paddle.nn.initializer.Constant(value=2.0))
         momentum_new = paddle.fluid.contrib.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
-            parameter_list=linear.parameters(),
+            parameter_list=linear_new.parameters(),
             regularization=paddle.fluid.regularizer.L2Decay(
                 regularization_coeff=0.1))
-        loss_new = self.__get_loss(momentum=momentum_new, linear=linear)
-        loss_new = loss_new.numpy()
+        self.__update_params(momentum=momentum_new, linear=linear_new)
 
-        self.assertEqual(loss_old, loss_new,
-                         'the loss of two Momentum optimizers should equal')
+        self.assertEqual(
+            (linear_old.weight.numpy() == linear_new.weight.numpy()).all(),
+            True,
+            'the param weight updated by two Momentum optimizers should equal')
 
 
 if __name__ == "__main__":

@@ -66,7 +66,7 @@ void MomentumOpMaker::Make() {
       "(string) regularization_method, right now only support l2decay or none")
       .SetDefault("");
   AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
-      .SetDefault(1.0);
+      .SetDefault(0);
   AddComment(R"DOC(
 Momentum Optimizer.
 
