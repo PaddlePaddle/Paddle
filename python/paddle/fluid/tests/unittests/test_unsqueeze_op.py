@@ -205,7 +205,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
             input = paddle.to_tensor(input_1)
             output = paddle.unsqueeze(input, axis=[1])
             out_np = output.numpy()
-            expected_out = np.unsqueeze(input_1, axis=1)
+            expected_out = np.expand_dims(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_out_int8(self):
@@ -214,7 +214,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
             input = paddle.to_tensor(input_1)
             output = paddle.unsqueeze(input, axis=[1])
             out_np = output.numpy()
-            expected_out = np.unsqueeze(input_1, axis=1)
+            expected_out = np.expand_dims(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_out_uint8(self):
@@ -223,7 +223,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
             input = paddle.to_tensor(input_1)
             output = paddle.unsqueeze(input, axis=[1])
             out_np = output.numpy()
-            expected_out = np.unsqueeze(input_1, axis=1)
+            expected_out = np.expand_dims(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_axis_not_list(self):
@@ -232,7 +232,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
             input = paddle.to_tensor(input_1)
             output = paddle.unsqueeze(input, axis=1)
             out_np = output.numpy()
-            expected_out = np.unsqueeze(input_1, axis=1)
+            expected_out = np.expand_dims(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_dimension_not_1(self):
@@ -241,7 +241,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
             input = paddle.to_tensor(input_1)
             output = paddle.unsqueeze(input, axis=(1, 2))
             out_np = output.numpy()
-            expected_out = np.unsqueeze(input_1, axis=1)
+            expected_out = np.expand_dims(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
 
 
