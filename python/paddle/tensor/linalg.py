@@ -629,6 +629,7 @@ def t(input, name=None):
     
     For Example:
         .. code-block:: text
+
         # Example 1 (0-D tensor)
          x = tensor([0.79])
          paddle.t(x) = tensor([0.79])
@@ -645,8 +646,8 @@ def t(input, name=None):
     
      Examples:
         .. code-block:: python
-            import paddle
 
+            import paddle
             x = paddle.ones(shape=[2, 3], dtype='int32')
             x_transposed = paddle.t(x)
             print(x_transposed.shape)
