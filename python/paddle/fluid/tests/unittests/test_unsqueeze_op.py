@@ -221,7 +221,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         with fluid.dygraph.guard():
             input_1 = np.random.random([5, 1, 10]).astype("uint8")
             input = paddle.to_tensor(input_1)
-            output = paddle.unsqueeze(input, axis=[1])
+            output = paddle.unsqueeze(input, axis=1)
             out_np = output.numpy()
             expected_out = np.expand_dims(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))
