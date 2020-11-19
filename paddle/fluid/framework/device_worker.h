@@ -433,7 +433,10 @@ class HeterCpuWorker : public HogwildWorker {
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
+#endif
 
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
 class GpuWorker : public HogwildWorker {
  public:
   GpuWorker() {}

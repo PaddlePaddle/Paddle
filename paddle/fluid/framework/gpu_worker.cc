@@ -20,7 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
-#ifdef PADDLE_WITH_PSLIB
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #if defined _WIN32 || defined __APPLE__
 #else
