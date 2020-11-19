@@ -36,6 +36,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
 DECLARE_double(eager_delete_tensor_gb);
 
 #ifdef WITH_GPERFTOOLS
@@ -472,8 +476,9 @@ void InitP2P(const std::vector<platform::Place> &places) {
     for (int i = 0; i < count; i++) {
       if (!is_gpu_place(places[i])) return;
 
-        device = BOOST_GET_CONST(platform::CUDAPlace, places[i]));
-        devices.append(device.GetDeviceId())
+      platform::CUDAPlace device =
+          BOOST_GET_CONST(platform::CUDAPlace, places[i]);
+      devices.push_back(device.GetDeviceId());
     }
 
     for (int i = 0; i < count; ++i) {
