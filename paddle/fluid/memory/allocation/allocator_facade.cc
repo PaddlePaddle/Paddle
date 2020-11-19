@@ -291,11 +291,11 @@ void InitP2P() {
       for (int j = 0; j < count; ++j) {
         if (devices[i] == devices[j]) continue;
         int can_acess = -1;
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
-        if (can_acess != 1) {
-          VLOG(2) << "Cannot enable P2P access from " << devices[i] << " to "
-                  << devices[j];
+        cudaError_t ret =
+            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]);
+        if (ret != cudaSuccess || can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << devices[i]
+                       << " to " << devices[j];
         } else {
           platform::CUDADeviceGuard guard(devices[i]);
           cudaDeviceEnablePeerAccess(devices[j], 0);
