@@ -837,128 +837,10 @@ class TranslatedLayer(layers.Layer):
             else:
                 trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
                 p = framework.Program._construct_from_desc(trace_program)
-                return self.run_static_graph(input, program_holder, p.desc)
+                return _run_static_graph(input, program_holder, p.desc)
 
         __impl__.__name__ = method_name
         return __impl__
-
-    def run_static_graph(self, input, program_holder, trace_program):
-        main_program = framework.default_main_program()
-        output_names = [var.name() for var in program_holder.output_descs]
-        # append blocks from 'trace_program'
-        self.append_block(main_program, trace_program, program_holder, input,
-                          output_names)
-        main_program._sync_with_cpp()
-        outs = self.get_output_from_program(main_program, program_holder)
-        if len(outs) == 1:
-            outs = outs[0]
-        return outs
-
-    @classmethod
-    def _collect_parent_var(cls, program, block_idx):
-        '''
-        Get variables in current block and its parent block.
-        
-        Args:
-            program(Program): The program containing the current block.
-            block_idx(int): index of current block.
-
-        Returns:
-            List: list of variable.
-        '''
-        vars = []
-        if block_idx < 0:
-            return vars
-        for var in program.block(block_idx).vars:
-            vars.append(var)
-        parent_idx = program.block(block_idx).parent_idx
-        if parent_idx > -1:
-            vars += cls._collect_parent_var(program, parent_idx)
-        return vars
-
-    @classmethod
-    def append_block(
-            cls,
-            dest_program,
-            src_program_desc,
-            program_holder,
-            input_names,
-            output_names, ):
-        '''
-        Append Variables and Operators in 'src_program_desc' to dest_program.
-        
-        Args:
-            dest_program(Program): Variables and Operators are appended to it.
-            src_program_desc(ProgramDesc): index of current block.
-            program_holder(_ProgramHolder): program_holder of TranslatedLayer
-            input_names(list): list of input variables
-            output_names(list): list of output names
-        '''
-
-        origin_block_idx = dest_program.current_block_idx
-        param_var_names = cls._collect_parent_var(dest_program,
-                                                  origin_block_idx)
-        append_var_from_block_desc_static(
-            dest_program.block(origin_block_idx),
-            src_program_desc.block(0),
-            exclude=param_var_names)
-
-        name_inp_desc = [inp.name() for inp in program_holder.input_descs]
-        name_inp = [inp.name for inp in input_names]
-        assert len(name_inp) == len(name_inp_desc), 'wrong number of input'
-
-        for i in range(len(name_inp_desc)):
-            dest_program.block(origin_block_idx).append_op(
-                type='assign',
-                inputs={'X': [name_inp[i]]},
-                outputs={'Out': [name_inp_desc[i]]})
-
-        ops_append = append_op_from_block_desc_static(
-            dest_program.block(origin_block_idx), src_program_desc.block(0))
-        dest_program._sync_with_cpp()
-
-        offset_block_idx = dest_program.num_blocks - 1
-
-        if src_program_desc.num_blocks() > 1:
-            for src_block_idx in range(1, src_program_desc.num_blocks()):
-                src_block = src_program_desc.block(src_block_idx)
-                src_parent_idx = src_block.parent
-                if src_parent_idx > 0:
-                    parent_idx = offset_block_idx + parent_idx
-                else:
-                    parent_idx = origin_block_idx
-                dest_block = dest_program._create_block(parent_idx=parent_idx)
-                append_var_from_block_desc_static(
-                    dest_block, src_block, exclude=param_var_names)
-                ops_append += append_op_from_block_desc_static(dest_block,
-                                                               src_block)
-
-        dest_program._sync_with_cpp()
-        for op in ops_append:
-            if op.has_attr('sub_block'):
-                sub = op.attr('sub_block')
-                if isinstance(sub, framework.core.BlockDesc):
-                    origin_id = sub.id
-                if isinstance(sub, framework.Block):
-                    origin_id = sub.idx
-                op._set_attr('sub_block',
-                             dest_program.block(offset_block_idx + origin_id))
-        dest_program._sync_with_cpp()
-        dest_program.current_block_idx = origin_block_idx
-
-    def get_output_from_program(self, program, program_holder):
-        """
-            Get output name of 'program' according to program_holder
-        """
-        outs = list()
-        for var in program_holder.output_descs:
-            for idx in range(program.num_blocks):
-                vars = program.block(idx).vars
-                if var.name() in vars:
-                    out = vars[var.name()]
-                    if out not in outs:
-                        outs.append(out)
-        return outs
 
     def train(self):
         self._is_test = False
@@ -1106,6 +988,124 @@ class TranslatedLayer(layers.Layer):
             output_spec.append(spec)
 
         return output_spec
+
+
+def _run_static_graph(input, program_holder, trace_program):
+    main_program = framework.default_main_program()
+    output_names = [var.name() for var in program_holder.output_descs]
+    # append blocks from 'trace_program'
+    _append_block(main_program, trace_program, program_holder, input,
+                  output_names)
+    main_program._sync_with_cpp()
+    outs = _get_output_from_program(main_program, program_holder)
+    if len(outs) == 1:
+        outs = outs[0]
+    return outs
+
+
+def _collect_parent_var(program, block_idx):
+    '''
+    Get variables in current block and its parent block.
+    
+    Args:
+        program(Program): The program containing the current block.
+        block_idx(int): index of current block.
+
+    Returns:
+        List: list of variable.
+    '''
+    vars = []
+    if block_idx < 0:
+        return vars
+    for var in program.block(block_idx).vars:
+        vars.append(var)
+    parent_idx = program.block(block_idx).parent_idx
+    if parent_idx > -1:
+        vars += _collect_parent_var(program, parent_idx)
+    return vars
+
+
+def _append_block(
+        dest_program,
+        src_program_desc,
+        program_holder,
+        input_names,
+        output_names, ):
+    '''
+    Append Variables and Operators in 'src_program_desc' to dest_program.
+    
+    Args:
+        dest_program(Program): Variables and Operators are appended to it.
+        src_program_desc(ProgramDesc): index of current block.
+        program_holder(_ProgramHolder): program_holder of TranslatedLayer
+        input_names(list): list of input variables
+        output_names(list): list of output names
+    '''
+
+    origin_block_idx = dest_program.current_block_idx
+    param_var_names = _collect_parent_var(dest_program, origin_block_idx)
+    append_var_from_block_desc_static(
+        dest_program.block(origin_block_idx),
+        src_program_desc.block(0),
+        exclude=param_var_names)
+
+    name_inp_desc = [inp.name() for inp in program_holder.input_descs]
+    name_inp = [inp.name for inp in input_names]
+    assert len(name_inp) == len(name_inp_desc), 'wrong number of input'
+
+    for i in range(len(name_inp_desc)):
+        dest_program.block(origin_block_idx).append_op(
+            type='assign',
+            inputs={'X': [name_inp[i]]},
+            outputs={'Out': [name_inp_desc[i]]})
+
+    ops_append = append_op_from_block_desc_static(
+        dest_program.block(origin_block_idx), src_program_desc.block(0))
+    dest_program._sync_with_cpp()
+
+    offset_block_idx = dest_program.num_blocks - 1
+
+    if src_program_desc.num_blocks() > 1:
+        for src_block_idx in range(1, src_program_desc.num_blocks()):
+            src_block = src_program_desc.block(src_block_idx)
+            src_parent_idx = src_block.parent
+            if src_parent_idx > 0:
+                parent_idx = offset_block_idx + parent_idx
+            else:
+                parent_idx = origin_block_idx
+            dest_block = dest_program._create_block(parent_idx=parent_idx)
+            append_var_from_block_desc_static(
+                dest_block, src_block, exclude=param_var_names)
+            ops_append += append_op_from_block_desc_static(dest_block,
+                                                           src_block)
+
+    dest_program._sync_with_cpp()
+    for op in ops_append:
+        if op.has_attr('sub_block'):
+            sub = op.attr('sub_block')
+            if isinstance(sub, framework.core.BlockDesc):
+                origin_id = sub.id
+            if isinstance(sub, framework.Block):
+                origin_id = sub.idx
+            op._set_attr('sub_block',
+                         dest_program.block(offset_block_idx + origin_id))
+    dest_program._sync_with_cpp()
+    dest_program.current_block_idx = origin_block_idx
+
+
+def _get_output_from_program(program, program_holder):
+    """
+        Get output name of 'program' according to program_holder
+    """
+    outs = list()
+    for var in program_holder.output_descs:
+        for idx in range(program.num_blocks):
+            vars = program.block(idx).vars
+            if var.name() in vars:
+                out = vars[var.name()]
+                if out not in outs:
+                    outs.append(out)
+    return outs
 
 
 def append_op_from_block_desc_static(block, src_block_desc):
