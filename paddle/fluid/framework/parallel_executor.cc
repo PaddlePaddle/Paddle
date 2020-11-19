@@ -491,6 +491,7 @@ void InitP2P(const std::vector<platform::Place> &places) {
         }
       }
     }
+    VLOG(1) << "init p2p";
   });
 #endif
 }
