@@ -813,5 +813,66 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
                 layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
 
 
+class LayerSaved(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LayerSaved, self).__init__()
+        self._linear_0 = Linear(in_size, out_size)
+        self._linear_1 = Linear(in_size, out_size)
+        self._scale = paddle.to_tensor(9.9)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self._linear_0(x)
+        if x.shape[0] == 1:
+            return y
+        else:
+            return y + self._linear_1(x) * self._scale
+
+
+class LayerLoadFinetune(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size, load_path):
+        super(LayerLoadFinetune, self).__init__()
+        self._linear_0 = Linear(in_size, out_size)
+        self._linear_1 = paddle.jit.load(load_path)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        y = self._linear_1(x)
+        if x.shape[0] == 1:
+            return self._linear_0(y)
+        return y
+
+
+class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        fluid.enable_dygraph()
+
+    def test_save_load_finetune_load(self):
+        model_path = "test_jit_save_load_finetune_load/model"
+        IMAGE_SIZE = 224
+        inps0 = paddle.randn([1, IMAGE_SIZE])
+        inps1 = paddle.randn([2, IMAGE_SIZE])
+        layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
+        layer_save(inps0)
+        #save
+        paddle.jit.save(layer_save, model_path)
+        #load
+        layer_load = LayerLoadFinetune(IMAGE_SIZE, IMAGE_SIZE, model_path)
+        #train
+        train(layer_load, input_size=IMAGE_SIZE)
+        result_00 = layer_load(inps0)
+        result_01 = layer_load(inps1)
+        #save
+        paddle.jit.save(layer_load, model_path)
+        #load
+        layer_finetune = paddle.jit.load(model_path)
+        result_10 = layer_finetune(inps0)
+        result_11 = layer_finetune(inps1)
+
+        self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
+        self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
+
+
 if __name__ == '__main__':
     unittest.main()
