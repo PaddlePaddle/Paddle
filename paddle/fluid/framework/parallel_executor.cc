@@ -465,8 +465,10 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
 void InitP2P(const std::vector<platform::Place> &places) {
 #ifdef PADDLE_WITH_CUDA
   std::call_once(p2p_init_flag, [&]() {
-    std::vector<int> devices;
     int count = places.size();
+    if (count <= 1) return;
+
+    std::vector<int> devices;
     for (int i = 0; i < count; i++) {
       if (!is_gpu_place(places[i])) return;
 
