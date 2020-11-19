@@ -2858,6 +2858,12 @@ class Block(object):
             param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
+            # NOTE: Why only set stop_gradient=False in static mode
+            # Because in dygraph mode, the `stop_gradient` and 
+            # `trainable` are related, if we set `stop_gradient` 
+            # here, the user given `trainable` argument will not 
+            # take effect
+            param.stop_gradient = False
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2884,7 +2890,6 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
-        param.stop_gradient = False
         return param
 
     def append_op(self, *args, **kwargs):
