@@ -437,10 +437,10 @@ class HeterCpuWorker : public HogwildWorker {
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
     (defined PADDLE_WITH_PSLIB)
-class GpuWorker : public HogwildWorker {
+class HeterBoxWorker : public HogwildWorker {
  public:
-  GpuWorker() {}
-  virtual ~GpuWorker() {}
+  HeterBoxWorker() {}
+  virtual ~HeterBoxWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void SetNeedDump(bool need_dump_field);

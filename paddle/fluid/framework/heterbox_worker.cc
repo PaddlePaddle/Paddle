@@ -31,7 +31,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void GpuWorker::Initialize(const TrainerDesc& desc) {
+void HeterBoxWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
@@ -132,17 +132,17 @@ void GpuWorker::Initialize(const TrainerDesc& desc) {
   push_queue_ = paddle::framework::MakeChannel<std::shared_ptr<HeterTask>>();
 }
 
-void GpuWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
+void HeterBoxWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
-void GpuWorker::SetNeedDump(bool need_dump_field) {
+void HeterBoxWorker::SetNeedDump(bool need_dump_field) {
   need_dump_field_ = need_dump_field;
 }
 
-void GpuWorker::DumpParam() {}
+void HeterBoxWorker::DumpParam() {}
 
-void GpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
+void HeterBoxWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
                                       size_t table_idx) {
   if (no_cvm_) {
     return;
@@ -200,7 +200,7 @@ void GpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
       << "expect fea info size:" << feature.size() << " real:" << global_index;
 }
 
-void GpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
+void HeterBoxWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
                                      size_t table_idx) {
   uint64_t table_id = static_cast<uint64_t>(
       param_.program_config(0).pull_sparse_table_id(table_idx));
@@ -290,7 +290,7 @@ void GpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
   }
 }
 
-void GpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
+void HeterBoxWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
 #ifdef _LINUX
   // check var and tensor not null
   Scope* scope = task->scope_;
@@ -366,7 +366,7 @@ void GpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
 #endif
 }
 
-void GpuWorker::TrainFiles() {
+void HeterBoxWorker::TrainFiles() {
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
 //  int batch_cnt = 0;
@@ -437,7 +437,7 @@ void HeterTask::PackGpuTask(Scope* thread_scope, DataFeed* reader,
   VLOG(3) << "pack task " << cur_batch_;
 }
 
-void GpuWorker::ResetStat() {
+void HeterBoxWorker::ResetStat() {
   total_time_ = 0;
   read_time_ = 0;
   pack_time_ = 0;
@@ -454,7 +454,7 @@ void GpuWorker::ResetStat() {
   total_inst_ = 0;
 }
 
-void GpuWorker::ProduceTasks() {
+void HeterBoxWorker::ProduceTasks() {
   VLOG(3) << "Begin to produce";
 //  platform::SetNumThreads(1);
   VLOG(3) << "reader ready";

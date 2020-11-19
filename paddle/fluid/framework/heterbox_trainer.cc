@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void GpuTrainer::Initialize(const TrainerDesc& trainer_desc,
+void HeterBoxTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   param_ = trainer_desc.downpour_param();
@@ -88,16 +88,16 @@ void GpuTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
 }
 
-void GpuTrainer::DumpWork(int tid) {}
+void HeterBoxTrainer::DumpWork(int tid) {}
 
-void GpuTrainer::RegisterHeterCallback() {
+void HeterBoxTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
   fleet_ptr->RegisterHeterCallback([this](int worker, int taskid) {
     // workers_[worker]->Schedule(taskid);
   });
 }
 
-void GpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
+void HeterBoxTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
     workers_[i]->SetPlace(places_[i]);
@@ -148,7 +148,7 @@ void GpuTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 template <typename T>
-void GpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
+void HeterBoxTrainer::HeterMemCpy(LoDTensor* thread_tensor,
                                   LoDTensor* root_tensor,
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
@@ -166,7 +166,7 @@ void GpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
   }
 }
 
-void GpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+void HeterBoxTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->CreatePinVar();
   for (size_t i = 0; i < places_.size(); ++i) {
@@ -185,11 +185,11 @@ void GpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   VLOG(3) << "init other env done.";
 }
 
-void GpuTrainer::Run() {
+void HeterBoxTrainer::Run() {
   int pull_thread_num = 3 * places_.size();
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
     workers_[thidx]->device_reader_->Start();
-    std::dynamic_pointer_cast<paddle::framework::GpuWorker>(workers_[thidx])->ResetStat();
+    std::dynamic_pointer_cast<paddle::framework::HeterBoxWorker>(workers_[thidx])->ResetStat();
   }
   for (int i = 0; i < pull_thread_num; ++i) {
     int worker_id = i % places_.size();
@@ -202,7 +202,7 @@ void GpuTrainer::Run() {
 }
 
 template <typename T>
-void GpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
+void HeterBoxTrainer::MergeToRootScope(LoDTensor* root_tensor,
                                        LoDTensor* tensor) {
   LoDTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
@@ -216,9 +216,9 @@ void GpuTrainer::MergeToRootScope(LoDTensor* root_tensor,
   TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
 }
 
-Scope* GpuTrainer::GetWorkerScope(int thread_id) { return nullptr; }
+Scope* HeterBoxTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
-void GpuTrainer::Finalize() {
+void HeterBoxTrainer::Finalize() {
   for (auto &th : pull_threads_) {
     th.join();
   }
