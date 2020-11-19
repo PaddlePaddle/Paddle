@@ -665,11 +665,16 @@ void BindImperative(py::module *m_ptr) {
            [](const imperative::VarBase
                   &self) -> std::shared_ptr<imperative::VarBase> {
              PADDLE_ENFORCE_EQ(
-                 self.Var().IsInitialized() &&
-                     (self.Var().IsType<framework::LoDTensor>() ||
-                      self.Var().IsType<framework::SelectedRows>()),
-                 true, platform::errors::InvalidArgument(
-                           "Tensor %s has not been initialized!", self.Name()));
+                 self.Var().IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self.Name()));
+             PADDLE_ENFORCE_EQ(
+                 self.Var().IsType<framework::LoDTensor>() ||
+                     self.Var().IsType<framework::SelectedRows>(),
+                 true,
+                 platform::errors::InvalidArgument(
+                     "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
+                     self.Name()));
              auto detach_var = std::make_shared<imperative::VarBase>(
                  true, "detach_" + self.Name());
              detach_var->SetPersistable(self.Persistable());
@@ -709,8 +714,8 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::take_ownership, R"DOC(
 
         Returns a new Tensor, detached from the current graph.
-        It will share data with origin Tensor and always not have a Tensor copy and 
-        Tn addition, the detached Tensor does not provide gradient propagation.
+        It will share data with origin Tensor and always doesn't have a Tensor copy.
+        In addition, the detached Tensor doesn't provide gradient propagation.
 
         Returns: The detached Tensor.
 
@@ -722,8 +727,8 @@ void BindImperative(py::module *m_ptr) {
                 x = paddle.to_tensor(1.0, stop_gradient=False)
                 detach_x = x.detach()
                 detach_x[:] = 10.0
-                print(x.numpy())      # [10.0], detach_x share data with x
-
+                print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
+                          #        [10.])
                 y = x**2
                 y.backward()
                 print(x.grad)         # [20.0]
