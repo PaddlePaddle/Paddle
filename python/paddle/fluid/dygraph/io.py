@@ -656,7 +656,13 @@ def _run_dygraph(instance, input, program_holder):
     return outs
 
 
-def _run_static_graph(input, program_holder, trace_program):
+def _run_static_graph(input, program_holder):
+    # NOTE(weixin): [ why not use 'program_holder.infer_program' directly? ]
+    # When use 'trace_program = program_holder.infer_program',
+    # 'OpDesc.op_size()' will return a very large wrong number.
+    # A fault error may occur if used 'trace_program = ProgramDesc(program_holder.infer_program)'.
+    trace_program = framework.Program._construct_from_desc(
+        program_holder.infer_program).desc
     main_program = framework.default_main_program()
     output_names = [var.name() for var in program_holder.output_descs]
     # append blocks from 'trace_program'
@@ -1053,13 +1059,7 @@ class TranslatedLayer(layers.Layer):
             if in_dygraph_mode():
                 return _run_dygraph(self, input, program_holder)
             else:
-                # NOTE(weixin): [ why not use 'program_holder.infer_program' directly? ]
-                # When use '_run_static_graph(input, program_holder, program_holder.infer_program)',
-                # 'OpDesc.op_size()' will return a very large wrong number.
-                # A fault error may occur if used 'p=ProgramDesc(program_holder.infer_program)'.
-                p = framework.Program._construct_from_desc(
-                    program_holder.infer_program)
-                return _run_static_graph(input, program_holder, p.desc)
+                return _run_static_graph(input, program_holder)
 
         __i_m_p_l__.__name__ = method_name
         return __i_m_p_l__
