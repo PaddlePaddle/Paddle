@@ -152,6 +152,7 @@ rem ------initialize cmake variable for mkl------
 set WITH_MKL=ON
 set WITH_GPU=OFF
 set MSVC_STATIC_CRT=ON
+set WITH_CLCACHE=OFF
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -265,7 +266,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-if "%WITH_GPU%"=="OFF" (
+if "%WITH_CLCACHE%"=="OFF" (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
 ) else (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
@@ -339,7 +340,7 @@ exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :unit_test
-@ECHO OFF
+@ECHO ON
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
@@ -383,14 +384,14 @@ if "%WITH_GPU%"=="ON" (
 
 :parallel_test_base_gpu
 echo    ========================================
-echo    Running GPU unit tests in parallel way ...
+echo    Running GPU unit tests...
 echo    ========================================
 
 set FLAGS_fraction_of_gpu_memory_to_use=0.75
-
-nvidia-smi -L
-for /F %%# in ('nvidia-smi -L ^| findstr "GPU" /C /I') do set CUDA_DEVICE_COUNT=%%#
-if !errorlevel! NEQ 0 exit /b 8
+set PATH=C:\Program Files\NVIDIA Corporation\NVSMI;%PATH%
+cmd /C nvidia-smi -L
+if %errorlevel% NEQ 0 exit /b 8
+for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 
 rem TODO: fix these unittest that is bound to fail
 rem /*==================Disabled Windows==============================*/
