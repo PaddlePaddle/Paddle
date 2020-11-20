@@ -69,6 +69,12 @@ class TestDygraphIfElse3(TestDygraphIfElse):
         self.dyfunc = dyfunc_with_if_else3
 
 
+class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_with_if_else_with_list_geneator
+
+
 class TestDygraphNestedIfElse(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')

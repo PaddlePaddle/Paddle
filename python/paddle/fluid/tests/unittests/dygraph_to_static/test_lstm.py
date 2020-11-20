@@ -66,16 +66,21 @@ class TestLstm(unittest.TestCase):
         net = Net(12, 2)
         x = paddle.randn((2, 10, 12))
         if with_training:
+            x.stop_gradient = False
             dygraph_out = net(x)
+            loss = paddle.mean(dygraph_out)
+            sgd = paddle.optimizer.SGD(learning_rate=0.001,
+                                       parameters=net.parameters())
+            loss.backward()
+            sgd.step()
         # switch eval mode firstly
         net.eval()
-
+        x = paddle.randn((2, 10, 12))
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])])
         paddle.jit.save(net, 'simple_lstm')
 
-        if not with_training:
-            dygraph_out = net(x)
+        dygraph_out = net(x)
         # load saved model
         load_net = paddle.jit.load('simple_lstm')
 
@@ -113,6 +118,14 @@ class TestSaveInEvalMode(unittest.TestCase):
     def test_save_in_eval(self):
         paddle.jit.ProgramTranslator().enable(True)
         net = LinearNet()
+        x = paddle.randn((2, 10))
+        x.stop_gradient = False
+        dygraph_out = net(x)
+        loss = paddle.mean(dygraph_out)
+        sgd = paddle.optimizer.SGD(learning_rate=0.001,
+                                   parameters=net.parameters())
+        loss.backward()
+        sgd.step()
         # switch eval mode firstly
         net.eval()
         # save directly
@@ -136,6 +149,14 @@ class TestEvalAfterSave(unittest.TestCase):
     def test_eval_after_save(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         net = Net(12, 2)
+        x.stop_gradient = False
+        dy_out = net(x)
+        loss = paddle.mean(dy_out)
+        sgd = paddle.optimizer.SGD(learning_rate=0.001,
+                                   parameters=net.parameters())
+        loss.backward()
+        sgd.step()
+        x = paddle.randn((2, 10, 12)).astype('float32')
         dy_out = net(x)
         # save model
         paddle.jit.save(net, 'jit.save/lstm', input_spec=[x])
