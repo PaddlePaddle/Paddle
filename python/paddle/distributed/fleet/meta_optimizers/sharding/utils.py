@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import paddle
 from paddle.fluid import core
 from functools import reduce
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 
 import re
+import os
 
 
 def check_broadcast(block):
@@ -126,11 +127,25 @@ def check_allreduce_sum(block):
     return
 
 
+def get_valid_op_role(block, insert_idx):
+    """
+    return OpRole.Forward or OpRole.Backward
+    """
+    op_role = block.ops[insert_idx].attr('op_role')
+    if (insert_idx >= len(block.ops)) or (
+            op_role in [int(OpRole.Backward), int(OpRole.Optimize)]):
+        return OpRole.Backward
+    if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
+        return OpRole.Forward
+
+    return get_valid_op_role(block, insert_idx + 1)
+
+
 def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     """
     _insert_sync_calc_op
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     block._insert_op_without_sync(
         insert_idx,
         type='c_sync_calc_stream',
@@ -144,7 +159,7 @@ def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars):
     """
     _insert_sync_comm_ops
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for i in range(nrings):
         block._insert_op_without_sync(
             insert_idx,
@@ -160,7 +175,7 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
     """
     _add_fill_constant_ops
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name in fill_constant_vars:
         broadcast_var = block.var(broadcast_name)
         block._insert_op_without_sync(
@@ -180,7 +195,7 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     """
     _add_cast_ops
     """
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for fp16_name, fp32_name in cast_ops.items():
         block._insert_op_without_sync(
             insert_idx,
@@ -217,7 +232,7 @@ def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
     _add_broadcast_ops
     """
     ring_id = -1
-    op_role = block.ops[insert_idx].attr('op_role')
+    op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name, root_device in broadcast2root:
         ring_id = (ring_id + 1) % nrings
         block._insert_op_without_sync(
@@ -272,3 +287,115 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
                 outputs={'Out': loss_grad_var},
                 attrs={'scale': scale,
                        OP_ROLE_KEY: OpRole.Backward})
+
+
+def comm_analyse(main_program):
+    """
+    Analyse the parameter size that need to be broadcast/allreduce during sharding training 
+    """
+    reduce_vars = {}
+    broadcast_vars = {}
+    block = main_program.global_block()
+    for op in block.ops:
+        if op.type == "c_broadcast":
+            var_name = op.desc.input_arg_names()[0]
+            broadcast_vars[var_name] = get_var_size(block.var(var_name))
+        elif op.type == "c_allreduce_sum":
+            var_name = op.desc.input_arg_names()[0]
+            reduce_vars[var_name] = get_var_size(block.var(var_name))
+
+    varsize_count = {}
+    gap = 1
+
+    for k, v in broadcast_vars.items():
+        print("broadcast: {}: {} KB".format(k, v))
+        if (int(v / gap) in varsize_count):
+            varsize_count[int(v / gap)] += 1
+        else:
+            varsize_count[int(v / gap)] = 1
+
+    for k, v in reduce_vars.items():
+        print("allreduce: {}: {} KB".format(k, v))
+        if (int(v / gap) in varsize_count):
+            varsize_count[int(v / gap)] += 1
+        else:
+            varsize_count[int(v / gap)] = 1
+
+    with open("nccl_size.txt", 'w') as f:
+        sorted_varsize = sorted(varsize_count.items(), key=lambda x: x[0])
+        for varsize, count in sorted_varsize:
+            print("NCCL size {}~{} KB: {}".format(varsize, varsize + 1, count))
+            f.write("NCCL size {}~{} KB: {}\n".format(varsize, varsize + 1,
+                                                      count))
+
+
+def add_sync_comm_for_test(program, dist_strategy):
+    """
+    When clone a test prog by clone from the sharding main prog, 
+    part of the sync_comm op maybe be pruned by mistake, this function
+    add the sync_comm op for the test prog.
+
+    """
+    #NOTE (liangjianzhong): only support one comm stream by now, use more than one 
+    # comm streams will cause error. should be revise in future.
+
+    block = program.global_block()
+    not_sync_vars = set([])
+    for op in block.ops:
+        if op.type in ["c_broadcast", "c_allreduce"]:
+            for input_name in op.desc.input_arg_names():
+                not_sync_vars.add(input_name)
+        if op.type == "c_sync_comm_stream":
+            for input_name in op.desc.input_arg_names():
+                not_sync_vars.remove(input_name)
+    if not_sync_vars:
+        for nccl_id in range(dist_strategy.nccl_comm_num):
+            block.append_op(
+                type='c_sync_comm_stream',
+                inputs={'X': list(not_sync_vars)},
+                outputs={'Out': list(not_sync_vars)},
+                attrs={
+                    'ring_id': nccl_id,
+                    'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                })
+    return
+
+
+def sharding_save_persistables(exe, dirname, main_program, filename=None):
+    """
+    When use sharding, part of persistable vars are unique and are partitioned in different ranks,
+    and part of persistable vars are duplicated and exist in all the ranks with different values.
+    This function handles the model saving for sharding training.
+    """
+
+    def is_opt_vars(var):
+        # NOTE(liangjianzhong): The checks should be updated when add new compatible optimizer
+        # now only Momentum and adam are compatible with sharding
+        checks = [
+            "_moment1_0", "_moment2_0", "_beta1_pow_acc_0", "_beta2_pow_acc_0",
+            "_velocity_0"
+        ]
+        for check in checks:
+            if var.name.endswith(check):
+                return True
+        return False
+
+    def is_trainable(var):
+        return isinstance(var,
+                          paddle.fluid.framework.Parameter) and var.trainable
+
+    def sharding_predicate(var):
+        return is_trainable(var) or is_opt_vars(var)
+
+    if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
+        paddle.fluid.io.save_persistables(
+            exe, dirname, main_program=main_program, filename=None)
+    else:
+        paddle.fluid.io.save_vars(
+            exe,
+            dirname,
+            main_program=main_program,
+            predicate=sharding_predicate,
+            filename=None)
+
+    return

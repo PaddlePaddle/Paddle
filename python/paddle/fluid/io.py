@@ -43,6 +43,8 @@ from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
+from paddle.utils import deprecated
+from paddle.fluid.framework import static_only
 
 batch = paddle.batch
 
@@ -82,7 +84,10 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             param = fluid.default_main_program().global_block().var('fc.w')
             res = fluid.io.is_parameter(param)
     """
@@ -103,7 +108,10 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
@@ -137,7 +145,10 @@ def get_program_parameter(program):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
             w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
@@ -162,7 +173,10 @@ def get_program_persistable_vars(program):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
             w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
@@ -202,7 +216,7 @@ def _load_program_scope(main=None, startup=None, scope=None):
                     yield
 
 
-def _get_valid_program(main_program):
+def _get_valid_program(main_program=None):
     if main_program is None:
         main_program = default_main_program()
     elif isinstance(main_program, CompiledProgram):
@@ -268,8 +282,10 @@ def save_vars(executor,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -417,8 +433,11 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+
+            paddle.enable_static()
             params_path = "./my_paddle_model"
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
@@ -465,7 +484,10 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -634,8 +656,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             dir_path = "./my_paddle_model"
             file_name = "persistables"
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
@@ -711,8 +735,10 @@ def load_vars(executor,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -946,8 +972,10 @@ def load_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -995,8 +1023,10 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -1034,7 +1064,10 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -1160,7 +1193,8 @@ def append_fetch_ops(inference_program,
             attrs={'col': i})
 
 
-@dygraph_not_support
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.save_inference_model")
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -1226,8 +1260,10 @@ def save_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             path = "./infer_model"
 
             # User defined network, here a softmax regession example
@@ -1370,7 +1406,8 @@ def save_inference_model(dirname,
     return target_var_name_list
 
 
-@dygraph_not_support
+@static_only
+@deprecated(since="2.0.0", update_to="paddle.static.load_inference_model")
 def load_inference_model(dirname,
                          executor,
                          model_filename=None,
@@ -1422,9 +1459,11 @@ def load_inference_model(dirname,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
             # Build the model
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
@@ -1540,7 +1579,10 @@ def get_parameter_value(para, executor):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param = fluid.default_main_program().global_block().var('fc.w')
             p = fluid.io.get_parameter_value(param, exe)
@@ -1578,7 +1620,10 @@ def get_parameter_value_by_name(name, executor, program=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             p = fluid.io.get_parameter_value('fc.w', exe)
     """
@@ -1686,8 +1731,10 @@ def save(program, model_path):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             prog = fluid.default_main_program()
             fluid.save( prog, "./temp")
 
@@ -1753,8 +1800,10 @@ def load(program, model_path, executor=None, var_list=None):
      Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
             prog = fluid.default_main_program()
             fluid.save( prog, "./temp")
 
@@ -1914,7 +1963,10 @@ def load_program_state(model_path, var_list=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             x = fluid.data( name="x", shape=[10, 10], dtype='float32')
             y = fluid.layers.fc( x, 10)
             z = fluid.layers.fc( y, 10)
@@ -2047,7 +2099,10 @@ def set_program_state(program, state_dict):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+
+            paddle.enable_static()
             x = fluid.data( name="x", shape=[10, 10], dtype='float32')
             y = fluid.layers.fc( x, 10)
             z = fluid.layers.fc( y, 10)
@@ -2086,8 +2141,8 @@ def set_program_state(program, state_dict):
             ten = var_temp.get_tensor()
             ten_place = ten._place()
 
-            assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
-                "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
+            #assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
+            #    "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
             py_place = paddle.fluid.CPUPlace()
             if ten_place.is_cuda_pinned_place():
                 place = paddle.fluid.CUDAPinnedPlace()
@@ -2095,6 +2150,10 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+            elif ten_place.is_xpu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
 
             ten.set(new_para_np, py_place)
 
