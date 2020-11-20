@@ -495,7 +495,7 @@ def embedding(input,
                 'fluid.layers.embedding')
 
     if is_distributed:
-#        is_distributed = False
+        is_distributed = False
         warnings.warn(
             "is_distributed is go out of use, `fluid.contrib.layers.sparse_embedding` is your needed"
         )
