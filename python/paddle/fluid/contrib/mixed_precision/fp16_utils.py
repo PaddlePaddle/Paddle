@@ -196,7 +196,15 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def cast_net_to_fp16(main_program):
+def cast_model_to_fp16(main_program):
+    """
+    Traverse all ops in the whole model and set their inputs and outputs
+    to the fp16 data type. This function will do some special process for
+    the batch normalization, which keeps the computational process of
+    batchnorms in FP32.
+    Args:
+        main_program (Program): The main program for training.
+    """
     valid_types = [
         core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
         core.VarDesc.VarType.LOD_TENSOR_ARRAY
@@ -274,7 +282,16 @@ def cast_net_to_fp16(main_program):
                 op._set_attr('dtype', core.VarDesc.VarType.FP16)
 
 
-def cast_parameters_to_fp16(exe, main_program, scope=None):
+def cast_parameters_to_fp16(place, main_program, scope=None):
+    """
+    Traverse all parameters in the whole model and set them to the fp16 data type.
+    Whereas, this function will keep parameters of batchnorms in FP32.
+    Args:
+        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
+        main_program (Program): The main program for training.
+        scope(fluid.Scope, optional): scope is used to get the weight tensor values.
+        Default is None.
+    """
     all_ops = []
     for block in main_program.blocks:
         all_ops.extend(block.ops)
@@ -288,12 +305,12 @@ def cast_parameters_to_fp16(exe, main_program, scope=None):
                     bn_params.add(in_var_name)
     global_block = main_program.global_block()
     all_parameters = global_block.all_parameters()
-    exe_scope = scope if scope is not None else global_scope()
+    var_scope = scope if scope is not None else global_scope()
     for param in all_parameters:
         if param.name not in bn_params:
-            param_t = exe_scope.find_var(param.name).get_tensor()
+            param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
-            param_t.set(np.float16(data), exe.place)
+            param_t.set(np.float16(data), place)
 
 
 def rewrite_program(main_prog, amp_lists):
