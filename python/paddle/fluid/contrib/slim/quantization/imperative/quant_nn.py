@@ -393,16 +393,9 @@ class QuantizedConv2D(layers.Layer):
                                 self._reversed_padding_repeated_twice,
                                 mode=self._padding_mode,
                                 data_format=self._data_format)
-            return F.conv2d(
-                quant_input,
-                quant_weight,
-                bias=self.bias,
-                stride=self._stride,
-                dilation=self._dilation,
-                groups=self._groups,
-                data_format=self._data_format)
+            self._padding = 0
 
-        out = F.conv2d(
+        return F.conv2d(
             quant_input,
             quant_weight,
             bias=self.bias,
@@ -411,7 +404,6 @@ class QuantizedConv2D(layers.Layer):
             dilation=self._dilation,
             groups=self._groups,
             data_format=self._data_format)
-        return out
 
 
 class QuantizedLinear(layers.Layer):
@@ -477,27 +469,6 @@ class QuantizedLinear(layers.Layer):
         if self._weight_preprocess is not None:
             weight = self._weight_preprocess(self.weight)
         quant_weight = self._fake_quant_weight(weight)
-
-        if in_dygraph_mode():
-            pre_bias = _varbase_creator(dtype=input.dtype)
-            core.ops.matmul(quant_input, quant_weight, pre_bias, 'transpose_X',
-                            False, 'transpose_Y', False, "alpha", 1)
-            pre_act = dygraph_utils._append_bias_in_dygraph(
-                pre_bias, self.bias, axis=len(input.shape) - 1)
-
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
-
-        check_variable_and_dtype(input, 'input',
-                                 ['float16', 'float32', 'float64'],
-                                 "QuantizedLinear")
-        attrs = {
-            "transpose_X": False,
-            "transpose_Y": False,
-            "alpha": 1,
-        }
-        inputs = {"X": [quant_input], "Y": [quant_weight]}
-        mul_out = self._helper.create_variable_for_type_inference(self._dtype)
 
         out = F.linear(
             x=quant_input, weight=quant_weight, bias=self.bias, name=self.name)

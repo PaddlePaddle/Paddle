@@ -27,7 +27,7 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn import Linear, Conv2D, Softmax, Tanh
+from paddle.nn import Linear, Conv2D, Softmax
 from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
