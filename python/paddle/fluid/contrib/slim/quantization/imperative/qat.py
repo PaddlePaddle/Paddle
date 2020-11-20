@@ -234,12 +234,9 @@ class ImperativeQuantAware(object):
             _logger.fatal("The layer {} is unsupported to be quantized.".format(
                 layer.full_name()))
             sys.exit(-1)
-        no_weight_layer = [
-            'QuantizedPool2D', 'QuantizedReLU', 'QuantizedLeakyReLU',
-            'QuantizedReLU6', 'QuantizedSoftmax', 'QuantizedTanh',
-            'QuantizedSwish'
-        ]
-        if quantized_counterpart[index] in no_weight_layer:
+
+        layer_with_weight = ['QuantizedConv2D', 'QuantizedLinear']
+        if quantized_counterpart[index] not in layer_with_weight:
             quant_layer_class_name = 'QuantizedNoweightLayer'
         else:
             quant_layer_class_name = quantized_counterpart[index]
