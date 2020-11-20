@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+
 #include <unordered_map>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -219,11 +220,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 #endif
 
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-  if (input_data_type == framework::proto::VarType::FP16) {
-    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
-                      platform::errors::InvalidArgument(
-                          "Float16 can only be used when CUDNN is used"));
-  }
+
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                  library_);
 }

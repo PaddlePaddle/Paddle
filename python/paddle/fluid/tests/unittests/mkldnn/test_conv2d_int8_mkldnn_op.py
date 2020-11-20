@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
+from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2DOp
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -28,7 +28,7 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
-class TestConv2dInt8Op(TestConv2dOp):
+class TestConv2DInt8Op(TestConv2DOp):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -162,7 +162,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         pass
 
     def init_test_case(self):
-        TestConv2dOp.init_test_case(self)
+        TestConv2DOp.init_test_case(self)
         self.input_size = [1, 1, 5, 5]  # NCHW
         f_c = self.input_size[1] // self.groups
         self.input_residual_size = [1, 2, 3, 3]
@@ -186,7 +186,7 @@ class TestConv2dInt8Op(TestConv2dOp):
 #--------------------test conv2d u8 in and u8 out with residual fuse--------------------
 
 
-class TestConv2d(TestConv2dInt8Op):
+class TestConv2D(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -201,19 +201,19 @@ class TestConv2d(TestConv2dInt8Op):
         self.scale_in_eltwise = 0.6
 
 
-class TestWithPad(TestConv2d):
+class TestWithPad(TestConv2D):
     def init_test_case(self):
-        TestConv2d.init_test_case(self)
+        TestConv2D.init_test_case(self)
         self.pad = [1, 1]
         self.input_residual_size = [2, 6, 5, 5]
 
 
-class TestWithGroup(TestConv2d):
+class TestWithGroup(TestConv2D):
     def init_group(self):
         self.groups = 3
 
 
-class TestWithStride(TestConv2dInt8Op):
+class TestWithStride(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -228,7 +228,7 @@ class TestWithStride(TestConv2dInt8Op):
         self.scale_in_eltwise = 0.5
 
 
-class TestWithDilations(TestConv2dInt8Op):
+class TestWithDilations(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -244,7 +244,7 @@ class TestWithDilations(TestConv2dInt8Op):
         self.scale_in_eltwise = 0.5
 
 
-class TestWith1x1(TestConv2dInt8Op):
+class TestWith1x1(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -259,7 +259,7 @@ class TestWith1x1(TestConv2dInt8Op):
         self.scale_in_eltwise = 0.5
 
 
-class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
+class TestWithInput1x1Filter1x1(TestConv2DInt8Op):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -356,7 +356,7 @@ def create_test_int8_class(parent):
     globals()[cls_name_u8s8_re_1] = TestU8S8ResCase
 
 
-create_test_int8_class(TestConv2dInt8Op)
+create_test_int8_class(TestConv2DInt8Op)
 create_test_int8_class(TestWithPad)
 create_test_int8_class(TestWithStride)
 create_test_int8_class(TestWithDilations)
@@ -365,7 +365,7 @@ create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
 
 
-class TestConv2dOp_AsyPadding_INT_MKLDNN(TestConv2dInt8Op):
+class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -374,13 +374,13 @@ class TestConv2dOp_AsyPadding_INT_MKLDNN(TestConv2dInt8Op):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestConv2dOp_Same_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
+class TestConv2DOp_Same_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestConv2dOp_Valid_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
+class TestConv2DOp_Valid_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
     def init_paddings(self):
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"

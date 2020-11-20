@@ -21,7 +21,7 @@ import paddle.fluid.initializer as I
 import unittest
 
 
-class ConvTranspose1dTestCase(unittest.TestCase):
+class Conv1DTransposeTestCase(unittest.TestCase):
     def __init__(self,
                  methodName='runTest',
                  batch_size=4,
@@ -38,7 +38,7 @@ class ConvTranspose1dTestCase(unittest.TestCase):
                  no_bias=False,
                  data_format="NCL",
                  dtype="float32"):
-        super(ConvTranspose1dTestCase, self).__init__(methodName)
+        super(Conv1DTransposeTestCase, self).__init__(methodName)
         self.batch_size = batch_size
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -92,7 +92,7 @@ class ConvTranspose1dTestCase(unittest.TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 b_var = fluid.data(
                     "bias", (self.out_channels, ), dtype=self.dtype)
-                y_var = F.conv_transpose1d(
+                y_var = F.conv1d_transpose(
                     x_var,
                     w_var,
                     None if self.no_bias else b_var,
@@ -113,7 +113,7 @@ class ConvTranspose1dTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
-        conv = nn.ConvTranspose1d(
+        conv = nn.Conv1DTranspose(
             self.in_channels,
             self.out_channels,
             self.filter_size,
@@ -145,7 +145,7 @@ class ConvTranspose1dTestCase(unittest.TestCase):
             self._test_equivalence(place)
 
 
-class ConvTranspose1dErrorTestCase(ConvTranspose1dTestCase):
+class Conv1DTransposeErrorTestCase(Conv1DTransposeTestCase):
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -154,68 +154,68 @@ class ConvTranspose1dErrorTestCase(ConvTranspose1dTestCase):
 
 
 def add_cases(suite):
-    suite.addTest(ConvTranspose1dTestCase(methodName='runTest'))
+    suite.addTest(Conv1DTransposeTestCase(methodName='runTest'))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', stride=[2], no_bias=True, dilation=2))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest',
             filter_size=(3),
             output_size=[36],
             stride=[2],
             dilation=2))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', stride=2, dilation=(2)))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', padding="valid"))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', padding='valid'))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', filter_size=1, padding=3))
-    suite.addTest(ConvTranspose1dTestCase(methodName='runTest', padding=[2]))
+    suite.addTest(Conv1DTransposeTestCase(methodName='runTest', padding=[2]))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', data_format="NLC"))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', groups=2, padding="valid"))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest',
             out_channels=6,
             in_channels=3,
             groups=3,
             padding="valid"))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest',
             data_format="NLC",
             spartial_shape=16,
             output_size=18))
     suite.addTest(
-        ConvTranspose1dTestCase(
+        Conv1DTransposeTestCase(
             methodName='runTest', data_format="NLC", stride=3,
             output_padding=2))
-    suite.addTest(ConvTranspose1dTestCase(methodName='runTest', padding=[1, 2]))
+    suite.addTest(Conv1DTransposeTestCase(methodName='runTest', padding=[1, 2]))
 
 
 def add_error_cases(suite):
     suite.addTest(
-        ConvTranspose1dErrorTestCase(
+        Conv1DTransposeErrorTestCase(
             methodName='runTest', data_format="not_valid"))
     suite.addTest(
-        ConvTranspose1dErrorTestCase(
+        Conv1DTransposeErrorTestCase(
             methodName='runTest', in_channels=5, groups=2))
     suite.addTest(
-        ConvTranspose1dErrorTestCase(
+        Conv1DTransposeErrorTestCase(
             methodName='runTest', stride=2, output_padding=3))
     suite.addTest(
-        ConvTranspose1dErrorTestCase(
+        Conv1DTransposeErrorTestCase(
             methodName='runTest', output_size="not_valid"))
 
 

@@ -62,7 +62,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         and with data type int64).
 
     Examples:
+
         .. code-block:: python
+
             import paddle
             
             paddle.disable_static()
@@ -278,8 +280,6 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 def index_select(x, index, axis=0, name=None):
     """
-	:alias_main: paddle.index_select
-	:alias: paddle.tensor.index_select, paddle.tensor.search.index_select
 
     Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using 
     the entries in ``index`` which is a Tensor. The returned tensor has the same number 
@@ -302,7 +302,6 @@ def index_select(x, index, axis=0, name=None):
             
             import paddle
 
-            paddle.disable_static()  # Now we are in imperative mode
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],
                                   [9.0, 10.0, 11.0, 12.0]])
@@ -357,6 +356,7 @@ def nonzero(x, as_tuple=False):
     Examples:
     
         .. code-block:: python
+
 
             import paddle
 
@@ -495,9 +495,6 @@ def sort(x, axis=-1, descending=False, name=None):
 
 def where(condition, x, y, name=None):
     """
-	:alias_main: paddle.where
-	:alias: paddle.where,paddle.tensor.where,paddle.tensor.search.where
-
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
@@ -510,28 +507,27 @@ def where(condition, x, y, name=None):
 
 
     Args:
-        condition(Variable): The condition to choose x or y.
-        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
-        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+        condition(Tensor): The condition to choose x or y.
+        x(Tensor): x is a Tensor with data type float32, float64, int32, int64.
+        y(Tensor): y is a Tensor with data type float32, float64, int32, int64.
 
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with the same data dype as x. 
+        Tensor: A Tensor with the same data dype as x. 
 
     Examples:
         .. code-block:: python
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
           y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
           out = paddle.where(x>1, x, y)
 
-          print(out.numpy())
+          print(out)
           #out: [1.0, 1.0, 3.2, 1.2]
     """
     if not in_dygraph_mode():
@@ -677,7 +673,6 @@ def masked_select(x, mask, name=None):
 
             import paddle
 
-            paddle.disable_static()
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],

@@ -74,15 +74,14 @@ def one_hot(x, num_classes, name=None):
 
             import paddle
             # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
-            label = paddle.static.data(name="label", shape=[4, 1], dtype="int64")
+            label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
             # label.shape = [4]
-            # label.data = [1, 1, 3, 0]
-            one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=4)
+            one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
             # one_hot_label.shape = [4, 4]
-            # one_hot_label.data = [[0., 1., 0., 0.],
-            #                       [0., 1., 0., 0.],
-            #                       [0., 0., 0., 1.],
-            #                       [1., 0., 0., 0.]]
+            # one_hot_label = [[0., 1., 0., 0.],
+            #                  [0., 1., 0., 0.],
+            #                  [0., 0., 0., 1.],
+            #                  [1., 0., 0., 0.]]
 
     """
 
@@ -199,7 +198,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             'remote_prefetch', False, 'padding_idx', padding_idx)
     else:
         helper = LayerHelper('embedding', **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='weight')
 
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'embedding')
 

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 import six
 import collections
 import warnings
@@ -549,11 +550,10 @@ def create_heter_program(program, config, heter_program, heter_ops,
         "pserver_id": config.get_role_id(),
         "Fanin": config.get_trainers(),
         "distributed_mode": config.get_distributed_mode(),
-        "rpc_get_thread_num": 12,
-        "rpc_send_thread_num": 12,
-        "rpc_prefetch_thread_num": 12
+        "rpc_get_thread_num": int(os.getenv("CPU_NUM", 32)),
+        "rpc_send_thread_num": int(os.getenv("CPU_NUM", 32)),
+        "rpc_prefetch_thread_num": int(os.getenv("CPU_NUM", 32))
     }
-
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)

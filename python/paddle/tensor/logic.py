@@ -19,6 +19,8 @@ from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
 from ..fluid.framework import in_dygraph_mode
 from paddle.common_ops_import import *
+from ..framework import VarBase as Tensor
+from ..framework import ComplexVariable as ComplexTensor
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
@@ -27,6 +29,8 @@ from ..fluid.layers import logical_and  #DEFINE_ALIAS
 from ..fluid.layers import logical_not  #DEFINE_ALIAS
 from ..fluid.layers import logical_or  #DEFINE_ALIAS
 from ..fluid.layers import logical_xor  #DEFINE_ALIAS
+from ..fluid.layers import reduce_all  #DEFINE_ALIAS
+from ..fluid.layers import reduce_any  #DEFINE_ALIAS
 
 __all__ = [
     'equal',
@@ -43,6 +47,7 @@ __all__ = [
     'logical_xor',
     'not_equal',
     'allclose',
+    'is_tensor'
     #       'isnan'
 ]
 
@@ -211,7 +216,20 @@ def equal(x, y, name=None):
           result1 = paddle.equal(x, y)
           print(result1.numpy())  # result1 = [True False False]
     """
-    out = fluid.layers.equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    helper = LayerHelper("equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='equal', inputs={'X': [x],
+                              'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
@@ -242,7 +260,22 @@ def greater_equal(x, y, name=None):
             result1 = paddle.greater_equal(x, y)
             print(result1.numpy())  # result1 = [True False True]
     """
-    out = fluid.layers.greater_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.greater_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    helper = LayerHelper("greater_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='greater_equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]})
     return out
 
 
@@ -273,7 +306,22 @@ def greater_than(x, y, name=None):
             result1 = paddle.greater_than(x, y)
             print(result1.numpy())  # result1 = [False False True]
     """
-    out = fluid.layers.greater_than(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.greater_than(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    helper = LayerHelper("greater_than", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='greater_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]})
     return out
 
 
@@ -305,7 +353,20 @@ def less_equal(x, y, name=None):
             result1 = paddle.less_equal(x, y)
             print(result1.numpy())  # result1 = [True True False]
     """
-    out = fluid.layers.less_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.less_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    helper = LayerHelper("less_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='less_equal', inputs={'X': [x],
+                                   'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
@@ -337,7 +398,20 @@ def less_than(x, y, name=None):
             result1 = paddle.less_than(x, y)
             print(result1.numpy())  # result1 = [False True False]
     """
-    out = fluid.layers.less_than(x, y, force_cpu=False, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.less_than(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    helper = LayerHelper("less_than", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='less_than', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
 
 
@@ -370,5 +444,50 @@ def not_equal(x, y, name=None):
             result1 = paddle.not_equal(x, y)
             print(result1.numpy())  # result1 = [False True True]
     """
-    out = fluid.layers.not_equal(x, y, name=name, cond=None)
+    if in_dygraph_mode():
+        return core.ops.not_equal(x, y)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    helper = LayerHelper("not_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='not_equal', inputs={'X': [x],
+                                  'Y': [y]}, outputs={'Out': [out]})
     return out
+
+
+def is_tensor(x):
+    """
+
+    This function tests whether input object is a paddle.Tensor or a paddle.ComplexTensor.
+
+    Args:
+        x (object): Object to test.
+
+    Returns:
+        A boolean value. True if 'x' is a paddle.Tensor or a paddle.ComplexTensor, otherwise False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input1 = paddle.rand(shape=[2, 3, 5], dtype='float32')
+            check = paddle.is_tensor(input1)
+            print(check)  #True
+
+            input2 = paddle.ComplexTensor(input1, input1)
+            check = paddle.is_tensor(input2)
+            print(check)  #True
+
+            input3 = [1, 4]
+            check = paddle.is_tensor(input3)
+            print(check)  #False
+            
+    """
+    return isinstance(x, Tensor) or isinstance(x, ComplexTensor)

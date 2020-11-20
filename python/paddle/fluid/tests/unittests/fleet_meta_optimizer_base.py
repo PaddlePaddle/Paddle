@@ -55,14 +55,22 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                   strategy,
                   train_prog,
                   startup_prog,
-                  name='momentum'):
+                  name='momentum',
+                  regularization=None,
+                  grad_clip=None):
         with fluid.program_guard(train_prog, startup_prog):
             with fluid.unique_name.guard():
                 if name == 'momentum':
                     optimizer = paddle.fluid.optimizer.Momentum(
-                        learning_rate=0.01, momentum=0.9)
+                        learning_rate=0.01,
+                        momentum=0.9,
+                        regularization=regularization,
+                        grad_clip=grad_clip)
                 elif name == 'adam':
-                    optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+                    optimizer = paddle.fluid.optimizer.Adam(
+                        learning_rate=0.01,
+                        regularization=regularization,
+                        grad_clip=grad_clip)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy)
                 optimizer.minimize(loss)
@@ -121,5 +129,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         elif name == "gradient_merge":
             strategy.gradient_merge = True
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
+        elif name == "sharding":
+            strategy.sharding = True
+            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
         else:
             raise NotImplementedError()

@@ -613,45 +613,45 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
-	:alias_main: paddle.t
-	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
-
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
-    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    the paddle.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
+
         .. code-block:: text
-        # Example 1 (0-D tensor)
-         x = tensor([0.79])
-         paddle.t(x) = tensor([0.79])
-         # Example 2 (1-D tensor)
-         x = tensor([0.79, 0.84, 0.32])
-         paddle.t(x) = tensor([0.79, 0.84, 0.32])
-        
-         # Example 3 (2-D tensor)
-         x = tensor([0.79, 0.84, 0.32],
-                    [0.64, 0.14, 0.57])
-         paddle.t(x) = tensor([0.79, 0.64],
-                              [0.84, 0.14],
-                              [0.32, 0.57])
-    
+
+             # Example 1 (0-D tensor)
+             x = tensor([0.79])
+             paddle.t(x) = tensor([0.79])
+
+             # Example 2 (1-D tensor)
+             x = tensor([0.79, 0.84, 0.32])
+             paddle.t(x) = tensor([0.79, 0.84, 0.32])
+
+             # Example 3 (2-D tensor)
+             x = tensor([0.79, 0.84, 0.32],
+                        [0.64, 0.14, 0.57])
+             paddle.t(x) = tensor([0.79, 0.64],
+                                  [0.84, 0.14],
+                                  [0.32, 0.57])
+
      Examples:
+
         .. code-block:: python
+
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3],
-                            dtype='float32')
+            x = paddle.ones(shape=[2, 3], dtype='int32')
             x_transposed = paddle.t(x)
-            print x_transposed.shape
-            #(3L, 2L)
+            print(x_transposed.shape)
+            # [3, 2]
     """
     if len(input.shape) > 2:
         raise ValueError(
@@ -921,13 +921,11 @@ def mv(x, vec, name=None):
             import numpy as np
             import paddle
 
-            paddle.disable_static()
             x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
             x = paddle.to_tensor(x_data)
             vec_data = np.array([3, 5, 1])
             vec = paddle.to_tensor(vec_data).astype("float64")
             out = paddle.mv(x, vec)
-            paddle.enable_static()
     """
     if in_dygraph_mode():
         out = core.ops.mv(x, vec)

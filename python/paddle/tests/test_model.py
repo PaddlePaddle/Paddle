@@ -25,7 +25,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2d, Linear, ReLU, Sequential, Softmax
+from paddle.nn import Conv2D, Linear, ReLU, Sequential, Softmax
 
 from paddle import Model
 from paddle.static import InputSpec
@@ -44,11 +44,11 @@ class LeNetDygraph(paddle.nn.Layer):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
-            Conv2d(
+            Conv2D(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
             paddle.fluid.dygraph.Pool2D(2, 'max', 2),
-            Conv2d(
+            Conv2D(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
             paddle.fluid.dygraph.Pool2D(2, 'max', 2))
@@ -142,7 +142,7 @@ class TestModel(unittest.TestCase):
             cls.test_dataset, places=cls.device, batch_size=64)
 
         seed = 333
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         dy_lenet = LeNetDygraph()
@@ -194,7 +194,7 @@ class TestModel(unittest.TestCase):
     def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
@@ -284,6 +284,23 @@ class TestModel(unittest.TestCase):
 
         fluid.disable_dygraph() if dynamic else None
 
+    def test_predict_without_inputs(self):
+        fluid.enable_dygraph(self.device)
+        model = Model(LeNet())
+        model.prepare()
+        model.load(self.weight_path)
+        model._inputs = None
+        output = model.predict(
+            self.test_dataset, batch_size=64, stack_outputs=True)
+        np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
+        fluid.disable_dygraph()
+
+    def test_summary_gpu(self):
+        paddle.disable_static(self.device)
+        rnn = paddle.nn.LSTM(16, 32, 2)
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+
 
 class MyModel(paddle.nn.Layer):
     def __init__(self):
@@ -306,7 +323,7 @@ class MyDataset(Dataset):
 
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
-        paddle.manual_seed(seed)
+        paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
@@ -370,7 +387,7 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
-            out, = model.test_batch([data])
+            out, = model.predict_batch([data])
 
             np.testing.assert_allclose(out, ref, rtol=1e-6)
             fluid.disable_dygraph() if dynamic else None
@@ -501,14 +518,33 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_nlp(self):
-        paddle.enable_static()
+        def _get_param_from_state_dict(state_dict):
+            params = 0
+            for k, v in state_dict.items():
+                params += np.prod(v.numpy().shape)
+            return params
+
         nlp_net = paddle.nn.GRU(input_size=2,
                                 hidden_size=3,
                                 num_layers=3,
                                 direction="bidirectional")
         paddle.summary(nlp_net, (1, 1, 2))
+
         rnn = paddle.nn.LSTM(16, 32, 2)
-        paddle.summary(rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        params_info = paddle.summary(
+            rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+        rnn = paddle.nn.GRU(16, 32, 2, direction='bidirectional')
+        params_info = paddle.summary(rnn, (4, 23, 16))
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+        rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+        params_info = paddle.summary(rnn, (4, 23, 16))
+        gt_params = _get_param_from_state_dict(rnn.state_dict())
+        np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
@@ -530,7 +566,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         self.set_seed()
-        np.random.seed(2020)
+        np.random.seed(201)
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
@@ -546,7 +582,7 @@ class TestModelFunction(unittest.TestCase):
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
 
             model.save(save_dir, training=False)
-            ori_results = model.test_batch(tensor_img)
+            ori_results = model.predict_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -569,7 +605,7 @@ class TestModelFunction(unittest.TestCase):
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         # without inputs
-        for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
+        for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
@@ -590,7 +626,7 @@ class TestModelFunction(unittest.TestCase):
                 elif initial == "eval_batch":
                     model.eval_batch([img], [label])
                 else:
-                    model.test_batch([img])
+                    model.predict_batch([img])
 
             model.save(save_dir, training=False)
             shutil.rmtree(save_dir)

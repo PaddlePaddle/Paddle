@@ -51,14 +51,14 @@ def summary(net, input_size, dtypes=None):
                     super(LeNet, self).__init__()
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
-                        nn.Conv2d(
+                        nn.Conv2D(
                             1, 6, 3, stride=1, padding=1),
                         nn.ReLU(),
-                        nn.MaxPool2d(2, 2),
-                        nn.Conv2d(
+                        nn.MaxPool2D(2, 2),
+                        nn.Conv2D(
                             6, 16, 5, stride=1, padding=0),
                         nn.ReLU(),
-                        nn.MaxPool2d(2, 2))
+                        nn.MaxPool2D(2, 2))
 
                     if num_classes > 0:
                         self.fc = nn.Sequential(
@@ -243,6 +243,9 @@ def summary_string(model, input_size, dtypes=None):
                 not isinstance(layer, nn.LayerList) and
             (not (layer == model) or depth < 1)):
 
+            hooks.append(layer.register_forward_post_hook(hook))
+        # For rnn, gru and lstm layer
+        elif hasattr(layer, 'could_use_cudnn') and layer.could_use_cudnn:
             hooks.append(layer.register_forward_post_hook(hook))
 
     if isinstance(input_size, tuple):

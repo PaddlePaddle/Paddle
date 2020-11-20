@@ -59,7 +59,11 @@ class ImperativeQuantAware(object):
                  weight_quantize_type='abs_max',
                  activation_quantize_type='moving_average_abs_max',
                  moving_rate=0.9,
-                 quantizable_layer_type=['Conv2D', 'Linear']):
+                 quantizable_layer_type=['Conv2D', 'Linear'],
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
         """
         The constructor for ImperativeQuantAware.
 
@@ -81,7 +85,28 @@ class ImperativeQuantAware(object):
             quantizable_layer_type(list[str]): List the type of layers that will be quantized. 
                 Default is ['Conv2D', 'Linear']. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
-
+            weight_preprocess_layer(paddle.nn.Layer, optional): A paddle Layer that defines how to preprocess
+                weight before quantization. Using this can quickly test if user's
+                preprocess method works or not. The input is non-quantized
+                weight and function returns processed weight to be quantized.
+                If None, the weight will be quantized directly. Default is None.
+            act_preprocess_layer(paddle.nn.Layer, optional): A paddle Layer that defines how to preprocess
+                activation before quantization. Using this can quickly test if user's
+                preprocess method works or not. The input is non-quantized
+                activation and function returns processed activation to be quantized.
+                If None, the activation will be quantized directly. Default is None.
+            weight_quantize_layer(paddle.nn.Layer, optional): A paddle Layer that defines how to quantize weight.
+                Using this can quickly test if user's quantization method works or not.
+                In this layer, user should both define quantization method and
+                dequantization method, that is, the function's input is non-quantized
+                weight and returns dequantized weight. If None, will use
+                quantization op defined by 'weight_quantize_type'. Default is None.
+            act_quantize_layer(paddle.nn.Layer, optional): A paddle Layer that defines how to quantize activation.
+                Using this can quickly test if user's quantization method works or not.
+                In this layer, user should both define quantization method and
+                dequantization method, that is, the function's input is non-quantized
+                activation and returns dequantized activation. If None, will use
+                quantization op defined by 'activation_quantize_type'. Default is None.
 
         Examples:
         .. code-block:: python
@@ -117,6 +142,19 @@ class ImperativeQuantAware(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
+
+        self._weight_pre_layer = weight_preprocess_layer
+        self._act_pre_layer = act_preprocess_layer
+        self._weight_quant_layer = weight_quantize_layer
+        self._act_quant_layer = act_quantize_layer
+
+        t_check = lambda method: method is None or issubclass(method, dygraph.layers.Layer)
+        assert t_check(
+            self._weight_pre_layer), "weight_preprocess should be nn.Layer"
+        assert t_check(self._act_pre_layer), "act_preprocess should be nn.Layer"
+        assert t_check(
+            self._weight_quant_layer), "weight_quantize should be nn.Layer"
+        assert t_check(self._act_quant_layer), "act_quantize should be nn.Layer"
 
         quant_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
@@ -207,7 +245,9 @@ class ImperativeQuantAware(object):
             quant_layer_class_name = quantized_counterpart[index]
         quantized_layer = quant_nn.__dict__[quant_layer_class_name](
             layer, self._weight_bits, self._activation_bits, self._moving_rate,
-            self._weight_quantize_type, self._activation_quantize_type)
+            self._weight_quantize_type, self._activation_quantize_type,
+            self._weight_pre_layer, self._act_pre_layer,
+            self._weight_quant_layer, self._act_quant_layer)
         return quantized_layer
 
 

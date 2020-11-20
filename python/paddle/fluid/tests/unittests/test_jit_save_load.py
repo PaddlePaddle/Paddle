@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 from paddle.static import InputSpec
 import paddle.fluid as fluid
+from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -153,6 +154,40 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
         return y, loss
 
 
+class LinearNetWithNestOut(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithNestOut, self).__init__()
+        self._linear_1 = Linear(in_size, out_size)
+        self._linear_2 = Linear(in_size, out_size)
+
+    @declarative
+    def forward(self, x):
+        y = self._linear_1(x)
+        z = self._linear_2(y)
+        out = y + z
+        loss = fluid.layers.mean(out)
+        return y, [(z, loss), out]
+
+
+class LinearNetWithDictInput(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithDictInput, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @paddle.jit.to_static(input_spec=[{
+        'img': InputSpec(
+            shape=[None, 8], dtype='float32', name='img')
+    }, {
+        'label': InputSpec(
+            shape=[None, 1], dtype='int64', name='label')
+    }])
+    def forward(self, img, label):
+        out = self._linear(img['img'])
+        # not return loss to avoid prune output
+        loss = paddle.nn.functional.cross_entropy(out, label['label'])
+        return out
+
+
 class EmptyLayer(paddle.nn.Layer):
     def __init__(self):
         super(EmptyLayer, self).__init__()
@@ -169,6 +204,26 @@ class NoParamLayer(paddle.nn.Layer):
     @paddle.jit.to_static
     def forward(self, x, y):
         return x + y
+
+
+class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithMultiStaticFunc, self).__init__()
+        self._linear_0 = Linear(in_size, out_size)
+        self._linear_1 = Linear(in_size, out_size)
+        self._scale = paddle.to_tensor(9.9)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return self._linear_0(x)
+
+    @paddle.jit.to_static
+    def forward_no_param(self, x):
+        return x
+
+    @paddle.jit.to_static
+    def forward_general(self, x):
+        return self._linear_0(x) + self._linear_1(x) * self._scale
 
 
 def train(layer, input_size=784, label_size=1):
@@ -222,7 +277,7 @@ class TestJitSaveLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save_model(self, model_path=None):
@@ -299,6 +354,61 @@ class TestJitSaveLoad(unittest.TestCase):
             loaded_layer = paddle.jit.load(path)
 
 
+class TestSaveLoadWithNestOut(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        fluid.enable_dygraph()
+
+    def test_nest_output(self):
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+
+        net = LinearNetWithNestOut(8, 8)
+        dy_outs = flatten(net(x))
+        net = declarative(net, input_spec=[InputSpec([None, 8], name='x')])
+
+        model_path = "net_with_nest_out/model"
+        paddle.jit.save(net, model_path)
+
+        load_net = paddle.jit.load(model_path)
+        load_outs = flatten(load_net(x))
+
+        self.assertTrue(len(dy_outs) == 4)
+        for dy_out, load_out in zip(dy_outs, load_outs):
+            self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+
+
+class TestSaveLoadWithDictInput(unittest.TestCase):
+    def test_dict_input(self):
+        # NOTE: This net cannot be executed, it is just 
+        # a special case for exporting models in model validation
+        # We DO NOT recommend this writing way of Layer
+        net = LinearNetWithDictInput(8, 8)
+        # net.forward.concrete_program.inputs: 
+        # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>, 
+        #  {'img': var img : fluid.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)}, 
+        #  {'label': var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
+        self.assertEqual(len(net.forward.concrete_program.inputs), 3)
+
+        path = "test_jit_save_load_with_dict_input/model"
+        # prune inputs
+        paddle.jit.save(
+            layer=net,
+            path=path,
+            input_spec=[{
+                'img': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img')
+            }])
+
+        img = paddle.randn(shape=[4, 8], dtype='float32')
+        loaded_net = paddle.jit.load(path)
+        loaded_out = loaded_net(img)
+
+        # loaded_net._input_spec():
+        # [InputSpec(shape=(-1, 8), dtype=VarType.FP32, name=img)]
+        self.assertEqual(len(loaded_net._input_spec()), 1)
+
+
 class TestSaveLoadWithInputSpec(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -370,7 +480,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def test_output_spec(self):
@@ -429,7 +539,7 @@ class TestJitMultipleLoading(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         # train and save base model
         self.train_and_save_orig_model()
@@ -457,7 +567,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save(self):
@@ -512,7 +622,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
     def verify_inference_correctness(self, layer, model_path, with_label=False):
@@ -722,6 +832,35 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
         load_layer = paddle.jit.load(self.model_path)
         load_out = load_layer(x, y)
         self.assertTrue(np.array_equal(out, load_out))
+
+
+class TestJitSaveLoadMultiMethods(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_jit_save_load_inference(self):
+        model_path_inference = "jit_save_load_multi_methods/model"
+        IMAGE_SIZE = 224
+        layer = LinearNetWithMultiStaticFunc(IMAGE_SIZE, 10)
+        inps = paddle.randn([1, IMAGE_SIZE])
+        result_origin = {}
+        for func in dir(layer):
+            if func.startswith('forward'):
+                result_origin[func] = getattr(layer, func, None)(inps)
+        paddle.jit.save(layer, model_path_inference)
+        load_net = paddle.jit.load(model_path_inference)
+        for func, result in result_origin.items():
+            self.assertTrue(
+                float((result - getattr(load_net, func, None)(inps)).abs().max(
+                )) < 1e-5)
+
+    def test_jit_save_load_multi_methods_inputspec(self):
+        model_path = 'jit_save_load_multi_methods/model'
+        layer = LinearNetWithMultiStaticFunc(784, 1)
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer, model_path, input_spec=[InputSpec(shape=[None, 784])])
 
 
 if __name__ == '__main__':

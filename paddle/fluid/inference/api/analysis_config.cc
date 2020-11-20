@@ -122,6 +122,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_oss_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -174,7 +175,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
 #undef CP_MEMBER
 
-  Update();
+  // Update();
+  // Update() will reset all the passes, when some tensorRT pass is deleted in
+  // other.pass_builder(), it will set again, so just copy the passes.
+  pass_builder_->ClearPasses();
+  for (const std::string &pass : other.pass_builder()->AllPasses()) {
+    pass_builder_->AppendPass(pass);
+  }
 }
 
 void AnalysisConfig::EnableCUDNN() {
@@ -280,6 +287,8 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
+void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
+
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
   auto info = SerializeInfoCache();
@@ -381,7 +390,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#ifndef PADDLE_WITH_XPU
+#ifndef LITE_SUBGRAPH_WITH_XPU
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use an XPU device, but Paddle was not compiled "
         "with XPU-runtime."));

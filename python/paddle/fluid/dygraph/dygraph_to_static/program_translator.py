@@ -20,6 +20,7 @@ import inspect
 import six
 import textwrap
 import threading
+import warnings
 import weakref
 
 from paddle.fluid import framework
@@ -298,7 +299,11 @@ class StaticFunction(object):
 
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_to_static:
-            logging_utils.warn(
+            # NOTE(liym27):
+            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
+            # will show up **only once**. StaticFunction.__call__ will run many times, it is appropriate to
+            # display this warning message only once.
+            warnings.warn(
                 "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
                 "ProgramTranslator.enable(True)")
@@ -604,11 +609,16 @@ class ConcreteProgram(object):
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
                         error.attach_error_data(e)
+                        error_data = getattr(e, error.ERROR_DATA, None)
+                        if error_data:
+                            error_data.raise_new_exception()
                         raise
 
-                if not isinstance(outputs,
-                                  (tuple, list)) and outputs is not None:
-                    outputs = [outputs]
+                if outputs is not None:
+                    need_wrap_into_list = not isinstance(outputs, (
+                        tuple, list)) or len(outputs) == 1
+                    if need_wrap_into_list:
+                        outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
 
@@ -782,7 +792,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 # ProgramTranslator is disabled so the func is run in dygraph
-                print(func(x).numpy())  # [[0. 0.]]
+                print(func(x))  # [[0. 0.]]
 
         """
         check_type(enable_to_static, "enable_to_static", bool,
@@ -821,7 +831,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 x_v = prog_trans.get_output(func, x)
-                print(x_v.numpy())  # [[0. 0.]]
+                print(x_v)  # [[0. 0.]]
 
         """
         assert callable(
@@ -829,7 +839,9 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
 
         if not self.enable_to_static:
-            logging_utils.warn(
+            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
+            # will show up **only once**.
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."

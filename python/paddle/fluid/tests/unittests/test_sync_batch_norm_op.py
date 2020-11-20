@@ -50,9 +50,9 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         """Setup."""
         #self.dtype = np.float32
         self.dtype = np.float64
-        self.N = 32
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
@@ -196,9 +196,9 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
     def setUp(self):
         """Setup."""
         self.dtype = np.float16
-        self.N = 32
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
@@ -228,12 +228,12 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
 
         with program_guard(Program(), Program()):
             compare_model = paddle.nn.Sequential(
-                paddle.nn.Conv2d(3, 5, 3), paddle.nn.BatchNorm2d(5))
+                paddle.nn.Conv2D(3, 5, 3), paddle.nn.BatchNorm2D(5))
             model = paddle.nn.Sequential(
-                paddle.nn.Conv2d(3, 5, 3), paddle.nn.BatchNorm2d(5))
+                paddle.nn.Conv2D(3, 5, 3), paddle.nn.BatchNorm2D(5))
             model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             for idx, sublayer in enumerate(compare_model.sublayers()):
-                if isinstance(sublayer, paddle.nn.BatchNorm2d):
+                if isinstance(sublayer, paddle.nn.BatchNorm2D):
                     self.assertEqual(
                         isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
 
