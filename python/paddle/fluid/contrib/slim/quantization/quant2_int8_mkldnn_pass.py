@@ -15,6 +15,7 @@
 import numpy as np
 from .... import core
 from ....framework import IrGraph
+from ....layers.utils import _get_paddle_place
 
 __all__ = ['Quant2Int8MkldnnPass']
 
@@ -43,7 +44,7 @@ class Quant2Int8MkldnnPass(object):
                  _core=None,
                  _debug=False):
         self._scope = _scope
-        self._place = _place
+        self._place = _get_paddle_place(_place)
         self._core = _core
         self._debug = _debug
         self._fake_quantize_types = [

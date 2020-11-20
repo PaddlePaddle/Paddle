@@ -25,7 +25,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
 from paddle.common_ops_import import *
-
+from ..fluid.layers.utils import _get_paddle_place
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
@@ -126,8 +126,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(place,
-                        (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+    place = _get_paddle_place(place)
+    if not isinstance(place,
+                      (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
         raise ValueError(
             "'place' must be any of paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )

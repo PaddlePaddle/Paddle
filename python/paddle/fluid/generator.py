@@ -14,6 +14,7 @@
 """This is definition of generator class, which is for managing the state of the algorithm that produces pseudo random numbers."""
 
 from . import core
+from .layers.utils import _get_paddle_paddle
 
 __all__ = ['Generator']
 
@@ -33,7 +34,7 @@ class Generator(core.Generator):
             Generator: A generator object.
 
         """
-        self.place = place
+        self.place = _get_paddle_place(place)
         if not place:
             place = core.CPUPlace()
         if isinstance(place, core.CPUPlace):

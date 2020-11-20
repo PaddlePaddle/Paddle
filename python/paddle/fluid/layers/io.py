@@ -32,6 +32,7 @@ from ..unique_name import generate as unique_name
 import logging
 from ..data_feeder import check_dtype, check_type
 from paddle.fluid.framework import static_only
+from .utils import _get_paddle_place
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',
@@ -861,7 +862,8 @@ def double_buffer(reader, place=None, name=None):
     """
     attrs = dict()
     if place is not None:
-        attrs['place'] = str(place).upper()
+        attrs['place'] = str(_get_paddle_place(place)).upper()
+
     return __create_unshared_decorated_reader__(
         'create_double_buffer_reader', reader, attrs, name=name)
 

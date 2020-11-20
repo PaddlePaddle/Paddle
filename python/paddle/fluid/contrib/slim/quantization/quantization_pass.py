@@ -25,6 +25,7 @@ from ....framework import Program, program_guard, default_startup_program
 from ....data import data
 from ....layers import mean
 from ....executor import scope_guard
+from ....layers.utils import _get_paddle_place
 
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
@@ -315,7 +316,7 @@ class QuantizationTransformPass(object):
             transform_pass.apply(graph)
         """
         self._scope = scope
-        self._place = place
+        self._place = _get_paddle_place(place)
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._skip_pattern = skip_pattern
@@ -1499,7 +1500,7 @@ class OutScaleForTrainingPass(object):
             moving_rate(float): The decay coefficient of moving average. The default value is 0.9.
         """
         self._scope = scope
-        self._place = place
+        self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._is_test = None
         self._teller_set = _out_scale_op_list

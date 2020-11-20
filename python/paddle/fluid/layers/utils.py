@@ -16,11 +16,13 @@ from __future__ import print_function
 import collections
 import copy
 import six
+import re
 import numpy as np
 from ..framework import Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
+from paddle.fluid import core
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -429,3 +431,42 @@ def try_get_constant_shape_from_tensor(shape_tensor):
             return None
 
         return None
+
+
+def _get_paddle_place(place):
+    "convert the string to paddle Place"
+    if place is None:
+        return place
+    if isinstance(place, (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+        return place
+    if (place == "CPUPlace"):
+        return core.CPUPlace()
+
+    avaliable_gpu_place = re.match(r'CUDAPlace:\d+', place)
+    if place == "CUDAPinnedPlace" or place == "CUDAPlace" or avaliable_gpu_place:
+        if not core.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with CUDA".format(avaliable_gpu_place))
+        if place == "CUDAPinnedPlace":
+            return core.CUDAPinnedPlace()
+        elif place == "CUDAPlace":
+            return core.CUDAPlace(0)
+        else:
+            place_info_list = place.split(':', 1)
+            device_id = device_info_list[1]
+            device_id = int(device_id)
+            return core.CUDAPlace(device_id)
+    avaliable_xpu_place = re.match(r'XPUPlace:\d+', place)
+    if avaliable_xpu_place:
+        if not core.is_compiled_with_xpu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with XPU".format(avaliable_xpu_place))
+        place_info_list = device.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.XPUPlace(device_id)
+    raise ValueError(
+        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
+    )

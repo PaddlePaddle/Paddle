@@ -113,7 +113,7 @@ class RowConvTestCase(unittest.TestCase):
         self._test_equivalence(place)
 
         if fluid.core.is_compiled_with_cuda():
-            palce = fluid.CUDAPlace(0)
+            place = fluid.CUDAPlace(0)
             self._test_equivalence(place)
 
 

@@ -25,6 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
+from ..layers.utils import _get_paddle_place
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
@@ -145,7 +146,8 @@ def enable_dygraph(place=None):
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is None:
-        _functional_dygraph_context_manager = guard(place=place)
+        _functional_dygraph_context_manager = guard(
+            place=_get_paddle_place(place))
         _functional_dygraph_context_manager.__enter__()
 
         # call disable_dygraph when Python exit
@@ -367,7 +369,7 @@ def guard(place=None):
     VarBase = core.VarBase
 
     if place is not None:
-        expected_place = place
+        expected_place = _get_paddle_place(place)
     else:
         expected_place = framework._current_expected_place()
     tracer._expected_place = expected_place

@@ -16,6 +16,7 @@ import numpy as np
 from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
+from ....layers.utils import _get_paddle_place
 
 __all__ = ['QuantInt8MkldnnPass']
 
@@ -60,7 +61,7 @@ class QuantInt8MkldnnPass(object):
         """
 
         self._scope = _scope
-        self._place = _place
+        self._place = _get_paddle_place(_place)
 
         self._quantize_type = [
             'fake_quantize_moving_average_abs_max',
