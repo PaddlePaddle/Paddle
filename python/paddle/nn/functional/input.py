@@ -198,7 +198,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             'remote_prefetch', False, 'padding_idx', padding_idx)
     else:
         helper = LayerHelper('embedding', **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='weight')
 
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'embedding')
 
