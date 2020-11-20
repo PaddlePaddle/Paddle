@@ -465,6 +465,15 @@ def multiply(x, y, name=None):
             % (x.dtype, y.dtype))
 
     if in_dygraph_mode():
+        if not paddle.is_tensor(x):
+            raise TypeError(
+                'Input x must tensor type, but received type of x: %s'
+                % (x.dtype))
+
+        if not paddle.is_tensor(y):
+            raise TypeError(
+                'Input y must tensor type, but received type of y: %s'
+                % (y.dtype))
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
