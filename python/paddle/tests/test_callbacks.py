@@ -162,7 +162,7 @@ class TestCallbacks(unittest.TestCase):
         for dynamic in [True, False]:
             paddle.enable_static if not dynamic else None
             device = paddle.set_device('cpu')
-            sample_num = 200
+            sample_num = 100
             train_dataset = MnistDataset(mode='train', sample_num=sample_num)
             val_dataset = MnistDataset(mode='test', sample_num=sample_num)
 
@@ -181,7 +181,7 @@ class TestCallbacks(unittest.TestCase):
             callbacks_0 = paddle.callbacks.EarlyStopping(
                 'loss',
                 mode='min',
-                patience=2,
+                patience=1,
                 verbose=1,
                 min_delta=0,
                 baseline=None,
@@ -189,7 +189,7 @@ class TestCallbacks(unittest.TestCase):
             callbacks_1 = paddle.callbacks.EarlyStopping(
                 'acc',
                 mode='auto',
-                patience=2,
+                patience=1,
                 verbose=1,
                 min_delta=0,
                 baseline=0,
@@ -197,7 +197,7 @@ class TestCallbacks(unittest.TestCase):
             callbacks_2 = paddle.callbacks.EarlyStopping(
                 'loss',
                 mode='auto_',
-                patience=2,
+                patience=1,
                 verbose=1,
                 min_delta=0,
                 baseline=None,
@@ -205,7 +205,7 @@ class TestCallbacks(unittest.TestCase):
             callbacks_3 = paddle.callbacks.EarlyStopping(
                 'acc_',
                 mode='max',
-                patience=2,
+                patience=1,
                 verbose=1,
                 min_delta=0,
                 baseline=0,
@@ -216,14 +216,16 @@ class TestCallbacks(unittest.TestCase):
                 batch_size=64,
                 save_freq=10,
                 save_dir=self.save_dir,
-                epochs=20,
+                epochs=10,
+                verbose=0,
                 callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3])
             # Test for no val_loader
             model.fit(train_dataset,
                       batch_size=64,
                       save_freq=10,
                       save_dir=self.save_dir,
-                      epochs=20,
+                      epochs=10,
+                      verbose=0,
                       callbacks=[callbacks_0])
 
 
