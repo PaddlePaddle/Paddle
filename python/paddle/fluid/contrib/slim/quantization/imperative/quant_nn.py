@@ -343,6 +343,9 @@ class QuantizedConv2D(layers.Layer):
         self._stride = getattr(layer, '_stride')
         self._padding = getattr(layer, '_padding')
         self._padding_mode = getattr(layer, '_padding_mode')
+        if self._padding_mode != 'zeros':
+            self._reversed_padding_repeated_twice = getattr(
+                layer, '_reversed_padding_repeated_twice')
         self._dilation = getattr(layer, '_dilation')
         self._data_format = getattr(layer, '_data_format')
         self.weight = getattr(layer, 'weight')

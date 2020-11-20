@@ -31,6 +31,7 @@ from paddle.nn import Linear, Conv2D, Softmax
 from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.contrib.slim.quantization.imperative.quant_nn import QuantizedConv2D
 
 paddle.enable_static()
 
@@ -160,8 +161,19 @@ class TestImperativeQat(unittest.TestCase):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max')
-
         with fluid.dygraph.guard():
+            # For CI coverage
+            conv1 = Conv2D(
+                in_channels=3,
+                out_channels=2,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                padding_mode='replicate')
+            quant_conv1 = QuantizedConv2D(conv1)
+            data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+            quant_conv1(fluid.dygraph.to_variable(data))
+
             lenet = ImperativeLenet()
             imperative_qat.quantize(lenet)
             adam = AdamOptimizer(
