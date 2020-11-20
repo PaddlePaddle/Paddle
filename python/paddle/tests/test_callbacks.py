@@ -165,10 +165,6 @@ class TestCallbacks(unittest.TestCase):
             sample_num = 200
             train_dataset = MnistDataset(mode='train', sample_num=sample_num)
             val_dataset = MnistDataset(mode='test', sample_num=sample_num)
-            train_loader = paddle.io.DataLoader(
-                train_dataset, places=device, return_list=True, batch_size=64)
-            val_loader = paddle.io.DataLoader(
-                val_dataset, places=device, return_list=True, batch_size=64)
 
             net = LeNet()
             optim = paddle.optimizer.Adam(
@@ -215,14 +211,16 @@ class TestCallbacks(unittest.TestCase):
                 baseline=0,
                 save_best_model=True)
             model.fit(
-                train_loader,
-                val_loader,
+                train_dataset,
+                val_dataset,
+                batch_size=64,
                 save_freq=10,
                 save_dir=self.save_dir,
                 epochs=20,
                 callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3])
             # Test for no val_loader
-            model.fit(train_loader,
+            model.fit(train_dataset,
+                      batch_size=64,
                       save_freq=10,
                       save_dir=self.save_dir,
                       epochs=20,

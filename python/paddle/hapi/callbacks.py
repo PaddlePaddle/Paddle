@@ -532,15 +532,10 @@ class EarlyStopping(Callback):
             device = paddle.set_device('cpu')
             sample_num = 200
             save_dir = './best_model_checkpoint'
-            transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+            transform = T.Compose(
+                [T.Transpose(), T.Normalize([127.5], [127.5])])
             train_dataset = MNIST(mode='train', transform=transform)
             val_dataset = MNIST(mode='test', transform=transform)
-
-            train_loader = paddle.io.DataLoader(
-                train_dataset, places=device, return_list=True, batch_size=64)
-            val_loader = paddle.io.DataLoader(
-                val_dataset, places=device, return_list=True, batch_size=64)
-
             net = LeNet()
             optim = paddle.optimizer.Adam(
                 learning_rate=0.001, parameters=net.parameters())
@@ -556,19 +551,19 @@ class EarlyStopping(Callback):
             callbacks = paddle.callbacks.EarlyStopping(
                 'loss',
                 mode='min',
-                patience=2,
+                patience=1,
                 verbose=1,
                 min_delta=0,
                 baseline=None,
                 save_best_model=True)
-            model.fit(train_loader,
-                      val_loader,
+            model.fit(train_dataset,
+                      val_dataset,
+                      batch_size=64,
                       log_freq=200,
                       save_freq=10,
                       save_dir=save_dir,
                       epochs=20,
                       callbacks=[callbacks])
-
     """
 
     def __init__(self,
