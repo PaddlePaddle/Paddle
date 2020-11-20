@@ -196,7 +196,7 @@ class DataLoader(object):
             the key of the dict is the name of each fed variables. If 
             :attr:`return_list=True`, the return value on each device would
             be a list(Tensor). :attr:`return_list` can only be True
-            in dynamic graph mode. Default False.
+            in dynamic graph mode. Default True.
         batch_sampler(BatchSampler): an instance of `paddle.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
             and combine a batch. Default None.
@@ -308,7 +308,7 @@ class DataLoader(object):
                  dataset,
                  feed_list=None,
                  places=None,
-                 return_list=False,
+                 return_list=True,
                  batch_sampler=None,
                  batch_size=1,
                  shuffle=False,
@@ -403,10 +403,10 @@ class DataLoader(object):
         if self.dataset_kind == _DatasetKind.ITER:
             raise ValueError("length of IterableDataset not supported")
         else:
-            if self.batch_size is None:
-                return len(self.dataset)
-            else:
+            if self.auto_collate_batch:
                 return len(self.batch_sampler)
+            else:
+                return len(self.dataset)
 
     def __iter__(self):
         if self.num_workers == 0:
