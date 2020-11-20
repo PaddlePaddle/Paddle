@@ -887,6 +887,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
+
               # average adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
               # output shape is [N, C, m], adaptive pool divide L dimension
@@ -961,6 +962,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         ValueError: If `data_format` is not "NCHW" or "NHWC".
     Examples:
         .. code-block:: python
+
             # adaptive avg pool2d
             # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
             # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
@@ -1062,6 +1064,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
     Examples:
         .. code-block:: python
+
             # adaptive avg pool3d
             # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
             # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
@@ -1082,7 +1085,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]

@@ -192,6 +192,13 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
                     x=label, weight=weight, sparse=True, name="embedding")
 
     """
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        weight.shape[0] + padding_idx)
+
+    if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
+        raise ValueError("padding_idx must be within [-{}, {})".format(
+            weight.shape[0], weight.shape[0]))
+
     if in_dygraph_mode():
         return core.ops.lookup_table_v2(
             weight, x, 'is_sparse', sparse, 'is_distributed', False,
@@ -206,12 +213,6 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         remote_prefetch = sparse and (not is_distributed)
 
         tmp = helper.create_variable_for_type_inference(dtype)
-        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            weight.shape[0] + padding_idx)
-
-        if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
-            raise ValueError("padding_idx must be within [-{}, {})".format(
-                weight.shape[0], weight.shape[0]))
 
         helper.append_op(
             type='lookup_table_v2',
