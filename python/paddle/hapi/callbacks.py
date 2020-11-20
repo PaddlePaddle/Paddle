@@ -522,6 +522,7 @@ class LRScheduler(Callback):
             base_lr = 1e-3
             boundaries = [5, 8]
             wamup_steps = 4
+            
             def make_optimizer(parameters=None):
                 momentum = 0.9
                 weight_decay = 5e-4
@@ -541,7 +542,7 @@ class LRScheduler(Callback):
                     parameters=parameters)
                 return optimizer
                 
-            optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
+            optim = make_optimizer(parameters=lenet.parameters())
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
