@@ -2859,10 +2859,10 @@ class Block(object):
         else:
             param = Parameter(global_block, *args, **kwargs)
             # NOTE: Why only set stop_gradient=False in static mode
-            # Because in dygraph mode, the `stop_gradient` and 
-            # `trainable` are related, if we set `stop_gradient` 
-            # here, the user given `trainable` argument will not 
-            # take effect
+            # Because in dygraph mode, the `stop_gradient` and `trainable`
+            # are related, and `trainable` default vallue is `True` or
+            # it is specified by users, there is no need to set
+            # `stop_gradient` for ParamBase here.
             param.stop_gradient = False
         if 'initializer' in kwargs:
 
