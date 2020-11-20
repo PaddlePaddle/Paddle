@@ -1103,8 +1103,7 @@ class Embedding(layers.Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
-        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            num_embeddings + padding_idx)
+        self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
             raise ValueError("num_embeddings must be gather than 0")
@@ -1112,7 +1111,10 @@ class Embedding(layers.Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-        if self._padding_idx >= num_embeddings or self._padding_idx < -num_embeddings:
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            num_embeddings + padding_idx)
+
+        if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError("padding_idx must be within [-{}, {})".format(
                 num_embeddings, num_embeddings))
 
