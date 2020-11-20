@@ -3690,7 +3690,7 @@ class ExampleNet(paddle.nn.Layer):
             shape=[1, 1], attr=paddle.ParamAttr(trainable=False))
 
     def forward(self):
-        # only for test parameter trainable sttr
+        # only for test parameter trainable attr
         pass
 
 
