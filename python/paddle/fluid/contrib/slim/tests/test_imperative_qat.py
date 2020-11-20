@@ -27,10 +27,8 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn import Linear, Conv2D, Softmax
-#from paddle.fluid.dygraph.nn import Conv2D
+from paddle.nn import Linear, Conv2D, Softmax, Tanh
 from paddle.fluid.dygraph.nn import Pool2D
-#from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -44,7 +42,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
+def StaticLenet(data, num_classes=10):
     conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
     conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
     fc_w1_attr = fluid.ParamAttr(name="fc_w_1")
@@ -86,15 +84,15 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
                           bias_attr=fc_b2_attr)
     fc3 = fluid.layers.fc(input=fc2,
                           size=num_classes,
-                          act=classifier_activation,
                           param_attr=fc_w3_attr,
                           bias_attr=fc_b3_attr)
+    fc4 = fluid.layers.softmax(fc3, use_cudnn=True)
 
-    return fc3
+    return fc4
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation='softmax'):
+    def __init__(self, num_classes=10):
         super(ImperativeLenet, self).__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
@@ -106,7 +104,6 @@ class ImperativeLenet(fluid.dygraph.Layer):
         fc_b1_attr = fluid.ParamAttr(name="fc_b_1")
         fc_b2_attr = fluid.ParamAttr(name="fc_b_2")
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
-        self.conv = Conv2D(in_channels=1, out_channels=6, kernel_size=1)
         self.features = Sequential(
             Conv2D(
                 in_channels=1,
@@ -149,7 +146,6 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = self.features(inputs)
-
         x = fluid.layers.flatten(x, 1)
         x = self.fc(x)
         return x
@@ -288,7 +284,7 @@ class TestImperativeQat(unittest.TestCase):
         activation_quant_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
-        lr = 0.1
+        lr = 0.01
 
         # imperative train
         _logger.info(
