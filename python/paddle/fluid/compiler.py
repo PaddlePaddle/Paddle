@@ -19,7 +19,7 @@ import sys
 from .. import compat as cpt
 from . import framework
 from .framework import cuda_places, cpu_places
-from .reader import _convert_places
+from .layers.utils import _convert_places
 from . import core
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
