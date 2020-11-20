@@ -439,7 +439,7 @@ def sort(x, axis=-1, descending=False, name=None):
 
 >>>>>>> Fix conflic with fix_en_doc_1
             import paddle
-            
+
             x = paddle.to_tensor([[[5,8,9,5],
                                    [0,0,1,7],
                                    [6,9,2,4]],
@@ -669,7 +669,6 @@ def masked_select(x, mask, name=None):
         .. code-block:: python
 
             import paddle
-
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                   [5.0, 6.0, 7.0, 8.0],
