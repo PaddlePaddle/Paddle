@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ..optimizer import Optimizer
-from ..regularizer import L1DecayRegularizer
-from ..regularizer import L2DecayRegularizer
-from ..regularizer import append_regularization_ops
-from .. import framework
-from .. import core
-from ..framework import program_guard
-from ..clip import append_gradient_clip_ops
+from paddle.fluid.optimizer import Optimizer
+from paddle.fluid.regularizer import L1DecayRegularizer
+from paddle.fluid.regularizer import L2DecayRegularizer
+from paddle.fluid.regularizer import append_regularization_ops
+from paddle.fluid import framework
+from paddle.fluid import core
+from paddle.fluid.framework import program_guard
+from paddle.fluid.clip import append_gradient_clip_ops
 
 __all__ = ['Momentum']
 
@@ -71,14 +71,17 @@ class Momentum(Optimizer):
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
+
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-                y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                x = paddle.static.data(name='x', shape=[1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[1], dtype='float32')
+                linear = paddle.nn.Linear(13, 1)
+                y_predict = linear(x)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+                avg_cost = paddle.mean(cost)
 
                 moment_optimizer = fluid.contrib.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
                 moment_optimizer.minimize(avg_cost)
@@ -88,7 +91,7 @@ class Momentum(Optimizer):
                     paddle.dataset.uci_housing.train(), batch_size=1)
                 feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
                 exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 

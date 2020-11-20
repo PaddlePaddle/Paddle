@@ -29,7 +29,7 @@ using framework::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
 
-enum class RegularizationFlag {
+enum class RegularizationType {
   kNONE = 0,
   kL1DECAY = 1,  // do not need support right now
   kL2DECAY = 2,
@@ -125,7 +125,7 @@ class CPUDenseMomentumFunctor {
   const Tensor* learning_rate_;
   const T mu_;
   const T use_nesterov_;
-  RegularizationFlag regularization_flag_;
+  RegularizationType regularization_flag_;
   const T regularization_coeff_;
   Tensor* param_out_;
   Tensor* velocity_out_;
@@ -134,7 +134,7 @@ class CPUDenseMomentumFunctor {
   CPUDenseMomentumFunctor(const Tensor* param, const Tensor* grad,
                           const Tensor* velocity, const Tensor* learning_rate,
                           const T mu, const bool use_nesterov,
-                          RegularizationFlag regularization_flag,
+                          RegularizationType regularization_flag,
                           const T regularization_coeff, Tensor* param_out,
                           Tensor* velocity_out)
       : param_(param),
@@ -157,7 +157,7 @@ class CPUDenseMomentumFunctor {
     auto grad = framework::EigenVector<T>::Flatten(*grad_);
     auto* lr = learning_rate_->data<T>();
 
-    if (regularization_flag_ == RegularizationFlag::kL2DECAY) {
+    if (regularization_flag_ == RegularizationType::kL2DECAY) {
       velocity_out = velocity * mu_ + param * regularization_coeff_ + grad;
       if (use_nesterov_) {
         param_out =
@@ -194,13 +194,13 @@ class DenseMomentumFunctor<T, UseNesterov> {
   const int64_t num_;
   T* param_out_;
   T* velocity_out_;
-  RegularizationFlag regularization_flag_;
+  RegularizationType regularization_flag_;
   const T regularization_coeff_;
 
  public:
   DenseMomentumFunctor(const T* param, const T* grad, const T* velocity,
                        const T* learning_rate, const T mu, const int64_t num,
-                       RegularizationFlag regularization_flag,
+                       RegularizationType regularization_flag,
                        const T regularization_coeff, T* param_out,
                        T* velocity_out)
       : param_(param),
@@ -221,7 +221,7 @@ class DenseMomentumFunctor<T, UseNesterov> {
     const T lr = lr_[0];
     const T velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -244,13 +244,13 @@ class DenseMomentumFunctor<T, NoNesterov> {
   const int64_t num_;
   T* param_out_;
   T* velocity_out_;
-  RegularizationFlag regularization_flag_;
+  RegularizationType regularization_flag_;
   const T regularization_coeff_;
 
  public:
   DenseMomentumFunctor(const T* param, const T* grad, const T* velocity,
                        const T* learning_rate, const T mu, const int64_t num,
-                       RegularizationFlag regularization_flag,
+                       RegularizationType regularization_flag,
                        const T regularization_coeff, T* param_out,
                        T* velocity_out)
       : param_(param),
@@ -271,7 +271,7 @@ class DenseMomentumFunctor<T, NoNesterov> {
     const T lr = lr_[0];
     const T velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -299,14 +299,14 @@ class SparseMomentumFunctor<T, UseNesterov> {
   const int64_t row_height_;
   T* param_out_;
   T* velocity_out_;
-  RegularizationFlag regularization_flag_;
+  RegularizationType regularization_flag_;
   const T regularization_coeff_;
 
  public:
   SparseMomentumFunctor(const T* param, const T* grad, const T* velocity,
                         const T* lr, const T mu, const int64_t* rows,
                         int64_t row_numel, int64_t row_height,
-                        RegularizationFlag regularization_flag,
+                        RegularizationType regularization_flag,
                         const T regularization_coeff, T* param_out,
                         T* velocity_out)
       : param_(param),
@@ -332,7 +332,7 @@ class SparseMomentumFunctor<T, UseNesterov> {
     const T lr = lr_[0];
     const T velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -357,14 +357,14 @@ class SparseMomentumFunctor<T, NoNesterov> {
   const int64_t row_height_;
   T* param_out_;
   T* velocity_out_;
-  RegularizationFlag regularization_flag_;
+  RegularizationType regularization_flag_;
   const T regularization_coeff_;
 
  public:
   SparseMomentumFunctor(const T* param, const T* grad, const T* velocity,
                         const T* lr, const T mu, const int64_t* rows,
                         int64_t row_numel, int64_t row_height,
-                        RegularizationFlag regularization_flag,
+                        RegularizationType regularization_flag,
                         const T regularization_coeff, T* param_out,
                         T* velocity_out)
       : param_(param),
@@ -390,7 +390,7 @@ class SparseMomentumFunctor<T, NoNesterov> {
     const T lr = lr_[0];
     const T velocity = velocity_[i];
 
-    grad = regularization_flag_ == RegularizationFlag::kL2DECAY
+    grad = regularization_flag_ == RegularizationType::kL2DECAY
                ? grad + regularization_coeff_ * param
                : grad;
 
@@ -412,16 +412,16 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ("l2_decay", regularization_method,
                         platform::errors::InvalidArgument(
                             "if regularization_method is not null, "
-                            "it should be %s, but received %s",
+                            "it should be l2_decay, but received %s",
                             regularization_method));
     }
 
     T regularization_coeff =
         static_cast<T>(ctx.Attr<float>("regularization_coeff"));
-    RegularizationFlag regularization_flag{
-        RegularizationFlag::kNONE};  // disable regularization
+    RegularizationType regularization_flag{
+        RegularizationType::kNONE};  // disable regularization
     if (regularization_method == "l2_decay") {
-      regularization_flag = RegularizationFlag::kL2DECAY;
+      regularization_flag = RegularizationType::kL2DECAY;
     }
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));

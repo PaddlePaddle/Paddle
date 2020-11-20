@@ -458,8 +458,8 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             loss.backward()
             momentum.minimize(loss)
 
-    def test_vs(self):
-        paddle.disable_static()
+    def __test_vs(self, place=fluid.CPUPlace()):
+        paddle.disable_static(place=place)
 
         linear_old = paddle.nn.Linear(
             2,
@@ -491,6 +491,14 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             (linear_old.weight.numpy() == linear_new.weight.numpy()).all(),
             True,
             'the param weight updated by two Momentum optimizers should equal')
+
+    def test_vs(self, place=fluid.CPUPlace()):
+        places = [fluid.CPUPlace()]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+
+        for place in places:
+            self.__test_vs(place=place)
 
 
 if __name__ == "__main__":
