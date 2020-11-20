@@ -96,10 +96,12 @@ class _ConvNd(layers.Layer):
         self._dilation = utils.convert_to_list(dilation, dims, 'dilation')
         self._kernel_size = utils.convert_to_list(kernel_size, dims,
                                                   'kernel_size')
+        self._padding = padding
         self._padding_mode = padding_mode
         self.output_padding = output_padding
-        self._padding, self._padding_algorithm = _update_padding_nd(
-            padding, channel_last, dims)
+        if dims != 1:
+            self._padding, self._padding_algorithm = _update_padding_nd(
+                padding, channel_last, dims)
 
         if transposed:
             filter_shape = [self._in_channels, out_channels // groups
