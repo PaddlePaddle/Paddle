@@ -1077,11 +1077,11 @@ def sampled_softmax_with_cross_entropy(logits,
     a softmax with cross entropy.
 
     Args:
-        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
+        logits (Tensor): The unscaled log probabilities, which is a 2-D tensor
             with shape [N x K]. N is the batch_size, and K is the class number.
-        label (Variable): The ground truth which is a 2-D tensor. Label is a 
+        label (Tensor): The ground truth which is a 2-D tensor. Label is a 
             Tensor<int64> with shape [N x T], where T is the number of true 
-            labels per example. 
+            labels per example.
         num_samples (int): The number for each example, num_samples should be 
             less than the number of class.
         num_true(int): The number of target classes per training example.
@@ -1092,16 +1092,16 @@ def sampled_softmax_with_cross_entropy(logits,
             close to zero. Default is True.
         use_customized_samples (bool): Whether to use custom samples and probabities to sample
             logits.
-        customized_samples (Variable): User defined samples, which is a 2-D tensor
+        customized_samples (Tensor): User defined samples, which is a 2-D tensor
             with shape [N, T + S]. S is the num_samples, and T is the number of true 
-            labels per example. 
-        customized_probabilities (Variable): User defined probabilities of samples, 
+            labels per example.
+        customized_probabilities (Tensor): User defined probabilities of samples, 
             a 2-D tensor which has the same shape with customized_samples.
         seed (int): The random seed for generating random number, which is used
             in the process of sampling. Default is 0.
 
     Returns:
-        Variable: Return the cross entropy loss which is a 2-D tensor with shape
+        Tensor: Return the cross entropy loss which is a 2-D tensor with shape
                   [N x 1].
 
     Examples:
