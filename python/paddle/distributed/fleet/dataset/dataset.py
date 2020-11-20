@@ -249,11 +249,12 @@ class InMemoryDataset(DatasetBase):
 
             import paddle
             paddle.enable_static()
-            dataset = paddle.distributed.InMemoryDatas
+            dataset = paddle.distributed.InMemoryDataset()
 
     """
 
     def __init__(self):
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
@@ -434,7 +435,6 @@ class InMemoryDataset(DatasetBase):
 
                 import paddle
                 import os
-
                 paddle.enable_static()
 
                 with open("test_queue_dataset_run_a.txt", "w") as f:
