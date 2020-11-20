@@ -19,6 +19,7 @@ from ..fluid.framework import Variable
 
 __all__ = ["Lamb"]
 
+
 class Lamb(Optimizer):
     """
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
@@ -47,20 +48,15 @@ class Lamb(Optimizer):
     Args:
         learning_rate (float|Variable, optional): the learning rate used to update parameters. \
             Can be a float value or a Variable with data type float32. Default 0.001.
-        lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01.
+        lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01. Remind that weight_decay should be None.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             Default 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
+        parameters (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
@@ -99,19 +95,17 @@ class Lamb(Optimizer):
                  beta2=0.999,
                  epsilon=1e-6,
                  parameters=None,
-                 weight_decay=None,
                  grad_clip=None,
                  exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
-        assert weight_decay is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
         super(Lamb, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
-            weight_decay=weight_decay,
+            weight_decay=None,
             grad_clip=grad_clip,
             name=name)
         self.type = "lamb"
@@ -188,4 +182,3 @@ class Lamb(Optimizer):
             stop_gradient=True)
 
         return lamb_op
-
