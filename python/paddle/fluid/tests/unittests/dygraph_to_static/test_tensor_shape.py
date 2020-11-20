@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 
@@ -56,6 +57,13 @@ def dyfunc_tensor_shape_5(x):
     x = fluid.dygraph.to_variable(x)
     s = x.shape[0]
     res = fluid.layers.reshape(x, shape=(-1, s))
+    return res
+
+
+def dyfunc_tuple_shape(x):
+    x = paddle.to_tensor(x)
+    a, b = x.shape
+    res = paddle.reshape(x, shape=(b, a))
     return res
 
 
@@ -222,6 +230,12 @@ class TestTensorShapeBasic4(TestTensorShapeBasic):
 class TestTensorShapeBasic5(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_5
+
+
+class TestTupleShape(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.dygraph_func = dyfunc_tuple_shape
 
 
 # 2. Tests with control flow if

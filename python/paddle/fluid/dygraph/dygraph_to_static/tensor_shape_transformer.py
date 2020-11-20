@@ -17,6 +17,7 @@ from __future__ import print_function
 import copy
 import gast
 
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
@@ -192,24 +193,54 @@ class TensorShapeTransformer(gast.NodeTransformer):
     def _update_name_to_var_shape(self, node):
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
-        try:
-            target_id = target_node.id
-        except AttributeError:
-            return False
         value_node = node.value
 
-        if isinstance(value_node, gast.Name):
-            if value_node.id in self.name_to_var_shape:
-                self.name_to_var_shape[target_id] = self.name_to_var_shape[
-                    value_node.id]
-                return True
-        if isinstance(value_node, gast.Attribute):
-            if self.is_var_shape(value_node):  # eg: x.shape
-                self.name_to_var_shape[target_id] = value_node
-                return True
-        if isinstance(value_node, gast.Subscript):
-            if isinstance(value_node.value, gast.Attribute):
-                if self.is_var_shape(value_node.value):  # eg: x.shape[0]
+        if isinstance(target_node, gast.Tuple):
+            has_updated = False
+            for idx, element in enumerate(target_node.elts):
+                try:
+                    target_id = ast_to_source_code(element).strip()
+                except AttributeError:
+                    continue
+
+                if isinstance(value_node, gast.Name):
+                    if value_node.id in self.name_to_var_shape:
+                        sub_node = gast.Subscript(
+                            value=value_node,
+                            slice=gast.Index(value=gast.Constant(
+                                value=idx, kind=None)),
+                            ctx=gast.Load())
+                        self.name_to_var_shape[target_id] = sub_node
+                        has_updated = True
+                if isinstance(value_node, gast.Attribute):
+                    if self.is_var_shape(value_node):  # eg: x.shape
+                        sub_node = gast.Subscript(
+                            value=value_node,
+                            slice=gast.Index(value=gast.Constant(
+                                value=idx, kind=None)),
+                            ctx=gast.Load())
+                        self.name_to_var_shape[target_id] = sub_node
+                        has_updated = True
+
+            return has_updated
+        else:
+            try:
+                target_id = ast_to_source_code(target_node).strip()
+            except AttributeError:
+                return False
+
+            if isinstance(value_node, gast.Name):
+                if value_node.id in self.name_to_var_shape:
+                    self.name_to_var_shape[target_id] = self.name_to_var_shape[
+                        value_node.id]
+                    return True
+            if isinstance(value_node, gast.Attribute):
+                if self.is_var_shape(value_node):  # eg: x.shape
                     self.name_to_var_shape[target_id] = value_node
                     return True
+            if isinstance(value_node, gast.Subscript):
+                if isinstance(value_node.value, gast.Attribute):
+                    if self.is_var_shape(value_node.value):  # eg: x.shape[0]
+                        self.name_to_var_shape[target_id] = value_node
+                        return True
         return False
