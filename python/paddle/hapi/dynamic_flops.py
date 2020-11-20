@@ -17,7 +17,7 @@ import warnings
 import paddle.nn as nn
 import numpy as np
 from prettytable import PrettyTable
-from static_flops import static_flops
+from .static_flops import static_flops
 
 __all__ = ['flops']
 
