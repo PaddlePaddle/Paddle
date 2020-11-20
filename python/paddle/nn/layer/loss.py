@@ -773,8 +773,6 @@ class KLDivLoss(fluid.dygraph.Layer):
             import numpy as np
             import paddle.nn as nn
 
-            paddle.disable_static()
-
             shape = (5, 20)
             x = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')

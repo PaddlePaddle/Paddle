@@ -356,7 +356,9 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in " \
         "`to_static` decorated on the Layer.forward method."
     result_list = []
-    input_var_names = [var.name for var in inputs if isinstance(var, Variable)]
+    input_var_names = [
+        var.name for var in flatten(inputs) if isinstance(var, Variable)
+    ]
     if input_spec is None:
         # no prune
         result_list = input_var_names
@@ -606,7 +608,7 @@ def save(layer, path, input_spec=None, **configs):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         inner_input_spec = []
-        for var in input_spec:
+        for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, Variable)):
