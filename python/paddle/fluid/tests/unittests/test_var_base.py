@@ -40,6 +40,9 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(np.array_equal(x.numpy(), [1]))
                 self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
 
+                y = paddle.to_tensor(2, place=x.place)
+                self.assertEqual(str(x.place), str(y.place))
+
                 # set_default_dtype should not take effect on numpy
                 x = paddle.to_tensor(
                     np.array([1.2]).astype('float16'),
@@ -462,6 +465,17 @@ class TestVarBase(unittest.TestCase):
         expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
        [[-1.5111,  1.    ],
         [ 0.    , -0.5000]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_scaler(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor(np.array(False))
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
+       False)'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()

@@ -211,7 +211,7 @@ def conv1d(x,
            [[0, 3, 4],
             [2, 9, 7],
             [5, 6, 8]]]).astype(np.float32)
-          paddle.disable_static()
+          
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d(x_var, w_var)
@@ -310,7 +310,7 @@ def conv1d(x,
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d')
         helper = LayerHelper(l_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
         helper.append_op(
@@ -528,7 +528,7 @@ def conv2d(x,
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'conv2d')
         helper = LayerHelper(l_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         pre_bias = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [pre_bias]}
         helper.append_op(
@@ -673,7 +673,6 @@ def conv1d_transpose(x,
           import paddle.nn.functional as F
           import numpy as np
           
-          paddle.disable_static()
           # shape: (1, 2, 4)
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2,]]]).astype(np.float32)
@@ -790,7 +789,7 @@ def conv1d_transpose(x,
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d_transpose')
         helper = LayerHelper(op_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
         helper.append_op(
@@ -1225,7 +1224,7 @@ def conv3d(x,
             "data_format": data_format
         }
         helper = LayerHelper(op_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'conv3d')
 

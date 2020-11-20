@@ -148,8 +148,8 @@ class TestMatMuklOp6(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 2, 100, 1)
-        self.y_shape = (100, )
+        self.x_shape = (1, 2, 102, 1)
+        self.y_shape = (102, )
         self.trans_x = True
         self.trans_y = False
 

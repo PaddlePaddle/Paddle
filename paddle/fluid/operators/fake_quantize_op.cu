@@ -131,7 +131,7 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
     }
     __syncthreads();
   }
-  if (tid == 0) {
+  if (tid == 0 && shared_max_data[0] > out[bid]) {
     out[bid] = shared_max_data[0];
   }
 }
@@ -148,20 +148,36 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
                                           quant_axis));
     const int num = in_tensor.numel();
     auto in_dims = in_tensor.dims();
-    int channel = in_dims[quant_axis];
     const T* in_data = in_tensor.data<T>();
     if (quant_axis == 0) {
-      int grid = channel;
+      int cout = in_dims[0];
+      int grid = cout;
       int block = 1024;
       FindChannelAbsMaxKernelQuantAxis0<
           T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-          in_data, num, channel, out_abs_max);
+          in_data, num, cout, out_abs_max);
     } else if (quant_axis == 1) {
-      int grid = in_dims[1];
-      int block = in_dims[0];
-      FindChannelAbsMaxKernelQuantAxis1<
-          T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
-          in_data, num, in_dims[0], in_dims[1], out_abs_max);
+      int cin = in_dims[0];
+      int cout = in_dims[1];
+      int grid = cout;
+      int max_threads = 1024;
+
+      cudaMemset(out_abs_max, 0, sizeof(T) * cout);
+
+      for (int i = 0; i < cin / max_threads; i++) {
+        int block = max_threads;
+        FindChannelAbsMaxKernelQuantAxis1<
+            T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
+            in_data, num, cin, cout, out_abs_max);
+        in_data += num / cin;
+      }
+
+      int block = cin % max_threads;
+      if (block > 0) {
+        FindChannelAbsMaxKernelQuantAxis1<
+            T><<<grid, block, block * sizeof(T), ctx.stream()>>>(
+            in_data, num, in_dims[0], in_dims[1], out_abs_max);
+      }
     }
   }
 };
