@@ -470,3 +470,18 @@ def _get_paddle_place(place):
     raise ValueError(
         "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
     )
+
+
+def _convert_places(places):
+    if not isinstance(places, (list, tuple)):
+        places = [places]
+
+    ret = []
+    for p in _get_paddle_place(places):
+        if not isinstance(p, core.Place):
+            tmp = core.Place()
+            tmp.set_place(p)
+            p = tmp
+
+        ret.append(p)
+    return ret

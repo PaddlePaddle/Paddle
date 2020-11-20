@@ -26,7 +26,7 @@ from .dataloader import BatchSampler, Dataset, IterableDataset
 from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind, default_collate_fn
 from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
-from .layers.utils import _get_paddle_place
+from .layers.utils import _convert_places
 from .unique_name import UniqueNameGenerator
 import logging
 import warnings
@@ -69,21 +69,6 @@ def use_pinned_memory(*args):
     else:
         assert len(args) == 1 and isinstance(args[0], bool)
         USE_PINNED_MEMORY = args[0]
-
-
-def _convert_places(places):
-    if not isinstance(places, (list, tuple)):
-        places = [places]
-
-    ret = []
-    for p in _get_paddle_place(places):
-        if not isinstance(p, core.Place):
-            tmp = core.Place()
-            tmp.set_place(p)
-            p = tmp
-
-        ret.append(p)
-    return ret
 
 
 # NOTE(chenweihang): _reader_process_loop must be top level method to be pickled
