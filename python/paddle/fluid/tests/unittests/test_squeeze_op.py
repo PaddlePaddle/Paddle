@@ -83,6 +83,7 @@ class TestSqueezeOp4(TestSqueezeOp):
 
 class TestSqueezeOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
             x1 = fluid.create_lod_tensor(
@@ -98,6 +99,7 @@ class TestSqueezeOpError(unittest.TestCase):
 
 class API_TestSqueeze(unittest.TestCase):
     def test_out(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
             data1 = paddle.static.data(
@@ -114,49 +116,49 @@ class API_TestSqueeze(unittest.TestCase):
 
 class API_TestDygraphSqueeze(unittest.TestCase):
     def test_out(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input = paddle.to_tensor(input_1)
-            output = paddle.squeeze(input, axis=[1])
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.squeeze(input, axis=[1])
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_out_int8(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int8")
-            input = paddle.to_tensor(input_1)
-            output = paddle.squeeze(input, axis=[1])
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int8")
+        input = paddle.to_tensor(input_1)
+        output = paddle.squeeze(input, axis=[1])
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_out_uint8(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("uint8")
-            input = paddle.to_tensor(input_1)
-            output = paddle.squeeze(input, axis=[1])
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("uint8")
+        input = paddle.to_tensor(input_1)
+        output = paddle.squeeze(input, axis=[1])
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_axis_not_list(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input = paddle.to_tensor(input_1)
-            output = paddle.squeeze(input, axis=1)
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.squeeze(input, axis=1)
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
     def test_dimension_not_1(self):
-        with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input = paddle.to_tensor(input_1)
-            output = paddle.squeeze(input, axis=(1, 2))
-            out_np = output.numpy()
-            expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.squeeze(input, axis=(1, 2))
+        out_np = output.numpy()
+        expected_out = np.squeeze(input_1, axis=1)
+        self.assertTrue(np.allclose(expected_out, out_np))
 
 
 if __name__ == "__main__":
