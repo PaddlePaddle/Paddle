@@ -174,7 +174,7 @@ set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-:: call :unit_test || goto unit_test_error
+call :unit_test || goto unit_test_error
 :: call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
