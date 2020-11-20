@@ -235,7 +235,7 @@ def avg_pool1d(x,
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
@@ -346,7 +346,7 @@ def avg_pool2d(x,
 
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
@@ -461,7 +461,7 @@ def avg_pool3d(x,
 
     op_type = "pool3d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out}
 
@@ -581,7 +581,7 @@ def max_pool1d(x,
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
@@ -714,7 +714,7 @@ def max_pool2d(x,
 
     op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
@@ -840,7 +840,7 @@ def max_pool3d(x,
 
     op_type = "max_pool3d_with_index" if return_mask else "pool3d"
     helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     mask = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out, "Mask": mask}
@@ -921,7 +921,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         return squeeze(pool_out, [2])
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
@@ -1020,7 +1020,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     l_type = 'pool2d'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {"Out": pool_out}
@@ -1126,7 +1126,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     l_type = 'pool3d'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
     outputs = {"Out": pool_out}
 
@@ -1208,7 +1208,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
             pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     mask = helper.create_variable_for_type_inference(dtype)
@@ -1296,7 +1296,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
     l_type = 'max_pool2d_with_index'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     mask = helper.create_variable_for_type_inference(dtype)
@@ -1389,7 +1389,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     l_type = 'max_pool3d_with_index'
 
     helper = LayerHelper(l_type, **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     mask = helper.create_variable_for_type_inference(dtype)

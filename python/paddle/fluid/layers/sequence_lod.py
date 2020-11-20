@@ -759,8 +759,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         "sequence layer is not supported in dygraph mode yet.")
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand')
-    helper = LayerHelper('sequence_expand', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('sequence_expand', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand',
@@ -880,8 +880,8 @@ def sequence_expand_as(x, y, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand_as')
     check_type(y, 'y', Variable, 'sequence_expand_as')
-    helper = LayerHelper('sequence_expand_as', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('sequence_expand_as', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='sequence_expand_as',
@@ -980,13 +980,13 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_pad', input=x, **locals())
+    helper = LayerHelper('sequence_pad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_pad')
     check_variable_and_dtype(pad_value, 'pad_value',
                              ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_pad')
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     length = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
 
@@ -1062,12 +1062,12 @@ def sequence_unpad(x, length, name=None):
 
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_unpad', input=x, **locals())
+    helper = LayerHelper('sequence_unpad', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'fluid.layers.sequence_unpad')
     check_variable_and_dtype(length, 'length', ['int64'],
                              'fluid.layers.sequence_unpad')
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
 
     length.stop_gradient = True
