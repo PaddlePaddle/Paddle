@@ -130,7 +130,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if not isinstance(place,
                       (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
