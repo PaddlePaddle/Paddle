@@ -78,28 +78,26 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
 
             paddle.enable_static()
 
             path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
-            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            avg_loss = paddle.tensor.stat.mean(loss)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
 
             # Feed data and train process
 
             # Save inference model. Note we don't save label and loss in this example
-            paddle.static.io.save_inference_model(path_prefix, [image], [predict], exe)
+            paddle.static.save_inference_model(path_prefix, [image], [predict], exe)
 
             # In this example, the save_inference_mode inference will prune the default
             # main program according to the network's input node (img) and output node(predict).
@@ -223,31 +221,29 @@ def load_inference_model(path_prefix, executor, **configs):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
             paddle.enable_static()
 
             # Build the model
-            startup_prog = fluid.default_startup_program()
-            main_prog = fluid.default_main_program()
-            with fluid.program_guard(main_prog, startup_prog):
-                image = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32')
-                hidden_w = fluid.layers.matmul(x=image, y=w)
-                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            startup_prog = paddle.static.default_startup_program()
+            main_prog = paddle.static.default_main_program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(name="img", shape=[64, 784])
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+                b = paddle.create_parameter(shape=[200], dtype='float32')
+                hidden_w = paddle.matmul(x=image, y=w)
+                hidden_b = paddle.add(hidden_w, b)
+            exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(startup_prog)
 
             # Save the inference model
             path_prefix = "./infer_model"
-            paddle.static.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
+            paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
             [inference_program, feed_target_names, fetch_targets] = (
-                paddle.static.io.load_inference_model(path_prefix, exe))
-            tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
+                paddle.static.load_inference_model(path_prefix, exe))
+            tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
