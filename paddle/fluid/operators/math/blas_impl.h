@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#ifdef PADDLE_WITH_MKLML
 #include <mkl.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -295,8 +297,7 @@ struct CBlas<platform::complex64> {
   // struct CBlas<std::complex<float>> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    // platform::dynload::cblas_dcopy(args...);
-    // cblas_dcopy(args...);
+    platform::dynload::cblas_ccopy(args...);
   }
 
   template <typename... ARGS>
@@ -451,18 +452,40 @@ struct CBlas<double> {
 
 template <>
 struct CBlas<platform::complex64> {
-  /*
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    //platform::dynload::cblas_dcopy(args...);
-    cblas_dcopy(args...);
+    cblas_ccopy(args...);
   }
 
   template <typename... ARGS>
   static void VADD(ARGS... args) {
-    platform::dynload::vcAdd(args...);
+    vcAdd(args...);
   }
-  */
+
+  template <typename... ARGS>
+  static void AXPY(int n, const paddle::platform::complex64 alpha, const paddle::platform::complex64 *X, const int incX,
+                                            paddle::platform::complex64 *Y, const int incY){
+    cblas_caxpy(n, &alpha, X, incX, Y, incY);
+  }
+
+  template <typename... ARGS>
+  static void GEMV(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA, 
+    const int M, const int N, const paddle::platform::complex64 alpha, 
+    const paddle::platform::complex64 *A, const int lda, 
+    const paddle::platform::complex64 *X, const int incX, 
+    const paddle::platform::complex64 beta, paddle::platform::complex64 *Y, const int incY) {
+    cblas_cgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
+  }
+
+  template <typename... ARGS>
+  static void GEMM(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
+   const int M, const int N, const int K, const paddle::platform::complex64 alpha, 
+   const paddle::platform::complex64 *A, const int lda, 
+   const paddle::platform::complex64 *B, const int ldb, 
+   const paddle::platform::complex64 beta, paddle::platform::complex64 *C, const int ldc) {
+    cblas_cgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
+  }
+
 };
 #endif
 
@@ -637,10 +660,10 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
   CBlas<T>::VADD(n, x, y, z);
 #else
   if (x == z) {
-    this->template AXPY<T>(n, 1., y, z);
+    this->template AXPY<T>(n, (T)(1.), y, z);
   } else {
     this->template VCOPY<T>(n, y, z);
-    this->template AXPY<T>(n, 1., x, z);
+    this->template AXPY<T>(n, (T)(1.), x, z);
   }
 #endif
 }

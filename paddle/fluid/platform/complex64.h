@@ -52,7 +52,7 @@ struct PADDLE_ALIGN(8) complex64 {
   ~complex64() = default;
 
   HOSTDEVICE complex64(float real, float imag) : real(real), imag(imag) {}
-//#if defined(__CUDA_ARCH__)
+#if defined(PADDLE_WITH_CUDA)
 
   HOSTDEVICE inline explicit complex64(const thrust::complex<float>& c) {
     real = c.real();
@@ -66,7 +66,7 @@ struct PADDLE_ALIGN(8) complex64 {
   HOSTDEVICE inline explicit operator cuFloatComplex() const {
     return make_cuFloatComplex(real, imag);
   }
-//#endif
+#endif
 
   // todo
   HOSTDEVICE inline explicit complex64(float val) {

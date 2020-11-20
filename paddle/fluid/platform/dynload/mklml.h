@@ -54,8 +54,10 @@ extern void* mklml_dso_handle;
   __macro(cblas_cgemm);             \
   __macro(cblas_saxpy);             \
   __macro(cblas_daxpy);             \
+  __macro(cblas_caxpy);             \
   __macro(cblas_scopy);             \
   __macro(cblas_dcopy);             \
+  __macro(cblas_ccopy);             \
   __macro(cblas_sgemv);             \
   __macro(cblas_dgemv);             \
   __macro(cblas_cgemv);             \
