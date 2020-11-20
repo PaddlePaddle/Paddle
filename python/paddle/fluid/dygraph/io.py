@@ -565,6 +565,311 @@ def _construct_params_and_buffers(model_path,
     return var_dict
 
 
+def _run_dygraph(instance, input, program_holder):
+
+    # 1. prepare inputs, outputs, attrs
+    input_vars = []
+    for i, value in enumerate(input):
+        if not isinstance(value, (np.ndarray, core.VarBase)):
+            raise TypeError(
+                "The type of input in TranslatedLayer must be numpy array or Variable(VarBase), but received %s."
+                % type(value))
+        # NOTE: In order to unify the API, firstly convert the input to VarBase
+        if isinstance(value, np.ndarray):
+            var = core.VarBase(
+                value=value,
+                name=program_holder.input_descs[i].name(),
+                persistable=False,
+                place=framework._current_expected_place(),
+                zero_copy=True)
+        else:
+            var = value
+            # NOTE: we changed var name here, 
+            # but it may be an important name set by user
+            var.name = program_holder.input_descs[i].name()
+        input_vars.append(var)
+    if instance._input_args_names is None:
+        instance._input_args_names = [
+            ins.name() for ins in program_holder.input_descs
+        ]
+
+    persistable_vars = []
+    for var_name in program_holder.persistable_names:
+        dy_var_name = instance._persistable_var_name_dict[var_name]
+        if dy_var_name in instance._parameters:
+            persistable_vars.append(instance._parameters[dy_var_name])
+        elif dy_var_name in instance._buffers:
+            persistable_vars.append(instance._buffers[dy_var_name])
+        else:
+            raise ValueError(
+                "The persistable variable %s is not exists in current TranslatedLayer."
+                % var_name)
+
+    output_vars = []
+    for var_desc in program_holder.output_descs:
+        var = core.VarBase(var_desc.dtype(),
+                           var_desc.shape(),
+                           var_desc.name(), var_desc.type(), False)
+        output_vars.append(var)
+
+    # hold forward variables
+    tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
+                                 "program_out_scope",
+                                 core.VarDesc.VarType.STEP_SCOPES, True)
+    tmp_scope_vec.value().set_scope(program_holder.scope)
+
+    # 2. run program by op
+    trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
+    end_op_index = program_holder.infer_program.block(0).op_size()
+    framework._dygraph_tracer().trace_op(
+        type='run_program',
+        inputs={'X': input_vars,
+                'Params': persistable_vars},
+        outputs={'Out': output_vars,
+                 'OutScope': tmp_scope_vec},
+        attrs={
+            'global_block': trace_program.block(0),
+            'start_op_index': 0,
+            'end_op_index': end_op_index,
+            'is_test': instance._is_test
+        })
+    # NOTE: [ why need set param's gradient type here ]
+    # if user set sparse gradient mode, the param's gradient
+    # will be SelectedRows, not LoDTensor. But tracer will just
+    # set param grad VarBase by forward VarBase(LoDTensor)
+    # If we don't change grad_var type here, RunProgramOp need
+    # transform SelectedRows to LoDTensor forcibly, it may not
+    # be user wanted result.
+    for persistable_var in persistable_vars:
+        grad_var_name = var.name + core.grad_var_suffix()
+        grad_var = trace_program.block(0).find_var(cpt.to_bytes(grad_var_name))
+        # NOTE: cannot find var desc maybe not problem, 
+        # such as in batch_norm
+        if grad_var is None:
+            continue
+        persistable_var._set_grad_type(grad_var.type())
+
+    # 3. prepare output, keep same form with inputs
+    outs = output_vars
+    if len(output_vars) == 1:
+        outs = output_vars[0]
+    return outs
+
+
+def _run_static_graph(input, program_holder, trace_program):
+    main_program = framework.default_main_program()
+    output_names = [var.name() for var in program_holder.output_descs]
+    # append blocks from 'trace_program'
+    _append_block(main_program, trace_program, program_holder, input,
+                  output_names)
+    main_program._sync_with_cpp()
+    outs = _get_output_from_program(main_program, program_holder)
+    if len(outs) == 1:
+        outs = outs[0]
+    return outs
+
+
+def _collect_parent_var(program, block_idx):
+    '''
+    Get variables in current block and its parent block.
+    
+    Args:
+        program(Program): The program containing the current block.
+        block_idx(int): index of current block.
+
+    Returns:
+        List: list of variable.
+    '''
+    vars = []
+    if block_idx < 0:
+        return vars
+    for var in program.block(block_idx).vars:
+        vars.append(var)
+    parent_idx = program.block(block_idx).parent_idx
+    if parent_idx > -1:
+        vars += _collect_parent_var(program, parent_idx)
+    return vars
+
+
+def _append_block(dest_program, src_program_desc, program_holder, input_names,
+                  output_names):
+    '''
+    Append Variables and Operators in 'src_program_desc' to dest_program.
+    
+    Args:
+        dest_program(Program): Variables and Operators are appended to it.
+        src_program_desc(ProgramDesc): index of current block.
+        program_holder(_ProgramHolder): program_holder of TranslatedLayer
+        input_names(list): list of input variables
+        output_names(list): list of output names
+    '''
+
+    origin_block_idx = dest_program.current_block_idx
+    param_var_names = _collect_parent_var(dest_program, origin_block_idx)
+    append_var_from_block_desc_static(
+        dest_program.block(origin_block_idx),
+        src_program_desc.block(0),
+        exclude=param_var_names)
+
+    name_inp_desc = [inp.name() for inp in program_holder.input_descs]
+    name_inp = [inp.name for inp in input_names]
+    if len(name_inp_desc) != len(name_inp):
+        raise ValueError(
+            "The number of input is invalid, expected {}, but received {}.".
+            format(len(name_inp_desc), len(name_inp)))
+    for i in range(len(name_inp_desc)):
+        dest_program.block(origin_block_idx).append_op(
+            type='assign',
+            inputs={'X': [name_inp[i]]},
+            outputs={'Out': [name_inp_desc[i]]})
+
+    ops_append = append_op_from_block_desc_static(
+        dest_program.block(origin_block_idx), src_program_desc.block(0))
+    dest_program._sync_with_cpp()
+
+    offset_block_idx = dest_program.num_blocks - 1
+
+    if src_program_desc.num_blocks() > 1:
+        for src_block_idx in range(1, src_program_desc.num_blocks()):
+            src_block = src_program_desc.block(src_block_idx)
+            src_parent_idx = src_block.parent
+            if src_parent_idx > 0:
+                parent_idx = offset_block_idx + parent_idx
+            else:
+                parent_idx = origin_block_idx
+            dest_block = dest_program._create_block(parent_idx=parent_idx)
+            append_var_from_block_desc_static(
+                dest_block, src_block, exclude=param_var_names)
+            ops_append += append_op_from_block_desc_static(dest_block,
+                                                           src_block)
+
+    dest_program._sync_with_cpp()
+    for op in ops_append:
+        if op.has_attr('sub_block'):
+            sub = op.attr('sub_block')
+            if isinstance(sub, framework.core.BlockDesc):
+                origin_id = sub.id
+            if isinstance(sub, framework.Block):
+                origin_id = sub.idx
+            op._set_attr('sub_block',
+                         dest_program.block(offset_block_idx + origin_id))
+    dest_program._sync_with_cpp()
+    dest_program.current_block_idx = origin_block_idx
+
+
+def _get_output_from_program(program, program_holder):
+    """
+        Get output name of 'program' according to program_holder
+    """
+    outs = list()
+    for var in program_holder.output_descs:
+        for idx in range(program.num_blocks):
+            vars = program.block(idx).vars
+            if var.name() in vars:
+                out = vars[var.name()]
+                if out not in outs:
+                    outs.append(out)
+    return outs
+
+
+def append_op_from_block_desc_static(block, src_block_desc):
+    """
+    Append Operators of 'src_block_desc' to current block.
+
+    Args:
+        block(Block): append OP of  'src_block_desc' to it.
+        src_block_desc(BlockDesc): append var of  'src_block_desc'
+
+    Returns:
+        List: list of the OP that are append to current block.
+    """
+    ops = []
+    for i in range(src_block_desc.op_size()):
+        ops.append(append_op_from_desc_static(block, src_block_desc.op(i)))
+    return ops
+
+
+def append_op_from_desc_static(block, op_desc):
+    """
+    Append Operators to 'block' according to 'op_desc'.
+
+    Args:
+        block(Block): append OP of  'src_block_desc' to it.
+        op_desc(OpDesc): create OP according to it.
+
+    Returns:
+        Operator: OP appended to 'block'.
+    """
+    op_type = op_desc.type()
+    op_append = block.desc.append_op()
+    op_append.copy_from(op_desc)
+    op = framework.Operator(
+        block=block,
+        desc=op_append,
+        type=op_type,
+        inputs=None,
+        outputs=None,
+        attrs=None)
+    block.ops.append(op)
+    return op
+
+
+def append_var_from_block_desc_static(block,
+                                      src_block_desc,
+                                      include=None,
+                                      exclude=None):
+    """
+    Append Variables of 'src_block_desc' to current block.
+    If 'include' is not `None`,variables that are not in include are not append.
+    If 'exclude' is not `None`,variables that are in exclude will are not append.
+
+    Args:
+        block(Block): append Variables of  'src_block_desc' to it.
+        src_block_desc(BlockDesc): append var of  'src_block_desc'
+        include(List):list of names of variables
+        exclude(List):list of names of variables
+
+    Returns:
+        List: list of the variables that are append to current block.
+    """
+    vars_append = []
+    for var_desc in src_block_desc.all_vars():
+        var_desc_name = var_desc.name()
+        if not block.has_var(var_desc_name) and (
+                include is None or var_desc_name in include) and (
+                    exclude is None or var_desc_name not in exclude):
+
+            var_type = var_desc.type()
+            if var_type in [
+                    core.VarDesc.VarType.SELECTED_ROWS,
+                    core.VarDesc.VarType.LOD_TENSOR,
+                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            ]:
+                data_type = var_desc.dtype()
+                var_shape = var_desc.shape()
+            else:
+                data_type = None
+                var_shape = None
+            if var_type in [
+                    core.VarDesc.VarType.LOD_TENSOR,
+                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            ]:
+                lod_level = var_desc.lod_level()
+            else:
+                lod_level = None
+
+            vars_append.append(
+                block.create_var(
+                    name=var_desc.name(),
+                    dtype=data_type,
+                    type=var_type,
+                    shape=var_shape,
+                    lod_level=lod_level,
+                    persistable=var_desc.persistable(),
+                    set_need_check_feed=var_desc.need_check_feed()))
+    return vars_append
+
+
 class TranslatedLayer(layers.Layer):
     """
     TranslatedLayer is a imperative Layer for holding the model loaded by 
@@ -743,104 +1048,21 @@ class TranslatedLayer(layers.Layer):
 
     @staticmethod
     def _execution_method_creator(method_name, program_holder):
-        def __impl__(self, *input):
-            program_holder = self._program_holder_dict[__impl__.__name__]
+        def __i_m_p_l__(self, *input):
+            program_holder = self._program_holder_dict[__i_m_p_l__.__name__]
             if in_dygraph_mode():
-                # 1. prepare inputs, outputs, attrs
-                input_vars = []
-                for i, value in enumerate(input):
-                    if not isinstance(value, (np.ndarray, core.VarBase)):
-                        raise TypeError(
-                            "The type of input in TranslatedLayer must be numpy array or Variable(VarBase), but received %s."
-                            % type(value))
-                    # NOTE: In order to unify the API, firstly convert the input to VarBase
-                    if isinstance(value, np.ndarray):
-                        var = core.VarBase(
-                            value=value,
-                            name=program_holder.input_descs[i].name(),
-                            persistable=False,
-                            place=framework._current_expected_place(),
-                            zero_copy=True)
-                    else:
-                        var = value
-                        # NOTE: we changed var name here, 
-                        # but it may be an important name set by user
-                        var.name = program_holder.input_descs[i].name()
-                    input_vars.append(var)
-                if self._input_args_names is None:
-                    self._input_args_names = [
-                        ins.name() for ins in program_holder.input_descs
-                    ]
-
-                persistable_vars = []
-                for var_name in program_holder.persistable_names:
-                    dy_var_name = self._persistable_var_name_dict[var_name]
-                    if dy_var_name in self._parameters:
-                        persistable_vars.append(self._parameters[dy_var_name])
-                    elif dy_var_name in self._buffers:
-                        persistable_vars.append(self._buffers[dy_var_name])
-                    else:
-                        raise ValueError(
-                            "The persistable variable %s is not exists in current TranslatedLayer."
-                            % var_name)
-
-                output_vars = []
-                for var_desc in program_holder.output_descs:
-                    var = core.VarBase(var_desc.dtype(),
-                                       var_desc.shape(),
-                                       var_desc.name(), var_desc.type(), False)
-                    output_vars.append(var)
-
-                # hold forward variables
-                tmp_scope_vec = core.VarBase(
-                    core.VarDesc.VarType.FP32, [], "program_out_scope",
-                    core.VarDesc.VarType.STEP_SCOPES, True)
-                tmp_scope_vec.value().set_scope(program_holder.scope)
-
-                # 2. run program by op
-                trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
-                end_op_index = program_holder.infer_program.block(0).op_size()
-                framework._dygraph_tracer().trace_op(
-                    type='run_program',
-                    inputs={'X': input_vars,
-                            'Params': persistable_vars},
-                    outputs={'Out': output_vars,
-                             'OutScope': tmp_scope_vec},
-                    attrs={
-                        'global_block': trace_program.block(0),
-                        'start_op_index': 0,
-                        'end_op_index': end_op_index,
-                        'is_test': self._is_test
-                    })
-                # NOTE: [ why need set param's gradient type here ]
-                # if user set sparse gradient mode, the param's gradient
-                # will be SelectedRows, not LoDTensor. But tracer will just
-                # set param grad VarBase by forward VarBase(LoDTensor)
-                # If we don't change grad_var type here, RunProgramOp need
-                # transform SelectedRows to LoDTensor forcibly, it may not
-                # be user wanted result.
-                for persistable_var in persistable_vars:
-                    grad_var_name = var.name + core.grad_var_suffix()
-                    grad_var = trace_program.block(0).find_var(
-                        cpt.to_bytes(grad_var_name))
-                    # NOTE: cannot find var desc maybe not problem, 
-                    # such as in batch_norm
-                    if grad_var is None:
-                        continue
-                    persistable_var._set_grad_type(grad_var.type())
-
-                # 3. prepare output, keep same form with inputs
-                outs = output_vars
-                if len(output_vars) == 1:
-                    outs = output_vars[0]
-                return outs
+                return _run_dygraph(self, input, program_holder)
             else:
-                trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
-                p = framework.Program._construct_from_desc(trace_program)
+                # NOTE(weixin): [ why not use 'program_holder.infer_program' directly? ]
+                # When use '_run_static_graph(input, program_holder, program_holder.infer_program)',
+                # 'OpDesc.op_size()' will return a very large wrong number.
+                # A fault error may occur if used 'p=ProgramDesc(program_holder.infer_program)'.
+                p = framework.Program._construct_from_desc(
+                    program_holder.infer_program)
                 return _run_static_graph(input, program_holder, p.desc)
 
-        __impl__.__name__ = method_name
-        return __impl__
+        __i_m_p_l__.__name__ = method_name
+        return __i_m_p_l__
 
     def train(self):
         self._is_test = False
@@ -988,219 +1210,3 @@ class TranslatedLayer(layers.Layer):
             output_spec.append(spec)
 
         return output_spec
-
-
-def _run_static_graph(input, program_holder, trace_program):
-    main_program = framework.default_main_program()
-    output_names = [var.name() for var in program_holder.output_descs]
-    # append blocks from 'trace_program'
-    _append_block(main_program, trace_program, program_holder, input,
-                  output_names)
-    main_program._sync_with_cpp()
-    outs = _get_output_from_program(main_program, program_holder)
-    if len(outs) == 1:
-        outs = outs[0]
-    return outs
-
-
-def _collect_parent_var(program, block_idx):
-    '''
-    Get variables in current block and its parent block.
-    
-    Args:
-        program(Program): The program containing the current block.
-        block_idx(int): index of current block.
-
-    Returns:
-        List: list of variable.
-    '''
-    vars = []
-    if block_idx < 0:
-        return vars
-    for var in program.block(block_idx).vars:
-        vars.append(var)
-    parent_idx = program.block(block_idx).parent_idx
-    if parent_idx > -1:
-        vars += _collect_parent_var(program, parent_idx)
-    return vars
-
-
-def _append_block(
-        dest_program,
-        src_program_desc,
-        program_holder,
-        input_names,
-        output_names, ):
-    '''
-    Append Variables and Operators in 'src_program_desc' to dest_program.
-    
-    Args:
-        dest_program(Program): Variables and Operators are appended to it.
-        src_program_desc(ProgramDesc): index of current block.
-        program_holder(_ProgramHolder): program_holder of TranslatedLayer
-        input_names(list): list of input variables
-        output_names(list): list of output names
-    '''
-
-    origin_block_idx = dest_program.current_block_idx
-    param_var_names = _collect_parent_var(dest_program, origin_block_idx)
-    append_var_from_block_desc_static(
-        dest_program.block(origin_block_idx),
-        src_program_desc.block(0),
-        exclude=param_var_names)
-
-    name_inp_desc = [inp.name() for inp in program_holder.input_descs]
-    name_inp = [inp.name for inp in input_names]
-    assert len(name_inp) == len(name_inp_desc), 'wrong number of input'
-
-    for i in range(len(name_inp_desc)):
-        dest_program.block(origin_block_idx).append_op(
-            type='assign',
-            inputs={'X': [name_inp[i]]},
-            outputs={'Out': [name_inp_desc[i]]})
-
-    ops_append = append_op_from_block_desc_static(
-        dest_program.block(origin_block_idx), src_program_desc.block(0))
-    dest_program._sync_with_cpp()
-
-    offset_block_idx = dest_program.num_blocks - 1
-
-    if src_program_desc.num_blocks() > 1:
-        for src_block_idx in range(1, src_program_desc.num_blocks()):
-            src_block = src_program_desc.block(src_block_idx)
-            src_parent_idx = src_block.parent
-            if src_parent_idx > 0:
-                parent_idx = offset_block_idx + parent_idx
-            else:
-                parent_idx = origin_block_idx
-            dest_block = dest_program._create_block(parent_idx=parent_idx)
-            append_var_from_block_desc_static(
-                dest_block, src_block, exclude=param_var_names)
-            ops_append += append_op_from_block_desc_static(dest_block,
-                                                           src_block)
-
-    dest_program._sync_with_cpp()
-    for op in ops_append:
-        if op.has_attr('sub_block'):
-            sub = op.attr('sub_block')
-            if isinstance(sub, framework.core.BlockDesc):
-                origin_id = sub.id
-            if isinstance(sub, framework.Block):
-                origin_id = sub.idx
-            op._set_attr('sub_block',
-                         dest_program.block(offset_block_idx + origin_id))
-    dest_program._sync_with_cpp()
-    dest_program.current_block_idx = origin_block_idx
-
-
-def _get_output_from_program(program, program_holder):
-    """
-        Get output name of 'program' according to program_holder
-    """
-    outs = list()
-    for var in program_holder.output_descs:
-        for idx in range(program.num_blocks):
-            vars = program.block(idx).vars
-            if var.name() in vars:
-                out = vars[var.name()]
-                if out not in outs:
-                    outs.append(out)
-    return outs
-
-
-def append_op_from_block_desc_static(block, src_block_desc):
-    """
-    Append Operators of 'src_block_desc' to current block.
-
-    Args:
-        block(Block): append OP of  'src_block_desc' to it.
-        src_block_desc(BlockDesc): append var of  'src_block_desc'
-
-    Returns:
-        List: list of the OP that are append to current block.
-    """
-    ops = []
-    for i in range(src_block_desc.op_size()):
-        ops.append(append_op_from_desc_static(block, src_block_desc.op(i)))
-    return ops
-
-
-def append_op_from_desc_static(block, op_desc):
-    """
-    Append Operators to 'block' according to 'op_desc'.
-
-    Args:
-        block(Block): append OP of  'src_block_desc' to it.
-        op_desc(OpDesc): create OP according to it.
-
-    Returns:
-        Operator: OP appended to 'block'.
-    """
-    op_type = op_desc.type()
-    op_append = block.desc.append_op()
-    op_append.copy_from(op_desc)
-    op = framework.Operator(
-        block=block,
-        desc=op_append,
-        type=op_type,
-        inputs=None,
-        outputs=None,
-        attrs=None)
-    block.ops.append(op)
-    return op
-
-
-def append_var_from_block_desc_static(block,
-                                      src_block_desc,
-                                      include=None,
-                                      exclude=None):
-    """
-    Append Variables of 'src_block_desc' to current block.
-    If 'include' is not `None`,variables that are not in include are not append.
-    If 'exclude' is not `None`,variables that are in exclude will are not append.
-
-    Args:
-        block(Block): append Variables of  'src_block_desc' to it.
-        src_block_desc(BlockDesc): append var of  'src_block_desc'
-        include(List):list of names of variables
-        exclude(List):list of names of variables
-
-    Returns:
-        List: list of the variables that are append to current block.
-    """
-    vars_append = []
-    for var_desc in src_block_desc.all_vars():
-        var_desc_name = var_desc.name()
-        if not block.has_var(var_desc_name) and (
-                include is None or var_desc_name in include) and (
-                    exclude is None or var_desc_name not in exclude):
-
-            var_type = var_desc.type()
-            if var_type in [
-                    core.VarDesc.VarType.SELECTED_ROWS,
-                    core.VarDesc.VarType.LOD_TENSOR,
-                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            ]:
-                data_type = var_desc.dtype()
-                var_shape = var_desc.shape()
-            else:
-                data_type = None
-                var_shape = None
-            if var_type in [
-                    core.VarDesc.VarType.LOD_TENSOR,
-                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            ]:
-                lod_level = var_desc.lod_level()
-            else:
-                lod_level = None
-
-            vars_append.append(
-                block.create_var(
-                    name=var_desc.name(),
-                    dtype=data_type,
-                    type=var_type,
-                    shape=var_shape,
-                    lod_level=lod_level,
-                    persistable=var_desc.persistable(),
-                    set_need_check_feed=var_desc.need_check_feed()))
-    return vars_append

@@ -480,8 +480,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     else:
         module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
-    if hasattr(module, '__impl__'):
-        callable_func = getattr(module, '__impl__')
+    if hasattr(module, '__i_m_p_l__'):
+        callable_func = getattr(module, '__i_m_p_l__')
         callable_func.__name__ = func_name
     elif hasattr(module, func_name):
         callable_func = getattr(module, func_name)
