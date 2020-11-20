@@ -80,5 +80,4 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
 ldconfig
-
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
