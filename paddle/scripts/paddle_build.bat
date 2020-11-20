@@ -387,11 +387,7 @@ echo    ========================================
 echo    Running GPU unit tests...
 echo    ========================================
 
-set FLAGS_fraction_of_gpu_memory_to_use=0.75
-set PATH=C:\Program Files\NVIDIA Corporation\NVSMI;%PATH%
-cmd /C nvidia-smi -L
-if %errorlevel% NEQ 0 exit /b 8
-for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
+set FLAGS_fraction_of_gpu_memory_to_use=0.80
 
 rem TODO: fix these unittest that is bound to fail
 rem /*==================Disabled Windows==============================*/
@@ -426,19 +422,8 @@ test_graph^|test_user_defined_quantization
 
 set /a end=CUDA_DEVICE_COUNT-1
 
-set parallel_test=''
+ctest.exe -E "%disable_ut_quickly%" -LE %nightly_label% --output-on-failure -C Release -j 1
 
-for /L %%# in (0,1,%end%) do (
-    set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R %parallel_test% -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
-    if !errorlevel! NEQ 0 exit /b 8
-)
-
-for /L %%# in (0,1,%end%) do (
-    set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -E "%disable_ut_quickly%|%parallel_test%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 1 --repeat until-pass:4 after-timeout:4
-    if !errorlevel! NEQ 0 exit /b 8
-)
 goto:eof
 
 :parallel_test_base_cpu
