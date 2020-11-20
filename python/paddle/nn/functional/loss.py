@@ -788,7 +788,7 @@ def nll_loss(input,
                 log_out = log_softmax(input)
                 label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
-                print(result.numpy()) # [1.0720209]
+                print(result) # [1.0720209]
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

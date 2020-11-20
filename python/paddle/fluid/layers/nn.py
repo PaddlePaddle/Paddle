@@ -7070,9 +7070,6 @@ def roi_align(input,
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
     """
-    :alias_main: paddle.nn.functional.dice_loss
-	:alias: paddle.nn.functional.dice_loss,paddle.nn.functional.loss.dice_loss
-	:old_api: paddle.fluid.layers.dice_loss
 
     Dice loss for comparing the similarity between the input predictions and the label.
     This implementation is for binary classification, where the input is sigmoid
@@ -13041,9 +13038,6 @@ def grid_sampler(x, grid, name=None):
 
 def log_loss(input, label, epsilon=1e-4, name=None):
     """
-    :alias_main: paddle.nn.functional.log_loss
-	:alias: paddle.nn.functional.log_loss,paddle.nn.functional.loss.log_loss
-	:old_api: paddle.fluid.layers.log_loss
 
     **Negative Log Loss Layer**
 
@@ -14448,9 +14442,6 @@ def deformable_conv(input,
 
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     """
-    :alias_main: paddle.nn.functional.unfold
-	:alias: paddle.nn.functional.unfold,paddle.nn.functional.common.unfold
-	:old_api: paddle.fluid.layers.unfold
 
     This op returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
