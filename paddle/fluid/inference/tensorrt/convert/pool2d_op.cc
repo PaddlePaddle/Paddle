@@ -162,16 +162,20 @@ class Pool2dOpConverter : public OpConverter {
     if (global_pooling == true) {
       nv_ksize.d[0] = input_shape.d[input_dims - 2];
       nv_ksize.d[1] = input_shape.d[input_dims - 1];
-      auto *layer = TRT_ENGINE_ADD_LAYER(
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
           engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
           nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
-          layer, platform::errors::Fatal(
-                     "trt pool layer in converter could not be created."));
+          pool_layer, platform::errors::Fatal(
+                          "trt pool layer in converter could not be created."));
       auto output_name = op_desc.Output("Out")[0];
-      layer->setName(("pool2d (Output: " + output_name + ")").c_str());
-      layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(0));
+      pool_layer->setStride(nv_strides);
+      pool_layer->setPadding(nv_paddings);
+      pool_layer->setAverageCountExcludesPadding(exclusive);
+      pool_layer->setName(("pool2d (Output: " + output_name + ")").c_str());
+      pool_layer->getOutput(0)->setName(output_name.c_str());
+      engine_->SetITensor(output_name, pool_layer->getOutput(0));
+      layer = pool_layer;
       if (test_mode) {
         engine_->DeclareOutput(output_name);
       }
