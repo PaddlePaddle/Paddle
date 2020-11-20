@@ -109,6 +109,7 @@ class TestSampledSoftmaxWithCrossEntropyAPI(unittest.TestCase):
         pass
 
     def test_use_customized_samples(self):
+        paddle.disable_static()
         linear = paddle.nn.Linear(256, 100)
         input = paddle.rand(shape=[32, 256])
         label = paddle.full([32, 1], 1, "int64")
