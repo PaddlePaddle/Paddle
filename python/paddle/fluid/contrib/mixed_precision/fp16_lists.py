@@ -74,6 +74,7 @@ class AutoMixedPrecisionLists(object):
 white_list = {
     'conv2d',
     'matmul',
+    'matmul_v2',
     'mul',
 }
 
@@ -135,6 +136,7 @@ gray_list = {
     'get_tensor_from_selected_rows',
     'sign',
     'cast',
+    'fused_bn_add_activation',
 }
 '''
 # The set of ops that don't support fp16 calculation

@@ -18,6 +18,8 @@ import os
 import paddle.distributed.fleet.base.role_maker as role_maker
 import time
 
+paddle.enable_static()
+
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -51,15 +53,15 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         cost = paddle.fluid.layers.cross_entropy(
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
-
+        os.environ["FLAGS_LAUNCH_BARRIER"] = "0"
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-        self.assertTrue(optimizer.user_defined_strategy.a_sync)
-        a_sync_configs = optimizer.user_defined_strategy.a_sync_configs
+        self.assertTrue(fleet._final_strategy().a_sync)
+        a_sync_configs = fleet._final_strategy().a_sync_configs
         self.assertTrue(a_sync_configs['k_steps'] == 800)
 
 

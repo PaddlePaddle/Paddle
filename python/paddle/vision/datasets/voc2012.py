@@ -19,6 +19,7 @@ import tarfile
 import numpy as np
 from PIL import Image
 
+import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
@@ -47,6 +48,10 @@ class VOC2012(Dataset):
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
+        backend(str, optional): Specifies which type of image to be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Examples:
 
@@ -54,6 +59,7 @@ class VOC2012(Dataset):
 
             import paddle
             from paddle.vision.datasets import VOC2012
+            from paddle.vision.transforms import Normalize
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
@@ -64,7 +70,10 @@ class VOC2012(Dataset):
 
             paddle.disable_static()
 
-            voc2012 = VOC2012(mode='train')
+            normalize = Normalize(mean=[0.5, 0.5, 0.5],
+                                  std=[0.5, 0.5, 0.5],
+                                  data_format='HWC')
+            voc2012 = VOC2012(mode='train', transform=normalize, backend='cv2')
 
             for i in range(10):
                 image, label= voc2012[i]
@@ -81,9 +90,19 @@ class VOC2012(Dataset):
                  data_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'valid', 'test'], \
             "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
+
         self.flag = MODE_FLAG_MAP[mode.lower()]
 
         self.data_file = data_file
@@ -95,6 +114,8 @@ class VOC2012(Dataset):
 
         # read dataset into memory
         self._load_anno()
+
+        self.dtype = paddle.get_default_dtype()
 
     def _load_anno(self):
         self.name2mem = {}
@@ -123,10 +144,17 @@ class VOC2012(Dataset):
         label = self.data_tar.extractfile(self.name2mem[label_file]).read()
         data = Image.open(io.BytesIO(data))
         label = Image.open(io.BytesIO(label))
-        data = np.array(data)
-        label = np.array(label)
+
+        if self.backend == 'cv2':
+            data = np.array(data)
+            label = np.array(label)
+
         if self.transform is not None:
             data = self.transform(data)
+
+        if self.backend == 'cv2':
+            return data.astype(self.dtype), label.astype(self.dtype)
+
         return data, label
 
     def __len__(self):

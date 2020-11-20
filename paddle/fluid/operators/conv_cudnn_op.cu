@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -49,8 +50,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     const Tensor* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -59,14 +61,16 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
+    bool deterministic = FLAGS_cudnn_deterministic;
+    auto exhaustive_deterministic = exhaustive_search && deterministic;
+    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
+                      platform::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
 
-    if (exhaustive_search && FLAGS_cudnn_deterministic) {
-      PADDLE_THROW(
-          "Cann't set exhaustive_search True and "
-          "FLAGS_cudnn_deterministic True at same time.");
-    }
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
@@ -196,7 +200,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
               &transformed_input);
         } break;
         default:
-          PADDLE_THROW("ConvOp only support tensors with 4 or 5 dimensions.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
       }
 
     } else {
@@ -287,7 +292,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #endif
 
     // ------------------- cudnn conv forward ---------------------
-    ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = 0.0f;
+
+    // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+    // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+    // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+
     for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
@@ -314,8 +325,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -334,14 +346,16 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     int groups = ctx.Attr<int>("groups");
+
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     bool deterministic = FLAGS_cudnn_deterministic;
-    if (exhaustive_search && deterministic) {
-      PADDLE_THROW(
-          "Can't set exhaustive_search True and "
-          "FLAGS_cudnn_deterministic True at same time.");
-    }
+    auto exhaustive_deterministic = exhaustive_search && deterministic;
+    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
+                      platform::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
+
     const std::string data_format = ctx.Attr<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -377,6 +391,12 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       if (input_grad) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, input_grad, &transformed_input_grad_channel);
+        // NOTE(zhiqiu): If inplace_addto strategy is enabled, we need to copy
+        // the data of input_grad to transformed_input_grad_channel.
+        if (ctx.Attr<bool>("use_addto")) {
+          TransToChannelFirst<platform::CUDADeviceContext, T>(
+              ctx, input_grad, &transformed_input_grad_channel);
+        }
       }
     } else {
       transformed_input_channel.ShareDataWith(*input);
@@ -492,7 +512,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               &transformed_input);
         } break;
         default:
-          PADDLE_THROW("ConvOp only support tensors with 4 or 5 dimensions.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
       }
     } else {
       transformed_input.ShareDataWith(transformed_input_channel);
@@ -609,9 +630,13 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     }
 
     // ------------------- cudnn conv backward data ---------------------
-    ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+    VLOG(4) << "Conv_grad: use_addto = " << ctx.Attr<bool>("use_addto");
+
     if (input_grad) {
-      // Because beta is zero, it is unnecessary to reset input_grad.
+      // When beta is 0, it is unnecessary to reset input_grad.
+      // When beta is 1, the output cannot be reset since addt strategy used.
       for (int i = 0; i < groups; i++) {
         workspace_handle.RunFunc(
             [&](void* cudnn_workspace_ptr) {
@@ -653,6 +678,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             ctx, &transformed_input_grad_channel, input_grad);
       }
     }
+
+    // filter_grad do not use inplace addto.
+    ScalingParamType<T> beta_filter = 0.0f;
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
       // Because beta is zero, it is unnecessary to reset filter_grad.
@@ -665,7 +693,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       input_data + i * group_offset_in, args2.odesc.desc(),
                       output_grad_data + i * group_offset_out,
                       args2.cdesc.desc(), filter_algo, cudnn_workspace_ptr,
-                      workspace_size, &beta, args2.wdesc.desc(),
+                      workspace_size, &beta_filter, args2.wdesc.desc(),
                       filter_grad_data + i * group_offset_filter));
             },
             workspace_size);
@@ -691,8 +719,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     auto X = ctx.Input<Tensor>("Input");
     auto W = ctx.Input<Tensor>("Filter");
     auto dO = ctx.Input<Tensor>("DOutput");
@@ -726,14 +755,16 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     const std::vector<int>& strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
     bool deterministic = FLAGS_cudnn_deterministic;
-    if (exhaustive_search && deterministic) {
-      PADDLE_THROW(
-          "Can't set exhaustive_search True and "
-          "FLAGS_cudnn_deterministic True at same time.");
-    }
+    auto exhaustive_deterministic = exhaustive_search && deterministic;
+    PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
+                      platform::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
+
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
 
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
@@ -868,7 +899,8 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
           }
         } break;
         default:
-          PADDLE_THROW("ConvOp only support tensors with 4 or 5 dimensions.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
       }
 
     } else {
@@ -1017,7 +1049,14 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
     int group_offset_filter = W->numel() / groups;
 
-    ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = 0.0f;
+
+    // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+    // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f :
+    // 0.0f;
+    // VLOG(4) << "Conv_grad_grad: use_addto = " << ctx.Attr<bool>("use_addto");
+
     auto wkspace_handle = dev_ctx.cudnn_workspace_handle();
 
     if (ddO) {

@@ -56,9 +56,15 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     if (num > 1) {
+      // step should be of double type for all types
       double step = (static_cast<double>(stop - start)) / (num - 1);
+      int half_num = num / 2;
       for (int i = 0; i < num; ++i) {
-        out_data[i] = static_cast<T>(start + step * i);
+        if (i < half_num) {
+          out_data[i] = static_cast<T>(start + step * i);
+        } else {
+          out_data[i] = static_cast<T>(stop - step * (num - i - 1));
+        }
       }
     } else {
       out_data[0] = static_cast<T>(start);

@@ -42,7 +42,7 @@ import paddle.compat as cpt
 # For more details, please refer to
 # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
 # https://bugs.python.org/issue33725
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 8) and sys.platform == 'darwin':
     fork_context = multiprocessing.get_context('fork')
 else:
     fork_context = multiprocessing
@@ -62,6 +62,22 @@ def cache(reader):
 
     Returns:
         generator: a decorated reader object which yields data from cached memory.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            def reader():
+                for i in range(3):
+                    yield i
+            
+            # All data is cached into memory
+            cached_reader = paddle.io.cache(reader)
+            
+            # Output: 0 1 2
+            for i in cached_reader():
+                print(i)
     """
     all_data = tuple(reader())
 
@@ -296,12 +312,28 @@ def buffered(reader, size):
     buffer. Reading from the buffered data reader will proceed as long
     as the buffer is not empty.
 
-    :param reader: the data reader to read from.
-    :type reader: callable
-    :param size: max buffer size.
-    :type size: int
+    Args:
+        reader(generator): the data reader to read from.
+        size(int): max buffer size.
 
-    :returns: the buffered data reader.
+    Returns:
+        generator: the buffered data reader.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            def reader():
+                for i in range(3):
+                    yield i
+            
+            # Create a buffered reader, and the buffer size is 2.
+            buffered_reader = paddle.io.buffered(reader, 2)
+            
+            # Output: 0 1 2
+            for i in buffered_reader():
+                print(i)
     """
 
     class EndSignal():

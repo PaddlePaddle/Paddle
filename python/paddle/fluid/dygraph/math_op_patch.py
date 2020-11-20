@@ -15,10 +15,9 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator, ComplexVariable
 from ..layers.layer_function_generator import OpProtoHolder
-from ..layers import common_methods
-from . import to_variable, no_grad
+from . import no_grad
 
 import numpy as np
 import six
@@ -53,47 +52,25 @@ def monkey_patch_math_varbase():
 
     def astype(self, dtype):
         """
-        **Notes**:
-            **The variable must be a** :ref:`api_fluid_Tensor`
 
-        Cast a variable to a specified data type.
+        Cast a Tensor to a specified data type.
 
         Args:
-
-            self(Variable): The source variable
-
-            dtype: The target data type
+            dtype: The target data type.
 
         Returns:
-            Variable: Variable with new dtype
+            Tensor: a new Tensor with target dtype
 
         Examples:
-            In Static Graph Mode:
-
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}".format(new_variable.dtype))
-
-            In Dygraph Mode:
-
-            .. code-block:: python
-
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    original_variable = fluid.dygraph.to_variable(x)
-                    print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
+                original_tensor = paddle.ones([2, 2])
+                print("original tensor's dtype is: {}".format(original_tensor.dtype))
+                new_tensor = original_tensor.astype('float32')
+                print("new tensor's dtype is: {}".format(new_tensor.dtype))
 
         """
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -147,6 +124,10 @@ def monkey_patch_math_varbase():
     def _ndim_(var):
         return len(var.shape)
 
+    @property
+    def _size_(var):
+        return np.prod(var.shape)
+
     def _scalar_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -168,21 +149,46 @@ def monkey_patch_math_varbase():
                          reverse=False,
                          scalar_method=None):
         def __impl__(self, other_var):
-            # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
-            # which may lose accuracy. This is a hot fix for release 1.6.
-            if scalar_method is not None and not (
-                    op_type == 'elementwise_div' and
-                    self.dtype in _supported_int_dtype_):
-                if isinstance(other_var, float):
-                    if self.dtype in _supported_int_dtype_:
-                        assert other_var == int(other_var), \
-                            "float value {} cannot convert to integer".format(other_var)
+            # 0. check tensor and ComplexVariable opetator
+            if isinstance(other_var, ComplexVariable):
+                # need import paddle in closure
+                import paddle
+                math_op = getattr(paddle.incubate.complex.tensor, op_type)
+                return math_op(self, other_var)
+
+            # 1. scalar exists cases
+            # we need combine the tensor.dtype and scalar.dtype, cast correct object
+            if isinstance(other_var, float):
+                # in all cases(+, -, *, /, **, //, %), we need cast tensor.dtype to float
+                if self.dtype in _supported_int_dtype_:
+                    self = astype(self, 'float32')
+                # here use `scale` replace `elementwise` to get better performance
+                # but only +, -, *, / can use this method
+                if scalar_method is not None:
                     return scalar_method(self, other_var)
-                elif isinstance(other_var, int):
-                    return scalar_method(self, float(other_var))
+            elif isinstance(other_var, int):
+                # in all cases(+, -, *, /, **, //, %), we can cast it to float
+                # because the output tensor.dtype depend on the type of input tensor
+                other_var = float(other_var)
+                # division is a special case
+                # NOTE(chenweihang): because we cast tensor to float32 instead float64,
+                # the division result can only guarantee the numerical accuracy of 6 digits 
+                # after the decimal point. The result of numpy calculation is of float64 type, 
+                # so the calculation result here and the calculation result of numpy are 
+                # different after 6 decimal point. If necessary, we can also use float64 here.
+                # torch's behavior here is consistent with ours
+                if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                    self = astype(self, 'float32')
+                # here use `scale` replace `elementwise` to get better performance
+                # but only +, -, *, / can use this method
+                if scalar_method is not None:
+                    return scalar_method(self, other_var)
+            else:
+                # do nothing
+                pass
 
+            # 2. create varbase for scalar
             lhs_dtype = self.dtype
-
             if not isinstance(other_var, core.VarBase):
                 if reverse:
                     other_var = create_tensor(
@@ -191,6 +197,7 @@ def monkey_patch_math_varbase():
                     # add fill_op 
                     other_var = create_scalar(value=other_var, dtype=lhs_dtype)
 
+            # 3. unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
                 other_var = astype(other_var, lhs_dtype)
@@ -199,6 +206,7 @@ def monkey_patch_math_varbase():
                 self = other_var
                 other_var = tmp
 
+            # 4. calculation
             axis = -1
             math_op = getattr(core.ops, op_type)
             return math_op(self, other_var, 'axis', axis)
@@ -208,7 +216,6 @@ def monkey_patch_math_varbase():
         __impl__.__doc__ = """
         {0}
         Args:
-            self(Tensor): left hand Tensor
             other_var(Tensor|float|int): right hand Tensor
 
         Returns:
@@ -217,23 +224,7 @@ def monkey_patch_math_varbase():
         __impl__.__name__ = method_name
         return __impl__
 
-    # Todo(zhouwei): implement dygraph template to adapt to any function, receive('op_type', 'arg_template')
-    #  Such as _method_creator_('addmm', 'x, y, alpha=1.0, beta=1.0, name=None'). It can reduce call time.
-    def _method_creator_(op_type, arg_template=None):
-        def __impl__(self):
-            op = getattr(core.ops, op_type)
-            return op(self)
-
-        __impl__.__doc__ = """
-
-        See paddle.{}""".format(op_type)
-        __impl__.__name__ = op_type
-
-        return __impl__
-
     varbase_methods = [
-        # Type1: From custom fun or lambda
-        ##   b=-a
         ('__neg__', _neg_),
         ('__float__', _float_),
         ('__long__', _long_),
@@ -244,8 +235,7 @@ def monkey_patch_math_varbase():
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
-        ('size', lambda x: x.shape),
-        # Type2: From Template that create core.ops automatically. It's recommended.
+        ('size', _size_),
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
@@ -283,31 +273,7 @@ def monkey_patch_math_varbase():
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
-        ('__array_ufunc__', None),
-        ('sigmoid', _method_creator_('sigmoid', 'name=None')),
-        ('log_sigmoid', _method_creator_('logsigmoid', 'name=None')),
-        ('exp', _method_creator_('exp', 'name=None')),
-        ('tanh', _method_creator_('tanh', 'name=None')),
-        ('atan', _method_creator_('atan', 'name=None')),
-        ('tanh_shrink', _method_creator_('tanh_shrink', 'name=None')),
-        ('sqrt', _method_creator_('sqrt', 'name=None')),
-        ('rsqrt', _method_creator_('rsqrt', 'name=None')),
-        ('abs', _method_creator_('abs', 'name=None')),
-        ('ceil', _method_creator_('ceil', 'name=None')),
-        ('floor', _method_creator_('floor', 'name=None')),
-        ('cos', _method_creator_('cos', 'name=None')),
-        ('acos', _method_creator_('acos', 'name=None')),
-        ('asin', _method_creator_('asin', 'name=None')),
-        ('sin', _method_creator_('sin', 'name=None')),
-        ('sinh', _method_creator_('sinh', 'name=None')),
-        ('cosh', _method_creator_('cosh', 'name=None')),
-        ('round', _method_creator_('round', 'name=None')),
-        ('reciprocal', _method_creator_('reciprocal', 'name=None')),
-        ('square', _method_creator_('square', 'name=None')),
-        ('softplus', _method_creator_('softplus', 'name=None')),
-        ('softsign', _method_creator_('softsign', 'name=None')),
-        # Type3: Form module 'paddle.tensor' defaultly.
-        #   It's not a goodway, because it will increase call time.
+        ('__array_ufunc__', None)
     ]
 
     global _already_patch_varbase
@@ -318,7 +284,15 @@ def monkey_patch_math_varbase():
             setattr(core.VarBase, method_name, method_impl)
     else:
         import paddle.tensor
-        for method_name in common_methods:
+        # Tensor method from module paddle.tensor
+        tensor_methods = paddle.tensor.linalg.__all__ + \
+                         paddle.tensor.math.__all__ + \
+                         paddle.tensor.logic.__all__ + \
+                         paddle.tensor.manipulation.__all__ + \
+                         paddle.tensor.search.__all__ + \
+                         paddle.tensor.stat.__all__ + \
+                         paddle.tensor.attribute.__all__
+        for method_name in tensor_methods:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)

@@ -23,8 +23,14 @@
 #endif
 
 #include <cstring>
+
 #include "paddle/fluid/platform/hostdevice.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+
+namespace Eigen {
+template <typename T>
+struct NumTraits;
+}  // namespace Eigen
 
 namespace paddle {
 namespace platform {

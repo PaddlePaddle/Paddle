@@ -110,7 +110,7 @@ class Conv2D(layers.Layer):
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -345,7 +345,7 @@ class Conv3D(layers.Layer):
         dilation (int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups (int, optional): The groups number of the Conv3d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -574,7 +574,7 @@ class Conv3DTranspose(layers.Layer):
         dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -702,9 +702,6 @@ class Conv3DTranspose(layers.Layer):
 
 class Pool2D(layers.Layer):
     """
-    :alias_main: paddle.nn.Pool2D
-	:alias: paddle.nn.Pool2D,paddle.nn.layer.Pool2D,paddle.nn.layer.common.Pool2D
-	:old_api: paddle.fluid.dygraph.Pool2D
 
     This interface is used to construct a callable object of the ``Pool2D`` class.
     For more details, refer to code examples.
@@ -895,9 +892,6 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
@@ -2357,9 +2351,6 @@ class PRelu(layers.Layer):
 
 class BilinearTensorProduct(layers.Layer):
     """
-    :alias_main: paddle.nn.BilinearTensorProduct
-	:alias: paddle.nn.BilinearTensorProduct,paddle.nn.layer.BilinearTensorProduct,paddle.nn.layer.common.BilinearTensorProduct
-	:old_api: paddle.fluid.dygraph.BilinearTensorProduct
 
     **Add Bilinear Tensor Product Layer**
 
@@ -2550,7 +2541,7 @@ class Conv2DTranspose(layers.Layer):
         dilation(int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
@@ -3230,14 +3221,11 @@ class Flatten(layers.Layer):
         .. code-block:: python
 
           import paddle
-          from paddle import to_variable
           import numpy as np
+          paddle.disable_static()
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
-          
-          paddle.disable_static()
-          
-          inp_np = to_variable(inp_np)
+          inp_np = paddle.to_tensor(inp_np)
           flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
           flatten_res = flatten(inp_np)
 

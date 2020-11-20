@@ -218,7 +218,7 @@ def train(place):
     batch_num = 200
 
     with fluid.dygraph.guard(place):
-        paddle.manual_seed(SEED)
+        paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         ptb_model = PtbModel(
             hidden_size=hidden_size,
@@ -279,7 +279,7 @@ def train(place):
                                speed))
                         avg_batch_time = time.time()
 
-            return out_loss, last_hidden.numpy(), last_cell.numpy()
+        return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
 def train_dygraph(place):

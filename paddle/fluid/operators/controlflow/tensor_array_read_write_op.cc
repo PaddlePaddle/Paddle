@@ -12,7 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

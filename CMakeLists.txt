@@ -63,20 +63,53 @@ if(WIN32)
         set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
         set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
         set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+        foreach(flag_var
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+            if(${flag_var} MATCHES "/MD")
+                string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+            endif()
+        endforeach(flag_var)
     endif()
-    
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838 /MP")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838 /MP")
-    message(STATUS "Using parallel compiling (/MP)")
-    set(PADDLE_LINK_FLAGS "/IGNORE:4006 /IGNORE:4098 /IGNORE:4217 /IGNORE:4221")
-    set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+
+    # windows build turn off warnings, use parallel compiling.
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+        string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
+        set(${flag_var} "${${flag_var}} /MP")
+    endforeach(flag_var)
+    foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
+        set(${flag_var} "${${flag_var}} /w")
+    endforeach(flag_var)
+
+    # Windows Remove /Zi, /ZI for Release, MinSizeRel builds
+    foreach(flag_var
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_MINSIZEREL
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL)
+        if(${flag_var} MATCHES "/Z[iI]")
+            string(REGEX REPLACE "/Z[iI]" "" ${flag_var} "${${flag_var}}")
+        endif()
+    endforeach(flag_var)
+
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
 else(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
 
 find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+    set(GIT_URL "https://github.com")
+endif()
+
 find_package(Threads REQUIRED)
 
 include(simd)
@@ -110,6 +143,8 @@ option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
+option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
+option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -171,10 +206,19 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-# lite subgraph compilation depends on CUDNN_ROOT,
-# so include(cudnn) needs to be in front of include(third_party/lite)
-include(cudnn)              # set cudnn libraries, must before configure
-include(third_party)        # download, build, install third_party
+if(WITH_GPU)
+    include(cuda)
+    # lite subgraph compilation depends on CUDNN_ROOT,
+    # so include(cudnn) needs to be in front of include(third_party/lite)
+    include(cudnn)              # set cudnn libraries, must before configure
+    include(tensorrt)
+    # there is no official support of nccl, cupti in windows
+    if(NOT WIN32)
+        include(cupti)
+    endif()
+endif()
+
+include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -187,17 +231,7 @@ if(WITH_DISTRIBUTE)
     endif()
 endif()
 
-# there is no official support of nccl, cupti in windows
-if(NOT WIN32)
-    include(cupti)
-endif()
-
 include(flags)              # set paddle compile flags
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-endif()
 
 if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
@@ -218,13 +252,27 @@ if(WITH_AMD_GPU)
     include(hip)
 endif(WITH_AMD_GPU)
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+endif()
+
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
     set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON" FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_ARM=ON." FORCE)
-    set(WITH_GPU OFF CACHE STRING "Disable GPU when compiling WITH_ARM=ON." FORCE)
     add_definitions(-DPADDLE_WITH_ARM)
+endif()
+
+if (WITH_SW)
+    # mieee flag solves floating-point exceptions under sw and ALPHA architectures
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -mieee")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -mieee")
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_SW=ON" FORCE)
+    set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_SW=ON." FORCE)
+    add_definitions(-DPADDLE_WITH_SW)
 endif()
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")

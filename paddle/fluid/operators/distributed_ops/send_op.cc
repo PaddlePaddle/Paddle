@@ -12,22 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed/communicator.h"
-#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/parameter_send.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class SendOp : public framework::OperatorBase {
  public:

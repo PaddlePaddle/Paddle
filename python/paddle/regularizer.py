@@ -21,18 +21,18 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
     When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
     ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
     higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
     
-    In the implementation, the formula of L1 Weight Decay Regularization is as follows:
+    In the implementation, the loss function of L1 Weight Decay Regularization is as follows:
 	
     .. math::
 
-        L1WeightDecay = reg\_coeff * sign(parameter)
+        loss = coeff * reduce\_sum(abs(x))
 
     Args:
         coeff(float, optional): regularization coeff. Default:0.0.
@@ -44,10 +44,8 @@ class L1Decay(fluid.regularizer.L1Decay):
             import paddle
             from paddle.regularizer import L1Decay
             import numpy as np
-            paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
+            inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -63,11 +61,11 @@ class L1Decay(fluid.regularizer.L1Decay):
             # Example2: set Regularizer in parameters
             # Set L1 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
-            from paddle.nn import Conv2d
+            from paddle.nn import Conv2D
             from paddle import ParamAttr
             from paddle.regularizer import L2Decay
 
-            my_conv2d = Conv2d(
+            my_conv2d = Conv2D(
                     in_channels=10,
                     out_channels=10,
                     kernel_size=1,
@@ -85,18 +83,18 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
     
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
     When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
     ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
     higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
     
-    In the implementation, the formula of L2 Weight Decay Regularization is as follows:
+    In the implementation, the loss function of L2 Weight Decay Regularization is as follows:
 
     .. math::
 
-        L2WeightDecay = reg\_coeff * parameter
+        loss = 0.5 * coeff * reduce\_sum(square(x))
 
     Args:
         regularization_coeff(float, optional): regularization coeff. Default:0.0
@@ -108,10 +106,8 @@ class L2Decay(fluid.regularizer.L2Decay):
             import paddle
             from paddle.regularizer import L2Decay
             import numpy as np
-            paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
+            inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -127,11 +123,11 @@ class L2Decay(fluid.regularizer.L2Decay):
             # Example2: set Regularizer in parameters
             # Set L2 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
-            from paddle.nn import Conv2d
+            from paddle.nn import Conv2D
             from paddle import ParamAttr
             from paddle.regularizer import L2Decay
 
-            my_conv2d = Conv2d(
+            my_conv2d = Conv2D(
                     in_channels=10,
                     out_channels=10,
                     kernel_size=1,

@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-
-#include <cmath>
-#include <list>
-#include <map>
-#include <string>
+#include <math.h>
 
 namespace paddle {
 namespace memory {
@@ -162,8 +158,8 @@ Allocation* BestFitAllocator::AllocateImpl(size_t size) {
     }
   }
   if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
-    PADDLE_THROW_BAD_ALLOC("Cannot allocate %d, All fragments size is %d", size,
-                           FreeSize());
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+        "Cannot allocate %d, All fragments size is %d.", size, FreeSize()));
   }
   auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
   return new BestFitAllocation(this, chunk_it);

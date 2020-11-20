@@ -16,6 +16,15 @@
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 using framework::DataLayout;
@@ -74,14 +83,14 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   const auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Output<Tensor>("Out");
 
-  T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
+  float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
 
   // paddle uses beta but mkldnn uses alpha for swish
   if (algorithm == mkldnn::algorithm::eltwise_swish) {
     std::swap(alpha, beta);
   } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-    alpha = ctx.Attr<T>("threshold");
+    alpha = ctx.Attr<float>("threshold");
   }
 
   PADDLE_ENFORCE(
@@ -119,14 +128,14 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
+  float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
 
   // paddle uses beta but mkldnn uses alpha for swish
   if (algorithm == mkldnn::algorithm::eltwise_swish) {
     std::swap(alpha, beta);
   } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-    alpha = ctx.Attr<T>("threshold");
+    alpha = ctx.Attr<float>("threshold");
   }
 
   auto diff_dst_tz = framework::vectorize<int64_t>(diff_y->dims());
@@ -263,11 +272,20 @@ namespace ops = paddle::operators;
       act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,               \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
 
+#define REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(act_type, functor,             \
+                                               grad_functor)                  \
+  REGISTER_OP_KERNEL(                                                         \
+      act_type, MKLDNN, ::paddle::platform::CPUPlace,                         \
+      ops::MKLDNNActivationKernel<ops::functor<float>>,                       \
+      ops::MKLDNNActivationKernel<ops::functor<paddle::platform::bfloat16>>); \
+  REGISTER_OP_KERNEL(                                                         \
+      act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,                  \
+      ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
+
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                     \
   __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
   __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);       \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);    \
-  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor);          \
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);       \
   __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradFunctor); \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);          \
@@ -275,3 +293,5 @@ namespace ops = paddle::operators;
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
+REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
+                                       GeluMKLDNNGradFunctor);

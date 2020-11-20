@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.framework import core
 
 
 def gather_numpy(x, index, axis):
@@ -202,9 +203,9 @@ class API_TestGather(unittest.TestCase):
     def test_out2(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            x = paddle.data('x', shape=[-1, 2], dtype='float64')
-            index = paddle.data('index', shape=[-1, 1], dtype='int32')
-            axis = paddle.data('axis', shape=[1], dtype='int32')
+            x = paddle.fluid.data('x', shape=[-1, 2], dtype='float64')
+            index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
+            axis = paddle.fluid.data('axis', shape=[1], dtype='int32')
             out = paddle.gather(x, index, axis)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -252,10 +253,10 @@ class TestGathertError(unittest.TestCase):
                                          paddle.static.Program()):
 
             shape = [8, 9, 6]
-            x = paddle.data(shape=shape, dtype='int8', name='x')
-            axis = paddle.data(shape=[1], dtype='float32', name='axis')
-            index = paddle.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.data(
+            x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
+            axis = paddle.fluid.data(shape=[1], dtype='float32', name='axis')
+            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.fluid.data(
                 shape=shape, dtype='float32', name='index_float')
 
             def test_x_type():
@@ -296,6 +297,14 @@ class TestGathertError(unittest.TestCase):
                 paddle.fluid.layers.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
+
+
+class TestCheckOutType(unittest.TestCase):
+    def test_out_type(self):
+        data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
+        index = paddle.static.data(shape=[4], dtype='int64', name='index')
+        out = paddle.gather(data, index)
+        self.assertTrue(out.dtype == core.VarDesc.VarType.INT64)
 
 
 if __name__ == "__main__":

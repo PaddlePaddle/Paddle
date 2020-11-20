@@ -301,6 +301,24 @@ Natural logarithm of x.
 
 )DOC";
 
+UNUSED constexpr char Log2Doc[] = R"DOC(
+Log2 Activation Operator.
+
+$$out = \log_2x$$
+
+logarithm of x base to 2.
+
+)DOC";
+
+UNUSED constexpr char Log10Doc[] = R"DOC(
+Log10 Activation Operator.
+
+$$out = \log_10_x$$
+
+logarithm of x base to 10.
+
+)DOC";
+
 UNUSED constexpr char Log1pDoc[] = R"DOC(
 Log Activation Operator.
 
@@ -697,6 +715,8 @@ REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log2, Log2Doc);
+REGISTER_ACTIVATION_OP_MAKER(Log10, Log10Doc);
 REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
@@ -763,10 +783,28 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 };
 
-//
+// AbsGrad: dx=dy if x >=0 else -dy
+// AbsDoubleGrad: ddy = ddx if x >=0 else -ddx
+template <typename T>
+class AbsDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("abs_grad_grad");
+    // input1: x
+    op->SetInput("X", this->Input("X"));
+    // input2: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    // output: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
-//
 template <typename T>
 class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
@@ -866,6 +904,28 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
 
+    // X@GRAD: dx
+    op->SetOutput("DX", this->InputGrad("X"));
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+// log Grad: dx = dout / x
+// log Grad Grad: ddout = ddx / x; dx = -(dout / x) * (ddx / x)
+template <typename T>
+class LogDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("log_grad_grad");
+    op->SetInput("X", this->Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetAttrMap(this->Attrs());
     // X@GRAD: dx
     op->SetOutput("DX", this->InputGrad("X"));
     // Out@GRAD@GRAD: ddy
@@ -1214,7 +1274,13 @@ REGISTER_OPERATOR(
     std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    abs_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::AbsGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(abs,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
@@ -1234,6 +1300,47 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
+REGISTER_OP_CPU_KERNEL(
+    abs_grad_grad,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<float>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<double>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<plat::float16>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<int>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================  Log register ==================================*/
+REGISTER_OPERATOR(
+    log, ops::ActivationOp, ops::LogOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    log_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
+
+REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
+
+REGISTER_OP_CPU_KERNEL(
+    log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                                            ops::LogGradGradFunctor<float>>,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<double>>,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/

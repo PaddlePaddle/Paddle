@@ -19,6 +19,7 @@ import tempfile
 import shutil
 import cv2
 
+import paddle.vision.transforms as T
 from paddle.vision.datasets import *
 from paddle.dataset.common import _check_exists_and_download
 
@@ -89,7 +90,8 @@ class TestFolderDatasets(unittest.TestCase):
 
 class TestMNISTTest(unittest.TestCase):
     def test_main(self):
-        mnist = MNIST(mode='test')
+        transform = T.Transpose()
+        mnist = MNIST(mode='test', transform=transform)
         self.assertTrue(len(mnist) == 10000)
 
         for i in range(len(mnist)):
@@ -103,14 +105,79 @@ class TestMNISTTest(unittest.TestCase):
 
 class TestMNISTTrain(unittest.TestCase):
     def test_main(self):
-        mnist = MNIST(mode='train', chw_format=False)
+        transform = T.Transpose()
+        mnist = MNIST(mode='train', transform=transform)
         self.assertTrue(len(mnist) == 60000)
 
         for i in range(len(mnist)):
             image, label = mnist[i]
-            self.assertTrue(image.shape[0] == 784)
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
             self.assertTrue(label.shape[0] == 1)
             self.assertTrue(0 <= int(label) <= 9)
+
+        # test cv2 backend
+        mnist = MNIST(mode='train', transform=transform, backend='cv2')
+        self.assertTrue(len(mnist) == 60000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+            break
+
+        with self.assertRaises(ValueError):
+            mnist = MNIST(mode='train', transform=transform, backend=1)
+
+
+class TestFASHIONMNISTTest(unittest.TestCase):
+    def test_main(self):
+        transform = T.Transpose()
+        mnist = FashionMNIST(mode='test', transform=transform)
+        self.assertTrue(len(mnist) == 10000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+
+
+class TestFASHIONMNISTTrain(unittest.TestCase):
+    def test_main(self):
+        transform = T.Transpose()
+        mnist = FashionMNIST(mode='train', transform=transform)
+        self.assertTrue(len(mnist) == 60000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+
+        # test cv2 backend
+        mnist = FashionMNIST(mode='train', transform=transform, backend='cv2')
+        self.assertTrue(len(mnist) == 60000)
+
+        for i in range(len(mnist)):
+            image, label = mnist[i]
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
+            self.assertTrue(label.shape[0] == 1)
+            self.assertTrue(0 <= int(label) <= 9)
+            break
+
+        with self.assertRaises(ValueError):
+            mnist = FashionMNIST(mode='train', transform=transform, backend=1)
 
 
 class TestFlowersTrain(unittest.TestCase):
@@ -122,6 +189,7 @@ class TestFlowersTrain(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 6149)
         image, label = flowers[idx]
+        image = np.array(image)
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
@@ -136,6 +204,7 @@ class TestFlowersValid(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1020)
         image, label = flowers[idx]
+        image = np.array(image)
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
@@ -150,9 +219,26 @@ class TestFlowersTest(unittest.TestCase):
         # long time, randomly check 1 sample
         idx = np.random.randint(0, 1020)
         image, label = flowers[idx]
+        image = np.array(image)
         self.assertTrue(len(image.shape) == 3)
         self.assertTrue(image.shape[2] == 3)
         self.assertTrue(label.shape[0] == 1)
+
+        # test cv2 backend
+        flowers = Flowers(mode='test', backend='cv2')
+        self.assertTrue(len(flowers) == 1020)
+
+        # traversal whole dataset may cost a
+        # long time, randomly check 1 sample
+        idx = np.random.randint(0, 1020)
+        image, label = flowers[idx]
+
+        self.assertTrue(len(image.shape) == 3)
+        self.assertTrue(image.shape[2] == 3)
+        self.assertTrue(label.shape[0] == 1)
+
+        with self.assertRaises(ValueError):
+            flowers = Flowers(mode='test', backend=1)
 
 
 if __name__ == '__main__':

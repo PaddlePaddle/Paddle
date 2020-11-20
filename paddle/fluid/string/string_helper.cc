@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/string/string_helper.h"
+
 #include <ctype.h>
 #include <stdio.h>
 #include <cstring>
 #include <string>
-#include <vector>
-#include "boost/lexical_cast.hpp"
+
 #include "glog/logging.h"
 
 namespace paddle {

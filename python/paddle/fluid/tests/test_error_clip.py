@@ -22,6 +22,7 @@ BATCH_SIZE = 128
 CLIP_MAX = 2e-6
 CLIP_MIN = -1e-6
 
+paddle.enable_static()
 prog = fluid.framework.Program()
 
 with fluid.program_guard(main_program=prog):

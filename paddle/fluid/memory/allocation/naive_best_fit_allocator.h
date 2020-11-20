@@ -18,8 +18,10 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -33,6 +35,7 @@ class NaiveBestFitAllocator : public Allocator {
  protected:
   Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(Allocation *allocation) override;
+  uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
   platform::Place place_;

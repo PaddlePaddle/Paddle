@@ -48,8 +48,8 @@ class TestCosineSimilarityAPI(unittest.TestCase):
             np_x1 = np.random.rand(*shape).astype(np.float32)
             np_x2 = np.random.rand(*shape).astype(np.float32)
 
-            x1 = paddle.data(name="x1", shape=shape)
-            x2 = paddle.data(name="x2", shape=shape)
+            x1 = paddle.fluid.data(name="x1", shape=shape)
+            x2 = paddle.fluid.data(name="x2", shape=shape)
             result = F.cosine_similarity(x1, x2, axis=axis, eps=eps)
             exe = Executor(place)
             fetches = exe.run(default_main_program(),
@@ -75,8 +75,8 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_variable(np_x1)
-        tesnor_x2 = paddle.to_variable(np_x2)
+        tesnor_x1 = paddle.to_tensor(np_x1)
+        tesnor_x2 = paddle.to_tensor(np_x2)
         y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))
@@ -92,8 +92,8 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_variable(np_x1)
-        tesnor_x2 = paddle.to_variable(np_x2)
+        tesnor_x1 = paddle.to_tensor(np_x1)
+        tesnor_x2 = paddle.to_tensor(np_x2)
         y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))
@@ -110,8 +110,8 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape2).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_variable(np_x1)
-        tesnor_x2 = paddle.to_variable(np_x2)
+        tesnor_x1 = paddle.to_tensor(np_x1)
+        tesnor_x2 = paddle.to_tensor(np_x2)
         y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))
@@ -129,8 +129,8 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
         cos_sim_func = nn.CosineSimilarity(axis=axis, eps=eps)
-        tesnor_x1 = paddle.to_variable(np_x1)
-        tesnor_x2 = paddle.to_variable(np_x2)
+        tesnor_x1 = paddle.to_tensor(np_x1)
+        tesnor_x2 = paddle.to_tensor(np_x2)
         y = cos_sim_func(tesnor_x1, tesnor_x2)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))

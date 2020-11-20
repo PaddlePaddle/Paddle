@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"

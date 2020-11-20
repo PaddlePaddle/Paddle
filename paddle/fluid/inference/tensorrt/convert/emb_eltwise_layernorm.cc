@@ -14,6 +14,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -40,6 +49,9 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       input_ids.push_back(engine_->GetITensor(id_names[i]));
     }
 
+    // input_embs[0]: word_embedding
+    // input_embs[1]: pos_embedding
+    // input_embs[2]: sent_embedding
     std::vector<float*> input_embs;
     std::vector<int> emb_sizes;
 
@@ -76,15 +88,88 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         get_persistable_data(op_desc.Input("Scale").front(), &scale_dims);
     int64_t bias_size = framework::product(bias_dims);
     int64_t scale_size = framework::product(scale_dims);
-    float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
-      plugin::DynamicPluginTensorRT* plugin = nullptr;
-      plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-          input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-          eps);
-      layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
+      if (engine_->use_oss()) {
+        int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+        PADDLE_ENFORCE_EQ(output_fp16, 1,
+            platform::errors::InvalidArgument(
+              "Only Precision::KHalf(fp16) is supported when infering "
+              "ernie(bert) model with config.EnableTensorRtOSS(). "
+              "But Precision::KFloat32 is setted."));
+        const std::vector<nvinfer1::PluginField> fields{
+            {"bert_embeddings_layernorm_beta", bias,
+             nvinfer1::PluginFieldType::kFLOAT32,
+             static_cast<int32_t>(bias_size)},
+            {"bert_embeddings_layernorm_gamma", scale,
+             nvinfer1::PluginFieldType::kFLOAT32,
+             static_cast<int32_t>(scale_size)},
+            {"bert_embeddings_word_embeddings", input_embs[0],
+             nvinfer1::PluginFieldType::kFLOAT32,
+             static_cast<int32_t>(emb_sizes[0])},
+            {"bert_embeddings_token_type_embeddings", input_embs[2],
+             nvinfer1::PluginFieldType::kFLOAT32,
+             static_cast<int32_t>(emb_sizes[2])},
+            {"bert_embeddings_position_embeddings", input_embs[1],
+             nvinfer1::PluginFieldType::kFLOAT32,
+             static_cast<int32_t>(emb_sizes[1])},
+            {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
+        };
+
+        // remember to free
+        nvinfer1::PluginFieldCollection* plugin_ptr =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(*plugin_ptr) +
+                       fields.size() * sizeof(nvinfer1::PluginField)));
+        plugin_ptr->nbFields = static_cast<int>(fields.size());
+        plugin_ptr->fields = fields.data();
+
+        std::vector<nvinfer1::ITensor*> plugin_inputs;
+        plugin_inputs.emplace_back(engine_->GetITensor(
+            engine_->network()->getInput(0)->getName()));  // word_embedding,
+                                                           // eval_placeholder_0
+        plugin_inputs.emplace_back(engine_->GetITensor(
+            engine_->network()->getInput(1)->getName()));  // sent_embedding,
+                                                           // eval_placeholder_1
+        plugin_inputs.emplace_back(engine_->GetITensor(
+            engine_->network()->getInput(2)->getName()));  // cu_seqlens,
+                                                           // eval_placeholder_2
+        auto max_seqlen_tensor = engine_->GetITensor(
+            engine_->network()->getInput(3)->getName());
+        auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Shuffle, *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+        nvinfer1::Dims shape_dim;
+        shape_dim.nbDims = 1;
+        shape_dim.d[0] = -1;
+        shuffle_layer->setReshapeDimensions(shape_dim);
+        plugin_inputs.emplace_back(shuffle_layer->getOutput(0));     // max_seqlen, eval_placeholder_3
+
+        auto creator = GetPluginRegistry()->getPluginCreator(
+            "CustomEmbLayerNormPluginDynamic", "2");
+
+        auto plugin_obj =
+            creator->createPlugin("CustomEmbLayerNormPluginDynamic", plugin_ptr);
+        auto plugin_layer = engine_->network()->addPluginV2(
+            plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
+        layer = plugin_layer;
+        free(plugin_ptr);
+        auto output_name = op_desc.Output("Out")[0];
+        RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm",
+                                 {output_name, std::string("qkv_plugin_mask")},
+                                 test_mode);
+      } else {
+        bool use_fp16 = engine_->WithFp16();
+        float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+        plugin::DynamicPluginTensorRT* plugin = nullptr;
+        plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
+            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
+            eps, use_fp16);
+        layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
+        auto output_name = op_desc.Output("Out")[0];
+        RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
+                                 test_mode);
+      }
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the Ernie(Bert) model in static"
@@ -93,9 +178,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           " to set the shape information to run the dynamic shape mode."));
     }
 
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
-                             test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "

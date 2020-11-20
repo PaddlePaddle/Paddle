@@ -28,12 +28,44 @@ limitations under the License. */
 #include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
+namespace proto {
+
+class BlockDesc;
+class OpDesc;
+class OpDesc_Attr;
+class OpDesc_Var;
+class OpProto;
+class OpProto_Attr;
+class OpProto_Var;
+class OpVersion;
+class OpVersionMap;
+class OpVersionMap_OpVersionPair;
+class ProgramDesc;
+class VarDesc;
+class VarType;
+class VarType_LoDTensorArrayDesc;
+class VarType_LoDTensorDesc;
+class VarType_ReaderDesc;
+class VarType_TensorDesc;
+class VarType_Tuple;
+class Version;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

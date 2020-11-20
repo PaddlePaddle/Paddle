@@ -19,6 +19,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -388,7 +389,8 @@ class DataNormKernel<platform::CPUDeviceContext, T>
         break;
       }
       default:
-        PADDLE_THROW("Unknown storage order: %d", data_layout);
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unknown storage order: %d", data_layout));
     }
   }
 };
@@ -464,7 +466,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Y@GRAD can not be found for computation"));
     }
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
@@ -473,7 +476,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
       t = &var->Get<LoDTensor>();
     }
     if (t == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Y@GRAD can not be found for computation"));
     }
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
@@ -696,7 +700,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
         break;
       }
       default:
-        PADDLE_THROW("Unknown storage order: %s", data_layout_str);
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unknown storage order: %s", data_layout_str));
     }
   }
 };
@@ -751,3 +756,10 @@ REGISTER_OP_CPU_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_VERSION(data_norm)
+    .AddCheckpoint(
+        R"ROC(
+              upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "scale_w",
+            "scale_w is used to do scale duirng data_norm like batchnorm "));

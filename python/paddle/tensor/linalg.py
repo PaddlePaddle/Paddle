@@ -32,7 +32,8 @@ __all__ = [
     'cholesky',
     #       'tensordot',
     'bmm',
-    'histogram'
+    'histogram',
+    'mv'
 ]
 
 
@@ -155,8 +156,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'],
-                                     'matmul')
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
 
     __check_input(x, y)
 
@@ -612,45 +613,45 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
-	:alias_main: paddle.t
-	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
-
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
-    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    the paddle.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
+
         .. code-block:: text
-        # Example 1 (0-D tensor)
-         x = tensor([0.79])
-         paddle.t(x) = tensor([0.79])
-         # Example 2 (1-D tensor)
-         x = tensor([0.79, 0.84, 0.32])
-         paddle.t(x) = tensor([0.79, 0.84, 0.32])
-        
-         # Example 3 (2-D tensor)
-         x = tensor([0.79, 0.84, 0.32],
-                    [0.64, 0.14, 0.57])
-         paddle.t(x) = tensor([0.79, 0.64],
-                              [0.84, 0.14],
-                              [0.32, 0.57])
-    
+
+             # Example 1 (0-D tensor)
+             x = tensor([0.79])
+             paddle.t(x) = tensor([0.79])
+
+             # Example 2 (1-D tensor)
+             x = tensor([0.79, 0.84, 0.32])
+             paddle.t(x) = tensor([0.79, 0.84, 0.32])
+
+             # Example 3 (2-D tensor)
+             x = tensor([0.79, 0.84, 0.32],
+                        [0.64, 0.14, 0.57])
+             paddle.t(x) = tensor([0.79, 0.64],
+                                  [0.84, 0.14],
+                                  [0.32, 0.57])
+
      Examples:
+
         .. code-block:: python
+
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3],
-                            dtype='float32')
+            x = paddle.ones(shape=[2, 3], dtype='int32')
             x_transposed = paddle.t(x)
-            print x_transposed.shape
-            #(3L, 2L)
+            print(x_transposed.shape)
+            # [3, 2]
     """
     if len(input.shape) > 2:
         raise ValueError(
@@ -686,48 +687,38 @@ def t(input, name=None):
 
 def cross(x, y, axis=None, name=None):
     """
-	:alias_main: paddle.cross
-	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
-
     Computes the cross product between two tensors along an axis.
+    
     Inputs must have the same shape, and the length of their axes should be equal to 3.
     If `axis` is not given, it defaults to the first axis found with the length 3.
     
     Args:
-        x (Variable): The first input tensor variable.
-        y (Variable): The second input tensor variable.
+        x (Tensor): The first input tensor.
+        y (Tensor): The second input tensor.
         axis (int, optional): The axis along which to compute the cross product. It defaults to the first axis found with the length 3.
-        name (str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with same data type as `x`.
+        Tensor. A Tensor with same data type as `x`.
         
     Examples:
         .. code-block:: python
+
             import paddle
-            from paddle import to_variable
-            import numpy as np
 
-            paddle.disable_static()
-
-            data_x = np.array([[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0],
-                               [3.0, 3.0, 3.0]])
-            data_y = np.array([[1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0]])
-            x = to_variable(data_x)
-            y = to_variable(data_y)
+            x = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [2.0, 2.0, 2.0],
+                                  [3.0, 3.0, 3.0]])
+            y = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0]])
 
             z1 = paddle.cross(x, y)
-            print(z1.numpy())
             # [[-1. -1. -1.]
             #  [ 2.  2.  2.]
             #  [-1. -1. -1.]]
 
             z2 = paddle.cross(x, y, axis=1)
-            print(z2.numpy())
             # [[0. 0. 0.]
             #  [0. 0. 0.]
             #  [0. 0. 0.]]
@@ -818,18 +809,16 @@ def bmm(x, y, name=None):
     if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
 
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor.
-        y (Variable): The input variable which is a Tensor or LoDTensor.
+        x (Tensor): The input Tensor.
+        y (Tensor): The input Tensor.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor (or LoDTensor) variable.
+        Tensor: The product Tensor.
 
     Examples:
         import paddle
-
-        paddle.disable_static()
 
         # In imperative mode:
         # size x: (2, 2, 3) and y: (2, 3, 2)
@@ -855,6 +844,10 @@ def bmm(x, y, name=None):
         raise ValueError(
             "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".
             format(x_shape, y_shape))
+    if x_shape[0] != y_shape[0]:
+        raise ValueError(
+            "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".
+            format(x_shape, y_shape))
     helper = LayerHelper('bmm', **locals())
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
@@ -869,41 +862,23 @@ def histogram(input, bins=100, min=0, max=0):
     If min and max are both zero, the minimum and maximum values of the data are used.
 
     Args:
-        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+        input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
         bins (int): number of histogram bins
         min (int): lower end of the range (inclusive)
         max (int): upper end of the range (inclusive)
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by histogram layer. The data type is int64.
+        Tensor: data type is int64, shape is (nbins,).
 
-    Code Example 1:
+    Examples:
         .. code-block:: python
-            import paddle
-            import numpy as np
-            startup_program = paddle.static.Program()
-            train_program = paddle.static.Program()
-            with paddle.static.program_guard(train_program, startup_program):
-                inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
-                output = paddle.histogram(inputs, bins=5, min=1, max=5)
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                exe.run(startup_program)
-                img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
-                res = exe.run(train_program,
-                              feed={'input': img},
-                              fetch_list=[output])
-                print(np.array(res[0])) # [0,3,0,2,1]
 
-    Code Example 2:
-        .. code-block:: python
             import paddle
-            paddle.disable_static(paddle.CPUPlace())
+
             inputs = paddle.to_tensor([1, 2, 1])
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
-            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
@@ -919,4 +894,63 @@ def histogram(input, bins=100, min=0, max=0):
         attrs={'bins': bins,
                'min': min,
                'max': max})
+    return out
+
+
+def mv(x, vec, name=None):
+    """
+    Performs a matrix-vector product of the matrix x and the vector vec.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
+            should be one of float32, float64.
+        vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
+            should be one of float32, float64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor which is producted by x and vec.
+
+    Examples:
+        .. code-block:: python
+
+            # x: [M, N], vec: [N]
+            # paddle.mv(x, vec)  # out: [M]
+
+            import numpy as np
+            import paddle
+
+            x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
+            x = paddle.to_tensor(x_data)
+            vec_data = np.array([3, 5, 1])
+            vec = paddle.to_tensor(vec_data).astype("float64")
+            out = paddle.mv(x, vec)
+    """
+    if in_dygraph_mode():
+        out = core.ops.mv(x, vec)
+        return out
+
+    def __check_input(x, vec):
+        var_names = {'x': x, 'vec': vec}
+        for name, val in var_names.items():
+            check_variable_and_dtype(val, name, ['float32', 'float64'], 'mv')
+        x_shape = list(x.shape)
+        vec_shape = list(vec.shape)
+        if len(x_shape) != 2:
+            raise ValueError(
+                "x should be 2-dimensional. But received x's dimention: {}".
+                format(x_shape))
+        if len(vec_shape) != 1:
+            raise ValueError(
+                "vec should be 1-dimensional. But received vec's dimention: {}".
+                format(vec_shape))
+
+    __check_input(x, vec)
+
+    helper = LayerHelper('mv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mv', inputs={'X': x,
+                           'Vec': vec}, outputs={'Out': out})
     return out

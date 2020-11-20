@@ -17,7 +17,7 @@ INCLUDE(ExternalProject)
 SET(CBLAS_PREFIX_DIR  ${THIRD_PARTY_PATH}/openblas)
 SET(CBLAS_SOURCE_DIR  ${THIRD_PARTY_PATH}/openblas/src/extern_openblas)
 SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
-SET(CBLAS_REPOSITORY  https://github.com/xianyi/OpenBLAS.git)
+SET(CBLAS_REPOSITORY  ${GIT_URL}/xianyi/OpenBLAS.git)
 SET(CBLAS_TAG         v0.3.7)
 IF(WITH_ARM)
     # Under the FT2000 architecture, the calculation result of blas.sgemm in openblas 0.3+ is wrong,

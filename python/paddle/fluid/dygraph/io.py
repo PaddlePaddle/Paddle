@@ -31,8 +31,10 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 
 __all__ = ['TranslatedLayer']
 
-VARIABLE_FILENAME = "__variables__"
-EXTRA_VAR_INFO_FILENAME = "__variables.info__"
+INFER_MODEL_SUFFIX = ".pdmodel"
+INFER_PARAMS_SUFFIX = ".pdiparams"
+INFER_PARAMS_INFO_SUFFIX = ".pdiparams.info"
+
 LOADED_VAR_SUFFIX = "load"
 PARAMETER_NAME_PREFIX = "param"
 BUFFER_NAME_PREFIX = "buffer"
@@ -139,6 +141,7 @@ def _append_loaded_suffix_to_var(program_desc):
         var_desc.set_name(new_name)
         for block_idx in six.moves.range(program_desc.num_blocks()):
             block = program_desc.block(block_idx)
+            block._rename_var(cpt.to_bytes(old_name), cpt.to_bytes(new_name))
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
@@ -423,11 +426,8 @@ def _load_persistable_vars_by_program(model_path,
     return load_var_dict
 
 
-def _load_persistable_vars(model_path,
-                           var_info_path,
-                           program_holder,
-                           separate_params=False,
-                           params_filename=None):
+def _load_persistable_vars(model_path, var_info_path, program_holder,
+                           params_filename):
     # 1. load extra var info
     with open(var_info_path, 'rb') as f:
         extra_var_info = pickle.load(f)
@@ -463,33 +463,22 @@ def _load_persistable_vars(model_path,
             new_var = framework._varbase_creator(
                 name=new_name, persistable=True)
 
-        # load separate vars
-        if separate_params is True:
-            framework._dygraph_tracer().trace_op(
-                type='load',
-                inputs={},
-                outputs={'Out': new_var},
-                attrs={'file_path': os.path.join(model_path, name)})
-
         new_var.stop_gradient = extra_var_info[name]['stop_gradient']
         load_var_dict[new_name] = new_var
         load_var_list.append(new_var)
 
     # 3. load all vars
-    if separate_params is False:
-        if params_filename is not None:
-            var_file_path = os.path.join(model_path, params_filename)
-        else:
-            var_file_path = os.path.join(model_path, VARIABLE_FILENAME)
-        if not os.path.exists(var_file_path):
-            if len(extra_var_info) != 0:
-                raise ValueError("The model to be loaded is incomplete.")
-        else:
-            framework._dygraph_tracer().trace_op(
-                type='load_combine',
-                inputs={},
-                outputs={'Out': load_var_list},
-                attrs={'file_path': var_file_path})
+    assert params_filename is not None, "params_filename should not be None."
+    var_file_path = os.path.join(model_path, params_filename)
+    if not os.path.exists(var_file_path):
+        if len(extra_var_info) != 0:
+            raise ValueError("The model to be loaded is incomplete.")
+    else:
+        framework._dygraph_tracer().trace_op(
+            type='load_combine',
+            inputs={},
+            outputs={'Out': load_var_list},
+            attrs={'file_path': var_file_path})
 
     return load_var_dict
 
@@ -511,8 +500,21 @@ def _construct_program_holders(model_path, model_filename=None):
         # [compatible] if assign model_filename, only can load one program as Layer.forward
         model_filename = os.path.basename(model_filename)
         model_file_path = os.path.join(model_path, model_filename)
-        program_holder_dict['forward'] = _ProgramHolder(
-            _load_program_desc(model_file_path))
+        model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
+        #Load every file that meets the requirements in the directory model_path.
+        for filename in os.listdir(model_path):
+            if model_filename == filename:
+                func_name = 'forward'
+                model_file_path = os.path.join(model_path, model_filename)
+            elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
+                    model_name):
+                func_name = filename[len(model_name) + 1:-len(
+                    INFER_MODEL_SUFFIX)]
+                model_file_path = os.path.join(model_path, filename)
+            else:
+                continue
+            program_holder_dict[func_name] = _ProgramHolder(
+                _load_program_desc(model_file_path))
     else:
         for _, _, file_names in os.walk(model_path):
             for name in file_names:
@@ -531,14 +533,27 @@ def _construct_program_holders(model_path, model_filename=None):
 
 def _construct_params_and_buffers(model_path,
                                   programs,
-                                  separate_params=False,
                                   params_filename=None,
                                   append_suffix=True):
-    var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
+    var_info_filename = str(params_filename) + ".info"
+    var_info_path = os.path.join(model_path, var_info_filename)
+
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
-                                          programs['forward'], separate_params,
-                                          params_filename)
+                                          programs['forward'], params_filename)
+        model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
+        #Load every file that meets the requirements in the directory model_path.
+        for file_name in os.listdir(model_path):
+            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
+                    model_name) and file_name != params_filename:
+                func_name = file_name[len(model_name) + 1:-len(
+                    INFER_PARAMS_SUFFIX)]
+            else:
+                continue
+            var_info_path = os.path.join(model_path, var_info_filename)
+            var_dict.update(
+                _load_persistable_vars(model_path, var_info_path, programs[
+                    func_name], file_name))
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
@@ -699,18 +714,16 @@ class TranslatedLayer(layers.Layer):
             raise ValueError("There is no directory named '%s'" % model_path)
         model_filename = None
         params_filename = None
-        separate_params = False
         if configs is not None:
             model_filename = configs.model_filename
             params_filename = configs.params_filename
-            separate_params = configs.separate_params
 
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
         # 2. load layer parameters & buffers
-        persistable_vars = _construct_params_and_buffers(
-            model_path, programs, separate_params, params_filename)
+        persistable_vars = _construct_params_and_buffers(model_path, programs,
+                                                         params_filename)
 
         # 3. construct TranslatedLayer object
         translated_layer = TranslatedLayer(programs, persistable_vars)

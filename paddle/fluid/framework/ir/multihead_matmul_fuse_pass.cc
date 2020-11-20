@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"
-#include <memory>
+
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/errors.h"
@@ -696,7 +696,11 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal(
           "During the multiheadMatmul pass, The scope should not be null."));
 
-  patterns::BuildFusionV2(graph, name_scope_, scope);
+  int fusion_count = patterns::BuildFusionV2(graph, name_scope_, scope);
+  if (fusion_count > 0) {
+    graph->Set(kMultiheadMatmulPass, new bool(true));
+  }
+  AddStatis(fusion_count);
 }
 
 }  // namespace ir

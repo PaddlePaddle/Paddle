@@ -13,14 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
-#include <algorithm>
-#include <functional>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -376,11 +383,11 @@ REGISTER_PASS(depthwise_conv_eltwiseadd_bn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("batch_norm", 0));
 REGISTER_PASS_CAPABILITY(conv_eltwiseadd_bn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("elementwise_add", 0)
             .EQ("batch_norm", 0));

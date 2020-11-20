@@ -24,7 +24,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(LocalSGDOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
             "GraphExecutionOptimizer",
             "AdaptiveLocalSGDOptimizer",
@@ -38,7 +38,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if not self.user_defined_strategy.localsgd:
             return False
 
-        if self.role_maker.worker_num() <= 1:
+        if self.role_maker._worker_num() <= 1:
             return False
 
         return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
@@ -168,7 +168,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         inputs={'X': [param]},
                         outputs={'Out': [param]},
                         attrs={
-                            'scale': 1.0 / self.role_maker.worker_num(),
+                            'scale': 1.0 / self.role_maker._worker_num(),
                             OP_ROLE_KEY: OpRole.Optimize
                         })
                     sub_block.append_op(
@@ -195,7 +195,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(AdaptiveLocalSGDOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
             "GraphExecutionOptimizer", "LocalSGDOptimizer"
         ]
@@ -208,7 +208,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         if not self.user_defined_strategy.adaptive_localsgd:
             return False
 
-        if self.role_maker.worker_num() <= 1:
+        if self.role_maker._worker_num() <= 1:
             return False
 
         return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
@@ -275,7 +275,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             inputs={'X': [avg_loss]},
             outputs={'Out': [avg_loss]},
             attrs={
-                'scale': 1.0 / self.role_maker.worker_num(),
+                'scale': 1.0 / self.role_maker._worker_num(),
                 OP_ROLE_KEY: OpRole.Optimize
             })
 
@@ -398,7 +398,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         inputs={'X': [param]},
                         outputs={'Out': [param]},
                         attrs={
-                            'scale': 1.0 / self.role_maker.worker_num(),
+                            'scale': 1.0 / self.role_maker._worker_num(),
                             OP_ROLE_KEY: OpRole.Optimize
                         })
                     sub_block.append_op(

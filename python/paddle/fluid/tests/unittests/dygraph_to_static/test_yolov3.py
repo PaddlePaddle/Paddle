@@ -17,12 +17,14 @@ import random
 import time
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
 
 from yolov3 import cfg, YOLOv3
 
+paddle.enable_static()
 random.seed(0)
 np.random.seed(0)
 
@@ -161,7 +163,8 @@ class TestYolov3(unittest.TestCase):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
         self.assertTrue(
-            np.allclose(dygraph_loss, static_loss),
+            np.allclose(
+                dygraph_loss, static_loss, atol=1e-5, rtol=1e-3),
             msg="dygraph_loss: {} \nstatic_loss: {}".format(dygraph_loss,
                                                             static_loss))
 

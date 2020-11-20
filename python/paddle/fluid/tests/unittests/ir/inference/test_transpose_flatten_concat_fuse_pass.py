@@ -75,7 +75,9 @@ class TransposeFlattenConcatFusePassWithAxisTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
 
-        PassVersionChecker.IsCompatible('transpose_flatten_concat_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible(
+                'transpose_flatten_concat_fuse_pass'))
 
 
 if __name__ == "__main__":

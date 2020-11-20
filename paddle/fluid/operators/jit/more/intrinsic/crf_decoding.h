@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 namespace paddle {

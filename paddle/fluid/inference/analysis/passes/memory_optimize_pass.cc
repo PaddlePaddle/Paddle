@@ -13,23 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+
 #include <algorithm>
-#include <fstream>
 #include <functional>
 #include <limits>
-#include <map>
 #include <set>
 #include <string>
-#include <type_traits>
 #include <utility>
-#include <vector>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-#include "paddle/fluid/framework/ir/graph_traits.h"
-#include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace inference {

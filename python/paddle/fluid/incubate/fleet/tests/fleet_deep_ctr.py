@@ -164,8 +164,8 @@ def train(args):
     elif fleet.is_worker():
         logger.info("run trainer")
 
-        fleet.init_worker()
         exe.run(fleet.startup_program)
+        fleet.init_worker()
 
         thread_num = 2
         filelist = []

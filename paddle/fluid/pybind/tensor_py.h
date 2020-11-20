@@ -41,6 +41,7 @@ namespace detail {
 // import numpy as np
 // print np.dtype(np.float16).num  # 23
 constexpr int NPY_FLOAT16_ = 23;
+constexpr int NPY_UINT16_ = 4;
 
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
@@ -57,7 +58,24 @@ struct npy_format_descriptor<paddle::platform::float16> {
     // https://docs.python.org/3/library/struct.html#format-characters.
     return "e";
   }
-  static PYBIND11_DESCR name() { return _("float16"); }
+  static constexpr auto name = _("float16");
+};
+
+// Note: Since bfloat16 is not a builtin type in C++ and in numpy,
+// we register paddle::platform::bfloat16 as numpy.uint16.
+template <>
+struct npy_format_descriptor<paddle::platform::bfloat16> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_UINT16_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+  static std::string format() {
+    // Note: "H" represents UINT16.
+    // Details at:
+    // https://docs.python.org/3/library/struct.html#format-characters.
+    return "H";
+  }
+  static constexpr auto name = _("bfloat16");
 };
 
 }  // namespace detail

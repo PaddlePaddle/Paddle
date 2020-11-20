@@ -175,7 +175,16 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices(false);
-    scope_.reset(new paddle::framework::Scope());
+    scope_.reset(new paddle::framework::Scope(), [](framework::Scope *scope) {
+      delete scope;
+#ifdef PADDLE_WITH_CUDA
+      for (int dev_id = 0; dev_id < paddle::platform::GetCUDADeviceCount();
+           ++dev_id) {
+        memory::Release(platform::CUDAPlace(dev_id));
+      }
+#endif
+      memory::Release(platform::CPUPlace());
+    });
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -192,11 +201,6 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
-    if (!CheckOperatorCompatible()) {
-      LOG(WARNING) << "WARNING: Results may be DIFF! "
-                      "Please use the corresponding version of the model and "
-                      "prediction library, and do not use the develop branch.";
-    }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -245,7 +249,18 @@ bool AnalysisPredictor::PrepareExecutor() {
 
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
-  VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
+  std::vector<std::vector<int>> inputs_shape;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    inputs_shape.emplace_back(inputs[i].shape);
+  }
+  MkldnnPreSet(inputs_shape);
+#endif
+}
+
+void AnalysisPredictor::MkldnnPreSet(
+    const std::vector<std::vector<int>> &inputs_shape) {
+#ifdef PADDLE_WITH_MKLDNN
+  VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
           << platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
@@ -257,9 +272,9 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
         config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      for (size_t j = 0; j < inputs[i].shape.size(); ++j) {
-        ss << inputs[i].shape[j] << "-";
+    for (size_t i = 0; i < inputs_shape.size(); ++i) {
+      for (size_t j = 0; j < inputs_shape[i].size(); ++j) {
+        ss << inputs_shape[i][j] << "-";
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
@@ -464,6 +479,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
@@ -494,6 +510,10 @@ void AnalysisPredictor::PrepareArgument() {
         config_.mkldnn_quantizer_config()->enabled_op_types());
     argument_.SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
+  }
+  if (config_.use_mkldnn_bfloat16_) {
+    LOG(INFO) << "Bfloat16 is enabled";
+    argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 #endif
 
@@ -580,7 +600,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         gflags.push_back("--allocator_strategy=thread_local");
         process_level_allocator_enabled = false;
       } else {
-        gflags.push_back("--allocator_strategy=naive_best_fit");
         process_level_allocator_enabled = true;
       }
 
@@ -742,6 +761,18 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) {
+    std::vector<std::vector<int>> shape_vector;
+    auto names = GetInputNames();
+    for (size_t i = 0; i < names.size(); ++i) {
+      auto in_tensor = GetInputTensor(names[i]);
+      shape_vector.emplace_back(in_tensor->shape());
+    }
+    MkldnnPreSet(shape_vector);
+  }
+#endif
+
   executor_->Run();
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -750,6 +781,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
@@ -864,6 +898,11 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+uint64_t AnalysisPredictor::TryShrinkMemory() {
+  ClearIntermediateTensor();
+  return paddle::memory::Release(place_);
+}
+
 void AnalysisPredictor::ClearIntermediateTensor() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           platform::errors::PreconditionNotMet(
@@ -959,6 +998,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
+
+  memory::Release(place_);
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -970,40 +1011,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
-}
-
-bool AnalysisPredictor::CheckOperatorCompatible() {
-  if (!inference_program_) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Inference program version check failed because the program does not "
-        "exist."));
-    return false;
-  }
-  bool res = true;
-  op_compatible_map_.ReadFromProto(*inference_program_->OpCompatibleMap());
-  const auto &version = framework::DumpVersion(framework::kCurProgramVersion);
-  LOG(INFO) << "MODEL VERSION: "
-            << framework::DumpVersion(inference_program_->Version());
-  LOG(INFO) << "PREDICTOR VERSION: " << version;
-  std::set<std::string> op_types;
-  for (size_t i = 0; i < inference_program_->Size(); ++i) {
-    const auto &block = inference_program_->Block(i);
-    for (const auto *op : block.AllOps()) {
-      op_types.insert(op->Type());
-    }
-  }
-  for (const auto type : op_types) {
-    auto compatible_type =
-        op_compatible_map_.IsRequireMiniVersion(type, version);
-    if (compatible_type != framework::OpCompatibleType::compatible) {
-      if (!framework::kCurProgramVersion) {
-        LOG(WARNING) << " - Version incompatible ("
-                     << static_cast<int>(compatible_type) << ") " << type;
-      }
-      res = false;
-    }
-  }
-  return res;
 }
 
 // Add SaveOptimModel
@@ -1048,6 +1055,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config) {
+  LOG(WARNING) << "Deprecated. Please use CreatePredictor instead.";
   return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       config);
 }
@@ -1063,7 +1071,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
-USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(sigmoid);
@@ -1148,6 +1156,8 @@ std::unique_ptr<Predictor> Predictor::Clone() {
 void Predictor::ClearIntermediateTensor() {
   predictor_->ClearIntermediateTensor();
 }
+
+uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
   switch (dtype) {

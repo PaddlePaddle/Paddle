@@ -69,8 +69,10 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     ]
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and op.type == 'batch_norm':
-            if in_name != 'X':
+        if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
+                'batch_norm', 'fused_bn_add_activation'
+        ]:
+            if in_name not in {'X', 'Z'}:
                 continue
         for in_var_name in op.input(in_name):
             in_var = block.var(in_var_name)
@@ -102,7 +104,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     op._set_attr('in_dtype', dest_dtype)
     if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
         for out_name in op.output_names:
-            if op.type == 'batch_norm' and out_name != 'Y':
+            if op.type in ['batch_norm', 'fused_bn_add_activation'
+                           ] and out_name != 'Y':
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
@@ -212,6 +215,14 @@ def rewrite_program(main_prog, amp_lists):
     white_op_set = set()
     black_op_set = set()
     for op in ops:
+
+        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder, 
+        # we don't need to handle reader op and the input of 'create_py_reader' is not 
+        # in block, which may result in errors.
+        # See GeneratorLoader._init_non_iterable() for details.
+        if op.type == 'create_py_reader' or op.type == 'read':
+            continue
+
         if amp_lists.black_varnames is not None and _is_in_black_varnames(
                 op, amp_lists):
             black_op_set.add(op)

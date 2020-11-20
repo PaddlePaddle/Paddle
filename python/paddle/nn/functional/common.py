@@ -20,14 +20,12 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-from ...fluid.layers import label_smooth  #DEFINE_ALIAS
-from ...fluid import one_hot  #DEFINE_ALIAS
-from ...fluid.layers import pad2d  #DEFINE_ALIAS
+# from ...fluid import one_hot  #DEFINE_ALIAS
+# from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 from ...fluid.layers import squeeze  #DEFINE_ALIAS
 from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
-from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
@@ -37,7 +35,7 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
-from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+# from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
@@ -52,10 +50,7 @@ __all__ = [
     #       'fc',
     'label_smooth',
     'linear',
-    'one_hot',
     'pad',
-    'pad_constant_like',
-    'pad2d',
     'unfold',
     #       'bilinear_tensor_product',
     'assign',
@@ -371,10 +366,18 @@ def interpolate(x,
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable):
+
+        if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
+
         else:
+            if in_dygraph_mode():
+                if isinstance(out_shape, Variable):
+                    out_shape = list(out_shape.numpy())
+                for i, dim in enumerate(out_shape):
+                    if isinstance(dim, Variable):
+                        out_shape[i] = dim.numpy()[0]
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -440,6 +443,8 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[2]
 
     else:
+        if in_dygraph_mode() and isinstance(scale, Variable):
+            scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
@@ -1163,6 +1168,9 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
     """
     Pad tensor according to 'pad' and 'mode'.
+    If mode is 'constant' and length of pad is twice as length of x dimension,
+    then the padding will be started from the first dimension and moved back onto x
+    according to 'pad' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
@@ -1231,26 +1239,23 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Code Examples:
         .. code-block:: python
+
             import numpy as np
             import paddle
             import paddle.nn.functional as F
             
-            paddle.disable_static()
-            
             # example 1
             x_shape = (1, 1, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = F.pad(tensor_x, pad=[2, 3], value=1, mode='constant')
-            print(y.numpy())
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
             x_shape = (1, 1, 2, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = F.pad(tensor_x, pad=[1, 2, 1, 1], value=1, mode='circular')
-            print(y.numpy())
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
+            print(y)
             # [[[[6. 4. 5. 6. 4. 5.]
             #    [3. 1. 2. 3. 1. 2.]
             #    [6. 4. 5. 6. 4. 5.]
@@ -1280,6 +1285,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         x_dim, supported_format_map[x_dim], data_format)
 
     unsqueezed_dim = []
+
+    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+        return layers.pad(x, pad, pad_value=value)
 
     if isinstance(pad, Variable):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
@@ -1366,6 +1374,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Examples:
         .. code-block:: text
+
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
                      [0.48949873 0.5797396  0.65444374 0.66510963]
@@ -1381,10 +1390,10 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
     Code Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -1392,13 +1401,13 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
             result = paddle.nn.functional.cosine_similarity(x1, x2, axis=0)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
             
     """
-    w12 = sum(elementwise_mul(x1, x2), axis=axis)
-    w1 = sum(elementwise_mul(x1, x1), axis=axis)
-    w2 = sum(elementwise_mul(x2, x2), axis=axis)
+    w12 = sum(paddle.multiply(x1, x2), axis=axis)
+    w1 = sum(paddle.multiply(x1, x1), axis=axis)
+    w2 = sum(paddle.multiply(x2, x2), axis=axis)
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim
@@ -1407,46 +1416,53 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 def linear(x, weight, bias=None, name=None):
     """
 
-    Fully-connected linear transformation op
+    Fully-connected linear transformation operator. For each input :math:`X` ,
+    the equation is:
 
     .. math::
 
-        Out = {XW + b}
+        Out = XW + b
 
-    where :math:`X` is the input Tensor, :math:`W` and :math:`b` are weight and bias respectively.
+    where :math:`W` is the weight and :math:`b` is the bias.
 
-    The linear op multiplies input tensor with weight matrix and
-    produces an output Tensor of shape [N, *, output_dim], 
-    where N is batch size and `*` means any number of additional dimensions and output_dim is the last dim of ``weight``.
-    If ``bias`` is not None, a bias will be added to the output.
+    If the weight is a 2-D tensor of shape :math:`[in\_features, out\_features]` ,
+    input should be a multi-dimensional tensor of shape
+    :math:`[batch\_size, *, in\_features]` , where :math:`*` means any number of
+    additional dimensions. The linear operator multiplies input tensor with
+    weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` , 
+    If :math:`bias` is not None, the bias should be a 1-D tensor of shape
+    :math:`[out\_features]` and will be added to the output.
 
-    Args:
-        x(Tensor): Input tensor, its data type is float16, float32 or float64
-        weight(Tensor): Weight tensor, its data type is float16, float32 or float64
-        bias(Tensor|None, optional): Bias tensor, its data type is float16, float32 or float64. If it is set to None, no bias will be added to the output units.
-        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
+    Parameters:
+        x (Tensor): Input tensor. The data type should be float16, float32 or float64.
+        weight (Tensor): Weight tensor. The data type should be float16, float32 or float64.
+        bias (Tensor, optional): Bias tensor. The data type should be float16, float32 or float64.
+                                 If it is set to None, no bias will be added to the output units.
+        name (str, optional): Normally there is no need for user to set this parameter.
+                              For detailed information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Output tensor
+        Tensor, the shape is :math:`[batch\_size, *, out\_features]` and the
+        data type is the same with input :math:`x` .
 
     Examples:
         .. code-block:: python
           
-          import numpy as np
           import paddle
-          import paddle.nn.functional as F
           
-          input = np.ones((3,1,2), dtype=np.float32)
-          weight = np.ones((2,2), dtype=np.float32)
-          bias = np.ones((2), dtype=np.float32)
-          place = paddle.CPUPlace()
-          paddle.disable_static(place)
-          input = paddle.to_tensor(input)
-          weight = paddle.to_tensor(weight)
-          bias = paddle.to_tensor(bias)
-          out = F.linear(input, weight, bias)
-          print(out) #[3 3 3 3 3 3]
-    
+          x = paddle.randn((3, 2), dtype="float32")
+          # x: [[-0.32342386 -1.200079  ]
+          #     [ 0.7979031  -0.90978354]
+          #     [ 0.40597573  1.8095392 ]]
+          weight = paddle.full(shape=[2, 4], fill_value="0.5", dtype="float32", name="weight")
+          # weight: [[0.5 0.5 0.5 0.5]
+          #          [0.5 0.5 0.5 0.5]]
+          bias = paddle.ones(shape=[4], dtype="float32", name="bias")
+          # bias: [1. 1. 1. 1.]
+          y = paddle.nn.functional.linear(x, weight, bias)
+          # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
+          #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
+          #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
@@ -1482,3 +1498,83 @@ def linear(x, weight, bias=None, name=None):
         else:
             res = tmp
         return res
+
+
+def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
+    """
+    Label smoothing is a mechanism to regularize the classifier layer and is called
+    label-smoothing regularization (LSR).
+
+    Label smoothing is proposed to encourage the model to be less confident,
+    since optimizing the log-likelihood of the correct label directly may
+    cause overfitting and reduce the ability of the model to adapt. Label
+    smoothing replaces the ground-truth label :math:`y` with the weighted sum
+    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
+    i.e.
+
+    .. math::
+
+        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
+
+    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
+    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
+    uniform distribution is used for :math:`\mu`.
+
+    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
+
+    Parameters:
+        label(Tensor): The input variable containing the label data. The
+                        label data should use one-hot representation. It's
+                        a multidimensional tensor with a shape of
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+        prior_dist(Tensor, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is
+                        0.1.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor containing the smoothed labels.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x_data = np.array([[[0, 1, 0],
+                                [ 1,  0, 1]]]).astype("float32")
+            print(x_data.shape)
+            paddle.disable_static()
+            x = paddle.to_tensor(x_data, stop_gradient=False)
+            output = paddle.nn.functional.label_smooth(x)
+            print(output.numpy())
+            
+            #[[[0.03333334 0.93333334 0.03333334]
+            #  [0.93333334 0.03333334 0.93333334]]]
+    """
+    if epsilon > 1. or epsilon < 0.:
+        raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        return core.ops.label_smooth(label, prior_dist, 'epsilon',
+                                     float(epsilon))
+
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'label_smooth')
+
+    helper = LayerHelper("label_smooth", **locals())
+    label.stop_gradient = True
+    smooth_label = helper.create_variable_for_type_inference(label.dtype)
+    helper.append_op(
+        type="label_smooth",
+        inputs={"X": label,
+                "PriorDist": prior_dist} if prior_dist else {"X": label},
+        outputs={"Out": smooth_label},
+        attrs={"epsilon": float(epsilon)})
+    return smooth_label

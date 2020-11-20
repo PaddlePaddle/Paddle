@@ -33,11 +33,16 @@ class LayerListMixin(LayerMixin):
 
 
 class SimpleRNNCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True, nonlinearity="tanh"):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 bias=True,
+                 nonlinearity="RNN_TANH",
+                 dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        if nonlinearity == 'tanh':
+        if nonlinearity == 'RNN_TANH':
             self.nonlinearity = np.tanh
         else:
             self.nonlinearity = lambda x: np.maximum(x, 0.)
@@ -45,24 +50,24 @@ class SimpleRNNCell(LayerMixin):
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(-std, std, (
-            hidden_size, input_size)).astype('float64')
+            hidden_size, input_size)).astype(dtype)
         self.weight_hh = np.random.uniform(-std, std, (
-            hidden_size, hidden_size)).astype('float64')
+            hidden_size, hidden_size)).astype(dtype)
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
             self.bias_ih = np.random.uniform(-std, std,
-                                             (hidden_size, )).astype('float64')
+                                             (hidden_size, )).astype(dtype)
             self.bias_hh = np.random.uniform(-std, std,
-                                             (hidden_size, )).astype('float64')
+                                             (hidden_size, )).astype(dtype)
             self.parameters['bias_ih'] = self.bias_ih
             self.parameters['bias_hh'] = self.bias_hh
         else:
             self.bias_ih = None
             self.bias_hh = None
 
-    def init_state(self, inputs):
-        batch_size = inputs.shape[0]
+    def init_state(self, inputs, batch_dim_index=0):
+        batch_size = inputs.shape[batch_dim_index]
         return np.zeros((batch_size, self.hidden_size), dtype=inputs.dtype)
 
     def forward(self, inputs, hx=None):
@@ -80,31 +85,31 @@ class SimpleRNNCell(LayerMixin):
 
 
 class GRUCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True):
+    def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(-std, std, (
-            3 * hidden_size, input_size)).astype('float64')
+            3 * hidden_size, input_size)).astype(dtype)
         self.weight_hh = np.random.uniform(-std, std, (
-            3 * hidden_size, hidden_size)).astype('float64')
+            3 * hidden_size, hidden_size)).astype(dtype)
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
-            self.bias_ih = np.random.uniform(-std, std, (
-                3 * hidden_size)).astype('float64')
-            self.bias_hh = np.random.uniform(-std, std, (
-                3 * hidden_size)).astype('float64')
+            self.bias_ih = np.random.uniform(-std, std,
+                                             (3 * hidden_size)).astype(dtype)
+            self.bias_hh = np.random.uniform(-std, std,
+                                             (3 * hidden_size)).astype(dtype)
             self.parameters['bias_ih'] = self.bias_ih
             self.parameters['bias_hh'] = self.bias_hh
         else:
             self.bias_ih = None
             self.bias_hh = None
 
-    def init_state(self, inputs):
-        batch_size = inputs.shape[0]
+    def init_state(self, inputs, batch_dim_index=0):
+        batch_size = inputs.shape[batch_dim_index]
         return np.zeros((batch_size, self.hidden_size), dtype=inputs.dtype)
 
     def forward(self, inputs, hx=None):
@@ -117,7 +122,6 @@ class GRUCell(LayerMixin):
         h_gates = np.matmul(pre_hidden, self.weight_hh.T)
         if self.bias_hh is not None:
             h_gates = h_gates + self.bias_hh
-
         x_r, x_z, x_c = np.split(x_gates, 3, 1)
         h_r, h_z, h_c = np.split(h_gates, 3, 1)
 
@@ -129,31 +133,31 @@ class GRUCell(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True):
+    def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(-std, std, (
-            4 * hidden_size, input_size)).astype('float64')
+            4 * hidden_size, input_size)).astype(dtype)
         self.weight_hh = np.random.uniform(-std, std, (
-            4 * hidden_size, hidden_size)).astype('float64')
+            4 * hidden_size, hidden_size)).astype(dtype)
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
-            self.bias_ih = np.random.uniform(-std, std, (
-                4 * hidden_size)).astype('float64')
-            self.bias_hh = np.random.uniform(-std, std, (
-                4 * hidden_size)).astype('float64')
+            self.bias_ih = np.random.uniform(-std, std,
+                                             (4 * hidden_size)).astype(dtype)
+            self.bias_hh = np.random.uniform(-std, std,
+                                             (4 * hidden_size)).astype(dtype)
             self.parameters['bias_ih'] = self.bias_ih
             self.parameters['bias_hh'] = self.bias_hh
         else:
             self.bias_ih = None
             self.bias_hh = None
 
-    def init_state(self, inputs):
-        batch_size = inputs.shape[0]
+    def init_state(self, inputs, batch_dim_index=0):
+        batch_size = inputs.shape[batch_dim_index]
         init_h = np.zeros((batch_size, self.hidden_size), dtype=inputs.dtype)
         init_c = np.zeros((batch_size, self.hidden_size), dtype=inputs.dtype)
         return init_h, init_c
@@ -205,6 +209,9 @@ def rnn(cell,
         inputs = np.transpose(inputs, [1, 0, 2])
     if is_reverse:
         inputs = np.flip(inputs, 0)
+
+    if initial_states is None:
+        initial_states = cell.init_state(inputs, 1)
 
     if sequence_length is None:
         mask = None
@@ -401,28 +408,36 @@ class SimpleRNN(RNNMixin):
                  input_size,
                  hidden_size,
                  num_layers=1,
-                 nonlinearity="tanh",
+                 nonlinearity="RNN_TANH",
                  direction="forward",
                  dropout=0.,
-                 time_major=False):
+                 time_major=False,
+                 dtype="float64"):
         super(SimpleRNN, self).__init__()
 
         if direction in ["forward", "backward"]:
             is_reverse = direction == "backward"
-            cell = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            cell = SimpleRNNCell(
+                input_size, hidden_size, nonlinearity=nonlinearity, dtype=dtype)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
-                cell = SimpleRNNCell(hidden_size, hidden_size, nonlinearity)
+                cell = SimpleRNNCell(
+                    hidden_size,
+                    hidden_size,
+                    nonlinearity=nonlinearity,
+                    dtype=dtype)
                 self.append(RNN(cell, is_reverse, time_major))
         elif direction == "bidirectional":
-            cell_fw = SimpleRNNCell(input_size, hidden_size, nonlinearity)
-            cell_bw = SimpleRNNCell(input_size, hidden_size, nonlinearity)
+            cell_fw = SimpleRNNCell(
+                input_size, hidden_size, nonlinearity=nonlinearity, dtype=dtype)
+            cell_bw = SimpleRNNCell(
+                input_size, hidden_size, nonlinearity=nonlinearity, dtype=dtype)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
-                cell_fw = SimpleRNNCell(2 * hidden_size, hidden_size,
-                                        nonlinearity)
-                cell_bw = SimpleRNNCell(2 * hidden_size, hidden_size,
-                                        nonlinearity)
+                cell_fw = SimpleRNNCell(
+                    2 * hidden_size, hidden_size, nonlinearity, dtype=dtype)
+                cell_bw = SimpleRNNCell(
+                    2 * hidden_size, hidden_size, nonlinearity, dtype=dtype)
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
@@ -445,23 +460,24 @@ class LSTM(RNNMixin):
                  num_layers=1,
                  direction="forward",
                  dropout=0.,
-                 time_major=False):
+                 time_major=False,
+                 dtype="float64"):
         super(LSTM, self).__init__()
 
         if direction in ["forward", "backward"]:
             is_reverse = direction == "backward"
-            cell = LSTMCell(input_size, hidden_size)
+            cell = LSTMCell(input_size, hidden_size, dtype=dtype)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
-                cell = LSTMCell(hidden_size, hidden_size)
+                cell = LSTMCell(hidden_size, hidden_size, dtype=dtype)
                 self.append(RNN(cell, is_reverse, time_major))
         elif direction == "bidirectional":
-            cell_fw = LSTMCell(input_size, hidden_size)
-            cell_bw = LSTMCell(input_size, hidden_size)
+            cell_fw = LSTMCell(input_size, hidden_size, dtype=dtype)
+            cell_bw = LSTMCell(input_size, hidden_size, dtype=dtype)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
-                cell_fw = LSTMCell(2 * hidden_size, hidden_size)
-                cell_bw = LSTMCell(2 * hidden_size, hidden_size)
+                cell_fw = LSTMCell(2 * hidden_size, hidden_size, dtype=dtype)
+                cell_bw = LSTMCell(2 * hidden_size, hidden_size, dtype=dtype)
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
@@ -484,23 +500,24 @@ class GRU(RNNMixin):
                  num_layers=1,
                  direction="forward",
                  dropout=0.,
-                 time_major=False):
+                 time_major=False,
+                 dtype="float64"):
         super(GRU, self).__init__()
 
         if direction in ["forward", "backward"]:
             is_reverse = direction == "backward"
-            cell = GRUCell(input_size, hidden_size)
+            cell = GRUCell(input_size, hidden_size, dtype=dtype)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
-                cell = GRUCell(hidden_size, hidden_size)
+                cell = GRUCell(hidden_size, hidden_size, dtype=dtype)
                 self.append(RNN(cell, is_reverse, time_major))
         elif direction == "bidirectional":
-            cell_fw = GRUCell(input_size, hidden_size)
-            cell_bw = GRUCell(input_size, hidden_size)
+            cell_fw = GRUCell(input_size, hidden_size, dtype=dtype)
+            cell_bw = GRUCell(input_size, hidden_size, dtype=dtype)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
-                cell_fw = GRUCell(2 * hidden_size, hidden_size)
-                cell_bw = GRUCell(2 * hidden_size, hidden_size)
+                cell_fw = GRUCell(2 * hidden_size, hidden_size, dtype=dtype)
+                cell_bw = GRUCell(2 * hidden_size, hidden_size, dtype=dtype)
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(

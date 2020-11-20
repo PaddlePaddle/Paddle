@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <condition_variable>  // NOLINT
-#include <string>
-#include "gflags/gflags.h"
-
 #include "paddle/fluid/operators/distributed/collective_client.h"
+#include <memory>
+#include "gflags/gflags.h"
 
 DECLARE_int32(rpc_deadline);
 

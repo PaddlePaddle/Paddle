@@ -82,6 +82,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     }
 
     const bool soft_label = context.Attr<bool>("soft_label");
+    auto ignore_index = context.Attr<int>("ignore_index");
 
     const int rank = logit_grad->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
@@ -115,8 +116,14 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
       for (int i = 0; i < n; ++i) {
         for (int j = 0; j < remain; j++) {
           int idx = i * remain + j;
-          logit_grad_data[i * d + label_data[idx] * remain + j] -=
-              out_grad_data[idx];
+          if (label_data[idx] == ignore_index) {
+            for (int k = 0; k < axis_dim; ++k) {
+              logit_grad_data[i * d + k * remain + j] = 0;
+            }
+          } else {
+            logit_grad_data[i * d + label_data[idx] * remain + j] -=
+                out_grad_data[idx];
+          }
         }
       }
     }

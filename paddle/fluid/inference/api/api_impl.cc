@@ -373,6 +373,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
     const NativeConfig &config) {
+  LOG(WARNING) << "Deprecated. Please use CreatePredictor instead.";
   return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 }
 

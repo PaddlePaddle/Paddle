@@ -25,6 +25,7 @@ from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import QuantInt8MkldnnPass
 from paddle.fluid import core
 
+paddle.enable_static()
 os.environ["CPU_NUM"] = "1"
 
 

@@ -21,6 +21,13 @@
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+class OperatorBase;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 // OpVariant is a wrapper class of OpDesc and OperatorBase pointer

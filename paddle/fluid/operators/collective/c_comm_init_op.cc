@@ -14,19 +14,17 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
-#include <stdint.h>
-#include <ostream>
 #include <string>
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -41,11 +39,13 @@ class CCommInitOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "CCommInitOp can run on gpu place only.");
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "CCommInitOp can run on gpu place only."));
 
     auto var = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::InvalidArgument("Input con not be empty."));
 #if defined(PADDLE_WITH_NCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
@@ -59,7 +59,8 @@ class CCommInitOp : public framework::OperatorBase {
     platform::NCCLCommContext::Instance().CreateNCCLComm(
         nccl_id, nranks, rank_id, device_id, rid);
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

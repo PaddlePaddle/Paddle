@@ -126,11 +126,11 @@ class PipelineOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads, prog_list = \
             self.wrapped_opt.minimize(loss, startup_program,
                                       parameter_list, no_grad_set)
-        if self.role_maker.worker_num() == 1:
+        if self.role_maker._worker_num() == 1:
             return optimize_ops, params_grads
 
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker._worker_index()]
         self.startup_program = startup_program
         if startup_program is None:
             self.startup_program = fluid.default_startup_program()
@@ -142,7 +142,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.nranks = nranks
         self.nrings = len(self.main_program_list)
 
-        self.rank = self.role_maker.worker_index()
+        self.rank = self.role_maker._worker_index()
         self.endpoints = endpoints
         self.current_endpoint = current_endpoint
 
