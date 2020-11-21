@@ -101,6 +101,8 @@ class Reducer {
     return s_instance_;
   }
 
+  void ReleaseReducer();
+
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
@@ -113,6 +115,7 @@ class Reducer {
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
+  std::shared_ptr<platform::CudaEventObject> copy_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
 };

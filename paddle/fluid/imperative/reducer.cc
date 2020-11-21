@@ -67,6 +67,19 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     event = platform::CudaEventResourcePool::Instance().New(
         BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
+  // just for copy back
+  copy_enent_ = platform::CudaEventResourcePool::Instance().New(
+      BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+  std::call_once(once_flag_, []() {
+    std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
+  });
+}
+
+void Reducer::ReleaseReducer() {
+  for (auto &event : events_) {
+    event.reset();
+  }
+  copy_enent_.reset();
 }
 
 void Reducer::InitializeGroups(
@@ -141,7 +154,6 @@ void Reducer::InitializeGroups(
           place_ = place;
         }
       }
-
       // Alloc the continuous space
       auto tensor = group.dense_contents.GetMutable<framework::LoDTensor>();
       tensor->Resize(framework::make_ddim({all_length}))
@@ -170,11 +182,28 @@ void Reducer::SetGradSpace(Group *p_group) {
         contents.IsInitialized(), true,
         platform::errors::PreconditionNotMet("Group must be initialized."));
     auto dim = grad_tensor->dims();
-    grad_tensor
-        ->ShareDataWith(contents.GetMutable<framework::LoDTensor>()->Slice(
-            static_cast<int64_t>(offset[index]),
-            static_cast<int64_t>(offset[index] + length[index])))
-        .Resize(dim);
+
+    // grad_tensor
+    //     ->ShareDataWith(contents.GetMutable<framework::LoDTensor>()->Slice(
+    //         static_cast<int64_t>(offset[index]),
+    //         static_cast<int64_t>(offset[index] + length[index])))
+    //     .Resize(dim);
+
+    auto sub_tensor =
+        contents.GetMutable<framework::LoDTensor>()
+            ->Slice(static_cast<int64_t>(offset[index]),
+                    static_cast<int64_t>(offset[index] + length[index]))
+            .Resize(dim);
+
+    auto src_ptr = sub_tensor.data<void>();
+    auto dst_ptr = grad_tensor->data<void>();
+    auto var_dtype = sub_tensor.type();
+
+    // framework::TensorCopy(sub_tensor, place_, grad_tensor);
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), dst_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, place_), src_ptr,
+                 framework::SizeOfType(var_dtype) * length[index],
+                 comm_stream_);
   }
 }
 
@@ -227,12 +256,13 @@ void Reducer::MarkVariableReady(const VariableIndex &var_index,
                                static_cast<int64_t>(offset + length))
                        .mutable_data(place_, group.dtype);
   // use cal_stream
-  auto *cal_stream = static_cast<platform::CUDADeviceContext *>(
-                         platform::DeviceContextPool::Instance().Get(place_))
-                         ->stream();
+  // auto *cal_stream = static_cast<platform::CUDADeviceContext *>(
+  //                        platform::DeviceContextPool::Instance().Get(place_))
+  //                        ->stream();
   memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), dst_data,
                BOOST_GET_CONST(platform::CUDAPlace, var_warpper->Place()),
-               src_data, framework::SizeOfType(var_dtype) * length, cal_stream);
+               src_data, framework::SizeOfType(var_dtype) * length,
+               compute_stream_);
 }
 
 void Reducer::MarkGroupReady(size_t group_index) {
@@ -253,10 +283,11 @@ void Reducer::MarkGroupReady(size_t group_index) {
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
       // for (int i = 0;i<50;i++)
-      parallel_ctx_->AllReduceByStream(
-          groups_[next_group_].dense_contents,
-          &(groups_[next_group_].dense_contents), 0,
-          next_group_ == groups_.size() - 1 ? true : false);
+      parallel_ctx_->AllReduceByStream(groups_[next_group_].dense_contents,
+                                       &(groups_[next_group_].dense_contents),
+                                       0, false);
+      // copy back use comm stream
+      SetGradSpace(&groups_[next_group_]);
     }
   }
 }
@@ -264,10 +295,14 @@ void Reducer::MarkGroupReady(size_t group_index) {
 void Reducer::FinalizeBackward() {
   // parallel_ctx_->SyncCommStream(0);
   // parallel_ctx_->SyncCalcStream();
-  VLOG(3) << "set gradient space according dense group";
-  for (auto &group : groups_) {
-    if (!group.is_sparse_) SetGradSpace(&group);
-  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(copy_enent_.get(), comm_stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamWaitEvent(compute_stream_, copy_enent_.get(), 0));
+
+  // VLOG(3) << "set gradient space according dense group";
+  // for (auto &group : groups_) {
+  //   if (!group.is_sparse_) SetGradSpace(&group);
+  // }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 
