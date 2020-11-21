@@ -374,25 +374,12 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
   auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVar(var);
 
-  // no copy, only move
-  if (ref_cnt_ == 1) {
-    MoveOrCopyVar(dst_var, var->MutableVar(), false);
-    auto reducer_ptr_ = Reducer::GetInstance();
-    if (reducer_ptr_) reducer_ptr_->AddDistHook(var_);
-    return;
-  }
-
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
       MoveOrCopyVar(dst_var, var->MutableVar(), unchange_input);
     } else {
       VariableWrapperAdd(var, var_, unchange_input);
-    }
-    // add dist hook
-    if (cur_cnt_ == ref_cnt_) {
-      auto reducer_ptr_ = Reducer::GetInstance();
-      if (reducer_ptr_) reducer_ptr_->AddDistHook(var_);
     }
   } else {
     if (!var_->Var().IsInitialized() ||

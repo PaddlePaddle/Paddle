@@ -44,13 +44,28 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
          ++group_index) {
       for (size_t var_index = 0; var_index < group_indices[group_index].size();
            ++var_index) {
-        size_t index = group_indices[group_index][var_index];
-        const std::string &var_name = vars_[index]->GradVarName();
-        varname2index_[var_name] = VariableIndex{
+        size_t global_var_index = group_indices[group_index][var_index];
+        const auto variable_index = VariableIndex{
             .group_index = group_index, .variable_index = var_index,
         };
+        VLOG(0) << "add hook for var[" << vars_[global_var_index]->GradVarName()
+                << "]";
+        vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
+            std::unique_ptr<LambdaGradAccumulatorPostHook>(
+                new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
+                  this->AddDistHook(grad, variable_index);
+                })));
       }
     }
+  }
+  compute_stream_ = static_cast<platform::CUDADeviceContext *>(
+                        platform::DeviceContextPool::Instance().Get(place_))
+                        ->stream();
+  comm_stream_ = platform::NCCLCommContext::Instance().Get(0, place_)->stream();
+  events_.resize(group_indices.size());
+  for (auto &event : events_) {
+    event = platform::CudaEventResourcePool::Instance().New(
+        BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
 }
 
@@ -172,14 +187,10 @@ void Reducer::PrepareForBackward() {
   }
 }
 
-void Reducer::AddDistHook(VariableWrapper *var_warpper) {
-  const std::string &var_name = var_warpper->Name();
-  if (varname2index_.find(var_name) == varname2index_.end()) {
-    VLOG(3) << "This " << var_name << " is not trainable";
-    return;
-  }
+void Reducer::AddDistHook(VariableWrapper *var_warpper,
+                          const VariableIndex &var_index) {
+  VLOG(3) << "AddDistHook for var [" << var_warpper->Name() << "]";
 
-  VariableIndex var_index = varname2index_[var_name];
   auto group_index = var_index.group_index;
   auto &group = groups_[group_index];
 
@@ -226,7 +237,12 @@ void Reducer::MarkVariableReady(const VariableIndex &var_index,
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) return;
-  parallel_ctx_->SyncCalcStream();
+  // parallel_ctx_->SyncCalcStream();
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaEventRecord(events_[group_index].get(), compute_stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamWaitEvent(comm_stream_, events_[group_index].get(), 0));
+
   for (; next_group_ < groups_.size() && groups_[next_group_].pending == 0;
        ++next_group_) {
     if (groups_[next_group_].is_sparse_) {
@@ -236,15 +252,17 @@ void Reducer::MarkGroupReady(size_t group_index) {
                                        false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
-      parallel_ctx_->AllReduceByStream(groups_[next_group_].dense_contents,
-                                       &(groups_[next_group_].dense_contents),
-                                       0, false);
+      // for (int i = 0;i<50;i++)
+      parallel_ctx_->AllReduceByStream(
+          groups_[next_group_].dense_contents,
+          &(groups_[next_group_].dense_contents), 0,
+          next_group_ == groups_.size() - 1 ? true : false);
     }
   }
 }
 
 void Reducer::FinalizeBackward() {
-  parallel_ctx_->SyncCommStream(0);
+  // parallel_ctx_->SyncCommStream(0);
   // parallel_ctx_->SyncCalcStream();
   VLOG(3) << "set gradient space according dense group";
   for (auto &group : groups_) {
