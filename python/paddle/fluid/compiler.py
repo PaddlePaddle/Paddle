@@ -19,7 +19,6 @@ import sys
 from .. import compat as cpt
 from . import framework
 from .framework import cuda_places, cpu_places
-from .layers.utils import _convert_places
 from . import core
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
@@ -281,7 +280,7 @@ class CompiledProgram(object):
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        self._places = _convert_places(places)
+        self._places = paddle.fluid.layers.utils._convert_places(places)
 
         if _has_backward_op(self._graph):
             assert self._loss_name is not None, "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
