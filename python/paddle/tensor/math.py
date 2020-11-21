@@ -116,7 +116,6 @@ __all__ = [
         'inverse',
         'log1p',
         'erf',
-        'addcmul',
         'addmm',
         'clip',
         'trace',
@@ -1411,50 +1410,6 @@ def log10(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def addcmul(input, tensor1, tensor2, value=1.0, name=None):
-    """
-
-    Calculate the element-wise multiplication of tensor1 and tensor2,
-    then multiply the result by value, and add it to input. The shape of input,
-    tensor1, tensor2 should be broadcastable.
-    The equation is:
-    ..  math::
-
-        out = input + value * tensor1 * tensor2
-    Args:
-        input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
-        tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-    Returns:
-        out(Tensor): The output result. A Tensor with the same data type as input's.
-    Examples:
-        .. code-block:: python
-          
-          import paddle
-          input = paddle.ones([2,2])
-          tensor1 = paddle.ones([2,2])
-          tensor2 = paddle.ones([2,2])
-          out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
-          print(out.numpy())
-          # [[1.5 1.5]
-          # [1.5 1.5]]
-    """
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    if convert_dtype(input.dtype) in ['float32', 'float64']:
-        check_type(value, 'value', float, 'addcmul')
-    if convert_dtype(input.dtype) in ['int32', 'int64']:
-        check_type(value, 'value', int, 'addcmul')
-
-    out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
 
 
