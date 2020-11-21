@@ -5698,16 +5698,18 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         ${out_comment}.
 
     Examples:
-        >>>  # for LodTensor inputs
-        >>> import paddle.fluid as fluid
-        >>> import paddle
-        >>> paddle.enable_static()
-        >>> x = fluid.data(name='x', shape=[9, 16],
-        >>>                        dtype='float32', lod_level=1)
-        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
-        >>> # for Tensor inputs
-        >>> x = fluid.data(name='x', shape=[9, 4, 16], dtype='float32')
-        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
+
+      .. code-block:: python
+
+        # for LodTensor inputs
+        import paddle
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[9, 16],
+                               dtype='float32', lod_level=1)
+        out = paddle.static.nn.row_conv(input=x, future_context_size=2)
+        # for Tensor inputs
+        x = paddle.static.data(name='x', shape=[9, 4, 16], dtype='float32')
+        out = paddle.static.nn.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
@@ -6680,8 +6682,8 @@ def pad(x, paddings, pad_value=0., name=None):
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
 
-    helper = LayerHelper('pad', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('pad', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad',
@@ -6775,8 +6777,8 @@ def pad_constant_like(x, y, pad_value=0., name=None):
     check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
                              "pad_constant_like")
 
-    helper = LayerHelper('pad_constant_like', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('pad_constant_like', **locals())
+    dtype = helper.input_dtype(input_param_name='y')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad_constant_like',
@@ -8887,7 +8889,6 @@ def mean_iou(input, label, num_classes):
     check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
                              'mean_iou')
     check_variable_and_dtype(label, 'Labels', ['int32', 'int64'], 'mean_iou')
-    dtype = helper.input_dtype()
     out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
     out_wrong = helper.create_variable_for_type_inference(dtype='int32')
     out_correct = helper.create_variable_for_type_inference(dtype='int32')

@@ -1176,7 +1176,7 @@ def max(x, axis=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
 
     out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=x.dtype)
     helper.append_op(
         type='reduce_max',
         inputs={'X': x},
@@ -1267,7 +1267,7 @@ def min(x, axis=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
 
     out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=x.dtype)
     helper.append_op(
         type='reduce_min',
         inputs={'X': x},
