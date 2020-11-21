@@ -23,6 +23,8 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
 
+#include "paddle/fluid/platform/cuda_resource_pool.h"
+
 namespace paddle {
 namespace imperative {
 
@@ -69,7 +71,8 @@ class Reducer {
 
   void PrepareForBackward();
 
-  void AddDistHook(VariableWrapper* var_warpper);
+  void AddDistHook(VariableWrapper* var_warpper,
+                   const VariableIndex& var_index);
 
   void MarkVariableReady(const VariableIndex& var_index,
                          VariableWrapper* var_warpper);
@@ -104,11 +107,14 @@ class Reducer {
   static std::shared_ptr<Reducer> s_instance_;
   std::vector<Group> groups_;
   size_t next_group_ = 0;
-  std::unordered_map<std::string, VariableIndex> varname2index_;
   platform::Place place_;
   std::once_flag once_flag_;
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
+
+  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
+  cudaStream_t compute_stream_;
+  cudaStream_t comm_stream_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
