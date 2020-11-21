@@ -48,7 +48,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_adaptive_max_pool1d',
     'test_add_position_encoding_op',
     'test_add_reader_dependency',
-    'test_addcmul',
     'test_addmm_op',
     'test_affine_grid_op',
     'test_allclose_layer',
