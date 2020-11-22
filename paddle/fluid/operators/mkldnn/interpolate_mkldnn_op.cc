@@ -55,7 +55,7 @@ class InterpolateMKLDNNHandler
                                        MKLDNNMemoryFormat::any);
       auto resampling_d = dnnl::resampling_forward::desc(
           dnnl::prop_kind::forward_inference,
-          dnnl::algorithm::resampling_linear, &scale, src0_md, dst_md);
+          dnnl::algorithm::resampling_linear, scale, src0_md, dst_md);
 
       this->fwd_pd_.reset(new dnnl::resampling_forward::primitive_desc(
           resampling_d, this->engine_));
@@ -115,13 +115,17 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     std::vector<float> scale_prior;
     if (ctx.HasInput("Scale")) {
       auto* tmp_tensor = ctx.Input<Tensor>("Scale");
-      const float* scale_data = tmp_tensor->data<float>();
-      scale_prior.push_back(scale_data[0]);
-      scale_prior.push_back(scale_data[1]);
+      auto scale_temp = *(tmp_tensor->data<float>());
+      scale_prior.push_back(scale_temp);
+      scale_prior.push_back(scale_temp);
+      //   scale_prior = *scale_data;
+      //   scale_prior.push_back(scale_data[0]);
+      //   scale_prior.push_back(scale_data[1]);
     } else {
-      float scale = ctx.Attr<float>("scale");
-      scale_prior.push_back(scale);
-      scale_prior.push_back(scale);
+      auto scale_temp = ctx.Attr<float>("scale");
+      //   scale_prior = &scale;
+      scale_prior.push_back(scale_temp);
+      scale_prior.push_back(scale_temp);
     }
     auto* z = ctx.Output<Tensor>("Out");
 
