@@ -1111,12 +1111,11 @@ def chunk_eval(input,
     type correctly.
 
     Args:
-        input (Tensor): A Tensor or LoDTensor, representing the predicted labels
-            from the network. When it is a Tensor, its shape would be `[N, M, 1]`,
-            where `N` stands for batch size, `M` for sequence length; When it is
-            a LoDTensor, its shape would be `[N, 1]` where `N` stands for the total
-            sequence lengths in this mini-batch. The data type should be int64.
-        label (Tensor): A Tensor or LoDTensor representing the ground-truth labels.
+        input (Tensor): A Tensor representing the predicted labels
+            from the network. Its shape would be `[N, M, 1]`,
+            where `N` stands for batch size, `M` for sequence length. 
+            The data type should be int64.
+        label (Tensor): A Tensor representing the ground-truth labels.
             It should have the same shape, lod and data type as ``input`` .
         chunk_scheme (str): Indicate the tagging schemes used here. The value must
             be IOB, IOE, IOBES or plain.
@@ -1125,8 +1124,7 @@ def chunk_eval(input,
             be taken into account. It should be a list of chunk type ids(integer).
             Default None.
         seq_length(Tensor, optional): A 1D Tensor containing the length of each
-            sequence when ``input`` and ``label`` are Tensor. It needn't be
-            provided if ``input`` and ``label`` are LoDTensor. Default None.
+            sequence when ``input`` and ``label`` are Tensor. Default None.
 
     Returns:
         tuple: A tuple including precision, recall, F1-score, chunk number detected, \
@@ -1392,7 +1390,7 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Tensor): The input is 4-D Tensor with shape [N, C, H, W], the data type
+        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
             of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1445,9 +1443,9 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A tensor epresenting the conv2d, whose data type is the
-        same with input. If act is None, the tensor storing the convolution
-        result, and if act is not None, the tensor storing convolution
+        A Variable holding Tensor representing the conv2d, whose data type is the
+        same with input. If act is None, the tensor variable storing the convolution
+        result, and if act is not None, the tensor variable storing convolution
         and non-linearity activation result.
 
     Raises:
@@ -1665,7 +1663,7 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
+        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data
             type of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -1718,9 +1716,9 @@ def conv3d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A tensor representing the conv3d, whose data type is
-        the same with input. If act is None, the tensor storing the
-        convolution result, and if act is not None, the tensor storing
+        A Variable holding Tensor representing the conv3d, whose data type is
+        the same with input. If act is None, the tensor variable storing the
+        convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
 
     Raises:
