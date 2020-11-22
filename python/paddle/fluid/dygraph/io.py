@@ -150,6 +150,43 @@ def _append_loaded_suffix_to_var(program_desc):
 
 
 @switch_to_static_graph
+def _generate_unique_var_name_sync_with_main_program(prefix):
+    return unique_name.generate(prefix)
+
+
+def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
+    new_old_dict = dict()
+    persistable_vars = _get_persistable_vars(program_desc)
+    for var_desc in persistable_vars:
+        name_new = var_desc.name()
+        new_old_dict[name_new] = all_new_old_dict_all[name_new]
+    return new_old_dict
+
+
+def _rename_var_program_desc(program_desc):
+    dict_rename_var_old_new = dict()
+    dict_rename_var_new_old = dict()
+    for b_idx in six.moves.range(program_desc.num_blocks()):
+        cur_block = program_desc.block(b_idx)
+        for var in cur_block.all_vars():
+            name_old = var.name()
+            temp_name = name_old.split('_')
+            if len(temp_name) > 1:
+                temp_name = "_".join(temp_name[:-1])
+            else:
+                temp_name = "_".join(temp_name[:-1])
+            name_new = _generate_unique_var_name_sync_with_main_program(
+                temp_name)
+            if name_old != name_new:
+                cur_block._rename_var(
+                    cpt.to_bytes(name_old), cpt.to_bytes(name_new))
+            dict_rename_var_old_new[name_old] = name_new
+            dict_rename_var_new_old[name_new] = name_old
+    program_desc.flush()
+    return dict_rename_var_new_old
+
+
+@switch_to_static_graph
 def _build_program_by_desc(program_desc):
     prog = framework.Program()
     prog.desc = program_desc
@@ -227,6 +264,7 @@ class _ProgramHolder(object):
         return self._inner_scope
 
     def _preprocess(self, program_desc):
+        rename_new_old_dict = _rename_var_program_desc(program_desc)
         # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
@@ -291,7 +329,10 @@ class _ProgramHolder(object):
         # and later after loading, a new linear is added. At this time, 
         # there will be a problem of duplicate names, so here is unified 
         # to add the LOADED suffix to the parameters of the model loaded
-        self._suffix_varname_dict = _append_loaded_suffix_to_var(program_desc)
+        # self._suffix_varname_dict = _append_loaded_suffix_to_var(program_desc)  
+        self._suffix_varname_dict = _get_loaded_var_new_old(program_desc,
+                                                            rename_new_old_dict)
+
         # - get persistable var
         self._persistable_names = _get_persistable_var_names(program_desc)
 
