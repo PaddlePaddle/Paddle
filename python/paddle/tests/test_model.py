@@ -551,14 +551,13 @@ class TestModelFunction(unittest.TestCase):
     def test_static_flops(self):
         paddle.disable_static()
         net = models.__dict__['mobilenet_v2'](pretrained=False)
-        inputs = paddle.randn([1, 2, 224, 224])
+        inputs = paddle.randn([1, 3, 224, 224])
         static_program = jit._trace(net, inputs=[inputs])[1]
-        paddle.flops(static_program, inputs, print_detail=True)
+        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
 
     def test_dynamic_flops(self):
         net = models.__dict__['mobilenet_v2'](pretrained=False)
-        inputs = paddle.randn([1, 2, 224, 224])
-        paddle.flops(net, inputs, print_detail=True)
+        paddle.flops(net, [1, 3, 224, 224], print_detail=True)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
