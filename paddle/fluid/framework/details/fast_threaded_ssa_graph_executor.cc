@@ -231,6 +231,23 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
       OpHandleBase *op_to_run = op_queue.back();
       op_queue.pop_back();
 
+      // The Op involves data transfer of multiple devices may block other
+      // computations emit. For example:
+      // 1 step, queue=[Share, Allreduce], which share is high priority
+      // 2 step, Share exec, pending_op=Grad, queue=[Allreduce, Grad]
+      // 3 step, Allreduce run with sync. Although Allreduce and Grad do not
+      // have topo dependency, but Grad must wait for allreduce to complete
+      // before scheduling.
+      // In this scenario, calculation and communication may not overlap.
+      // Therefore, emit the op in the queue before running this type of op.
+      if (op_to_run->IsMultiDeviceTransfer()) {
+        while (!op_queue.empty()) {
+          OpHandleBase *post_op = op_queue.back();
+          op_queue.pop_back();
+          RunOpAsync(op_deps, post_op, complete_q);
+        }
+      }
+
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
