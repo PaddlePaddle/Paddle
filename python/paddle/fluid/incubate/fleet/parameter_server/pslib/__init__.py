@@ -101,15 +101,15 @@ class PSLib(Fleet):
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-#            if self._role_maker.is_worker():
-#                info = self._fleet_ptr.get_clients_info()
-#                all_info = self._role_maker._worker_gather(info[0])
-#                self._fleet_ptr.gather_clients(all_info)
-#                self._fleet_ptr.set_client2client_config(
-#                    self._client2client_request_timeout_ms,
-#                    self._client2client_connect_timeout_ms,
-#                    self._client2client_max_retry)
-#                self._fleet_ptr.create_client2client_connection()
+            if self._role_maker.is_worker():
+                info = self._fleet_ptr.get_clients_info()
+                all_info = self._role_maker._worker_gather(info[0])
+                self._fleet_ptr.gather_clients(all_info)
+                self._fleet_ptr.set_client2client_config(
+                    self._client2client_request_timeout_ms,
+                    self._client2client_connect_timeout_ms,
+                    self._client2client_max_retry)
+                self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -1009,7 +1009,7 @@ class DownpourOptimizer(DistributedOptimizer):
         current_endpoint = ''
         num_trainers = 0
         if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv(
-                   'PADDLE_CURRENT_ENDPOINT'):
+                'PADDLE_CURRENT_ENDPOINT'):
             trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
             current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
             num_trainers = len(trainer_endpoints.split(','))
@@ -1116,7 +1116,6 @@ class DownpourOptimizer(DistributedOptimizer):
                 if i > 0:
                     self._remove_collective_ops(start_program,
                                                 "c_comm_init_all")
-                
             for i in range(0, len(losses)):
                 loss = losses[i]
                 embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(

@@ -234,9 +234,8 @@ void HeterBoxWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
       continue;
     }
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
-    float* ptr =
-        tensor_emb->mutable_data<float>({len, table.emb_dim()},
-                                        platform::CPUPlace());
+    float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
+                                                 platform::CPUPlace());
     // memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
     LoD data_lod{tensor_lod};
@@ -538,7 +537,6 @@ void HeterBoxWorker::ProduceTasks() {
     } else {
       gpu_scope = cpu_scope->kids().front();
     }
-    
     for (const std::string& name : send_var_list_) {
       const LoDTensor& cpu_tensor = cpu_scope->FindVar(name)->Get<LoDTensor>();
       LoDTensor* gpu_tensor = gpu_scope->Var(name)->GetMutable<LoDTensor>();
@@ -585,8 +583,6 @@ void HeterBoxWorker::ProduceTasks() {
     task->total_time += task->timeline.ElapsedSec();
 
     VLOG(3) << "fill sparse value for all sparse table done.";
-        // do computation here
-        // check inf and nan
     for (std::string& var_name : check_nan_var_names_) {
       Variable* var = (task->scope_)->FindVar(var_name);
       if (var == nullptr) {
@@ -700,7 +696,6 @@ void HeterBoxWorker::ProduceTasks() {
     if (thread_id_ == 0) {
       // should be configured here
       if (done_cnt_ > 0 && done_cnt_ % 100 == 0) {
-      //if (done_cnt_ > 0) {
         fprintf(stderr, "cpu_2_gpu total time: %fs\n",
                 cpu_2_gpu_time_ / done_cnt_);
         fprintf(stderr, "gpu_2_cpu run total time: %fs\n",

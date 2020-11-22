@@ -96,8 +96,7 @@ class FleetWrapper {
 
   void HeterPushSparseVars(
       std::shared_ptr<HeterTask> task, const Scope& scope,
-      const uint64_t table_id,
-      const std::vector<std::string>& sparse_key_names,
+      const uint64_t table_id, const std::vector<std::string>& sparse_key_names,
       const std::vector<std::string>& sparse_grad_names, const int emb_dim,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const bool use_cvm, const bool dump_slot, const bool no_cvm);
