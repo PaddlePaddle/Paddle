@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -318,6 +321,19 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      auto align_corners = ctx.Attr<float>("align_corners");
+      auto align_mode = ctx.Attr<int>("align_mode");
+      if (align_corners && align_mode == 1) {
+        framework::LibraryType library = framework::LibraryType::kMKLDNN;
+        framework::DataLayout layout = framework::DataLayout::kMKLDNN;
+        return framework::OpKernelType(
+            OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+            layout, library);
+      }
+    }
+#endif
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }

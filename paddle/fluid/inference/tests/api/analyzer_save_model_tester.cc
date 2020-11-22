@@ -22,6 +22,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim(true);
   cfg->SwitchIrDebug();
+  cfg->EnableMKLDNN();
 }
 
 int GetNumOps(const AnalysisConfig &cfg) {
