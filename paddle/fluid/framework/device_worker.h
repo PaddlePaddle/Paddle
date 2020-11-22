@@ -459,13 +459,10 @@ class SectionWorker : public DeviceWorker {
   void SetSkipVars(const std::vector<std::string>& skip_vars) {
     skip_vars_ = skip_vars;
   }
-  void SetStartCpuCoreId(int id) { cpu_id_ = id; }
 
  protected:
-  void AutoSetCPUAffinity(bool reuse);
   int section_id_;
   int thread_id_;
-  int cpu_id_;
   int num_microbatches_;
   std::vector<Scope*> microbatch_scopes_;
   std::vector<std::string> skip_vars_;

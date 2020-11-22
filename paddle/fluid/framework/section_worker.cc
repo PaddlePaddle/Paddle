@@ -41,41 +41,8 @@ void SectionWorker::Initialize(const TrainerDesc& desc) {
   }
 }
 
-void SectionWorker::AutoSetCPUAffinity(bool reuse) {
-  unsigned concurrency_cap = std::thread::hardware_concurrency();
-  unsigned proc = cpu_id_;
-
-  if (proc >= concurrency_cap) {
-    if (reuse) {
-      proc %= concurrency_cap;
-    } else {
-      LOG(INFO) << "All " << concurrency_cap
-                << " CPUs have been set affinities. Fail to set " << cpu_id_
-                << "th thread.";
-      return;
-    }
-  }
-
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
-  CPU_SET(proc, &mask);
-
-  if (-1 == sched_setaffinity(0, sizeof(mask), &mask)) {
-    LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
-    return;
-  }
-
-  CPU_ZERO(&mask);
-  if ((0 != sched_getaffinity(0, sizeof(mask), &mask)) ||
-      (0 == CPU_ISSET(proc, &mask))) {
-    LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
-  }
-  VLOG(3) << "Set " << cpu_id_ << "th thread affinity to CPU " << proc;
-}
-
 void SectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
-  AutoSetCPUAffinity(true);
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;

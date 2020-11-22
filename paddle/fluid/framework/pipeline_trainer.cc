@@ -28,16 +28,10 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   num_microbatches_ = section_params.num_microbatches();
   VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
   trainer_desc_ = trainer_desc;
-  auto cpu_core_id = section_params.start_cpu_core_id();
 
   ParseDumpConfig(trainer_desc);
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
-  PADDLE_ENFORCE_GE(place_id, 0,
-                    platform::errors::InvalidArgument(
-                        "The place_id value for CUDAPlace shoud be "
-                        "non-negative, but the value given is %d.",
-                        place_id));
   place_ = platform::CUDAPlace(place_id);
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(
       trainer_desc.device_worker_name());
@@ -46,10 +40,6 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   this_worker->SetPlace(place_);
   this_worker->Initialize(trainer_desc);
   this_worker->SetMicrobatchNum(num_microbatches_);
-  this_worker->SetStartCpuCoreId(cpu_core_id);
-
-  // set debug here
-  SetDebug(trainer_desc.debug());
 }
 
 void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
