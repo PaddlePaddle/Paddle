@@ -1267,6 +1267,7 @@ def min(x, axis=None, keepdim=False, name=None):
 def log1p(x, name=None):
     """
     Calculates the natural log of the given input tensor, element-wise.
+
     .. math::
         Out = \\ln(x+1)
 
@@ -1444,8 +1445,6 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
 
 def clip(x, min=None, max=None, name=None):
     """
-    **clip layer**
-
     This operator clip all elements in input into the range [ min, max ] and return
     a resulting tensor as the following equation:
 
@@ -1470,6 +1469,7 @@ def clip(x, min=None, max=None, name=None):
         .. code-block:: python
 
             import paddle
+
             x1 = paddle.to_tensor([[1.2, 3.5], [4.5, 6.4]], 'float32')
             out1 = paddle.clip(x1, min=3.5, max=5.0)
             out2 = paddle.clip(x1, min=2.5)
@@ -1757,6 +1757,11 @@ def isfinite(x, name=None):
         .. code-block:: python
 
             import paddle
+<<<<<<< HEAD
+=======
+
+            paddle.disable_static()
+>>>>>>> Fix conflic with fix_en_doc_1
             x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             out = paddle.tensor.isfinite(x)
             print(out)  # [False  True  True False  True False False]
