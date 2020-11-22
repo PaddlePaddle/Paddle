@@ -5382,15 +5382,10 @@ def default_startup_program():
             import paddle
 
             paddle.enable_static()
-            main_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
-                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
-                z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
-
-                print("main program is: {}".format(paddle.static.default_main_program()))
-                print("start up program is: {}".format(paddle.static.default_startup_program()))
+            x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+            out = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            print("main program is: {}".format(paddle.static.default_main_program()))
+            print("start up program is: {}".format(paddle.static.default_startup_program()))
     """
     return _startup_program_
 
