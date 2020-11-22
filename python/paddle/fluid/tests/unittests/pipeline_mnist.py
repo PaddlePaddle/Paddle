@@ -83,6 +83,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
                 name='pixel', shape=[1, 28, 28], dtype=DTYPE)
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
+            if dist_strategy:
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[images, label],
+                    capacity=64,
+                    use_double_buffer=False,
+                    iterable=False)
             # Train program
             predict = cnn_model(images)
         with fluid.device_guard("gpu:1"):
@@ -105,13 +111,19 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
 
         if dist_strategy:
+            fleet.init(is_collective=True)
+            strategy = fleet.DistributedStrategy()
+            strategy.pipeline = True
             dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=fleet.DistributedStrategy())
+                optimizer=opt, strategy=strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
 
-        return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        if dist_strategy:
+            return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict, data_loader
+        else:
+            return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 
 
 if __name__ == "__main__":

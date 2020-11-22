@@ -124,6 +124,65 @@ class TestDistRunnerBase(object):
         exe.run(pserver_prog)
         print_to_err(type(self).__name__, "run pserver main program done.")
 
+    def run_pipeline_trainer(self, args):
+        self.lr = args.lr
+
+        dist_strategy = DistributedStrategy()
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict, data_loader = \
+            self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
+
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        eprint(type(self).__name__, "run worker startup program done.")
+
+        data_loader.set_sample_list_generator(train_reader, place)
+        data_loader.start()
+        print_to_err(type(self).__name__, "begin to train on trainer")
+        out_losses = []
+        for i in six.moves.xrange(RUN_STEP):
+            loss, = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
+            out_losses.append(loss[0])
+            print_to_err(type(self).__name__, "run step %d finished" % i)
+        print_to_err(type(self).__name__, "trainer run finished")
+
+        if six.PY2:
+            print(pickle.dumps(out_losses))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
+
+        if args.save_model:
+            model_save_dir = "/tmp"
+            if fleet.worker_index() == 0:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer")
+            else:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables_2")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables_2")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer_2")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer_2")
+            fluid.io.save_persistables(exe, model_save_dir_fluid,
+                                       fleet._origin_program)
+            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
+            feeded_var_names = [var.name for var in feed_var_list]
+            fluid.io.save_inference_model(infer_save_dir_fluid,
+                                          feeded_var_names, [avg_cost], exe,
+                                          fleet._origin_program)
+            fleet.save_inference_model(exe, infer_save_dir_fleet,
+                                       feeded_var_names, [avg_cost])
+
     def run_gpu_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2"
 
@@ -532,6 +591,7 @@ def runtime_main(test_class):
     parser.add_argument('--nccl_comm_num', type=int, required=False, default=1)
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
+    parser.add_argument('--use_pipeline', action='store_true')
     parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
@@ -566,6 +626,8 @@ def runtime_main(test_class):
         model.run_pserver(args)
     elif args.gpu_fleet_api:
         model.run_gpu_fleet_api_trainer(args)
+    elif args.use_pipeline:
+        model.run_pipeline_trainer(args)
     else:
         model.run_trainer(args)
 
@@ -893,6 +955,8 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr_cmd += " --use_dgc"
 
+        if self._pipeline_mode:
+            tr_cmd += " --use_pipeline"
         if self._mp_mode:
             env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
 
@@ -992,9 +1056,10 @@ class TestDistBase(unittest.TestCase):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num)
             tr_env.update(envs)
+            tr_env['FLAGS_cudnn_deterministic'] = 0
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            tr_pipe = open("/tmp/" + "_tr{}_err.log".format(i), "wb")
+            tr_pipe = open("/tmp/" + "pipeline_tr{}_err.log".format(i), "wb")
 
             print_to_err(
                 type(self).__name__,
