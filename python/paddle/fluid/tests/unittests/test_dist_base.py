@@ -1056,7 +1056,6 @@ class TestDistBase(unittest.TestCase):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num)
             tr_env.update(envs)
-            tr_env['FLAGS_cudnn_deterministic'] = 0
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
             tr_pipe = open("/tmp/" + "pipeline_tr{}_err.log".format(i), "wb")
