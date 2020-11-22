@@ -433,11 +433,7 @@ def sort(x, axis=-1, descending=False, name=None):
     Examples:
 
         .. code-block:: python
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> Fix conflic with fix_en_doc_1
             import paddle
 
             x = paddle.to_tensor([[[5,8,9,5],
