@@ -70,7 +70,9 @@ class Lamb(Optimizer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
+            paddle.enable_static()
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
