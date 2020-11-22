@@ -136,26 +136,17 @@ class Momentum(Optimizer):
         self._master_weights = {}
 
     def _create_master_weight(self, param):
+        assert isinstance(self.helper, LayerHelper)
+
         var_name = param.name + "_fp32_master"
         var_name = unique_name.generate(var_name)
-        self._opti_name_list.append(var_name)
-
-        assert isinstance(self.helper, LayerHelper)
-        var = self.helper.create_global_variable(
+        var = layers.create_global_var(
             name=var_name,
-            persistable=True,
-            dtype='float32',
-            type=param.type,
             shape=param.shape,
-            belong_to_optimizer=True)
+            value=0,
+            dtype='float32',
+            persistable=True)
         block = self.helper.startup_program.global_block()
-        block.create_var(
-            name=var_name,
-            persistable=True,
-            dtype='float32',
-            type=param.type,
-            shape=param.shape,
-            belong_to_optimizer=True)
         block.append_op(
             type="cast",
             inputs={"X": [param]},
