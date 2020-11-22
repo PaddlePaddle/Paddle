@@ -61,6 +61,7 @@ class OptimizerWithMixedPrecision(object):
         self._param_grads = None
         self._train_program = None
 
+        self._is_distributed = False
         self._scaled_loss = None
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
@@ -72,6 +73,9 @@ class OptimizerWithMixedPrecision(object):
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
+
+    def _set_distributed(self, flag):
+        self._is_distributed = flag
 
     def get_loss_scaling(self):
         """Return the real-time loss scaling factor.
@@ -152,7 +156,8 @@ class OptimizerWithMixedPrecision(object):
                 callbacks)
             # Change the op_role_var attr for some ops, so that gradients
             # transferred across GPUs can be FP16.
-            params_grads = update_role_var_grad(train_program, params_grads)
+            params_grads = update_role_var_grad(train_program, params_grads,
+                                                self._is_distributed)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -167,22 +172,31 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
-        found_infs = []
-        for p, g in params_grads:
-            with self._train_program._optimized_guard([p, g]):
-                # if found inf, grad will be set to zero
+        grads = [g for _, g in params_grads]
+        if not self._is_distributed:
+            with self._train_program._optimized_guard(grads):
                 grads, found_inf = check_finite_and_unscale(
-                    [g, ], self._loss_scaling, name="find_infinite_scale")
-                found_infs.append(found_inf)
-
-        with self._train_program._optimized_guard([]):
-            all_infs = layers.concat(found_infs)
-            has_inf = layers.reduce_any(all_infs)
+                    grads, self._loss_scaling, name="find_infinite_scale")
+        else:
+            # if distributed, overlap unscale with communication
+            found_infs = []
+            for p, g in params_grads:
+                with self._train_program._optimized_guard([p, g]):
+                    # if found inf, grad will be set to zero
+                    _, found_inf = check_finite_and_unscale(
+                        [g, ], self._loss_scaling, name="find_infinite_scale")
+                    found_infs.append(found_inf)
 
         if self._use_dynamic_loss_scaling:
+            if self._distributed:
+                with self._train_program._optimized_guard([]):
+                    all_infs = layers.concat(found_infs)
+                    found_inf = layers.reduce_any(all_infs)
+
             with self._train_program._optimized_guard([]):
                 update_loss_scaling(
-                    has_inf,
+                    grads,
+                    found_inf,
                     self._loss_scaling,
                     self._num_good_steps,
                     self._num_bad_steps,

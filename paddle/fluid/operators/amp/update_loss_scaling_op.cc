@@ -26,6 +26,7 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasInput("FoundInfinite"), "Input", "FoundInfinite",
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasInput("PrevLossScaling"), "Input", "PrevLossScaling",
@@ -34,12 +35,16 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasInput("InBadSteps"), "Input", "InBadSteps",
                    "update_loss_scaling");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
+                   "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasOutput("LossScaling"), "Output", "LossScaling",
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasOutput("OutGoodSteps"), "Output", "OutGoodSteps",
                    "update_loss_scaling");
     OP_INOUT_CHECK(ctx->HasOutput("OutBadSteps"), "Output", "OutBadSteps",
                    "update_loss_scaling");
+    auto x_dims = ctx->GetInputsDim("X");
+    ctx->SetOutputsDim("Out", x_dims);
     ctx->SetOutputDim("LossScaling", {1});
     ctx->SetOutputDim("OutGoodSteps", {1});
     ctx->SetOutputDim("OutBadSteps", {1});
@@ -57,6 +62,9 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
 class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("X",
+             "(Tensors) The input tensors of update_loss_scaling operator.")
+        .AsDuplicable();
     AddInput("FoundInfinite",
              "(Tensor) 1-dim tensor, contains a bool scalar, which indicates "
              "whether there is any infinite gradient.");
@@ -68,6 +76,9 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("InBadSteps",
              "(Tensor) 1-dim tensor, accumulates bad steps in which some "
              "gradients are infinite.");
+    AddOutput("Out",
+              "(Tensors) The output tensor of update_loss_scaling operator.")
+        .AsDuplicable();
     AddOutput("LossScaling", "(Tensor) 1-dim tensor, updated loss scaling.");
     AddOutput("OutGoodSteps", "(Tensor) 1-dim tensor, pdated good steps.");
     AddOutput("OutBadSteps", "(Tensor) 1-dim tensor, updated bad steps.");
@@ -120,6 +131,25 @@ class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
               incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
               decr_ratio, updated_loss_scaling_data, good_out_data,
               bad_out_data);
+  }
+};
+
+template <typename T>
+class LazyZeroInputs<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& dev_ctx,
+                  const bool* found_inf_data,
+                  const std::vector<const framework::Tensor*>& xs,
+                  const std::vector<framework::Tensor*>& outs) const {
+    if (*found_inf_data) {
+      VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
+      for (size_t i = 0; i < xs.size(); ++i) {
+        auto* out = outs[i];
+        T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+        int num = out->numel();
+        std::memset(out_data, 0, num * sizeof(T));
+      }
+    }
   }
 };
 

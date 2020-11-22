@@ -285,7 +285,7 @@ def rewrite_program(main_prog, amp_lists):
         idx += num_cast_ops + 1
 
 
-def update_role_var_grad(main_prog, params_grads):
+def update_role_var_grad(main_prog, params_grads, is_distributed):
     """
     Update op_role_var attr for some ops to make sure the gradients
     transferred across GPUs is FP16.
@@ -293,12 +293,14 @@ def update_role_var_grad(main_prog, params_grads):
     2. If op is cast and gradient is FP32, remove the op_role_var
        and find the prev op which outputs FP16 gradient
     3. Update the op_role_var of the prev op.
-    4. If op is not cast but gradient is FP32, cast gradient to
-       FP16, must sure gradients communication with fp16 allreduce.
+    4. When distributed, if op is not cast and gradient is FP32,
+       cast gradient to FP16, must sure gradients communication
+       with fp16 allreduce.
 
     Args:
         main_prog (Program): The main program for training.
         params_grads (list): A list of params and grads.
+        is_distributed (bool): If is distributed, will use fp16_allreduce.
     """
     block = main_prog.global_block()
     new_params_grads = []
@@ -346,7 +348,7 @@ def update_role_var_grad(main_prog, params_grads):
             if op_idx == -1:
                 raise ValueError("The op {0} is not in program".format(op))
             block.desc._remove_op(op_idx, op_idx + 1)
-        elif g.dtype == core.VarDesc.VarType.FP32:
+        elif g.dtype == core.VarDesc.VarType.FP32 and is_distributed:
             # Find the op which outputs FP32 gradient
             # Cast to FP16 to use fp16_allreduce
             is_grad_op = op.attr('op_role') & int(BACKWARD) and op.has_attr(

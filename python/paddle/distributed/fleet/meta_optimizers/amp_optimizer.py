@@ -52,6 +52,8 @@ class AMPOptimizer(MetaOptimizerBase):
             config['incr_every_n_steps'], config['decr_every_n_nan_or_inf'],
             config['incr_ratio'], config['decr_ratio'],
             config['use_dynamic_loss_scaling'])
+        is_distributed = self.role_maker._worker_num() > 1
+        self.wrapped_opt._set_distributed(is_distributed)
 
     def _can_apply(self):
         if not self.role_maker._is_collective:

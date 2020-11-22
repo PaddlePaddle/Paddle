@@ -30,20 +30,10 @@ __global__ void CheckFiniteAndUnscale(const T* in, const T* scale, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
-    out[idx] = in[idx] * (*scale);
-    if (!isfinite(in[idx])) {
+    T val = in[idx] * (*scale);
+    out[idx] = val;
+    if (!isfinite(val)) {
       *found_inf = true;
-    }
-  }
-}
-
-template <typename T>
-__global__ void ZeroGradIfInf(int num, bool* found_inf, T* out) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-
-  if (idx < num) {
-    if (*found_inf) {
-      out[idx] = static_cast<T>(0);
     }
   }
 }
@@ -81,8 +71,6 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
       VLOG(3) << "launch kernel";
       CheckFiniteAndUnscale<T><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, inverse_scale_v, num, found_inf_data, out_data);
-      ZeroGradIfInf<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          num, found_inf_data, out_data);
       VLOG(3) << "finish kernel";
     }
   }
