@@ -268,7 +268,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode, devices_per_p
         ), "current trainer_endpoints size should be greater equal than selected_gpus size."
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
-            if device_mode == DeviceMode.GPU
+            if device_mode == DeviceMode.GPU:
                 if isinstance(devices_per_proc, (list, tuple))
                     trainer.gpus.extend(devices_per_proc[i])
                 else:
@@ -597,7 +597,7 @@ def get_device_proc_info(args):
             n = len(gpus) % arg.nproc_per_node
             assert n ==0, \
                 "gpus' number:{} mod arg.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
-            device_per_proc = [lst[gpus:gpus + n] for i in six.moves.range(0, len(gpus), n)]
+            devices_per_proc = [lst[gpus:gpus + n] for i in six.moves.range(0, len(gpus), n)]
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.CPU:
