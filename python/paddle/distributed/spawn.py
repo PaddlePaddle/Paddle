@@ -59,7 +59,7 @@ def _py_supported_check():
             "Use `paddle.distributed.spawn` to start parallel training "
             "requires python version greater than 3.4, if your python "
             "is lower than this version, please use "
-            "`paddle.distributed.launch` instead.")
+            "`paddle.distributed.fleet.launch` instead.")
 
 
 def _get_subprocess_env_list(nprocs, options):

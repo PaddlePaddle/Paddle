@@ -53,7 +53,7 @@ unset PADDLE_PORT
 export DISTRIBUTED_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171
 
 echo ""
-echo "paddle.distributed.launch async poll process test"
+echo "paddle.distributed.fleet.launch async poll process test"
 if ! CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py launch abort; then
     echo "train abort as planned"
 fi
