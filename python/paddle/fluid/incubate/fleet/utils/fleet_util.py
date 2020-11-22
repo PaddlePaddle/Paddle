@@ -1633,7 +1633,8 @@ class FleetUtil(object):
             if self._is_optimizer_op(op):
                 break
             if op.has_attr("op_device"):
-                cur_attr = op.attr("op_device") if op.attr("op_device") != "" else type_cpu
+                cur_attr = op.attr("op_device") if op.attr(
+                    "op_device") != "" else type_cpu
                 if pre is None or pre != cur_attr:
                     ops_list.append([])
                     type_list.append(cur_attr)

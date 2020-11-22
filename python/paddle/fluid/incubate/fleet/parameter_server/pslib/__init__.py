@@ -101,15 +101,15 @@ class PSLib(Fleet):
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            if self._role_maker.is_worker():
-                info = self._fleet_ptr.get_clients_info()
-                all_info = self._role_maker._worker_gather(info[0])
-                self._fleet_ptr.gather_clients(all_info)
-                self._fleet_ptr.set_client2client_config(
-                    self._client2client_request_timeout_ms,
-                    self._client2client_connect_timeout_ms,
-                    self._client2client_max_retry)
-                self._fleet_ptr.create_client2client_connection()
+#            if self._role_maker.is_worker():
+#                info = self._fleet_ptr.get_clients_info()
+#                all_info = self._role_maker._worker_gather(info[0])
+#                self._fleet_ptr.gather_clients(all_info)
+#                self._fleet_ptr.set_client2client_config(
+#                    self._client2client_request_timeout_ms,
+#                    self._client2client_connect_timeout_ms,
+#                    self._client2client_max_retry)
+#                self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -1008,7 +1008,8 @@ class DownpourOptimizer(DistributedOptimizer):
         trainer_endpoints = ''
         current_endpoint = ''
         num_trainers = 0
-        if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv('PADDLE_CURRENT_ENDPOINT'):
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv(
+                   'PADDLE_CURRENT_ENDPOINT'):
             trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
             current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
             num_trainers = len(trainer_endpoints.split(','))
@@ -1040,11 +1041,10 @@ class DownpourOptimizer(DistributedOptimizer):
             except:
                 pass
 
-
         need_remove_op_index.sort(reverse=True)
         for index in need_remove_op_index:
             block._remove_op(index)
-    
+
     def minimize(self,
                  losses,
                  scopes=None,
@@ -1106,19 +1106,21 @@ class DownpourOptimizer(DistributedOptimizer):
                 t = SingleProcessMultiThread()
                 start_program = startup_programs[i]
                 main_program = programs[i]
-                t.transpile(startup_program=start_program,
+                t.transpile(
+                    startup_program=start_program,
                     main_program=main_program,
                     rank=env["trainer_id"],
                     endpoints=env["trainer_endpoints"],
                     current_endpoint=env['current_endpoint'],
                     wait_port=False)
                 if i > 0:
-                    self._remove_collective_ops(start_program, "c_comm_init_all")
+                    self._remove_collective_ops(start_program,
+                                                "c_comm_init_all")
                 
             for i in range(0, len(losses)):
                 loss = losses[i]
-                embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table([loss])
+                embedding_table = self._distributed_optimizer._find_multi_distributed_lookup_table(
+                    [loss])
                 self._remove_collective_op_for_embedding(loss, embedding_table)
-
 
         return [optimize_ops, param_grads]

@@ -44,7 +44,7 @@ void HeterBoxTrainer::Initialize(const TrainerDesc& trainer_desc,
   RegisterHeterCallback();
   scale_datanorm_ = trainer_desc.scale_datanorm();
   int place_num = trainer_desc.worker_places_size();
-  const std::vector<paddle::framework::DataFeed *> readers =
+  const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
@@ -112,7 +112,6 @@ void HeterBoxTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 #endif
   }
   for (size_t num = 0; num < places_.size(); ++num) {
-    
     auto place = places_[num];
     Scope* scope = workers_[num]->GetThreadScope();
     auto stream = copy_streams_[num];
@@ -131,7 +130,7 @@ void HeterBoxTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
-  
+
 #define HeterMemcpyFunc(cpp_type, proto_type)                           \
   do {                                                                  \
     if (root_tensor->type() == proto_type) {                            \
@@ -176,12 +175,6 @@ void HeterBoxTrainer::InitOtherEnv(const ProgramDesc& main_program) {
     pull_dense_worker_->AddStream(copy_streams_[i]);
 #endif
   }
-  //pull_dense_worker_->PullDense(true);
-#ifdef PADDLE_WITH_CUDA
-  //for (auto& stream : copy_streams_) {
-  //  cudaStreamSynchronize(stream);
-  //}
-#endif
   VLOG(3) << "init other env done.";
 }
 
@@ -189,11 +182,14 @@ void HeterBoxTrainer::Run() {
   int pull_thread_num = 3 * places_.size();
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
     workers_[thidx]->device_reader_->Start();
-    std::dynamic_pointer_cast<paddle::framework::HeterBoxWorker>(workers_[thidx])->ResetStat();
+    std::dynamic_pointer_cast<paddle::framework::HeterBoxWorker>(
+        workers_[thidx])
+        ->ResetStat();
   }
   for (int i = 0; i < pull_thread_num; ++i) {
     int worker_id = i % places_.size();
-    pull_threads_.push_back(std::thread(&DeviceWorker::ProduceTasks, workers_[worker_id].get()));
+    pull_threads_.push_back(
+        std::thread(&DeviceWorker::ProduceTasks, workers_[worker_id].get()));
   }
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
     threads_.push_back(
@@ -219,10 +215,10 @@ void HeterBoxTrainer::MergeToRootScope(LoDTensor* root_tensor,
 Scope* HeterBoxTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
 void HeterBoxTrainer::Finalize() {
-  for (auto &th : pull_threads_) {
+  for (auto& th : pull_threads_) {
     th.join();
   }
-  for (auto &th : threads_) {
+  for (auto& th : threads_) {
     th.join();
   }
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {

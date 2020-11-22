@@ -88,8 +88,7 @@ class HeterWrapper {
 
 #ifdef PADDLE_WITH_CUDA
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
-                           platform::Place place,
-                           cudaStream_t stream);
+                           platform::Place place, cudaStream_t stream);
 #endif
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var,
                            platform::Place place);

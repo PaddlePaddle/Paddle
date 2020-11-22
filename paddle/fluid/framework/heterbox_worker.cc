@@ -235,7 +235,8 @@ void HeterBoxWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
     }
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
     float* ptr =
-        tensor_emb->mutable_data<float>({len, table.emb_dim()}, platform::CPUPlace());
+        tensor_emb->mutable_data<float>({len, table.emb_dim()},
+                                        platform::CPUPlace());
     // memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
     LoD data_lod{tensor_lod};
@@ -369,12 +370,8 @@ void HeterBoxWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
 void HeterBoxWorker::TrainFiles() {
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
-//  int batch_cnt = 0;
-//  int done_cnt = 0;
-//  int cur_batch;
   need_to_push_dense_ = false;
   while (1) {
-
     VLOG(3) << "before heter task";
     std::shared_ptr<HeterTask> task;
 
@@ -386,7 +383,6 @@ void HeterBoxWorker::TrainFiles() {
     Scope* scope = task->scope_->kids().front();
     VLOG(3) << "get kid done";
     // do computation here
-    
     task->timeline.Start();
     for (auto& op : ops_) {
       if (op->HasAttr("op_device")) {
@@ -406,20 +402,16 @@ void HeterBoxWorker::TrainFiles() {
         op->Run(*(scope), place_);
       }
     }
-
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    
     task->timeline.Pause();
     task->xpu_op_time += task->timeline.ElapsedSec();
     task->total_time += task->timeline.ElapsedSec();
-    
     push_queue_->Put(task);
-
   }
 }
 
 void HeterTask::PackGpuTask(Scope* thread_scope, DataFeed* reader,
-                         const ProgramDesc& program) {
+                            const ProgramDesc& program) {
   auto& block = program.Block(0);
   if (!scope_) {
     scope_ = &(thread_scope->NewScope());
@@ -430,11 +422,8 @@ void HeterTask::PackGpuTask(Scope* thread_scope, DataFeed* reader,
       }
     }
   }
-  VLOG(3) << "feed var" ;
   reader->AssignFeedVar(*scope_);
-  VLOG(3) << "reader next ";
   cur_batch_ = reader->Next();
-  VLOG(3) << "pack task " << cur_batch_;
 }
 
 void HeterBoxWorker::ResetStat() {
@@ -455,44 +444,28 @@ void HeterBoxWorker::ResetStat() {
 }
 
 void HeterBoxWorker::ProduceTasks() {
-  VLOG(3) << "Begin to produce";
-//  platform::SetNumThreads(1);
-  VLOG(3) << "reader ready";
-//  int cur_batch;
   need_to_push_dense_ = false;
   while (1) {
-
     std::shared_ptr<HeterTask> task;
-    
     task = object_pool_.Get();
-    VLOG(3) << "pool get done";
     task->Reset();
-    VLOG(3) << "reset done";
     {
       std::lock_guard<std::mutex> lock(mutex_);
       task->timeline.Start();
-      
       task->PackGpuTask(thread_scope_, device_reader_, program_);
-      
       task->timeline.Pause();
       task->pack_time = task->timeline.ElapsedSec();
       task->total_time += task->pack_time;
-      
-      VLOG(3)  << "check batch";
       if (task->cur_batch_ <= 0) {
         if (!pull_queue_->Closed() && batch_cnt_ == done_cnt_) {
           pull_queue_->Close();
         }
-        VLOG(3)  << "exit";
         break;
       }
       batch_cnt_ += 1;
     }
-    VLOG(3)  << "check done";
-      // pull sparse here
-    VLOG(3) << "pull sparse taskid = " << task->taskid_;
-    for (int i = 0;
-         i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
+    for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
+         ++i) {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
@@ -502,29 +475,26 @@ void HeterBoxWorker::ProduceTasks() {
           break;
         }
       }
-      VLOG(3) << "wxx pull sparse ";
-      
       task->timeline.Start();
-      fleet_ptr_->HeterPullSparseVars(
-          thread_id_, task, tid, sparse_key_names_[tid], table.fea_dim(),
-          sparse_value_names_[tid]);
+      fleet_ptr_->HeterPullSparseVars(thread_id_, task, tid,
+                                      sparse_key_names_[tid], table.fea_dim(),
+                                      sparse_value_names_[tid]);
       task->timeline.Pause();
       task->pull_sparse_local_time += task->timeline.ElapsedSec();
       task->total_time += task->timeline.ElapsedSec();
-      
+
       task->timeline.Start();
       CollectLabelInfo(task, i);
       task->timeline.Pause();
       task->collect_label_time += task->timeline.ElapsedSec();
       task->total_time += task->timeline.ElapsedSec();
-      
+
       task->timeline.Start();
       FillSparseValue(task, i);
       task->timeline.Pause();
       task->fill_sparse_time += task->timeline.ElapsedSec();
       task->total_time += task->timeline.ElapsedSec();
-      
-      VLOG(3) << "wxx ins weight ";
+
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
                                 sparse_value_names_[tid].end(),
                                 adjust_ins_weight_config_.nid_slot());
@@ -532,7 +502,7 @@ void HeterBoxWorker::ProduceTasks() {
         AdjustInsWeight(task);
       }
     }
-    
+
     task->timeline.Start();
     size_t op_index = 0;
     for (; op_index < ops_.size(); ++op_index) {
@@ -554,7 +524,7 @@ void HeterBoxWorker::ProduceTasks() {
         op->Run(*(task->scope_), platform::CPUPlace());
       }
     }
-    
+
     task->timeline.Pause();
     task->cpu_op_time += task->timeline.ElapsedSec();
     task->total_time += task->timeline.ElapsedSec();
@@ -569,7 +539,6 @@ void HeterBoxWorker::ProduceTasks() {
       gpu_scope = cpu_scope->kids().front();
     }
     
-    VLOG(3) << "wxx copy to gpu ";
     for (const std::string& name : send_var_list_) {
       const LoDTensor& cpu_tensor = cpu_scope->FindVar(name)->Get<LoDTensor>();
       LoDTensor* gpu_tensor = gpu_scope->Var(name)->GetMutable<LoDTensor>();
@@ -580,17 +549,15 @@ void HeterBoxWorker::ProduceTasks() {
       const void* cpu_ptr = cpu_tensor.data<void>();
       memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
                    platform::CPUPlace(), cpu_ptr,
-                   cpu_tensor.numel() * SizeOfType(cpu_tensor.type()), copy_stream_);
+                   cpu_tensor.numel() * SizeOfType(cpu_tensor.type()),
+                   copy_stream_);
     }
     task->timeline.Pause();
     task->cpu_2_gpu_time += task->timeline.ElapsedSec();
     task->total_time += task->timeline.ElapsedSec();
-    
     pull_queue_->Put(task);
-    VLOG(3) << "wxx put to pull queue ";
-    
     push_queue_->Get(task);
-    
+
     int need_copy_grad = 1;
     task->timeline.Start();
     for (; op_index < ops_.size(); ++op_index) {
@@ -616,7 +583,7 @@ void HeterBoxWorker::ProduceTasks() {
     task->timeline.Pause();
     task->cpu_op_time += task->timeline.ElapsedSec();
     task->total_time += task->timeline.ElapsedSec();
-    
+
     VLOG(3) << "fill sparse value for all sparse table done.";
         // do computation here
         // check inf and nan
@@ -637,12 +604,10 @@ void HeterBoxWorker::ProduceTasks() {
                             "Tensor %s contains NAN.", var_name));
     }
 
-
-    VLOG(3) << "push grad taskid = " << task->taskid_;
     if (need_to_push_sparse_) {
       // push gradients here
-      for (int i = 0;
-           i < param_.program_config(0).push_sparse_table_id_size(); ++i) {
+      for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
+           ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
@@ -652,10 +617,8 @@ void HeterBoxWorker::ProduceTasks() {
             break;
           }
         }
-        
         Scope* src_scope = task->scope_;
         Scope* dest_scope = nullptr;
-        
         task->timeline.Start();
         if (need_copy_grad) {
           if (cpu_scope->kids().empty()) {
@@ -665,19 +628,22 @@ void HeterBoxWorker::ProduceTasks() {
           }
           auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
           platform::CUDADeviceGuard guard(dev_id);
-          VLOG(0) << "wxx dev id: " << dev_id;
 
           for (const std::string& name : sparse_grad_names_[tid]) {
-            const LoDTensor& src_tensor = src_scope->FindVar(name)->Get<LoDTensor>();
-            LoDTensor* dest_tensor = dest_scope->Var(name)->GetMutable<LoDTensor>();
+            const LoDTensor& src_tensor =
+                src_scope->FindVar(name)->Get<LoDTensor>();
+            LoDTensor* dest_tensor =
+                dest_scope->Var(name)->GetMutable<LoDTensor>();
             dest_tensor->set_lod(src_tensor.lod());
             dest_tensor->Resize(src_tensor.dims());
             dest_tensor->set_layout(src_tensor.layout());
-            void* dest_ptr = dest_tensor->mutable_data(platform::CPUPlace(), src_tensor.type());
+            void* dest_ptr = dest_tensor->mutable_data(platform::CPUPlace(),
+                                                       src_tensor.type());
             const void* src_ptr = src_tensor.data<void>();
             memory::Copy(platform::CPUPlace(), dest_ptr,
                          BOOST_GET_CONST(platform::CUDAPlace, place_), src_ptr,
-                         src_tensor.numel() * SizeOfType(src_tensor.type()), copy_stream_);
+                         src_tensor.numel() * SizeOfType(src_tensor.type()),
+                         copy_stream_);
           }
         } else {
           dest_scope = task->scope_;
@@ -688,9 +654,9 @@ void HeterBoxWorker::ProduceTasks() {
 
         task->timeline.Start();
         fleet_ptr_->HeterPushSparseVars(
-            task, *(dest_scope), tid, sparse_key_names_[tid], sparse_grad_names_[tid],
-            table.emb_dim(), &push_sparse_status_, use_cvm_, dump_slot_,
-            no_cvm_);
+            task, *(dest_scope), tid, sparse_key_names_[tid],
+            sparse_grad_names_[tid], table.emb_dim(), &push_sparse_status_,
+            use_cvm_, dump_slot_, no_cvm_);
         task->timeline.Pause();
         task->push_sparse_time += task->timeline.ElapsedSec();
         task->total_time += task->timeline.ElapsedSec();
@@ -713,7 +679,6 @@ void HeterBoxWorker::ProduceTasks() {
         push_sparse_status_.resize(0);
       }
     }
-    
     {
       std::lock_guard<std::mutex> lock(mutex_);
       total_time_ += task->total_time;
@@ -731,7 +696,6 @@ void HeterBoxWorker::ProduceTasks() {
       cpu_2_gpu_time_ += task->cpu_2_gpu_time;
       total_inst_ += task->cur_batch_;
     }
-    
     done_cnt_.fetch_add(1, std::memory_order_relaxed);
     if (thread_id_ == 0) {
       // should be configured here
@@ -786,8 +750,6 @@ void HeterBoxWorker::ProduceTasks() {
     VLOG(3) << "done taskid = " << task->taskid_;
     task->scope_->DropKids();
     object_pool_.Push(task);
-    // ++batch_cnt;
-      
   }
 }
 

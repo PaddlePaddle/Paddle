@@ -169,7 +169,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         need_remove_op_index.sort(reverse=True)
         for index in need_remove_op_index:
             block._remove_op(index)
-    
+
     def _find_multi_distributed_lookup_table(self, losses):
         """
         find multi-sparse-table
@@ -354,8 +354,11 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     startup_program = [startup_program]
                 optimizer = copy.deepcopy(self._optimizer)
                 optimize_ops = optimizer.apply_optimize(
-                    loss, startup_program=startup_program[num], params_grads=params_grads)
-                embedding_table = self._find_multi_distributed_lookup_table([loss])
+                    loss,
+                    startup_program=startup_program[num],
+                    params_grads=params_grads)
+                embedding_table = self._find_multi_distributed_lookup_table(
+                    [loss])
                 self._remove_optimize_op_for_embedding(loss, embedding_table)
             # has condition_block op means multi-task 
             flag_multi_task = self._has_conditional_block(loss)

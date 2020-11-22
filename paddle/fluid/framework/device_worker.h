@@ -167,7 +167,7 @@ class DeviceWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {}
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
-#ifdef PADDLE_WITH_CUDA  
+#ifdef PADDLE_WITH_CUDA
   virtual void SetStream(const cudaStream_t stream) {}
   virtual void SetEvent(const cudaEvent_t event) {}
 #endif
@@ -452,12 +452,8 @@ class HeterBoxWorker : public HogwildWorker {
     new (&program_) ProgramDesc(main_program);
   }
   virtual void ProduceTasks() override;
-  virtual void SetStream(const cudaStream_t stream) {
-    copy_stream_ = stream;
-  }
-  virtual void SetEvent(const cudaEvent_t event) {
-    event_ = event;
-  }
+  virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
+  virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
   void ResetStat();
 
@@ -523,7 +519,7 @@ class HeterBoxWorker : public HogwildWorker {
   cudaStream_t copy_stream_;
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
-  
+
   double total_time_;
   double read_time_;
   double pack_time_;
