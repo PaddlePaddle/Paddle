@@ -802,9 +802,6 @@ def add_n(inputs, name=None):
 
 def mm(input, mat2, name=None):
     """
-	:alias_main: paddle.mm
-	:alias: paddle.mm,paddle.tensor.mm,paddle.tensor.math.mm
-
     Applies matrix multiplication to two tensors.
 
     Currently, the input tensors' rank can be any, but when the rank of any
@@ -815,42 +812,30 @@ def mm(input, mat2, name=None):
     nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
+    This op does not support broadcasting. See paddle.matmul.
+
     Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor.
-        mat2 (Variable): The input variable which is a Tensor or LoDTensor.
+        input (Tensor): The input variable which is a Tensor or LoDTensor.
+        mat2 (Tensor): The input variable which is a Tensor or LoDTensor.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The product Tensor (or LoDTensor) variable.
+        Tensor: The product Tensor.
 
     Examples:
         .. code-block:: python
 
-            # Examples to clarify shapes of the inputs and output
-            # x: [B, ..., M, K], mat2: [B, ..., K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [B, ..., M, N]
-
-            # x: [B, M, K], mat2: [B, K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [B, M, N]
-
-            # x: [B, M, K], mat2: [K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [B, M, N]
-
-            # x: [M, K], mat2: [K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [M, N]
-
-            # x: [B, M, K], mat2: [K]
-            # fluid.layers.matmul(x, mat2)  # out: [B, M]
-
-            # x: [K], mat2: [K]
-            # fluid.layers.matmul(x, mat2)  # out: [1]
-
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3], dtype='float32')
-            mat2 = fluid.data(name='mat2', shape=[3, 2], dtype='float32')
-            out = paddle.mm(x, mat2) # out shape is [2, 2]
+
+            x = paddle.arange(1, 7).reshape((3, 2)).astype('float32')
+            y = paddle.arange(1, 9).reshape((2, 4)).astype('float32')
+            out = paddle.mm(x, y)
+            print(out)
+            # Tensor(shape=[3, 4], dtype=float32, place=CPUPlace, stop_gradient=True,
+            #        [[11., 14., 17., 20.],
+            #         [23., 30., 37., 44.],
+            #         [35., 46., 57., 68.]])
     """
     if in_dygraph_mode():
         out = _varbase_creator(dtype=input.dtype)
@@ -1638,15 +1623,12 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 @templatedoc(op_type="kron")
 def kron(x, y, name=None):
     """
-	:alias_main: paddle.kron
-	:alias: paddle.kron,paddle.tensor.kron,paddle.tensor.math.kron
-
 ${comment}
 
     Args:
-        x (Variable): the fist operand of kron op, data type: float16, float32,
+        x (Tensor): the fist operand of kron op, data type: float16, float32,
             float64, int32 or int64.
-        y (Variable): the second operand of kron op, data type: float16,
+        y (Tensor): the second operand of kron op, data type: float16,
             float32, float64, int32 or int64. Its data type should be the same
             with x.
         name(str, optional): The default value is None.  Normally there is no
@@ -1654,33 +1636,25 @@ ${comment}
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
+        Tensor: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
 
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle import fluid
-          import paddle.fluid.dygraph as dg
-          import numpy as np
+            import paddle
 
-          a = np.arange(1, 5).reshape(2, 2).astype(np.float32)
-          b = np.arange(1, 10).reshape(3, 3).astype(np.float32)
+            x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
+            y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+            out = paddle.kron(x, y)
+            print(out)
 
-          place = fluid.CPUPlace()
-          with dg.guard(place):
-              a_var = dg.to_variable(a)
-              b_var = dg.to_variable(b)
-              c_var = paddle.kron(a_var, b_var)
-              c_np = c_var.numpy()
-          print(c_np)
-
-          #[[ 1.  2.  3.  2.  4.  6.]
-          # [ 4.  5.  6.  8. 10. 12.]
-          # [ 7.  8.  9. 14. 16. 18.]
-          # [ 3.  6.  9.  4.  8. 12.]
-          # [12. 15. 18. 16. 20. 24.]
-          # [21. 24. 27. 28. 32. 36.]]
+            # Tensor(shape=[6, 6], dtype=int64, place=CPUPlace, stop_gradient=True,
+            #        [[1, 2, 3, 2, 4, 6],
+            #         [ 4,  5,  6,  8, 10, 12],
+            #         [ 7,  8,  9, 14, 16, 18],
+            #         [ 3,  6,  9,  4,  8, 12],
+            #         [12, 15, 18, 16, 20, 24],
+            #         [21, 24, 27, 28, 32, 36]])
     """
     if in_dygraph_mode():
         return core.ops.kron(x, y)

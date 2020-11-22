@@ -300,12 +300,12 @@ Examples:
     .. code-block:: python
 
         import paddle
-        paddle.disable_static()
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.cosh(x)
-        print(out.numpy())
-        # [1.08107237 1.02006676 1.00500417 1.04533851]
+        print(out)
+        # Tensor(shape=[4], dtype=float32, place=CPUPlace, stop_gradient=True,
+        #        [1.08107233, 1.02006674, 1.00500417, 1.04533851])
 
 """)
 
@@ -722,9 +722,10 @@ Examples:
     .. code-block:: python
     
         import paddle
-        paddle.disable_static()
+
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
-        print(out.numpy())
-        # [-0.42839236 -0.22270259  0.11246292  0.32862676]
+        print(out)
+        # Tensor(shape=[4], dtype=float32, place=CPUPlace, stop_gradient=True,
+        #        [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
 """
