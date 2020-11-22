@@ -497,14 +497,12 @@ if(WITH_DISTRIBUTE)
     endif()
     if(NOT APPLE)
         if(WITH_GPU)
-            # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch START_BASH test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
 
-        bash_test_modules(test_launch_ps START_BASH test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-        bash_test_modules(test_fleet_launch START_BASH test_fleet_launch.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch_ps START_BASH test_fleet_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+        bash_test_modules(test_fleet_launch START_BASH test_fleetrun.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         # port range (20000, 23000) is reserved for dist-ops
         set(dist_ut_port 20001)
