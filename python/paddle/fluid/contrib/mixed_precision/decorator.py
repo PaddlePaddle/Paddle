@@ -188,7 +188,7 @@ class OptimizerWithMixedPrecision(object):
                     found_infs.append(found_inf)
 
         if self._use_dynamic_loss_scaling:
-            if self._distributed:
+            if self._is_distributed:
                 with self._train_program._optimized_guard([]):
                     all_infs = layers.concat(found_infs)
                     found_inf = layers.reduce_any(all_infs)
