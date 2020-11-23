@@ -229,6 +229,7 @@ def equal(x, y, name=None):
 def greater_equal(x, y, name=None):
     """
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -241,6 +242,7 @@ def greater_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.to_tensor([1, 2, 3])
@@ -271,6 +273,7 @@ def greater_equal(x, y, name=None):
 def greater_than(x, y, name=None):
     """
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -283,6 +286,7 @@ def greater_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.to_tensor([1, 2, 3])
