@@ -41,6 +41,7 @@ from ...fluid.framework import Variable
 __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
+    'cross_entropy',
     'softmax_cross_entropy',
     'dice_loss',
     'hsigmoid_loss',
@@ -1115,6 +1116,25 @@ def ctc_loss(log_probs,
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
+
+
+def cross_entropy(input,
+                  label,
+                  weight=None,
+                  ignore_index=-100,
+                  reduction='mean',
+                  soft_label=False,
+                  axis=-1,
+                  name=None):
+    return softmax_cross_entropy(
+        input=input,
+        label=label,
+        weight=weight,
+        ignore_index=ignore_index,
+        reduction=reduction,
+        soft_label=soft_label,
+        axis=axis,
+        name=name)
 
 
 def softmax_cross_entropy(input,
