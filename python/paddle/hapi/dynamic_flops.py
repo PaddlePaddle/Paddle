@@ -30,10 +30,10 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         input_size (list): size of input tensor. Note that input_size's batch_size only
                     support 1.
         custom_ops (A dict of Function, optional): A dictionary whose key is the class of specific 
-                    op and the value is the function used to count the flops of this op.
-                    This argument only work when argument: 'net' is a instance of nn.Layer.
+                    op and the value is the function used to count the flops of this op.  The details
+                    of function could be found in example code. This argument only work when argument: 
+                    'net' is a instance of nn.Layer.
                     Default is None.
-
         print_detail (bool, optional): Whether to print the detail information about the flops of network.
                     Default is False.
 
@@ -76,8 +76,14 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
                     return x
 
             lenet = LeNet()
+            # m is the instance of Layer，x is are inputs of layer，y are outputs of layer.
+            def count_leaky_relu(m, x, y):
+                x = x[0]
+                nelements = x.numel()
+                m.total_ops += int(nelements)
 
-            flops = paddle.flops(lenet, [1, 1, 28, 28], print_detail=True)
+            flops = paddle.flops(lenet, [1, 1, 28, 28], custom_ops= {nn.LeakyReLU: count_leaky_relu},
+                                print_detail=True)
             print(flops)
     """
     if isinstance(net, nn.Layer):

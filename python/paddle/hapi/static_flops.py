@@ -15,6 +15,7 @@
 import copy
 import numpy as np
 import paddle
+from prettytable import PrettyTable
 from collections import OrderedDict
 from paddle.static import Program, program_guard, Variable
 
@@ -181,12 +182,13 @@ def count_element_op(op):
 def _graph_flops(graph, detail=False):
     assert isinstance(graph, GraphWrapper)
     flops = 0
-    params2flops = {}
+    table = PrettyTable(["OP Type", 'Param name', "Flops"])
     for op in graph.ops():
+        param_name = ''
         if op.type() in ['conv2d', 'depthwise_conv2d']:
             op_flops = count_convNd(op)
             flops += op_flops
-            params2flops[op.inputs("Filter")[0].name()] = op_flops
+            param_name = op.inputs("Filter")[0].name()
         elif op.type() == 'pool2d':
             op_flops = count_pool2d(op)
             flops += op_flops
@@ -194,7 +196,7 @@ def _graph_flops(graph, detail=False):
         elif op.type() in ['mul', 'matmul']:
             op_flops = count_linear(op)
             flops += op_flops
-            params2flops[op.inputs("Y")[0].name()] = op_flops
+            param_name = op.inputs("Y")[0].name()
         elif op.type() == 'batch_norm':
             op_flops = count_bn(op)
             flops += op_flops
@@ -202,13 +204,11 @@ def _graph_flops(graph, detail=False):
             op_flops = count_element_op(op)
             flops += op_flops
         if op_flops != 0:
-            print(op.type())
-            print(op_flops)
+            table.add_row([op.type(), param_name, op_flops])
         op_flops = 0
     if detail:
-        return flops, params2flops
-    else:
-        return flops
+        print(table)
+    return flops
 
 
 def static_flops(program, detail=False):
