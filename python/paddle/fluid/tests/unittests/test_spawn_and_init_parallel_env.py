@@ -37,7 +37,7 @@ class TestInitParallelEnv(unittest.TestCase):
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
         os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
-        os.environ['PADDLE_TRAINERS_NUM'] = '1'
+        os.environ['PADDLE_TRAINERS_NUM'] = '2'
         with self.assertRaises(ValueError):
             dist.init_parallel_env()
 
@@ -75,6 +75,14 @@ class TestSpawnAssistMethod(unittest.TestCase):
         env_dict = _get_subprocess_env_list(nprocs=1, options=dict())[0]
         self.assertEqual(env_dict['PADDLE_TRAINER_ID'], '0')
         self.assertEqual(env_dict['PADDLE_TRAINERS_NUM'], '1')
+
+    def test_invaild_options(self):
+        def train():
+            # only for test
+            pass
+
+        with self.assertRaises(ValueError):
+            dist.spawn(train, selelcted_gpus='2,3')
 
 
 if __name__ == "__main__":
