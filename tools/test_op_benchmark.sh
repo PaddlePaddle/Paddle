@@ -152,7 +152,7 @@ function run_op_benchmark_test {
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
                                 "gpu" \
-                                "both" \
+                                "speed" \
                                 $api_info_file \
                                 "paddle"
     popd > /dev/null

@@ -60,19 +60,21 @@ def compare_benchmark_result(develop_result, pr_result):
     assert type(develop_speed) == type(pr_speed), "Erorr"
 
     if isinstance(develop_speed, dict) and isinstance(pr_speed, dict):
+        pr_gpu_time = pr_speed.get("gpu_time")
+        develop_gpu_time = develop_speed.get("gpu_time")
+        gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
+
         pr_total_time = pr_speed.get("total")
         develop_total_time = develop_speed.get("total")
         total_time_diff = (
             pr_total_time - develop_total_time) / develop_total_time
 
-        pr_gpu_time = pr_speed.get("gpu_time")
-        develop_gpu_time = develop_speed.get("gpu_time")
-        gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
-
         # TODO(Avin0323): Print all info for making relu of alart.
         logging.info("------ OP: %s ------" % pr_result.get("name"))
-        logging.info("Total time change: %.5f%%, GPU time change: %.5f%%" %
-                     (total_time_diff * 100, gpu_time_diff * 100))
+        logging.info("GPU time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
+                     (gpu_time_diff * 100, develop_gpu_time, pr_gpu_time))
+        logging.info("Total time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
+                     (total_time_diff * 100, develop_total_time, pr_total_time))
         logging.info("backward: %s" % pr_result.get("backward"))
         logging.info("parameters:")
         for line in pr_result.get("parameters").strip().split("\n"):
