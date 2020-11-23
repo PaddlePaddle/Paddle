@@ -20,7 +20,8 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import compiler
+from paddle.static import Program, program_guard
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
@@ -248,16 +249,17 @@ class TestReshapeOpBool(TestReshapeOp):
 class TestReshapeAPI(unittest.TestCase):
     def _set_paddle_api(self):
         self.fill_constant = paddle.fluid.layers.fill_constant
-        self.data = paddle.fluid.data
+        self.data = paddle.static.data
         self.reshape = paddle.reshape
         self.to_tensor = paddle.to_tensor
 
     def _set_fluid_api(self):
         self.fill_constant = fluid.layers.fill_constant
-        self.data = fluid.data
+        self.data = paddle.static.data
         self.reshape = fluid.layers.reshape
 
     def _test_api(self):
+        paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
         main_prog = Program()
@@ -280,7 +282,7 @@ class TestReshapeAPI(unittest.TestCase):
             # Situation 4: have shape(Tensor), no actual shape(Tensor)
             out_4 = self.reshape(x, shape=actual_shape)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
         res_1, res_2, res_3, res_4 = exe.run(
             main_prog,
             feed={"x": input,
@@ -323,7 +325,7 @@ class TestReshapeAPI(unittest.TestCase):
 # Test Input Error
 class TestReshapeOpError(unittest.TestCase):
     def _set_paddle_api(self):
-        self.data = paddle.fluid.data
+        self.data = paddle.static.data
         self.reshape = paddle.reshape
 
     def _set_fluid_api(self):
@@ -335,7 +337,7 @@ class TestReshapeOpError(unittest.TestCase):
             # The x type of reshape_op must be Variable.
             def test_x_type():
                 x1 = fluid.create_lod_tensor(
-                    np.array([[-1]]), [[1]], fluid.CPUPlace())
+                    np.array([[-1]]), [[1]], paddle.CPUPlace())
                 self.reshape(x1, shape=[1])
 
             self.assertRaises(TypeError, test_x_type)
