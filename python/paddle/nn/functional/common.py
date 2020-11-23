@@ -1414,7 +1414,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
 
 def linear(x, weight, bias=None, name=None):
-    """
+    r"""
 
     Fully-connected linear transformation operator. For each input :math:`X` ,
     the equation is:
@@ -1501,7 +1501,7 @@ def linear(x, weight, bias=None, name=None):
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
-    """
+    r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
     label-smoothing regularization (LSR).
 

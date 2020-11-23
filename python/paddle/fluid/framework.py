@@ -2252,7 +2252,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2303,7 +2303,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:

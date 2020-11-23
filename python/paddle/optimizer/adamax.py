@@ -21,7 +21,7 @@ __all__ = ["Adamax"]
 
 
 class Adamax(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,

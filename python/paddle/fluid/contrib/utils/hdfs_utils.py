@@ -33,7 +33,7 @@ _logger = get_logger(
 
 
 class HDFSClient(object):
-    """
+    r"""
     A tool of HDFS 
 
     Args:

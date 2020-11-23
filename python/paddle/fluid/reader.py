@@ -1250,7 +1250,7 @@ class GeneratorLoader(DataLoaderBase):
 
 
 class PyReader(DataLoaderBase):
-    """
+    r"""
     Create a reader object for data feeding in Python. 
     Data would be prefetched using Python thread and be pushed
     into a queue asynchronously. Data in the queue would be extracted 

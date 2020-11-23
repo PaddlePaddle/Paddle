@@ -169,7 +169,7 @@ def flip(x, axis, name=None):
 
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
-    """
+    r"""
     **Flatten op**
 
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
@@ -577,7 +577,7 @@ def unique(x,
            axis=None,
            dtype="int64",
            name=None):
-    """
+    r"""
     Returns the unique elements of `x` in ascending order.
 
     Args:
@@ -962,7 +962,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
 
 def scatter_nd_add(x, index, updates, name=None):
-    """
+    r"""
     **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value

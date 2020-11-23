@@ -47,7 +47,7 @@ __all__ = ['Optimizer']
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
