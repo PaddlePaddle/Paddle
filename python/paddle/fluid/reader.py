@@ -489,9 +489,9 @@ class DataLoader(object):
             
             .. code-block:: python
 
-                ```
+                '''
                 Example in static graph mode
-                ```
+                '''
                 import numpy as np
 
                 import paddle
@@ -690,9 +690,9 @@ class DataLoader(object):
 
             .. code-block:: python
 
-                ```
+                '''
                 Example of `drop_last` using in static graph multi-cards mode
-                ```
+                '''
                 import paddle
                 import paddle.static as static
                 import numpy as np
