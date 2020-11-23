@@ -623,6 +623,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+          
             import paddle.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.sharding = True
