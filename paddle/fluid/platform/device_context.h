@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
-#include "paddle/fluid/platform/tf32_utils.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -58,6 +57,9 @@ struct GpuDevice;
 
 namespace paddle {
 namespace platform {
+
+void tf32_switch_on_off(bool active);
+bool get_tf32_switch();
 
 class DeviceContext {
  public:
@@ -169,7 +171,11 @@ class CUDAContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    cublas_handle_->Call(std::forward<Callback>(callback));
+    if (cublas_tf32_tensor_core_handle_ && get_tf32_switch()) {
+      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
+    } else {
+      cublas_handle_->Call(std::forward<Callback>(callback));
+    }
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -178,11 +184,9 @@ class CUDAContext {
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
+  template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    if (cublas_tf32_tensor_core_handle_ &&
-        paddle::platform::get_tf32_switch()) {
-      cublas_tf32_tensor_core_handle_->Call(std::forward<Callback>(callback));
-    } else if (cublas_tensor_core_handle_) {
+    if (cublas_tensor_core_handle_) {
       cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
     } else {
       cublas_handle_->Call(std::forward<Callback>(callback));

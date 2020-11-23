@@ -94,14 +94,11 @@ endif()
 
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
-if(WITH_GPU)
-  cc_library(tf32_utils SRCS tf32_utils.cc DEPS)
-endif()
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} tf32_utils)
+    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
 cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
 

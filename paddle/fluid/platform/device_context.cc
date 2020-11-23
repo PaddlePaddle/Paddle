@@ -56,6 +56,12 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
+static bool allow_tf32_cublas{true};
+
+void tf32_switch_on_off(bool active) { allow_tf32_cublas = active; }
+
+bool get_tf32_switch() { return allow_tf32_cublas; }
+
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {

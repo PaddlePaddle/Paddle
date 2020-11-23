@@ -14,10 +14,10 @@
 
 from . import core
 
-__all__ = ['set_tf32_switch', 'get_tf32_switch']
+__all__ = ['set_tf32', 'allow_tf32']
 
 
-def set_tf32_switch(on_off):
+def set_tf32(on_off):
     """
   Set tf32 switch by users.
 
@@ -29,7 +29,7 @@ def set_tf32_switch(on_off):
     return core.set_switch(on_off)
 
 
-def get_tf32_switch():
+def allow_tf32():
     """
   get the state of tf32 switch.
 
