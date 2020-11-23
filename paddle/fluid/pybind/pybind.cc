@@ -2283,7 +2283,7 @@ All parameter, weight, gradient are variables in Paddle.
                                   "configured again."));
             self.gradient_scale_ = strategy;
           },
-          R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
+          R"DOC((paddle.static.BuildStrategy.GradientScaleStrategy, optional): there are three
                 ways of defining :math:`loss@grad` in ParallelExecutor, that is, CoeffNumDevice,
                 One and Customized. By default, ParallelExecutor sets the :math:`loss@grad`
                 according to the number of devices. If you want to customize :math:`loss@grad`,
