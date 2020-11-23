@@ -50,7 +50,7 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 
-from .callbacks import config_callbacks
+from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
 
 __all__ = ['Model', ]
@@ -872,6 +872,7 @@ class Model(object):
         self._input_info = None
         self._is_shape_inferred = False
         self._test_dataloader = None
+        self.stop_training = False
 
         if not in_dygraph_mode():
             if not isinstance(inputs, (list, dict, Input)):
@@ -1479,9 +1480,11 @@ class Model(object):
             verbose=verbose,
             metrics=self._metrics_name(), )
 
+        if any(isinstance(k, EarlyStopping) for k in cbks) and not do_eval:
+            warnings.warn("EarlyStopping needs validation data.")
+
         cbks.on_begin('train')
         for epoch in range(epochs):
-
             cbks.on_epoch_begin(epoch)
             logs = self._run_one_epoch(train_loader, cbks, 'train')
             cbks.on_epoch_end(epoch, logs)
@@ -1497,6 +1500,8 @@ class Model(object):
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
                 cbks.on_end('eval', eval_logs)
+                if self.stop_training:
+                    break
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
