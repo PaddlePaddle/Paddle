@@ -1681,7 +1681,7 @@ from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
-    '''
+    r'''
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
        <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
