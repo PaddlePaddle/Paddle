@@ -65,6 +65,12 @@ class PRChecker(object):
             else:
                 ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
+        cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/prec_delta'
+        os.system(cmd)
+        with open('prec_delta') as delta:
+            for ut in delta:
+                ut_list.append(ut.rstrip('\r\n'))
+
         return ' '.join(ut_list)
 
 
