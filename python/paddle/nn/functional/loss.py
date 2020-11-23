@@ -780,13 +780,11 @@ def nll_loss(input,
                                      [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
                 label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
 
-                place = paddle.CPUPlace()
-                paddle.disable_static(place)
                 input = paddle.to_tensor(input_np)
                 log_out = log_softmax(input)
                 label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
-                print(result.numpy()) # [1.0720209]
+                print(result) # [1.0720209]
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
