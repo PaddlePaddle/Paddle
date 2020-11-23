@@ -1271,28 +1271,26 @@ def has_nan(x):
 
 def isfinite(x):
     """
-	:alias_main: paddle.isfinite
-	:alias: paddle.isfinite,paddle.tensor.isfinite,paddle.tensor.logic.isfinite
-	:old_api: paddle.fluid.layers.isfinite
 
     Test if any of x contains an infinity/NAN number. If all the elements are finite,
     returns true, else false.
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+        x(Tensor): The Tensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, contains a bool value.
+        Tensor: The tensor storing the output, contains a bool value.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            var = fluid.layers.data(name="data",
-                                    shape=(4, 6),
-                                    dtype="float32")
-            out = fluid.layers.isfinite(var)
+            import paddle
+
+            x = paddle.rand(shape=[4, 6], dtype='float32')
+            y = paddle.fluid.layers.isfinite(x)
+            print(y)
+
     """
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "isfinite")
