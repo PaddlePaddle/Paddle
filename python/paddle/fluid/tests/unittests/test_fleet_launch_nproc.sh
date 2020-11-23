@@ -17,8 +17,7 @@
 set -e
 export FLAGS_START_PORT=35789
 
-local_ip=`ip route get 1 | awk '{print $NF;exit}'`
-echo "local ip:${local_ip}"
+#local_ip=`ip route get 1 | awk '{print $NF;exit}'`
 file_0="fleet_nproc_0.check_0.log"
 
 function test_nproc_0(){
@@ -37,34 +36,73 @@ function test_nproc_0(){
     fi
 }
 
-# gpu
+# unittest1:gpu
+echo "begin ut 1:"
 export CUDA_VISIBLE_DEVICES=0,1
 test_nproc_0 "0,1"
 
-# cpu
+# unittest2:cpu
+echo "begin ut 2:"
 export CUDA_VISIBLE_DEVICES=""
 test_nproc_0 ""
 
-# nproc_per_node=2, each with 1 gpus
+
+function test_nproc_1_gpu(){
+    file_0="fleet_nproc_1.check_0.log"
+    file_1="fleet_nproc_1.check_1.log"
+    rm -f ${file_0} ${file_1}
+
+    distributed_args="--log_dir=testlog --nproc_per_node=2"
+    python -m paddle.distributed.fleet.launch ${distributed_args} nproc_process.py  fleet_nproc_1
+
+    str0="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
+    if grep -q "$str0" "$file_0"; then
+        echo "find trainer 0"
+    else
+        echo "not find trainer 0"
+        exit -1
+    fi
+
+    str1="selected_gpus:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35790 trainer_id:1"
+    if grep -q "$str1" "$file_1"; then
+        echo "find trainer 1"
+    else
+        echo "not find trainer 1"
+        exit -1
+    fi
+}
+
+# unittest3: nproc_per_node=2, each with 1 gpus
+echo "begin ut 3:"
 export CUDA_VISIBLE_DEVICES=0,1
-file_0="fleet_nproc_1.check_0.log"
-file_1="fleet_nproc_1.check_1.log"
-rm -f ${file_0} ${file_1}
-distributed_args="--log_dir=testlog --nproc_per_node=2"
-python -m paddle.distributed.fleet.launch ${distributed_args} nproc_process.py  fleet_nproc_1
+test_nproc_1_gpu
 
-str0="selected_gpus:0 worker_endpoints:${local_ip}:35789,${local_ip}:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
-if grep -q "$str0" "$file_0"; then
-    echo "find trainer 0"
-else
-    echo "not find trainer 0"
-    exit -1
-fi
+function test_nproc_1_cpu(){
+    file_0="fleet_nproc_1.check_0.log"
+    file_1="fleet_nproc_1.check_1.log"
+    rm -f ${file_0} ${file_1}
 
-str1="selected_gpus:0 worker_endpoints:${local_ip}:35789,${local_ip}:35790 trainers_num:2 current_endpoint:${local_ip}:35790 trainer_id:1"
-if grep -q "$str1" "$file_1"; then
-    echo "find trainer 1"
-else
-    echo "not find trainer 1"
-    exit -1
-fi
+    distributed_args="--log_dir=testlog --nproc_per_node=2"
+    python -m paddle.distributed.fleet.launch ${distributed_args} nproc_process.py  fleet_nproc_1
+
+    str0="selected_gpus: worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
+    if grep -q "$str0" "$file_0"; then
+        echo "find trainer 0"
+    else
+        echo "not find trainer 0"
+        exit -1
+    fi
+
+    str1="selected_gpus: worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35790 trainer_id:1"
+    if grep -q "$str1" "$file_1"; then
+        echo "find trainer 1"
+    else
+        echo "not find trainer 1"
+        exit -1
+    fi
+}
+
+# unittest4: nproc_per_node=2, cpu
+echo "begin ut 4:"
+export CUDA_VISIBLE_DEVICES=""
+test_nproc_1_cpu
