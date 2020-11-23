@@ -97,7 +97,7 @@ class ParallelEnv(object):
         if __name__ == '__main__':
             # 1. start by ``paddle.distributed.spawn`` (default)
             dist.spawn(train, nprocs=2)
-            # 2. start by ``paddle.distributed.fleet.launch``
+            # 2. start by ``paddle.distributed.launch``
             # train()
     """
 
