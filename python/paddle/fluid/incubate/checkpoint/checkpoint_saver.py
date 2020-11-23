@@ -60,7 +60,7 @@ class CheckpointSaver(object):
                         slists,
                         trainer_id=None,
                         local_cache_path=".cache"):
-        r"""
+        """
         Serialize objects in slists to path
         Return really saved path and checkpoint_no
         """
@@ -116,7 +116,7 @@ class CheckpointSaver(object):
                         local_cache_path=".cache",
                         checkpoint_no=None,
                         ignore_empty=True):
-        r"""
+        """
         Deserialize objects in slists from path
         Return really load path
         """
@@ -184,7 +184,7 @@ class CheckpointSaver(object):
         return a
 
     def _get_last_checkpoint_no(self, root_path):
-        r"""
+        """
         only get the first depth
         """
         a = self.get_checkpoint_no(root_path)

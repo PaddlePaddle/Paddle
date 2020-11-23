@@ -86,7 +86,7 @@ def parse_args():
 
 
 class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
-    r"""
+    """
     Test for accuracy comparison of FP32 and Quant2 INT8 Image Classification inference.
     """
 

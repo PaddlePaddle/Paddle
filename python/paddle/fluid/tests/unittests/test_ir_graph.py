@@ -19,7 +19,7 @@ from paddle import fluid
 
 
 class TestIRGraph(unittest.TestCase):
-    r"""
+    """
     TODO(fc500110): `resolve_hazard` api will be tested when it can be used.
     """
 

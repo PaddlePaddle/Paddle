@@ -17,7 +17,7 @@ import sys
 
 
 class DataGenerator(object):
-    r"""
+    """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
     with paddle.distributed.InMemoryDataset/QueueDataset should 

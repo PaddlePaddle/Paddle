@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 This module provides a memory usage calculate function for user.
 The purpose of this API is to allow users to estimate memory usage of
 a program under a special batch size, then user can set appropriate
@@ -44,7 +44,7 @@ DEBUG = False
 
 
 def memory_usage(program, batch_size):
-    r"""
+    """
     Get the estimate memory usage of program with input batch size.
 
     Args:

@@ -57,7 +57,7 @@ def center_loss(input,
                 alpha,
                 param_attr,
                 update_center=True):
-    r"""
+    """
     :api_attr: Static Graph
 
     **Center loss Cost layer**
@@ -151,7 +151,7 @@ def center_loss(input,
 
 
 def bpr_loss(input, label, name=None):
-    r"""
+    """
 
     **Bayesian Personalized Ranking Loss Operator**
 
@@ -203,7 +203,7 @@ def bpr_loss(input, label, name=None):
 
 
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
-    r"""
+    """
     :alias_main: paddle.nn.functional.cross_entropy
 	:alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
 	:old_api: paddle.fluid.layers.cross_entropy
@@ -300,7 +300,7 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 
 def square_error_cost(input, label):
-    r"""
+    """
 
     This op accepts input predictions and target label and returns the
     squared error cost.
@@ -363,7 +363,7 @@ def edit_distance(input,
                   ignored_tokens=None,
                   input_length=None,
                   label_length=None):
-    r"""
+    """
     This op computes the edit distances, also called Levenshtein distance, between a batch of
     hypothesis strings and their references. It measures how dissimilar two strings are by counting
     the minimum number of operations to transform one string into another.
@@ -502,7 +502,7 @@ def warpctc(input,
             norm_by_times=False,
             input_length=None,
             label_length=None):
-    r"""
+    """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
@@ -677,7 +677,7 @@ def nce(input,
         custom_dist=None,
         seed=0,
         is_sparse=False):
-    r"""
+    """
     :api_attr: Static Graph
 
     ${comment}
@@ -890,7 +890,7 @@ def hsigmoid(input,
              path_code=None,
              is_custom=False,
              is_sparse=False):
-    r"""
+    """
     :api_attr: Static Graph
     
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
@@ -1054,7 +1054,7 @@ def sampled_softmax_with_cross_entropy(logits,
                                        customized_samples=None,
                                        customized_probabilities=None,
                                        seed=0):
-    r"""
+    """
     **Sampled Softmax With Cross Entropy Operator.**
 
     Cross entropy loss with sampled softmax is used as the output layer for 
@@ -1185,7 +1185,7 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
-    r"""
+    """
     :alias_main: paddle.nn.functional.softmax_with_cross_entropy
 	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
 	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
@@ -1312,7 +1312,7 @@ def softmax_with_cross_entropy(logits,
 
 
 def rank_loss(label, left, right, name=None):
-    r"""
+    """
 
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
@@ -1375,7 +1375,7 @@ def rank_loss(label, left, right, name=None):
 
 
 def margin_rank_loss(label, left, right, margin=0.1, name=None):
-    r"""
+    """
     Margin Ranking Loss Layer for ranking problem,
     which compares left score and right score passed in.
     The ranking loss can be defined as following equation:
@@ -1432,7 +1432,7 @@ def sigmoid_cross_entropy_with_logits(x,
                                       ignore_index=kIgnoreIndex,
                                       name=None,
                                       normalize=False):
-    r"""
+    """
     :alias_main: paddle.nn.functional.sigmoid_cross_entropy_with_logits
 	:alias: paddle.nn.functional.sigmoid_cross_entropy_with_logits,paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits
 	:old_api: paddle.fluid.layers.sigmoid_cross_entropy_with_logits
@@ -1493,7 +1493,7 @@ def teacher_student_sigmoid_loss(input,
                                  label,
                                  soft_max_up_bound=15.0,
                                  soft_max_lower_bound=-15.0):
-    r"""
+    """
 
     **Teacher Student Log Loss Layer**
 
@@ -1551,7 +1551,7 @@ def teacher_student_sigmoid_loss(input,
 
 
 def huber_loss(input, label, delta):
-    r"""
+    """
     This operator computes the Huber loss between input and label.
     Huber loss is commonly used in regression tasks. Compared to square_error_cost, Huber loss is more robust and less sensitivity to outliers.
 
@@ -1617,7 +1617,7 @@ def huber_loss(input, label, delta):
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.kl_div")
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
-    r"""
+    """
     :alias_main: paddle.nn.functional.kldiv_loss
 	:alias: paddle.nn.functional.kldiv_loss,paddle.nn.functional.loss.kldiv_loss
 	:old_api: paddle.fluid.layers.kldiv_loss
@@ -1748,7 +1748,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 
 def mse_loss(input, label):
-    r"""
+    """
 
     This op accepts input predications and target label and returns the mean square error.
 

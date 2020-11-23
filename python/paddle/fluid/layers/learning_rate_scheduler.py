@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 When training a model, it's often useful to decay the
 learning rate during training process, this is called
 learning_rate_decay. There are many strategies to do
@@ -51,7 +51,7 @@ def _decay_step_counter(begin=0):
 
 
 def noam_decay(d_model, warmup_steps, learning_rate=1.0):
-    r"""
+    """
 
     Noam decay method. The numpy implementation of noam decay as follows.
 
@@ -111,7 +111,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
 
 
 def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
-    r"""
+    """
 
     Applies exponential decay to the learning rate.
 
@@ -172,7 +172,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
 
 def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
-    r"""
+    """
 
 Applies natural exponential decay to the initial learning rate.
 
@@ -233,7 +233,7 @@ Applies natural exponential decay to the initial learning rate.
 
 
 def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
-    r"""
+    """
 
     Applies inverse time decay to the initial learning rate.
 
@@ -297,7 +297,7 @@ def polynomial_decay(learning_rate,
                      end_learning_rate=0.0001,
                      power=1.0,
                      cycle=False):
-    r"""
+    """
     Applies polynomial decay to the initial learning rate.
 
     .. code-block:: text
@@ -362,7 +362,7 @@ def polynomial_decay(learning_rate,
 
 
 def piecewise_decay(boundaries, values):
-    r"""
+    """
 
 Applies piecewise decay to the initial learning rate.
 
@@ -440,7 +440,7 @@ Applies piecewise decay to the initial learning rate.
 
 
 def cosine_decay(learning_rate, step_each_epoch, epochs):
-    r"""
+    """
 
     Applies cosine decay to the learning rate.
 
@@ -486,7 +486,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
 
 def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
-    r"""
+    """
 
     This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_

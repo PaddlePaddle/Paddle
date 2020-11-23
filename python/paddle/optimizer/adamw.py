@@ -23,7 +23,7 @@ __all__ = ['AdamW']
 
 
 class AdamW(Adam):
-    r"""
+    """
     The AdamW optimizer is implemented based on the AdamW Optimization
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
     it can resolves the problem of L2 regularization failure in the Adam optimizer.
@@ -140,7 +140,7 @@ class AdamW(Adam):
             lazy_mode=lazy_mode)
 
     def _scale_parameters(self, params_and_grads):
-        r"""
+        """
         Adds weight decay ops.
             scaled_parameter = parameter * coeff
 

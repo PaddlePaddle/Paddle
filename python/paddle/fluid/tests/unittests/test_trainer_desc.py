@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 TestCases for TrainerDesc,
 including config, etc.
 """
@@ -25,10 +25,10 @@ import unittest
 
 
 class TestTrainerDesc(unittest.TestCase):
-    r"""  TestCases for TrainerDesc. """
+    """  TestCases for TrainerDesc. """
 
     def test_config(self):
-        r"""
+        """
         Testcase for python config.
         """
         trainer_desc = fluid.trainer_desc.TrainerDesc()

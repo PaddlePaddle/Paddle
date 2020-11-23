@@ -40,7 +40,7 @@ from white_list import op_threshold_white_list, no_grad_set_white_list
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
-    r"""
+    """
     Determines whether dtype of output tensor is as expected.
 
     Args:
@@ -188,7 +188,7 @@ def get_numeric_gradient(place,
 
 
 def skip_check_grad_ci(reason=None):
-    r"""Decorator to skip check_grad CI.
+    """Decorator to skip check_grad CI.
 
        Check_grad is required for Op test cases. However, there are some special
        cases that do not need to do check_grad. This decorator is used to skip the
@@ -241,7 +241,7 @@ class OpTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        r"""Restore random seeds"""
+        """Restore random seeds"""
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
@@ -448,7 +448,7 @@ class OpTest(unittest.TestCase):
             return fluid.dygraph.base.to_variable(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
-        r"""Get LoD input data whose batch size is 1.
+        """Get LoD input data whose batch size is 1.
         All sequence related OP unittests should call this function to contain the case of batch size = 1.
         Args:
             lod (list[list of int], optional): Length-based LoD, length of lod[0] should be 1. Default: [[13]].
@@ -479,7 +479,7 @@ class OpTest(unittest.TestCase):
         return False
 
     def get_sequence_instance_size_0_input(self, lod=None, shape=None):
-        r"""Get LoD input data whose instance size is 0.
+        """Get LoD input data whose instance size is 0.
         All sequence related OP unittests should call this function to contain the case of instance size is 0.
         Args:
             lod (list[list of int], optional): Length-based LoD, lod[0]'s size must at least eight, lod[0] must at least two zeros at the beginning and at least two zeros at the end, the middle position of lod[0] contains a single zero and multiple zero. Default: [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]].
@@ -682,7 +682,7 @@ class OpTest(unittest.TestCase):
                                            expect_outs,
                                            actual_outs,
                                            inplace_atol=None):
-        r"""Compare expect outs and actual outs of an tested op.
+        """Compare expect outs and actual outs of an tested op.
 
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs.
@@ -720,7 +720,7 @@ class OpTest(unittest.TestCase):
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):
-        r"""Generate grad_program which contains the grad_op.
+        """Generate grad_program which contains the grad_op.
 
         Args:
             fwd_program (tuple): The program that contains grad_op_desc's corresponding forward op.
@@ -763,7 +763,7 @@ class OpTest(unittest.TestCase):
 
     def _construct_grad_feed_map_from_forward(self, place, fwd_res,
                                               grad_op_desc, op_grad_to_var):
-        r"""Generate grad_feed_map for grad_program.
+        """Generate grad_feed_map for grad_program.
 
         since we don`t really check gradient accuracy, but check the consistency when using and not using inplace,
         we use fwd outs (also inputs sometimes) to construct grad inputs.
@@ -801,7 +801,7 @@ class OpTest(unittest.TestCase):
         return grad_feed_map
 
     def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
-        r"""Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
+        """Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
         An op needs to run druing inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
@@ -849,7 +849,7 @@ class OpTest(unittest.TestCase):
                                place,
                                no_check_set=None,
                                inplace_atol=None):
-        r"""Chech the inplace correctness of given op (self.op_type).
+        """Chech the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
 
         Args:
@@ -886,7 +886,7 @@ class OpTest(unittest.TestCase):
                           fwd_res,
                           grad_op_desc,
                           enable_inplace=None):
-        r"""Calculate grad_output for given grad_op_desc.
+        """Calculate grad_output for given grad_op_desc.
 
         since we don`t really check gradient accuracy, but check the consistency when using and not using inplace,
         we use fwd outs (also inputs sometimes) to construct grad inputs.
@@ -929,7 +929,7 @@ class OpTest(unittest.TestCase):
                             fwd_res,
                             grad_op_desc,
                             inplace_atol=None):
-        r"""Chech the inplace correctness of given grad_op_desc.
+        """Chech the inplace correctness of given grad_op_desc.
 
         Run the grad op twice with same inputs, one enable inplace and another disable, compare their outputs.
         It works like _check_forward_inplace, but the way to construct program and feed_map differs.
@@ -962,7 +962,7 @@ class OpTest(unittest.TestCase):
                                         place,
                                         no_check_set=None,
                                         inplace_atol=None):
-        r"""Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
+        """Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
 
         (1) Get all ops need to run. (see conditions in _get_need_run_ops())
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.

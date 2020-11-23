@@ -219,7 +219,7 @@ def _update_input_info(inputs):
 
 
 class StaticGraphAdapter(object):
-    r"""
+    """
     Model traning/inference with a static graph.
     """
 
@@ -804,7 +804,7 @@ class DynamicGraphAdapter(object):
 
 
 class Model(object):
-    r"""
+    """
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
     switched by `paddle.disable_static()`. The usage is as follows.
@@ -889,7 +889,7 @@ class Model(object):
             self._adapter = StaticGraphAdapter(self)
 
     def train_batch(self, inputs, labels=None):
-        r"""
+        """
         Run one training step on a batch of data.
 
         Args:
@@ -939,7 +939,7 @@ class Model(object):
         return loss
 
     def eval_batch(self, inputs, labels=None):
-        r"""
+        """
         Run one evaluating step on a batch of data.
 
         Args:
@@ -990,7 +990,7 @@ class Model(object):
         return loss
 
     def predict_batch(self, inputs):
-        r"""
+        """
         Run one predicting step on a batch of data.
 
         Args:
@@ -1034,7 +1034,7 @@ class Model(object):
         return loss
 
     def save(self, path, training=True):
-        r"""  
+        """  
         This function saves parameters, optimizer information or model and 
         paramters only for inference to path. It depends on the parameter
         `training`.
@@ -1111,7 +1111,7 @@ class Model(object):
                 self._adapter.save(path)
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
-        r"""
+        """
         Load from files storing the model states and optimizer states. The file
         for optimizer states is not necessary if no need to restore the optimizer.
 
@@ -1208,7 +1208,7 @@ class Model(object):
         return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
-        r"""
+        """
         Returns a list of parameters of the model.
 
         Returns:
@@ -1235,7 +1235,7 @@ class Model(object):
         return self._adapter.parameters()
 
     def prepare(self, optimizer=None, loss=None, metrics=None):
-        r"""
+        """
         Configures the model before runing.
 
         Args:
@@ -1305,7 +1305,7 @@ class Model(object):
             shuffle=True,
             num_workers=0,
             callbacks=None, ):
-        r"""
+        """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
 
@@ -1508,7 +1508,7 @@ class Model(object):
             verbose=2,
             num_workers=0,
             callbacks=None, ):
-        r"""
+        """
         Evaluate the loss and metrics of the model on input dataset.
 
         Args:
@@ -1607,7 +1607,7 @@ class Model(object):
                 num_workers=0,
                 stack_outputs=False,
                 callbacks=None):
-        r"""
+        """
         Compute the output predictions on testing data.
 
         Args:
@@ -1713,7 +1713,7 @@ class Model(object):
                               model_filename=None,
                               params_filename=None,
                               model_only=False):
-        r"""
+        """
         Save inference model can be in static or dynamic mode.
 
         Args:
@@ -1897,7 +1897,7 @@ class Model(object):
         return logs
 
     def summary(self, input_size=None, dtype=None):
-        r"""Prints a string summary of the network.
+        """Prints a string summary of the network.
 
         Args:
             input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 

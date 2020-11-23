@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 usage: pull_request.py files pull_id
        pull_request.py diff  pull_id
 """
@@ -28,7 +28,7 @@ token = os.getenv('GITHUB_API_TOKEN')
 
 
 def get_pull(pull_id):
-    r"""
+    """
     Args:
         pull_id (int): Pull id.
 
@@ -43,7 +43,7 @@ def get_pull(pull_id):
 
 
 def get_files(args):
-    r"""
+    """
     Args:
         args (argparse.ArgumentParser().parse_args()): Arguments. 
 
@@ -58,7 +58,7 @@ def get_files(args):
 
 
 def diff(args):
-    r"""
+    """
     Args:
         args (argparse.ArgumentParser().parse_args()): Arguments. 
 

@@ -32,28 +32,28 @@ _QUANTIZABLE_OP_TYPES = ['conv2d', 'depthwise_conv2d', 'mul']
 
 
 def _quantized_var_name(var_name):
-    r"""
+    """
     Return quantized variable name for the input `var_name`.
     """
     return "%s.quantized" % (var_name)
 
 
 def _dequantized_var_name(var_name):
-    r"""
+    """
     Return dequantized variable name for the input `var_name`.
     """
     return "%s.dequantized" % (var_name)
 
 
 def _quantized_scale_name(var_name):
-    r"""
+    """
     Return quantized variable name for the input `var_name`.
     """
     return "%s.scale" % (var_name)
 
 
 def _original_var_name(var_name):
-    r"""
+    """
     Return the original variable name.
     """
     if var_name.endswith('.quantized.dequantized'):
@@ -85,7 +85,7 @@ class QuantizeTranspiler(object):
                  weight_quantize_type='abs_max',
                  window_size=10000,
                  moving_rate=0.9):
-        r"""
+        """
         Convert and rewrite the fluid Program according to weight and
         activation quantization type.
 
@@ -144,7 +144,7 @@ class QuantizeTranspiler(object):
         self.global_step = None
 
     def training_transpile(self, program=None, startup_program=None):
-        r"""Rewrites a training input program in place for simulated
+        """Rewrites a training input program in place for simulated
         quantization. Insert fake quantization and de-quantization ops into
         program to simulate the error introduced by quantization. And change
         the gradient ops' input by using the faked quantization weights and
@@ -221,7 +221,7 @@ class QuantizeTranspiler(object):
             self.global_step = autoincreased_step_counter()
 
     def freeze_program(self, program, place, scope=None):
-        r"""Freeze input training program for inference.
+        """Freeze input training program for inference.
 
         Args:
             program (Program): the input program to be transpile.
@@ -404,7 +404,7 @@ class QuantizeTranspiler(object):
                 block._remove_var(v)
 
     def _insert_quant_abs_max_op(self, block, idx, var, quant_bits):
-        r"""Insert fake_quantize_abs_max op.
+        """Insert fake_quantize_abs_max op.
         """
         quant_var = block.create_var(
             name=_quantized_var_name(var.name),
@@ -426,7 +426,7 @@ class QuantizeTranspiler(object):
         return quant_var, scale
 
     def _insert_quant_range_abs_max_op(self, block, idx, var, quant_bits):
-        r"""Insert fake_quantize_range_abs_max
+        """Insert fake_quantize_range_abs_max
         """
         quant_var = block.create_var(
             name=_quantized_var_name(var.name),
@@ -474,7 +474,7 @@ class QuantizeTranspiler(object):
 
     def _insert_quant_moving_average_abs_max_op(self, block, idx, var,
                                                 quant_bits):
-        r"""Insert fake_quantize_moving_average_abs_max
+        """Insert fake_quantize_moving_average_abs_max
         """
         quant_var = block.create_var(
             name=_quantized_var_name(var.name),
@@ -528,7 +528,7 @@ class QuantizeTranspiler(object):
         return quant_var, scale
 
     def _insert_quant_op(self, block, idx, var, quant_bits, quant_type):
-        r"""
+        """
         Insert fake_quantize_op
         """
         if quant_type == 'abs_max':
@@ -541,7 +541,7 @@ class QuantizeTranspiler(object):
                                                                 quant_bits)
 
     def _insert_dequant_op(self, block, idx, var, scale, quant_bits):
-        r"""
+        """
         Insert fake_quantize_op
         """
         dequant_var = block.create_var(

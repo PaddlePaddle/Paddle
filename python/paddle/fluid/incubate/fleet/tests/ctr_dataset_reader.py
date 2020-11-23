@@ -27,7 +27,7 @@ logger = get_logger(
 
 DATA_URL = "http://paddle-ctr-data.bj.bcebos.com/avazu_ctr_data.tgz"
 DATA_MD5 = "c11df99fbd14e53cd4bfa6567344b26e"
-r"""
+"""
 avazu_ctr_data/train.txt
 avazu_ctr_data/infer.txt
 avazu_ctr_data/test.txt
@@ -74,7 +74,7 @@ class DatasetCtrReader(fleet.MultiSlotDataGenerator):
 
 
 def prepare_data():
-    r"""
+    """
     load data meta info from path, return (dnn_input_dim, lr_input_dim)
     """
     file_dir_name = download_file()

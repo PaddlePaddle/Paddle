@@ -60,7 +60,7 @@ def prepare_context(strategy=None):
 
 
 class ParallelEnv(object):
-    r"""
+    """
     .. note::
         This API is not recommended, if you need to get rank and world_size, 
         it is recommended to use ``paddle.distributed.get_rank()`` and 
@@ -111,7 +111,7 @@ class ParallelEnv(object):
 
     @property
     def rank(self):
-        r"""
+        """
         Rank of current trainer.
 
         Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . The default value is 0.
@@ -130,7 +130,7 @@ class ParallelEnv(object):
 
     @property
     def world_size(self):
-        r"""
+        """
         The number of trainers (number of processes participating in current job).
 
         Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . The default value is 1.
@@ -149,7 +149,7 @@ class ParallelEnv(object):
 
     @property
     def device_id(self):
-        r"""
+        """
         The ID of selected GPU card for parallel training.
 
         Its value is equal to the value of the environment variable ``FLAGS_selected_gpus`` . The default value is 0.
@@ -168,7 +168,7 @@ class ParallelEnv(object):
 
     @property
     def current_endpoint(self):
-        r"""
+        """
         The endpoint of current trainer, it is in the form of (node IP + port).
 
         Its value is equal to the value of the environment variable ``PADDLE_CURRENT_ENDPOINT`` . The default value is "".
@@ -187,7 +187,7 @@ class ParallelEnv(object):
 
     @property
     def trainer_endpoints(self):
-        r"""
+        """
         The endpoints of all trainer nodes in the task, 
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
 
@@ -333,7 +333,7 @@ def apply_collective_grads(parameters):
 
 
 class DataParallel(layers.Layer):
-    r"""
+    """
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
@@ -430,7 +430,7 @@ class DataParallel(layers.Layer):
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore.")
     def scale_loss(self, loss):
-        r"""
+        """
         Deprecated method, now ``scale_loss`` is an empty method,  
         keep this method just for compatibility.
         """
@@ -439,7 +439,7 @@ class DataParallel(layers.Layer):
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore.")
     def apply_collective_grads(self):
-        r"""
+        """
         Deprecated method, now ``apply_collective_grads`` is an empty method, 
         keep this method just for compatibility.
         """

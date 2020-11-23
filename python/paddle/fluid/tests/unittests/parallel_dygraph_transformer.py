@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, to_variable, Layer
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
-r"""
+"""
 Note(chenweihang): To compare loss of single-card and multi-card 
     in our dist test framework, two parameters need to be adjusted:
   1. set the dropout rate to 0.
@@ -32,7 +32,7 @@ Note(chenweihang): To compare loss of single-card and multi-card
 
 
 class TrainTaskConfig(object):
-    r"""
+    """
     TrainTaskConfig
     """
     # the epoch number to train.
@@ -190,7 +190,7 @@ fast_decoder_data_input_fields = (
 
 
 def position_encoding_init(n_position, d_pos_vec):
-    r"""
+    """
     Generate the initial values for the sinusoid position encoding table.
     """
     channels = d_pos_vec
@@ -488,7 +488,7 @@ class WrapEncoderLayer(Layer):
                  postprocess_cmd,
                  weight_sharing,
                  is_sparse=False):
-        r"""
+        """
         The wrapper assembles together all needed layers for the encoder.
         """
         super(WrapEncoderLayer, self).__init__()
@@ -661,7 +661,7 @@ class WrapDecoderLayer(Layer):
                  caches=None,
                  gather_idx=None,
                  is_sparse=False):
-        r"""
+        """
         The wrapper assembles together all needed layers for the encoder.
         """
         super(WrapDecoderLayer, self).__init__()

@@ -28,7 +28,7 @@ ORIGI_INFO_MAP = "Original information map of source code."
 
 
 class Location(object):
-    r"""
+    """
     Location information of source code.
     """
     __slots__ = (
@@ -51,7 +51,7 @@ class Location(object):
 
 
 class OriginInfo(object):
-    r"""
+    """
     Original information of source code.
     """
     __slots__ = (
@@ -80,7 +80,7 @@ class OriginInfo(object):
 
 
 class OriginInfoAttacher(gast.NodeTransformer):
-    r"""
+    """
     Attach original source information to AST node according corresponding function.
     """
 
@@ -144,7 +144,7 @@ global_origin_info_map = {}
 def create_and_update_origin_info_map(transformed_node,
                                       static_func,
                                       is_global=True):
-    r"""
+    """
     Creates a original information map between transformed static function and original dygraph function.
 
     Args:
@@ -188,7 +188,7 @@ def create_and_update_origin_info_map(transformed_node,
 
 
 def attach_origin_info(ast_node, func):
-    r"""
+    """
     Attach original source information to AST node according corresponding function.
 
     Args:
@@ -204,7 +204,7 @@ def attach_origin_info(ast_node, func):
 
 
 def ast_walk(transformed_node, static_node):
-    r"""
+    """
     Recursively yield all descendant nodes in the trees starting at transformed_node and static_node (including itself) in parallel.
 
     NOTE(liym27):
@@ -253,14 +253,14 @@ def ast_walk(transformed_node, static_node):
 
 
 def update_op_callstack_with_origin_info(program):
-    r"""
+    """
     Replaces op callstack information about transformed static code with original dygraph code.
     """
 
     assert isinstance(program, Program)
 
     def get_new_op_callstack(callstack):
-        r"""
+        """
         An example of callstack:
 
             File "path1/to/file.py", line 10, in func_1

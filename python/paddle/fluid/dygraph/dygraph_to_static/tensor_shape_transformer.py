@@ -42,7 +42,7 @@ def create_convert_shape_node(var_shape_node):
 
 
 class TensorShapeTransformer(gast.NodeTransformer):
-    r"""
+    """
     This class transforms variable.shape used in Paddle Apis or control flow conditions into Static Graph Ast.
     """
 
@@ -171,7 +171,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
         return False
 
     def is_var_shape(self, node):
-        r"""
+        """
         Return True if node is like `x.shape`, return False otherwise.
         """
         assert isinstance(node, gast.Attribute)

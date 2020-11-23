@@ -24,7 +24,7 @@ __all__ = ['run_check']
 
 
 def _simple_network():
-    r"""
+    """
     Define a simple network composed by a single linear layer.
     """
     input = paddle.static.data(
@@ -40,7 +40,7 @@ def _simple_network():
 
 
 def _prepare_data(device_count):
-    r"""
+    """
     Prepare feeding data for simple network. The shape is [device_count, 2, 2].
 
     Args:
@@ -60,7 +60,7 @@ def _prepare_data(device_count):
 
 
 def _is_cuda_available():
-    r"""
+    """
     Check whether CUDA is avaiable.
     """
     try:
@@ -75,7 +75,7 @@ def _is_cuda_available():
 
 
 def _run_static_single(use_cuda):
-    r"""
+    """
     Testing the simple network with executor running directly, using one CPU/GPU.
 
     Args:
@@ -101,7 +101,7 @@ def _run_static_single(use_cuda):
 
 
 def _run_static_parallel(use_cuda, device_list):
-    r"""
+    """
     Testing the simple network in data parallel mode, using multiple CPU/GPU.
 
     Args:
@@ -132,7 +132,7 @@ def _run_static_parallel(use_cuda, device_list):
 
 
 def run_check():
-    r"""
+    """
     Check whether PaddlePaddle is installed correctly and running successfully
     on your system.
 

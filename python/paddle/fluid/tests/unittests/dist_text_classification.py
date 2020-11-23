@@ -152,7 +152,7 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
 
 
 def tokenize(pattern):
-    r"""
+    """
     Read files that match the given pattern.  Tokenize and yield each file.
     """
 
@@ -192,7 +192,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
 
 
 def train(word_idx):
-    r"""
+    """
     IMDB training set creator.
 
     It returns a reader creator, each sample in the reader is an zero-based ID
@@ -209,7 +209,7 @@ def train(word_idx):
 
 
 def test(word_idx):
-    r"""
+    """
     IMDB test set creator.
 
     It returns a reader creator, each sample in the reader is an zero-based ID

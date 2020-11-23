@@ -114,7 +114,7 @@ class FS(object):
 
 
 class LocalFS(FS):
-    r"""
+    """
     A tool of local file system.
 
     Examples:
@@ -127,7 +127,7 @@ class LocalFS(FS):
     """
 
     def ls_dir(self, fs_path):
-        r"""	
+        """	
         List directorys and files under `fs_path` .
 
         Args:
@@ -159,7 +159,7 @@ class LocalFS(FS):
         return dirs, files
 
     def mkdirs(self, fs_path):
-        r"""
+        """
         Create a local directory.
 
         Args:
@@ -179,7 +179,7 @@ class LocalFS(FS):
         os.system("mkdir -p {}".format(fs_path))
 
     def rename(self, fs_src_path, fs_dst_path):
-        r"""
+        """
         Rename the file.
 
         Args:
@@ -208,7 +208,7 @@ class LocalFS(FS):
         os.remove(fs_path)
 
     def delete(self, fs_path):
-        r"""
+        """
         Delete the local file path, whether it's a file or directory.
 
         Args:
@@ -235,7 +235,7 @@ class LocalFS(FS):
         return False
 
     def is_file(self, fs_path):
-        r"""
+        """
         Whether the local file path is a file.
 
         Args:
@@ -257,7 +257,7 @@ class LocalFS(FS):
         return os.path.isfile(fs_path)
 
     def is_dir(self, fs_path):
-        r"""
+        """
         Whether the local file path is a directory.
 
         Args:
@@ -279,7 +279,7 @@ class LocalFS(FS):
         return os.path.isdir(fs_path)
 
     def is_exist(self, fs_path):
-        r"""
+        """
         Whether the local file path exists.
 
         Args:
@@ -300,7 +300,7 @@ class LocalFS(FS):
         return os.path.exists(fs_path)
 
     def touch(self, fs_path, exist_ok=True):
-        r"""
+        """
         Create a local file.
 
         Args:
@@ -325,7 +325,7 @@ class LocalFS(FS):
         return Path(fs_path).touch(exist_ok=True)
 
     def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
-        r"""
+        """
         Move a local file or directory from `src_path` to `dst_path` .
 
         Args:
@@ -355,7 +355,7 @@ class LocalFS(FS):
         return self.rename(src_path, dst_path)
 
     def list_dirs(self, fs_path):
-        r"""	
+        """	
         Only list directorys under `fs_path` .
 
         Args:
@@ -418,7 +418,7 @@ def _handle_errors(max_time_out=None):
 
 
 class HDFSClient(FS):
-    r"""
+    """
     A tool of HDFS.
 
     Args:
@@ -478,7 +478,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def list_dirs(self, fs_path):
-        r"""	
+        """	
         Only list directorys under `fs_path` .
 
         Args:
@@ -510,7 +510,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        r"""	
+        """	
         List directorys and files under `fs_path` .
 
         Args:
@@ -572,7 +572,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def is_dir(self, fs_path):
-        r"""
+        """
         Whether the remote HDFS path is a directory.
 
         Args:
@@ -614,7 +614,7 @@ class HDFSClient(FS):
         return True
 
     def is_file(self, fs_path):
-        r"""
+        """
         Whether the remote HDFS path is a file.
 
         Args:
@@ -645,7 +645,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def is_exist(self, fs_path):
-        r"""
+        """
         Whether the remote HDFS path exists.
 
         Args:
@@ -682,7 +682,7 @@ class HDFSClient(FS):
 
     # can't retry
     def upload(self, local_path, fs_path):
-        r"""
+        """
         Upload the local path to remote HDFS.
 
         Args:
@@ -727,7 +727,7 @@ class HDFSClient(FS):
 
     # can't retry
     def download(self, fs_path, local_path):
-        r"""
+        """
         Download remote HDFS path to the local.
 
         Args:
@@ -769,7 +769,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def mkdirs(self, fs_path):
-        r"""
+        """
         Create a remote HDFS directory.
 
         Args:
@@ -812,7 +812,7 @@ class HDFSClient(FS):
                 raise ExecuteError(cmd)
 
     def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
-        r"""
+        """
         Move a remote HDFS file or directory from `fs_src_path` to `fs_dst_path` .
 
         Args:
@@ -878,7 +878,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def delete(self, fs_path):
-        r"""
+        """
         Delete a remote HDFS path, whether it's a file or directory.
 
         Args:
@@ -909,7 +909,7 @@ class HDFSClient(FS):
         return self._rm(fs_path)
 
     def touch(self, fs_path, exist_ok=True):
-        r"""
+        """
         Create a remote HDFS file.
 
         Args:

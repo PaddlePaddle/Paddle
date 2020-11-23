@@ -22,7 +22,7 @@ import inspect
 import paddle
 import paddle.fluid
 import json
-r"""
+"""
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
 arg1: the first arg defined running in gpu version or cpu version
@@ -35,7 +35,7 @@ for example, you can run cpu version python2 testing like this:
 
 
 def find_all(srcstr, substr):
-    r"""
+    """
     to find all desired substring in the source string
      and return their starting indices as a list
 
@@ -56,7 +56,7 @@ def find_all(srcstr, substr):
 
 
 def check_indent(cdline):
-    r"""
+    """
     to check the indent of a given code line
 
     to get the number of starting blank chars,
@@ -85,7 +85,7 @@ def check_indent(cdline):
 
 # srccom: raw comments in the source,including ''' and original indent
 def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
-    r"""
+    """
     Extract and run sample codes from source comment and
     the result will be returned.
 
@@ -103,7 +103,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     result = True
 
     def sampcd_header_print(name, sampcd, htype, hname):
-        r"""
+        """
         print hint banner headers.
 
         Args:
@@ -207,7 +207,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
 
 
 def single_defcom_extract(start_from, srcls, is_class_begin=False):
-    r"""
+    """
     to extract a def function/class/method comments body
 
     Args:
@@ -225,10 +225,10 @@ def single_defcom_extract(start_from, srcls, is_class_begin=False):
 
     i = start_from
     fcombody = ""  # def comment body
-    comstart = -1  # the starting line index of comment mark "'''" or r""""""
+    comstart = -1  # the starting line index of comment mark "'''" or """"""
     # if it is not -1, it indicates the loop is in the comment body
     comstyle = 0  # comment mark style ,comments quoted with ''' is coded as 1
-    # comments quoted with r""" is coded as 2
+    # comments quoted with """ is coded as 2
     for x in range(i + 1, len(srcls)):
         if is_class_begin:
             if srcls[x].replace('\t', '    ').startswith('    def '):

@@ -29,7 +29,7 @@ class TestGPUPackagePaddle(unittest.TestCase):
             os.environ['CUDA_VISIBLE_DEVICES'] = ''
             test_file = 'test_no_gpu_run_rand.py'
             with open(test_file, 'w') as wb:
-                cmd_test = r"""
+                cmd_test = """
 import paddle
 x = paddle.rand([3,4])
 assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's place is CUDAPlace"

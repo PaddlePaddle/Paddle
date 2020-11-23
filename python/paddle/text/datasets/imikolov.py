@@ -29,7 +29,7 @@ MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
 class Imikolov(Dataset):
-    r"""
+    """
     Implementation of imikolov dataset.
 
     Args:

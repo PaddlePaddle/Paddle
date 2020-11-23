@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 Distribute CTR model for test fleet api
 """
 
@@ -36,7 +36,7 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistGpuPsCTR2x2(TestDistCTR2x2):
-    r"""
+    """
     For test CTR model, using Fleet api & PS-GPU
     """
 
@@ -51,7 +51,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
             wn.write(str(program))
 
     def do_pyreader_training(self, fleet):
-        r"""
+        """
         do training using dataset, using fetch handler to catch variable
         Args:
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role

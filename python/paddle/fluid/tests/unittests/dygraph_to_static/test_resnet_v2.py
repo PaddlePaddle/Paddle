@@ -209,7 +209,7 @@ def reader_decorator(reader):
 
 
 def train(to_static):
-    r"""
+    """
     Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
     """
     paddle.disable_static(place)

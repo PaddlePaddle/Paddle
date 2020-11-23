@@ -21,7 +21,7 @@ __all__ = ['set_default_dtype', 'get_default_dtype']
 
 
 def set_default_dtype(d):
-    r"""
+    """
     Set default dtype. The default dtype is initially float32
 
     Args:
@@ -65,7 +65,7 @@ def set_default_dtype(d):
 
 
 def get_default_dtype():
-    r"""
+    """
     Get the current default dtype. The default dtype is initially float32.
 
     Args:

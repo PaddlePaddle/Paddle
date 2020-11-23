@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 IMDB dataset.
 
 This module downloads IMDB dataset from
@@ -38,7 +38,7 @@ MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 
 def tokenize(pattern):
-    r"""
+    """
     Read files that match the given pattern.  Tokenize and yield each file.
     """
 
@@ -58,7 +58,7 @@ def tokenize(pattern):
 
 
 def build_dict(pattern, cutoff):
-    r"""
+    """
     Build a word dictionary from the corpus. Keys of the dictionary are words,
     and values are zero-based IDs of these words.
     """
@@ -104,7 +104,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     update_to="paddle.text.datasets.Imdb",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(word_idx):
-    r"""
+    """
     IMDB training set creator.
 
     It returns a reader creator, each sample in the reader is an zero-based ID
@@ -125,7 +125,7 @@ def train(word_idx):
     update_to="paddle.text.datasets.Imdb",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(word_idx):
-    r"""
+    """
     IMDB test set creator.
 
     It returns a reader creator, each sample in the reader is an zero-based ID
@@ -146,7 +146,7 @@ def test(word_idx):
     update_to="paddle.text.datasets.Imdb",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def word_dict():
-    r"""
+    """
     Build a word dictionary from the corpus.
 
     :return: Word dictionary

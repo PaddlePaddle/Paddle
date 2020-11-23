@@ -33,7 +33,7 @@ def bilinear_interp_np(input,
                        align_corners=True,
                        align_mode=0,
                        data_layout='NCHW'):
-    r"""bilinear interpolation implement in shape [N, C, H, W]"""
+    """bilinear interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:

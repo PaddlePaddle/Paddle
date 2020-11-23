@@ -26,7 +26,7 @@ class ElementwiseDivOp(OpTest):
         self.op_type = "elementwise_div"
         self.dtype = np.float64
         self.init_dtype()
-        r""" Warning
+        """ Warning
         CPU gradient check error!
         'X': np.random.random((32,84)).astype("float32"),
         'Y': np.random.random((32,84)).astype("float32")

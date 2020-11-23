@@ -20,7 +20,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 
 
 class PrintTransformer(gast.NodeTransformer):
-    r"""
+    """
     This class transforms python print function to fluid.layers.Print.
     """
 

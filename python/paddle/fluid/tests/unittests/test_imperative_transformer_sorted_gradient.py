@@ -128,7 +128,7 @@ class ModelHyperParams(object):
 
 
 def merge_cfg_from_list(cfg_list, g_cfgs):
-    r"""
+    """
     Set the above global configurations using the cfg_list.
     """
     assert len(cfg_list) % 2 == 0
@@ -144,7 +144,7 @@ def merge_cfg_from_list(cfg_list, g_cfgs):
 
 
 def position_encoding_init(n_position, d_pos_vec):
-    r"""
+    """
     Generate the initial values for the sinusoid position encoding table.
     """
     channels = d_pos_vec
@@ -203,7 +203,7 @@ def create_feed_dict_list(data, init=False):
 
 
 def make_all_inputs(input_fields):
-    r"""
+    """
     Define the input data layers for the transformer model.
     """
     inputs = []
@@ -628,7 +628,7 @@ class WrapEncoderLayer(Layer):
                  postprocess_cmd,
                  weight_sharing,
                  is_sparse=False):
-        r"""
+        """
         The wrapper assembles together all needed layers for the encoder.
         """
         super(WrapEncoderLayer, self).__init__()
@@ -801,7 +801,7 @@ class WrapDecoderLayer(Layer):
                  caches=None,
                  gather_idx=None,
                  is_sparse=False):
-        r"""
+        """
         The wrapper assembles together all needed layers for the encoder.
         """
         super(WrapDecoderLayer, self).__init__()

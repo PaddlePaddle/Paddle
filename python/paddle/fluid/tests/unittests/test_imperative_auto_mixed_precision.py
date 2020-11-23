@@ -207,7 +207,7 @@ def reader_decorator(reader):
 
 
 class TestResnet2(unittest.TestCase):
-    r"""
+    """
     Use paddle-2.0 API
     """
 
@@ -311,7 +311,7 @@ class TestResnet2(unittest.TestCase):
 
 
 class TestResnet(unittest.TestCase):
-    r"""
+    """
     Use paddle-1.x API
     """
 

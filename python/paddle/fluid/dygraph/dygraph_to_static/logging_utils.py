@@ -38,7 +38,7 @@ def synchronized(func):
 
 
 class TranslatorLogger(object):
-    r"""
+    """
     class for Logging and debugging during the tranformation from dygraph to static graph.
     The object of this class is a singleton.
     """
@@ -127,7 +127,7 @@ class TranslatorLogger(object):
         return level == self.transformed_code_level
 
     def has_verbosity(self, level):
-        r"""
+        """
         Checks whether the verbosity level set by the user is greater than or equal to the log level.
         Args:
             level(int): The level of log.
@@ -180,7 +180,7 @@ _TRANSLATOR_LOGGER = TranslatorLogger()
 
 
 def set_verbosity(level=0, also_to_stdout=False):
-    r"""
+    """
     Sets the verbosity level of log for dygraph to static graph. Logs can be output to stdout by setting `also_to_stdout`.
 
     There are two means to set the logging verbosity:
@@ -219,7 +219,7 @@ def get_verbosity():
 
 
 def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
-    r"""
+    """
     Sets the level to print code from specific level Ast Transformer. Code can be output to stdout by setting `also_to_stdout`.
 
     There are two means to set the code level:

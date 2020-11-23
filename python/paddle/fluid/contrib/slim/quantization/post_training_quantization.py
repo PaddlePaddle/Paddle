@@ -118,7 +118,7 @@ def _apply_pass(scope,
 
 
 class PostTrainingQuantization(object):
-    r"""
+    """
     Utilizing post training quantization methon to quantize the FP32 model,
     and it uses calibrate data to get the quantization information for all 
     quantized variables.
@@ -971,7 +971,7 @@ class WeightQuantization(object):
                                 save_params_filename, quantizable_op_type,
                                 weight_bits, weight_quantize_type, for_test,
                                 threshold_rate):
-        r"""
+        """
         Generate quantized model or fake quantized model.
         """
         # Load model

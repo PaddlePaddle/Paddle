@@ -29,7 +29,7 @@ __all__ = [
 
 
 class LearningRateDecay(object):
-    r"""
+    """
     Base class of learning rate decay
     
     Define the common interface of an LearningRateDecay.
@@ -50,7 +50,7 @@ class LearningRateDecay(object):
         return lr
 
     def create_lr_var(self, lr):
-        r"""
+        """
         convert lr from float to variable
 
         Args: 
@@ -70,7 +70,7 @@ class LearningRateDecay(object):
     # Note: If you want to change what optimizer.state_dict stores, just overwrite this functions, 
     # "self.step_num" will be stored by default.
     def state_dict(self):
-        r"""
+        """
         Returns the state of the scheduler as a :class:`dict`.
 
         It is a subset of self.__dict__ .
@@ -92,13 +92,13 @@ class LearningRateDecay(object):
         return state_dict
 
     def _state_keys(self):
-        r"""
+        """
         set the keys in self.__dict__ that are needed to be saved.
         """
         self.keys = ['step_num']
 
     def set_state_dict(self, state_dict):
-        r"""
+        """
         Loads the schedulers state.
         """
         self._state_keys()
@@ -122,7 +122,7 @@ class LearningRateDecay(object):
 
 
 class PiecewiseDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
     
     Piecewise decay scheduler.
@@ -183,7 +183,7 @@ class PiecewiseDecay(LearningRateDecay):
 
 
 class NaturalExpDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Applies natural exponential decay to the initial learning rate.
@@ -266,7 +266,7 @@ class NaturalExpDecay(LearningRateDecay):
 
 
 class ExponentialDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Applies exponential decay to the learning rate.
@@ -348,7 +348,7 @@ class ExponentialDecay(LearningRateDecay):
 
 
 class InverseTimeDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Applies inverse time decay to the initial learning rate.
@@ -426,7 +426,7 @@ class InverseTimeDecay(LearningRateDecay):
 
 
 class PolynomialDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Applies polynomial decay to the initial learning rate.
@@ -520,7 +520,7 @@ class PolynomialDecay(LearningRateDecay):
 
 
 class CosineDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Applies cosine decay to the learning rate.
@@ -578,7 +578,7 @@ class CosineDecay(LearningRateDecay):
 
 
 class NoamDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Applies Noam decay to the initial learning rate. 
@@ -645,7 +645,7 @@ class NoamDecay(LearningRateDecay):
 
 
 class LinearLrWarmup(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
@@ -736,7 +736,7 @@ class LinearLrWarmup(LearningRateDecay):
 
 
 class ReduceLROnPlateau(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate 
@@ -877,7 +877,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         return self.learning_rate
 
     def step(self, loss):
-        r"""
+        """
         It should be invoked on each epoch. Update the learning rate in optimizer according to ``loss`` .  
         The new learning rate will take effect on next call to ``optimizer.minimize`` .
 
@@ -939,7 +939,7 @@ class ReduceLROnPlateau(LearningRateDecay):
 
 
 class _LearningRateEpochDecay(LearningRateDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Base class of learning rate decay, which is updated each epoch.
@@ -973,7 +973,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
         self.keys = ['epoch_num', 'learning_rate']
 
     def __call__(self):
-        r""" 
+        """ 
         Return last computed learning rate on current epoch.
         """
         if not isinstance(self.learning_rate, Variable):
@@ -981,7 +981,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
         return self.learning_rate
 
     def epoch(self, epoch=None):
-        r"""
+        """
         compueted learning_rate and update it when invoked.
         """
         if epoch is None:
@@ -996,7 +996,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
 
 
 class StepDecay(_LearningRateEpochDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Decays the learning rate of ``optimizer`` by ``decay_rate`` every ``step_size`` number of epoch.
@@ -1074,7 +1074,7 @@ class StepDecay(_LearningRateEpochDecay):
 
 
 class MultiStepDecay(_LearningRateEpochDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Decays the learning rate of ``optimizer`` by ``decay_rate`` once ``epoch`` reaches one of the milestones.
@@ -1159,7 +1159,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
 
 
 class LambdaDecay(_LearningRateEpochDecay):
-    r"""
+    """
     :api_attr: imperative
 
     Sets the learning rate of ``optimizer`` to the initial lr times a multiplicative factor, and this multiplicative

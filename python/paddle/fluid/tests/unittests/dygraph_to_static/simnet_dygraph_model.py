@@ -21,12 +21,12 @@ from paddle.fluid.dygraph import Embedding, Layer, Linear
 
 
 class EmbeddingLayer(object):
-    r"""
+    """
     Embedding Layer class
     """
 
     def __init__(self, dict_size, emb_dim, name="emb", padding_idx=None):
-        r"""
+        """
         initialize
         """
         self.dict_size = dict_size
@@ -35,7 +35,7 @@ class EmbeddingLayer(object):
         self.padding_idx = padding_idx
 
     def ops(self):
-        r"""
+        """
         operation
         """
         # TODO(huihuangzheng): The original code set the is_sparse=True, but it
@@ -51,12 +51,12 @@ class EmbeddingLayer(object):
 
 
 class FCLayer(object):
-    r"""
+    """
     Fully Connect Layer class
     """
 
     def __init__(self, fc_dim, act, name="fc"):
-        r"""
+        """
         initialize
         """
         self.fc_dim = fc_dim
@@ -64,7 +64,7 @@ class FCLayer(object):
         self.name = name
 
     def ops(self):
-        r"""
+        """
         operation
         """
         fc = FC(size=self.fc_dim,
@@ -75,18 +75,18 @@ class FCLayer(object):
 
 
 class ConcatLayer(object):
-    r"""
+    """
     Connection Layer class
     """
 
     def __init__(self, axis):
-        r"""
+        """
         initialize
         """
         self.axis = axis
 
     def ops(self, inputs):
-        r"""
+        """
         operation
         """
         concat = fluid.layers.concat(inputs, axis=self.axis)
@@ -94,18 +94,18 @@ class ConcatLayer(object):
 
 
 class ReduceMeanLayer(object):
-    r"""
+    """
     Reduce Mean Layer class
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, input):
-        r"""
+        """
         operation
         """
         mean = fluid.layers.reduce_mean(input)
@@ -113,18 +113,18 @@ class ReduceMeanLayer(object):
 
 
 class CosSimLayer(object):
-    r"""
+    """
     Cos Similarly Calculate Layer
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, x, y):
-        r"""
+        """
         operation
         """
         sim = fluid.layers.cos_sim(x, y)
@@ -132,18 +132,18 @@ class CosSimLayer(object):
 
 
 class ElementwiseMaxLayer(object):
-    r"""
+    """
     Elementwise Max Layer class
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, x, y):
-        r"""
+        """
         operation
         """
         max = fluid.layers.elementwise_max(x, y)
@@ -151,18 +151,18 @@ class ElementwiseMaxLayer(object):
 
 
 class ElementwiseAddLayer(object):
-    r"""
+    """
     Elementwise Add Layer class
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, x, y):
-        r"""
+        """
         operation
         """
         add = fluid.layers.elementwise_add(x, y)
@@ -170,18 +170,18 @@ class ElementwiseAddLayer(object):
 
 
 class ElementwiseSubLayer(object):
-    r"""
+    """
     Elementwise Add Layer class
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, x, y):
-        r"""
+        """
         operation
         """
         sub = fluid.layers.elementwise_sub(x, y)
@@ -189,18 +189,18 @@ class ElementwiseSubLayer(object):
 
 
 class ConstantLayer(object):
-    r"""
+    """
     Generate A Constant Layer class
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, input, shape, dtype, value):
-        r"""
+        """
         operation
         """
         shape = list(shape)
@@ -211,18 +211,18 @@ class ConstantLayer(object):
 
 
 class SoftsignLayer(object):
-    r"""
+    """
     Softsign Layer class
     """
 
     def __init__(self):
-        r"""
+        """
         initialize
         """
         pass
 
     def ops(self, input):
-        r"""
+        """
         operation
         """
         softsign = fluid.layers.softsign(input)
@@ -230,7 +230,7 @@ class SoftsignLayer(object):
 
 
 class FC(Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``FC`` class.
     For more details, refer to code examples.
     It creates a fully connected layer in the network. It can take
@@ -423,18 +423,18 @@ class FC(Layer):
 
 
 class HingeLoss(object):
-    r"""
+    """
     Hing Loss Calculate class
     """
 
     def __init__(self, conf_dict):
-        r"""
+        """
         initialize
         """
         self.margin = conf_dict["loss"]["margin"]
 
     def compute(self, pos, neg):
-        r"""
+        """
         compute loss
         """
         elementwise_max = ElementwiseMaxLayer()
@@ -452,12 +452,12 @@ class HingeLoss(object):
 
 
 class BOW(Layer):
-    r"""
+    """
     BOW
     """
 
     def __init__(self, conf_dict):
-        r"""
+        """
         initialize
         """
         super(BOW, self).__init__()
@@ -474,7 +474,7 @@ class BOW(Layer):
 
     @declarative
     def forward(self, left, right):
-        r"""
+        """
         Forward network
         """
 

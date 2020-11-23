@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 """
 
 from __future__ import print_function
@@ -41,7 +41,7 @@ UNK_MARK = "<unk>"
 
 
 class WMT16(Dataset):
-    r"""
+    """
     Implementation of `WMT16 <http://www.statmt.org/wmt16/>`_ test dataset.
     ACL2016 Multimodal Machine Translation. Please see this website for more
     details: http://www.statmt.org/wmt16/multimodal-task.html#task1
@@ -221,7 +221,7 @@ class WMT16(Dataset):
         return len(self.src_ids)
 
     def get_dict(self, lang, reverse=False):
-        r"""
+        """
         return the word dictionary for the specified language.
 
         Args:

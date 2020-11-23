@@ -24,7 +24,7 @@ __all__ = [
 
 
 class Dataset(object):
-    r"""
+    """
     An abstract class to encapsulate methods and behaviors of datasets.
 
     All datasets in map-style(dataset samples can be get by a given key)
@@ -78,7 +78,7 @@ class Dataset(object):
 
 
 class IterableDataset(Dataset):
-    r"""
+    """
     An abstract class to encapsulate methods and behaviors of iterable datasets.
 
     All datasets in iterable-style (can only get sample one by one sequentially, like
@@ -229,7 +229,7 @@ class IterableDataset(Dataset):
 
 
 class TensorDataset(Dataset):
-    r"""
+    """
     Dataset defined by a list of tensors.
 
     Each tensor should be in shape of [N, ...], while N is the sample number,
@@ -289,7 +289,7 @@ def to_list(value):
 
 
 class ComposeDataset(Dataset):
-    r"""
+    """
     A Dataset which composes fields of multiple datasets.
 
     This dataset is used for composing fileds of multiple map-style
@@ -356,7 +356,7 @@ class ComposeDataset(Dataset):
 
 
 class ChainDataset(IterableDataset):
-    r"""
+    """
     A Dataset which chains multiple iterable-tyle datasets.
 
     This dataset is used for assembling multiple datasets which should

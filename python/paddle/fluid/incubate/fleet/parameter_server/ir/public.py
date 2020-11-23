@@ -270,7 +270,7 @@ class CompileTimeStrategy(object):
         return optimize_var_names
 
     def _get_optimizer_param_related_var_name(self, op, op_type, varkey):
-        r"""
+        """
         Returns the names for optimizer inputs that need to be load 
         """
         related_var_names = []
@@ -532,7 +532,7 @@ class CompileTimeStrategy(object):
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):
-        r"""
+        """
         Create vars for each split.
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
@@ -652,7 +652,7 @@ class CompileTimeStrategy(object):
                         slice_count,
                         min_block_size,
                         uniform=False):
-        r"""
+        """
         We may need to split dense tensor to one or more blocks and put
         them equally onto parameter server. One block is a sub-tensor
         aligned by dim[0] of the tensor.

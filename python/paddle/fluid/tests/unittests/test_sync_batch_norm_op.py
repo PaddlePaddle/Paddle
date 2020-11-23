@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
@@ -34,7 +34,7 @@ _set_use_system_allocator(True)
 
 
 def create_or_get_tensor(scope, var_name, var, place):
-    r"""Get tensor, if not found, create a new one."""
+    """Get tensor, if not found, create a new one."""
     tensor = scope.var(var_name).get_tensor()
     if var is not None:
         assert isinstance(var, np.ndarray)
@@ -44,10 +44,10 @@ def create_or_get_tensor(scope, var_name, var, place):
 
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
-    r"""sync_batch_norm op test."""
+    """sync_batch_norm op test."""
 
     def setUp(self):
-        r"""Setup."""
+        """Setup."""
         #self.dtype = np.float32
         self.dtype = np.float64
         self.N = 8
@@ -63,7 +63,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                        seed,
                        sync_bn=False,
                        only_forward=False):
-        r"""Build program."""
+        """Build program."""
         main = fluid.Program()
         startup = fluid.Program()
         main.random_seed = seed
@@ -102,7 +102,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         return main, startup, [out, conv, bn]
 
     def _compare(self, place, layout, only_forward):
-        r"""Compare results."""
+        """Compare results."""
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
         scope = core.Scope()
@@ -170,7 +170,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 str(bn_val) + "\n" + "Sync BN " + str(sync_bn_val))
 
     def test_train(self):
-        r"""Test training."""
+        """Test training."""
         if not core.is_compiled_with_cuda():
             return
 
@@ -180,7 +180,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 self._compare(place, layout, False)
 
     def test_infer(self):
-        r"""Test inference."""
+        """Test inference."""
         if not core.is_compiled_with_cuda():
             return
 
@@ -191,10 +191,10 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
 
 class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
-    r"""sync_batch_norm op test for FP16 input."""
+    """sync_batch_norm op test for FP16 input."""
 
     def setUp(self):
-        r"""Setup."""
+        """Setup."""
         self.dtype = np.float16
         self.N = 8
         self.C = 16

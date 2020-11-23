@@ -33,7 +33,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
 
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
-        r""" network definition """
+        """ network definition """
         dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],

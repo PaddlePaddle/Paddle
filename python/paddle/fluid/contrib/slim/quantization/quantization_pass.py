@@ -127,7 +127,7 @@ _channelwise_quant_axis1_ops = ['conv2d_transpose', 'mul']
 
 
 def _get_op_input_var_names(op):
-    r""" """
+    """ """
     assert isinstance(op, (IrNode, Operator)), \
         "The input op should be IrNode or Operator."
     var_names = []
@@ -144,7 +144,7 @@ def _get_op_input_var_names(op):
 
 
 def _get_op_output_var_names(op):
-    r""" """
+    """ """
     assert isinstance(op, (IrNode, Operator)), \
         "The input op should be IrNode or Operator."
     var_names = []
@@ -161,7 +161,7 @@ def _get_op_output_var_names(op):
 
 
 def _get_output_name_index(op, output_var_name):
-    r"""Get the output name and index of the var_name in the op"""
+    """Get the output name and index of the var_name in the op"""
     assert isinstance(op, (IrNode, Operator)), \
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
@@ -214,7 +214,7 @@ def _check_grandchild_op_node(op_node, grandchild_op_name):
 
 
 class QuantizationTransformPass(object):
-    r"""
+    """
     Quantize the ops that have weights. Add quant and dequant ops for
     the quantized ops's inputs.
     """
@@ -239,7 +239,7 @@ class QuantizationTransformPass(object):
                  act_preprocess_func=None,
                  optimizer_func=None,
                  executor=None):
-        r"""
+        """
         Constructor.
 
         Args:
@@ -361,7 +361,7 @@ class QuantizationTransformPass(object):
         self.create_op_map = {}
 
     def apply(self, graph):
-        r"""
+        """
         Quantize the graph for training process. According to weight and
         activation quantization type, the graph will be added some fake
         quantize operators and fake dequantize operators.
@@ -524,7 +524,7 @@ class QuantizationTransformPass(object):
                 self._global_step = global_step_out
 
     def _insert_quant_op(self, graph, var_node, name, quant_bits, quant_type):
-        r"""
+        """
         Insert fake_quantize_op in the graph.
         """
         if quant_type == 'abs_max':
@@ -538,7 +538,7 @@ class QuantizationTransformPass(object):
                 graph, var_node, name, quant_bits)
 
     def _insert_quant_abs_max_op(self, graph, var_node, name, quant_bits):
-        r"""
+        """
         Insert fake_quantize_abs_max op in the graph.
         """
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
@@ -576,7 +576,7 @@ class QuantizationTransformPass(object):
         return quant_var_node, scale_var_node
 
     def _insert_quant_range_abs_max_op(self, graph, var_node, name, quant_bits):
-        r"""
+        """
         Insert fake_quantize_range_abs_max on the graph.
         """
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
@@ -648,7 +648,7 @@ class QuantizationTransformPass(object):
 
     def _insert_quant_moving_average_abs_max_op(self, graph, var_node, name,
                                                 quant_bits):
-        r"""Insert fake_quantize_moving_average_abs_max
+        """Insert fake_quantize_moving_average_abs_max
         """
         quant_var_node = graph.create_var_node(
             name=self._quantized_var_name(name),
@@ -735,7 +735,7 @@ class QuantizationTransformPass(object):
 
     def _insert_channel_quant_op(self, graph, var_node, name, quant_bits,
                                  quant_axis):
-        r"""
+        """
         Insert fake_channel_wise_quantize_abs_max op in the graph.
         """
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
@@ -775,7 +775,7 @@ class QuantizationTransformPass(object):
         return quant_var_node, scale_var_node
 
     def _insert_dequant_op(self, graph, var_node, scale_var_node, quant_bits):
-        r"""
+        """
         Insert fake_dequantize_op in the graph.
         """
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
@@ -802,7 +802,7 @@ class QuantizationTransformPass(object):
 
     def _insert_channel_dequant_op(self, graph, var_node, scale_var_nodes,
                                    quant_bits, quant_axis):
-        r"""
+        """
         Insert fake_channel_wise_dequantize_max_abs in the graph.
         """
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
@@ -829,7 +829,7 @@ class QuantizationTransformPass(object):
         return dequant_var_node
 
     def _create_new_node(self, graph, in_node):
-        r"""
+        """
         create a node that same with in_node in graph
         Args:
             graph(IrGraph): create node in graph.
@@ -855,7 +855,7 @@ class QuantizationTransformPass(object):
         return new_node
 
     def _copy_graph(self, graph, source_graph, op_node):
-        r"""
+        """
         copy op_node in source_graph to graph. And will run recursively 
         for next ops that link to op_node's outputs.
         Args:
@@ -893,7 +893,7 @@ class QuantizationTransformPass(object):
         return
 
     def _insert_func(self, graph, func, var_node, op):
-        r"""
+        """
         Insert a tmp program that returned by func between var_node and op.
 
         Args:
@@ -1004,25 +1004,25 @@ class QuantizationTransformPass(object):
         return target_out_node
 
     def _quantized_var_name(self, var_name):
-        r"""
+        """
         Return quantized variable name for the input `var_name`.
         """
         return "%s.quantized" % (var_name)
 
     def _dequantized_var_name(self, var_name):
-        r"""
+        """
         Return dequantized variable name for the input `var_name`.
         """
         return "%s.dequantized" % (var_name)
 
     def _quantized_scale_name(self, var_name):
-        r"""
+        """
         Return the scale name of quantized variable for the input `var_name`.
         """
         return "%s.scale" % (var_name)
 
     def _is_skip_quant(self, graph, op_node):
-        r"""
+        """
         Analyse whether the op node skips quantization.
         """
         is_skip = False
@@ -1048,7 +1048,7 @@ class QuantizationFreezePass(object):
                  activation_bits=8,
                  weight_quantize_type='abs_max',
                  quantizable_op_type=None):
-        r"""
+        """
         The freeze pass is used to adjust the quantize operator order, for example:
             1) `activation -> quant -> dequant -> conv2d` will be frozen into
             `activation -> quant -> conv2d -> dequant`
@@ -1082,7 +1082,7 @@ class QuantizationFreezePass(object):
         self._quant_var_scale_map = collections.OrderedDict()
 
     def apply(self, graph):
-        r"""
+        """
         Adjust quantize/dequantize operators order for the inference process.
 
         Args:
@@ -1311,7 +1311,7 @@ class QuantizationFreezePass(object):
         graph.safe_remove_nodes(all_unused_vars)
 
     def _original_var_name(self, var_name):
-        r"""
+        """
         Return the original variable name.
         """
         if var_name.endswith('.quantized.dequantized'):
@@ -1326,7 +1326,7 @@ class QuantizationFreezePass(object):
             return var_name
 
     def _dequantized_var_name(self, var_name):
-        r"""
+        """
         Return dequantized variable name for the input `var_name`.
         """
         return "%s.dequantized" % (var_name)
@@ -1360,7 +1360,7 @@ class QuantizationFreezePass(object):
 
 class ConvertToInt8Pass(object):
     def __init__(self, scope, place, quantizable_op_type=None):
-        r"""
+        """
         Convert the weights into int8_t type.
 
         Args:
@@ -1378,7 +1378,7 @@ class ConvertToInt8Pass(object):
         self._place = place
 
     def apply(self, graph):
-        r"""
+        """
         Convert weights' type of the graph. After that, the data type of the
         graph weights is int8_t.
 
@@ -1447,14 +1447,14 @@ class ConvertToInt8Pass(object):
 
 class TransformForMobilePass(object):
     def __init__(self):
-        r"""
+        """
         This pass is used to convert the frozen graph for paddle-mobile execution.
         """
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
 
     def apply(self, graph):
-        r"""
+        """
         Because paddle-mobile use `quantize` an `dequantize` as the names of
         quantize operator and dequantize operator, the `apply` function just
         realize this logic.
@@ -1489,7 +1489,7 @@ class TransformForMobilePass(object):
 
 class OutScaleForTrainingPass(object):
     def __init__(self, scope=None, place=None, moving_rate=0.9):
-        r"""
+        """
         This pass is used for calculating output scales of some operators.
         These output scales may be used by tensorRT or some other inference engines.
 
@@ -1505,7 +1505,7 @@ class OutScaleForTrainingPass(object):
         self._teller_set = _out_scale_op_list
 
     def apply(self, graph):
-        r"""
+        """
         Insert the `moving_average_abs_max_scale` op in order to calculate output scales
         of operators in the teller_set.
 
@@ -1595,7 +1595,7 @@ class OutScaleForTrainingPass(object):
         return graph
 
     def _scale_name(self, var_name):
-        r"""
+        """
         Return the scale name for the var named `var_name`.
         """
         return "%s@scale" % (var_name)
@@ -1603,7 +1603,7 @@ class OutScaleForTrainingPass(object):
 
 class OutScaleForInferencePass(object):
     def __init__(self, scope=None):
-        r"""
+        """
         This pass is used for setting output scales of some operators.
         These output scales may be used by tensorRT or some other inference engines.
 
@@ -1614,7 +1614,7 @@ class OutScaleForInferencePass(object):
         self._teller_set = _out_scale_op_list
 
     def apply(self, graph):
-        r"""
+        """
         Get output scales from the scope and set these scales in op_descs
         of operators in the teller_set.
 
@@ -1652,14 +1652,14 @@ class OutScaleForInferencePass(object):
         return graph
 
     def _scale_name(self, var_name):
-        r"""
+        """
         Return the scale name for the var named `var_name`.
         """
         return "%s@scale" % (var_name)
 
 
 class AddQuantDequantPass(object):
-    r"""
+    """
     Quantize the ops that do not have weights, and add quant_dequant op for the 
     quantized ops's inputs.
     """
@@ -1683,7 +1683,7 @@ class AddQuantDequantPass(object):
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
                  is_full_quantized=False):
-        r"""
+        """
         Constructor.
 
         Args:
@@ -1727,7 +1727,7 @@ class AddQuantDequantPass(object):
         assert self._place != None, "place must not be None."
 
     def apply(self, graph):
-        r"""
+        """
         Add quant_dequant before some ops, such as the 'elementwise_add' and
         'pool2d' op.
 
@@ -1789,7 +1789,7 @@ class AddQuantDequantPass(object):
 
     def _inser_quant_dequant_moving_average_abs_max_op(self, graph, var_node,
                                                        quant_bits):
-        r"""Insert fake_quantize_dequantize_moving_average_abs_max op.
+        """Insert fake_quantize_dequantize_moving_average_abs_max op.
         """
         quant_var_node = graph.create_var_node(
             name="{}.quant_dequant".format(var_node.name()),

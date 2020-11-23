@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 This module will download dataset from
 http://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html
 and parse train/test set intopaddle reader creators.

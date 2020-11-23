@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 def setup_logger(output=None, name="hapi", log_level=logging.INFO):
-    r"""
+    """
     Initialize logger of hapi and set its verbosity level to "INFO".
 
     Args:

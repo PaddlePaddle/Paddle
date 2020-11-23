@@ -139,7 +139,7 @@ def build_network(input, layers=50, class_dim=1000):
 
 
 class TestPipeline(unittest.TestCase):
-    r"""  TestCases for Pipeline Training. """
+    """  TestCases for Pipeline Training. """
 
     def _run(self, debug):
         main_prog = fluid.Program()

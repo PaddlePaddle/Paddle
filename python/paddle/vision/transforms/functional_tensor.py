@@ -18,7 +18,7 @@ import paddle
 
 
 def normalize(img, mean, std, data_format='CHW'):
-    r"""Normalizes a tensor image with mean and standard deviation.
+    """Normalizes a tensor image with mean and standard deviation.
 
     Args:
         img (paddle.Tensor): input data to be normalized.

@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
-r"""Test for fusion of conv, elementwise_add and 2 act."""
+"""Test for fusion of conv, elementwise_add and 2 act."""
 
 
 class ConvElementwiseAdd2ActFusePassTest(InferencePassTest):

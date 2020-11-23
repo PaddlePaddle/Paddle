@@ -60,7 +60,7 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 
 class Fleet(object):
-    r"""
+    """
     Unified API for distributed training of PaddlePaddle
     Please reference the https://github.com/PaddlePaddle/FleetX for details
 
@@ -123,7 +123,7 @@ class Fleet(object):
         self._context = {}
 
     def init(self, role_maker=None, is_collective=False):
-        r"""
+        """
         Initialize role_maker in Fleet.
 
         This function is responsible for the distributed architecture
@@ -205,7 +205,7 @@ class Fleet(object):
                 paddle.distributed.init_parallel_env()
 
     def is_first_worker(self):
-        r"""
+        """
         Check whether the node is the first instance of worker.
 
         Returns:
@@ -224,7 +224,7 @@ class Fleet(object):
         return self._role_maker._is_first_worker()
 
     def worker_index(self):
-        r"""
+        """
         Get current worker index.
 
         Returns:
@@ -241,7 +241,7 @@ class Fleet(object):
         return self._role_maker._worker_index()
 
     def worker_num(self):
-        r"""
+        """
         Get current total worker number.
 
         Returns:
@@ -258,7 +258,7 @@ class Fleet(object):
         return self._role_maker._worker_num()
 
     def is_worker(self):
-        r"""
+        """
         Check whether the node is an instance of worker.
 
         Returns:
@@ -276,7 +276,7 @@ class Fleet(object):
         return self._role_maker._is_worker()
 
     def worker_endpoints(self, to_string=False):
-        r"""
+        """
         Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
         Returns:
@@ -296,7 +296,7 @@ class Fleet(object):
             return self._role_maker._get_trainer_endpoints()
 
     def server_num(self):
-        r"""
+        """
         Get current total worker number.
 
         Returns:
@@ -311,7 +311,7 @@ class Fleet(object):
         return len(self._role_maker._get_pserver_endpoints())
 
     def server_index(self):
-        r"""
+        """
         Get current server index.
 
         Returns:
@@ -328,7 +328,7 @@ class Fleet(object):
         return self._role_maker._server_index()
 
     def server_endpoints(self, to_string=False):
-        r"""
+        """
         Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
         Returns:
@@ -349,7 +349,7 @@ class Fleet(object):
             return self._role_maker._get_pserver_endpoints()
 
     def is_server(self):
-        r"""
+        """
         Check whether the node is an instance of server.
 
         Returns:
@@ -368,7 +368,7 @@ class Fleet(object):
         ) or self._role_maker._is_heter_worker()
 
     def barrier_worker(self):
-        r"""
+        """
         barrier all workers
 
         Returns:
@@ -379,7 +379,7 @@ class Fleet(object):
     @is_non_distributed_check
     @inited_runtime_handler
     def init_worker(self):
-        r"""
+        """
         initialize `Communicator` for parameter server training.
 
 
@@ -404,7 +404,7 @@ class Fleet(object):
     @is_non_distributed_check
     @inited_runtime_handler
     def init_server(self, *args, **kwargs):
-        r"""
+        """
         init_server executor to initialize startup program,
         if the `args` is not empty, it will run load_persistables for increment training.
 
@@ -430,7 +430,7 @@ class Fleet(object):
     @is_non_distributed_check
     @inited_runtime_handler
     def run_server(self):
-        r"""
+        """
         run server will run pserver main program with executor.
 
         Returns:
@@ -455,7 +455,7 @@ class Fleet(object):
     @is_non_distributed_check
     @inited_runtime_handler
     def stop_worker(self):
-        r"""
+        """
         stop `Communicator` and give training complete notice to parameter server.
 
         Returns:
@@ -483,7 +483,7 @@ class Fleet(object):
                              target_vars,
                              main_program=None,
                              export_for_deployment=True):
-        r"""
+        """
         save inference model for inference.
 
         Returns:
@@ -508,7 +508,7 @@ class Fleet(object):
             export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None, mode=1):
-        r"""
+        """
 
         saves all persistable variables from :code:`main_program` to
         the folder :code:`dirname`. You can refer to
@@ -552,7 +552,7 @@ class Fleet(object):
                                                 mode)
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        r"""
+        """
         Optimizer for distributed training.
 
         For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
@@ -588,7 +588,7 @@ class Fleet(object):
 
     @dygraph_only
     def distributed_model(self, model):
-        r"""
+        """
         Return distributed data parallel model (Only work in dygraph mode)
 
         Args:
@@ -651,7 +651,7 @@ class Fleet(object):
 
     @dygraph_only
     def state_dict(self):
-        r"""
+        """
         Get state dict information from optimizer.
         (Only work in dygraph mode)
 
@@ -683,7 +683,7 @@ class Fleet(object):
 
     @dygraph_only
     def set_state_dict(self, state_dict):
-        r"""
+        """
         Load optimizer state dict.
         (Only work in dygraph mode)
 
@@ -721,7 +721,7 @@ class Fleet(object):
 
     @dygraph_only
     def set_lr(self, value):
-        r"""
+        """
         Set the value of the learning rate manually in the optimizer. 
         (Only work in dygraph mode)
 
@@ -767,7 +767,7 @@ class Fleet(object):
 
     @dygraph_only
     def get_lr(self):
-        r"""
+        """
         Get current step learning rate.
         (Only work in dygraph mode)
 
@@ -801,7 +801,7 @@ class Fleet(object):
 
     @dygraph_only
     def step(self):
-        r"""
+        """
         Execute the optimizer once.
         (Only work in dygraph mode)
 
@@ -860,7 +860,7 @@ class Fleet(object):
 
     @dygraph_only
     def clear_grad(self):
-        r"""
+        """
         Clear the gradients of all optimized parameters for model.
         (Only work in dygraph mode)
 
@@ -948,7 +948,7 @@ class Fleet(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        r"""
+        """
         Add distributed operations to minimize ``loss`` by updating ``parameter_list``.
 
         Args:

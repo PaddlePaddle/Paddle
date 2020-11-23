@@ -18,7 +18,7 @@ from six.moves import cStringIO as StringIO
 
 
 def resize_image(img, target_size):
-    r"""
+    """
     Resize an image so that the shorter edge has length target_size.
     img: the input image to be resized.
     target_size: the target resized image size.
@@ -31,7 +31,7 @@ def resize_image(img, target_size):
 
 
 def flip(im):
-    r"""
+    """
     Return the flipped image.
     Flip an image along the horizontal direction.
     im: input image, (K x H x W) ndarrays
@@ -43,7 +43,7 @@ def flip(im):
 
 
 def crop_img(im, inner_size, color=True, test=True):
-    r"""
+    """
     Return cropped image.
     The size of the cropped image is inner_size * inner_size.
     im: (K x H x W) ndarrays
@@ -94,7 +94,7 @@ def decode_jpeg(jpeg_string):
 
 
 def preprocess_img(im, img_mean, crop_size, is_train, color=True):
-    r"""
+    """
     Does data augmentation for images.
     If is_train is false, cropping the center region from the image.
     If is_train is true, randomly crop a region from the image,
@@ -109,7 +109,7 @@ def preprocess_img(im, img_mean, crop_size, is_train, color=True):
 
 
 def load_meta(meta_path, mean_img_size, crop_size, color=True):
-    r"""
+    """
     Return the loaded meta file.
     Load the meta image, which is the mean of the images in the dataset.
     The mean image is subtracted from every input image so that the expected mean
@@ -131,7 +131,7 @@ def load_meta(meta_path, mean_img_size, crop_size, color=True):
 
 
 def load_image(img_path, is_color=True):
-    r"""
+    """
     Load image and return.
     img_path: image path.
     is_color: is color image or not.
@@ -142,7 +142,7 @@ def load_image(img_path, is_color=True):
 
 
 def oversample(img, crop_dims):
-    r"""
+    """
     image : iterable of (H x W x K) ndarrays
     crop_dims: (height, width) tuple for the crops.
     Returned data contains ten crops of input image, namely,

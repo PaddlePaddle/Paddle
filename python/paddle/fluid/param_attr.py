@@ -29,7 +29,7 @@ __all__ = [
 
 
 class ParamAttr(object):
-    r"""
+    """
     Create a object to represent the attribute of parameter. The attributes are:
     name, initializer, learning rate, regularizer, trainable, gradient clip,
     and model average.
@@ -107,7 +107,7 @@ class ParamAttr(object):
         self.need_clip = need_clip
 
     def _set_default_initializer(self, initializer):
-        r"""
+        """
         Set the default initializer, the initializer should be Constant,
         Uniform, Normal, Xavier, MSRA.
 
@@ -128,7 +128,7 @@ class ParamAttr(object):
         self.initializer = initializer
 
     def _set_default_param_initializer(self):
-        r"""
+        """
         Set the default initializer for the parameter with Xavier.
 
         Args:
@@ -140,7 +140,7 @@ class ParamAttr(object):
         self._set_default_initializer(Xavier())
 
     def _set_default_bias_initializer(self):
-        r"""
+        """
         Set the default initializer for the bias with Constant(0.0).
 
         Args:
@@ -153,7 +153,7 @@ class ParamAttr(object):
 
     @staticmethod
     def _to_attr(arg):
-        r"""
+        """
         Create ParamAttr[s].
 
         Args:
@@ -185,7 +185,7 @@ class ParamAttr(object):
             raise TypeError("{0} cast to ParamAttr".format(type(arg)))
 
     def _to_kwargs(self, with_initializer=False):
-        r"""
+        """
         Returns the attributes of this parameter.
 
         Args:
@@ -210,7 +210,7 @@ class ParamAttr(object):
 
 
 class WeightNormParamAttr(ParamAttr):
-    r"""
+    """
 	:api_attr: Static Graph
 
     Note:

@@ -34,7 +34,7 @@ _already_patch_varbase = False
 
 
 def monkey_patch_math_varbase():
-    r"""
+    """
     Similar to monkey_patch_variable.
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
@@ -51,7 +51,7 @@ def monkey_patch_math_varbase():
         return create_tensor(value, dtype, shape=[1])
 
     def astype(self, dtype):
-        r"""
+        """
 
         Cast a Tensor to a specified data type.
 
@@ -213,7 +213,7 @@ def monkey_patch_math_varbase():
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
-        __impl__.__doc__ = r"""
+        __impl__.__doc__ = """
         {0}
         Args:
             other_var(Tensor|float|int): right hand Tensor

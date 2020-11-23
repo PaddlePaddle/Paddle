@@ -14,7 +14,7 @@
 
 
 class FileSystem(object):
-    r"""
+    """
     A file system that support hadoop client desc. 
 
     Args:
@@ -45,14 +45,14 @@ class FileSystem(object):
         #self.fs_client.afs_conf = afs_conf if not afs_conf else ""
 
     def get_desc(self):
-        r"""
+        """
         get hadoop desc.
         """
         return self.fs_client
 
 
 class MPIHelper(object):
-    r"""
+    """
     MPIHelper is a wrapper of mpi4py, support get_rank get_size etc.
     Args:
         No params

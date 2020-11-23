@@ -27,7 +27,7 @@ __all__ = ['data']
 @static_only
 @deprecated(since="2.0.0", update_to="paddle.static.data")
 def data(name, shape, dtype='float32', lod_level=0):
-    r"""
+    """
     **Data Layer**
 
     This function creates a variable on the global block. The global variable

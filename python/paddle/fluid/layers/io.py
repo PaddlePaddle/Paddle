@@ -47,7 +47,7 @@ def data(name,
          lod_level=0,
          type=core.VarDesc.VarType.LOD_TENSOR,
          stop_gradient=True):
-    r"""
+    """
     **Data Layer**
 
     This operator creates the global variable. The global variables can be
@@ -136,7 +136,7 @@ def data(name,
 
 
 class BlockGuardServ(BlockGuard):
-    r"""
+    """
     BlockGuardServ class.
 
     BlockGuardServ class is used to create an op with a block in a program.
@@ -157,7 +157,7 @@ class BlockGuardServ(BlockGuard):
 
 
 class ListenAndServ(object):
-    r"""
+    """
     **ListenAndServ Layer**
 
     ListenAndServ is used to create a rpc server bind and listen
@@ -256,7 +256,7 @@ class ListenAndServ(object):
 
 
 def Send(endpoints, send_vars, dummy_output=None, sync=True):
-    r"""
+    """
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
 
@@ -300,7 +300,7 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
 
 
 def Recv(endpoints, get_vars, dummy_input=None, sync=True):
-    r"""
+    """
     Receive variables from server side
 
     Args:
@@ -559,7 +559,7 @@ def py_reader(capacity,
               lod_levels=None,
               name=None,
               use_double_buffer=True):
-    r"""
+    """
 	:api_attr: Static Graph
 
     Create a Python reader for data feeding in Python
@@ -728,7 +728,7 @@ def create_py_reader_by_data(capacity,
                              feed_list,
                              name=None,
                              use_double_buffer=True):
-    r"""
+    """
 	:api_attr: Static Graph
 
     The OP creates a Python reader for data feeding in Python, it is similar
@@ -836,7 +836,7 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 
 def double_buffer(reader, place=None, name=None):
-    r"""
+    """
     Wrap a double buffer reader. The class Reader contains DecoratedReader and FileReader. Moreover, the DecoratedReader is inherited by CustomReader and BufferedReader. This function is related to BufferedReader. The data will copy to target place with a double buffer queue. If the target place is None, the place that executor perform on will be used.
 
 
@@ -867,7 +867,7 @@ def double_buffer(reader, place=None, name=None):
 
 
 def read_file(reader):
-    r"""
+    """
 	:api_attr: Static Graph
 
     Execute the given reader and get data via it.
@@ -907,7 +907,7 @@ def read_file(reader):
 
 
 def load(out, file_path, load_as_fp16=None):
-    r"""
+    """
     Load operator will load a LoDTensor / SelectedRows variable from disk file.
 
     Args:

@@ -24,7 +24,7 @@ from op_test import OpTest
 
 
 class TestFullOp(unittest.TestCase):
-    r""" Test fill_any_like op(whose API is full_like) for attr out. """
+    """ Test fill_any_like op(whose API is full_like) for attr out. """
 
     def test_attr_tensor_API(self):
         startup_program = Program()

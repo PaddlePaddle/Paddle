@@ -28,7 +28,7 @@ __all__ = [
 
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
-    r"""
+    """
     This function creates a Tensor on the global block. The created Tensor
     doesn't check the dtype and the shape of feed data because dygraph input
     data can be various-length. This API is used in translating dygraph into

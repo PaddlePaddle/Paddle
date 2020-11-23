@@ -25,7 +25,7 @@ from paddle.fluid.transpiler import collective
 
 
 class TestTranspile(unittest.TestCase):
-    r"""  TestCases for BoxPS Preload """
+    """  TestCases for BoxPS Preload """
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
         config = fluid.DistributeTranspilerConfig()
@@ -79,7 +79,7 @@ class TestTranspile(unittest.TestCase):
 
 
 class TestRunCmd(unittest.TestCase):
-    r""" TestCases for run_cmd"""
+    """ TestCases for run_cmd"""
 
     def test_run_cmd(self):
         ret1 = int(core.run_cmd("ls; echo $?").strip().split('\n')[-1])
@@ -89,7 +89,7 @@ class TestRunCmd(unittest.TestCase):
 
 
 class TestPullBoxSparseOP(unittest.TestCase):
-    r""" TestCases for _pull_box_sparse op"""
+    """ TestCases for _pull_box_sparse op"""
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()

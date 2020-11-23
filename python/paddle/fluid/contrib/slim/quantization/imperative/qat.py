@@ -48,7 +48,7 @@ _op_real_in_out_name = {
 
 
 class ImperativeQuantAware(object):
-    r"""
+    """
     Add the fake quant logic for given quantizable layers, namely add the quant_dequant
     computational logic both for activation inputs and weight inputs.
     """
@@ -64,7 +64,7 @@ class ImperativeQuantAware(object):
                  act_preprocess_layer=None,
                  weight_quantize_layer=None,
                  act_quantize_layer=None):
-        r"""
+        """
         The constructor for ImperativeQuantAware.
 
         Args:
@@ -185,7 +185,7 @@ class ImperativeQuantAware(object):
                 layer, str), "{} is unspported to be quantized.".format(layer)
 
     def quantize(self, model):
-        r"""
+        """
         According to weights' and activations' quantization types, the model will be added some fake
         quant ops, such as fake_quantize_dequantize_moving_average_abs_max, fake_quantize_dequantize_abs_max
         and so on.
@@ -241,7 +241,7 @@ class ImperativeCalcOutScale(object):
                      'Linear', 'PReLU', 'Pool2D', 'ReLU', 'ReLU6', 'Sigmoid',
                      'Softmax', 'Tanh'
                  ]):
-        r"""
+        """
         Add the logic of calculating and setting output quantization scales of some layers.
         These output quantization scales may be used by tensorRT or some other inference engines.
 
@@ -277,7 +277,7 @@ class ImperativeCalcOutScale(object):
         self._out_scale_dict = {}
 
     def calc_out_scale(self, model):
-        r"""
+        """
         Insert the `moving_average_abs_max_scale` op to calculate output scale of Specific layers in model.
 
         Args:
@@ -310,7 +310,7 @@ class ImperativeCalcOutScale(object):
         return var_names
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        r"""
+        """
         Save the quantized model for the inference.
 
         Args:

@@ -43,7 +43,7 @@ _pil_interp_from_str = {
 
 
 def to_tensor(pic, data_format='CHW'):
-    r"""Converts a ``PIL.Image`` to paddle.Tensor.
+    """Converts a ``PIL.Image`` to paddle.Tensor.
 
     See ``ToTensor`` for more details.
 
@@ -94,7 +94,7 @@ def to_tensor(pic, data_format='CHW'):
 
 
 def resize(img, size, interpolation='bilinear'):
-    r"""
+    """
     Resizes the image to given size
 
     Args:
@@ -135,7 +135,7 @@ def resize(img, size, interpolation='bilinear'):
 
 
 def pad(img, padding, fill=0, padding_mode='constant'):
-    r"""
+    """
     Pads the given PIL.Image on all sides with specified padding mode and fill value.
 
     Args:
@@ -229,7 +229,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
 
 def crop(img, top, left, height, width):
-    r"""Crops the given PIL Image.
+    """Crops the given PIL Image.
 
     Args:
         img (PIL.Image): Image to be cropped. (0,0) denotes the top left 
@@ -247,7 +247,7 @@ def crop(img, top, left, height, width):
 
 
 def center_crop(img, output_size):
-    r"""Crops the given PIL Image and resize it to desired size.
+    """Crops the given PIL Image and resize it to desired size.
 
         Args:
             img (PIL.Image): Image to be cropped. (0,0) denotes the top left corner of the image.
@@ -271,7 +271,7 @@ def center_crop(img, output_size):
 
 
 def hflip(img):
-    r"""Horizontally flips the given PIL Image.
+    """Horizontally flips the given PIL Image.
 
     Args:
         img (PIL.Image): Image to be flipped.
@@ -285,7 +285,7 @@ def hflip(img):
 
 
 def vflip(img):
-    r"""Vertically flips the given PIL Image.
+    """Vertically flips the given PIL Image.
 
     Args:
         img (PIL.Image): Image to be flipped.
@@ -299,7 +299,7 @@ def vflip(img):
 
 
 def adjust_brightness(img, brightness_factor):
-    r"""Adjusts brightness of an Image.
+    """Adjusts brightness of an Image.
 
     Args:
         img (PIL.Image): PIL Image to be adjusted.
@@ -318,7 +318,7 @@ def adjust_brightness(img, brightness_factor):
 
 
 def adjust_contrast(img, contrast_factor):
-    r"""Adjusts contrast of an Image.
+    """Adjusts contrast of an Image.
 
     Args:
         img (PIL.Image): PIL Image to be adjusted.
@@ -337,7 +337,7 @@ def adjust_contrast(img, contrast_factor):
 
 
 def adjust_saturation(img, saturation_factor):
-    r"""Adjusts color saturation of an image.
+    """Adjusts color saturation of an image.
 
     Args:
         img (PIL.Image): PIL Image to be adjusted.
@@ -356,7 +356,7 @@ def adjust_saturation(img, saturation_factor):
 
 
 def adjust_hue(img, hue_factor):
-    r"""Adjusts hue of an image.
+    """Adjusts hue of an image.
 
     The image hue is adjusted by converting the image to HSV and
     cyclically shifting the intensities in the hue channel (H).
@@ -397,7 +397,7 @@ def adjust_hue(img, hue_factor):
 
 
 def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
-    r"""Rotates the image by angle.
+    """Rotates the image by angle.
 
     Args:
         img (PIL.Image): Image to be rotated.
@@ -430,7 +430,7 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
 
 
 def to_grayscale(img, num_output_channels=1):
-    r"""Converts image to grayscale version of image.
+    """Converts image to grayscale version of image.
 
     Args:
         img (PIL.Image): Image to be converted to grayscale.

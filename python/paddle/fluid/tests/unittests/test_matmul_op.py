@@ -58,7 +58,7 @@ def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
-    r"""Reference forward implementation using np.matmul."""
+    """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
     if transpose_X:

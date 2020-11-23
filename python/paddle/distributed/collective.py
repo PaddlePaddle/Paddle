@@ -36,7 +36,7 @@ __all__ = [
 
 
 class ReduceOp:
-    r"""
+    """
     Specify the type of operation used for element-wise reductions.
     It should be one of the following values:
 
@@ -74,7 +74,7 @@ class ReduceOp:
 
 
 class _Group():
-    r"""The abstract representation of group."""
+    """The abstract representation of group."""
 
     def __init__(self, rank, rank_num):
         self.rank = rank
@@ -97,7 +97,7 @@ def _get_global_default_group():
 
 
 def broadcast(tensor, src, group=0):
-    r"""
+    """
 
     Broadcast a tensor from the source to all others.
 
@@ -153,7 +153,7 @@ def broadcast(tensor, src, group=0):
 
 
 def all_reduce(tensor, op=ReduceOp.SUM, group=0):
-    r"""
+    """
 
     Reduce a tensor over all ranks so that all get the result.
 
@@ -227,7 +227,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
-    r"""
+    """
 
     Reduce a tensor to the destination from all others.
 
@@ -309,7 +309,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
 
 
 def all_gather(tensor_list, tensor, group=0):
-    r"""
+    """
 
     Gather tensors from all participators and all get the result.
 
@@ -382,7 +382,7 @@ def all_gather(tensor_list, tensor, group=0):
 
 
 def scatter(tensor, tensor_list=None, src=0, group=0):
-    r"""
+    """
 
     Scatter a tensor to all participators.
 
@@ -453,7 +453,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
 
 
 def barrier(group=0):
-    r"""
+    """
 
     Barrier among all participators in the group.
 

@@ -28,7 +28,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_var
 
 
 def split_heter_worker_ops_pass(program, config):
-    r"""
+    """
     split heter worker program from origin-program
     1. find heter op (located on different device)
     2. find input&output of every heter-block
@@ -56,7 +56,7 @@ def split_heter_worker_ops_pass(program, config):
 
 
 def split_trainer_ops_pass(program, config):
-    r"""
+    """
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
     2. find input&output of every heter-block
@@ -72,7 +72,7 @@ def split_trainer_ops_pass(program, config):
 
 
 def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
-    r"""
+    """
     delete variable which not used in current main_program
     """
     # find all op and its var

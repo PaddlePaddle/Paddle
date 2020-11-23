@@ -39,7 +39,7 @@ UNK_IDX = 2
 
 
 class WMT14(Dataset):
-    r"""
+    """
     Implementation of `WMT14 <http://www.statmt.org/wmt14/>`_ test dataset.
     The original WMT14 dataset is too large and a small set of data for set is
     provided. This module will download dataset from
@@ -173,7 +173,7 @@ class WMT14(Dataset):
         return len(self.src_ids)
 
     def get_dict(self, reverse=False):
-        r"""
+        """
         Get the source and target dictionary.
 
         Args:

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 decorator to deprecate a function or class
 """
 
@@ -29,7 +29,7 @@ warnings.simplefilter('default', DeprecationWarning)
 
 
 def deprecated(update_to="", since="", reason=""):
-    r"""Decorate a function to signify its deprecation.
+    """Decorate a function to signify its deprecation.
 
        This function wraps a method that will soon be removed and does two things:
            - The docstring of the API will be modified to include a notice
@@ -46,7 +46,7 @@ def deprecated(update_to="", since="", reason=""):
     def decorator(func):
         # TODO(zhiqiu): We temporally disable the warnings for 2.0-bata, and it should be re-enabled in the future.
         # return func
-        r"""construct warning message, and return a decorated function or class."""
+        """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
         assert isinstance(reason, str), 'type of "reason" must be str.'
@@ -76,7 +76,7 @@ def deprecated(update_to="", since="", reason=""):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            r"""deprecated warning should be fired in 3 circumstances:
+            """deprecated warning should be fired in 3 circumstances:
                1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
                2. since version is empty, in this case, API is deprecated in all versions.
                3. current version is newer than since version.

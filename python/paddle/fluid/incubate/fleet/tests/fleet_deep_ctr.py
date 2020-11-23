@@ -65,7 +65,7 @@ def parse_args():
 def model():
     dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
     )
-    r""" network definition """
+    """ network definition """
     dnn_data = fluid.layers.data(
         name="dnn_data",
         shape=[-1, 1],

@@ -67,7 +67,7 @@ def parse_args():
 
 
 class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
-    r"""
+    """
     Test for accuracy comparison of Quant FP32 and INT8 Image Classification inference.
     """
 

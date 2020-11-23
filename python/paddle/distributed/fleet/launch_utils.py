@@ -34,7 +34,7 @@ logger.propagate = False
 
 
 class DistributeMode:
-    r"""
+    """
     There are various mode for fleetrun, each of them is designed for different model.
     """
     COLLECTIVE = 0
@@ -307,7 +307,7 @@ def get_host_name_ip():
 
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
-    r"""Add argparse's argument.
+    """Add argparse's argument.
     Usage:
     .. code-block:: python
         parser = argparse.ArgumentParser()
@@ -575,7 +575,7 @@ def direct_start(args):
 
 
 def get_custom_endpoints(origin_endpoints, offset=0):
-    r"""
+    """
     origin_endpoint: ip:port
     user_define_endpoint: ip:(port+offset)
     """

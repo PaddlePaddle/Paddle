@@ -121,7 +121,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             self.run_pserver(role, strategy)
 
     def test_communicator(self):
-        run_server_cmd = r"""
+        run_server_cmd = """
 from __future__ import print_function
 
 import sys

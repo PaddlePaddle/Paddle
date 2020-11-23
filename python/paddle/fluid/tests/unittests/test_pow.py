@@ -66,10 +66,10 @@ def _run_power(mode, x, y):
 
 
 class TestPowerAPI(unittest.TestCase):
-    r"""TestPowerAPI."""
+    """TestPowerAPI."""
 
     def test_power(self):
-        r"""test_power."""
+        """test_power."""
         np.random.seed(7)
         # test 1-d float tensor ** float scalar
         dims = (np.random.randint(200, 300), )
@@ -207,10 +207,10 @@ class TestPowerAPI(unittest.TestCase):
 
 
 class TestPowerError(unittest.TestCase):
-    r"""TestPowerError."""
+    """TestPowerError."""
 
     def test_errors(self):
-        r"""test_errors."""
+        """test_errors."""
         np.random.seed(7)
 
         # test dynamic computation graph: inputs must be broadcastable

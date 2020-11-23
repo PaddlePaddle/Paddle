@@ -22,7 +22,7 @@ import paddle.fluid.layers as layers
 
 
 class TestLoadOp(unittest.TestCase):
-    r""" Test load operator.
+    """ Test load operator.
     """
 
     def setUp(self):

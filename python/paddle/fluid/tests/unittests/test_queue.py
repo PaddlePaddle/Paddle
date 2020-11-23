@@ -25,7 +25,7 @@ import paddle.fluid.core as core
 
 class TestQueue(unittest.TestCase):
     def test_eq(self):
-        r"""
+        """
         test queue_generator op, enqueue op and dequeue op.
         """
 

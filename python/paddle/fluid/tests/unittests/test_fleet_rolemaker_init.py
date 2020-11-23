@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Test cloud role maker."""
+"""Test cloud role maker."""
 
 from __future__ import print_function
 import os
@@ -24,7 +24,7 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestPSCloudRoleMakerCase1(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 
@@ -39,7 +39,7 @@ class TestPSCloudRoleMakerCase1(unittest.TestCase):
 
 
 class TestPSCloudRoleMakerCase2(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 
@@ -55,7 +55,7 @@ class TestPSCloudRoleMakerCase2(unittest.TestCase):
 
 
 class TestPSCloudRoleMakerCase3(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 
@@ -72,7 +72,7 @@ class TestPSCloudRoleMakerCase3(unittest.TestCase):
 
 
 class TestPSCloudRoleMakerCase4(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 
@@ -89,7 +89,7 @@ class TestPSCloudRoleMakerCase4(unittest.TestCase):
 
 
 class TestPSCloudRoleMakerCase5(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 
@@ -107,7 +107,7 @@ class TestPSCloudRoleMakerCase5(unittest.TestCase):
 
 
 class TestPSCloudRoleMakerCase6(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 
@@ -126,7 +126,7 @@ class TestPSCloudRoleMakerCase6(unittest.TestCase):
 
 
 class TestPSCloudRoleMakerCase7(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMake Parameter Server.
     """
 

@@ -29,7 +29,7 @@ class GastNodeTransformer(gast.NodeTransformer):
         return self.generic_visit(self.root)
 
     def visit_Name(self, node):
-        r"""
+        """
         Param in func is ast.Name in PY2, but ast.arg in PY3.
         It will be generally represented by gast.Name in gast.
         """
@@ -39,7 +39,7 @@ class GastNodeTransformer(gast.NodeTransformer):
         return node
 
     def visit_With(self, node):
-        r"""
+        """
         The fileds `context_expr/optional_vars` of `ast.With` in PY2
         is moved into `ast.With.items.withitem` in PY3.
         It will be generally represented by gast.With.items.withitem in gast.
@@ -55,7 +55,7 @@ class GastNodeTransformer(gast.NodeTransformer):
         return node
 
     def visit_Call(self, node):
-        r"""
+        """
         The fileds `starargs/kwargs` of `ast.Call` in PY2
         is moved into `Starred/keyword` in PY3.
         It will be generally represented by gast.Starred/keyword in gast.
@@ -74,7 +74,7 @@ class GastNodeTransformer(gast.NodeTransformer):
         return node
 
     def visit_Constant(self, node):
-        r"""
+        """
         In PY3.8, ast.Num/Str/Bytes/None/False/True are merged into ast.Constant.
         But these types are still available and will be deprecated in future versions.
         ast.Num corresponds to gast.Num in PY2, and corresponds to gast.Constant in PY3.
@@ -84,14 +84,14 @@ class GastNodeTransformer(gast.NodeTransformer):
         return node
 
     def visit_Num(self, node):
-        r"""
+        """
         ast.Num is available before PY3.8, and see visit_Constant for details.
         """
         node.n *= 2
         return node
 
     def visit_Subscript(self, node):
-        r"""
+        """
         Before PY3.8, the fields of ast.subscript keeps exactly same between PY2 and PY3.
         After PY3.8, the field `slice` with ast.Slice will be changed into ast.Index(Tuple).
         It will be generally represented by gast.Index or gast.Slice in gast.
@@ -103,7 +103,7 @@ class GastNodeTransformer(gast.NodeTransformer):
 
 
 def code_gast_ast(source):
-    r"""
+    """
     Transform source_code into gast.Node and modify it,
     then back to ast.Node.
     """
@@ -115,7 +115,7 @@ def code_gast_ast(source):
 
 
 def code_ast(source):
-    r"""
+    """
     Transform source_code into ast.Node, then dump it.
     """
     source = textwrap.dedent(source)
@@ -130,15 +130,15 @@ class TestPythonCompatibility(unittest.TestCase):
         self.assertEqual(source_dump, target_dump)
 
     def test_param_of_func(self):
-        r"""
+        """
         Param in func is ast.Name in PY2, but ast.arg in PY3.
         It will be generally represented by ast.Name in gast.
         """
-        source = r"""
+        source = """
             def foo(x, y):
                 return x + y
         """
-        target = r"""
+        target = """
             def foo(x_new, y_new):
                 return x + y
         """
@@ -158,43 +158,43 @@ class TestPythonCompatibility(unittest.TestCase):
     if sys.version_info < (3, 8):
 
         def test_with(self):
-            r"""
+            """
             The fileds `context_expr/optional_vars` of `ast.With` in PY2
             is moved into `ast.With.items.withitem` in PY3.
             """
-            source = r"""
+            source = """
             with guard():
                 a = 1
             """
-            target = r"""
+            target = """
             with guard_new():
                 a = 1
             """
             self._check_compatibility(source, target)
 
         def test_subscript_Index(self):
-            source = r"""
+            source = """
                 x = y()[10]
             """
-            target = r"""
+            target = """
                 x = y()[20]
             """
             self._check_compatibility(source, target)
 
         def test_subscript_Slice(self):
-            source = r"""
+            source = """
                 x = y()[10:20]
             """
-            target = r"""
+            target = """
                 x = y()[20:40]
             """
             self._check_compatibility(source, target)
 
         def test_call(self):
-            source = r"""
+            source = """
                 y = foo(*arg)
             """
-            target = r"""
+            target = """
                 y = foo(*arg_new)
             """
             self._check_compatibility(source, target)

@@ -92,7 +92,7 @@ class TestTDMSamplerOp(OpTest):
         self.outputs = {'Out': out, 'Labels': label, 'Mask': mask}
 
     def config(self):
-        r"""set test shape & type"""
+        """set test shape & type"""
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int32'
@@ -174,7 +174,7 @@ class TestTDMSamplerOp(OpTest):
 
 class TestCase1(TestTDMSamplerOp):
     def config(self):
-        r"""test input int64"""
+        """test input int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
@@ -184,7 +184,7 @@ class TestCase1(TestTDMSamplerOp):
 
 class TestCase2(TestTDMSamplerOp):
     def config(self):
-        r"""test dtype int64"""
+        """test dtype int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int32'
@@ -194,7 +194,7 @@ class TestCase2(TestTDMSamplerOp):
 
 class TestCase3(TestTDMSamplerOp):
     def config(self):
-        r"""test all dtype int64"""
+        """test all dtype int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
@@ -204,7 +204,7 @@ class TestCase3(TestTDMSamplerOp):
 
 class TestCase4(TestTDMSamplerOp):
     def config(self):
-        r"""test one neg"""
+        """test one neg"""
         self.neg_samples_num_list = [1, 1, 1, 1]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
@@ -214,7 +214,7 @@ class TestCase4(TestTDMSamplerOp):
 
 class TestCase5(TestTDMSamplerOp):
     def config(self):
-        r"""test normal neg"""
+        """test normal neg"""
         self.neg_samples_num_list = [1, 2, 3, 4]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
@@ -224,7 +224,7 @@ class TestCase5(TestTDMSamplerOp):
 
 class TestCase6(TestTDMSamplerOp):
     def config(self):
-        r"""test huge batchsize"""
+        """test huge batchsize"""
         self.neg_samples_num_list = [1, 2, 3, 4]
         self.x_shape = (100, 1)
         self.x_type = 'int64'
@@ -234,7 +234,7 @@ class TestCase6(TestTDMSamplerOp):
 
 class TestCase7(TestTDMSamplerOp):
     def config(self):
-        r"""test full neg"""
+        """test full neg"""
         self.neg_samples_num_list = [1, 3, 6, 11]
         self.x_shape = (10, 1)
         self.x_type = 'int64'

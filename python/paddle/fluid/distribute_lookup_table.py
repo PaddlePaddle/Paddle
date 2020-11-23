@@ -16,7 +16,7 @@ LOOKUP_TABLE_TYPE = "lookup_table"
 
 
 def find_distributed_lookup_table_inputs(program, table_name):
-    r"""
+    """
     Find input variable of distribute lookup table in program.
     We only support one distribute table now.
     Args:
@@ -35,7 +35,7 @@ def find_distributed_lookup_table_inputs(program, table_name):
 
 
 def find_distributed_lookup_table_outputs(program, table_name):
-    r"""
+    """
     Find output variable of distribute lookup table in program.
     We only support one distribute table now.
     Args:
@@ -54,7 +54,7 @@ def find_distributed_lookup_table_outputs(program, table_name):
 
 
 def find_distributed_lookup_table(program):
-    r"""
+    """
     Find distribute lookup table in program.
     We only support one distribute table now.
     Args:

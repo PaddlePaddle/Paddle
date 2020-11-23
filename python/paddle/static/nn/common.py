@@ -26,7 +26,7 @@ def fc(x,
        bias_attr=None,
        activation=None,
        name=None):
-    r"""
+    """
 
     Fully-Connected layer can take a tensor or a list of tensor as its inputs.
     It creates a 2-D weight tensor for each input tensor, which represents its
@@ -180,7 +180,7 @@ def deform_conv2d(x,
                   weight_attr=None,
                   bias_attr=None,
                   name=None):
-    r"""
+    """
 
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:

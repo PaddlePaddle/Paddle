@@ -31,7 +31,7 @@ MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 
 class Imdb(Dataset):
-    r"""
+    """
     Implementation of `IMDB <https://www.imdb.com/interfaces/>`_ dataset.
 
     Args:

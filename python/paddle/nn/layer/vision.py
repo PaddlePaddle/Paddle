@@ -21,7 +21,7 @@ __all__ = ['PixelShuffle']
 
 
 class PixelShuffle(layers.Layer):
-    r"""
+    """
     
     PixelShuffle Layer    
 

@@ -63,14 +63,14 @@ class TestConstantInitializer(unittest.TestCase):
         return block
 
     def test_constant_initializer_default_value_static(self, dtype="float32"):
-        r"""Test the constant initializer with default value in static graph
+        """Test the constant initializer with default value in static graph
         """
         block = self.static_test_constant_initializer_common(
             init_inst=initializer.Constant(), dtype=dtype, value_target=0.0)
         return block
 
     def test_constant_initializer_default_value_dygraph(self, dtype="float32"):
-        r"""Test constant initializer with supplied value in dygraph
+        """Test constant initializer with supplied value in dygraph
         """
         with fluid.dygraph.guard():
             linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant())
@@ -81,14 +81,14 @@ class TestConstantInitializer(unittest.TestCase):
             self.assertAlmostEqual(mismatch, 0.0, delta=DELTA)
 
     def test_constant_initializer_static(self, dtype="float32"):
-        r"""Test constant initializer with supplied value in static graph
+        """Test constant initializer with supplied value in static graph
         """
         block = self.static_test_constant_initializer_common(
             init_inst=initializer.Constant(2.3), dtype=dtype, value_target=2.3)
         return block
 
     def test_constant_initializer_dygraph(self, dtype="float32"):
-        r"""Test constant initializer with supplied value in dygraph
+        """Test constant initializer with supplied value in dygraph
         """
         with fluid.dygraph.guard():
             linear = nn.Linear(
@@ -100,7 +100,7 @@ class TestConstantInitializer(unittest.TestCase):
             self.assertAlmostEqual(mismatch, 0.0, delta=DELTA)
 
     def test_constant_initializer_fp16(self):
-        r"""Test constant initializer with float16
+        """Test constant initializer with float16
         """
         block = self.test_constant_initializer_default_value_static("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -166,7 +166,7 @@ class TestKaimingInitializer(unittest.TestCase):
             uniform=False)
 
     def test_kaiming_uniform_initializer_static(self):
-        r"""Test Kaiming unorm initializer for matrix multiply.
+        """Test Kaiming unorm initializer for matrix multiply.
         """
         self.static_test_kaiming_initializer_common(
             init_inst=initializer.KaimingUniform(),
@@ -175,7 +175,7 @@ class TestKaimingInitializer(unittest.TestCase):
             is_conv=False)
 
     def test_kaiming_uniform_initializer_conv_static(self):
-        r"""Test Kaiming unorm initializer for convolutions.
+        """Test Kaiming unorm initializer for convolutions.
         """
         self.static_test_kaiming_initializer_common(
             init_inst=initializer.KaimingUniform(),
@@ -184,7 +184,7 @@ class TestKaimingInitializer(unittest.TestCase):
             is_conv=True)
 
     def test_kaiming_normal_initializer_static(self):
-        r"""Test Kaiming normal initializer for matrix multiply.
+        """Test Kaiming normal initializer for matrix multiply.
         """
         self.static_test_kaiming_initializer_common(
             init_inst=initializer.KaimingNormal(),
@@ -193,7 +193,7 @@ class TestKaimingInitializer(unittest.TestCase):
             is_conv=False)
 
     def test_kaiming_normal_initializer_conv_static(self):
-        r"""Test Kaiming normal initializer for convolutions.
+        """Test Kaiming normal initializer for convolutions.
         """
         self.static_test_kaiming_initializer_common(
             init_inst=initializer.KaimingNormal(),
@@ -204,7 +204,7 @@ class TestKaimingInitializer(unittest.TestCase):
 
 class TestUniform(unittest.TestCase):
     def test_uniform_common(self, dtype="float32", seed=0):
-        r"""Test the uniform initializer with default value
+        """Test the uniform initializer with default value
         """
         paddle.enable_static()
 
@@ -235,7 +235,7 @@ class TestUniform(unittest.TestCase):
                                                seed=0,
                                                min_value=-1.0,
                                                max_vlaue=1.0):
-        r"""Test the uniform initializer with default value
+        """Test the uniform initializer with default value
         """
         paddle.enable_static()
 
@@ -266,7 +266,7 @@ class TestUniform(unittest.TestCase):
                                  seed=0,
                                  min_value=-4.2,
                                  max_vlaue=3.1):
-        r"""Test uniform initializer with supplied attributes
+        """Test uniform initializer with supplied attributes
         """
         paddle.enable_static()
 
@@ -296,7 +296,7 @@ class TestUniform(unittest.TestCase):
                                         seed=123,
                                         min_value=-4.2,
                                         max_vlaue=0.0):
-        r"""Test uniform initializer with supplied attributes
+        """Test uniform initializer with supplied attributes
         """
         paddle.enable_static()
 
@@ -323,7 +323,7 @@ class TestUniform(unittest.TestCase):
         return block
 
     def test_uniform_initializer_fp16(self):
-        r"""Test uniform initializer with float16
+        """Test uniform initializer with float16
         """
         block = self.test_uniform_initializer_default_value("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -333,7 +333,7 @@ class TestUniform(unittest.TestCase):
         self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_uniform_initializer_dygraph(self):
-        r"""Test uniform initializer in dygraph model.
+        """Test uniform initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -352,7 +352,7 @@ class TestUniform(unittest.TestCase):
 
 class TestNormal(unittest.TestCase):
     def test_normal_initializer_default_value(self):
-        r"""Test the normal initializer with default value
+        """Test the normal initializer with default value
         """
         paddle.enable_static()
 
@@ -375,7 +375,7 @@ class TestNormal(unittest.TestCase):
         paddle.disable_static()
 
     def test_normal_initializer(self, dtype="float32"):
-        r"""Test normal initializer with supplied attributes
+        """Test normal initializer with supplied attributes
         """
         paddle.enable_static()
 
@@ -400,13 +400,13 @@ class TestNormal(unittest.TestCase):
         return block
 
     def test_normal_initializer_fp16(self):
-        r"""Test normal initializer with float16
+        """Test normal initializer with float16
         """
         block = self.test_normal_initializer("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_normal_initializer_dygraph(self):
-        r"""Test normal initializer in dygraph model.
+        """Test normal initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -419,7 +419,7 @@ class TestNormal(unittest.TestCase):
 
 class TestTruncatedNormal(unittest.TestCase):
     def test_truncated_normal_initializer_default_value(self):
-        r"""Test the truncated normal initializer with default value
+        """Test the truncated normal initializer with default value
         """
         paddle.enable_static()
 
@@ -442,7 +442,7 @@ class TestTruncatedNormal(unittest.TestCase):
         paddle.disable_static()
 
     def test_truncated_normal_initializer(self, dtype="float32"):
-        r"""Test truncated normal initializer with supplied attributes
+        """Test truncated normal initializer with supplied attributes
         """
         paddle.enable_static()
 
@@ -467,7 +467,7 @@ class TestTruncatedNormal(unittest.TestCase):
         return block
 
     def test_truncated_normal_initializer_fp16(self):
-        r"""Test truncated normal initializer with float16
+        """Test truncated normal initializer with float16
         """
         paddle.enable_static()
 
@@ -475,7 +475,7 @@ class TestTruncatedNormal(unittest.TestCase):
         self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_truncated_normal_initializer_dygraph(self):
-        r"""Test truncated normal initializer in dygraph model.
+        """Test truncated normal initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -488,7 +488,7 @@ class TestTruncatedNormal(unittest.TestCase):
 
 class TestXavierUniform(unittest.TestCase):
     def test_xavier_uniform_initializer(self):
-        r"""Test Xavier initializer with uniform distribution on
+        """Test Xavier initializer with uniform distribution on
            for matrix multiply.
         """
         paddle.enable_static()
@@ -513,7 +513,7 @@ class TestXavierUniform(unittest.TestCase):
         paddle.disable_static()
 
     def test_xavier_uniform_initializer_conv(self):
-        r"""Test Xavier initializer with uniform distribution on
+        """Test Xavier initializer with uniform distribution on
            for convolutions.
         """
         paddle.enable_static()
@@ -538,7 +538,7 @@ class TestXavierUniform(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_xavier_uniform_initializer_dygraph(self):
-        r"""Test xavier uniform initializer in dygraph model.
+        """Test xavier uniform initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -550,7 +550,7 @@ class TestXavierUniform(unittest.TestCase):
 
 class TestXavierNormal(unittest.TestCase):
     def test_xavier_normal_initializer(self):
-        r"""Test Xavier initializer with normal distribution on
+        """Test Xavier initializer with normal distribution on
            for matrix multiply.
         """
         paddle.enable_static()
@@ -575,7 +575,7 @@ class TestXavierNormal(unittest.TestCase):
         paddle.disable_static()
 
     def test_xavier_normal_initializer_conv(self):
-        r"""Test Xavier initializer with normal distribution on
+        """Test Xavier initializer with normal distribution on
            for convolutions.
         """
         paddle.enable_static()
@@ -602,7 +602,7 @@ class TestXavierNormal(unittest.TestCase):
         paddle.disable_static()
 
     def test_xavier_normal_initializer_dygraph(self):
-        r"""Test xavier normal initializer in dygraph model.
+        """Test xavier normal initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -614,7 +614,7 @@ class TestXavierNormal(unittest.TestCase):
 
 class TestAssign(unittest.TestCase):
     def test_assign_initializer(self, dtype="float32"):
-        r"""Test the numpy array initializer with supplied arguments
+        """Test the numpy array initializer with supplied arguments
         """
         paddle.enable_static()
 
@@ -640,13 +640,13 @@ class TestAssign(unittest.TestCase):
         return block
 
     def test_assign_initializer_fp16(self):
-        r"""Test the numpy array initializer with float16
+        """Test the numpy array initializer with float16
         """
         block = self.test_assign_initializer("float16")
         self.assertTrue(block.ops[1])
 
     def test_assign_initializer_dygraph_1(self):
-        r"""Test assign initializer in dygraph model.
+        """Test assign initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -658,7 +658,7 @@ class TestAssign(unittest.TestCase):
         self.assertTrue((linear_1.weight.numpy() == [2.0, 2.0]).all(), '')
 
     def test_assign_initializer_dygraph_2(self):
-        r"""Test assign initializer in dygraph model.
+        """Test assign initializer in dygraph model.
         """
         paddle.disable_static()
 
@@ -670,7 +670,7 @@ class TestAssign(unittest.TestCase):
         self.assertTrue((linear_2.weight.numpy() == [2.0, 2.0]).all(), '')
 
     def test_assign_initializer_dygraph_3(self):
-        r"""Test assign initializer in dygraph model.
+        """Test assign initializer in dygraph model.
         """
         paddle.disable_static()
 

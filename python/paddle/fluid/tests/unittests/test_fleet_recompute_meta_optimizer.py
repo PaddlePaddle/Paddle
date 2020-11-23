@@ -24,7 +24,7 @@ paddle.enable_static()
 
 class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
     def test_recompute_optimizer_backward(self):
-        r""" test recompute optimizer backward """
+        """ test recompute optimizer backward """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -41,7 +41,7 @@ class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_recompute_optimizer_backward_gradients(self):
-        r""" test recompute optimizer backward + gradients """
+        """ test recompute optimizer backward + gradients """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -60,7 +60,7 @@ class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_recompute_optimizer_backward_optimize(self):
-        r""" test recompute optimizer backward + optimize """
+        """ test recompute optimizer backward + optimize """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -78,7 +78,7 @@ class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_recompute_optimizer_backward(self):
-        r""" test recompute optimizer backward """
+        """ test recompute optimizer backward """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -95,7 +95,7 @@ class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_recompute_optimizer_backward(self):
-        r""" test recompute optimizer backward """
+        """ test recompute optimizer backward """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 

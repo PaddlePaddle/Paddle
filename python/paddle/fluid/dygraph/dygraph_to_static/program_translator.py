@@ -55,7 +55,7 @@ MAX_TRACED_PROGRAM_COUNT = 10
 
 
 class FunctionCache(object):
-    r"""
+    """
     Caches the transformed functions to avoid redundant conversions of the same function.
     """
 
@@ -67,7 +67,7 @@ class FunctionCache(object):
         self._dygraph_to_static = DygraphToStaticAst()
 
     def convert_with_cache(self, func):
-        r"""
+        """
         Returns the cached static function or converts it when first encounters the function.
         """
         # If hit cache, return it directly.
@@ -80,7 +80,7 @@ class FunctionCache(object):
         return static_func
 
     def _convert(self, func):
-        r"""
+        """
         Converts dygraph function into static function. For two functions with same dedent code,
         the second function will reuse the transformed ast node of previous one.
 
@@ -130,7 +130,7 @@ _FUNCTION_CACHE = FunctionCache()
 
 
 def convert_to_static(function):
-    r"""
+    """
     Transforms function of dygraph into static function using the cache mechanism.
 
     Args:
@@ -142,14 +142,14 @@ def convert_to_static(function):
 
 
 class CacheKey(object):
-    r"""
+    """
     Cached key for ProgramCache.
     """
 
     __slots__ = ['function_spec', 'input_with_spec', 'class_instance']
 
     def __init__(self, function_spec, input_with_spec, class_instance):
-        r"""
+        """
         Initializes a cache key.
 
         Args:
@@ -163,7 +163,7 @@ class CacheKey(object):
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
-        r"""
+        """
         Generated a CacheKey instance by given inputs.
 
         Args:
@@ -200,7 +200,7 @@ class CacheKey(object):
 
 
 def unwrap_decorators(func):
-    r"""
+    """
     Unwraps a decorated function and returns the decorator list and inner target.
     """
     decorators = []
@@ -220,13 +220,13 @@ def unwrap_decorators(func):
 
 
 class StaticFunction(object):
-    r"""
+    """
     Wrapper class to Manage program conversion of decorated function.
 
     """
 
     def __init__(self, function, input_spec=None):
-        r"""
+        """
         Initializes a `StaticFunction`.
 
         Args:
@@ -249,7 +249,7 @@ class StaticFunction(object):
         self._program_trans = ProgramTranslator()
 
     def __get__(self, instance, owner):
-        r"""
+        """
         Overrides this method to parse the class instance and call bound method correctly.
 
         For example:
@@ -286,7 +286,7 @@ class StaticFunction(object):
         return self.__class__(self._dygraph_function, self._input_spec)
 
     def __call__(self, *args, **kwargs):
-        r"""
+        """
         Supports to call the returned instance with input `args` and `kwargs` directly.
 
         Args:
@@ -346,7 +346,7 @@ class StaticFunction(object):
                 raise e
 
     def _call_dygraph_function(self, *args, **kwargs):
-        r"""
+        """
         Calls dygraph function directly and returns the outputs.
 
         Args:
@@ -365,7 +365,7 @@ class StaticFunction(object):
         return dygraph_function(*args, **kwargs)
 
     def get_concrete_program(self, *args, **kwargs):
-        r"""
+        """
         Returns traced concrete program and inner executable partial layer.
 
         Args:
@@ -391,14 +391,14 @@ class StaticFunction(object):
         return concrete_program, partial_program_layer
 
     def get_traced_count(self):
-        r"""
+        """
         Returns the number of traced programs for the decorated function.
         """
         return len(self._program_cache)
 
     @property
     def code(self):
-        r"""
+        """
         Returns the source code of transformed static function for debugging.
         """
         static_func = convert_to_static(self._dygraph_function)
@@ -407,14 +407,14 @@ class StaticFunction(object):
 
     @property
     def dygraph_function(self):
-        r"""
+        """
         Returns the original decorated function.
         """
         return self._dygraph_function
 
     @property
     def concrete_program(self):
-        r"""
+        """
         Returns recent ConcreteProgram instance of decorated function.
 
         Examples:
@@ -465,7 +465,7 @@ class StaticFunction(object):
 
     @property
     def inputs(self):
-        r"""
+        """
         Returns input tensors of recent converted static program.
         """
         concrete_program = self.concrete_program
@@ -477,7 +477,7 @@ class StaticFunction(object):
 
     @property
     def outputs(self):
-        r"""
+        """
         Returns output tensors of recent converted static program.
         """
         concrete_program = self.concrete_program
@@ -490,7 +490,7 @@ class StaticFunction(object):
 
     @property
     def main_program(self):
-        r"""
+        """
         Returns recent converted static main program.
         """
         concrete_program = self.concrete_program
@@ -511,7 +511,7 @@ _in_declarative_mode_ = False
 
 
 def in_declarative_mode():
-    r"""
+    """
     Return a bool value that indicates whether running code under `@declarative`
 
     """
@@ -529,7 +529,7 @@ def _switch_declarative_mode_guard_(is_declarative=True):
 
 
 def _verify_init_in_dynamic_mode(class_instance):
-    r"""
+    """
     Verifies the instance is initialized in dynamic mode.
     """
     if isinstance(class_instance, layers.Layer):
@@ -565,7 +565,7 @@ class ConcreteProgram(object):
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(func_spec, input_spec, class_instance):
-        r"""
+        """
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
 
@@ -632,7 +632,7 @@ class ConcreteProgram(object):
 
 
 def _extract_indeed_params_buffers(class_instance):
-    r"""
+    """
     To filter not initialzed buffers.
     """
     params = list(get_parameters(class_instance).values())
@@ -643,7 +643,7 @@ def _extract_indeed_params_buffers(class_instance):
 
 
 class ProgramCache(object):
-    r"""
+    """
     Wrapper class for the program functions defined by dygraph function.
     """
 
@@ -709,7 +709,7 @@ def synchronized(func):
 
 
 class ProgramTranslator(object):
-    r"""
+    """
     Class to translate dygraph function into static graph function. The object
     of this class is a singleton.
 
@@ -762,7 +762,7 @@ class ProgramTranslator(object):
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
-        r"""
+        """
         Enable or disable the converting from imperative to static graph by
         ProgramTranslator globally.
 
@@ -800,7 +800,7 @@ class ProgramTranslator(object):
         self.enable_to_static = enable_to_static
 
     def get_output(self, dygraph_func, *args, **kwargs):
-        r"""
+        """
         Returns the output dygraph Tensor for dygraph function. The dygraph
         function will be translated into static graph function so the under
         beneath numerical result will be calculated by static graph mode.
@@ -879,7 +879,7 @@ class ProgramTranslator(object):
                 raise e
 
     def get_func(self, dygraph_func):
-        r"""
+        """
         Returns a callable function which converts imperative dygraph APIs of
         the input dygraph_func into declarative net-building APIs, which means
         it doesn't return immediate digital result as get_output does.
@@ -926,7 +926,7 @@ class ProgramTranslator(object):
         return static_func
 
     def get_program(self, dygraph_func, *args, **kwargs):
-        r"""
+        """
         Returns the translated static program and input/output Tensors from
         dygraph function. The users can use the program to run by executor.
 
@@ -1000,7 +1000,7 @@ class ProgramTranslator(object):
                output_vars
 
     def get_code(self, dygraph_func):
-        r"""
+        """
         Returns the translated static function string code from dygraph function.
 
         Args:
@@ -1048,7 +1048,7 @@ class ProgramTranslator(object):
         return source_code
 
     def get_program_cache(self):
-        r"""
+        """
         Returns the ProgramCache instance. This method is used by PaddlePaddle
         developers to manage program cache in ProgramTranslator. Normal users
         don't have to call this method.

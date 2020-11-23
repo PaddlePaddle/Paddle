@@ -35,7 +35,7 @@ __all__ = [
 
 
 def bernoulli(x, name=None):
-    r"""
+    """
 
     This OP returns a Tensor filled with random binary(0 or 1) number from a Bernoulli distribution.
     The input ``x`` is a tensor with probabilities for generating the random binary number.
@@ -87,7 +87,7 @@ def bernoulli(x, name=None):
 
 
 def multinomial(x, num_samples=1, replacement=False, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a Multinomical
     distribution. The input ``x`` is a tensor with probabilities for generating the
     random number. Each element in ``x`` should be larger or equal to 0, but not all
@@ -153,7 +153,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
 
 def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
 
@@ -224,7 +224,7 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
 
 
 def standard_normal(shape, dtype=None, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a standard
     normal distribution with mean 0 and standard deviation 1, with ``shape``
     and ``dtype``.
@@ -279,7 +279,7 @@ def standard_normal(shape, dtype=None, name=None):
 
 
 def randn(shape, dtype=None, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a standard
     normal distribution with mean 0 and standard deviation 1, with ``shape``
     and ``dtype``.
@@ -333,7 +333,7 @@ def randn(shape, dtype=None, name=None):
 
 
 def normal(mean=0.0, std=1.0, shape=None, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a normal
     distribution with ``mean`` and ``std`` (standard deviation) .
 
@@ -421,7 +421,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
 
 
 def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a uniform
     distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
 
@@ -524,7 +524,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random integers from a discrete uniform
     distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
     If ``high`` is None (the default), the range is [0, ``low``).
@@ -625,7 +625,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
 
 def randperm(n, dtype="int64", name=None):
-    r"""
+    """
     This OP returns a 1-D Tensor filled with random permutation values from 0
     to n-1, with ``dtype``.
 
@@ -675,7 +675,7 @@ def randperm(n, dtype="int64", name=None):
 
 
 def rand(shape, dtype=None, name=None):
-    r"""
+    """
     This OP returns a Tensor filled with random values sampled from a uniform
     distribution in the range [0, 1), with ``shape`` and ``dtype``.
 

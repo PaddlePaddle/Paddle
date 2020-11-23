@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Fleet Utils."""
+"""Fleet Utils."""
 
 import collections
 import copy
@@ -38,7 +38,7 @@ fleet = fleet_pslib
 
 
 class FleetUtil(object):
-    r"""
+    """
     FleetUtil provides some common functions for users' convenience.
 
     Examples:
@@ -61,7 +61,7 @@ class FleetUtil(object):
                 "Please choose one mode from [\"pslib\", \"transpiler\"]")
 
     def rank0_print(self, s):
-        r"""
+        """
         Worker of rank 0 print some log.
 
         Args:
@@ -81,7 +81,7 @@ class FleetUtil(object):
         sys.stdout.flush()
 
     def rank0_info(self, s):
-        r"""
+        """
         Worker of rank 0 print some log info.
 
         Args:
@@ -100,7 +100,7 @@ class FleetUtil(object):
         _logger.info(s)
 
     def rank0_error(self, s):
-        r"""
+        """
         Worker of rank 0 print some log error.
 
         Args:
@@ -123,7 +123,7 @@ class FleetUtil(object):
                  scope=fluid.global_scope(),
                  place=fluid.CPUPlace(),
                  param_type="int64"):
-        r"""
+        """
         Set tensor of a Variable to zero.
 
         Args:
@@ -149,7 +149,7 @@ class FleetUtil(object):
                          stat_pos="_generated_var_2",
                          stat_neg="_generated_var_3",
                          print_prefix=""):
-        r"""
+        """
         Print global auc of all distributed workers.
 
         Args:
@@ -187,7 +187,7 @@ class FleetUtil(object):
                        scope=fluid.global_scope(),
                        stat_pos="_generated_var_2",
                        stat_neg="_generated_var_3"):
-        r"""
+        """
         Get global auc of all distributed workers.
 
         Args:
@@ -260,7 +260,7 @@ class FleetUtil(object):
         return auc_value
 
     def load_fleet_model_one_table(self, table_id, path):
-        r"""
+        """
         load pslib model to one table
 
         Args:
@@ -278,7 +278,7 @@ class FleetUtil(object):
         fleet.load_one_table(table_id, path)
 
     def load_fleet_model(self, path, mode=0):
-        r"""
+        """
         load pslib model
 
         Args:
@@ -300,7 +300,7 @@ class FleetUtil(object):
         fleet.init_server(path, mode=mode)
 
     def save_fleet_model(self, path, mode=0):
-        r"""
+        """
         save pslib model
 
         Args:
@@ -368,7 +368,7 @@ class FleetUtil(object):
                              hadoop_fs_ugi,
                              hadoop_home="$HADOOP_HOME",
                              donefile_name="donefile.txt"):
-        r"""
+        """
         write donefile when save model
 
         Args:
@@ -464,7 +464,7 @@ class FleetUtil(object):
                             monitor_data={},
                             hadoop_home="$HADOOP_HOME",
                             donefile_name=None):
-        r"""
+        """
         write delta donefile or xbox base donefile
 
         Args:
@@ -575,7 +575,7 @@ class FleetUtil(object):
                              hadoop_home="$HADOOP_HOME",
                              donefile_name="sparse_cache.meta",
                              **kwargs):
-        r"""
+        """
         write cache donefile
 
         Args:
@@ -643,7 +643,7 @@ class FleetUtil(object):
         fleet._role_maker._barrier_worker()
 
     def load_model(self, output_path, day, pass_id):
-        r"""
+        """
         load pslib model
 
         Args:
@@ -668,7 +668,7 @@ class FleetUtil(object):
         self.rank0_error("load_model done")
 
     def save_model(self, output_path, day, pass_id):
-        r"""
+        """
         save pslib model
 
         Args:
@@ -693,7 +693,7 @@ class FleetUtil(object):
         self.rank0_print("save_model done")
 
     def save_batch_model(self, output_path, day):
-        r"""
+        """
         save batch model
 
         Args:
@@ -716,7 +716,7 @@ class FleetUtil(object):
         self.rank0_print("save_batch_model done")
 
     def save_delta_model(self, output_path, day, pass_id):
-        r"""
+        """
         save delta model
 
         Args:
@@ -741,7 +741,7 @@ class FleetUtil(object):
         self.rank0_print("save_delta_model done")
 
     def save_xbox_base_model(self, output_path, day):
-        r"""
+        """
         save xbox base model
 
         Args:
@@ -764,7 +764,7 @@ class FleetUtil(object):
         self.rank0_print("save_xbox_base_model done")
 
     def save_cache_model(self, output_path, day, pass_id, mode=1, **kwargs):
-        r"""
+        """
         save cache model
 
         Args:
@@ -799,7 +799,7 @@ class FleetUtil(object):
         return key_num
 
     def save_cache_base_model(self, output_path, day, **kwargs):
-        r"""
+        """
         save cache model
 
         Args:
@@ -831,7 +831,7 @@ class FleetUtil(object):
         return key_num
 
     def pull_all_dense_params(self, scope, program):
-        r"""
+        """
         pull all dense params in trainer of rank 0
 
         Args:
@@ -886,7 +886,7 @@ class FleetUtil(object):
                                     hadoop_fs_ugi,
                                     hadoop_home="$HADOOP_HOME",
                                     save_combine=True):
-        r"""
+        """
         save paddle inference model, and upload to hdfs dnn_plugin path
 
         Args:
@@ -975,7 +975,7 @@ class FleetUtil(object):
                            hadoop_home="$HADOOP_HOME",
                            var_names=None,
                            save_combine=True):
-        r"""
+        """
         save paddle model, and upload to hdfs dnn_plugin path
 
         Args:
@@ -1069,7 +1069,7 @@ class FleetUtil(object):
                                 hadoop_fs_name,
                                 hadoop_fs_ugi,
                                 hadoop_home="$HADOOP_HOME"):
-        r"""
+        """
         get last saved base xbox info from xbox_base_done.txt
 
         Args:
@@ -1114,7 +1114,7 @@ class FleetUtil(object):
                            hadoop_fs_name,
                            hadoop_fs_ugi,
                            hadoop_home="$HADOOP_HOME"):
-        r"""
+        """
         get last saved xbox info from xbox_patch_done.txt
 
         Args:
@@ -1160,7 +1160,7 @@ class FleetUtil(object):
                             hadoop_fs_name,
                             hadoop_fs_ugi,
                             hadoop_home="$HADOOP_HOME"):
-        r"""
+        """
         get last saved model info from donefile.txt
 
         Args:
@@ -1206,7 +1206,7 @@ class FleetUtil(object):
 
     def get_online_pass_interval(self, days, hours, split_interval,
                                  split_per_pass, is_data_hourly_placed):
-        r"""
+        """
         get online pass interval
 
         Args:
@@ -1275,7 +1275,7 @@ class FleetUtil(object):
                            q_name="q",
                            pos_ins_num_name="pos",
                            total_ins_num_name="total"):
-        r"""
+        """
         get global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
@@ -1465,7 +1465,7 @@ class FleetUtil(object):
                              pos_ins_num_name="pos",
                              total_ins_num_name="total",
                              print_prefix=""):
-        r"""
+        """
         print global metrics, including auc, bucket_error, mae, rmse,
         actual_ctr, predicted_ctr, copc, mean_predict_qvalue, total_ins_num.
 
@@ -1555,12 +1555,12 @@ class FleetUtil(object):
 
     def draw_from_program_file(self, model_filename, is_text, output_dir,
                                output_filename):
-        r"""draw program from file"""
+        """draw program from file"""
         program = utils.load_program(model_filename, is_text)
         utils.graphviz(program.global_block(), output_dir, output_filename)
 
     def draw_from_program(self, program, output_dir, output_name):
-        r"""draw Program"""
+        """draw Program"""
         utils.graphviz(program.global_block(), output_dir, output_name)
 
     def check_two_programs(self, config):
@@ -1591,7 +1591,7 @@ class FleetUtil(object):
         return results
 
     def parse_program_proto(self, prog_path, is_text, output_dir):
-        r"""
+        """
         Parse program.proto into a more readable format. 
         This function will generate three files: 
         output_dir/vars_all.log,

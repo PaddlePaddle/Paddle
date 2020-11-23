@@ -21,7 +21,7 @@ __all__ = ["Adagrad"]
 
 
 class Adagrad(Optimizer):
-    r"""
+    """
     The Adaptive Gradient optimizer (Adagrad for short) use an optimization described 
     in paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.

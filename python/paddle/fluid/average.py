@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import warnings
-r"""
+"""
     Class of all kinds of Average.
 
     All Averages are accomplished via Python totally. 
@@ -38,7 +38,7 @@ def _is_number_or_matrix_(var):
 
 
 class WeightedAverage(object):
-    r"""
+    """
     Calculate weighted average.
 
     The average calculating is accomplished via Python totally. 

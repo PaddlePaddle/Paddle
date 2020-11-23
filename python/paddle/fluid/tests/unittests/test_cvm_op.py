@@ -52,7 +52,7 @@ def cvm_grad_compute(DY, CVM, item_width, use_cvm):
 
 
 class TestCVMOpWithLodTensor(OpTest):
-    r"""
+    """
         Test cvm op with discrete one-hot labels.
     """
 
@@ -90,7 +90,7 @@ class TestCVMOpWithLodTensor(OpTest):
 
 
 class TestCVMOpWithOutLodTensor1(OpTest):
-    r"""
+    """
     Test cvm op with discrete one-hot labels.
     """
 
@@ -125,7 +125,7 @@ class TestCVMOpWithOutLodTensor1(OpTest):
 
 
 class TestCVMOpWithOutLodTensor2(OpTest):
-    r"""
+    """
     Test cvm op with discrete one-hot labels.
     """
 

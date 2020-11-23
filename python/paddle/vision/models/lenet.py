@@ -19,7 +19,7 @@ __all__ = ['LeNet']
 
 
 class LeNet(nn.Layer):
-    r"""LeNet model from
+    """LeNet model from
     `"LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.`_
 
     Args:

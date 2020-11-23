@@ -162,7 +162,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         return x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs, w2_param_attrs
 
     def test_not_prune(self):
-        r"""
+        """
         If use_prune = False, the targets which is not fetched will be calculated.
         """
         program = framework.Program()
@@ -184,7 +184,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNotNone(scope.find_var(loss2.name))
 
     def test_prune_fetches_without_optimizer(self):
-        r"""
+        """
         Prune operators and variables which are not needed to generate 'fetches'. 
         """
         program = framework.Program()
@@ -212,7 +212,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                                                weight))  # weight not changed
 
     def test_prune_fetches_with_optimizer(self):
-        r"""
+        """
         Prune operators and operators which are not needed to generate 'fetches'. 
         In train mode, the operators and operators in backward and optimization should be kept.
         """
@@ -627,7 +627,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_program_partial_parameter_updated(self):
-        r"""
+        """
         When running startup program, all parameters declared will be initialized.
         When running main program with prune=True, the pruned parameters will exist in scope and stay unchanged.
         """

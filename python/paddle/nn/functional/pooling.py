@@ -160,7 +160,7 @@ def avg_pool1d(x,
                exclusive=True,
                ceil_mode=False,
                name=None):
-    r"""
+    """
     This API implements average pooling 1d operation,
     See more details in :ref:`api_nn_pooling_AvgPool1d` .
 
@@ -204,7 +204,7 @@ def avg_pool1d(x,
           out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
           # out shape: [1, 3, 16]
     """
-    r"""NCL to NCHW"""
+    """NCL to NCHW"""
     data_format = "NCHW"
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
     _check_input(x, 3)
@@ -268,7 +268,7 @@ def avg_pool2d(x,
                divisor_override=None,
                data_format="NCHW",
                name=None):
-    r"""
+    """
     This API implements average pooling 2d operation.
     See more details in :ref:`api_nn_pooling_AvgPool2d` .
 
@@ -383,7 +383,7 @@ def avg_pool3d(x,
                divisor_override=None,
                data_format="NCDHW",
                name=None):
-    r"""
+    """
     This API implements average pooling 3d operation.
     See more details in :ref:`api_nn_pooling_AvgPool3d` .
 
@@ -498,7 +498,7 @@ def max_pool1d(x,
                return_mask=False,
                ceil_mode=False,
                name=None):
-    r"""
+    """
     This API implements max pooling 1d opereation.
     See more details in :ref:`api_nn_pooling_MaxPool1d` .
 
@@ -542,7 +542,7 @@ def max_pool1d(x,
           pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
           # pool_out shape: [1, 3, 16],  indices shape: [1, 3, 16]
     """
-    r"""NCL to NCHW"""
+    """NCL to NCHW"""
     data_format = "NCHW"
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
     _check_input(x, 3)
@@ -616,7 +616,7 @@ def max_pool2d(x,
                ceil_mode=False,
                data_format="NCHW",
                name=None):
-    r"""
+    """
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool2d` .
 
@@ -748,7 +748,7 @@ def max_pool3d(x,
                ceil_mode=False,
                data_format="NCDHW",
                name=None):
-    r"""
+    """
     This API implements max pooling 2d operation.
     See more details in :ref:`api_nn_pooling_MaxPool3d` .
     Args:
@@ -867,7 +867,7 @@ def max_pool3d(x,
 
 
 def adaptive_avg_pool1d(x, output_size, name=None):
-    r"""
+    """
     This API implements adaptive average pooling 1d operation.
     See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
 
@@ -940,7 +940,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
-    r"""
+    """
     This API implements adaptive average pooling 2d operation.
     See more details in :ref:`api_nn_pooling_AdaptiveAvgPool2d` .
 
@@ -1042,7 +1042,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
-    r"""
+    """
     This API implements adaptive average pooling 3d operation.
     See more details in :ref:`api_nn_pooling_AdaptiveAvgPool3d` .
 
@@ -1147,7 +1147,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 
 
 def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
-    r"""
+    """
     This API implements adaptive max pooling 1d operation.
     See more details in :ref:`api_nn_pooling_AdaptiveMaxPool1d` .
 
@@ -1231,7 +1231,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
 
 
 def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
-    r"""
+    """
         This operation applies a 2D adaptive max pooling on input tensor.
         See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
 
@@ -1318,7 +1318,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
 
 
 def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
-    r"""
+    """
         This operation applies a 3D adaptive max pooling on input tensor.
         See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
 

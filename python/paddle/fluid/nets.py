@@ -42,7 +42,7 @@ def simple_img_conv_pool(input,
                          bias_attr=None,
                          act=None,
                          use_cudnn=True):
-    r"""
+    """
 	:api_attr: Static Graph
 
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
@@ -152,7 +152,7 @@ def img_conv_group(input,
                    pool_stride=1,
                    pool_type="max",
                    use_cudnn=True):
-    r"""
+    """
 	:api_attr: Static Graph
 
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
@@ -265,7 +265,7 @@ def sequence_conv_pool(input,
                        act="sigmoid",
                        pool_type="max",
                        bias_attr=None):
-    r"""
+    """
 	:api_attr: Static Graph
 
     **This api takes input as an LoDTensor. If input is a Tensor, please use** 
@@ -333,7 +333,7 @@ def sequence_conv_pool(input,
 
 
 def glu(input, dim=-1):
-    r"""
+    """
 	:api_attr: Static Graph
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
@@ -384,7 +384,7 @@ def scaled_dot_product_attention(queries,
                                  values,
                                  num_heads=1,
                                  dropout_rate=0.):
-    r"""
+    """
 	:api_attr: Static Graph
 
     This interface Multi-Head Attention using scaled dot product.
@@ -496,7 +496,7 @@ def scaled_dot_product_attention(queries,
                          (values.shape[-1], num_heads))
 
     def __compute_qkv(queries, keys, values, num_heads):
-        r"""
+        """
         Add linear projection to queries, keys, and values.
 
         Args:
@@ -521,7 +521,7 @@ def scaled_dot_product_attention(queries,
         return q, k, v
 
     def __split_heads(x, num_heads):
-        r"""
+        """
         Reshape the last dimension of input tensor x so that it becomes two
         dimensions.
 
@@ -549,7 +549,7 @@ def scaled_dot_product_attention(queries,
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
-        r"""
+        """
         Reshape the last two dimensions of input tensor x so that it becomes
         one dimension.
 

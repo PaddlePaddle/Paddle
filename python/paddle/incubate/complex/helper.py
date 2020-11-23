@@ -16,14 +16,14 @@ from ...fluid import framework
 
 
 def is_complex(x):
-    r"""
+    """
     Return true if the input(x) is a ComplexVariable.
     """
     return isinstance(x, framework.ComplexVariable)
 
 
 def is_real(x):
-    r"""
+    """
     Return true if the input(x) is a real number Variable.
     """
     return isinstance(x, framework.Variable)

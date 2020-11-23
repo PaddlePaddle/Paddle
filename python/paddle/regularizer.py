@@ -18,7 +18,7 @@ import paddle.fluid as fluid
 
 
 class L1Decay(fluid.regularizer.L1Decay):
-    r"""
+    """
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
     It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
@@ -80,7 +80,7 @@ class L1Decay(fluid.regularizer.L1Decay):
 
 
 class L2Decay(fluid.regularizer.L2Decay):
-    r"""
+    """
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
     
     It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 

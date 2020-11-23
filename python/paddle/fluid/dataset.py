@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""This is definition of dataset class, which is high performance IO."""
+"""This is definition of dataset class, which is high performance IO."""
 
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
@@ -21,7 +21,7 @@ __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
 class DatasetFactory(object):
-    r"""
+    """
     DatasetFactory is a factory which create dataset by its name,
     you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
     the default is "QueueDataset".
@@ -35,11 +35,11 @@ class DatasetFactory(object):
     """
 
     def __init__(self):
-        r""" Init. """
+        """ Init. """
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
-        r"""
+        """
         Create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
         the default is "QueueDataset".
 
@@ -63,10 +63,10 @@ class DatasetFactory(object):
 
 
 class DatasetBase(object):
-    r""" Base dataset class. """
+    """ Base dataset class. """
 
     def __init__(self):
-        r""" Init. """
+        """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -76,7 +76,7 @@ class DatasetBase(object):
         self.filelist = []
 
     def set_pipe_command(self, pipe_command):
-        r"""
+        """
         Set pipe command of current dataset
         A pipe command is a UNIX pipeline command that can be used only
 
@@ -94,7 +94,7 @@ class DatasetBase(object):
         self.proto_desc.pipe_command = pipe_command
 
     def set_rank_offset(self, rank_offset):
-        r"""
+        """
         Set rank_offset for merge_pv. It set the message of Pv.
 
         Examples:
@@ -111,7 +111,7 @@ class DatasetBase(object):
         self.proto_desc.rank_offset = rank_offset
 
     def set_fea_eval(self, record_candidate_size, fea_eval=True):
-        r"""
+        """
         set fea eval mode for slots shuffle to debug the importance level of
         slots(features), fea_eval need to be set True for slots shuffle.
         
@@ -134,7 +134,7 @@ class DatasetBase(object):
         self.fea_eval = fea_eval
 
     def slots_shuffle(self, slots):
-        r"""
+        """
         Slots Shuffle 
         Slots Shuffle is a shuffle method in slots level, which is usually used 
         in sparse feature with large scale of instances. To compare the metric, i.e.
@@ -156,7 +156,7 @@ class DatasetBase(object):
             self.dataset.slots_shuffle(slots_set)
 
     def set_batch_size(self, batch_size):
-        r"""
+        """
         Set batch size. Will be effective during training
 
         Examples:
@@ -173,7 +173,7 @@ class DatasetBase(object):
         self.proto_desc.batch_size = batch_size
 
     def set_pv_batch_size(self, pv_batch_size):
-        r"""
+        """
         Set pv batch size. It will be effective during enable_pv_merge
 
         Examples:
@@ -189,7 +189,7 @@ class DatasetBase(object):
         self.proto_desc.pv_batch_size = pv_batch_size
 
     def set_thread(self, thread_num):
-        r"""
+        """
         Set thread num, it is the num of readers.
 
         Examples:
@@ -206,7 +206,7 @@ class DatasetBase(object):
         self.thread_num = thread_num
 
     def set_filelist(self, filelist):
-        r"""
+        """
         Set file list in current worker.
 
         Examples:
@@ -226,7 +226,7 @@ class DatasetBase(object):
         self.proto_desc.input_type = input_type
 
     def set_use_var(self, var_list):
-        r"""
+        """
         Set Variables which you will use.
 
         Examples:
@@ -257,7 +257,7 @@ class DatasetBase(object):
                 )
 
     def set_hdfs_config(self, fs_name, fs_ugi):
-        r"""
+        """
         Set hdfs config: fs name ad ugi
 
         Examples:
@@ -274,7 +274,7 @@ class DatasetBase(object):
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
     def set_download_cmd(self, download_cmd):
-        r"""
+        """
         Set customized download cmd: download_cmd
 
         Examples:
@@ -290,7 +290,7 @@ class DatasetBase(object):
         self.dataset.set_download_cmd(download_cmd)
 
     def _prepare_to_run(self):
-        r"""
+        """
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
@@ -304,7 +304,7 @@ class DatasetBase(object):
         self.dataset.destroy_readers()
 
     def desc(self):
-        r"""
+        """
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
@@ -327,7 +327,7 @@ class DatasetBase(object):
 
 
 class InMemoryDataset(DatasetBase):
-    r"""
+    """
     InMemoryDataset, it will load data into memory
     and shuffle data before training.
     This class should be created by DatasetFactory
@@ -338,7 +338,7 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(since="2.0.0", update_to="paddle.distributed.InMemoryDataset")
     def __init__(self):
-        r""" Init. """
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
@@ -356,7 +356,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._set_feed_type")
     def set_feed_type(self, data_feed_type):
-        r"""
+        """
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
@@ -365,7 +365,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._prepare_to_run")
     def _prepare_to_run(self):
-        r"""
+        """
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
@@ -406,7 +406,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._set_queue_num")
     def set_queue_num(self, queue_num):
-        r"""
+        """
         Set Dataset output queue num, training threads get data from queues
 
         Args:
@@ -427,7 +427,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._set_parse_ins_id")
     def set_parse_ins_id(self, parse_ins_id):
-        r"""
+        """
         Set id Dataset need to parse insid
 
         Args:
@@ -447,7 +447,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._set_parse_content")
     def set_parse_content(self, parse_content):
-        r"""
+        """
         Set if Dataset need to parse content
 
         Args:
@@ -464,7 +464,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_content = parse_content
 
     def set_parse_logkey(self, parse_logkey):
-        r"""
+        """
         Set if Dataset need to parse logkey
 
         Args:
@@ -484,7 +484,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._set_merge_by_sid")
     def set_merge_by_sid(self, merge_by_sid):
-        r"""
+        """
         Set if Dataset need to merge sid. If not, one ins means one Pv.
 
         Args:
@@ -501,7 +501,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_sid = merge_by_sid
 
     def set_enable_pv_merge(self, enable_pv_merge):
-        r"""
+        """
         Set if Dataset need to merge pv.
 
         Args:
@@ -518,7 +518,7 @@ class InMemoryDataset(DatasetBase):
         self.enable_pv_merge = enable_pv_merge
 
     def preprocess_instance(self):
-        r"""
+        """
         Merge pv instance and convey it from input_channel to input_pv_channel. 
         It will be effective when enable_pv_merge_ is True.
 
@@ -536,7 +536,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.preprocess_instance()
 
     def set_current_phase(self, current_phase):
-        r"""
+        """
         Set current phase in train. It is useful for untest.
         current_phase : 1 for join, 0 for update.
 
@@ -554,7 +554,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_current_phase(current_phase)
 
     def postprocess_instance(self):
-        r"""
+        """
         Divide pv instance and convey it to input_channel.
 
         Examples:
@@ -577,7 +577,7 @@ class InMemoryDataset(DatasetBase):
         update_to="paddle.distributed.InMemoryDataset._set_fleet_send_batch_size"
     )
     def set_fleet_send_batch_size(self, fleet_send_batch_size=1024):
-        r"""
+        """
         Set fleet send batch size, default is 1024
 
         Args:
@@ -598,7 +598,7 @@ class InMemoryDataset(DatasetBase):
         update_to="paddle.distributed.InMemoryDataset._set_fleet_send_sleep_seconds"
     )
     def set_fleet_send_sleep_seconds(self, fleet_send_sleep_seconds=0):
-        r"""
+        """
         Set fleet send sleep time, default is 0
 
         Args:
@@ -618,7 +618,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset._set_merge_by_lineid")
     def set_merge_by_lineid(self, merge_size=2):
-        r"""
+        """
         Set merge by line id, instances of same line id will be merged after
         shuffle, you should parse line id in data generator.
 
@@ -659,7 +659,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.load_into_memory")
     def load_into_memory(self):
-        r"""
+        """
         Load data into memory
 
         Examples:
@@ -678,7 +678,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.preload_into_memory")
     def preload_into_memory(self, thread_num=None):
-        r"""
+        """
         Load data into memory in async mode
 
         Args:
@@ -705,7 +705,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.wait_preload_done")
     def wait_preload_done(self):
-        r"""
+        """
         Wait preload_into_memory done
 
         Examples:
@@ -725,7 +725,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.local_shuffle")
     def local_shuffle(self):
-        r"""
+        """
         Local shuffle
 
         Examples:
@@ -744,7 +744,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.global_shuffle")
     def global_shuffle(self, fleet=None, thread_num=12):
-        r"""
+        """
         Global shuffle.
         Global shuffle can be used only in distributed mode. i.e. multiple
         processes on single machine or multiple machines training together.
@@ -792,7 +792,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.release_memory")
     def release_memory(self):
-        r"""
+        """
         :api_attr: Static Graph
         
         Release InMemoryDataset memory data, when data will not be used again.
@@ -816,7 +816,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.release_memory()
 
     def get_pv_data_size(self):
-        r"""
+        """
         Get memory data size of Pv, user can call this function to know the pv num
         of ins in all workers after load into memory.
 
@@ -843,7 +843,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_memory_data_size")
     def get_memory_data_size(self, fleet=None):
-        r"""
+        """
         Get memory data size, user can call this function to know the num
         of ins in all workers after load into memory.
 
@@ -882,7 +882,7 @@ class InMemoryDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_shuffle_data_size")
     def get_shuffle_data_size(self, fleet=None):
-        r"""
+        """
         Get shuffle data size, user can call this function to know the num
         of ins in all workers after local/global shuffle.
 
@@ -921,7 +921,7 @@ class InMemoryDataset(DatasetBase):
 
 
 class QueueDataset(DatasetBase):
-    r"""
+    """
     QueueDataset, it will process data streamly.
 
     Examples:
@@ -933,7 +933,7 @@ class QueueDataset(DatasetBase):
     """
 
     def __init__(self):
-        r"""
+        """
         Initialize QueueDataset
         This class should be created by DatasetFactory
         """
@@ -944,7 +944,7 @@ class QueueDataset(DatasetBase):
         since="2.0.0",
         update_to="paddle.distributed.QueueDataset._prepare_to_run")
     def _prepare_to_run(self):
-        r"""
+        """
         Set data_feed_desc/thread num/filelist before run,
         user no need to call this function.
         """
@@ -958,7 +958,7 @@ class QueueDataset(DatasetBase):
         self.dataset.create_readers()
 
     def local_shuffle(self):
-        r"""
+        """
         Local shuffle data.
 
         Local shuffle is not supported in QueueDataset
@@ -980,7 +980,7 @@ class QueueDataset(DatasetBase):
             "please use InMemoryDataset for local_shuffle")
 
     def global_shuffle(self, fleet=None):
-        r"""
+        """
         Global shuffle data.
 
         Global shuffle is not supported in QueueDataset
@@ -1007,7 +1007,7 @@ class QueueDataset(DatasetBase):
 
 
 class FileInstantDataset(DatasetBase):
-    r"""
+    """
     FileInstantDataset, it will process data streamly.
 
     Examples:
@@ -1018,7 +1018,7 @@ class FileInstantDataset(DatasetBase):
     """
 
     def __init__(self):
-        r"""
+        """
         Initialize FileInstantDataset
         This class should be created by DatasetFactory
         """
@@ -1026,7 +1026,7 @@ class FileInstantDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def local_shuffle(self):
-        r"""
+        """
         Local shuffle
         FileInstantDataset does not support local shuffle
         """
@@ -1035,7 +1035,7 @@ class FileInstantDataset(DatasetBase):
             "please use InMemoryDataset for local_shuffle")
 
     def global_shuffle(self, fleet=None):
-        r"""
+        """
         Global shuffle
         FileInstantDataset does not support global shuffle
         """
@@ -1045,7 +1045,7 @@ class FileInstantDataset(DatasetBase):
 
 
 class BoxPSDataset(InMemoryDataset):
-    r"""
+    """
     BoxPSDataset: derived from InMemoryDataset.
 
     Examples:
@@ -1056,7 +1056,7 @@ class BoxPSDataset(InMemoryDataset):
     """
 
     def __init__(self):
-        r"""
+        """
         Initialize BoxPSDataset
         This class should be created by DatasetFactory
         """
@@ -1065,7 +1065,7 @@ class BoxPSDataset(InMemoryDataset):
         self.proto_desc.name = "PaddleBoxDataFeed"
 
     def set_date(self, date):
-        r"""
+        """
         Workaround for date
         """
         year = int(date[:4])
@@ -1074,7 +1074,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.set_date(year, month, day)
 
     def begin_pass(self):
-        r"""
+        """
         Begin Pass
         Notify BoxPS to load sparse parameters of next pass to GPU Memory 
 
@@ -1088,7 +1088,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.begin_pass()
 
     def end_pass(self, need_save_delta):
-        r"""
+        """
         End Pass
         Notify BoxPS that current pass ended 
         Examples:
@@ -1101,7 +1101,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.end_pass(need_save_delta)
 
     def wait_preload_done(self):
-        r"""
+        """
         Wait async preload done
         Wait Until Feed Pass Done
         Examples:
@@ -1117,7 +1117,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.wait_feed_pass_done()
 
     def load_into_memory(self):
-        r"""
+        """
         Load next pass into memory and notify boxps to fetch its emb from SSD
         Examples:
             .. code-block:: python
@@ -1132,7 +1132,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.load_into_memory()
 
     def preload_into_memory(self):
-        r"""
+        """
         Begin async preload next pass while current pass may be training
         Examples:
             .. code-block:: python
@@ -1155,7 +1155,7 @@ class BoxPSDataset(InMemoryDataset):
         pass
 
     def slots_shuffle(self, slots):
-        r"""
+        """
         Slots Shuffle 
         Slots Shuffle is a shuffle method in slots level, which is usually used 
         in sparse feature with large scale of instances. To compare the metric, i.e.

@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r""" usage: cuda_clean.py pull_id. """
+""" usage: cuda_clean.py pull_id. """
 
 import os
 import sys
@@ -23,7 +23,7 @@ from github import Github
 
 
 def get_pull(pull_id):
-    r"""
+    """
     Args:
         pull_id (int): Pull id.
 
@@ -39,7 +39,7 @@ def get_pull(pull_id):
 
 
 def get_files(pull_id):
-    r"""
+    """
     Args:
         pull_id (int): Pull id.
 
@@ -54,7 +54,7 @@ def get_files(pull_id):
 
 
 def clean(pull_id):
-    r"""
+    """
     Args:
         pull_id (int): Pull id.
 

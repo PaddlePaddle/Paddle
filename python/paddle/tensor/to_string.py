@@ -35,7 +35,7 @@ def set_printoptions(precision=None,
                      threshold=None,
                      edgeitems=None,
                      sci_mode=None):
-    r"""Set the printing options for Tensor.
+    """Set the printing options for Tensor.
     NOTE: The function is similar with numpy.set_printoptions()
 
     Args:

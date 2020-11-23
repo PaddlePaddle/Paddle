@@ -24,12 +24,12 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_tran
 
 
 class TestGetNameIds(unittest.TestCase):
-    r"""
+    """
     Test for parsing the ast.Name list from the ast.Nodes
     """
 
     def setUp(self):
-        self.source = r"""
+        self.source = """
           def test_fn(x):
             return x+1
         """
@@ -52,7 +52,7 @@ class TestGetNameIds(unittest.TestCase):
 
 class TestGetNameIds2(TestGetNameIds):
     def setUp(self):
-        self.source = r"""
+        self.source = """
           def test_fn(x, y):
             a = 1
             x = y + a
@@ -88,7 +88,7 @@ class TestGetNameIds2(TestGetNameIds):
 
 class TestGetNameIds3(TestGetNameIds):
     def setUp(self):
-        self.source = r"""
+        self.source = """
           def test_fn(x, y):
             z = 1
             if x > y:
@@ -170,7 +170,7 @@ class TestIsControlFlowIf(unittest.TestCase):
         self.assertTrue(is_control_flow_to_transform(node_test))
 
     def test_shape(self):
-        code = r"""
+        code = """
             def foo(x):
                 batch_size = fluid.layers.shape(x)
                 if batch_size[0] > 16:
@@ -186,7 +186,7 @@ class TestIsControlFlowIf(unittest.TestCase):
             is_control_flow_to_transform(test_node, static_analysis_visitor))
 
     def test_shape_with_andOr(self):
-        code = r"""
+        code = """
             def foo(x):
                 batch_size = fluid.layers.shape(x)
                 if x is not None and batch_size[0] > 16 or 2 > 1:
@@ -202,7 +202,7 @@ class TestIsControlFlowIf(unittest.TestCase):
             is_control_flow_to_transform(test_node, static_analysis_visitor))
 
     def test_paddle_api(self):
-        code = r"""
+        code = """
             def foo(x):
                 if fluid.layers.shape(x)[0] > 16:
                     x = x + 1
@@ -217,14 +217,14 @@ class TestIsControlFlowIf(unittest.TestCase):
             is_control_flow_to_transform(test_node, static_analysis_visitor))
 
     def test_paddle_api_with_andOr(self):
-        code_or = r"""
+        code_or = """
             def foo(x):
                 if 2 > 1 and fluid.layers.shape(x)[0] > 16 or x is not None :
                     x = x + 1
                 return x
         """
 
-        code_and = r"""
+        code_and = """
             def foo(x):
                 if 2 > 1 and fluid.layers.shape(x)[0] > 16 and x is not None :
                     x = x + 1

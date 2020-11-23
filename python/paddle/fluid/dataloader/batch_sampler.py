@@ -25,7 +25,7 @@ __all__ = ["BatchSampler", "DistributedBatchSampler"]
 
 
 class BatchSampler(Sampler):
-    r"""
+    """
     A base implement of batch sampler used by `paddle.io.DataLoader`
     which yield mini-batch indices(a list/tuple with length as
     mini-batch size and holds sample indices) iterably.
@@ -163,7 +163,7 @@ class _InfiniteIterableSampler(object):
 
 
 class DistributedBatchSampler(BatchSampler):
-    r"""Sampler that restricts data loading to a subset of the dataset.
+    """Sampler that restricts data loading to a subset of the dataset.
 
     In such case, each process can pass a DistributedBatchSampler instance 
     as a DataLoader sampler, and load a subset of the original dataset that 
@@ -305,7 +305,7 @@ class DistributedBatchSampler(BatchSampler):
         return num_samples // self.batch_size
 
     def set_epoch(self, epoch):
-        r"""
+        """
         Sets the epoch number. When :attr:`shuffle=True`, this number is used
         as seeds of random numbers. By default, users may not set this, all
         replicas (workers) use a different random ordering for each epoch.

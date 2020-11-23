@@ -71,7 +71,7 @@ _logger = get_logger(
 
 
 def is_parameter(var):
-    r"""
+    """
     Check whether the given variable is an instance of Parameter.
 
     Args:
@@ -95,7 +95,7 @@ def is_parameter(var):
 
 
 def is_persistable(var):
-    r"""
+    """
     Check whether the given variable is persistable.
 
     Args:
@@ -131,7 +131,7 @@ def is_belong_to_optimizer(var):
 
 @dygraph_not_support
 def get_program_parameter(program):
-    r"""
+    """
     :api_attr: Static Graph
 
     Get all the parameters from Program.
@@ -159,7 +159,7 @@ def get_program_parameter(program):
 
 @dygraph_not_support
 def get_program_persistable_vars(program):
-    r"""
+    """
     :api_attr: Static Graph
 
     Get all the persistable vars from Program.
@@ -241,7 +241,7 @@ def save_vars(executor,
               vars=None,
               predicate=None,
               filename=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This API saves specific variables in the `Program` to files.
@@ -387,7 +387,7 @@ def save_vars(executor,
 
 @dygraph_not_support
 def save_params(executor, dirname, main_program=None, filename=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This operator saves all parameters from the :code:`main_program` to
@@ -463,7 +463,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
 
 def _save_distributed_persistables(executor, dirname, main_program):
-    r"""
+    """
     save_persistables for distributed training.
     the method will do things listed below:
     1.save part of persistable variables on trainer.
@@ -497,7 +497,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
     """
 
     def __save_remote_params(executor, dirname, remote_params_map):
-        r"""
+        """
         receive params on pserver through rpc.
         if the params are be sliced, will concat them to one, then save it.
         """
@@ -549,7 +549,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
     def __save_distributed_lookup_tables(executor, dirname,
                                          distributed_lookup_table, endpoints):
-        r"""
+        """
         because the distributed lookup table may too huge to merge and save at one place,
         it will be saved at parameter server independent respectively.
 
@@ -618,7 +618,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
 @dygraph_not_support
 def save_persistables(executor, dirname, main_program=None, filename=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This operator saves all persistable variables from :code:`main_program` to 
@@ -695,7 +695,7 @@ def load_vars(executor,
               vars=None,
               predicate=None,
               filename=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This API loads variables from files by executor.
@@ -930,7 +930,7 @@ def load_vars(executor,
 
 @dygraph_not_support
 def load_params(executor, dirname, main_program=None, filename=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This API filters out all parameters from the give ``main_program``
@@ -992,7 +992,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
 
 @dygraph_not_support
 def load_persistables(executor, dirname, main_program=None, filename=None):
-    r"""
+    """
     :api_attr: Static Graph
     
     This API filters out all variables with ``persistable==True`` from the
@@ -1047,7 +1047,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
-    r"""
+    """
     customized load_persistables for distributed training.
     it should be used on parameter server,
 
@@ -1204,7 +1204,7 @@ def save_inference_model(dirname,
                          params_filename=None,
                          export_for_deployment=True,
                          program_only=False):
-    r"""
+    """
     :api_attr: Static Graph
 
     Prune the given `main_program` to build a new program especially for inference,
@@ -1413,7 +1413,7 @@ def load_inference_model(dirname,
                          model_filename=None,
                          params_filename=None,
                          pserver_endpoints=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     Load the inference model from a given directory. By this API, you can get the model
@@ -1563,7 +1563,7 @@ def _endpoints_replacement(program, endpoints):
 
 
 def get_parameter_value(para, executor):
-    r"""
+    """
     Get the LoDTensor value of the given parameter.
 
     Args:
@@ -1597,7 +1597,7 @@ def get_parameter_value(para, executor):
 
 
 def get_parameter_value_by_name(name, executor, program=None):
-    r"""
+    """
     Get the LoDTensor value of a certain parameter by its name.
 
     Args:
@@ -1634,7 +1634,7 @@ def get_parameter_value_by_name(name, executor, program=None):
 
 
 def _save_persistable_nodes(executor, dirname, graph):
-    r"""
+    """
     Save persistable nodes to the given directory by the executor.
 
     Args:
@@ -1669,7 +1669,7 @@ def _save_persistable_nodes(executor, dirname, graph):
 
 
 def _load_persistable_nodes(executor, dirname, graph):
-    r"""
+    """
     Load persistable node values from the given directory by the executor.
 
     Args:
@@ -1712,7 +1712,7 @@ def _load_persistable_nodes(executor, dirname, graph):
 
 @dygraph_not_support
 def save(program, model_path):
-    r"""
+    """
     :api_attr: Static Graph
 
     This function save parameters, optimizer information and network description to  model_path.
@@ -1775,7 +1775,7 @@ def save(program, model_path):
 
 @dygraph_not_support
 def load(program, model_path, executor=None, var_list=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This function get parameters and optimizer information from program, and then get corresponding value from file.
@@ -1945,7 +1945,7 @@ def load(program, model_path, executor=None, var_list=None):
 
 
 def load_program_state(model_path, var_list=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     Load program state from local file
@@ -2081,7 +2081,7 @@ def load_program_state(model_path, var_list=None):
 
 @dygraph_not_support
 def set_program_state(program, state_dict):
-    r"""
+    """
     :api_attr: Static Graph
 
     Set program parameter from state_dict

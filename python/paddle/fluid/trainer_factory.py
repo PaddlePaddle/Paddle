@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Defination of TrainerFactory."""
+"""Defination of TrainerFactory."""
 
 import threading
 import time
@@ -31,7 +31,7 @@ __all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
 
 
 class TrainerFactory(object):
-    r"""
+    """
     Create trainer and device worker.
     If opt_info is not None, it will get configs from opt_info,
     otherwise create MultiTrainer and Hogwild.
@@ -110,7 +110,7 @@ class TrainerFactory(object):
 
 
 class FetchHandlerMonitor(object):
-    r"""
+    """
     Defination of FetchHandlerMonitor class,
     it's for fetch handler.
     """
@@ -176,7 +176,7 @@ class FetchHandlerMonitor(object):
             self.running_lock.release()
 
     def start(self):
-        r"""
+        """
         start monitor,
         it will start a monitor thread.
         """

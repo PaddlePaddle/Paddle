@@ -39,7 +39,7 @@ __all__ = ['Distribution', 'Uniform', 'Normal', 'Categorical']
 
 
 class Distribution(object):
-    r"""
+    """
     The abstract base class for probability distributions. Functions are 
     implemented in specific distributions.
     """
@@ -48,27 +48,27 @@ class Distribution(object):
         super(Distribution, self).__init__()
 
     def sample(self):
-        r"""Sampling from the distribution."""
+        """Sampling from the distribution."""
         raise NotImplementedError
 
     def entropy(self):
-        r"""The entropy of the distribution."""
+        """The entropy of the distribution."""
         raise NotImplementedError
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between self distributions and other."""
+        """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
     def log_prob(self, value):
-        r"""Log probability density/mass function."""
+        """Log probability density/mass function."""
         raise NotImplementedError
 
     def probs(self, value):
-        r"""Probability density/mass function."""
+        """Probability density/mass function."""
         raise NotImplementedError
 
     def _validate_args(self, *args):
-        r"""
+        """
         Argument validation for distribution args
         Args:
             value (float, list, numpy.ndarray, Tensor)
@@ -90,7 +90,7 @@ class Distribution(object):
         return is_variable
 
     def _to_tensor(self, *args):
-        r"""
+        """
         Argument convert args to Tensor
 
         Args:
@@ -134,7 +134,7 @@ class Distribution(object):
         return tuple(variable_args)
 
     def _check_values_dtype_in_probs(self, param, value):
-        r"""
+        """
         Log_prob and probs methods have input ``value``, if value's dtype is different from param,
         convert value's dtype to be consistent with param's dtype.
 
@@ -166,7 +166,7 @@ class Distribution(object):
 
 
 class Uniform(Distribution):
-    r"""Uniform distribution with `low` and `high` parameters.
+    """Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
 
@@ -270,7 +270,7 @@ class Uniform(Distribution):
                 self.high = tensor.cast(self.high, dtype=self.dtype)
 
     def sample(self, shape, seed=0):
-        r"""Generate samples of the specified shape.
+        """Generate samples of the specified shape.
 
         Args:
           shape (list): 1D `int32`. Shape of the generated samples.
@@ -316,7 +316,7 @@ class Uniform(Distribution):
                 return output
 
     def log_prob(self, value):
-        r"""Log probability density/mass function.
+        """Log probability density/mass function.
 
         Args:
           value (Tensor): The input tensor.
@@ -346,7 +346,7 @@ class Uniform(Distribution):
             nn.log(lb * ub), nn.log(self.high - self.low), name=name)
 
     def probs(self, value):
-        r"""Probability density/mass function.
+        """Probability density/mass function.
 
         Args:
           value (Tensor): The input tensor.
@@ -374,7 +374,7 @@ class Uniform(Distribution):
         return elementwise_div((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         The entropy is
 
@@ -391,7 +391,7 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
-    r"""The Normal distribution with location `loc` and `scale` parameters.
+    """The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
 
@@ -495,7 +495,7 @@ class Normal(Distribution):
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
 
     def sample(self, shape, seed=0):
-        r"""Generate samples of the specified shape.
+        """Generate samples of the specified shape.
 
         Args:
           shape (list): 1D `int32`. Shape of the generated samples.
@@ -534,7 +534,7 @@ class Normal(Distribution):
                 return output
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         The entropy is
 
@@ -560,7 +560,7 @@ class Normal(Distribution):
             name=name)
 
     def log_prob(self, value):
-        r"""Log probability density/mass function.
+        """Log probability density/mass function.
 
         Args:
           value (Tensor): The input tensor.
@@ -580,7 +580,7 @@ class Normal(Distribution):
             name=name)
 
     def probs(self, value):
-        r"""Probability density/mass function.
+        """Probability density/mass function.
 
         Args:
           value (Tensor): The input tensor.
@@ -599,7 +599,7 @@ class Normal(Distribution):
             name=name)
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two normal distributions.
+        """The KL-divergence between two normal distributions.
 
         The probability density function (pdf) is
 
@@ -644,7 +644,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    r"""
+    """
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
     one of K possible categories, with the probability of each category 
@@ -706,7 +706,7 @@ class Categorical(Distribution):
     """
 
     def __init__(self, logits, name=None):
-        r"""
+        """
         Args:
             logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
             name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -730,7 +730,7 @@ class Categorical(Distribution):
                 self.logits = tensor.cast(self.logits, dtype=self.dtype)
 
     def sample(self, shape):
-        r"""Generate samples of the specified shape.
+        """Generate samples of the specified shape.
 
         Args:
             shape (list): Shape of the generated samples.
@@ -777,7 +777,7 @@ class Categorical(Distribution):
         return nn.reshape(sample_index, sample_shape, name=name)
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two Categorical distributions.
+        """The KL-divergence between two Categorical distributions.
 
         Args:
             other (Categorical): instance of Categorical. The data type is float32.
@@ -831,7 +831,7 @@ class Categorical(Distribution):
         return kl
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         Returns:
             Tensor: Shannon entropy of Categorical distribution. The data type is float32.
@@ -866,7 +866,7 @@ class Categorical(Distribution):
         return entropy
 
     def probs(self, value):
-        r"""Probabilities of the given category (``value``).
+        """Probabilities of the given category (``value``).
 
         If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as 
         category, and the others represents the different distributions.
@@ -939,7 +939,7 @@ class Categorical(Distribution):
         return nn.reshape(select_prob, value_shape, name=name)
 
     def log_prob(self, value):
-        r"""Log probabilities of the given category. Refer to ``probs`` method.
+        """Log probabilities of the given category. Refer to ``probs`` method.
 
         Args:
             value (Tensor): The input tensor represents the selected category index.

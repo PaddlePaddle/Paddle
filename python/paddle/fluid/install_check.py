@@ -45,7 +45,7 @@ class SimpleLayer(Layer):
 
 
 def run_check():
-    r"""To check whether install is successful
+    """To check whether install is successful
     This func should not be called only if you need to verify installation
 
     Examples:

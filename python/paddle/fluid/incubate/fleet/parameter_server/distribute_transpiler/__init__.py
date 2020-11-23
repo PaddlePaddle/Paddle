@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 Convert the fluid program to distributed data-parallelism programs.
 """
 
@@ -53,7 +53,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 
 
 class FleetTranspiler(Fleet):
-    r"""
+    """
     A subclass for compatibility with fluid.transpiler.DistributeTranspiler.
     """
 
@@ -91,7 +91,7 @@ class FleetTranspiler(Fleet):
         self._fleet_ptr = core.Fleet()
 
     def _init_transpiler_worker(self):
-        r"""
+        """
         `init_worker` has many many functions to do before training,
         first, wait for all parameter servers launch completely.
         second, run executor to initialize startup program
@@ -201,7 +201,7 @@ class FleetTranspiler(Fleet):
                 "Communicator can only be inited once, please check")
 
     def init_worker(self):
-        r"""
+        """
         `init_worker` has many many functions to do before training,
         first, wait for all parameter servers launch completely.
         second, run executor to initialize startup program
@@ -251,7 +251,7 @@ class FleetTranspiler(Fleet):
             # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
 
     def init_server(self, model_dir=None, **kwargs):
-        r"""
+        """
         `init_server` has many many functions to do before start pserver,
         first, run executor to initialize startup program,
         second, if the `model_dir` is not empty, it will load parameters from it for increment training.
@@ -269,7 +269,7 @@ class FleetTranspiler(Fleet):
             raise NotImplementedError("add implement later")
 
     def run_server(self):
-        r"""
+        """
         `run_server` execute executor to start pserver main program.
 
         Returns:
@@ -287,7 +287,7 @@ class FleetTranspiler(Fleet):
             raise NotImplementedError("add implement later")
 
     def stop_worker(self):
-        r"""
+        """
         Close this executor.
 
         For the distributed training, this method would free the resource on PServers related to
@@ -306,7 +306,7 @@ class FleetTranspiler(Fleet):
             raise NotImplementedError("add implement later")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        r"""
+        """
         Optimizer for distributed training.
 
         For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
@@ -370,7 +370,7 @@ class FleetTranspiler(Fleet):
                              target_vars,
                              main_program=None,
                              export_for_deployment=True):
-        r"""
+        """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
@@ -647,7 +647,7 @@ class FleetTranspiler(Fleet):
             vars=remaining_vars)
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
-        r"""
+        """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
         or file `filename`.
@@ -715,7 +715,7 @@ fleet = FleetTranspiler()
 
 
 class ParameterServerOptimizer(DistributedOptimizer):
-    r"""
+    """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
     A user should pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.

@@ -21,7 +21,7 @@ __all__ = ["Adadelta"]
 
 
 class Adadelta(Optimizer):
-    r"""
+    """
     **Notes: This API does not support sparse parameter optimization.**
 
     Adadelta Optimizer. Please refer to this for details:

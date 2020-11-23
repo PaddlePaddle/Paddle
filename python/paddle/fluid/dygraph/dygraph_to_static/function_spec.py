@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 
 
 class FunctionSpec(object):
-    r"""
+    """
     Wrapper class for a function for class method.
     """
 
@@ -47,7 +47,7 @@ class FunctionSpec(object):
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
 
     def unified_args_and_kwargs(self, args, kwargs):
-        r"""
+        """
         Moves kwargs with default value into arguments list to keep `args` contain the same length
         value as function definition.
         
@@ -92,7 +92,7 @@ class FunctionSpec(object):
         return tuple(args), kwargs
 
     def args_to_input_spec(self, args, kwargs):
-        r"""
+        """
         Converts input arguments into InputSpec.
         
         1. If specific input_spec, use them to construct feed layers.
@@ -145,7 +145,7 @@ class FunctionSpec(object):
 
     @switch_to_static_graph
     def to_static_inputs_with_spec(self, input_with_spec, main_program):
-        r"""
+        """
         Constructs feed layer by inputs with InputSpec information for main program.
 
         Args:
@@ -172,7 +172,7 @@ class FunctionSpec(object):
         return pack_sequence_as(input_with_spec, inputs)
 
     def _verify_input_spec(self, input_spec):
-        r"""
+        """
         Verifies the `input_spec` and its element type is valid.
         """
         if not isinstance(input_spec, (tuple, list)):
@@ -215,7 +215,7 @@ class FunctionSpec(object):
 
 
 def get_parameters(layer_instance, include_sublayer=True):
-    r"""
+    """
     Returns parameters of decorated layers. If set `include_sublayer` True,
     the parameters created in sub layers will be added.
     """
@@ -237,7 +237,7 @@ def get_parameters(layer_instance, include_sublayer=True):
 
 
 def get_buffers(layer_instance, include_sublayer=True):
-    r"""
+    """
     Returns Variable buffers of decorated layers. If set `include_sublayer` True,
     the Variable buffers created in sub layers will be added.
     """
@@ -258,7 +258,7 @@ def get_buffers(layer_instance, include_sublayer=True):
 
 
 def convert_to_input_spec(inputs, input_spec):
-    r"""
+    """
     Replaces tensor in structured `inputs` by InputSpec in `input_spec`.
     
     Args:
@@ -318,7 +318,7 @@ def convert_to_input_spec(inputs, input_spec):
 
 
 def replace_spec_empty_name(args_name, input_with_spec):
-    r"""
+    """
     Adds default name according to argument name from decorated function
     if without specificing InputSpec.name
 
@@ -353,7 +353,7 @@ def replace_spec_empty_name(args_name, input_with_spec):
 
 
 def _replace_spec_name(name, input_spec):
-    r"""
+    """
     Replaces InputSpec.name with given `name` while not specificing it.
     """
     if isinstance(input_spec, paddle.static.InputSpec):

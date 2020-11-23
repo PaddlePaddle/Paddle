@@ -35,7 +35,7 @@ __all__ = [
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
-    r"""
+    """
     This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
@@ -124,7 +124,7 @@ def batch_norm(x,
                epsilon=1e-05,
                data_format="NCHW",
                name=None):
-    r"""
+    """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     nn.functional.batch_norm is uesd for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
@@ -244,7 +244,7 @@ def layer_norm(x,
                bias=None,
                epsilon=1e-05,
                name=None):
-    r"""
+    """
     see more detail in paddle.nn.LayerNorm
     
     Parameters:
@@ -337,7 +337,7 @@ def instance_norm(x,
                   eps=1e-05,
                   data_format="NCHW",
                   name=None):
-    r"""
+    """
     See more detail in nn.layer.InstanceNorm2D.
 
     Parameters:
@@ -412,7 +412,7 @@ def local_response_norm(x,
                         k=1.,
                         data_format="NCHW",
                         name=None):
-    r"""
+    """
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 

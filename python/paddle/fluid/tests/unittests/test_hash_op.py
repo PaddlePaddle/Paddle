@@ -60,7 +60,7 @@ class TestHashNotLoDOp(TestHashOp):
 
 
 class TestHashOp2(TestHashOp):
-    r"""
+    """
     Case:
     int64 type input
     """
@@ -81,7 +81,7 @@ class TestHashOp2(TestHashOp):
 
 
 class TestHashOp3(TestHashOp):
-    r"""
+    """
     Case:
     int64 type input
     int64 type mod_by attr

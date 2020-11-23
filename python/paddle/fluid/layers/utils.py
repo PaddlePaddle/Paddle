@@ -24,7 +24,7 @@ from sys import version_info
 
 
 def convert_to_list(value, n, name, dtype=np.int):
-    r"""
+    """
     Converts a single numerical type or iterable of numerical
     types into an numerical type list.
 
@@ -69,7 +69,7 @@ def convert_to_list(value, n, name, dtype=np.int):
 
 
 def is_sequence(seq):
-    r"""
+    """
     Whether `seq` is an entry or nested structure
     """
     if isinstance(seq, dict):
@@ -79,7 +79,7 @@ def is_sequence(seq):
 
 
 def _sorted(dict_):
-    r"""
+    """
     Returns a sorted list of the dict keys, with error if keys not sortable.
     """
     try:
@@ -112,7 +112,7 @@ def _yield_flat_nest(nest):
 
 
 def flatten(nest):
-    r"""
+    """
 	:alias_main: paddle.flatten
 	:alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
 	:old_api: paddle.fluid.layers.flatten
@@ -126,7 +126,7 @@ def flatten(nest):
 
 
 def _sequence_like(instance, args):
-    r"""
+    """
     Convert the sequence `args` to the same type as `instance`.
     """
     if isinstance(instance, dict):
@@ -149,7 +149,7 @@ def _sequence_like(instance, args):
 
 
 def _packed_nest_with_indices(structure, flat, index):
-    r"""
+    """
     Helper function for pack_sequence_as.
     """
     packed = []
@@ -165,7 +165,7 @@ def _packed_nest_with_indices(structure, flat, index):
 
 
 def pack_sequence_as(structure, flat_sequence):
-    r"""
+    """
     Pack a given flattened sequence into a given structure.
     """
     if not is_sequence(flat_sequence):
@@ -187,7 +187,7 @@ def pack_sequence_as(structure, flat_sequence):
 
 
 def map_structure(func, *structure):
-    r"""
+    """
     Apply `func` to each entry in `structure` and return a new structure.
     """
     flat_structure = [flatten(s) for s in structure]
@@ -196,7 +196,7 @@ def map_structure(func, *structure):
 
 
 def hold_mutable_vars(structure):
-    r"""
+    """
     Returns whether structure holds sequence like `list/dict`.
     """
     for s in structure:
@@ -206,7 +206,7 @@ def hold_mutable_vars(structure):
 
 
 def copy_mutable_vars(structure):
-    r"""
+    """
     Returns vars copied from sequence without mutable property.
     """
     flat_structure = copy.copy(flatten(structure))
@@ -214,7 +214,7 @@ def copy_mutable_vars(structure):
 
 
 def _recursive_assert_same_structure(nest1, nest2, check_types):
-    r"""
+    """
     Helper function for `assert_same_structure`.
     """
     is_sequence_nest1 = is_sequence(nest1)
@@ -247,7 +247,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
 
 
 def assert_same_structure(nest1, nest2, check_types=True):
-    r"""
+    """
     Confirm two nested structures with the same structure.
     """
     len_nest1 = len(flatten(nest1)) if is_sequence(nest1) else 1
@@ -261,7 +261,7 @@ def assert_same_structure(nest1, nest2, check_types=True):
 
 
 def _is_symmetric_padding(padding, data_dim):
-    r"""
+    """
     Check whether padding is symmetrical.
     """
     assert len(padding) == data_dim * 2 or len(padding) == data_dim
@@ -274,7 +274,7 @@ def _is_symmetric_padding(padding, data_dim):
 
 
 def _contain_var(list_or_tuple):
-    r"""
+    """
     Check whether list or tuple contains variable.
     """
     for item in list_or_tuple:
@@ -331,7 +331,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
 
 
 def _convert_to_tensor_list(old_list, dtype="int32"):
-    r"""
+    """
     Converts all elements of a list to Variable.
     """
     from .tensor import fill_constant
@@ -349,7 +349,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
 
 
 def convert_shape_to_list(shape):
-    r"""
+    """
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
@@ -362,7 +362,7 @@ def convert_shape_to_list(shape):
 
 
 def check_shape(shape):
-    r"""
+    """
     Check shape type and shape elements type before passing it to fill_constant
     """
     if isinstance(shape, Variable):
@@ -381,7 +381,7 @@ def check_shape(shape):
 
 
 def try_set_static_shape_tensor(tensor, shape):
-    r"""Try to set static shape of tensor from a shape tensor.
+    """Try to set static shape of tensor from a shape tensor.
     
     For example,
 
@@ -404,7 +404,7 @@ def try_set_static_shape_tensor(tensor, shape):
 
 
 def try_get_constant_shape_from_tensor(shape_tensor):
-    r"""Try to get shape from a tensor with constant value.
+    """Try to get shape from a tensor with constant value.
 
     For example,
     

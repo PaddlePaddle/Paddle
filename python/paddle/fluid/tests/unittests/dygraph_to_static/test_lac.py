@@ -288,7 +288,7 @@ class ChunkEval(fluid.dygraph.Layer):
 class LexNet(fluid.dygraph.Layer):
     def __init__(self, args, length=None):
         super(LexNet, self).__init__()
-        r"""
+        """
         define the lexical analysis network structure
         word: stores the input of the model
         for_infer: a boolean value, indicating if the model to be created is for training or predicting.
@@ -364,7 +364,7 @@ class LexNet(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, word, target, length=None):
-        r"""
+        """
         Configure the network
         """
         word_embed = self.word_embedding(word)
@@ -563,7 +563,7 @@ class TestLACModel(unittest.TestCase):
             return pred_res.numpy()
 
     def predict_static(self, batch):
-        r"""
+        """
         LAC model contains h_0 created in `__init__` that is necessary for inferring.
         Load inference model to test it's ok for prediction.
         """

@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Lazy imports for heavy dependencies."""
+"""Lazy imports for heavy dependencies."""
 
 import importlib
 
 
 def try_import(module_name):
-    r"""Try importing a module, with an informative error message on failure."""
+    """Try importing a module, with an informative error message on failure."""
     install_name = module_name
     if module_name == 'cv2':
         install_name = 'opencv-python'

@@ -42,7 +42,7 @@ __all__ = [
 
 
 class Conv2D(layers.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``Conv2D`` class.
     For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
@@ -282,7 +282,7 @@ class Conv2D(layers.Layer):
 
 
 class Conv3D(layers.Layer):
-    r"""
+    """
     **Convlution3D Layer**
 
     The convolution3D layer calculates the output based on the input, filter
@@ -484,7 +484,7 @@ class Conv3D(layers.Layer):
 
 
 class Conv3DTranspose(layers.Layer):
-    r"""
+    """
     **Convlution3D transpose layer**
 
     The convolution3D transpose layer calculates the output based on the input,
@@ -701,7 +701,7 @@ class Conv3DTranspose(layers.Layer):
 
 
 class Pool2D(layers.Layer):
-    r"""
+    """
 
     This interface is used to construct a callable object of the ``Pool2D`` class.
     For more details, refer to code examples.
@@ -891,7 +891,7 @@ class Pool2D(layers.Layer):
 
 
 class Linear(layers.Layer):
-    r"""
+    """
     
     Fully-connected linear transformation layer:
 
@@ -1009,7 +1009,7 @@ class Linear(layers.Layer):
 
 
 class InstanceNorm(layers.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``InstanceNorm`` class.
     For more details, refer to code examples.
 
@@ -1143,7 +1143,7 @@ class InstanceNorm(layers.Layer):
 
 
 class BatchNorm(layers.Layer):
-    r"""
+    """
     :alias_main: paddle.nn.BatchNorm
 	:alias: paddle.nn.BatchNorm,paddle.nn.layer.BatchNorm,paddle.nn.layer.norm.BatchNorm
 	:old_api: paddle.fluid.dygraph.BatchNorm
@@ -1383,7 +1383,7 @@ class BatchNorm(layers.Layer):
 
 
 class Dropout(layers.Layer):
-    r"""
+    """
    This interface is used to construct a callable object of the ``Dropout`` class.
    For more details, refer to code examples.
 
@@ -1492,7 +1492,7 @@ class Dropout(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    r"""
+    """
     :alias_main: paddle.nn.Embedding
 	:alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
 	:old_api: paddle.fluid.dygraph.Embedding
@@ -1652,7 +1652,7 @@ class Embedding(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
-    r"""
+    """
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -1826,7 +1826,7 @@ class LayerNorm(layers.Layer):
 
 
 class GRUUnit(layers.Layer):
-    r"""
+    """
     **GRU unit layer**
     
     It creates a callable object from GRUUnit class.
@@ -2004,7 +2004,7 @@ class GRUUnit(layers.Layer):
 
 
 class NCE(layers.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``NCE`` class.
     For more details, refer to code examples.
     It implements the function of the ``NCE`` loss function.
@@ -2242,7 +2242,7 @@ class NCE(layers.Layer):
 
 
 class PRelu(layers.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``PRelu`` class.
     For more details, refer to code examples.
     It implements three activation methods of the ``PRelu`` activation function.
@@ -2350,7 +2350,7 @@ class PRelu(layers.Layer):
 
 
 class BilinearTensorProduct(layers.Layer):
-    r"""
+    """
 
     **Add Bilinear Tensor Product Layer**
 
@@ -2467,7 +2467,7 @@ class BilinearTensorProduct(layers.Layer):
 
 
 class Conv2DTranspose(layers.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
     For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
@@ -2702,7 +2702,7 @@ class Conv2DTranspose(layers.Layer):
 
 
 class SequenceConv(layers.Layer):
-    r"""
+    """
     This function creates the op for sequence_conv, using the inputs and
     other convolutional configurations for the filters and stride as given
     in the input parameters to the function.
@@ -2796,7 +2796,7 @@ class SequenceConv(layers.Layer):
 
 
 class RowConv(layers.Layer):
-    r"""
+    """
     ***Row-convolution operator***
 
     The row convolution is called lookahead convolution.  This operator was introduced in the following paper for DeepSpeech2:
@@ -2875,7 +2875,7 @@ class RowConv(layers.Layer):
 
 
 class GroupNorm(layers.Layer):
-    r"""
+    """
     :alias_main: paddle.nn.GroupNorm
 	:alias: paddle.nn.GroupNorm,paddle.nn.layer.GroupNorm,paddle.nn.layer.norm.GroupNorm
 	:old_api: paddle.fluid.dygraph.GroupNorm
@@ -2979,7 +2979,7 @@ class GroupNorm(layers.Layer):
 
 
 class SpectralNorm(layers.Layer):
-    r"""
+    """
     :alias_main: paddle.nn.SpectralNorm
 	:alias: paddle.nn.SpectralNorm,paddle.nn.layer.SpectralNorm,paddle.nn.layer.norm.SpectralNorm
 	:old_api: paddle.fluid.dygraph.SpectralNorm
@@ -3090,7 +3090,7 @@ class SpectralNorm(layers.Layer):
 
 
 class TreeConv(layers.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``TreeConv`` class.
     For more details, refer to code examples.
     Tree-Based Convolution is a kind of convolution based on tree structure.
@@ -3200,7 +3200,7 @@ class TreeConv(layers.Layer):
 
 
 class Flatten(layers.Layer):
-    r"""
+    """
     :alias_main: paddle.nn.Flatten
     :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
     This interface is used to construct a callable object of the ``FLatten`` class.

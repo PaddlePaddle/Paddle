@@ -21,7 +21,7 @@ _image_backend = 'pil'
 
 
 def set_image_backend(backend):
-    r"""
+    """
     Specifies the backend used to load images in class ``paddle.vision.datasets.ImageFolder`` 
     and ``paddle.vision.datasets.DatasetFolder`` . Now support backends are pillow and opencv. 
     If backend not set, will use 'pil' as default. 
@@ -88,7 +88,7 @@ def set_image_backend(backend):
 
 
 def get_image_backend():
-    r"""
+    """
     Gets the name of the package used to load images
 
     Returns:
@@ -108,7 +108,7 @@ def get_image_backend():
 
 
 def image_load(path, backend=None):
-    r"""Load an image.
+    """Load an image.
 
     Args:
         path (str): Path of the image.

@@ -31,7 +31,7 @@ DEFAULT_DISABLE_NEW_ERROR = 0
 
 
 def attach_error_data(error, in_runtime=False):
-    r"""
+    """
     Attachs error data about original source code information and traceback to an error.
 
     Args:
@@ -53,7 +53,7 @@ def attach_error_data(error, in_runtime=False):
 
 
 def remove_static_file():
-    r"""
+    """
     Removes temporary files created during the transformation of dygraph to static graph.
     """
     del_files = set()
@@ -70,7 +70,7 @@ def remove_static_file():
 
 
 class TraceBackFrame(OriginInfo):
-    r"""
+    """
     Traceback frame information.
     """
 
@@ -86,7 +86,7 @@ class TraceBackFrame(OriginInfo):
 
 
 class ErrorData(object):
-    r"""
+    """
     Error data attached to an exception which is raised in un-transformed code.
     """
 
@@ -105,7 +105,7 @@ class ErrorData(object):
         return new_exception
 
     def create_message(self):
-        r"""
+        """
         Creates a custom error message which includes trace stack with source code information of dygraph from user.
         """
         message_lines = []
@@ -147,7 +147,7 @@ class ErrorData(object):
         return '\n'.join(message_lines)
 
     def _simplify_error_value(self):
-        r"""
+        """
         Simplifies error value to improve readability if error is raised in runtime.
 
         NOTE(liym27): The op callstack information about transformed static code has been replaced with original dygraph code.

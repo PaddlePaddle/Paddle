@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Http Server."""
+"""Http Server."""
 
 import logging
 import BaseHTTPServer
@@ -36,13 +36,13 @@ _http_server_logger = get_logger(
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-    r"""
+    """
     kv handler class for kv http server,
     it defines the way to get/set kv in server.
     """
 
     def do_GET(self):
-        r"""
+        """
         get method for kv handler, get value according to key.
         """
         log_str = "GET " + self.address_string() + self.path
@@ -66,7 +66,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         _http_server_logger.info(log_str)
 
     def do_PUT(self):
-        r"""
+        """
         put method for kv handler, set value according to key.
         """
         log_str = "PUT " + self.address_string() + self.path
@@ -91,7 +91,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         _http_server_logger.info(log_str)
 
     def do_DELETE(self):
-        r"""
+        """
         delete method for kv handler, set value according to key.
         """
         log_str = "DELETE " + self.address_string() + self.path
@@ -109,13 +109,13 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         _http_server_logger.info(log_str)
 
     def log_message(self, format, *args):
-        r"""
+        """
         ignore all logging messages in kv handler.
         """
         pass
 
     def send_status_code(self, code):
-        r"""
+        """
         send status code back to client.
         """
         self.send_response(code)
@@ -124,12 +124,12 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
 class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
-    r"""
+    """
     it is a http server storing kv pairs.
     """
 
     def __init__(self, port, handler):
-        r"""Init."""
+        """Init."""
         super(KVHTTPServer, self).__init__(('', port), handler)
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
@@ -137,7 +137,7 @@ class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
         self.kv = {}
 
     def get_deleted_size(self, key):
-        r"""
+        """
         get deleted size in key.
         """
         ret = 0
@@ -147,18 +147,18 @@ class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
 
 
 class KVServer:
-    r"""
+    """
     it is a server storing kv pairs, has a http server inside.
     """
 
     def __init__(self, port, size={}):
-        r"""Init."""
+        """Init."""
         self.http_server = KVHTTPServer(port, KVHandler)
         self.listen_thread = None
         self.size = {}
 
     def start(self):
-        r"""
+        """
         start server until user calls stop to let it quit.
         """
         self.listen_thread = threading.Thread(
@@ -166,7 +166,7 @@ class KVServer:
         self.listen_thread.start()
 
     def stop(self):
-        r"""
+        """
         stop server and clear its resources.
         """
         self.http_server.shutdown()
@@ -174,7 +174,7 @@ class KVServer:
         self.http_server.server_close()
 
     def should_stop(self):
-        r"""
+        """
         return whether the server should stop.
 
         Returns:

@@ -43,7 +43,7 @@ def _clone_var_(block, var):
 
 
 class Evaluator(object):
-    r"""
+    """
     Warning: better to use the fluid.metrics.* things, more
     flexible support via pure Python and Operator, and decoupled
     with executor. Short doc are intended to urge new user
@@ -75,7 +75,7 @@ class Evaluator(object):
         self.helper = LayerHelper(name, **kwargs)
 
     def reset(self, executor, reset_program=None):
-        r"""
+        """
         reset metric states at the begin of each pass/user specified batch
 
         Args:
@@ -95,7 +95,7 @@ class Evaluator(object):
         executor.run(reset_program)
 
     def eval(self, executor, eval_program=None):
-        r"""
+        """
         Evaluate the statistics merged by multiple mini-batches.
         Args:
             executor(Executor|ParallelExecutor): a executor for executing the eval_program
@@ -104,7 +104,7 @@ class Evaluator(object):
         raise NotImplementedError()
 
     def _create_state(self, suffix, dtype, shape):
-        r"""
+        """
         Create state variable.
 
         Args:
@@ -125,7 +125,7 @@ class Evaluator(object):
 
 
 class ChunkEvaluator(Evaluator):
-    r"""
+    """
     Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator 
     instead.
 
@@ -216,7 +216,7 @@ class ChunkEvaluator(Evaluator):
 
 
 class EditDistance(Evaluator):
-    r"""
+    """
     Warning: This would be deprecated in the future. Please use fluid.metrics.EditDistance
     instead.
     Accumulate edit distance sum and sequence number from mini-batches and
@@ -297,7 +297,7 @@ class EditDistance(Evaluator):
 
 
 class DetectionMAP(Evaluator):
-    r"""
+    """
     Warning: This would be deprecated in the future. Please use fluid.metrics.DetectionMAP
     instead.
     Calculate the detection mean average precision (mAP).

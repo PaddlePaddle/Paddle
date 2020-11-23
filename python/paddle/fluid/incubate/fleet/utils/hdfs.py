@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""HDFS Utils."""
+"""HDFS Utils."""
 
 import os
 import sys
@@ -116,7 +116,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        r"""	
+        """	
         list directory under fs_path, and only give the pure name, not include the fs_path	
         """
         if not self.is_exist(fs_path):

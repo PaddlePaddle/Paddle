@@ -179,7 +179,7 @@ if __name__ == "__main__":
                 print(name, func_dict[name])
 
     else:
-        print(r"""Usage: 
+        print("""Usage: 
             1. Count and list all operator-raleated APIs that contains append_op but not core.ops.xx. 
                 python ./count_api_without_core_ops.py -c paddle
             2. Print api and the md5 of source code of the api.

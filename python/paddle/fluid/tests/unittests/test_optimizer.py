@@ -840,7 +840,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 cpt.get_exception_message(e))
 
     def test_dropout(self):
-        r"""
+        """
         If there are dropout layers in the forward nets, we should add a
         seed op
         """
@@ -863,7 +863,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
         ])
 
     def test_dropout_with_seed(self):
-        r"""
+        """
         when we recompute a dropout op, make sure that the recomputed one
 	    is the same as the original var.
 	    """
@@ -916,7 +916,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                  "core is not compiled with CUDA")
 class TestRecomputeOptimizerCUDA(unittest.TestCase):
     def test_dropout_with_seed(self):
-        r"""
+        """
         when we recompute a dropout op, make sure that the recomputed one
         is the same as the original var.
         """

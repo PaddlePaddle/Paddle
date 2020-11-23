@@ -22,7 +22,7 @@ from paddle.fluid import framework
 
 
 class Tracer(core.Tracer):
-    r"""
+    """
     :api_attr: imperative
     
     Tracer is used to execute and record the operators executed, to construct the 

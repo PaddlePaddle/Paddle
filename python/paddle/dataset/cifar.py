@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 CIFAR dataset.
 
 This module will download dataset from https://dataset.bj.bcebos.com/cifar/cifar-10-python.tar.gz and https://dataset.bj.bcebos.com/cifar/cifar-100-python.tar.gz, parse train/test set into
@@ -81,7 +81,7 @@ def reader_creator(filename, sub_name, cycle=False):
     update_to="paddle.vision.datasets.Cifar100",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train100():
-    r"""
+    """
     CIFAR-100 training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
@@ -100,7 +100,7 @@ def train100():
     update_to="paddle.vision.datasets.Cifar100",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test100():
-    r"""
+    """
     CIFAR-100 test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
@@ -119,7 +119,7 @@ def test100():
     update_to="paddle.vision.datasets.Cifar10",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train10(cycle=False):
-    r"""
+    """
     CIFAR-10 training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
@@ -141,7 +141,7 @@ def train10(cycle=False):
     update_to="paddle.vision.datasets.Cifar10",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test10(cycle=False):
-    r"""
+    """
     CIFAR-10 test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in

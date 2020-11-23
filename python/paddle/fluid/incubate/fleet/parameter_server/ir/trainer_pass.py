@@ -1158,7 +1158,7 @@ def is_same_op(op1, op2):
 
 
 def _get_input_map_from_op(varmap, op):
-    r"""Returns a dict from op input name to the vars in varmap."""
+    """Returns a dict from op input name to the vars in varmap."""
     iomap = collections.OrderedDict()
     for key in op.input_names:
         vars = []
@@ -1176,7 +1176,7 @@ def _get_input_map_from_op(varmap, op):
 
 
 def _get_output_map_from_op(varmap, op):
-    r"""Returns a dict from op output name to the vars in varmap."""
+    """Returns a dict from op output name to the vars in varmap."""
     iomap = collections.OrderedDict()
     for key in op.output_names:
         vars = []

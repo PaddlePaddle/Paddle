@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 usage: coverage_diff_list.py list_file max_rate > coverage-diff-list-90.out
 """
 
@@ -22,7 +22,7 @@ import sys
 
 
 def filter_by(list_file, max_rate):
-    r"""
+    """
     Args:
         list_file (str): File of list.  
         max_rate (float): Max rate.  

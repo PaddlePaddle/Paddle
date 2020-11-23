@@ -28,7 +28,7 @@ __all__ = ["decorate"]
 
 
 class OptimizerWithMixedPrecision(object):
-    r"""
+    """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
     optimizer, plus the support of mixed-precision pre-training. The object
     of this class almost has the same behavior as the common optimizer, with the 
@@ -74,12 +74,12 @@ class OptimizerWithMixedPrecision(object):
             self._num_bad_steps = None
 
     def get_loss_scaling(self):
-        r"""Return the real-time loss scaling factor.
+        """Return the real-time loss scaling factor.
         """
         return self._loss_scaling
 
     def get_scaled_loss(self):
-        r"""Return the scaled loss.
+        """Return the scaled loss.
         It's useful when you feed customed loss into executor.
         """
         return self._scaled_loss
@@ -123,7 +123,7 @@ class OptimizerWithMixedPrecision(object):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        r"""
+        """
         Backward propagation or auto differentiation for gradients' computation.
 
         Args:
@@ -156,7 +156,7 @@ class OptimizerWithMixedPrecision(object):
         return params_grads
 
     def apply_gradients(self, params_grads):
-        r"""
+        """
         Check scaled gradients to determine whether to update loss scaling and update 
         parameters by their scaled gradients, 
   
@@ -206,7 +206,7 @@ class OptimizerWithMixedPrecision(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        r"""
+        """
         Perform optimization by minimizing the given loss.
 
         Args:
@@ -240,7 +240,7 @@ def decorate(optimizer,
              incr_ratio=2.0,
              decr_ratio=0.8,
              use_dynamic_loss_scaling=True):
-    r""" 
+    """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:

@@ -18,7 +18,7 @@ import requests
 
 
 def download_file():
-    r"""Get disabled unit tests"""
+    """Get disabled unit tests"""
     ssl._create_default_https_context = ssl._create_unverified_context
     sysstr = sys.platform
     if sysstr == 'win32':

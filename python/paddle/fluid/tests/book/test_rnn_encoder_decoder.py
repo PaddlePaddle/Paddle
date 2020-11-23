@@ -118,7 +118,7 @@ def lstm_decoder_without_attention(target_embedding, decoder_boot, context,
 
 
 def seq_to_seq_net():
-    r"""Construct a seq2seq network."""
+    """Construct a seq2seq network."""
 
     src_word_idx = fluid.layers.data(
         name='source_sequence', shape=[1], dtype='int64', lod_level=1)

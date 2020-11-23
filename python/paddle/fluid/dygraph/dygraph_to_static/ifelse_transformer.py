@@ -36,7 +36,7 @@ FALSE_FUNC_PREFIX = 'false_fn'
 
 
 class IfElseTransformer(gast.NodeTransformer):
-    r"""
+    """
     Transform if/else statement of Dygraph into Static Graph.
     """
 
@@ -49,7 +49,7 @@ class IfElseTransformer(gast.NodeTransformer):
         self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
 
     def transform(self):
-        r"""
+        """
         Main function to transform AST.
         """
         self.visit(self.root)
@@ -74,7 +74,7 @@ class IfElseTransformer(gast.NodeTransformer):
         return node
 
     def visit_IfExp(self, node):
-        r"""
+        """
         Transformation with `true_fn(x) if Tensor > 0 else false_fn(x)`
         """
         self.generic_visit(node)
@@ -104,7 +104,7 @@ class NameVisitor(gast.NodeVisitor):
         self._def_func_names = set()
 
     def visit(self, node):
-        r"""Visit a node."""
+        """Visit a node."""
         if node == self.end_node or self._is_finished:
             self._is_finished = True
             return
@@ -118,7 +118,7 @@ class NameVisitor(gast.NodeVisitor):
         return ret
 
     def visit_If(self, node):
-        r"""
+        """
         For nested `if/else`, the created vars are not always visible for parent node.
         In addition, the vars created in `if.body` are not visible for `if.orelse`.
 
@@ -236,7 +236,7 @@ class NameVisitor(gast.NodeVisitor):
 
 
 def get_name_ids(nodes, end_node=None):
-    r"""
+    """
     Return all ast.Name.id of python variable in nodes.
     """
     name_visitor = NameVisitor(end_node)
@@ -249,7 +249,7 @@ def parse_cond_args(parent_ids_dict,
                     var_ids_dict,
                     modified_ids_dict=None,
                     ctx=gast.Load):
-    r"""
+    """
     Find out the ast.Name.id list of input by analyzing node's AST information.
     """
 
@@ -305,7 +305,7 @@ def parse_cond_args(parent_ids_dict,
 
 def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
                       after_ifelse_vars_dict):
-    r"""
+    """
     Find out the ast.Name list of output by analyzing node's AST information.
     One of the following conditions should be satisfied while determining whether a variable is a return value:
     1. the var in parent scope is modified in If.body or If.orelse node.
@@ -427,7 +427,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
 
 def transform_if_else(node, root):
-    r"""
+    """
     Transform ast.If into control flow statement of Paddle static graph.
     """
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
@@ -489,7 +489,7 @@ def create_convert_ifelse_node(return_name_ids,
                                true_func,
                                false_func,
                                is_if_expr=False):
-    r"""
+    """
     Create `paddle.jit.dy2static.convert_ifelse(
             pred, true_fn, false_fn, true_args, false_args, return_vars)`
     to replace original `python if/else` statement.

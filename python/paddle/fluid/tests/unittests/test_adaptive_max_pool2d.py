@@ -96,7 +96,7 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
         self.res_3_np = adaptive_pool2d_forward(
             x=self.x_np, output_size=[2, 5], pool_type="max")
-        r"""
+        """
         self.res_4_np = adaptive_pool2d_forward(
             x=self.x_np,
             output_size=[3, 3],

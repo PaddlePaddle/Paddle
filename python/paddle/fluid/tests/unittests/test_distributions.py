@@ -21,24 +21,24 @@ import math
 
 
 class DistributionNumpy():
-    r"""
+    """
         Distribution is the abstract base class for probability distributions.
     """
 
     def sample(self):
-        r"""Sampling from the distribution."""
+        """Sampling from the distribution."""
         raise NotImplementedError
 
     def entropy(self):
-        r"""The entropy of the distribution."""
+        """The entropy of the distribution."""
         raise NotImplementedError
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between self distributions and other."""
+        """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
     def log_prob(self, value):
-        r"""Log probability density/mass function."""
+        """Log probability density/mass function."""
         raise NotImplementedError
 
 

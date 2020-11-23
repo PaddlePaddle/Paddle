@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 Conll05 dataset.
 Paddle semantic role labeling Book and demo use this dataset as an example.
 Because Conll05 is not free in public, the default downloaded URL is test set
@@ -75,7 +75,7 @@ def load_dict(filename):
 
 
 def corpus_reader(data_path, words_name, props_name):
-    r"""
+    """
     Read one corpus. It returns an iterator. Each element of
     this iterator is a tuple including sentence and labels. The sentence is
     consist of a list of word IDs. The labels include a list of label IDs.
@@ -208,7 +208,7 @@ def reader_creator(corpus_reader,
     update_to="paddle.text.datasets.Conll05st",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_dict():
-    r"""
+    """
     Get the word, verb and label dictionary of Wikipedia corpus.
     """
     word_dict = load_dict(
@@ -225,7 +225,7 @@ def get_dict():
     update_to="paddle.text.datasets.Conll05st",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_embedding():
-    r"""
+    """
     Get the trained word vector based on Wikipedia corpus.
     """
     return paddle.dataset.common.download(EMB_URL, 'conll05st', EMB_MD5)
@@ -236,7 +236,7 @@ def get_embedding():
     update_to="paddle.text.datasets.Conll05st",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
-    r"""
+    """
     Conll05 test set creator.
 
     Because the training dataset is not free, the test dataset is used for

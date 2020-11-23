@@ -26,7 +26,7 @@ from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else2, nested
 
 
 class TestAST2Func(unittest.TestCase):
-    r"""
+    """
     TestCase for the transformation from ast.AST into python callable function.
     """
 

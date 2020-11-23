@@ -58,7 +58,7 @@ class XPUOpTest(OpTest):
 
     @classmethod
     def tearDownClass(cls):
-        r"""Restore random seeds"""
+        """Restore random seeds"""
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 

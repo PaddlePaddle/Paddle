@@ -20,7 +20,7 @@ from six import string_types
 
 
 def wait_server_ready(endpoints):
-    r"""
+    """
     Wait until parameter servers are ready, use connext_ex to detect
     port readiness.
 

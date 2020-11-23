@@ -23,7 +23,7 @@ __all__ = ['generate', 'switch', 'guard']
 
 
 class UniqueNameGenerator(object):
-    r"""
+    """
     Generate unique name with prefix.
 
     Args:
@@ -38,7 +38,7 @@ class UniqueNameGenerator(object):
         self.prefix = prefix
 
     def __call__(self, key):
-        r"""
+        """
         Generate unique names with prefix
 
         Args:
@@ -52,7 +52,7 @@ class UniqueNameGenerator(object):
 
 
 class DygraphParameterNameChecker(object):
-    r"""
+    """
     Check whether the name of parameter is used.
     """
 
@@ -82,7 +82,7 @@ generator = UniqueNameGenerator()
 
 
 def generate(key):
-    r"""
+    """
     Generate unique name with prefix key. Currently, Paddle distinguishes the
     names of the same key by numbering it from zero. For example, when key=fc,
     it continuously generates fc_0, fc_1, fc_2, etc.
@@ -132,7 +132,7 @@ def generate_with_ignorable_key(key):
 
 
 def switch(new_generator=None, new_para_name_checker=None):
-    r"""
+    """
     Switch the namespace of in current context to a new namespace. Though
     :code:`switch()` and :code:`guard()` can both change namespace, 
     :code:`guard()` is recommended since it can manage the context better 
@@ -185,7 +185,7 @@ def switch(new_generator=None, new_para_name_checker=None):
 
 @signature_safe_contextmanager
 def guard(new_generator=None):
-    r"""
+    """
     Change the namespace of unique name with :code:`with` statement. After calling it,
     a new namespace in the context of :code:`with` will be created, and it will number
     names from zero again when calling :code:`generate()` with same key.

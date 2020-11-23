@@ -23,7 +23,7 @@ __all__ = ['Assign']
 
 
 class Assign(NumpyArrayInitializer):
-    r"""Init an parameter with a numpy array, list, or tensor.
+    """Init an parameter with a numpy array, list, or tensor.
 
     Args:
         value (Tensor|numpy.ndarray|list): numpy array, list, or tensor to initialize the parameter.

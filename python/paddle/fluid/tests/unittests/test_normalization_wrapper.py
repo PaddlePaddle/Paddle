@@ -24,13 +24,13 @@ class TestNormalization(unittest.TestCase):
     data_desc = {"name": "input", "shape": (2, 3, 7)}
 
     def gen_random_input(self):
-        r"""Generate random input data.
+        """Generate random input data.
         """
         self.data = np.random.random(
             size=self.data_desc["shape"]).astype("float32")
 
     def set_program(self, axis, epsilon):
-        r"""Build the test program.
+        """Build the test program.
         """
         data = fluid.layers.data(
             name=self.data_desc["name"],
@@ -45,7 +45,7 @@ class TestNormalization(unittest.TestCase):
         self.fetch_list = [l2_norm]
 
     def run_program(self):
-        r"""Run the test program.
+        """Run the test program.
         """
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -62,7 +62,7 @@ class TestNormalization(unittest.TestCase):
             self.op_output = output
 
     def set_inputs(self, place):
-        r"""Set the randomly generated data to the test program.
+        """Set the randomly generated data to the test program.
         """
         self.inputs = {}
         tensor = fluid.Tensor()
@@ -70,7 +70,7 @@ class TestNormalization(unittest.TestCase):
         self.inputs[self.data_desc["name"]] = tensor
 
     def l2_normalize(self, data, axis, epsilon):
-        r""" Compute the groundtruth.
+        """ Compute the groundtruth.
         """
         output = data / np.broadcast_to(
             np.sqrt(np.sum(np.square(data), axis=axis, keepdims=True)),
@@ -78,7 +78,7 @@ class TestNormalization(unittest.TestCase):
         return output
 
     def test_l2_normalize(self):
-        r""" Test the python wrapper for l2_normalize.
+        """ Test the python wrapper for l2_normalize.
         """
         axis = 1
         #TODO(caoying) epsilon is not supported due to lack of a maximum_op.

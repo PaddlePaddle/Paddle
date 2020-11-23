@@ -19,7 +19,7 @@ __all__ = ['KaimingUniform', 'KaimingNormal']
 
 
 class KaimingNormal(MSRAInitializer):
-    r"""Implements the Kaiming Normal initializer
+    """Implements the Kaiming Normal initializer
 
     This class implements the weight initialization from the paper
     `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
@@ -62,7 +62,7 @@ class KaimingNormal(MSRAInitializer):
 
 
 class KaimingUniform(MSRAInitializer):
-    r"""Implements the Kaiming Uniform initializer
+    """Implements the Kaiming Uniform initializer
 
     This class implements the weight initialization from the paper
     `Delving Deep into Rectifiers: Surpassing Human-Level Performance on

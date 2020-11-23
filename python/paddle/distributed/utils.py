@@ -291,7 +291,7 @@ def get_host_name_ip():
 
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
-    r"""Add argparse's argument.
+    """Add argparse's argument.
     Usage:
     .. code-block:: python
         parser = argparse.ArgumentParser()

@@ -45,7 +45,7 @@ class TestFeedData(unittest.TestCase):
             os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
     def _get_feed_batch_size(self, use_cuda, use_parallel_executor):
-        r"""
+        """
         Returns actual fed data size. We should multiple the number of
         devices when it is using ParallelExecutor
         """

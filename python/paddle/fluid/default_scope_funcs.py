@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 Default scope function.
 
 `Paddle` manages Scope as programming language's scope.  It just a
@@ -44,7 +44,7 @@ __all__ = [
 
 
 def get_cur_scope():
-    r"""
+    """
     Get current scope.
     :rtype: paddle.fluid.core.Scope
     """
@@ -57,7 +57,7 @@ def get_cur_scope():
 
 
 def enter_local_scope():
-    r"""
+    """
     Enter a new local scope
     """
     cur_scope = get_cur_scope()
@@ -66,7 +66,7 @@ def enter_local_scope():
 
 
 def leave_local_scope():
-    r"""
+    """
     Leave local scope
     """
     __tl_scope__.cur_scope.pop()
@@ -74,21 +74,21 @@ def leave_local_scope():
 
 
 def var(name):
-    r"""
+    """
     create variable in current scope.
     """
     return get_cur_scope().var(name)
 
 
 def find_var(name):
-    r"""
+    """
     get variable in current scope.
     """
     return get_cur_scope().find_var(name)
 
 
 def scoped_function(func):
-    r"""
+    """
     invoke `func` in new scope.
 
     :param func: a callable function that will be run in new scope.

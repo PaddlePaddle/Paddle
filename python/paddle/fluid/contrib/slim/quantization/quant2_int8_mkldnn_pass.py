@@ -22,7 +22,7 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 class Quant2Int8MkldnnPass(object):
-    r"""
+    """
     Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
         1. gather scale values from fake quantize/dequantize operators,

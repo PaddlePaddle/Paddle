@@ -163,7 +163,7 @@ class Decoder(object):
 
 
 class Seq2SeqModel(object):
-    r"""Seq2Seq model: RNN encoder-decoder with attention"""
+    """Seq2Seq model: RNN encoder-decoder with attention"""
 
     def __init__(self,
                  num_layers,
@@ -245,13 +245,13 @@ class Seq2SeqModel(object):
 
 
 class PolicyGradient(object):
-    r"""policy gradient"""
+    """policy gradient"""
 
     def __init__(self, lr=None):
         self.lr = lr
 
     def learn(self, act_prob, action, reward, length=None):
-        r"""
+        """
         update policy model self.model with policy gradient algorithm
         """
         self.reward = fluid.layers.py_func(
@@ -266,7 +266,7 @@ class PolicyGradient(object):
 
 
 def reward_func(samples, sample_length):
-    r"""toy reward"""
+    """toy reward"""
 
     def discount_reward(reward, sequence_length, discount=1.):
         return discount_reward_1d(reward, sequence_length, discount)
@@ -326,7 +326,7 @@ def reward_func(samples, sample_length):
 
 
 class MLE(object):
-    r"""teacher-forcing MLE training"""
+    """teacher-forcing MLE training"""
 
     def __init__(self, lr=None):
         self.lr = lr
@@ -599,7 +599,7 @@ class ModuleApiTest(unittest.TestCase):
             "model_inputs makes inputs for model, thus must implement it")
 
     def setUp(self):
-        r"""
+        """
         For the model which wraps the module to be tested:
             Set input data by `self.inputs` list
             Set init argument values by `self.attrs` list/dict

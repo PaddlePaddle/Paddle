@@ -71,7 +71,7 @@ def extract_vars(inputs):
 
 
 def _dygraph_to_static_func_(dygraph_func):
-    r"""
+    """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @dygraph_to_static_func only converts imperative dygraph APIs into
     declarative net-building APIs, which means it doesn't return immediate
@@ -137,7 +137,7 @@ dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def copy_decorator_attrs(original_func, decorated_obj):
-    r"""
+    """
     Copies some necessary attributes from original function into decorated function.
 
     Args:
@@ -157,7 +157,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
 
 def declarative(function=None, input_spec=None):
-    r"""
+    """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
     the result as dygraph Tensor(s). Users could use the returned dygraph
@@ -194,7 +194,7 @@ def declarative(function=None, input_spec=None):
     """
 
     def decorated(python_func):
-        r"""
+        """
         Decorates a python function into a StaticFunction object.
         """
         # Step 1. unwrap the function if it is already decorated.
@@ -464,7 +464,7 @@ def _build_load_path_and_config(path, config):
 
 @switch_to_static_graph
 def save(layer, path, input_spec=None, **configs):
-    r"""
+    """
     Saves input Layer as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
 
@@ -733,7 +733,7 @@ def save(layer, path, input_spec=None, **configs):
 
 @dygraph_only
 def load(path, **configs):
-    r"""
+    """
     :api_attr: imperative
 
     Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model`` or 
@@ -993,7 +993,7 @@ def _trace(layer,
 
 
 class TracedLayer(object):
-    r"""
+    """
     :api_attr: imperative
     
     TracedLayer is used to convert a forward dygraph model to a static
@@ -1047,7 +1047,7 @@ class TracedLayer(object):
     @staticmethod
     @dygraph_only
     def trace(layer, inputs):
-        r"""
+        """
         This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
@@ -1099,7 +1099,7 @@ class TracedLayer(object):
         return outs, traced
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):
-        r"""
+        """
         Set the strategies when running static graph model.
 
         Args:
@@ -1188,7 +1188,7 @@ class TracedLayer(object):
 
     @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
-        r"""
+        """
         Save the TracedLayer to a model for inference. The saved
         inference model can be loaded by C++ inference APIs.
 

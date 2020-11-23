@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-r"""
+"""
     high level unit test for distribute fleet.
 """
 
@@ -44,7 +44,7 @@ DIST_UT_PORT = 0
 
 
 class FleetDistHeterRunnerBase(object):
-    r"""
+    """
         run_pserver,run_trainer : after init role, using transpiler split program
         net : implment by child class, the network of model
         do training : exe run program
@@ -113,7 +113,7 @@ class FleetDistHeterRunnerBase(object):
 
 
 class TestFleetHeterBase(unittest.TestCase):
-    r"""
+    """
         start_pserver,start_trainer : add start cmd to test
         run_cluster : using multi process to test distribute program
     """

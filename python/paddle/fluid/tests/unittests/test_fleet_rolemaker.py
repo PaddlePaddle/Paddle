@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Test cloud role maker."""
+"""Test cloud role maker."""
 
 from __future__ import print_function
 import os
@@ -20,18 +20,18 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
-    r"""
+    """
     Test cases for PaddleCloudRoleMaker.
     """
 
     def setUp(self):
-        r"""Set up, set envs."""
+        """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
             "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_tr_rolemaker(self):
-        r"""Test tr rolenamer."""
+        """Test tr rolenamer."""
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
@@ -42,7 +42,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertEqual(ro.worker_num(), 2)
 
     def test_ps_rolemaker(self):
-        r"""Test ps rolemaker."""
+        """Test ps rolemaker."""
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -53,13 +53,13 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertEqual(ro.worker_num(), 2)
 
     def test_traing_role(self):
-        r"""Test training role."""
+        """Test training role."""
         os.environ["TRAINING_ROLE"] = "TEST"
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertRaises(ValueError, ro.generate_role)
 
     def test_pslib_1(self):
-        r"""Test cases for pslib."""
+        """Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
         from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib

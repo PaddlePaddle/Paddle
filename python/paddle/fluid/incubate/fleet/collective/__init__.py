@@ -92,7 +92,7 @@ class Collective(Fleet):
                              target_vars=None,
                              main_program=None,
                              export_for_deployment=True):
-        r"""
+        """
         Prune the given `main_program` to build a new program especially for
         inference, and then save it and all related parameters to given
         `dirname` by the `executor`.
@@ -116,7 +116,7 @@ class Collective(Fleet):
                           dirname,
                           main_program=None,
                           filename=None):
-        r"""
+        """
         This function filters out all variables with `persistable==True` from
         the give `main_program` and then saves these variables to the folder
         `dirname` or file `filename`.
@@ -148,7 +148,7 @@ class Collective(Fleet):
                         main_program=None,
                         local_cache_path=".cache",
                         remain_all_checkpoint=True):
-        r"""
+        """
         This function save persistables and current epoch num to path.
         """
         if main_program == None:
@@ -177,7 +177,7 @@ class Collective(Fleet):
                         main_program=None,
                         local_cache_path=".cache",
                         ignore_empty=True):
-        r"""
+        """
         This function load persistables and current epoch num from path.
         """
 
@@ -197,7 +197,7 @@ fleet = Collective()
 
 
 class DistributedStrategy(fluid.BuildStrategy):
-    r"""
+    """
     Init function of DistributedStrategy
     """
 
@@ -222,7 +222,7 @@ class DistributedStrategy(fluid.BuildStrategy):
 
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
-    r"""
+    """
     Collective Operator Base Class For Distributed Optimizer
     The class is invisible to a user
     """
@@ -247,7 +247,7 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
 
 
 class CollectiveOptimizer(DistributedOptimizer):
-    r"""
+    """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
     A user should pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.
@@ -288,7 +288,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                 assert False, "you can't use %s and %s together" % (name, k)
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
-        r"""
+        """
         Check the conflict conditions.
         """
         if strategy.use_local_sgd:
@@ -322,7 +322,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                 "local_sgd and grad_allreduce can be used under collective mode"
 
     def _transpile(self, startup_program, main_program):
-        r"""
+        """
         Transpile the programs to distributed programs. And add the variables.
         """
         worker_endpoints = fleet.worker_endpoints()
@@ -453,7 +453,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        r"""
+        """
         minimize a program through loss
         Args:
             loss (Variable|Variable List): loss variable or loss variable list to run optimization.

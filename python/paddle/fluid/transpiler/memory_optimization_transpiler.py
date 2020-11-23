@@ -20,7 +20,7 @@ def memory_optimize(input_program,
                     print_log=False,
                     level=0,
                     skip_grads=True):
-    r"""
+    """
 	:api_attr: Static Graph
 
     This API is deprecated since 1.6. Please do not use it. The better
@@ -42,7 +42,7 @@ def memory_optimize(input_program,
 
 
 def release_memory(input_program, skip_opt_set=None):
-    r"""
+    """
 	:api_attr: Static Graph
 
     This API is deprecated since 1.6. Please do not use it. The better

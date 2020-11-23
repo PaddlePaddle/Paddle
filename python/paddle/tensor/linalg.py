@@ -38,7 +38,7 @@ __all__ = [
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
-    r"""
+    """
     Applies matrix multiplication to two tensors. `matmul` follows 
     the complete broadcast rules, 
     and its behavior is consistent with `np.matmul`.
@@ -173,7 +173,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
 
 def norm(x, p='fro', axis=None, keepdim=False, name=None):
-    r"""
+    """
 	:alias_main: paddle.norm
 	:alias: paddle.norm,paddle.tensor.norm,paddle.tensor.linalg.norm
 
@@ -242,7 +242,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     """
 
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
-        r"""
+        """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
@@ -282,7 +282,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                     keepdim=False,
                     asvector=False,
                     name=None):
-        r"""
+        """
         Calculate the p-order vector norm for certain  dimension of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
@@ -453,7 +453,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
 
 def dist(x, y, p=2):
-    r"""
+    """
 
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
@@ -550,7 +550,7 @@ def dist(x, y, p=2):
 
 
 def dot(x, y, name=None):
-    r"""
+    """
     This operator calculates inner product for vectors.
    
     .. note::
@@ -608,7 +608,7 @@ def dot(x, y, name=None):
 
 
 def t(input, name=None):
-    r"""
+    """
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
     the paddle.transpose function which perm dimensions set 0 and 1.
@@ -682,7 +682,7 @@ def t(input, name=None):
 
 
 def cross(x, y, axis=None, name=None):
-    r"""
+    """
     Computes the cross product between two tensors along an axis.
     
     Inputs must have the same shape, and the length of their axes should be equal to 3.
@@ -740,7 +740,7 @@ def cross(x, y, axis=None, name=None):
 
 
 def cholesky(x, upper=False, name=None):
-    r"""
+    """
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
@@ -794,7 +794,7 @@ def cholesky(x, upper=False, name=None):
 
 
 def bmm(x, y, name=None):
-    r"""
+    """
 	:alias_main: paddle.bmm
 	:alias: paddle.bmm,paddle.tensor.bmm,paddle.tensor.linalg.bmm
 
@@ -853,7 +853,7 @@ def bmm(x, y, name=None):
 
 
 def histogram(input, bins=100, min=0, max=0):
-    r"""
+    """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max. 
     If min and max are both zero, the minimum and maximum values of the data are used.
 
@@ -894,7 +894,7 @@ def histogram(input, bins=100, min=0, max=0):
 
 
 def mv(x, vec, name=None):
-    r"""
+    """
     Performs a matrix-vector product of the matrix x and the vector vec.
 
     Args:

@@ -20,7 +20,7 @@ import numpy as np
 
 
 class BackwardNet(object):
-    r"""
+    """
     Abstract Base Class.
     All Net inherited this Class should implement two functions:
         build_model: build net to test the logic of backward
@@ -34,14 +34,14 @@ class BackwardNet(object):
         self.op_path = []
 
     def build_model(self):
-        r"""
+        """
         Build net to test the logic of backward.
         :return: loss
         """
         raise NotImplementedError
 
     def init_data(self):
-        r"""
+        """
         Fake input data to test all programs.
         :return: dict, {'var_name': var_data}
         """
@@ -49,7 +49,7 @@ class BackwardNet(object):
 
 
 class TestBackward(unittest.TestCase):
-    r"""
+    """
     All related TestClass should inherit this class,
     and only implement test_backward function.
     """
@@ -233,7 +233,7 @@ class SimpleNet(BackwardNet):
 
 class TestSimpleNet(TestBackward):
     def test_backward(self):
-        r"""
+        """
         Instantiate each NetClass to test backward.
         """
         self.global_block_idx = 0

@@ -95,7 +95,7 @@ def _get_persistable_vars(program_desc):
 
 
 def _get_persistable_var_names(program_desc):
-    r"""
+    """
     Get all persistable variable names in ProgramDesc.
     """
     var_names = []
@@ -116,7 +116,7 @@ def _get_all_var_names(program_desc):
 
 @switch_to_static_graph
 def _append_loaded_suffix(name):
-    r"""
+    """
     Append loaded suffix to the given variable name
     e.g. x ==> x.load_0, x.load_0 ==> x.load_0.load_0
     """
@@ -172,7 +172,7 @@ def _change_is_test_status(program_desc, is_test):
 
 
 class _ProgramHolder(object):
-    r"""
+    """
     Holds the execution information of a Program.
 
     _ProgramHolder is the execution unit of TranslatedLayer, 
@@ -565,7 +565,7 @@ def _construct_params_and_buffers(model_path,
 
 
 class TranslatedLayer(layers.Layer):
-    r"""
+    """
     TranslatedLayer is a imperative Layer for holding the model loaded by 
     :ref:`api_imperative_jit_load` . It can be used like a general Layer 
     object in eval or train mode.
@@ -838,7 +838,7 @@ class TranslatedLayer(layers.Layer):
         self._is_test = True
 
     def program(self, method_name='forward'):
-        r"""
+        """
         Gets translated program of specified method.
 
         Args:

@@ -141,14 +141,14 @@ class TestDirectory(unittest.TestCase):
         import_file = 'run_old_import_modules.py'
 
         with open(import_file, "w") as wb:
-            cmd_context_count = r"""
+            cmd_context_count = """
 count = 0
 err_module = ""
 """
             wb.write(cmd_context_count)
             for module in old_directory:
                 run_cmd = self.get_import_command(module)
-                cmd_context_loop_template = r"""
+                cmd_context_loop_template = """
 try:
     {run_cmd}
 except:
@@ -159,7 +159,7 @@ else:
                 cmd_context_loop = cmd_context_loop_template.format(
                     run_cmd=run_cmd, module=module)
                 wb.write(cmd_context_loop)
-            cmd_context_print_template = r"""
+            cmd_context_print_template = """
 if count != {len_old_directory}:
     print("Error: Module " + err_module + " should not be imported")
 """

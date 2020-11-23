@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 This module provides a general beam search decoder API for RNN based decoders.
 The purpose of this API is to allow users to highly customize the behavior
 within their RNN decoder(vanilla RNN, LSTM, attention + LSTM, future etc.),
@@ -41,7 +41,7 @@ class _DecoderType:
 
 
 class InitState(object):
-    r"""
+    """
     The initial hidden state object. The state objects holds a variable, and may
     use it to initialize the hidden state cell of RNN. Usually used as input to
     `StateCell` class.
@@ -157,7 +157,7 @@ class _ArrayState(object):
 
 
 class StateCell(object):
-    r"""
+    """
     The state cell class stores the hidden state of the RNN cell. A typical RNN
     cell has one or more hidden states, and one or more step inputs. This class
     allows you to defines the name of hidden states as well as step inputs, and
@@ -267,7 +267,7 @@ class StateCell(object):
         self._switched_decoder = True
 
     def get_state(self, state_name):
-        r"""
+        """
         The getter of state object. Find the state variable by its name.
 
         Args:
@@ -287,7 +287,7 @@ class StateCell(object):
         return self._cur_states[state_name]
 
     def get_input(self, input_name):
-        r"""
+        """
         The getter of input variable. Find the input variable by its name.
 
         Args:
@@ -301,7 +301,7 @@ class StateCell(object):
         return self._inputs[input_name]
 
     def set_state(self, state_name, state_value):
-        r"""
+        """
         The setter of the state variable. Change the variable of the given
         `state_name`.
 
@@ -312,7 +312,7 @@ class StateCell(object):
         self._cur_states[state_name] = state_value
 
     def state_updater(self, updater):
-        r"""
+        """
         Set up the updater to update the hidden state every RNN step. The
         behavior of updater could be customized by users. The updater should be
         a function that takes a `StateCell` object as input and update the
@@ -333,7 +333,7 @@ class StateCell(object):
         return _decorator
 
     def compute_state(self, inputs):
-        r"""
+        """
         Provide the step input of RNN cell, and compute the new hidden state
         with updater and give step input.
 
@@ -358,7 +358,7 @@ class StateCell(object):
         self._state_updater(self)
 
     def update_states(self):
-        r"""
+        """
         Update and record state information after each RNN step.
         """
         if self._in_decoder and not self._switched_decoder:
@@ -372,7 +372,7 @@ class StateCell(object):
                 self._cur_states[state_name])
 
     def out_state(self):
-        r"""
+        """
         Get the output state variable. This must be called after update_states.
 
         Returns:
@@ -382,7 +382,7 @@ class StateCell(object):
 
 
 class TrainingDecoder(object):
-    r"""
+    """
     A decoder that can only be used for training. The decoder could be
     initialized with a `StateCell` object. The computation within the RNN cell
     could be defined with decoder's block.
@@ -421,7 +421,7 @@ class TrainingDecoder(object):
 
     @signature_safe_contextmanager
     def block(self):
-        r"""
+        """
         Define the behavior of the decoder for each RNN time step.
         """
         if self._status != TrainingDecoder.BEFORE_DECODER:
@@ -448,7 +448,7 @@ class TrainingDecoder(object):
         return self._type
 
     def step_input(self, x):
-        r"""
+        """
         Set the input variable as a step input to the RNN cell. For example,
         in machine translation, each time step we read one word from the target
         sentences, then the target sentence is a step input to the RNN cell.
@@ -467,7 +467,7 @@ class TrainingDecoder(object):
         return self._dynamic_rnn.step_input(x)
 
     def static_input(self, x):
-        r"""
+        """
         Set the input variable as a static input of RNN cell. In contrast to
         step input, this variable will be used as a whole within the RNN decode
         loop and will not be scattered into time steps.
@@ -486,7 +486,7 @@ class TrainingDecoder(object):
         return self._dynamic_rnn.static_input(x)
 
     def __call__(self, *args, **kwargs):
-        r"""
+        """
         Get the output of RNN. This API should only be invoked after RNN.block()
 
         Returns:
@@ -498,7 +498,7 @@ class TrainingDecoder(object):
         return self._dynamic_rnn(*args, **kwargs)
 
     def output(self, *outputs):
-        r"""
+        """
         Set the output variable of the RNN cell.
 
         Args:
@@ -523,7 +523,7 @@ class TrainingDecoder(object):
 
 
 class BeamSearchDecoder(object):
-    r"""
+    """
     A beam search decoder that can be used for inference. The decoder should be
     initialized with a `StateCell` object. The decode process can be defined
     within its block.
@@ -617,7 +617,7 @@ class BeamSearchDecoder(object):
 
     @signature_safe_contextmanager
     def block(self):
-        r"""
+        """
         Define the behavior of the decoder for each RNN time step.
         """
         if self._status != BeamSearchDecoder.BEFORE_BEAM_SEARCH_DECODER:
@@ -646,14 +646,14 @@ class BeamSearchDecoder(object):
         return self._type
 
     def early_stop(self):
-        r"""
+        """
         Stop the generation process in advance. Could be used as "break".
         """
         layers.fill_constant(
             shape=[1], value=0, dtype='bool', force_cpu=True, out=self._cond)
 
     def decode(self):
-        r"""
+        """
         Set up the computation within the decoder. Then you could call the
         decoder to get the result of beam search decode. If you want to define
         a more specific decoder, you could override this function.
@@ -731,7 +731,7 @@ class BeamSearchDecoder(object):
                         self.update_array(var_to_update, feed_dict[update_name])
 
     def read_array(self, init, is_ids=False, is_scores=False):
-        r"""
+        """
         Read an array to get the decoded ids and scores generated by previous
         RNN step. At the first step of RNN, the init variable mut be used to
         initialize the array.
@@ -780,7 +780,7 @@ class BeamSearchDecoder(object):
         return read_value
 
     def update_array(self, array, value):
-        r"""
+        """
         Store the value generated in current step in an array for each RNN step.
         This array could be accessed by read_array method.
 
@@ -802,7 +802,7 @@ class BeamSearchDecoder(object):
         self._array_link.append((value, array))
 
     def __call__(self):
-        r"""
+        """
         Run the decode process and return the final decode result.
 
         Returns:
@@ -825,7 +825,7 @@ class BeamSearchDecoder(object):
         return self._state_cell
 
     def _parent_block(self):
-        r"""
+        """
         Getter of parent block.
 
         Returns:

@@ -70,7 +70,7 @@ def tensor_array_pop(array, idx):
 
 
 def convert_list_pop(target, idx=None):
-    r"""
+    """
     Convert list pop.
     """
 
@@ -88,7 +88,7 @@ def convert_list_pop(target, idx=None):
 
 
 class ListTransformer(gast.NodeTransformer):
-    r"""
+    """
     This class transforms python list used in control flow into Static Graph Ast.
     """
 
@@ -197,7 +197,7 @@ class ListTransformer(gast.NodeTransformer):
         return assign_node
 
     def _is_list_append_tensor(self, node):
-        r"""
+        """
         a.append(b): a is list, b is Tensor
         self.x.append(b): self.x is list, b is Tensor
         """

@@ -42,7 +42,7 @@ InferAnalysisConfig = core.AnalysisConfig
 
 
 def global_scope():
-    r"""
+    """
     :api_attr: Static Graph
 
     Get the global/default scope instance. There are a lot of APIs use
@@ -72,7 +72,7 @@ def _switch_scope(scope):
 
 @signature_safe_contextmanager
 def scope_guard(scope):
-    r"""
+    """
     :api_attr: Static Graph
     
     This function switches scope through python `with` statement.
@@ -112,7 +112,7 @@ def scope_guard(scope):
 
 
 def as_numpy(tensor, copy=False):
-    r"""
+    """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
     For higher dimensional sequence data, please use LoDTensor directly.
 
@@ -156,7 +156,7 @@ def as_numpy(tensor, copy=False):
 
 
 def dtype_is_compatible_with(first, second):
-    r"""
+    """
     Returns True if the first dtype can be compatible the second one.
     Currently, we require the two dtype's have to be same.
       
@@ -174,7 +174,7 @@ def dtype_is_compatible_with(first, second):
 
 
 def dimension_is_compatible_with(first, second):
-    r"""
+    """
     Returns True if the two dimensions are compatible.
 
     A dimension is compatible with the other if:
@@ -209,7 +209,7 @@ def dimension_is_compatible_with(first, second):
 
 
 def check_feed_shape_type(var, feed, num_places=1):
-    r"""
+    """
     Returns True if the variable doesn't require feed check or it is compatible
     with the shape and have same dtype as the fed value.
 
@@ -249,7 +249,7 @@ def check_feed_shape_type(var, feed, num_places=1):
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
-    r""" Check whether the block already has feed operators.
+    """ Check whether the block already has feed operators.
 
     Return false if the block does not have any feed operators.
     If some feed operators have been prepended to the block, check that
@@ -287,7 +287,7 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
 
 
 def has_fetch_operators(block, fetch_targets, fetch_holder_name):
-    r""" Check whether the block already has fetch operators.
+    """ Check whether the block already has fetch operators.
 
     Return false if the block does not have any fetch operators.
     If some fetch operators have been appended to the block, check that
@@ -327,7 +327,7 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
 
 
 def _fetch_var(name, scope=None, return_numpy=True):
-    r"""
+    """
     Fetch the value of the variable with the given name from the
     given scope.
 
@@ -399,7 +399,7 @@ def _get_program_cache_key(feed, fetch_list):
 
 
 def _as_lodtensor(data, place, dtype=None):
-    r"""
+    """
         Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
         For higher dimensional sequence data, please use LoDTensor directly.
 
@@ -460,7 +460,7 @@ class FetchHandler(object):
 
     @staticmethod
     def help():
-        print(r"""
+        print("""
 class FetchHandlerExample(FetchHandler):
     def handler(self, res_dict):
         print(res_dict["auc"])
@@ -473,7 +473,7 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class Executor(object):
-    r"""
+    """
     :api_attr: Static Graph
 
     An Executor in Python, supports single/multiple-GPU running,
@@ -669,7 +669,7 @@ class Executor(object):
         return outs
 
     def _split_optimize_ops_in_fetch_list(self, fetch_list):
-        r"""
+        """
         Split optimize_ops from fetch_list, which provided to specify program prunning.
         Args:
             fetch_list(list): The original fetch_list.
@@ -720,7 +720,7 @@ class Executor(object):
                        feed=None,
                        fetch_list=None,
                        optimize_ops=None):
-        r"""
+        """
         Prune operators and variables which are not needed to generate
         :code:`fetch_list` and optimize operators. 
         Prune operators and variables which are needed 
@@ -779,7 +779,7 @@ class Executor(object):
         return program
 
     def _update_feed(self, program, feed):
-        r"""
+        """
         Update the feed dict, remove the feed item which is pruned in program.  
 
         Notes: This is a very low level API. Users should not use this API
@@ -828,7 +828,7 @@ class Executor(object):
     '''
 
     def close(self):
-        r"""
+        """
         Close the executor. This interface is used for distributed training (PServers mode).
         This executor can not be used after calling the interface, because
         this interface releases resources associated with the current Trainer.
@@ -921,7 +921,7 @@ class Executor(object):
             use_program_cache=False,
             return_merged=True,
             use_prune=False):
-        r"""
+        """
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
         operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
@@ -1494,7 +1494,7 @@ class Executor(object):
                            fetch_info=None,
                            print_period=100,
                            fetch_handler=None):
-        r"""
+        """
         Infer from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, infer_from_dataset will
         consume all data samples in dataset. Input scope can be given by users. By default,
@@ -1617,7 +1617,7 @@ class Executor(object):
                            fetch_info=None,
                            print_period=100,
                            fetch_handler=None):
-        r"""
+        """
         Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, train_from_dataset will
         consume all data samples in dataset. Input scope can be given by users. By default,

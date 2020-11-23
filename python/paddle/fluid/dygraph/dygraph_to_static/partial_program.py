@@ -27,7 +27,7 @@ import paddle.compat as cpt
 
 
 class NestSequence(object):
-    r"""
+    """
     A wrapper class that easily to flatten and restore the nest structure of
     given sequence.
     """
@@ -38,13 +38,13 @@ class NestSequence(object):
         self._check_non_variable(need_check)
 
     def tolist(self):
-        r"""
+        """
         Flattens the nested sequences into single list.
         """
         return flatten(self.__raw_input)
 
     def restore(self, value_list):
-        r"""
+        """
         Restores the nested sequence from value list.
         """
         assert len(self.tolist()) == len(value_list)
@@ -59,7 +59,7 @@ class NestSequence(object):
         return var_ids
 
     def _check_non_variable(self, need_check):
-        r"""
+        """
         Raises warning if output of traced function contains non-tensor type values.
         """
         if need_check:
@@ -83,7 +83,7 @@ class NestSequence(object):
 
 
 class LazyInitialized(object):
-    r"""
+    """
     Descriptor to implement lazy initialization of property.
     """
 
@@ -106,7 +106,7 @@ def _change_is_test_status(program, is_test):
 
 
 class PartialProgramLayer(layers.Layer):
-    r"""
+    """
     PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
     and execute them as a static subgraph.
 
@@ -139,14 +139,14 @@ class PartialProgramLayer(layers.Layer):
 
     @LazyInitialized
     def _infer_program(self):
-        r"""
+        """
         Lazy initialized property of infer_program.
         """
         return self._clone_for_test(self._origin_main_program)
 
     @LazyInitialized
     def _train_program(self):
-        r"""
+        """
         Lazy initialized property of train_program.
         """
         train_program = self._append_backward_desc(self._origin_main_program)
@@ -157,7 +157,7 @@ class PartialProgramLayer(layers.Layer):
         return train_program
 
     def _verify_program(self, main_program):
-        r"""
+        """
         Verify that the program parameter is initialized, prune some unused params,
         and remove redundant op callstack.
         """
@@ -183,7 +183,7 @@ class PartialProgramLayer(layers.Layer):
         return program
 
     def _prune_unused_params(self, program):
-        r"""
+        """
         Prune the parameters not used anywhere in the program.
         The `@declarative` may only decorated a sub function which
         contains some unused parameters created in `__init__`.
@@ -225,7 +225,7 @@ class PartialProgramLayer(layers.Layer):
         return self._train_program if self.training else self._infer_program
 
     def _prepare(self, inputs):
-        r"""
+        """
         Prepare inputs, outputs, attrs.
         """
         assert isinstance(inputs, (tuple, list))
@@ -269,7 +269,7 @@ class PartialProgramLayer(layers.Layer):
         return input_vars, out_vars, tmp_scope_vec
 
     def _restore_out(self, out_vars):
-        r"""
+        """
         Restores same nested outputs by only replacing the Variable with VarBase.
         """
 
@@ -293,7 +293,7 @@ class PartialProgramLayer(layers.Layer):
         return False
 
     def _remove_no_value(self, out_vars):
-        r"""
+        """
         Removes invalid value for various-length return statement
         """
         if isinstance(out_vars, core.VarBase):
@@ -336,7 +336,7 @@ class PartialProgramLayer(layers.Layer):
             param._set_grad_type(grad_var.type())
 
     def _remove_op_call_stack(self, main_program):
-        r"""
+        """
         Remove op's python call stack with redundant low-level error messages related to
         transforamtions to avoid confusing users.
         """
@@ -349,7 +349,7 @@ class PartialProgramLayer(layers.Layer):
         return main_program
 
     def _check_params_all_inited(self, main_program):
-        r"""
+        """
         Check all params from main program are already initialized, see details as follows:
             1. all parameters in self._params should be type `framework.ParamBase` which are created in dygraph.
             2. all parameters from transformed program can be found in self._params.
@@ -383,7 +383,7 @@ class PartialProgramLayer(layers.Layer):
 
 
 def valid_vars(vars):
-    r"""
+    """
     Note: run_program_op.InferShape requires `X`/'Out' not be null.
     But it's common in dy2static, fake varBase is created to handle the
     problem.

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 Contrib layers just related to metric.
 """
 
@@ -28,7 +28,7 @@ __all__ = ['ctr_metric_bundle']
 
 
 def ctr_metric_bundle(input, label):
-    r"""
+    """
     ctr related metric layer
 
     This function help compute the ctr related metrics: RMSE, MAE, predicted_ctr, q_value.

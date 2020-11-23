@@ -62,7 +62,7 @@ def check_configs_key(msg, config, field_name):
 
 
 class DistributedJobInfo(object):
-    r"""
+    """
     DistributedJobInfo will serialize all distributed training information
     Just for inner use: 1) debug 2) replicate experiments
     """
@@ -102,7 +102,7 @@ class DistributedStrategy(object):
     __lock_attr = False
 
     def __init__(self):
-        r"""
+        """
         DistributedStrategy is the main configuration entry for distributed training of Paddle.
         All of the distributed training configurations can be configured in DistributedStrategy,
         such as automatic mixed precision (AMP), Layer-wise Adaptive Rate Scaling (LARS), 
@@ -124,7 +124,7 @@ class DistributedStrategy(object):
         object.__setattr__(self, key, value)
 
     def save_to_prototxt(self, output):
-        r"""
+        """
         Serialize current DistributedStrategy to string and save to output file
 
         Examples:
@@ -141,7 +141,7 @@ class DistributedStrategy(object):
             fout.write(str(self.strategy))
 
     def load_from_prototxt(self, pb_file):
-        r"""
+        """
         Load from prototxt file for DistributedStrategy initialization
 
         Examples:
@@ -157,7 +157,7 @@ class DistributedStrategy(object):
 
     @property
     def execution_strategy(self):
-        r"""
+        """
         Configure ExecutionStrategy for DistributedStrategy
 
         Examples:
@@ -189,7 +189,7 @@ class DistributedStrategy(object):
 
     @property
     def build_strategy(self):
-        r"""
+        """
         Configure BuildStrategy for DistributedStrategy
         Note that the properties of BuildStrategy are valid in DistributedStrategy
         only if the property is non-distributed strategy.
@@ -233,7 +233,7 @@ class DistributedStrategy(object):
 
     @property
     def a_sync(self):
-        r"""
+        """
         Indicating whether we are using asynchronous stocastic gradient descent updates
         for training. This property is valid when we are using parameter server training, 
         which is implied by setting approperate RoleMaker
@@ -267,7 +267,7 @@ class DistributedStrategy(object):
 
     @property
     def a_sync_configs(self):
-        r"""
+        """
         Set a_sync update configurations. In general, asynchronous parameter server
         training has serveral configurable settings that can be configured through
         a dict.
@@ -314,7 +314,7 @@ class DistributedStrategy(object):
 
     @property
     def amp(self):
-        r"""
+        """
         Indicating whether we are using automatic mixed precision training
         Default Value: False
 
@@ -338,7 +338,7 @@ class DistributedStrategy(object):
 
     @property
     def amp_configs(self):
-        r"""
+        """
         Set automatic mixed precision training configurations. In general, amp has serveral configurable
         settings that can be configured through a dict.
 
@@ -379,7 +379,7 @@ class DistributedStrategy(object):
 
     @property
     def recompute(self):
-        r"""
+        """
         Indicating whether we are using forward recomputation for memory optimization
         Default value: False
 
@@ -396,7 +396,7 @@ class DistributedStrategy(object):
 
     @property
     def sync_nccl_allreduce(self):
-        r"""
+        """
         Indicating whether we are using synchronized all reduce in each communication thread
         We note that system overhead is usually lower when sync_nccl_allreduce = True
 
@@ -419,7 +419,7 @@ class DistributedStrategy(object):
 
     @property
     def use_hierarchical_allreduce(self):
-        r"""
+        """
         Indicating whether we are using hierarchical allreduce in collective communication
         Hierarchical allreduce often does allreduce within a certain node group and then do
         allreduce among the leaders of each group
@@ -445,7 +445,7 @@ class DistributedStrategy(object):
 
     @property
     def hierarchical_allreduce_inter_nranks(self):
-        r"""
+        """
         Number of ranks for low level node groups in hierarchical allreduce
         Default value: number of GPU cards on each single GPU machine
 
@@ -470,7 +470,7 @@ class DistributedStrategy(object):
 
     @property
     def sync_batch_norm(self):
-        r"""
+        """
         Indicating whether we are using sync_batch_norm to do synchronous batch normalization among all training nodes.
         
         Default value: False
@@ -495,7 +495,7 @@ class DistributedStrategy(object):
 
     @property
     def fuse_all_reduce_ops(self):
-        r"""
+        """
         Indicating whether we are using fuse_all_reduce_ops for gradient fusion during backward phase of training
         Default value: True
 
@@ -518,7 +518,7 @@ class DistributedStrategy(object):
 
     @property
     def fuse_grad_size_in_MB(self):
-        r"""
+        """
         Specifying the size of gradient to fuse in Mega-Bytes
 
         Default value: 32
@@ -556,7 +556,7 @@ class DistributedStrategy(object):
 
     @property
     def nccl_comm_num(self):
-        r"""
+        """
         Specifying the number of NCCL communicator
 
         Default value: 1
@@ -589,7 +589,7 @@ class DistributedStrategy(object):
 
     @property
     def recompute_configs(self):
-        r"""
+        """
         Set recompute configurations. In general, the recompute strategy of current
         implementation should have some manually assign checkpoints
 
@@ -613,7 +613,7 @@ class DistributedStrategy(object):
 
     @property
     def sharding(self):
-        r"""
+        """
         Indicating whether we are using sharding Optimizer for memory
         optimization
 
@@ -637,7 +637,7 @@ class DistributedStrategy(object):
 
     @property
     def sharding_configs(self):
-        r"""
+        """
         Set sharding configurations.
 
         **Note**:
@@ -662,7 +662,7 @@ class DistributedStrategy(object):
 
     @property
     def pipeline(self):
-        r"""
+        """
         Indicating whether we are using pipeline parallelism for distributed training.
         Current implementation mainly focus on single GPU machine pipeline parallelism and
         data parallelism across GPU machine. The pipeline information is indicated through
@@ -688,7 +688,7 @@ class DistributedStrategy(object):
 
     @property
     def pipeline_configs(self):
-        r"""
+        """
         Set pipeline parallelism configurations. In pipeline parallelism,
         different parts of neural networks are running on different GPUS.
         There are Tensor queue buffer between each pair of neighborhood GPUS 
@@ -724,7 +724,7 @@ class DistributedStrategy(object):
 
     @property
     def localsgd(self):
-        r"""
+        """
         Indicating whether we are using Local SGD training. Default Value: False
         For more details, please refer to
         `Don't Use Large Mini-Batches, Use Local SGD <https://arxiv.org/pdf/1808.07217.pdf>`_.
@@ -750,7 +750,7 @@ class DistributedStrategy(object):
 
     @property
     def localsgd_configs(self):
-        r"""
+        """
         Set LocalSGD training configurations. LocalSGD has a configurable
         setting that can be configured through a dict.
 
@@ -779,7 +779,7 @@ class DistributedStrategy(object):
 
     @property
     def adaptive_localsgd(self):
-        r"""
+        """
         Indicating whether we are using Adaptive Local SGD training. Default Value: False
         For more details, please refer to `Adaptive Communication Strategies to Achieve 
         the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
@@ -805,7 +805,7 @@ class DistributedStrategy(object):
 
     @property
     def adaptive_localsgd_configs(self):
-        r"""
+        """
         Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
         setting that can be configured through a dict.
 
@@ -836,7 +836,7 @@ class DistributedStrategy(object):
 
     @property
     def dgc(self):
-        r"""
+        """
         Indicating whether we are using Deep Gradient Compression training. For more details, please refer to
         [Deep Gradient Compression](https://arxiv.org/abs/1712.01887).
 
@@ -862,7 +862,7 @@ class DistributedStrategy(object):
 
     @property
     def dgc_configs(self):
-        r"""
+        """
         Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
         settings that can be configured through a dict.
 
@@ -896,7 +896,7 @@ class DistributedStrategy(object):
 
     @property
     def fp16_allreduce(self):
-        r"""
+        """
         Indicating whether we are using fp16 gradient allreduce training
         Default Value: False
 
@@ -919,7 +919,7 @@ class DistributedStrategy(object):
 
     @property
     def gradient_merge(self):
-        r"""
+        """
         Gradient Merge, also called as Gradient Accumulation,
         is a strategy for large batch training. With this strategy,
         model parameter will not be updated until user-defined steps.
@@ -949,7 +949,7 @@ class DistributedStrategy(object):
 
     @property
     def gradient_merge_configs(self):
-        r"""
+        """
         the key-value configs of distribute_strategy
 
         **Note**:
@@ -976,7 +976,7 @@ class DistributedStrategy(object):
 
     @property
     def lars(self):
-        r"""
+        """
         Set lars configurations. lars is used to deal with the convergence problems when the global 
         batch size is larger than 8k.  For more details, please refer to 
         [Large Batch Training of Convolutional Networks](https://arxiv.org/abs/1708.03888).
@@ -1002,7 +1002,7 @@ class DistributedStrategy(object):
 
     @property
     def lars_configs(self):
-        r"""
+        """
         Set Lars training configurations.
 
         **Notes**:
@@ -1036,7 +1036,7 @@ class DistributedStrategy(object):
 
     @property
     def lamb(self):
-        r"""
+        """
         Set lamb configurations. lamb is used to deal with the convergence problems for large 
         batch size training, specially for attention-related model like BERT. For more details, 
         please refer to 
@@ -1064,7 +1064,7 @@ class DistributedStrategy(object):
 
     @property
     def lamb_configs(self):
-        r"""
+        """
         Set Lars training configurations.
 
         **Notes**:
@@ -1093,7 +1093,7 @@ class DistributedStrategy(object):
 
     @property
     def elastic(self):
-        r"""
+        """
         Indicating whether we want to do current distributed training on clusters with elastic resources.
         Currently, this is configuration is not valid.
         """
@@ -1109,7 +1109,7 @@ class DistributedStrategy(object):
 
     @property
     def auto(self):
-        r"""
+        """
         Indicating whether we are using auto-parallel configuration
         This feature is currently an experimental feature. Currently, 
         auto-parallelism can be used only when a user does not set any other
@@ -1143,7 +1143,7 @@ class DistributedStrategy(object):
 
     @property
     def cudnn_exhaustive_search(self):
-        r"""
+        """
         Indicating whether to use exhaustive search method to choose convolution algorithms.
         Exhaustive search attempts all cuDNN algorithms to choose the fastest algorithm.
         This method is time-consuming, the choosed algorithm will be cached for the given layer specifications.
@@ -1174,7 +1174,7 @@ class DistributedStrategy(object):
 
     @property
     def conv_workspace_size_limit(self):
-        r"""
+        """
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
         The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
         Usually, large workspace size may lead to choose faster algorithms,
@@ -1206,7 +1206,7 @@ class DistributedStrategy(object):
 
     @property
     def cudnn_batchnorm_spatial_persistent(self):
-        r"""
+        """
         Indicates whether to use the mode CUDNN_BATCHNORM_SPATIAL_PERSISTENT function in batchnorm.
         This is only useful in cudnn.
         Default Value: True

@@ -106,7 +106,7 @@ class LayerHelper(LayerHelperBase):
 
     #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
-        r"""
+        """
         Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
 

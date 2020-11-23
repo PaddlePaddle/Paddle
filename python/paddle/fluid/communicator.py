@@ -27,7 +27,7 @@
 # limitations under the License.
 
 from .executor import global_scope
-r"""
+"""
 Communicator is used for async distribute training in distribute_transpiler mode.
 It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
@@ -40,7 +40,7 @@ __all__ = ['Communicator', 'LargeScaleKV']
 
 class Communicator(object):
     def __init__(self, mode, kwargs=None, envs=None):
-        r"""
+        """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 
@@ -94,7 +94,7 @@ class Communicator(object):
                                                    global_scope(), self.envs)
 
     def start(self):
-        r"""
+        """
         Start communicator. Should call before training process.
 
         Returns:
@@ -113,7 +113,7 @@ class Communicator(object):
         self.communicator_.start()
 
     def stop(self):
-        r"""
+        """
         Stop communicator. Should call after training process.
 
         Returns:
@@ -132,7 +132,7 @@ class Communicator(object):
         self.communicator_.stop()
 
     def is_running(self):
-        r"""
+        """
         Get communicator is running or stop.
 
         Returns:

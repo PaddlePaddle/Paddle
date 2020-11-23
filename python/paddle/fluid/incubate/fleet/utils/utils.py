@@ -55,14 +55,14 @@ def load_program(model_filename, is_text=False):
 
 
 def load_program_binary(model_filename):
-    r"""load program from binary string file"""
+    """load program from binary string file"""
     with open(model_filename, "rb") as f:
         program_desc_str = f.read()
     return Program.parse_from_string(program_desc_str)
 
 
 def load_program_text(model_filename):
-    r"""load program from human-readable text file"""
+    """load program from human-readable text file"""
     with open(model_filename, "r") as f:
         program_desc_text = f.read()
 

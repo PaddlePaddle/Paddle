@@ -21,7 +21,7 @@ __all__ = ["SGD"]
 
 
 class SGD(Optimizer):
-    r"""
+    """
     Optimizer of the stochastic gradient descent algorithm.
 
     .. math::

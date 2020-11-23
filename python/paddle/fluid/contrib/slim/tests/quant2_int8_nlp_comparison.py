@@ -91,7 +91,7 @@ def parse_args():
 
 
 class QuantInt8NLPComparisonTest(unittest.TestCase):
-    r"""
+    """
     Test for accuracy comparison of Quant FP32 and INT8 NLP inference.
     """
 

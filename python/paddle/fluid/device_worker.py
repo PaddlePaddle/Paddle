@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Defination of device workers."""
+"""Defination of device workers."""
 
 from __future__ import print_function
 
@@ -21,19 +21,19 @@ __all__ = [
 
 
 class DeviceWorker(object):
-    r"""
+    """
     DeviceWorker is an abstract class, which generates worker desc.
     This class is an inner class that we do computation logics within
     the implementation. For example, execution of a program or a graph.
     """
 
     def __init__(self):
-        r"""Init."""
+        """Init."""
         self._program = None
         self._infer = None
 
     def _set_infer(self, infer=False):
-        r"""
+        """
         set inference flag for current device worker
 
         Args:
@@ -42,7 +42,7 @@ class DeviceWorker(object):
         self._infer = infer
 
     def _set_fleet_desc(self, fleet_desc):
-        r"""
+        """
         Set fleet desc.
 
         Args:
@@ -51,7 +51,7 @@ class DeviceWorker(object):
         self._fleet_desc = fleet_desc
 
     def _set_program(self, program):
-        r"""
+        """
         Set program.
 
         Args:
@@ -60,7 +60,7 @@ class DeviceWorker(object):
         self._program = program
 
     def _gen_worker_desc(self, trainer_desc):
-        r"""
+        """
         Generator worker desc.
 
         Args:
@@ -72,17 +72,17 @@ class DeviceWorker(object):
 
 
 class Hogwild(DeviceWorker):
-    r"""
+    """
     Hogwild is a kind of SGD algorithm.
 
     """
 
     def __init__(self):
-        r"""Init."""
+        """Init."""
         super(Hogwild, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
-        r"""
+        """
         Generator worker desc, which device worker is HogwildWorker.
 
         Args:
@@ -180,19 +180,19 @@ class Hogwild(DeviceWorker):
 
 
 class DownpourSGD(DeviceWorker):
-    r"""
+    """
     DownpourSGD is a kind of distributed SGD algorithm.
     """
 
     def __init__(self):
-        r"""
+        """
         Init.
         initialize downpourSGD device worker
         """
         super(DownpourSGD, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
-        r"""
+        """
         Generator worker desc, which device worker is DownpourWorker.
 
         Args:
@@ -288,19 +288,19 @@ class DownpourSGD(DeviceWorker):
 
 
 class DownpourSGDOPT(DeviceWorker):
-    r"""
+    """
     DownpourSGDOPT is a kind of distributed SGD algorithm.
     """
 
     def __init__(self):
-        r"""
+        """
         Init.
         initialize downpourSGDOPT device worker
         """
         super(DownpourSGDOPT, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
-        r"""
+        """
         Generator worker desc, which device worker is DownpourWorker.
 
         Args:
@@ -394,14 +394,14 @@ class DownpourSGDOPT(DeviceWorker):
 
 
 class Section(DeviceWorker):
-    r"""SectionWorker."""
+    """SectionWorker."""
 
     def __init__(self):
-        r"""Init."""
+        """Init."""
         super(Section, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
-        r"""
+        """
         Generator worker desc, which device worker is SectionWorker.
         Args:
             trainer_desc(TrainerDesc): a TrainerDesc object

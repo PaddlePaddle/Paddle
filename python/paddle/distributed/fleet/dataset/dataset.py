@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""This is definition of dataset class, which is high performance IO."""
+"""This is definition of dataset class, which is high performance IO."""
 
 import paddle
 from paddle.fluid.proto import data_feed_pb2
@@ -20,10 +20,10 @@ import paddle.fluid.core as core
 
 
 class DatasetBase(object):
-    r""" Base dataset class. """
+    """ Base dataset class. """
 
     def __init__(self):
-        r""" Init. """
+        """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -41,7 +41,7 @@ class DatasetBase(object):
              fs_name="",
              fs_ugi="",
              download_cmd="cat"):
-        r"""
+        """
         should be called only once in user's python scripts to initialize setings of dataset instance. 
         Normally, it is called by InMemoryDataset or QueueDataset.
 
@@ -66,7 +66,7 @@ class DatasetBase(object):
         self._set_download_cmd(download_cmd)
 
     def _set_pipe_command(self, pipe_command):
-        r"""
+        """
         Set pipe command of current dataset
         A pipe command is a UNIX pipeline command that can be used only
 
@@ -84,7 +84,7 @@ class DatasetBase(object):
         self.proto_desc.pipe_command = pipe_command
 
     def _set_batch_size(self, batch_size):
-        r"""
+        """
         Set batch size. Will be effective during training
 
         Examples:
@@ -101,7 +101,7 @@ class DatasetBase(object):
         self.proto_desc.batch_size = batch_size
 
     def _set_thread(self, thread_num):
-        r"""
+        """
         Set thread num, it is the num of readers.
 
         Examples:
@@ -118,7 +118,7 @@ class DatasetBase(object):
         self.thread_num = thread_num
 
     def set_filelist(self, filelist):
-        r"""
+        """
         Set file list in current worker. The filelist is indicated by a list of file names (string).
 
         Examples:
@@ -138,7 +138,7 @@ class DatasetBase(object):
         self.proto_desc.input_type = input_type
 
     def _set_use_var(self, var_list):
-        r"""
+        """
         Set Variables which you will use.
 
         Examples:
@@ -169,7 +169,7 @@ class DatasetBase(object):
                 )
 
     def _set_hdfs_config(self, fs_name, fs_ugi):
-        r"""
+        """
         Set hdfs config: fs name ad ugi
 
         Examples:
@@ -186,7 +186,7 @@ class DatasetBase(object):
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
     def _set_download_cmd(self, download_cmd):
-        r"""
+        """
         Set customized download cmd: download_cmd
 
         Examples:
@@ -202,7 +202,7 @@ class DatasetBase(object):
         self.dataset.set_download_cmd(download_cmd)
 
     def _prepare_to_run(self):
-        r"""
+        """
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
@@ -216,7 +216,7 @@ class DatasetBase(object):
         self.dataset.destroy_readers()
 
     def _desc(self):
-        r"""
+        """
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
@@ -239,7 +239,7 @@ class DatasetBase(object):
 
 
 class InMemoryDataset(DatasetBase):
-    r"""
+    """
     :api_attr: Static Graph
 
     InMemoryDataset, it will load data into memory
@@ -251,7 +251,7 @@ class InMemoryDataset(DatasetBase):
     """
 
     def __init__(self):
-        r""" Init. """
+        """ Init. """
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
@@ -266,7 +266,7 @@ class InMemoryDataset(DatasetBase):
         self.fleet_send_sleep_seconds = None
 
     def _init_distributed_settings(self, **kwargs):
-        r"""
+        """
         :api_attr: Static Graph
 
         should be called only once in user's python scripts to initialize distributed-related setings of dataset instance
@@ -326,7 +326,7 @@ class InMemoryDataset(DatasetBase):
             self._set_fea_eval(candidate_size, True)
 
     def update_settings(self, **kwargs):
-        r"""
+        """
         :api_attr: Static Graph
 
         should be called in user's python scripts to update setings of dataset instance
@@ -405,7 +405,7 @@ class InMemoryDataset(DatasetBase):
                 self._set_fea_eval(candidate_size, True)
 
     def init(self, **kwargs):
-        r"""
+        """
         :api_attr: Static Graph
 
         should be called only once in user's python scripts to initialize setings of dataset instance
@@ -499,13 +499,13 @@ class InMemoryDataset(DatasetBase):
             self._set_queue_num(queue_num)
 
     def _set_feed_type(self, data_feed_type):
-        r"""
+        """
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
 
     def _prepare_to_run(self):
-        r"""
+        """
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
@@ -535,7 +535,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def _set_queue_num(self, queue_num):
-        r"""
+        """
         Set Dataset output queue num, training threads get data from queues
 
         Args:
@@ -553,7 +553,7 @@ class InMemoryDataset(DatasetBase):
         self.queue_num = queue_num
 
     def _set_parse_ins_id(self, parse_ins_id):
-        r"""
+        """
         Set if Dataset need to parse insid
 
         Args:
@@ -570,7 +570,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_ins_id = parse_ins_id
 
     def _set_parse_content(self, parse_content):
-        r"""
+        """
         Set if Dataset need to parse content
 
         Args:
@@ -587,7 +587,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_content = parse_content
 
     def _set_fleet_send_batch_size(self, fleet_send_batch_size=1024):
-        r"""
+        """
         Set fleet send batch size, default is 1024
 
         Args:
@@ -604,7 +604,7 @@ class InMemoryDataset(DatasetBase):
         self.fleet_send_batch_size = fleet_send_batch_size
 
     def _set_fleet_send_sleep_seconds(self, fleet_send_sleep_seconds=0):
-        r"""
+        """
         Set fleet send sleep time, default is 0
 
         Args:
@@ -621,7 +621,7 @@ class InMemoryDataset(DatasetBase):
         self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
 
     def _set_merge_by_lineid(self, merge_size=2):
-        r"""
+        """
         Set merge by line id, instances of same line id will be merged after
         shuffle, you should parse line id in data generator.
 
@@ -651,7 +651,7 @@ class InMemoryDataset(DatasetBase):
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
     def load_into_memory(self):
-        r"""
+        """
         :api_attr: Static Graph
         
         Load data into memory
@@ -669,7 +669,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.load_into_memory()
 
     def preload_into_memory(self, thread_num=None):
-        r"""
+        """
         :api_attr: Static Graph
 
         Load data into memory in async mode
@@ -695,7 +695,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.preload_into_memory()
 
     def wait_preload_done(self):
-        r"""
+        """
         :api_attr: Static Graph
 
         Wait preload_into_memory done
@@ -714,7 +714,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.destroy_preload_readers()
 
     def local_shuffle(self):
-        r"""
+        """
         :api_attr: Static Graph
 
         Local shuffle
@@ -732,7 +732,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.local_shuffle()
 
     def global_shuffle(self, fleet=None, thread_num=12):
-        r"""
+        """
         :api_attr: Static Graph
 
         Global shuffle.
@@ -779,7 +779,7 @@ class InMemoryDataset(DatasetBase):
             fleet._role_maker.barrier_worker()
 
     def release_memory(self):
-        r"""
+        """
         :api_attr: Static Graph
         
         Release InMemoryDataset memory data, when data will not be used again.
@@ -805,7 +805,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.release_memory()
 
     def get_memory_data_size(self, fleet=None):
-        r"""
+        """
         :api_attr: Static Graph
 
         Get memory data size, user can call this function to know the num
@@ -843,7 +843,7 @@ class InMemoryDataset(DatasetBase):
         return local_data_size[0]
 
     def get_shuffle_data_size(self, fleet=None):
-        r"""
+        """
         :api_attr: Static Graph
 
         Get shuffle data size, user can call this function to know the num
@@ -883,7 +883,7 @@ class InMemoryDataset(DatasetBase):
         return local_data_size[0]
 
     def _set_fea_eval(self, record_candidate_size, fea_eval=True):
-        r"""
+        """
         set fea eval mode for slots shuffle to debug the importance level of
         slots(features), fea_eval need to be set True for slots shuffle.
         
@@ -906,7 +906,7 @@ class InMemoryDataset(DatasetBase):
         self.fea_eval = fea_eval
 
     def slots_shuffle(self, slots):
-        r"""
+        """
         Slots Shuffle 
         Slots Shuffle is a shuffle method in slots level, which is usually used 
         in sparse feature with large scale of instances. To compare the metric, i.e.
@@ -929,7 +929,7 @@ class InMemoryDataset(DatasetBase):
 
 
 class QueueDataset(DatasetBase):
-    r"""
+    """
     :api_attr: Static Graph
 
     QueueDataset, it will process data streamly.
@@ -943,14 +943,14 @@ class QueueDataset(DatasetBase):
     """
 
     def __init__(self):
-        r"""
+        """
         Initialize QueueDataset
         """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
     def init(self, **kwargs):
-        r"""
+        """
         :api_attr: Static Graph
 
         should be called only once in user's python scripts to initialize setings of dataset instance
@@ -958,7 +958,7 @@ class QueueDataset(DatasetBase):
         super(QueueDataset, self).init(**kwargs)
 
     def _prepare_to_run(self):
-        r"""
+        """
         Set data_feed_desc/thread num/filelist before run,
         user no need to call this function.
         """
@@ -973,7 +973,7 @@ class QueueDataset(DatasetBase):
 
 
 class FileInstantDataset(DatasetBase):
-    r"""
+    """
     FileInstantDataset, it will process data streamly.
 
     Examples:
@@ -984,21 +984,21 @@ class FileInstantDataset(DatasetBase):
     """
 
     def __init__(self):
-        r"""
+        """
         Initialize FileInstantDataset
         """
         super(FileInstantDataset, self).__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def init(self, **kwargs):
-        r"""
+        """
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
         super(FileInstantDataset, self).init(**kwargs)
 
 
 class BoxPSDataset(InMemoryDataset):
-    r"""
+    """
     BoxPSDataset: derived from InMemoryDataset.
 
     Examples:
@@ -1009,7 +1009,7 @@ class BoxPSDataset(InMemoryDataset):
     """
 
     def __init__(self):
-        r"""
+        """
         Initialize BoxPSDataset
         """
         super(BoxPSDataset, self).__init__()
@@ -1017,7 +1017,7 @@ class BoxPSDataset(InMemoryDataset):
         self.proto_desc.name = "PaddleBoxDataFeed"
 
     def init(self, **kwargs):
-        r"""
+        """
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
         super(BoxPSDataset, self).init(**kwargs)
@@ -1034,7 +1034,7 @@ class BoxPSDataset(InMemoryDataset):
         self._set_enable_pv_merge(enable_pv_merge)
 
     def _set_rank_offset(self, rank_offset):
-        r"""
+        """
         Set rank_offset for merge_pv. It set the message of Pv.
 
         Examples:
@@ -1051,7 +1051,7 @@ class BoxPSDataset(InMemoryDataset):
         self.proto_desc.rank_offset = rank_offset
 
     def _set_pv_batch_size(self, pv_batch_size):
-        r"""
+        """
         Set pv batch size. It will be effective during enable_pv_merge
 
         Examples:
@@ -1067,7 +1067,7 @@ class BoxPSDataset(InMemoryDataset):
         self.proto_desc.pv_batch_size = pv_batch_size
 
     def _set_parse_logkey(self, parse_logkey):
-        r"""
+        """
         Set if Dataset need to parse logkey
 
         Args:
@@ -1084,7 +1084,7 @@ class BoxPSDataset(InMemoryDataset):
         self.parse_logkey = parse_logkey
 
     def _set_merge_by_sid(self, merge_by_sid):
-        r"""
+        """
         Set if Dataset need to merge sid. If not, one ins means one Pv.
 
         Args:
@@ -1101,7 +1101,7 @@ class BoxPSDataset(InMemoryDataset):
         self.merge_by_sid = merge_by_sid
 
     def _set_enable_pv_merge(self, enable_pv_merge):
-        r"""
+        """
         Set if Dataset need to merge pv.
 
         Args:
@@ -1118,7 +1118,7 @@ class BoxPSDataset(InMemoryDataset):
         self.enable_pv_merge = enable_pv_merge
 
     def set_date(self, date):
-        r"""
+        """
         Workaround for date
         """
         year = int(date[:4])
@@ -1127,7 +1127,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.set_date(year, month, day)
 
     def begin_pass(self):
-        r"""
+        """
         Begin Pass
         Notify BoxPS to load sparse parameters of next pass to GPU Memory 
 
@@ -1141,7 +1141,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.begin_pass()
 
     def end_pass(self, need_save_delta):
-        r"""
+        """
         End Pass
         Notify BoxPS that current pass ended 
         Examples:
@@ -1154,7 +1154,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.end_pass(need_save_delta)
 
     def wait_preload_done(self):
-        r"""
+        """
         Wait async preload done
         Wait Until Feed Pass Done
         Examples:
@@ -1170,7 +1170,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.wait_feed_pass_done()
 
     def load_into_memory(self):
-        r"""
+        """
         Load next pass into memory and notify boxps to fetch its emb from SSD
         Examples:
             .. code-block:: python
@@ -1185,7 +1185,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.load_into_memory()
 
     def preload_into_memory(self):
-        r"""
+        """
         Begin async preload next pass while current pass may be training
         Examples:
             .. code-block:: python
@@ -1208,7 +1208,7 @@ class BoxPSDataset(InMemoryDataset):
         pass
 
     def slots_shuffle(self, slots):
-        r"""
+        """
         Slots Shuffle 
         Slots Shuffle is a shuffle method in slots level, which is usually used 
         in sparse feature with large scale of instances. To compare the metric, i.e.
@@ -1229,7 +1229,7 @@ class BoxPSDataset(InMemoryDataset):
         self.boxps.slots_shuffle(slots_set)
 
     def set_current_phase(self, current_phase):
-        r"""
+        """
         Set current phase in train. It is useful for untest.
         current_phase : 1 for join, 0 for update.
 
@@ -1247,7 +1247,7 @@ class BoxPSDataset(InMemoryDataset):
         self.dataset.set_current_phase(current_phase)
 
     def get_pv_data_size(self):
-        r"""
+        """
         Get memory data size of Pv, user can call this function to know the pv num
         of ins in all workers after load into memory.
 
@@ -1271,7 +1271,7 @@ class BoxPSDataset(InMemoryDataset):
         return self.dataset.get_pv_data_size()
 
     def preprocess_instance(self):
-        r"""
+        """
         Merge pv instance and convey it from input_channel to input_pv_channel. 
         It will be effective when enable_pv_merge_ is True.
 
@@ -1289,7 +1289,7 @@ class BoxPSDataset(InMemoryDataset):
         self.dataset.preprocess_instance()
 
     def postprocess_instance(self):
-        r"""
+        """
         Divide pv instance and convey it to input_channel.
 
         Examples:

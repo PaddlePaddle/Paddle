@@ -31,7 +31,7 @@ np.random.seed(123)
 
 class TestCondInputOutput(unittest.TestCase):
     def test_return_single_var(self):
-        r"""
+        """
         pseudocode:
 
         if 0.23 < 0.1:
@@ -63,7 +63,7 @@ class TestCondInputOutput(unittest.TestCase):
             np.allclose(np.asarray(ret), np.full((3, 2), -1, np.int32)))
 
     def test_return_var_tuple(self):
-        r"""
+        """
         pseudocode:
 
         if True:
@@ -99,7 +99,7 @@ class TestCondInputOutput(unittest.TestCase):
             np.allclose(np.asarray(ret[1]), np.full((2, 3), True, np.bool)))
 
     def test_pass_and_modify_var(self):
-        r"""
+        """
         pseudocode:
         for i in range(5):
             a = 7
@@ -138,7 +138,7 @@ class TestCondInputOutput(unittest.TestCase):
                     np.asarray(ret), np.full((3, 2, 1), expected_a, np.int32)))
 
     def test_return_none(self):
-        r"""
+        """
         pseudocode: test doing nothing in branches
         for i in range(5):
             if i % 2 == 0:
@@ -172,7 +172,7 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertIsNone(out3)
 
     def test_wrong_structure_exception(self):
-        r"""
+        """
         test returning different number of tensors cannot merge into output
         """
 
@@ -245,7 +245,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 class TestCondNestedControlFlow(unittest.TestCase):
     def test_cond_inside_cond(self):
-        r"""
+        """
         pseudocode:
         for i in range(1, 10):
             a = 2 * i
@@ -326,7 +326,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
 
 class TestCondBackward(unittest.TestCase):
     def backward_value_helper(self, cond_func, use_cuda, use_parallel_exe):
-        r"""
+        """
         Helper function that compares calculated backward value is close to dy/dx
         """
         main_program = Program()
@@ -412,7 +412,7 @@ class TestCondBackward(unittest.TestCase):
                     img_grad, numerical_grad, atol=0.05, rtol=0.05).all())
 
     def add_optimizer_helper(self, cond_func, use_cuda, use_parallel_exe):
-        r"""
+        """
         Test that program is runnable when add optimizer
         """
         main_program = Program()

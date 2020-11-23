@@ -47,7 +47,7 @@ class TestGatherOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (10, 20)
@@ -81,7 +81,7 @@ class TestXPUGatherOp(OpTest):
             self.check_grad_with_place(place, ['X'], 'Out')
 
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (10, 20)
@@ -92,7 +92,7 @@ class TestXPUGatherOp(OpTest):
 
 class TestCase1(TestXPUGatherOp):
     def config(self):
-        r"""
+        """
         For one dimension input
         """
         self.x_shape = (100)
@@ -103,7 +103,7 @@ class TestCase1(TestXPUGatherOp):
 
 class TestCase2(TestXPUGatherOp):
     def config(self):
-        r"""
+        """
         For int64_t index type
         """
         self.x_shape = (100)
@@ -114,7 +114,7 @@ class TestCase2(TestXPUGatherOp):
 
 class TestCase3(TestXPUGatherOp):
     def config(self):
-        r"""
+        """
         For other input type
         """
         self.x_shape = (10, 20)

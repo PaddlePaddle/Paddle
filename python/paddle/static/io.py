@@ -53,7 +53,7 @@ def _check_args(caller, args, supported_args=[], deprecated_args=[]):
 
 @static_only
 def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
-    r"""
+    """
     :api_attr: Static Graph
 
     Save current model and its parameters to given path. i.e.
@@ -200,7 +200,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
 
 @static_only
 def load_inference_model(path_prefix, executor, **configs):
-    r"""
+    """
     :api_attr: Static Graph
 
     Load inference model from a given path. By this API, you can get the model

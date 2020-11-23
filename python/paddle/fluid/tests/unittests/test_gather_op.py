@@ -47,7 +47,7 @@ class TestGatherOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (10, 20)
@@ -58,7 +58,7 @@ class TestGatherOp(OpTest):
 
 class TestCase1(TestGatherOp):
     def config(self):
-        r"""
+        """
         For one dimension input
         """
         self.x_shape = (100)
@@ -69,7 +69,7 @@ class TestCase1(TestGatherOp):
 
 class TestCase2(TestGatherOp):
     def config(self):
-        r"""
+        """
         For int64_t index type
         """
         self.x_shape = (100)
@@ -80,7 +80,7 @@ class TestCase2(TestGatherOp):
 
 class TestCase3(TestGatherOp):
     def config(self):
-        r"""
+        """
         For other input type
         """
         self.x_shape = (10, 20)
@@ -134,7 +134,7 @@ class TestGatherOp1(OpTest):
         self.check_grad(['X'], 'Out')
 
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (3, 88, 3)
@@ -147,7 +147,7 @@ class TestGatherOp1(OpTest):
 
 class TestGatherOp2(TestGatherOp1):
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (10, 88, 10)
@@ -160,7 +160,7 @@ class TestGatherOp2(TestGatherOp1):
 
 class TestGatherOp3(TestGatherOp1):
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (10, 88, 10)
@@ -173,7 +173,7 @@ class TestGatherOp3(TestGatherOp1):
 
 class TestGatherOp4(TestGatherOp1):
     def config(self):
-        r"""
+        """
         For multi-dimension input
         """
         self.x_shape = (3, 100, 10)

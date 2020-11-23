@@ -243,7 +243,7 @@ def _find_loss_op_(loss):
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
-    r"""
+    """
     Traverse all ops in op_descs[begin_idx : end_idx],
     if any op has inputs/outputs named "old_name", rename it as 'new_name'
     """
@@ -267,7 +267,7 @@ def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
 
 
 def _create_op_desc_(op_type, inputs, outputs, attrs):
-    r"""
+    """
     Create a C++ OpDesc object with specified inputs, outputs and attributes.
     """
     op_desc = core.OpDesc()
@@ -318,7 +318,7 @@ def _create_loss_op_desc_(loss):
 
 
 def _infer_var_data_type_shape_(grad_var_name, block):
-    r"""
+    """
     Infer the data type and shape of given grad variable
     """
     grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
@@ -332,7 +332,7 @@ def _infer_var_data_type_shape_(grad_var_name, block):
 
 
 def _all_in_set_(cands, s):
-    r"""
+    """
     Test if all elements of 'cands' are in set 's'
     """
     if len(cands) == 0:
@@ -344,7 +344,7 @@ def _all_in_set_(cands, s):
 
 
 def _some_in_set_(cands, s):
-    r"""
+    """
     Test if some elements of 'cands' are in set 's'
     """
     if len(cands) == 0:
@@ -358,7 +358,7 @@ def _some_in_set_(cands, s):
 
 
 def _strip_grad_suffix_(name):
-    r"""
+    """
     Strip the grad suffix from the given variable name
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
@@ -369,7 +369,7 @@ def _strip_grad_suffix_(name):
 
 
 def _append_grad_suffix_(name):
-    r"""
+    """
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
@@ -378,7 +378,7 @@ def _append_grad_suffix_(name):
 
 def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
                                      op_idx):
-    r"""
+    """
     Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
     if op_idx not in pending_sum_ops.keys():
@@ -391,7 +391,7 @@ def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
 
 def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
                                       op_idx):
-    r"""
+    """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
     if op_idx not in pending_sum_ops.keys():
@@ -412,7 +412,7 @@ def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
 
 
 def _addup_repetitive_outputs_(op_descs, block_idx):
-    r"""
+    """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
     In these cases, the variable should be the accumulation of all the outputs.
@@ -512,7 +512,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
 
 
 def _remove_no_grad_branch_(op_descs, no_grad_set):
-    r"""
+    """
     Remove unnecessary grad ops
     A grad op can be removed in two cases:
         1. all outputs of the grad op are in 'no_grad_set'
@@ -554,7 +554,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
 
 
 def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
-    r"""
+    """
     Pruning Program with Structural Analysis Method of Computational Graph.
     The nodes of the computational graph composed of backward OPS should be
     interconnected. If there are unconnected sub-graphs in the computational graph,
@@ -688,7 +688,7 @@ def serialize_op_decs(op_desc):
 
 def _append_backward_ops_with_checkpoints_(
         block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
-    r"""
+    """
     Create grad ops with forward ops, and insert them into given block
 
     Args:
@@ -862,7 +862,7 @@ def _get_sub_block_path(sub_block,
                         no_grad_set,
                         op_path_dict,
                         sub_block_target_names=None):
-    r"""
+    """
     Get output vars in subblock which will be assigned to parent block.
     It is used to find the grad path in subblock.
 
@@ -927,7 +927,7 @@ def _append_backward_ops_(block,
                           callbacks=None,
                           input_grad_names_set=None,
                           op_path_dict=None):
-    r"""
+    """
     Create all grad ops, and insert them into given block
 
     Args:
@@ -1101,7 +1101,7 @@ def _find_parent_op_(sub_block):
 
 
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
-    r"""
+    """
     Create new variables required by backward pass.
 
     Args:
@@ -1277,7 +1277,7 @@ def append_backward(loss,
                     no_grad_set=None,
                     callbacks=None,
                     checkpoints=None):
-    r"""
+    """
     :api_attr: Static Graph
 
     This function appends backward part to main_program.
@@ -1587,7 +1587,7 @@ def _is_ancestor_block(ancestor_block, block):
 
 
 def _get_output_names(cur_block, targets):
-    r"""
+    """
     In `cur_block`, get output names those linked to targets.
     NOTE:
     1. `targets` can be in `cur_block`;
@@ -1625,7 +1625,7 @@ def _get_output_names(cur_block, targets):
 
 
 def _find_no_grad_vars(block, op_path, targets, no_grad_set):
-    r"""
+    """
     Find the vars which is not used in the program, and
     those vars belong to no_grad_var.
     """
@@ -1650,7 +1650,7 @@ def _find_op_path_(block,
                    no_grad_set,
                    op_path_dict=None,
                    is_while=False):
-    r"""
+    """
     It is used to find the grad path in `block`.
 
     Args:
@@ -1726,7 +1726,7 @@ def _find_op_path_(block,
 
 
 def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
-    r"""
+    """
     Backpropagate the gradients of targets to inputs.
 
     Args:
@@ -1862,7 +1862,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
 
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
-    r"""
+    """
     :api_attr: Static Graph
     
     Backpropagate the gradients of targets to inputs.

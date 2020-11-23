@@ -24,7 +24,7 @@ __all__ = ['one_hot', 'embedding']
 
 @deprecated(since='2.0.0', update_to='paddle.nn.functional.one_hot')
 def one_hot(input, depth, allow_out_of_range=False):
-    r"""
+    """
     :alias_main: paddle.nn.functional.one_hot
 	:alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
 	:old_api: paddle.fluid.one_hot
@@ -137,7 +137,7 @@ def embedding(input,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
-    r"""
+    """
     :api_attr: Static Graph
 
     The operator is used to lookup embeddings vector of ids provided by :attr:`input` . 

@@ -28,7 +28,7 @@ class DecoupledWeightDecay(object):
         super(DecoupledWeightDecay, self).__init__(**kwargs)
 
     def _scale_parameters(self, params_and_grads):
-        r"""
+        """
         Adds weight decay ops.
             scaled_parameter = parameter * coeff
 
@@ -100,7 +100,7 @@ class DecoupledWeightDecay(object):
 
 
 def extend_with_decoupled_weight_decay(base_optimizer):
-    r"""
+    """
     extend_with_decoupled_weight_decay is a decorator function, it returns an
     optimizer class with decoupled weight decay. The returned optimizer will
     apply weight decay on the optimized parameters with the parameters before
@@ -131,7 +131,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
 
     class OptimizerWithDecoupledWeightDecay(DecoupledWeightDecay,
                                             base_optimizer):
-        r"""
+        """
         OptimizerWithDecoupledWeightDecay is used to update the optimized parameters
         with the parameters before optimization. For more information, please refer:
         https://arxiv.org/pdf/1711.05101.pdf.

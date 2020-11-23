@@ -23,7 +23,7 @@ PDB_SET = "pdb.set_trace"
 
 
 class CallTransformer(gast.NodeTransformer):
-    r"""
+    """
     This class transforms function calls into Static Graph Ast.
     """
 
@@ -35,7 +35,7 @@ class CallTransformer(gast.NodeTransformer):
         self.root = wrapper_root.node
 
     def _no_need_convert_call(self, node):
-        r"""
+        """
         Determines whether a function needs to be transformed by `convert_call`.
         It doesn't need to be transformed when a function satisfies the following conditions:
           1. It's a api of paddle

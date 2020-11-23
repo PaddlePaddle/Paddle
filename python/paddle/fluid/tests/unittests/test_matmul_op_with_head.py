@@ -94,7 +94,7 @@ def reference_matmul_mul_head(X,
                               head_number=1,
                               transpose_X=False,
                               transpose_Y=False):
-    r"""Reference forward implementation using np.matmul."""
+    """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
     if transpose_X:
@@ -181,7 +181,7 @@ def reference_matmul_mul_head2(X,
                                head_number=1,
                                transpose_X=False,
                                transpose_Y=False):
-    r"""Reference forward implementation using np.matmul."""
+    """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
     if transpose_X:

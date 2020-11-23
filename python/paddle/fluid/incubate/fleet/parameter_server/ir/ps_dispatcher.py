@@ -16,7 +16,7 @@ from __future__ import print_function
 
 
 class PSDispatcher(object):
-    r"""
+    """
     PSDispatcher is the base class for dispatching vars
     into different pserver instance.
     You need to implement the `dispatch` interface.
@@ -31,13 +31,13 @@ class PSDispatcher(object):
         return self._eps
 
     def reset(self):
-        r"""
+        """
         reset the step counter, set it zero.
         """
         self._step = 0
 
     def dispatch(self, varlist):
-        r"""
+        """
         Args:
             varlist(list): a list of Variables
         Returns:
@@ -47,7 +47,7 @@ class PSDispatcher(object):
 
 
 class HashName(PSDispatcher):
-    r"""
+    """
     Hash variable names to several endpoints using python
     "hash()" function.
 
@@ -72,7 +72,7 @@ class HashName(PSDispatcher):
         return hash(block_str) % total
 
     def dispatch(self, varlist):
-        r"""
+        """
         use `HashName` method to dispatch variables with each parameter server.
         Args:
             varlist (list): a list of Variables
@@ -87,7 +87,7 @@ class HashName(PSDispatcher):
 
 
 class RoundRobin(PSDispatcher):
-    r"""
+    """
     Distribute variables to several endpoints using
     RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
 
@@ -109,7 +109,7 @@ class RoundRobin(PSDispatcher):
         super(self.__class__, self).__init__(pserver_endpoints)
 
     def dispatch(self, varlist):
-        r"""
+        """
         use `RoundRobin` method to dispatch variables with each parameter server.
         Args:
             varlist (list): a list of Variables

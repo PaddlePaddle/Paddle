@@ -31,7 +31,7 @@ SHAPE = [16, 10]
 
 
 class SimpleNetWithCond(object):
-    r"""
+    """
     Build net with conditional Block and useless layers.
     """
 
@@ -48,7 +48,7 @@ class SimpleNetWithCond(object):
         self.z = np.ones(self.shape).astype('float32') * 3.
 
     def _calc_gradient(self, cond_i):
-        r"""
+        """
         Calculate grads of params
         """
         grads = []
@@ -65,7 +65,7 @@ class SimpleNetWithCond(object):
         return grads
 
     def build_net(self, cond_i):
-        r"""
+        """
         pseudo code:
             sum_xy = x + y
             sub_yz = y - z
@@ -132,7 +132,7 @@ class SimpleNetWithCond(object):
 
 
 class TestOptimizer(unittest.TestCase):
-    r"""
+    """
     TestOptimizer BaseClass to be inherited to test other Optimizer.
     And only need to implement two functions:
         setUp(): to set config info of optimizer, including Optimizer and its hyper-parameter.
@@ -154,14 +154,14 @@ class TestOptimizer(unittest.TestCase):
         self._check_grads()
 
     def _apply_gradient(self, param, grad, name):
-        r"""
+        """
         The way of updating grad in optimizer.(such as SGD)
         This method should be override.
         """
         return param - self.attr['lr'] * grad
 
     def _apply_optimize(self, net, grads):
-        r"""
+        """
         apply to update all params in the net.
         """
         net.x = self._apply_gradient(net.x, grads[0], 'x')
@@ -181,7 +181,7 @@ class TestOptimizer(unittest.TestCase):
             self.param_attr[key] = self.attr.copy()
 
     def _check_grads(self):
-        r"""
+        """
         main logic code to check the validity of apply_optimize.
         """
         places = [fluid.CPUPlace()]
@@ -223,7 +223,7 @@ class TestOptimizer(unittest.TestCase):
 
 
 class TestAdamOptimizer(TestOptimizer):
-    r"""
+    """
     inherit TestOptimizer and shall override two functions as follows:
         setUp(): to set config info of optimizer, including Optimizer and its hyper-parameter.
         _apply_gradient(): to implement the way of updating grad.
@@ -245,7 +245,7 @@ class TestAdamOptimizer(TestOptimizer):
         }
 
     def _apply_gradient(self, param, grad, name):
-        r"""
+        """
         The way of updating grad in AdamOptimizer
         """
         attr = self.param_attr[name]

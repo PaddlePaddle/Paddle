@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 This file contains some common interfaces for image preprocess.
 Many users are confused about the image layout. We introduce
 the image layout as follows.
@@ -81,7 +81,7 @@ def batch_images_from_tar(data_file,
                           dataset_name,
                           img2label,
                           num_per_batch=1024):
-    r"""
+    """
     Read images from tar file and batch them into batch file.
 
     :param data_file: path of image tar file
@@ -139,7 +139,7 @@ def batch_images_from_tar(data_file,
 
 
 def load_image_bytes(bytes, is_color=True):
-    r"""
+    """
     Load an color or gray image from bytes array.
 
     Example usage:
@@ -165,7 +165,7 @@ def load_image_bytes(bytes, is_color=True):
 
 
 def load_image(file, is_color=True):
-    r"""
+    """
     Load an color or gray image from the file path.
 
     Example usage:
@@ -195,7 +195,7 @@ def load_image(file, is_color=True):
 
 
 def resize_short(im, size):
-    r"""
+    """
     Resize an image so that the length of shorter edge is size.
 
     Example usage:
@@ -223,7 +223,7 @@ def resize_short(im, size):
 
 
 def to_chw(im, order=(2, 0, 1)):
-    r"""
+    """
     Transpose the input image order. The image layout is HWC format
     opened by cv2 or PIL. Transpose the input image to CHW layout
     according the order (2,0,1).
@@ -247,7 +247,7 @@ def to_chw(im, order=(2, 0, 1)):
 
 
 def center_crop(im, size, is_color=True):
-    r"""
+    """
     Crop the center of image with size.
 
     Example usage:
@@ -275,7 +275,7 @@ def center_crop(im, size, is_color=True):
 
 
 def random_crop(im, size, is_color=True):
-    r"""
+    """
     Randomly crop input image with size.
 
     Example usage:
@@ -303,7 +303,7 @@ def random_crop(im, size, is_color=True):
 
 
 def left_right_flip(im, is_color=True):
-    r"""
+    """
     Flip an image along the horizontal direction.
     Return the flipped image.
 
@@ -330,7 +330,7 @@ def simple_transform(im,
                      is_train,
                      is_color=True,
                      mean=None):
-    r"""
+    """
     Simply data argumentation for training. These operations include
     resizing, croping and flipping.
 
@@ -386,7 +386,7 @@ def load_and_transform(filename,
                        is_train,
                        is_color=True,
                        mean=None):
-    r"""
+    """
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer to the `simple_transform` interface
     for the transform operations.

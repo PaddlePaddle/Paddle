@@ -42,7 +42,7 @@ def get_bert_config():
 
 
 def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
-    r"""
+    """
     Add mask for batch_tokens, return out, mask_label, mask_pos;
     Note: mask_pos responding the batch_tokens after padded;
     """
@@ -107,7 +107,7 @@ def pad_batch_data(insts,
                    return_input_mask=False,
                    return_max_len=False,
                    return_num_token=False):
-    r"""
+    """
     Pad the instances to the max sequence length in batch, and generate the
     corresponding position data and input mask.
     """
@@ -159,7 +159,7 @@ def prepare_batch_data(insts,
                        return_input_mask=True,
                        return_max_len=True,
                        return_num_token=False):
-    r"""
+    """
     1. generate Tensor of data
     2. generate Tensor of position
     3. generate self attention mask, [shape: batch_size *  max_len * max_len]

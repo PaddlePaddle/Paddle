@@ -59,7 +59,7 @@ class LayerHelperBase(object):
         return cls.__dtype
 
     def to_variable(self, value, name=None):
-        r"""
+        """
         The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
         Parameters:
@@ -191,7 +191,7 @@ class LayerHelperBase(object):
                               out=None,
                               dim=None,
                               block=self.startup_program.global_block()):
-            r"""Computes the norm over all dimensions except dim"""
+            """Computes the norm over all dimensions except dim"""
             if out is None:
                 out = block.create_var(
                     name=unique_name.generate_with_ignorable_key(".".join(
@@ -224,7 +224,7 @@ class LayerHelperBase(object):
             return out
 
         def __weight_normalize(g, v, dim):
-            r"""Calculations for weight normalization"""
+            """Calculations for weight normalization"""
             norm = __norm_except_dim(
                 v, dim=dim, block=self.main_program.current_block())
             scale = elementwise_div(
@@ -295,7 +295,7 @@ class LayerHelperBase(object):
                          default_initializer=None,
                          stop_gradient=False,
                          type=core.VarDesc.VarType.LOD_TENSOR):
-        r"""Create parameters for this layers.
+        """Create parameters for this layers.
 
            Args:
                attr: [ParamAttr] should be the parameter attribute for this parameter
@@ -380,7 +380,7 @@ class LayerHelperBase(object):
                 dtype=dtype, shape=shape, type=type, **attr._to_kwargs())
 
     def create_variable_for_type_inference(self, dtype, stop_gradient=False):
-        r"""Create a temporary variable that should be type inferred layer.
+        """Create a temporary variable that should be type inferred layer.
 
         Note:
             The default type will be set to LOD_TENSOR. However, when
@@ -400,13 +400,13 @@ class LayerHelperBase(object):
             stop_gradient=stop_gradient)
 
     def create_variable(self, *args, **kwargs):
-        r"""Create Variable for this layers.
+        """Create Variable for this layers.
         Returns created Variable.
         """
         return self.main_program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, persistable=False, *args, **kwargs):
-        r"""
+        """
         create global variable, note that there is no initializer for this global variable.
         Args:
             persistable(bool): True if it is a checkpoint value.
@@ -419,7 +419,7 @@ class LayerHelperBase(object):
             *args, persistable=persistable, **kwargs)
 
     def create_or_get_global_variable(self, name, *args, **kwargs):
-        r"""
+        """
         Creates a global variable if not exists and returns the variable and
         a boolean flag which is true when it is a new variable.
         """
@@ -429,7 +429,7 @@ class LayerHelperBase(object):
             return self.create_global_variable(name=name, *args, **kwargs), True
 
     def set_variable_initializer(self, var, initializer):
-        r"""Set target Variable's initializer
+        """Set target Variable's initializer
 
            Args:
                var: target Variable

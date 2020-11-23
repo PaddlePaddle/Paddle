@@ -20,7 +20,7 @@ __all__ = ['get_logger']
 
 
 def get_logger(name, level, fmt=None):
-    r"""
+    """
     Get logger from logging with given name, level and format without
     setting logging basicConfig. For setting basicConfig in paddle
     will disable basicConfig setting after import paddle.

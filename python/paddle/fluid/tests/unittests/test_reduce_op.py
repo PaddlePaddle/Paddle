@@ -87,7 +87,7 @@ class TestSumOp8D(OpTest):
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
 class TestMaxOp(OpTest):
-    r"""Remove Max with subgradient from gradient check to confirm the success of CI."""
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_max"
@@ -105,7 +105,7 @@ class TestMaxOp(OpTest):
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
 class TestMinOp(OpTest):
-    r"""Remove Min with subgradient from gradient check to confirm the success of CI."""
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_min"
@@ -120,7 +120,7 @@ class TestMinOp(OpTest):
 
 
 class TestMin6DOp(OpTest):
-    r"""Remove Min with subgradient from gradient check to confirm the success of CI."""
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_min"
@@ -137,7 +137,7 @@ class TestMin6DOp(OpTest):
 
 
 class TestMin8DOp(OpTest):
-    r"""Remove Min with subgradient from gradient check to confirm the success of CI."""
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_min"
@@ -517,7 +517,7 @@ class TestReduceAll(Test1DReduce):
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
 class TestReduceMaxOpMultiAxises(OpTest):
-    r"""Remove Max with subgradient from gradient check to confirm the success of CI."""
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_max"
@@ -535,7 +535,7 @@ class TestReduceMaxOpMultiAxises(OpTest):
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
 class TestReduceMinOpMultiAxises(OpTest):
-    r"""Remove Min with subgradient from gradient check to confirm the success of CI."""
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_min"

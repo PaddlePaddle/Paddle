@@ -34,7 +34,7 @@ else:
 
 #  str and bytes related functions
 def to_text(obj, encoding='utf-8', inplace=False):
-    r"""
+    """
       All string in PaddlePaddle should be represented as a literal string.
     This function will convert object to a literal string without any encoding.
     Especially, if the object type is a list or set container, we will iterate
@@ -89,7 +89,7 @@ def to_text(obj, encoding='utf-8', inplace=False):
 
 
 def _to_text(obj, encoding):
-    r"""
+    """
     In Python3:
         Decode the bytes type object to str type with specific encoding
 
@@ -118,7 +118,7 @@ def _to_text(obj, encoding):
 
 
 def to_bytes(obj, encoding='utf-8', inplace=False):
-    r"""
+    """
       All string in PaddlePaddle should be represented as a literal string.
     This function will convert object to a bytes with specific encoding.
     Especially, if the object type is a list or set container, we will iterate
@@ -162,7 +162,7 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
 
 
 def _to_bytes(obj, encoding):
-    r"""
+    """
     In Python3:
         Encode the str type object to bytes type with specific encoding
 
@@ -191,7 +191,7 @@ def _to_bytes(obj, encoding):
 
 # math related functions
 def round(x, d=0):
-    r"""
+    """
     Compatible round which act the same behaviour in Python3.
 
     Args:
@@ -217,7 +217,7 @@ def round(x, d=0):
 
 
 def floor_division(x, y):
-    r"""
+    """
     Compatible division which act the same behaviour in Python3 and Python2,
     whose result will be a int value of floor(x / y) in Python3 and value of
     (x / y) in Python2.
@@ -234,7 +234,7 @@ def floor_division(x, y):
 
 # exception related functions
 def get_exception_message(exc):
-    r"""
+    """
     Get the error message of a specific exception
 
     Args:

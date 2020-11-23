@@ -20,7 +20,7 @@ __all__ = ['seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
 
 
 def seed(seed):
-    r"""
+    """
 
     Sets the seed for global default generator, which manages the random number generation.
 
@@ -52,7 +52,7 @@ def seed(seed):
 
 
 def get_cuda_rng_state():
-    r"""
+    """
 
     Get random state of cuda generators.
 
@@ -78,7 +78,7 @@ def get_cuda_rng_state():
 
 
 def set_cuda_rng_state(state_list):
-    r"""
+    """
 
     Sets generator state for all cuda generators
 
@@ -106,7 +106,7 @@ def set_cuda_rng_state(state_list):
 
 
 def _manual_program_seed(seed):
-    r"""
+    """
     Sets global seed for generating random numbers.
   
     NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally

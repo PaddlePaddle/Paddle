@@ -113,7 +113,7 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
 
 
 def filter_boxes(boxes, min_size, im_shape):
-    r"""Only keep boxes with both sides >= min_size and center within the image.
+    """Only keep boxes with both sides >= min_size and center within the image.
     """
     # Scale min_size to match image scale
     min_size = max(min_size, 1.0)

@@ -153,7 +153,7 @@ python setup.py install
 
 
 def meta_build_mac(var, python_str, paddle_version, build_var, build_name_str):
-    package_str = r"""
+    package_str = """
 package:
   name: paddlepaddle
   version: """ + paddle_version
@@ -177,12 +177,12 @@ def meta_build_linux(var,
                      build_name_str,
                      cuda_str=None):
     if cuda_str == None:
-        package_str = r"""
+        package_str = """
 package:
   name: paddlepaddle
   version: """ + paddle_version
     else:
-        package_str = r"""
+        package_str = """
 package:
   name: paddlepaddle-gpu
   version: """ + paddle_version
@@ -210,12 +210,12 @@ def meta_build_windows(var,
                        build_name_str,
                        cuda_str=None):
     if cuda_str == None:
-        package_str = r"""
+        package_str = """
 package:
   name: paddlepaddle
   version: """ + paddle_version
     else:
-        package_str = r"""
+        package_str = """
 package:
   name: paddlepaddle-gpu
   version: """ + paddle_version
@@ -224,20 +224,20 @@ package:
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
     if (python_str == var.python27 or python_str == var.python35):
-        meta_str = meta_str + r"""
+        meta_str = meta_str + """
     - matplotlib<=2.2.4"""
     else:
-        meta_str = meta_str + r"""
+        meta_str = meta_str + """
     - matplotlib"""
     if not (cuda_str == None):
         meta_str = meta_str + cuda_str
 
     blt_str = var.blt_const + blt_var
     if (python_str == var.python27):
-        blt_str = blt_str + r"""
+        blt_str = blt_str + """
     pip install C:\package\opencv_python-4.2.0.32-cp27-cp27m-win_amd64.whl"""
     else:
-        meta_str = meta_str + r"""
+        meta_str = meta_str + """
     - opencv>=3.4.2"""
 
     meta_str = meta_str + var.test + var.about

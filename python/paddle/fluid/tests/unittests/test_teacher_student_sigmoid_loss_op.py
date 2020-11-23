@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 
 
 class TestTeacherStudentSigmoidLossOp(OpTest):
-    r"""
+    """
         Test teacher_student_sigmoid_loss with discrete one-hot labels.
     """
 

@@ -24,7 +24,7 @@ from op_test import OpTest
 
 
 class TestHistogramOpAPI(unittest.TestCase):
-    r"""Test histogram api."""
+    """Test histogram api."""
 
     def test_static_graph(self):
         startup_program = fluid.Program()
@@ -59,7 +59,7 @@ class TestHistogramOpAPI(unittest.TestCase):
 
 
 class TestHistogramOpError(unittest.TestCase):
-    r"""Test histogram op error."""
+    """Test histogram op error."""
 
     def run_network(self, net_func):
         main_program = fluid.Program()
@@ -70,7 +70,7 @@ class TestHistogramOpError(unittest.TestCase):
             exe.run(main_program)
 
     def test_bins_error(self):
-        r"""Test bins should be greater than or equal to 1."""
+        """Test bins should be greater than or equal to 1."""
 
         def net_func():
             input_value = paddle.fluid.layers.fill_constant(
@@ -81,7 +81,7 @@ class TestHistogramOpError(unittest.TestCase):
             self.run_network(net_func)
 
     def test_min_max_error(self):
-        r"""Test max must be larger or equal to min."""
+        """Test max must be larger or equal to min."""
 
         def net_func():
             input_value = paddle.fluid.layers.fill_constant(
@@ -92,7 +92,7 @@ class TestHistogramOpError(unittest.TestCase):
             self.run_network(net_func)
 
     def test_min_max_range_error(self):
-        r"""Test range of min, max is not finite"""
+        """Test range of min, max is not finite"""
 
         def net_func():
             input_value = paddle.fluid.layers.fill_constant(

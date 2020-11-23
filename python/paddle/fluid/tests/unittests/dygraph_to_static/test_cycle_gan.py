@@ -79,7 +79,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, input_A, input_B):
-        r"""
+        """
         Generator of GAN model.
         """
         fake_B = self.build_generator_resnet_9blocks_a(input_A)
@@ -118,7 +118,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
     @declarative
     def discriminatorA(self, input_A, input_B):
-        r"""
+        """
         Discriminator A of GAN model.
         """
         rec_B = self.build_gen_discriminator_a(input_A)
@@ -128,7 +128,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
     @declarative
     def discriminatorB(self, input_A, input_B):
-        r"""
+        """
         Discriminator B of GAN model.
         """
         rec_A = self.build_gen_discriminator_b(input_A)
@@ -299,7 +299,7 @@ class build_gen_discriminator(fluid.dygraph.Layer):
 
 
 class conv2d(fluid.dygraph.Layer):
-    r"""docstring for Conv2D"""
+    """docstring for Conv2D"""
 
     def __init__(self,
                  num_channels,

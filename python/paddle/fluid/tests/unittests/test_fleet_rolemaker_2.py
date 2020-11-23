@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Test cases for role makers."""
+"""Test cases for role makers."""
 
 from __future__ import print_function
 import paddle
@@ -22,16 +22,16 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
-    r"""
+    """
     Test cases for paddle cloud role makers.
     """
 
     def setUp(self):
-        r"""Set up, set envs."""
+        """Set up, set envs."""
         pass
 
     def test_pslib_2(self):
-        r"""Test cases for pslib."""
+        """Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
@@ -168,7 +168,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         os.remove("./test_fleet_gloo_role_maker_1.txt")
 
         class TmpClass():
-            r"""
+            """
             dummy tmp class
             """
 
@@ -176,7 +176,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 pass
 
             def all_reduce_worker(self, input, output):
-                r"""
+                """
                 dummy all reduce worker
 
                 Args:
@@ -186,7 +186,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 pass
 
             def barrier_worker(self):
-                r"""
+                """
                 dummy barrier worker
                 """
                 pass
@@ -194,7 +194,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 
         class TmpFleet(Fleet):
-            r"""
+            """
             dummy tmp fleet
             """
 
@@ -203,13 +203,13 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 self._role_maker = None
 
             def init_worker(self):
-                r"""
+                """
                 dummy init worker
                 """
                 pass
 
             def init_server(self, model_dir=None):
-                r"""
+                """
                 dummy init server
 
                 Args:
@@ -218,19 +218,19 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 pass
 
             def run_server(self):
-                r"""
+                """
                 dummy run server
                 """
                 pass
 
             def stop_worker(self):
-                r"""
+                """
                 dummy stop worker
                 """
                 pass
 
             def distributed_optimizer(self, optimizer, strategy=None):
-                r"""
+                """
                 dummy distributed optimizer
 
                 Args:
@@ -240,13 +240,13 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 pass
 
             def save_inference_model(self):
-                r"""
+                """
                 dummy save inference model
                 """
                 pass
 
             def save_persistables(self):
-                r"""
+                """
                 dummy save persistables
                 """
                 pass

@@ -36,7 +36,7 @@ __all__ = [
 
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
-    r"""
+    """
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -141,7 +141,7 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
-    r"""
+    """
 	:alias_main: paddle.nn.CrossEntropyLoss
 	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
 
@@ -253,7 +253,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 
 class HSigmoidLoss(fluid.dygraph.Layer):
-    r"""
+    """
     Hierarchical Sigmoid Layer.
     
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
@@ -375,7 +375,7 @@ class HSigmoidLoss(fluid.dygraph.Layer):
 
 
 class MSELoss(fluid.dygraph.layers.Layer):
-    r"""
+    """
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -454,7 +454,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
 
 class L1Loss(fluid.dygraph.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
@@ -533,7 +533,7 @@ class L1Loss(fluid.dygraph.Layer):
 
 
 class BCELoss(fluid.dygraph.Layer):
-    r"""
+    """
     This interface is used to construct a callable object of the ``BCELoss`` class.
     The BCELoss layer measures the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
@@ -624,7 +624,7 @@ class BCELoss(fluid.dygraph.Layer):
 
 
 class NLLLoss(fluid.dygraph.Layer):
-    r"""
+    """
 	:alias_main: paddle.nn.NLLLoss
 	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
 
@@ -739,7 +739,7 @@ class NLLLoss(fluid.dygraph.Layer):
 
 
 class KLDivLoss(fluid.dygraph.Layer):
-    r"""
+    """
     This interface calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
@@ -812,7 +812,7 @@ class KLDivLoss(fluid.dygraph.Layer):
 
 
 class MarginRankingLoss(fluid.dygraph.Layer):
-    r"""
+    """
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
     The MarginRankingLoss layer calculates the margin rank loss between the input, other and label
@@ -879,7 +879,7 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
 
 class CTCLoss(fluid.dygraph.Layer):
-    r"""
+    """
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
@@ -964,7 +964,7 @@ class CTCLoss(fluid.dygraph.Layer):
 
 
 class SmoothL1Loss(fluid.dygraph.Layer):
-    r"""
+    """
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less

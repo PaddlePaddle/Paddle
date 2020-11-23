@@ -608,7 +608,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
 
 class RecurrentOpStopGradientTest(RecurrentOpTest1):
-    r"""
+    """
     Test RNNOp with stop_gradient = True
     equation:
         h_t = \sigma (W x_t + U h_{t-1})

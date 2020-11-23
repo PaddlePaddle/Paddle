@@ -413,7 +413,7 @@ def softshrink(x, alpha=None):
     return _softshrink_(**kwargs)
 
 
-softshrink.__doc__ = r"""
+softshrink.__doc__ = """
 	:alias_main: paddle.nn.functional.softshrink
 	:alias: paddle.nn.functional.softshrink,paddle.nn.functional.activation.softshrink
 	:old_api: paddle.fluid.layers.softshrink
@@ -461,7 +461,7 @@ def hard_shrink(x, threshold=None):
     return _hard_shrink_(**kwargs)
 
 
-hard_shrink.__doc__ = _hard_shrink_.__doc__ + r"""
+hard_shrink.__doc__ = _hard_shrink_.__doc__ + """
 Examples:
 
     >>> import paddle.fluid as fluid
@@ -488,7 +488,7 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
     return _cum_sum_(**kwargs)
 
 
-cumsum.__doc__ = r"""
+cumsum.__doc__ = """
 	:alias_main: paddle.cumsum
 	:alias: paddle.cumsum,paddle.tensor.cumsum,paddle.tensor.math.cumsum
 	:old_api: paddle.fluid.layers.cumsum
@@ -530,7 +530,7 @@ def thresholded_relu(x, threshold=None):
     return _thresholded_relu_(**kwargs)
 
 
-thresholded_relu.__doc__ = r"""
+thresholded_relu.__doc__ = """
 	:alias_main: paddle.nn.functional.thresholded_relu
 	:alias: paddle.nn.functional.thresholded_relu,paddle.nn.functional.activation.thresholded_relu
 	:old_api: paddle.fluid.layers.thresholded_relu
@@ -617,7 +617,7 @@ def gelu(x, approximate=False):
     return _gelu_(**kwargs)
 
 
-gelu.__doc__ = r"""
+gelu.__doc__ = """
 :strong:`GeLU Activation Operator`
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
@@ -701,7 +701,7 @@ def erf(x, name=None):
     return _erf_(**kwargs)
 
 
-erf.__doc__ = r"""
+erf.__doc__ = """
 :strong:`Erf Operator`
 For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
 

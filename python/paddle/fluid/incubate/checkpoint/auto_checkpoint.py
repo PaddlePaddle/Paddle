@@ -472,7 +472,7 @@ class TrainEpochRange(SerializableBase):
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
-        r"""
+        """
         status => /jobid/xxx_range_xx/range/
         model =>                       /exe/
         """

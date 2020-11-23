@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 WMT14 dataset.
 The original WMT14 dataset is too large and a small set of data for set is
 provided. This module will download dataset from
@@ -120,7 +120,7 @@ def reader_creator(tar_file, file_name, dict_size):
     update_to="paddle.text.datasets.WMT14",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(dict_size):
-    r"""
+    """
     WMT14 training set creator.
 
     It returns a reader creator, each sample in the reader is source language
@@ -140,7 +140,7 @@ def train(dict_size):
     update_to="paddle.text.datasets.WMT14",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(dict_size):
-    r"""
+    """
     WMT14 test set creator.
 
     It returns a reader creator, each sample in the reader is source language

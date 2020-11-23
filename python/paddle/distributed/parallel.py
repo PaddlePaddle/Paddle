@@ -44,7 +44,7 @@ def _start_kv_server(port, http_server_d):
 
 
 def init_parallel_env():
-    r"""
+    """
     Initialize parallel training environment in dynamic graph mode.
 
     .. note::
@@ -184,7 +184,7 @@ def init_parallel_env():
 
 
 def get_rank():
-    r"""
+    """
     Returns the rank of current trainer.
 
     Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . 
@@ -207,7 +207,7 @@ def get_rank():
 
 
 def get_world_size():
-    r"""
+    """
     Returns the number of trainers (number of processes participating in current job).
 
     Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 

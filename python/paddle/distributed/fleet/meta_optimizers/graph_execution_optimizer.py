@@ -31,7 +31,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         return True
 
     def _can_apply(self):
-        r"""
+        """
         Basically, this is PE, and almost all programs can be executed here
         """
         if not self.role_maker._is_collective:

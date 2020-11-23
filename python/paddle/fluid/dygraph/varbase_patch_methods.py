@@ -27,7 +27,7 @@ from .parallel import scale_loss
 def monkey_patch_varbase():
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
-        r"""
+        """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -83,7 +83,7 @@ def monkey_patch_varbase():
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
     @framework.dygraph_only
     def set_value(self, value):
-        r"""
+        """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -132,7 +132,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def backward(self, retain_graph=False):
-        r"""
+        """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -180,7 +180,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def gradient(self):
-        r"""
+        """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -220,14 +220,14 @@ def monkey_patch_varbase():
 
     @property
     def grad(self):
-        r"""
+        """
         The alias of gradient().
         """
 
         return self.gradient()
 
     def __str__(self):
-        r"""
+        """
         Convert a VarBase object to a readable string.
 
         Returns(str): A readable string.

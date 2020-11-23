@@ -53,7 +53,7 @@ def set_config():
 
 
 def parse_data():
-    r""" parse input and output data """
+    """ parse input and output data """
     with open('data/data.txt', 'r') as fr:
         data = np.array([float(_) for _ in fr.read().split()])
 

@@ -248,7 +248,7 @@ class BatchedTensorProvider(object):
 
 
 class DataFeeder(object):
-    r"""
+    """
     :api_attr: Static Graph
     
     DataFeeder converts the data that returned by a reader into a data
@@ -328,7 +328,7 @@ class DataFeeder(object):
         self.place = place
 
     def feed(self, iterable):
-        r"""
+        """
         According to :code:`feed_list` of :code:`DataFeeder` and :code:`iterable` , converts 
         the input into a data structure that can feed into Executor.
 
@@ -389,7 +389,7 @@ class DataFeeder(object):
         return ret_dict
 
     def feed_parallel(self, iterable, num_places=None):
-        r"""
+        """
         Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
         Here :code:`iterable` is a list of python generators. The data return by each 
         generator in the list will be fed into a separate device.        
@@ -480,7 +480,7 @@ class DataFeeder(object):
                         multi_devices,
                         num_places=None,
                         drop_last=True):
-        r"""
+        """
         Decorate the reader (generator) to fit multiple devices. The reader generate
         multiple mini-batches. Each mini-batch will be fed into a single device.
 

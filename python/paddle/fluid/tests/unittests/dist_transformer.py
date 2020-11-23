@@ -158,7 +158,7 @@ class ModelHyperParams(object):
 
 
 def merge_cfg_from_list(cfg_list, g_cfgs):
-    r"""
+    """
     Set the above global configurations using the cfg_list.
     """
     assert len(cfg_list) % 2 == 0
@@ -267,7 +267,7 @@ fast_decoder_data_input_fields = (
 
 #from optim import LearningRateScheduler
 class LearningRateScheduler(object):
-    r"""
+    """
     Wrapper for learning rate scheduling as described in the Transformer paper.
     LearningRateScheduler adapts the learning rate externally and the adapted
     learning rate will be fed into the main_program as input data.
@@ -308,7 +308,7 @@ def pad_batch_data(insts,
                    return_attn_bias=True,
                    return_max_len=True,
                    return_num_token=False):
-    r"""
+    """
     Pad the instances to the max sequence length in batch, and generate the
     corresponding position data and attention bias.
     """
@@ -359,7 +359,7 @@ def pad_batch_data(insts,
 
 def prepare_batch_input(insts, data_input_names, src_pad_idx, trg_pad_idx,
                         n_head, d_model):
-    r"""
+    """
     Put all padded data needed by training into a dict.
     """
     src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
@@ -394,7 +394,7 @@ def prepare_batch_input(insts, data_input_names, src_pad_idx, trg_pad_idx,
 
 
 def read_multiple(reader, count, clip_last=True):
-    r"""
+    """
     Stack data from reader for multi-devices.
     """
 
@@ -422,7 +422,7 @@ def read_multiple(reader, count, clip_last=True):
 
 
 def split_data(data, num_part):
-    r"""
+    """
     Split data for each device.
     """
     if len(data) == num_part:
@@ -708,7 +708,7 @@ class MinMaxFilter(object):
 
 
 class DataReader(object):
-    r"""
+    """
     The data reader loads all data from files and produces batches of data
     in the way corresponding to settings.
 
@@ -941,7 +941,7 @@ class DataReader(object):
 
 #from transformer_model import transformer
 def position_encoding_init(n_position, d_pos_vec):
-    r"""
+    """
     Generate the initial values for the sinusoid position encoding table.
     """
     position_enc = np.array([[
@@ -963,7 +963,7 @@ def multi_head_attention(queries,
                          n_head=1,
                          dropout_rate=0.,
                          cache=None):
-    r"""
+    """
     Multi-Head Attention. Note that attn_bias is added to the logit before
     computing softmax activiation to mask certain selected positions so that
     they will not considered in attention weights.
@@ -973,7 +973,7 @@ def multi_head_attention(queries,
             "Inputs: queries, keys and values should all be 3-D tensors.")
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
-        r"""
+        """
         Add linear projection to queries, keys, and values.
         """
         q = layers.fc(input=queries,
@@ -994,7 +994,7 @@ def multi_head_attention(queries,
         return q, k, v
 
     def __split_heads(x, n_head):
-        r"""
+        """
         Reshape the last dimension of input tensor x so that it becomes two
         dimensions and then transpose. Specifically, input a tensor with shape
         [bs, max_sequence_length, n_head * hidden_dim] then output a tensor
@@ -1014,7 +1014,7 @@ def multi_head_attention(queries,
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
-        r"""
+        """
         Transpose and then reshape the last two dimensions of input tensor x
         so that it becomes one dimension, which is reverse to __split_heads.
         """
@@ -1030,7 +1030,7 @@ def multi_head_attention(queries,
             shape=list(map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
-        r"""
+        """
         Scaled Dot-Product Attention
         """
         scaled_q = layers.scale(x=q, scale=d_model**-0.5)
@@ -1072,7 +1072,7 @@ def multi_head_attention(queries,
 
 
 def positionwise_feed_forward(x, d_inner_hid, d_hid):
-    r"""
+    """
     Position-wise Feed-Forward Networks.
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
@@ -1092,7 +1092,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
 
 
 def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.):
-    r"""
+    """
     Add residual connection, layer normalization and droput to the out tensor
     optionally according to the value of process_cmd.
     This will be used before or after multi-head attention and position-wise
@@ -1129,7 +1129,7 @@ def prepare_encoder(src_word,
                     dropout_rate=0.,
                     word_emb_param_name=None,
                     pos_enc_param_name=None):
-    r"""Add word embeddings and position encodings.
+    """Add word embeddings and position encodings.
     The output tensor has a shape of:
     [batch_size, max_src_length_in_batch, d_model].
     This module is used at the bottom of the encoder stacks.
@@ -1180,7 +1180,7 @@ def encoder_layer(enc_input,
                   d_model,
                   d_inner_hid,
                   dropout_rate=0.):
-    r"""The encoder layers that can be stacked to form a deep encoder.
+    """The encoder layers that can be stacked to form a deep encoder.
     This module consits of a multi-head (self) attention followed by
     position-wise feed-forward networks and both the two components companied
     with the post_process_layer to add residual connection, layer normalization
@@ -1204,7 +1204,7 @@ def encoder(enc_input,
             d_model,
             d_inner_hid,
             dropout_rate=0.):
-    r"""
+    """
     The encoder is composed of a stack of identical layers returned by calling
     encoder_layer.
     """
@@ -1226,7 +1226,7 @@ def decoder_layer(dec_input,
                   d_inner_hid,
                   dropout_rate=0.,
                   cache=None):
-    r""" The layer to be stacked in decoder part.
+    """ The layer to be stacked in decoder part.
     The structure of this module is similar to that in the encoder part except
     a multi-head attention is added to implement encoder-decoder attention.
     """
@@ -1285,7 +1285,7 @@ def decoder(dec_input,
             d_inner_hid,
             dropout_rate=0.,
             caches=None):
-    r"""
+    """
     The decoder is composed of a stack of identical decoder_layer layers.
     """
     for i in range(n_layer):
@@ -1310,7 +1310,7 @@ def decoder(dec_input,
 
 
 def make_all_inputs(input_fields):
-    r"""
+    """
     Define the input data layers for the transformer model.
     """
     inputs = []
@@ -1407,7 +1407,7 @@ def wrap_encoder(src_vocab_size,
                  dropout_rate,
                  weight_sharing,
                  enc_inputs=None):
-    r"""
+    """
     The wrapper assembles together all needed layers for the encoder.
     """
     if enc_inputs is None:
@@ -1443,7 +1443,7 @@ def wrap_decoder(trg_vocab_size,
                  dec_inputs=None,
                  enc_output=None,
                  caches=None):
-    r"""
+    """
     The wrapper assembles together all needed layers for the decoder.
     """
     if dec_inputs is None:
@@ -1508,7 +1508,7 @@ def fast_decode(
         beam_size,
         max_out_len,
         eos_idx, ):
-    r"""
+    """
     Use beam search to decode. Caches will be used to store states of history
     steps which can make the decoding faster.
     """

@@ -81,7 +81,7 @@ def _check_input(value,
 
 
 class Compose(object):
-    r"""
+    """
     Composes several transforms together use for composing list of transforms
     together for a dataset transform.
 
@@ -132,7 +132,7 @@ class Compose(object):
 
 
 class BaseTransform(object):
-    r"""
+    """
     Base class of all transforms used in computer vision.
 
     calling logic: 
@@ -258,7 +258,7 @@ class BaseTransform(object):
         pass
 
     def __call__(self, inputs):
-        r"""Apply transform on single input data"""
+        """Apply transform on single input data"""
         if not isinstance(inputs, tuple):
             inputs = (inputs, )
 
@@ -294,7 +294,7 @@ class BaseTransform(object):
 
 
 class ToTensor(BaseTransform):
-    r"""Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
+    """Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
     Converts a PIL.Image or numpy.ndarray (H x W x C) in the range
     [0, 255] to a paddle.Tensor of shape (C x H x W) in the range [0.0, 1.0]
@@ -331,7 +331,7 @@ class ToTensor(BaseTransform):
         self.data_format = data_format
 
     def _apply_image(self, img):
-        r"""
+        """
         Args:
             img (PIL.Image|np.ndarray): Image to be converted to tensor.
 
@@ -342,7 +342,7 @@ class ToTensor(BaseTransform):
 
 
 class Resize(BaseTransform):
-    r"""Resize the input Image to the given size.
+    """Resize the input Image to the given size.
 
     Args:
         size (int|list|tuple): Desired output size. If size is a sequence like
@@ -394,7 +394,7 @@ class Resize(BaseTransform):
 
 
 class RandomResizedCrop(BaseTransform):
-    r"""Crop the input data to random size and aspect ratio.
+    """Crop the input data to random size and aspect ratio.
     A crop of random size (default: of 0.08 to 1.0) of the original size and a random
     aspect ratio (default: of 3/4 to 1.33) of the original aspect ratio is made.
     After applying crop transfrom, the input data will be resized to given size.
@@ -494,7 +494,7 @@ class RandomResizedCrop(BaseTransform):
 
 
 class CenterCrop(BaseTransform):
-    r"""Crops the given the input data at the center.
+    """Crops the given the input data at the center.
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
@@ -528,7 +528,7 @@ class CenterCrop(BaseTransform):
 
 
 class RandomHorizontalFlip(BaseTransform):
-    r"""Horizontally flip the input data randomly with a given probability.
+    """Horizontally flip the input data randomly with a given probability.
 
     Args:
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
@@ -561,7 +561,7 @@ class RandomHorizontalFlip(BaseTransform):
 
 
 class RandomVerticalFlip(BaseTransform):
-    r"""Vertically flip the input data randomly with a given probability.
+    """Vertically flip the input data randomly with a given probability.
 
     Args:
         prob (float, optional): Probability of the input data being flipped. Default: 0.5
@@ -595,7 +595,7 @@ class RandomVerticalFlip(BaseTransform):
 
 
 class Normalize(BaseTransform):
-    r"""Normalize the input data with mean and standard deviation.
+    """Normalize the input data with mean and standard deviation.
     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels,
     this transform will normalize each channel of the input data.
     ``output[channel] = (input[channel] - mean[channel]) / std[channel]``
@@ -652,7 +652,7 @@ class Normalize(BaseTransform):
 
 
 class Transpose(BaseTransform):
-    r"""Transpose input data to a target format.
+    """Transpose input data to a target format.
     For example, most transforms use HWC mode image,
     while the Neural Network might use CHW mode input tensor.
     output image will be an instance of numpy.ndarray. 
@@ -692,7 +692,7 @@ class Transpose(BaseTransform):
 
 
 class BrightnessTransform(BaseTransform):
-    r"""Adjust brightness of the image.
+    """Adjust brightness of the image.
 
     Args:
         value (float): How much to adjust the brightness. Can be any
@@ -728,7 +728,7 @@ class BrightnessTransform(BaseTransform):
 
 
 class ContrastTransform(BaseTransform):
-    r"""Adjust contrast of the image.
+    """Adjust contrast of the image.
 
     Args:
         value (float): How much to adjust the contrast. Can be any
@@ -766,7 +766,7 @@ class ContrastTransform(BaseTransform):
 
 
 class SaturationTransform(BaseTransform):
-    r"""Adjust saturation of the image.
+    """Adjust saturation of the image.
 
     Args:
         value (float): How much to adjust the saturation. Can be any
@@ -802,7 +802,7 @@ class SaturationTransform(BaseTransform):
 
 
 class HueTransform(BaseTransform):
-    r"""Adjust hue of the image.
+    """Adjust hue of the image.
 
     Args:
         value (float): How much to adjust the hue. Can be any number
@@ -839,7 +839,7 @@ class HueTransform(BaseTransform):
 
 
 class ColorJitter(BaseTransform):
-    r"""Randomly change the brightness, contrast, saturation and hue of an image.
+    """Randomly change the brightness, contrast, saturation and hue of an image.
 
     Args:
         brightness: How much to jitter brightness.
@@ -877,7 +877,7 @@ class ColorJitter(BaseTransform):
         self.hue = hue
 
     def _get_param(self, brightness, contrast, saturation, hue):
-        r"""Get a randomized transform to be applied on image.
+        """Get a randomized transform to be applied on image.
 
         Arguments are same as that of __init__.
 
@@ -905,7 +905,7 @@ class ColorJitter(BaseTransform):
         return transform
 
     def _apply_image(self, img):
-        r"""
+        """
         Args:
             img (PIL Image): Input image.
 
@@ -918,7 +918,7 @@ class ColorJitter(BaseTransform):
 
 
 class RandomCrop(BaseTransform):
-    r"""Crops the given CV Image at a random location.
+    """Crops the given CV Image at a random location.
 
     Args:
         size (sequence|int): Desired output size of the crop. If size is an
@@ -965,7 +965,7 @@ class RandomCrop(BaseTransform):
         self.padding_mode = padding_mode
 
     def _get_param(self, img, output_size):
-        r"""Get parameters for ``crop`` for a random crop.
+        """Get parameters for ``crop`` for a random crop.
 
         Args:
             img (PIL Image): Image to be cropped.
@@ -984,7 +984,7 @@ class RandomCrop(BaseTransform):
         return i, j, th, tw
 
     def _apply_image(self, img):
-        r"""
+        """
         Args:
             img (PIL Image): Image to be cropped.
 
@@ -1011,7 +1011,7 @@ class RandomCrop(BaseTransform):
 
 
 class Pad(BaseTransform):
-    r"""Pads the given CV Image on all sides with the given "pad" value.
+    """Pads the given CV Image on all sides with the given "pad" value.
 
     Args:
         padding (int|list|tuple): Padding on each border. If a single int is provided this
@@ -1070,7 +1070,7 @@ class Pad(BaseTransform):
         self.padding_mode = padding_mode
 
     def _apply_image(self, img):
-        r"""
+        """
         Args:
             img (PIL Image): Image to be padded.
 
@@ -1081,7 +1081,7 @@ class Pad(BaseTransform):
 
 
 class RandomRotation(BaseTransform):
-    r"""Rotates the image by angle.
+    """Rotates the image by angle.
 
     Args:
         degrees (sequence or float or int): Range of degrees to select from.
@@ -1153,7 +1153,7 @@ class RandomRotation(BaseTransform):
         return angle
 
     def _apply_image(self, img):
-        r"""
+        """
         Args:
             img (PIL.Image|np.array): Image to be rotated.
 
@@ -1168,7 +1168,7 @@ class RandomRotation(BaseTransform):
 
 
 class Grayscale(BaseTransform):
-    r"""Converts image to grayscale.
+    """Converts image to grayscale.
 
     Args:
         num_output_channels (int): (1 or 3) number of channels desired for output image
@@ -1200,7 +1200,7 @@ class Grayscale(BaseTransform):
         self.num_output_channels = num_output_channels
 
     def _apply_image(self, img):
-        r"""
+        """
         Args:
             img (PIL Image): Image to be converted to grayscale.
 

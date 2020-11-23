@@ -21,7 +21,7 @@ __all__ = ['op_freq_statistic']
 
 
 def op_freq_statistic(program):
-    r"""
+    """
     Statistics of Op frequency.
 
     Args:

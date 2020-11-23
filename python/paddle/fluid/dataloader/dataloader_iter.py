@@ -49,7 +49,7 @@ _IterableDatasetStopIteration = namedtuple('_IterableDatasetStopIteration',
 
 
 def default_collate_fn(batch):
-    r"""
+    """
     Default batch collating function for :code:`fluid.io.DataLoader`,
     batch should be a list of samples, and each sample should be a list
     of fields as follows:
@@ -130,7 +130,7 @@ _worker_info = None
 
 
 def get_worker_info():
-    r"""
+    """
     Get DataLoader worker process information function, this function is
     used to split data copy in worker process for IterableDataset
     (see :code:`paddle.io.IterableDataset`), worker information contains
@@ -211,7 +211,7 @@ class WorkerInfo(object):
 
 
 class _DataLoaderIterBase(object):
-    r"""
+    """
     Iterator implement of DataLoader, will load and feed mini-batch
     data by setting in given dataloader.
 
@@ -262,7 +262,7 @@ class _DataLoaderIterBase(object):
 
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
-    r"""
+    """
     Single process implement of DataLoaderIter, loading data from
     loader.data in main process
     """

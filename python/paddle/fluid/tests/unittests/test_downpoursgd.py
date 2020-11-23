@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Test cases for Downpour."""
+"""Test cases for Downpour."""
 
 from __future__ import print_function
 
@@ -35,15 +35,15 @@ cache_path = os.path.expanduser('~/.cache/paddle/dataset')
 
 
 class TestListenAndServOp(unittest.TestCase):
-    r"""This class is Test Listen And ServOp."""
+    """This class is Test Listen And ServOp."""
 
     def setUp(self):
-        r"""This function is set Up."""
+        """This function is set Up."""
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
 
     def test_device_work_use_cvm(self):
-        r"""test device work use_cvm."""
+        """test device work use_cvm."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
@@ -102,7 +102,7 @@ class TestListenAndServOp(unittest.TestCase):
             trainer._gen_trainer_desc()
 
     def test_device_work(self):
-        r"""This function is test devicve worker."""
+        """This function is test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
@@ -159,7 +159,7 @@ class TestListenAndServOp(unittest.TestCase):
             trainer._gen_trainer_desc()
 
     def test_downpour_opt_work(self):
-        r"""This function is test devicve worker."""
+        """This function is test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:

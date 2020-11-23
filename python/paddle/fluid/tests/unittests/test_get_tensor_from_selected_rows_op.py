@@ -23,7 +23,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestGetTensorFromSelectedRowsError(unittest.TestCase):
-    r"""get_tensor_from_selected_rows error message enhance"""
+    """get_tensor_from_selected_rows error message enhance"""
 
     def test_errors(self):
         with program_guard(Program()):

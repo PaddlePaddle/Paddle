@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 
 
 def collect_node_patch(og, max_depth):
-    r"""
+    """
     The naive method to construct patches
     :param og: original graph
     :param max_depth: the depth of convolution filters

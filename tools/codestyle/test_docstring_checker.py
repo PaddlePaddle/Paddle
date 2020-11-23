@@ -25,7 +25,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
     def test_one_line(self):
         func_node = astroid.extract_node('''
         def test(): 
-            r"""get 
+            """get 
             news.
             """
             if True:
@@ -41,7 +41,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
     def test_one_line(self):
         func_node = astroid.extract_node('''
         def test(): 
-            r"""get news"""
+            """get news"""
             if True:
                 return 5
             return 5
@@ -55,7 +55,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
     def test_args(self):
         func_node = astroid.extract_node('''
         def test(scale, mean): 
-            r"""get news.
+            """get news.
             Args:
                 scale (int): scale is the number.
             """
@@ -97,7 +97,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
     def test_indent(self):
         func_node = astroid.extract_node('''
         def test(): 
-            r""" get get get get get get get get
+            """ get get get get get get get get
               get get get get get get get get.
             """
             pass 
@@ -111,7 +111,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
     def test_with_resturns(self):
         func_node = astroid.extract_node('''
         def test(): 
-            r"""get news.
+            """get news.
             Args:
                 scale (int): scale is the number.
             """
@@ -137,7 +137,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
     def test_with_raises(self):
         func_node = astroid.extract_node('''
         def test(): 
-            r"""get news.
+            """get news.
             Args:
                 scale (int): scale is the number.
             """
@@ -169,7 +169,7 @@ def fc(input,
        bias_attr=None,
        act=None,
        name=None):
-    r"""
+    """
     **Fully Connected Layer**
     The fully connected layer can take multiple tensors as its inputs. It
     creates a variable called weights for each input tensor, which represents

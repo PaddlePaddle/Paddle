@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Test cloud role maker."""
+"""Test cloud role maker."""
 
 from __future__ import print_function
 import os
@@ -22,12 +22,12 @@ import time  # temp for debug
 
 
 class TestGenerator(unittest.TestCase):
-    r"""
+    """
     Test cases for cpu generator.
     """
 
     def test_basic_generator(self):
-        r"""Test basic generator."""
+        """Test basic generator."""
         gen = generator.Generator()
         gen.manual_seed(123123143)
         st = gen.get_state()

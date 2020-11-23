@@ -23,7 +23,7 @@ from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
 def stable_softmax(x):
-    r"""Compute the softmax of vector x in a numerically stable way."""
+    """Compute the softmax of vector x in a numerically stable way."""
     shiftx = x - np.max(x).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)

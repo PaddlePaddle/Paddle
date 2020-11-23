@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 imikolov's simple dataset.
 
 This module will download dataset from
@@ -53,7 +53,7 @@ def word_count(f, word_freq=None):
 
 
 def build_dict(min_word_freq=50):
-    r"""
+    """
     Build a word dictionary from the corpus,  Keys of the dictionary are words,
     and values are zero-based IDs of these words.
     """
@@ -117,7 +117,7 @@ def reader_creator(filename, word_idx, n, data_type):
     update_to="paddle.text.datasets.Imikolov",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(word_idx, n, data_type=DataType.NGRAM):
-    r"""
+    """
     imikolov training set creator.
 
     It returns a reader creator, each sample in the reader is a word ID
@@ -141,7 +141,7 @@ def train(word_idx, n, data_type=DataType.NGRAM):
     update_to="paddle.text.datasets.Imikolov",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(word_idx, n, data_type=DataType.NGRAM):
-    r"""
+    """
     imikolov test set creator.
 
     It returns a reader creator, each sample in the reader is a word ID

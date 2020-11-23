@@ -28,28 +28,28 @@ __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
 
 class Distribution(object):
-    r"""
+    """
     Distribution is the abstract base class for probability distributions.
     """
 
     def sample(self):
-        r"""Sampling from the distribution."""
+        """Sampling from the distribution."""
         raise NotImplementedError
 
     def entropy(self):
-        r"""The entropy of the distribution."""
+        """The entropy of the distribution."""
         raise NotImplementedError
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between self distributions and other."""
+        """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
     def log_prob(self, value):
-        r"""Log probability density/mass function."""
+        """Log probability density/mass function."""
         raise NotImplementedError
 
     def _validate_args(self, *args):
-        r"""
+        """
         Argument validation for distribution args
         Args:
             value (float, list, numpy.ndarray, Variable)
@@ -71,7 +71,7 @@ class Distribution(object):
         return is_variable
 
     def _to_variable(self, *args):
-        r"""
+        """
         Argument convert args to Variable
 
         Args:
@@ -113,7 +113,7 @@ class Distribution(object):
 
 
 class Uniform(Distribution):
-    r"""Uniform distribution with `low` and `high` parameters.
+    """Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
 
@@ -194,7 +194,7 @@ class Uniform(Distribution):
             self.low, self.high = self._to_variable(low, high)
 
     def sample(self, shape, seed=0):
-        r"""Generate samples of the specified shape.
+        """Generate samples of the specified shape.
 
         Args:
           shape (list): 1D `int32`. Shape of the generated samples.
@@ -229,7 +229,7 @@ class Uniform(Distribution):
                 return output
 
     def log_prob(self, value):
-        r"""Log probability density/mass function.
+        """Log probability density/mass function.
 
         Args:
           value (Variable): The input tensor.
@@ -248,7 +248,7 @@ class Uniform(Distribution):
         return nn.log(lb * ub) - nn.log(self.high - self.low)
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         Returns:
           Variable: Shannon entropy of uniform distribution.The data type is float32.
@@ -258,7 +258,7 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
-    r"""The Normal distribution with location `loc` and `scale` parameters.
+    """The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
 
@@ -337,7 +337,7 @@ class Normal(Distribution):
             self.loc, self.scale = self._to_variable(loc, scale)
 
     def sample(self, shape, seed=0):
-        r"""Generate samples of the specified shape.
+        """Generate samples of the specified shape.
 
         Args:
           shape (list): 1D `int32`. Shape of the generated samples.
@@ -372,7 +372,7 @@ class Normal(Distribution):
                 return output
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         Returns:
           Variable: Shannon entropy of normal distribution.The data type is float32.
@@ -385,7 +385,7 @@ class Normal(Distribution):
             (self.scale + zero_tmp))
 
     def log_prob(self, value):
-        r"""Log probability density/mass function.
+        """Log probability density/mass function.
 
         Args:
           value (Variable): The input tensor.
@@ -403,7 +403,7 @@ class Normal(Distribution):
             2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two normal distributions.
+        """The KL-divergence between two normal distributions.
 
         Args:
             other (Normal): instance of Normal.
@@ -423,7 +423,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    r"""
+    """
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
     one of K possible categories, with the probability of each category 
@@ -472,7 +472,7 @@ class Categorical(Distribution):
     """
 
     def __init__(self, logits):
-        r"""
+        """
         Args:
             logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32.
         """
@@ -485,7 +485,7 @@ class Categorical(Distribution):
             self.logits = self._to_variable(logits)[0]
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two Categorical distributions.
+        """The KL-divergence between two Categorical distributions.
 
         Args:
             other (Categorical): instance of Categorical. The data type is float32.
@@ -512,7 +512,7 @@ class Categorical(Distribution):
         return kl
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         Returns:
           Variable: Shannon entropy of Categorical distribution. The data type is float32.
@@ -529,7 +529,7 @@ class Categorical(Distribution):
 
 
 class MultivariateNormalDiag(Distribution):
-    r"""
+    """
     A multivariate normal (also called Gaussian) distribution parameterized by a mean vector
     and a covariance matrix.
 
@@ -631,7 +631,7 @@ class MultivariateNormalDiag(Distribution):
         return inv_diag
 
     def entropy(self):
-        r"""Shannon entropy in nats.
+        """Shannon entropy in nats.
 
         Returns:
           Variable: Shannon entropy of Multivariate Normal distribution. The data type is float32.
@@ -644,7 +644,7 @@ class MultivariateNormalDiag(Distribution):
         return entropy
 
     def kl_divergence(self, other):
-        r"""The KL-divergence between two Multivariate Normal distributions.
+        """The KL-divergence between two Multivariate Normal distributions.
 
         Args:
             other (MultivariateNormalDiag): instance of Multivariate Normal.

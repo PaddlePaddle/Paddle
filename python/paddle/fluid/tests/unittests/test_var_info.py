@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""
+"""
 TestCases for Dataset,
 including create, config, run, etc.
 """
@@ -25,10 +25,10 @@ import unittest
 
 
 class TestVarInfo(unittest.TestCase):
-    r"""  TestCases for Dataset. """
+    """  TestCases for Dataset. """
 
     def test_var_info(self):
-        r""" Testcase for get and set info for variable. """
+        """ Testcase for get and set info for variable. """
         value = np.random.randn(1)
         var = fluid.layers.create_global_var([1], value, "float32")
         var._set_info("name", "test")

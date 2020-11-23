@@ -112,7 +112,7 @@ def update_cache(cache):
 
 
 class TestNetWithDict(unittest.TestCase):
-    r"""
+    """
     TestCase for the transformation from control flow `if/else`
     dependent on tensor in Dygraph into Static `fluid.layers.cond`.
     """

@@ -26,7 +26,7 @@ from ...fluid.layers.layer_function_generator import templatedoc
 
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
-    r"""
+    """
 	:alias_main: paddle.nn.functional.diag_embed
 	:alias: paddle.nn.functional.diag_embed,paddle.nn.functional.extension.diag_embed
 
@@ -146,7 +146,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
 @templatedoc()
 def row_conv(input, weight, act=None):
-    r"""
+    """
 
     ${comment}
 

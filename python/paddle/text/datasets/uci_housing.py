@@ -32,7 +32,7 @@ feature_names = [
 
 
 class UCIHousing(Dataset):
-    r"""
+    """
     Implementation of `UCI housing <https://archive.ics.uci.edu/ml/datasets/Housing>`_
     dataset
 

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""This is the lib for gradient checker unittest."""
+"""This is the lib for gradient checker unittest."""
 
 from __future__ import print_function
 
@@ -99,7 +99,7 @@ def make_jacobian(x, y_size, np_dtype):
 
 
 def _compute_numerical_jacobian(program, x, y, place, scope, delta):
-    r"""Computes the numeric Jacobian for dy/dx.
+    """Computes the numeric Jacobian for dy/dx.
 
     Computes the numeric Jacobian by slightly perturbing the inputs and
     measuring the differences on the output.
@@ -157,7 +157,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
 
 
 def _compute_analytical_jacobian(program, x, y, place, scope):
-    r"""Computes the analytical Jacobian for dy/dx.
+    """Computes the analytical Jacobian for dy/dx.
 
     Args:
         program (Program): a Program with forward pass.
@@ -228,7 +228,7 @@ def grad_check(x,
                atol=1e-5,
                rtol=1e-3,
                raise_exception=True):
-    r"""
+    """
     Check numerical and analytical gradients for dy/dx.
     Each Jacobian gradients is a 2-D array with shape [xi_size, yi_size].
 
@@ -331,7 +331,7 @@ def double_grad_check(x,
                       atol=1e-5,
                       rtol=1e-3,
                       raise_exception=True):
-    r"""
+    """
     Check gradients of gradients. This function will append backward to the
     program before second order gradient check.
 

@@ -31,7 +31,7 @@ def softmax(x):
 
 
 def iou(box_a, box_b, norm):
-    r"""Apply intersection-over-union overlap between box_a and box_b
+    """Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
     ymin_a = min(box_a[1], box_a[3])
@@ -70,7 +70,7 @@ def nms(boxes,
         top_k=200,
         normalized=True,
         eta=1.0):
-    r"""Apply non-maximum suppression at test time to avoid detecting too many
+    """Apply non-maximum suppression at test time to avoid detecting too many
     overlapping bounding boxes for a given object.
     Args:
         boxes: (tensor) The location preds for the img, Shape: [num_priors,4].
