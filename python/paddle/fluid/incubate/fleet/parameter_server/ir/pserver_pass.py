@@ -47,7 +47,7 @@ def _same_or_split_var(p_name, var_name):
 
 
 def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
-    """
+    r"""
     Returns the shape for optimizer inputs that need to be reshaped when
     Param and Grad is split to multiple servers. 
     """
@@ -84,7 +84,7 @@ def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
 
 def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
     def _get_pserver_grad_param_var(var, var_dict):
-        """
+        r"""
         Return pserver side grad/param variable, return None
         if the variable is not grad/param, e.g.
 
@@ -278,7 +278,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
 
 
 def _get_input_map_from_op(varmap, op):
-    """Returns a dict from op input name to the vars in varmap."""
+    r"""Returns a dict from op input name to the vars in varmap."""
     iomap = collections.OrderedDict()
     for key in op.input_names:
         vars = []
@@ -292,7 +292,7 @@ def _get_input_map_from_op(varmap, op):
 
 
 def _get_output_map_from_op(varmap, op):
-    """Returns a dict from op output name to the vars in varmap."""
+    r"""Returns a dict from op output name to the vars in varmap."""
     iomap = collections.OrderedDict()
     for key in op.output_names:
         vars = []

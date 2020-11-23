@@ -170,7 +170,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
 
     def _run_local_infer(self, model_file):
         def net():
-            """
+            r"""
             network definition
 
             Args:

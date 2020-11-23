@@ -24,7 +24,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestTensorArrayToTensorError(unittest.TestCase):
-    """Tensor_array_to_tensor error message enhance"""
+    r"""Tensor_array_to_tensor error message enhance"""
 
     def test_errors(self):
         with program_guard(Program()):
@@ -42,7 +42,7 @@ class TestTensorArrayToTensorError(unittest.TestCase):
 
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
-    """Test case for concat mode of tensor_array_to_tensor."""
+    r"""Test case for concat mode of tensor_array_to_tensor."""
 
     def setUp(self):
         self.op_type = "tensor_array_to_tensor"
@@ -160,7 +160,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
 
 class TestLoDTensorArrayStack(unittest.TestCase):
-    """Test case for stack mode of tensor_array_to_tensor."""
+    r"""Test case for stack mode of tensor_array_to_tensor."""
 
     def setUp(self):
         self.op_type = "tensor_array_to_tensor"

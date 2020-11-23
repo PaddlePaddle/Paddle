@@ -122,7 +122,7 @@ def poly2mask(xy, k, h, w):
 
 
 def polys_to_boxes(polys):
-    """Convert a list of polygons into an array of tight bounding boxes."""
+    r"""Convert a list of polygons into an array of tight bounding boxes."""
     boxes_from_polys = np.zeros((len(polys), 4), dtype=np.float32)
     for i in range(len(polys)):
         poly = polys[i]
@@ -157,7 +157,7 @@ def bbox_overlaps(boxes, query_boxes):
 
 
 def polys_to_mask_wrt_box(polygons, box, M):
-    """Convert from the COCO polygon segmentation format to a binary mask
+    r"""Convert from the COCO polygon segmentation format to a binary mask
     encoded as a 2D array of data type numpy.float32. The polygon segmentation
     is understood to be enclosed in the given box and rasterized to an M x M
     mask. The resulting mask is therefore of shape (M, M).
@@ -188,7 +188,7 @@ def polys_to_mask_wrt_box(polygons, box, M):
 
 
 def expand_mask_targets(masks, mask_class_labels, resolution, num_classes):
-    """Expand masks from shape (#masks, resolution ** 2)
+    r"""Expand masks from shape (#masks, resolution ** 2)
     to (#masks, #classes * resolution ** 2) to encode class
     specific mask targets.
     """

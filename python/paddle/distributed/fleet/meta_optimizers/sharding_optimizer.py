@@ -205,7 +205,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         return
 
     def _prune_main_program(self, block):
-        """
+        r"""
         calculate deps from allredce op to optimize op,
         remove ops and vars not needed in this worker
         """
@@ -280,7 +280,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         return
 
     def _add_broadcast_allreduce(self, block):
-        """
+        r"""
         _add_broadcast_allreduce
         """
         ring_id = -1

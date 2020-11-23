@@ -24,7 +24,7 @@ __all__ = ["DatasetFolder", "ImageFolder"]
 
 
 def has_valid_extension(filename, extensions):
-    """Checks if a file is a vilid extension.
+    r"""Checks if a file is a vilid extension.
 
     Args:
         filename (str): path to a file
@@ -60,7 +60,7 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
 
 
 class DatasetFolder(Dataset):
-    """A generic data loader where the samples are arranged in this way:
+    r"""A generic data loader where the samples are arranged in this way:
 
         root/class_a/1.ext
         root/class_a/2.ext
@@ -148,7 +148,7 @@ class DatasetFolder(Dataset):
         self.dtype = paddle.get_default_dtype()
 
     def _find_classes(self, dir):
-        """
+        r"""
         Finds the class folders in a dataset.
 
         Args:
@@ -172,7 +172,7 @@ class DatasetFolder(Dataset):
         return classes, class_to_idx
 
     def __getitem__(self, index):
-        """
+        r"""
         Args:
             index (int): Index
 
@@ -214,7 +214,7 @@ def default_loader(path):
 
 
 class ImageFolder(Dataset):
-    """A generic data loader where the samples are arranged in this way:
+    r"""A generic data loader where the samples are arranged in this way:
 
         root/1.ext
         root/2.ext
@@ -301,7 +301,7 @@ class ImageFolder(Dataset):
         self.transform = transform
 
     def __getitem__(self, index):
-        """
+        r"""
         Args:
             index (int): Index
 

@@ -25,7 +25,7 @@ import paddle.fluid.framework as framework
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
-    """Reference forward implementation using np.matmul."""
+    r"""Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
     if transpose_X:
@@ -56,7 +56,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
 
 class TestMatMulV2Op(OpTest):
-    """
+    r"""
     case 1
     """
 
@@ -95,7 +95,7 @@ class TestMatMulV2Op(OpTest):
 
 
 class TestMatMuklOp2(TestMatMulV2Op):
-    """
+    r"""
     case 2
     """
 
@@ -107,7 +107,7 @@ class TestMatMuklOp2(TestMatMulV2Op):
 
 
 class TestMatMuklOp3(TestMatMulV2Op):
-    """
+    r"""
     case 3
     """
 
@@ -119,7 +119,7 @@ class TestMatMuklOp3(TestMatMulV2Op):
 
 
 class TestMatMuklOp4(TestMatMulV2Op):
-    """
+    r"""
     case 4
     """
 
@@ -131,7 +131,7 @@ class TestMatMuklOp4(TestMatMulV2Op):
 
 
 class TestMatMuklOp5(TestMatMulV2Op):
-    """
+    r"""
     case 5
     """
 
@@ -143,7 +143,7 @@ class TestMatMuklOp5(TestMatMulV2Op):
 
 
 class TestMatMuklOp6(TestMatMulV2Op):
-    """
+    r"""
     case 6
     """
 
@@ -155,7 +155,7 @@ class TestMatMuklOp6(TestMatMulV2Op):
 
 
 class TestMatMuklOp7(TestMatMulV2Op):
-    """
+    r"""
     case 7
     """
 
@@ -167,7 +167,7 @@ class TestMatMuklOp7(TestMatMulV2Op):
 
 
 class TestMatMuklOp8(TestMatMulV2Op):
-    """
+    r"""
     case 8
     """
 
@@ -179,7 +179,7 @@ class TestMatMuklOp8(TestMatMulV2Op):
 
 
 class TestMatMuklOp9(TestMatMulV2Op):
-    """
+    r"""
     case 9
     """
 
@@ -191,7 +191,7 @@ class TestMatMuklOp9(TestMatMulV2Op):
 
 
 class TestMatMuklOp10(TestMatMulV2Op):
-    """
+    r"""
     case 10
     """
 
@@ -203,7 +203,7 @@ class TestMatMuklOp10(TestMatMulV2Op):
 
 
 class TestMatMuklOp11(TestMatMulV2Op):
-    """
+    r"""
     case 11
     """
 
@@ -215,7 +215,7 @@ class TestMatMuklOp11(TestMatMulV2Op):
 
 
 class TestMatMuklOp12(TestMatMulV2Op):
-    """
+    r"""
     case 12
     """
 
@@ -227,7 +227,7 @@ class TestMatMuklOp12(TestMatMulV2Op):
 
 
 class TestMatMuklOp13(TestMatMulV2Op):
-    """
+    r"""
     case 13
     """
 
@@ -239,7 +239,7 @@ class TestMatMuklOp13(TestMatMulV2Op):
 
 
 class TestMatMuklOp14(TestMatMulV2Op):
-    """
+    r"""
     case 14_1
     """
 
@@ -251,7 +251,7 @@ class TestMatMuklOp14(TestMatMulV2Op):
 
 
 class TestMatMuklOp15(TestMatMulV2Op):
-    """
+    r"""
     case 14_2
     """
 
@@ -263,7 +263,7 @@ class TestMatMuklOp15(TestMatMulV2Op):
 
 
 class TestMatMuklOp16(TestMatMulV2Op):
-    """
+    r"""
     case 16 : to check the gradient for special case
     """
 
@@ -275,7 +275,7 @@ class TestMatMuklOp16(TestMatMulV2Op):
 
 
 class TestMatMuklOp17(TestMatMulV2Op):
-    """
+    r"""
     case 17 : to check the gradient for special case
     """
 

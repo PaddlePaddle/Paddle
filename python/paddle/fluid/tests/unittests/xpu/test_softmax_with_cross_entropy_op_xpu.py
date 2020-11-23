@@ -46,7 +46,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
 
 
 class TestSoftmaxWithCrossEntropyOp(OpTest):
-    """
+    r"""
     Test softmax with cross entropy operator with discreate one-hot labels.
     """
 
@@ -131,7 +131,7 @@ class TestXPUSoftmaxWithCrossEntropyOp(TestSoftmaxWithCrossEntropyOp):
 
 
 class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with soft labels.
     """
 
@@ -159,7 +159,7 @@ class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
 
 
 class TestXPUSoftmaxWithCrossEntropyOp3(TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with ignore_index.
     """
 
@@ -174,7 +174,7 @@ class TestXPUSoftmaxWithCrossEntropyOp3(TestXPUSoftmaxWithCrossEntropyOp):
 
 
 class TestXPUSoftmaxWithCrossEntropyOpAxis1(TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
@@ -190,7 +190,7 @@ class TestXPUSoftmaxWithCrossEntropyOpAxis1(TestXPUSoftmaxWithCrossEntropyOp):
 
 
 class TestXPUSoftmaxWithCrossEntropyOpAxis2(TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
@@ -206,7 +206,7 @@ class TestXPUSoftmaxWithCrossEntropyOpAxis2(TestXPUSoftmaxWithCrossEntropyOp):
 
 
 class TestXPUSoftmaxWithCrossEntropyOpAxis3(TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
@@ -222,7 +222,7 @@ class TestXPUSoftmaxWithCrossEntropyOpAxis3(TestXPUSoftmaxWithCrossEntropyOp):
 
 
 class TestXPUSoftmaxWithCrossEntropyOpAxis4(TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
@@ -239,7 +239,7 @@ class TestXPUSoftmaxWithCrossEntropyOpAxis4(TestXPUSoftmaxWithCrossEntropyOp):
 
 class TestXPUSoftmaxWithCrossEntropyOpAxisDimEqualOne(
         TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test softmax with cross entropy operator with discreate one-hot labels.
     Given axis != -1
     """
@@ -352,7 +352,7 @@ class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis4(
 
 class TestXPUSoftmaxWithCrossEntropyOpBoundary0(
         TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test stable softmax with cross entropy operator will not product INF
     with small logits value.
     """
@@ -370,7 +370,7 @@ class TestXPUSoftmaxWithCrossEntropyOpBoundary0(
 
 class TestXPUSoftmaxWithCrossEntropyOpBoundary1(
         TestXPUSoftmaxWithCrossEntropyOp):
-    """
+    r"""
     Test stable softmax with cross entropy operator will not product INF
     with small logits value.
     """

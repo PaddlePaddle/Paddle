@@ -23,7 +23,7 @@ from paddle import enable_static
 
 
 def stable_softmax(x):
-    """Compute the softmax of vector x in a numerically stable way."""
+    r"""Compute the softmax of vector x in a numerically stable way."""
     shiftx = x - np.max(x).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)

@@ -30,7 +30,7 @@ __all__ = [
 
 
 class FakeQuantMovingAverage(layers.Layer):
-    """
+    r"""
     FakeQuantMovingAverage layer does the moving_average_abs_max quant and then dequant.
     Its computational formula is described as below:
 
@@ -128,7 +128,7 @@ class FakeQuantMovingAverage(layers.Layer):
 
 
 class FakeQuantAbsMax(layers.Layer):
-    """
+    r"""
     FakeQuantAbsMax layer does the abs_max quant and then dequant.
     Its computational formula is described as below:
 
@@ -321,7 +321,7 @@ def _get_fake_quant_type(quant_type, **kwargs):
 
 
 class QuantizedConv2D(layers.Layer):
-    """
+    r"""
     The computational logic of QuantizedConv2D is the same with Conv2D.
     The only difference is that its inputs are all fake quantized.
     """
@@ -439,7 +439,7 @@ class QuantizedConv2D(layers.Layer):
 
 
 class QuantizedLinear(layers.Layer):
-    """
+    r"""
     The computational logic of QuantizedLinear is the same with Linear.
     The only difference is that its inputs are all fake quantized.
     """
@@ -545,7 +545,7 @@ class QuantizedLinear(layers.Layer):
 
 class MovingAverageAbsMaxScale(layers.Layer):
     def __init__(self, name=None, moving_rate=0.9, dtype='float32'):
-        """
+        r"""
         MovingAverageMaxScale layer is used to calculating the output quantization scale of Layer.
         Its computational formula is described as below:
 

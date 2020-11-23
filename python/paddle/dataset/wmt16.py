@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 ACL2016 Multimodal Machine Translation. Please see this website for more
 details: http://www.statmt.org/wmt16/multimodal-task.html#task1
 
@@ -150,7 +150,7 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
     update_to="paddle.text.datasets.WMT16",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(src_dict_size, trg_dict_size, src_lang="en"):
-    """
+    r"""
     WMT16 train set reader.
 
     This function returns the reader for train data. Each sample the reader
@@ -203,7 +203,7 @@ def train(src_dict_size, trg_dict_size, src_lang="en"):
     update_to="paddle.text.datasets.WMT16",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(src_dict_size, trg_dict_size, src_lang="en"):
-    """
+    r"""
     WMT16 test set reader.
 
     This function returns the reader for test data. Each sample the reader
@@ -256,7 +256,7 @@ def test(src_dict_size, trg_dict_size, src_lang="en"):
     update_to="paddle.text.datasets.WMT16",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def validation(src_dict_size, trg_dict_size, src_lang="en"):
-    """
+    r"""
     WMT16 validation set reader.
 
     This function returns the reader for validation data. Each sample the reader
@@ -307,7 +307,7 @@ def validation(src_dict_size, trg_dict_size, src_lang="en"):
     update_to="paddle.text.datasets.WMT16",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_dict(lang, dict_size, reverse=False):
-    """
+    r"""
     return the word dictionary for the specified language.
 
     Args:
@@ -341,7 +341,7 @@ def get_dict(lang, dict_size, reverse=False):
     update_to="paddle.text.datasets.WMT16",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
-    """download the entire dataset.
+    r"""download the entire dataset.
     """
     paddle.v4.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
                                       "wmt16.tar.gz")

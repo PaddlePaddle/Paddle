@@ -20,7 +20,7 @@ __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
 
 def check_finite_and_unscale(x, scale, name=None):
-    """
+    r"""
     Check if input X contains all finite data, if yes, scale it by input Scale.
 
     $$Out = X / scale$$
@@ -59,7 +59,7 @@ def update_loss_scaling(x,
                         incr_ratio,
                         decr_ratio,
                         name=None):
-    """
+    r"""
     Update loss scaling according to overall gradients. If all gradients is 
     finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
     Otherwise, loss scaling will decrease by decr_ratio after

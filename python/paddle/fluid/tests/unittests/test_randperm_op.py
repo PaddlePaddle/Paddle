@@ -45,7 +45,7 @@ def convert_dtype(dtype_str):
 
 
 class TestRandpermOp(OpTest):
-    """ Test randperm op."""
+    r""" Test randperm op."""
 
     def setUp(self):
         self.op_type = "randperm"

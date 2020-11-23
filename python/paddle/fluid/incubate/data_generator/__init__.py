@@ -19,7 +19,7 @@ __all__ = ['MultiSlotDataGenerator', 'MultiSlotStringDataGenerator']
 
 
 class DataGenerator(object):
-    """
+    r"""
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
     with paddle.fluid.dataset should inherit this class.

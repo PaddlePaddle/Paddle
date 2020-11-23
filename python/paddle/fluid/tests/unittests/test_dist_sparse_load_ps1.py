@@ -38,7 +38,7 @@ class TestSparseLoadOpCase2(SparseLoadOp):
         env["POD_IP"] = "127.0.0.1"
         for k, v in env.items():
             os.environ[k] = str(v)
-        """
+        r"""
         array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
                 [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
                 [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],

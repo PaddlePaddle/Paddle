@@ -25,7 +25,7 @@ import paddle
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestLoadOpXpu(unittest.TestCase):
-    """ Test load operator.
+    r""" Test load operator.
     """
 
     def setUp(self):

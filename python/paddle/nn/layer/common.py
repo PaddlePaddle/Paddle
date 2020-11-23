@@ -40,7 +40,7 @@ __all__ = [
 
 
 class Linear(layers.Layer):
-    """
+    r"""
 
     Fully-connected linear transformation layer. For each input :math:`X` ,
     the equation is:
@@ -141,7 +141,7 @@ class Linear(layers.Layer):
 
 
 class Upsample(layers.Layer):
-    """
+    r"""
     This op resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -381,7 +381,7 @@ class Upsample(layers.Layer):
 
 
 class Bilinear(layers.Layer):
-    """
+    r"""
 
     This layer performs bilinear on two inputs.
 
@@ -471,7 +471,7 @@ class Bilinear(layers.Layer):
 
 
 class Dropout(layers.Layer):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training as described in the paper:
     `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_
@@ -539,7 +539,7 @@ class Dropout(layers.Layer):
 
 
 class Dropout2D(layers.Layer):
-    """
+    r"""
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
@@ -597,7 +597,7 @@ class Dropout2D(layers.Layer):
 
 
 class Dropout3D(layers.Layer):
-    """
+    r"""
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
@@ -655,7 +655,7 @@ class Dropout3D(layers.Layer):
 
 
 class AlphaDropout(layers.Layer):
-    """
+    r"""
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
     zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
     standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
@@ -704,7 +704,7 @@ class AlphaDropout(layers.Layer):
 
 
 class Pad1D(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Pad1D`` class.
     Pad tensor according to 'pad', 'mode' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
@@ -779,7 +779,7 @@ class Pad1D(layers.Layer):
 
 
 class Pad2D(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Pad2D`` class.
     Pad tensor according to 'pad', 'mode' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
@@ -857,7 +857,7 @@ class Pad2D(layers.Layer):
 
 
 class Pad3D(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Pad3D`` class.
     Pad tensor according to 'pad', 'mode' and 'value'.
     If mode is 'reflect', pad[0] and pad[1] must be no greater
@@ -935,7 +935,7 @@ class Pad3D(layers.Layer):
 
 
 class CosineSimilarity(layers.Layer):
-    """
+    r"""
     This interface is used to compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
@@ -989,7 +989,7 @@ class CosineSimilarity(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    """
+    r"""
     **Embedding Layer**
 
     This interface is used to construct a callable object of the ``Embedding`` class.

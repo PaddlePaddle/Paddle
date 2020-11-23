@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This is unit test of Test data_norm Op."""
+r"""This is unit test of Test data_norm Op."""
 
 from __future__ import print_function
 
@@ -58,13 +58,13 @@ def create_or_get_tensor(scope, var_name, var, place):
 
 
 class TestDataNormOpInference(unittest.TestCase):
-    """
+    r"""
     test class for data norm op
     test forward
     """
 
     def setUp(self):
-        """
+        r"""
         init members of this class
         """
         self.dtype = np.float32
@@ -80,7 +80,7 @@ class TestDataNormOpInference(unittest.TestCase):
                          shape,
                          slot_dim=-1,
                          enable_scale_and_shift=False):
-        """
+        r"""
         do forward and check
 
         Args:
@@ -190,7 +190,7 @@ class TestDataNormOpInference(unittest.TestCase):
             atol=1e-3)
 
     def test_check_output(self):
-        """
+        r"""
         test check forward, check output
         """
         places = [core.CPUPlace()]
@@ -207,13 +207,13 @@ class TestDataNormOpInference(unittest.TestCase):
 
 
 class TestDataNormOp(OpTest):
-    """
+    r"""
     test class for data norm op
     test forward and backward
     """
 
     def setUp(self):
-        """
+        r"""
         init data norm op test env
         """
         self.op_type = 'data_norm'
@@ -245,26 +245,26 @@ class TestDataNormOp(OpTest):
         self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
 
     def test_check_output(self):
-        """
+        r"""
         test check forward, check output
         """
         self.check_output()
 
     def test_check_grad(self):
-        """
+        r"""
         test check backward, check grad
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithEnableScaleAndShift(OpTest):
-    """
+    r"""
     test class for data norm op
     test forward and backward
     """
 
     def setUp(self):
-        """
+        r"""
         init data norm op test env
         """
         self.op_type = 'data_norm'
@@ -307,26 +307,26 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         }
 
     def test_check_output(self):
-        """
+        r"""
         test check forward, check output
         """
         self.check_output()
 
     def test_check_grad(self):
-        """
+        r"""
         test check backward, check grad
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
-    """
+    r"""
     test class for data norm op
     test forward and backward
     """
 
     def setUp(self):
-        """
+        r"""
         init data norm op test env
         """
         self.op_type = 'data_norm'
@@ -364,26 +364,26 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
 
     def test_check_output(self):
-        """
+        r"""
         test check forward, check output
         """
         self.check_output()
 
     def test_check_grad(self):
-        """
+        r"""
         test check backward, check grad
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
-    """
+    r"""
     test class for data norm op
     test forward and backward
     """
 
     def setUp(self):
-        """
+        r"""
         init data norm op test env
         """
         self.op_type = 'data_norm'
@@ -426,26 +426,26 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         }
 
     def test_check_output(self):
-        """
+        r"""
         test check forward, check output
         """
         self.check_output()
 
     def test_check_grad(self):
-        """
+        r"""
         test check backward, check grad
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithSlotDim(OpTest):
-    """
+    r"""
     test class for data norm op
     test forward and backward
     """
 
     def setUp(self):
-        """
+        r"""
         init data norm op test env
         """
         self.op_type = 'data_norm'
@@ -482,13 +482,13 @@ class TestDataNormOpWithSlotDim(OpTest):
         }
 
     def test_check_output(self):
-        """
+        r"""
         test check forward, check output
         """
         self.check_output()
 
     def test_check_grad(self):
-        """
+        r"""
         test check backward, check grad
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))

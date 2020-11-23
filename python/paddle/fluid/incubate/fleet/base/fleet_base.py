@@ -28,7 +28,7 @@ from . import mode
 
 
 class Mode:
-    """
+    r"""
     There are various mode for fleet, each of them is designed for different model.
     """
     PS = 1
@@ -40,7 +40,7 @@ __all__ += mode.__all__
 
 
 class Fleet(object):
-    """
+    r"""
     Fleet is the base class, transpiler and pslib are implementation of Fleet.
 
     Args:
@@ -59,7 +59,7 @@ class Fleet(object):
         self._executor = None
 
     def is_first_worker(self):
-        """
+        r"""
         Check whether the node is the first instance of worker.
 
         Returns:
@@ -69,7 +69,7 @@ class Fleet(object):
         return self._role_maker.is_first_worker()
 
     def worker_index(self):
-        """
+        r"""
         Get current worker index.
 
         Returns:
@@ -78,7 +78,7 @@ class Fleet(object):
         return self._role_maker.worker_index()
 
     def worker_num(self):
-        """
+        r"""
         Get current total worker number.
 
         Returns:
@@ -87,7 +87,7 @@ class Fleet(object):
         return self._role_maker.worker_num()
 
     def is_worker(self):
-        """
+        r"""
         Check whether the node is an instance of worker.
 
         Returns:
@@ -97,7 +97,7 @@ class Fleet(object):
         return self._role_maker.is_worker()
 
     def worker_endpoints(self, to_string=False):
-        """
+        r"""
         Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
         Returns:
@@ -110,7 +110,7 @@ class Fleet(object):
             return self._role_maker.get_trainer_endpoints()
 
     def server_num(self):
-        """
+        r"""
         Get current total worker number.
 
         Returns:
@@ -119,7 +119,7 @@ class Fleet(object):
         return len(self._role_maker.get_pserver_endpoints())
 
     def server_index(self):
-        """
+        r"""
         Get current server index.
 
         Returns:
@@ -128,7 +128,7 @@ class Fleet(object):
         return self._role_maker.server_index()
 
     def server_endpoints(self, to_string=False):
-        """
+        r"""
         Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
         Returns:
@@ -141,7 +141,7 @@ class Fleet(object):
             return self._role_maker.get_pserver_endpoints()
 
     def is_server(self):
-        """
+        r"""
         Check whether the node is an instance of server.
 
         Returns:
@@ -151,7 +151,7 @@ class Fleet(object):
         return self._role_maker.is_server()
 
     def is_xpu(self):
-        """
+        r"""
         Check whether the node is an instance of server.
 
         Returns:
@@ -161,7 +161,7 @@ class Fleet(object):
         return self._role_maker.is_xpu()
 
     def split_files(self, files):
-        """
+        r"""
         split files before distributed training,
         example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
                    0 gets [a, b, c] and trainer 1 gets [d, e].
@@ -196,7 +196,7 @@ class Fleet(object):
         return trainer_files[trainer_id]
 
     def init(self, role_maker=None):
-        """
+        r"""
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
             current node's role, e.g. worker, server, etc.
@@ -220,7 +220,7 @@ class Fleet(object):
         self._is_initialized = True
 
     def all_reduce_worker(self, input, output):
-        """
+        r"""
         all reduce between workers, only support array of one dim.
 
         Args:
@@ -230,7 +230,7 @@ class Fleet(object):
         self._role_maker.all_reduce_worker(input, output)
 
     def barrier_worker(self):
-        """
+        r"""
         barrier between workers
         """
         self._role_maker.barrier_worker()
@@ -271,7 +271,7 @@ class Fleet(object):
 
 
 class DistributedOptimizer(object):
-    """
+    r"""
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
     A user should pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.
@@ -306,7 +306,7 @@ class DistributedOptimizer(object):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        """
+        r"""
         First part of `minimize`, do auto-diff to append backward ops for
         the current program.
 
@@ -329,7 +329,7 @@ class DistributedOptimizer(object):
 
     @abc.abstractmethod
     def apply_gradients(self, params_grads):
-        """
+        r"""
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
 
@@ -358,7 +358,7 @@ class DistributedOptimizer(object):
                  startup_programs=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """
+        r"""
         Add operations to minimize `loss` by updating `parameter_list`.
 
         This method combines interface `backward()` and

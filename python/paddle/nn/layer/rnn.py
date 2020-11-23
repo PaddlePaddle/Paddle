@@ -194,7 +194,7 @@ class RNNCellBase(Layer):
                     long, )
             else:
                 integer_types = (int, )
-            """For shape, list/tuple of integer is the finest-grained objection"""
+            r"""For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
                 if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
                           seq, True):
@@ -1009,7 +1009,7 @@ class RNNBase(LayerList):
         self.flatten_parameters()
 
     def flatten_parameters(self):
-        """
+        r"""
         Resets parameter data pointer to address in continuous memory block for
         cudnn usage.
         """

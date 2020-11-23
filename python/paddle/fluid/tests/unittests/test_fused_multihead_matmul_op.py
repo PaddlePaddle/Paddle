@@ -24,7 +24,7 @@ np.random.random(123)
 
 
 def stable_softmax(x):
-    """Compute the softmax of vector x in a numerically stable way."""
+    r"""Compute the softmax of vector x in a numerically stable way."""
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
     shiftx = (x - np.max(x)).clip(-64.)

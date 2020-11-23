@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 MQ2007 dataset
 
 MQ2007 is a query set from Million Query track of TREC 2007. There are about 1700 queries in it with labeled documents. In MQ2007, the 5-fold cross
@@ -36,7 +36,7 @@ MD5 = "7be1640ae95c6408dab0ae7207bdc706"
 
 
 def __initialize_meta_info__():
-    """
+    r"""
   download and extract the MQ2007 dataset
   """
     import rarfile
@@ -49,7 +49,7 @@ def __initialize_meta_info__():
 
 
 class Query(object):
-    """
+    r"""
   queries used for learning to rank algorithms. It is created from relevance scores,  query-document feature vectors
 
   Parameters:
@@ -84,7 +84,7 @@ class Query(object):
 
     # @classmethod
     def _parse_(self, text):
-        """
+        r"""
     parse line into Query
     """
         comment_position = text.find('#')
@@ -105,7 +105,7 @@ class Query(object):
 
 
 class QueryList(object):
-    """
+    r"""
   group query into list, every item in list is a Query
   """
 
@@ -147,7 +147,7 @@ class QueryList(object):
 
 
 def gen_plain_txt(querylist):
-    """
+    r"""
   gen plain text in list for other usage
   Paramters:
   --------
@@ -168,7 +168,7 @@ def gen_plain_txt(querylist):
 
 
 def gen_point(querylist):
-    """
+    r"""
   gen item in list for point-wise learning to rank algorithm
   Paramters:
   --------
@@ -187,7 +187,7 @@ def gen_point(querylist):
 
 
 def gen_pair(querylist, partial_order="full"):
-    """
+    r"""
   gen pair for pair-wise learning to rank algorithm
   Paramters:
   --------
@@ -230,7 +230,7 @@ def gen_pair(querylist, partial_order="full"):
 
 
 def gen_list(querylist):
-    """
+    r"""
   gen item in list for list-wise learning to rank algorithm
   Paramters:
   --------
@@ -250,7 +250,7 @@ def gen_list(querylist):
 
 
 def query_filter(querylists):
-    """
+    r"""
     filter query get only document with label 0.
     label 0, 1, 2 means the relevance score document with query
     parameters :
@@ -268,7 +268,7 @@ def query_filter(querylists):
 
 
 def load_from_text(filepath, shuffle=False, fill_missing=-1):
-    """
+    r"""
   parse data file into queries
   """
     prev_query_id = -1
@@ -293,7 +293,7 @@ def load_from_text(filepath, shuffle=False, fill_missing=-1):
 
 
 def __reader__(filepath, format="pairwise", shuffle=False, fill_missing=-1):
-    """
+    r"""
   Parameters
   --------
   filename : string

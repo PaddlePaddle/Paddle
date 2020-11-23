@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 MNIST dataset.
 
 This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
@@ -94,7 +94,7 @@ def reader_creator(image_filename, label_filename, buffer_size):
     update_to="paddle.vision.datasets.MNIST",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
-    """
+    r"""
     MNIST training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
@@ -115,7 +115,7 @@ def train():
     update_to="paddle.vision.datasets.MNIST",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
-    """
+    r"""
     MNIST test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in

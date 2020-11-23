@@ -42,7 +42,7 @@ def output_hist(out):
 
 class TestConstantInitializer(unittest.TestCase):
     def test_constant_initializer_default_value(self, dtype="float32"):
-        """Test the constant initializer with default value
+        r"""Test the constant initializer with default value
         """
         program = framework.Program()
         block = program.global_block()
@@ -61,7 +61,7 @@ class TestConstantInitializer(unittest.TestCase):
         return block
 
     def test_constant_initializer(self, dtype="float32"):
-        """Test constant initializer with supplied value
+        r"""Test constant initializer with supplied value
         """
         program = framework.Program()
         block = program.global_block()
@@ -80,7 +80,7 @@ class TestConstantInitializer(unittest.TestCase):
         return block
 
     def test_constant_initializer_fp16(self):
-        """Test constant initializer with float16
+        r"""Test constant initializer with float16
         """
         block = self.test_constant_initializer_default_value("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -90,7 +90,7 @@ class TestConstantInitializer(unittest.TestCase):
 
 class TestUniformInitializer(unittest.TestCase):
     def test_uniform_initializer_default_value(self, dtype="float32"):
-        """Test the uniform initializer with default value
+        r"""Test the uniform initializer with default value
         """
         program = framework.Program()
         block = program.global_block()
@@ -111,7 +111,7 @@ class TestUniformInitializer(unittest.TestCase):
         return block
 
     def test_uniform_initializer_random_seed(self):
-        """Test the uniform initializer with manually setting seed
+        r"""Test the uniform initializer with manually setting seed
         """
         program = framework.Program()
         program.random_seed = 123
@@ -135,7 +135,7 @@ class TestUniformInitializer(unittest.TestCase):
         self.assertEqual(init_op1.attr("seed"), 456)
 
     def test_uniform_initializer(self, dtype="float32"):
-        """Test uniform initializer with supplied attributes
+        r"""Test uniform initializer with supplied attributes
         """
         program = framework.Program()
         block = program.global_block()
@@ -156,7 +156,7 @@ class TestUniformInitializer(unittest.TestCase):
         return block
 
     def test_uniform_initializer_two_op(self, dtype="float32"):
-        """Test uniform initializer with supplied attributes
+        r"""Test uniform initializer with supplied attributes
         """
         program = framework.Program()
         block = program.global_block()
@@ -177,7 +177,7 @@ class TestUniformInitializer(unittest.TestCase):
         return block
 
     def test_uniform_initializer_fp16(self):
-        """Test uniform initializer with float16
+        r"""Test uniform initializer with float16
         """
         block = self.test_uniform_initializer_default_value("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -189,7 +189,7 @@ class TestUniformInitializer(unittest.TestCase):
 
 class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_default_value(self):
-        """Test the normal initializer with default value
+        r"""Test the normal initializer with default value
         """
         program = framework.Program()
         block = program.global_block()
@@ -208,7 +208,7 @@ class TestNormalInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_initializer(self, dtype="float32"):
-        """Test normal initializer with supplied attributes
+        r"""Test normal initializer with supplied attributes
         """
         program = framework.Program()
         block = program.global_block()
@@ -229,7 +229,7 @@ class TestNormalInitializer(unittest.TestCase):
         return block
 
     def test_normal_initializer_fp16(self):
-        """Test normal initializer with float16
+        r"""Test normal initializer with float16
         """
         block = self.test_normal_initializer("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -237,7 +237,7 @@ class TestNormalInitializer(unittest.TestCase):
 
 class TestXavierInitializer(unittest.TestCase):
     def test_uniform_xavier_initializer(self):
-        """Test Xavier initializer with uniform distribution on
+        r"""Test Xavier initializer with uniform distribution on
            for matrix multiply.
         """
         program = framework.Program()
@@ -258,7 +258,7 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_uniform_xavier_initializer_conv(self):
-        """Test Xavier initializer with uniform distribution on
+        r"""Test Xavier initializer with uniform distribution on
            for convolutions.
         """
         program = framework.Program()
@@ -281,7 +281,7 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_xavier_initializer(self):
-        """Test Xavier initializer with normal distribution on
+        r"""Test Xavier initializer with normal distribution on
            for matrix multiply.
         """
         program = framework.Program()
@@ -302,7 +302,7 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_xavier_initializer_conv(self):
-        """Test Xavier initializer with normal distribution on
+        r"""Test Xavier initializer with normal distribution on
            for convolutions.
         """
         program = framework.Program()
@@ -325,7 +325,7 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_xavier_initializer_supplied_arguments(self, dtype="float32"):
-        """Test the Xavier initializer with supplied arguments
+        r"""Test the Xavier initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
@@ -348,7 +348,7 @@ class TestXavierInitializer(unittest.TestCase):
         return block
 
     def test_xavier_initializer_fp16(self):
-        """Test the Xavier initializer with float16
+        r"""Test the Xavier initializer with float16
         """
         block = self.test_xavier_initializer_supplied_arguments("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -356,7 +356,7 @@ class TestXavierInitializer(unittest.TestCase):
 
 class TestMSRAInitializer(unittest.TestCase):
     def test_uniform_msra_initializer(self):
-        """Test MSRA initializer with uniform distribution on
+        r"""Test MSRA initializer with uniform distribution on
            for matrix multiply.
         """
         program = framework.Program()
@@ -377,7 +377,7 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_uniform_msra_initializer_conv(self):
-        """Test MSRA initializer with uniform distribution on
+        r"""Test MSRA initializer with uniform distribution on
            for convolutions.
         """
         program = framework.Program()
@@ -399,7 +399,7 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_msra_initializer(self):
-        """Test MSRA initializer with normal distribution on
+        r"""Test MSRA initializer with normal distribution on
            for matrix multiply.
         """
         program = framework.Program()
@@ -420,7 +420,7 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_msra_initializer_conv(self):
-        """Test MSRA initializer with normal distribution on
+        r"""Test MSRA initializer with normal distribution on
            for convolutions.
         """
         program = framework.Program()
@@ -442,7 +442,7 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_msra_initializer_supplied_arguments(self, dtype="float32"):
-        """Test the MSRA initializer with supplied arguments
+        r"""Test the MSRA initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
@@ -465,7 +465,7 @@ class TestMSRAInitializer(unittest.TestCase):
         return block
 
     def test_msra_initializer_fp16(self):
-        """Test the MSRA initializer with float16
+        r"""Test the MSRA initializer with float16
         """
         block = self.test_msra_initializer_supplied_arguments("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -473,7 +473,7 @@ class TestMSRAInitializer(unittest.TestCase):
 
 class TestBilinearInitializer(unittest.TestCase):
     def test_bilinear_initializer(self, dtype="float32"):
-        """Test the bilinear initializer with supplied arguments
+        r"""Test the bilinear initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
@@ -494,7 +494,7 @@ class TestBilinearInitializer(unittest.TestCase):
         self.test_bilinear_initializer(dtype='float64')
 
     def test_bilinear_initializer_fp16(self):
-        """Test the bilinear initializer with supplied arguments
+        r"""Test the bilinear initializer with supplied arguments
         """
         block = self.test_bilinear_initializer("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
@@ -505,7 +505,7 @@ class TestBilinearInitializer(unittest.TestCase):
 
 class TestNumpyArrayInitializer(unittest.TestCase):
     def test_numpy_array_initializer(self, dtype="float32"):
-        """Test the numpy array initializer with supplied arguments
+        r"""Test the numpy array initializer with supplied arguments
         """
         import numpy
         program = framework.Program()
@@ -526,7 +526,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         return block
 
     def test_numpy_array_initializer_fp16(self):
-        """Test the numpy array initializer with float16
+        r"""Test the numpy array initializer with float16
         """
         block = self.test_numpy_array_initializer("float16")
         self.assertTrue(block.ops[1])
@@ -534,7 +534,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
 
 class TestSetGlobalInitializer(unittest.TestCase):
     def test_set_global_weight_initilizer(self):
-        """Test Set Global Param initilizer with UniformInitializer
+        r"""Test Set Global Param initilizer with UniformInitializer
         """
         main_prog = framework.Program()
         startup_prog = framework.Program()
@@ -560,7 +560,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         fluid.set_global_initializer(None)
 
     def test_set_global_bias_initilizer(self):
-        """Test Set Global Bias initilizer with NormalInitializer
+        r"""Test Set Global Bias initilizer with NormalInitializer
         """
         main_prog = framework.Program()
         startup_prog = framework.Program()
@@ -594,7 +594,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
 
 class TestUniformInitializerDygraph(unittest.TestCase):
     def test_uniform_initializer(self, dtype="float32"):
-        """
+        r"""
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()

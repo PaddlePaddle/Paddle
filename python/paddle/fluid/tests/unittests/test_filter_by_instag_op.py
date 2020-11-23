@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This is unit test of Test filter_instag Op."""
+r"""This is unit test of Test filter_instag Op."""
 
 from __future__ import print_function
 
@@ -24,7 +24,7 @@ from op_test import OpTest
 import random
 from decorator_helper import prog_scope
 from paddle.fluid.op import Operator
-"""This is Test Case 1"""
+r"""This is Test Case 1"""
 
 
 class TestFilterByInstagOp(OpTest):
@@ -82,7 +82,7 @@ class TestFilterByInstagOp(OpTest):
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
-"""This is Test Case 2"""
+r"""This is Test Case 2"""
 
 
 class TestFilterByInstagOp2(OpTest):
@@ -127,7 +127,7 @@ class TestFilterByInstagOp2(OpTest):
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
-"""This is Test Case 3"""
+r"""This is Test Case 3"""
 
 
 class TestFilterByInstagOp3(OpTest):
@@ -169,7 +169,7 @@ class TestFilterByInstagOp3(OpTest):
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 
-"""This is Test Case 4"""
+r"""This is Test Case 4"""
 
 
 class TestFilterByInstagOp4(OpTest):

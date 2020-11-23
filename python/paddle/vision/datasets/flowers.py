@@ -41,7 +41,7 @@ MODE_FLAG_MAP = {'train': 'tstid', 'test': 'trnid', 'valid': 'valid'}
 
 
 class Flowers(Dataset):
-    """
+    r"""
     Implementation of `Flowers <https://www.robots.ox.ac.uk/~vgg/data/flowers/>`_
     dataset
 

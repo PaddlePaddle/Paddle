@@ -53,7 +53,7 @@ __all__ = [
 
 
 def equal_all(x, y, name=None):
-    """
+    r"""
 	:alias_main: paddle.equal_all
 	:alias: paddle.equal_all,paddle.tensor.equal_all,paddle.tensor.logic.equal_all
 
@@ -95,7 +95,7 @@ def equal_all(x, y, name=None):
 
 @templatedoc()
 def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
-    """
+    r"""
     ${comment}
 
     Args:
@@ -188,7 +188,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
 @templatedoc()
 def equal(x, y, name=None):
-    """
+    r"""
 	:alias_main: paddle.equal
 	:alias: paddle.equal,paddle.tensor.equal,paddle.tensor.logic.equal
 
@@ -235,7 +235,7 @@ def equal(x, y, name=None):
 
 @templatedoc()
 def greater_equal(x, y, name=None):
-    """
+    r"""
     :alias_main: paddle.greater_equal
 	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
 
@@ -281,7 +281,7 @@ def greater_equal(x, y, name=None):
 
 @templatedoc()
 def greater_than(x, y, name=None):
-    """
+    r"""
     :alias_main: paddle.greater_than
 	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
 
@@ -327,7 +327,7 @@ def greater_than(x, y, name=None):
 
 @templatedoc()
 def less_equal(x, y, name=None):
-    """
+    r"""
     :alias_main: paddle.less_equal
 	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
 
@@ -372,7 +372,7 @@ def less_equal(x, y, name=None):
 
 @templatedoc()
 def less_than(x, y, name=None):
-    """
+    r"""
     :alias_main: paddle.less_than
 	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
 
@@ -417,7 +417,7 @@ def less_than(x, y, name=None):
 
 @templatedoc()
 def not_equal(x, y, name=None):
-    """
+    r"""
     :alias_main: paddle.not_equal
 	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
 
@@ -462,7 +462,7 @@ def not_equal(x, y, name=None):
 
 
 def is_tensor(x):
-    """
+    r"""
 
     This function tests whether input object is a paddle.Tensor or a paddle.ComplexTensor.
 

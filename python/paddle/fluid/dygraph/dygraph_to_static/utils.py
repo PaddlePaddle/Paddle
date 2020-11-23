@@ -31,7 +31,7 @@ from paddle.fluid import unique_name
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
-    """
+    r"""
     Implement customized NodeVisitor inherited from gast.NodeVisitor. 
     Ancestor nodes are traced to easily support more operations of currently
     visited node.
@@ -41,7 +41,7 @@ class BaseNodeVisitor(gast.NodeVisitor):
         self.ancestor_nodes = []
 
     def visit(self, node):
-        """Visit a node."""
+        r"""Visit a node."""
         self.ancestor_nodes.append(node)
 
         method = 'visit_' + node.__class__.__name__
@@ -94,7 +94,7 @@ def getfullargspec(target):
 
 
 def parse_arg_and_kwargs(function):
-    """
+    r"""
     Returns full argument names as list. e.g ['x', 'y', 'z']
     """
     fullargspec = getfullargspec(function)
@@ -118,7 +118,7 @@ def type_name(v):
 
 
 def make_hashable(x, error_msg=None):
-    """
+    r"""
     Makes input `x` hashable.
 
     For some unhashable objects, such as `dict/list/np.ndarray`,applying hash function by using their values.
@@ -211,7 +211,7 @@ def is_numpy_api(node):
 def is_control_flow_to_transform(node,
                                  static_analysis_visitor=None,
                                  var_name_to_type=None):
-    """
+    r"""
     Determines whether the node is a PaddlePaddle control flow statement which needs to
     be transformed into a static graph control flow statement.
     """
@@ -358,7 +358,7 @@ def get_attribute_full_name(node):
 
 
 def generate_name_node(name_ids, ctx=gast.Load()):
-    """
+    r"""
     Generate list or gast.Tuple of ast.Name for Return statement.
     """
     if isinstance(name_ids, six.string_types):
@@ -379,7 +379,7 @@ def generate_name_node(name_ids, ctx=gast.Load()):
 
 
 def create_funcDef_node(nodes, name, input_args, return_name_ids):
-    """
+    r"""
     Wrapper all statements of nodes into one ast.FunctionDef, which can be
     called by ast.Call.
     """
@@ -408,7 +408,7 @@ def index_in_list(array_list, item):
 
 
 def create_assign_node(name, node):
-    """
+    r"""
     Creates a `gast.Assign` node by given name_id as target and node as value.
     """
     targets = generate_name_node(name, ctx=gast.Store())
@@ -445,7 +445,7 @@ class RenameTransformer(gast.NodeTransformer):
 
 
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
-    """
+    r"""
     Transform modified AST of decorated function into python callable object.
     TODO: If only decorate one of inner function instead of decorating the main
     function, the other inner functions are invisible for the decorated function.
@@ -504,7 +504,7 @@ def recover_globals_attribute(src_obj, dst_obj):
 
 
 def func_to_source_code(function, dedent=True):
-    """
+    r"""
     Transforms function into raw string of source code.
     """
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
@@ -519,7 +519,7 @@ def func_to_source_code(function, dedent=True):
 
 
 def ast_to_source_code(ast_node):
-    """
+    r"""
     Transforms ast node into source code.
     """
     if not isinstance(ast_node, (gast.AST, ast.AST)):
@@ -533,7 +533,7 @@ def ast_to_source_code(ast_node):
 
 
 def is_candidate_node(node):
-    """
+    r"""
     Nodes with specified type will be dependent on tensor.
     """
     is_compare_node = isinstance(node, (gast.Compare, gast.BoolOp, gast.UnaryOp,
@@ -545,7 +545,7 @@ def is_candidate_node(node):
 
 
 def compare_with_none(node):
-    """
+    r"""
     Whether the comparator of `gast.Compare` node is `None`.
     """
     if isinstance(node, gast.Compare):
@@ -560,7 +560,7 @@ def compare_with_none(node):
 
 
 class IsControlFlowVisitor(gast.NodeVisitor):
-    """
+    r"""
     Judge whether the ast_node of control flow from Dygraph code dependent on paddle Tensor.
     `ast_node` can be gast.If, gast.For, gast.While, gast.If.test(gast.Compare, gast.BoolOp, gast.UnaryOp).
 
@@ -751,7 +751,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
 
 class NameNodeReplaceTransformer(gast.NodeTransformer):
-    """
+    r"""
     This class replaces specified gast.Name node by replace_node.
     """
 
@@ -769,7 +769,7 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
 
 
 class ForNodeVisitor(object):
-    """
+    r"""
     This class parses python for statement, get transformed 3 statement components of for node
     three key statements:
         1). init_stmts: list[node], prepare nodes of for loop, may not only one
@@ -1059,7 +1059,7 @@ class ForNodeVisitor(object):
 
 
 class SplitAssignTransformer(gast.NodeTransformer):
-    """
+    r"""
     This class transforms sequence assignments and multi-target assignments to normal assignments.
     """
 
@@ -1079,7 +1079,7 @@ class SplitAssignTransformer(gast.NodeTransformer):
         return node
 
     def _parse_sequence_assign(self, node):
-        """
+        r"""
         a, b = c, d
         ->
         a = c
@@ -1107,7 +1107,7 @@ class SplitAssignTransformer(gast.NodeTransformer):
         return new_nodes
 
     def _parse_multi_target_assign(self, node):
-        """
+        r"""
          Example 1:
          a = b = c
          ->
@@ -1142,7 +1142,7 @@ class SplitAssignTransformer(gast.NodeTransformer):
 
 # NOTE: inspect.unwrap() exits in PY3 but not in PY2.
 def unwrap(func):
-    """
+    r"""
     Returns the object wrapped by decorators.
     """
 

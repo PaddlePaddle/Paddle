@@ -22,7 +22,7 @@ import paddle.fluid.proto.framework_pb2 as framework_pb2
 
 
 def get_all_op_protos():
-    """
+    r"""
     Get all registered op proto from PaddlePaddle C++ end.
     :return: A list of registered OpProto.
     """
@@ -39,7 +39,7 @@ def is_str(s):
 
 
 class OpDescCreationMethod(object):
-    """
+    r"""
     Convert the user's input(only keyword arguments are supported) to OpDesc
     based on the OpProto.
 
@@ -54,7 +54,7 @@ class OpDescCreationMethod(object):
         self.__op_proto__ = op_proto
 
     def __call__(self, *args, **kwargs):
-        """
+        r"""
         Convert user's input to OpDesc. Only keyword arguments are supported.
         :return: The OpDesc based on user input.
         :rtype: op_desc_pb2.OpDesc
@@ -133,7 +133,7 @@ class OpDescCreationMethod(object):
 
     @staticmethod
     def any_is_true(generator):
-        """
+        r"""
         Reduce a boolean array to a single boolean parameter. If any element in
         the array is True, this function will return True, otherwise False.
         """
@@ -153,7 +153,7 @@ class OpInfo(object):
 
 
 def create_op_creation_method(op_proto):
-    """
+    r"""
     Generate op creation method for an OpProto.
     """
     method = OpDescCreationMethod(op_proto)

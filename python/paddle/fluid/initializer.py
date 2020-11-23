@@ -34,7 +34,7 @@ _global_bias_initializer_ = None
 
 
 class Initializer(object):
-    """Base class for variable initializers
+    r"""Base class for variable initializers
 
     Defines the common interface of variable initializers.
     They add operations to the init program that are used
@@ -46,7 +46,7 @@ class Initializer(object):
         pass
 
     def __call__(self, param, block=None):
-        """Add corresponding initialization operations to the network
+        r"""Add corresponding initialization operations to the network
         """
         raise NotImplementedError()
 
@@ -61,7 +61,7 @@ class Initializer(object):
         return block
 
     def _compute_fans(self, var):
-        """Compute the fan_in and the fan_out for layers
+        r"""Compute the fan_in and the fan_out for layers
 
         This method computes the fan_in and the fan_out
         for neural network layers, if not specified. It is
@@ -97,7 +97,7 @@ class Initializer(object):
 
 
 class ConstantInitializer(Initializer):
-    """Implements the constant initializer
+    r"""Implements the constant initializer
 
     Args:
         value (float32): constant value to initialize the variable 
@@ -123,7 +123,7 @@ class ConstantInitializer(Initializer):
         self._force_cpu = force_cpu
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with constant.
+        r"""Initialize the input tensor with constant.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -178,7 +178,7 @@ class ConstantInitializer(Initializer):
 
 
 class UniformInitializer(Initializer):
-    """Implements the random uniform distribution initializer
+    r"""Implements the random uniform distribution initializer
 
     Args:
         low (float): lower boundary of the uniform distribution
@@ -225,7 +225,7 @@ class UniformInitializer(Initializer):
         self._diag_val = diag_val
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with Uniform distribution.
+        r"""Initialize the input tensor with Uniform distribution.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -289,7 +289,7 @@ class UniformInitializer(Initializer):
 
 
 class NormalInitializer(Initializer):
-    """Implements the Random Normal(Gaussian) distribution initializer
+    r"""Implements the Random Normal(Gaussian) distribution initializer
 
     Args:
         loc (float): mean of the normal distribution
@@ -316,7 +316,7 @@ class NormalInitializer(Initializer):
         self._seed = seed
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with Normal distribution.
+        r"""Initialize the input tensor with Normal distribution.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -376,7 +376,7 @@ class NormalInitializer(Initializer):
 
 
 class TruncatedNormalInitializer(Initializer):
-    """Implements the Random TruncatedNormal(Gaussian) distribution initializer
+    r"""Implements the Random TruncatedNormal(Gaussian) distribution initializer
 
     Args:
         loc (float): mean of the normal distribution
@@ -402,7 +402,7 @@ class TruncatedNormalInitializer(Initializer):
         self._seed = seed
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with TruncatedNormal distribution.
+        r"""Initialize the input tensor with TruncatedNormal distribution.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -459,7 +459,7 @@ class TruncatedNormalInitializer(Initializer):
 
 
 class XavierInitializer(Initializer):
-    """
+    r"""
     This class implements the Xavier weight initializer from the paper
     `Understanding the difficulty of training deep feedforward neural
     networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
@@ -513,7 +513,7 @@ class XavierInitializer(Initializer):
         self._seed = seed
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with Xavier initialization.
+        r"""Initialize the input tensor with Xavier initialization.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -595,7 +595,7 @@ class XavierInitializer(Initializer):
 
 
 class MSRAInitializer(Initializer):
-    """Implements the MSRA initializer a.k.a. Kaiming Initializer
+    r"""Implements the MSRA initializer a.k.a. Kaiming Initializer
 
     This class implements the weight initialization from the paper
     `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
@@ -637,7 +637,7 @@ class MSRAInitializer(Initializer):
     """
 
     def __init__(self, uniform=True, fan_in=None, seed=0):
-        """Constructor for MSRAInitializer
+        r"""Constructor for MSRAInitializer
         """
         assert uniform is not None
         assert seed is not None
@@ -647,7 +647,7 @@ class MSRAInitializer(Initializer):
         self._seed = seed
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with MSRA initialization.
+        r"""Initialize the input tensor with MSRA initialization.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -726,7 +726,7 @@ class MSRAInitializer(Initializer):
 
 
 class BilinearInitializer(Initializer):
-    """
+    r"""
     This initializer can be used in transposed convolution operator to
     act as upsampling. Users can upsample a feature map with shape of
     (B, C, H, W) by any integer factor. The usage is:
@@ -770,12 +770,12 @@ class BilinearInitializer(Initializer):
     """
 
     def __init__(self):
-        """Constructor for BilinearInitializer.
+        r"""Constructor for BilinearInitializer.
         """
         super(BilinearInitializer, self).__init__()
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with Bilinear initialization.
+        r"""Initialize the input tensor with Bilinear initialization.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -856,7 +856,7 @@ class BilinearInitializer(Initializer):
 
 
 class NumpyArrayInitializer(Initializer):
-    """Init an parameter with an numpy array
+    r"""Init an parameter with an numpy array
     This op initialize the variable by numpy array.
 
     Args:
@@ -882,7 +882,7 @@ class NumpyArrayInitializer(Initializer):
         self._value = value
 
     def __call__(self, var, block=None):
-        """Initialize the input tensor with Numpy array.
+        r"""Initialize the input tensor with Numpy array.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
@@ -949,7 +949,7 @@ class NumpyArrayInitializer(Initializer):
 
 
 def set_global_initializer(weight_init, bias_init=None):
-    """
+    r"""
     This API is used to set up global model parameter initializer in framework.
 
     After this API is invoked, the global initializer will takes effect in subsequent code.
@@ -1010,14 +1010,14 @@ def set_global_initializer(weight_init, bias_init=None):
 
 
 def _global_weight_initializer():
-    """
+    r"""
     Return the global weight initializer, The user doesn't need to use it.
     """
     return _global_weight_initializer_
 
 
 def _global_bias_initializer():
-    """
+    r"""
     Return the global weight initializer, The user doesn't need to use it.
     """
     return _global_bias_initializer_

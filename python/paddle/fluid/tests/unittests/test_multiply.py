@@ -22,7 +22,7 @@ import unittest
 
 
 class TestMultiplyAPI(unittest.TestCase):
-    """TestMultiplyAPI."""
+    r"""TestMultiplyAPI."""
 
     def __run_static_graph_case(self, x_data, y_data, axis=-1):
         with program_guard(Program(), Program()):
@@ -72,7 +72,7 @@ class TestMultiplyAPI(unittest.TestCase):
         return res.numpy()
 
     def test_multiply(self):
-        """test_multiply."""
+        r"""test_multiply."""
         np.random.seed(7)
 
         # test static computation graph: 1-d array
@@ -179,10 +179,10 @@ class TestMultiplyAPI(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-    """TestMultiplyError."""
+    r"""TestMultiplyError."""
 
     def test_errors(self):
-        """test_errors."""
+        r"""test_errors."""
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
         with program_guard(Program(), Program()):

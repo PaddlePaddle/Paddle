@@ -45,7 +45,7 @@ def _convert_camel_to_snake(name):
 
 
 class HookRemoveHelper(object):
-    """ A HookRemoveHelper that can be used to remove hook. """
+    r""" A HookRemoveHelper that can be used to remove hook. """
 
     next_hook_id = 0
 
@@ -61,7 +61,7 @@ class HookRemoveHelper(object):
 
 
 class Layer(core.Layer):
-    """
+    r"""
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
@@ -100,7 +100,7 @@ class Layer(core.Layer):
         self._forward_post_hooks = collections.OrderedDict()
 
     def train(self):
-        """
+        r"""
         Sets this Layer and all its sublayers to training mode.
         This only effects certain modules like `Dropout` and `BatchNorm`.
 
@@ -139,7 +139,7 @@ class Layer(core.Layer):
             layer.train()
 
     def eval(self):
-        """
+        r"""
         Sets this Layer and all its sublayers to evaluation mode.
         This only effects certain modules like `Dropout` and `BatchNorm`.
 
@@ -177,7 +177,7 @@ class Layer(core.Layer):
             layer.eval()
 
     def apply(self, fn):
-        """
+        r"""
         Applies ``fn`` recursively to every sublayer (as returned by ``.sublayers()``)
         as well as self. Typical use includes initializing the parameters of a model.
 
@@ -214,7 +214,7 @@ class Layer(core.Layer):
         return self
 
     def full_name(self):
-        """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
+        r"""Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
 
         Returns:
             str: full name of this layer.
@@ -239,7 +239,7 @@ class Layer(core.Layer):
         return self._full_name
 
     def register_forward_post_hook(self, hook):
-        """Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
+        r"""Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
 
         It should have the following form, `input` and `output` of the `hook` is `input` and `output` of the `Layer` respectively.
         User can use forward post-hook to change the output of the Layer or perform information statistics tasks on the Layer.
@@ -288,7 +288,7 @@ class Layer(core.Layer):
         return hook_remove_helper
 
     def register_forward_pre_hook(self, hook):
-        """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
+        r"""Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
         
         It should have the following form, `input` of the `hook` is `input` of the `Layer`,
         hook can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if 
@@ -346,7 +346,7 @@ class Layer(core.Layer):
                          dtype=None,
                          is_bias=False,
                          default_initializer=None):
-        """Create parameters for this layer.
+        r"""Create parameters for this layer.
         
         Parameters:
             shape(list): Shape of the parameter.
@@ -390,7 +390,7 @@ class Layer(core.Layer):
 
     # TODO: Add more parameter list when we need them
     def create_variable(self, name=None, persistable=None, dtype=None):
-        """Create Variable for this layer.
+        r"""Create Variable for this layer.
 
         Parameters:
             name(str, optional): name of the variable. Please refer to :ref:`api_guide_Name` . Default: None
@@ -437,7 +437,7 @@ class Layer(core.Layer):
             type=core.VarDesc.VarType.LOD_TENSOR)
 
     def parameters(self, include_sublayers=True):
-        """Returns a list of all Parameters from current layer and its sub-layers.
+        r"""Returns a list of all Parameters from current layer and its sub-layers.
 
         Parameters:
             include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from sublayers. Default: True
@@ -462,7 +462,7 @@ class Layer(core.Layer):
         return ret
 
     def children(self):
-        """Returns an iterator over immediate children layers.
+        r"""Returns an iterator over immediate children layers.
 
         Yields:
             Layer: a child layer
@@ -485,7 +485,7 @@ class Layer(core.Layer):
             yield layer
 
     def named_children(self):
-        """Returns an iterator over immediate children layers, yielding both
+        r"""Returns an iterator over immediate children layers, yielding both
         the name of the layer as well as the layer itself.
 
         Yields:
@@ -512,7 +512,7 @@ class Layer(core.Layer):
                 yield name, layer
 
     def sublayers(self, include_sublayers=True):
-        """Returns a list of sub layers.
+        r"""Returns a list of sub layers.
 
         Parameters:
             include_sublayers(bool, optional): Whether return the sublayers of sublayers. If True, also include the sublayers of sublayers. Default: True
@@ -548,7 +548,7 @@ class Layer(core.Layer):
         return ret
 
     def named_parameters(self, prefix='', include_sublayers=True):
-        """
+        r"""
         Returns an iterator over all parameters in the Layer, yielding tuple of name and parameter.
 
         Parameters:
@@ -590,7 +590,7 @@ class Layer(core.Layer):
                         include_sublayers=True,
                         include_self=False,
                         layers_set=None):
-        """
+        r"""
         Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
         The duplicate sublayer will only be yielded once.
 
@@ -633,7 +633,7 @@ class Layer(core.Layer):
                     yield p, l
 
     def register_buffer(self, name, tensor, persistable=True):
-        """
+        r"""
         Registers a tensor as buffer into the layer.
 
         `buffer` is a non-trainable tensor and will not be updated by optimizer,
@@ -698,7 +698,7 @@ class Layer(core.Layer):
                 self._non_persistable_buffer_names_set.add(name)
 
     def buffers(self, include_sublayers=True):
-        """
+        r"""
         Returns a list of all buffers from current layer and its sub-layers.
 
         Parameters:
@@ -729,7 +729,7 @@ class Layer(core.Layer):
         return ret
 
     def named_buffers(self, prefix='', include_sublayers=True):
-        """
+        r"""
         Returns an iterator over all buffers in the Layer, yielding tuple of name and Tensor.
 
         Parameters:
@@ -779,7 +779,7 @@ class Layer(core.Layer):
                 yield name, buffer
 
     def clear_gradients(self):
-        """
+        r"""
         Clear the gradients of all parameters for this layer.
         
         Returns:
@@ -836,7 +836,7 @@ class Layer(core.Layer):
         return outputs
 
     def forward(self, *inputs, **kwargs):
-        """
+        r"""
         Defines the computation performed at every call.
         Should be overridden by all subclasses.
 
@@ -850,7 +850,7 @@ class Layer(core.Layer):
         raise ValueError("Layer shouldn't implement backward")
 
     def add_sublayer(self, name, sublayer):
-        """Adds a sub Layer instance.
+        r"""Adds a sub Layer instance.
 
         Added sublayer can be accessed by self.name
 
@@ -892,7 +892,7 @@ class Layer(core.Layer):
         return sublayer
 
     def add_parameter(self, name, parameter):
-        """Adds a Parameter instance.
+        r"""Adds a Parameter instance.
 
         Added parameter can be accessed by self.name
 
@@ -1052,7 +1052,7 @@ class Layer(core.Layer):
             object.__delattr__(self, name)
 
     def __dir__(self):
-        """
+        r"""
         Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
 
         Examples:

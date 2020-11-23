@@ -51,7 +51,7 @@ def sequence_conv(input,
                   param_attr=None,
                   act=None,
                   name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
@@ -175,7 +175,7 @@ def sequence_conv(input,
 
 
 def sequence_softmax(input, use_cudnn=False, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -259,7 +259,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
@@ -374,7 +374,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
 @templatedoc()
 def sequence_concat(input, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
@@ -435,7 +435,7 @@ def sequence_concat(input, name=None):
 
 
 def sequence_first_step(input):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This operator only supports LoDTensor as input. Given the input LoDTensor, it will
@@ -491,7 +491,7 @@ def sequence_first_step(input):
 
 
 def sequence_last_step(input):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This operator only supports LoDTensor as input. Given the input LoDTensor, it will
@@ -548,7 +548,7 @@ def sequence_last_step(input):
 
 
 def sequence_slice(input, offset, length, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Sequence Slice Layer**
@@ -636,7 +636,7 @@ def sequence_slice(input, offset, length, name=None):
 
 
 def sequence_expand(x, y, ref_level=-1, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
         Sequence Expand Layer. This layer will expand the input variable ``x`` \
@@ -772,7 +772,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 
 def sequence_expand_as(x, y, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
         Sequence Expand As Layer. This OP will expand the input variable ``x`` \
@@ -892,7 +892,7 @@ def sequence_expand_as(x, y, name=None):
 
 
 def sequence_pad(x, pad_value, maxlen=None, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This layer padding the sequences in a same batch to a common length (according \
@@ -1006,7 +1006,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
 
 def sequence_unpad(x, length, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -1081,7 +1081,7 @@ def sequence_unpad(x, length, name=None):
 
 
 def sequence_reshape(input, new_dim):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
@@ -1143,7 +1143,7 @@ def sequence_reshape(input, new_dim):
 
 
 def sequence_scatter(input, index, updates, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -1233,7 +1233,7 @@ def sequence_scatter(input, index, updates, name=None):
 
 
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Generate a new sequence for the input index sequence with \
@@ -1301,7 +1301,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
-    """
+    r"""
     **SequenceMask Layer**
 
     This layer outputs a mask according to the input :code:`x` and
@@ -1375,7 +1375,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
 @templatedoc()
 def sequence_reverse(x, name=None):
-    """
+    r"""
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
 
     This operator only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.

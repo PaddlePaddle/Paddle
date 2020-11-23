@@ -34,7 +34,7 @@ def trilinear_interp_np(input,
                         align_corners=True,
                         align_mode=0,
                         data_layout='NCDHW'):
-    """trilinear interpolation implement in shape [N, C, D, H, W]"""
+    r"""trilinear interpolation implement in shape [N, C, D, H, W]"""
     if data_layout == "NDHWC":
         input = np.transpose(input, (0, 4, 1, 2, 3))  # NDHWC => NCDHW
     if out_size is not None:

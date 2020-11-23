@@ -59,7 +59,7 @@ def dyfunc_with_if_else3(x):
     # Create new var in parent scope, return it in true_fn and false_fn.
     # The var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
     # The transformed code:
-    """
+    r"""
     q = paddle.jit.dy2static.
         data_layer_not_check(name='q', shape=[-1], dtype='float32')
     z = paddle.jit.dy2static.

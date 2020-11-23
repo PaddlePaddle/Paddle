@@ -41,7 +41,7 @@ UNK_IDX = 0
 
 
 class Conll05st(Dataset):
-    """
+    r"""
     Implementation of `Conll05st <https://www.cs.upc.edu/~srlconll/soft.html>`_
     test dataset.
 
@@ -294,7 +294,7 @@ class Conll05st(Dataset):
         return len(self.sentences)
 
     def get_dict(self):
-        """
+        r"""
         Get the word, verb and label dictionary of Wikipedia corpus.
 
         Examples:
@@ -308,7 +308,7 @@ class Conll05st(Dataset):
         return self.word_dict, self.predicate_dict, self.label_dict
 
     def get_embedding(self):
-        """
+        r"""
         Get the embedding dictionary file.
 
         Examples:

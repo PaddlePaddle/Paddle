@@ -27,7 +27,7 @@ program_translator = ProgramTranslator()
 # 1. print VarBase
 @declarative
 def dyfunc_print_variable(x):
-    """
+    r"""
     PY2:
     Print(dest=None, values=[Name(id='x_v', annotation=None, type_comment=None)], nl=True)],
     PY3:
@@ -44,7 +44,7 @@ def dyfunc_print_variable(x):
 # 2. print ndarray
 @declarative
 def dyfunc_print_ndarray(x):
-    """
+    r"""
     PY2:
     Print(dest=None, values=[Name(id='x', annotation=None, type_comment=None)
     PY3:
@@ -59,7 +59,7 @@ def dyfunc_print_ndarray(x):
 # 3. print VarBase with format
 @declarative
 def dyfunc_print_with_format(x):
-    """
+    r"""
     PY2:
     Print(dest=None,
         values=[
@@ -85,7 +85,7 @@ def dyfunc_print_with_format(x):
 # 4. print VarBase with format 2
 @declarative
 def dyfunc_print_with_format2(x):
-    """
+    r"""
     PY2:
     Print(dest=None,
         values=[
@@ -119,7 +119,7 @@ def dyfunc_print_with_ifelse(x):
 # 6. print mutiple VarBases
 @declarative
 def dyfunc_print_multi_vars(x):
-    """
+    r"""
     # NOTE: y_v type is error before cur PR in this case
     Assign(targets=[Name(id='y_v', annotation=None, type_comment=None)],
         value=BinOp(left=Name(id='x_v', annotation=None, type_comment=None), op=Mult, right=Constant(value=2, kind=None)))
@@ -133,7 +133,7 @@ def dyfunc_print_multi_vars(x):
 # 7. print continue VarBase
 @declarative
 def dyfunc_print_continue_vars(x):
-    """
+    r"""
     PY3:
     Expr(
         value=Call(func=Name(id='print', annotation=None, type_comment=None),

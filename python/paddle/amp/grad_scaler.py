@@ -18,7 +18,7 @@ __all__ = ['GradScaler']
 
 
 class GradScaler(AmpScaler):
-    """
+    r"""
     GradScaler is used for Auto-Mixed-Precision training in dynamic graph mode. 
     It controls the scaling of loss, helps avoiding numerical overflow.
     The object of this class has two methods `scale()`, `minimize()`.
@@ -76,7 +76,7 @@ class GradScaler(AmpScaler):
                                          use_dynamic_loss_scaling)
 
     def scale(self, var):
-        """
+        r"""
         Multiplies a Tensor by the scale factor and returns scaled outputs.  
         If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
 
@@ -104,7 +104,7 @@ class GradScaler(AmpScaler):
         return super(GradScaler, self).scale(var)
 
     def minimize(self, optimizer, *args, **kwargs):
-        """
+        r"""
         This function is similar as `optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.

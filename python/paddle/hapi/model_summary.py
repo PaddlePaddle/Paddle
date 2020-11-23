@@ -26,7 +26,7 @@ __all__ = ['summary']
 
 
 def summary(net, input_size, dtypes=None):
-    """Prints a string summary of the network.
+    r"""Prints a string summary of the network.
 
     Args:
         net (Layer): the network which must be a subinstance of Layer.

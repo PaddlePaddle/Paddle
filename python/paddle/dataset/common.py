@@ -130,7 +130,7 @@ def fetch_all():
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
-    """
+    r"""
     you can call the function as:
 
     split(paddle.dataset.cifar.train10(), line_count=1000,
@@ -171,7 +171,7 @@ def cluster_files_reader(files_pattern,
                          trainer_count,
                          trainer_id,
                          loader=pickle.load):
-    """
+    r"""
     Create a reader that yield element from the given files, select
     a file set according trainer count and trainer_id
 

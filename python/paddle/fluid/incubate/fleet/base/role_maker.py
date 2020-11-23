@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of Role Makers."""
+r"""Defination of Role Makers."""
 
 from __future__ import print_function
 from multiprocessing import Process, Manager
@@ -32,25 +32,25 @@ class Role:
 
 
 class MockBarrier(object):
-    """
+    r"""
     MockBarrier is a empty impletation for barrier
     mock as a real barrier for never-barrier in a specific scenario
     """
 
     def barrier(self):
-        """
+        r"""
         dummy barrier, do nothing
         """
         pass
 
     def barrier_all(self):
-        """
+        r"""
         dummy all barrier, do nothing
         """
         pass
 
     def all_reduce(self, obj):
-        """
+        r"""
         dummy all reduce, do nothing
         Args:
             obj(any): obj to do all reduce
@@ -58,7 +58,7 @@ class MockBarrier(object):
         return obj
 
     def all_gather(self, obj):
-        """
+        r"""
         dummy all gather, do nothing
         Args:
             obj(any): obj to do all gather
@@ -67,7 +67,7 @@ class MockBarrier(object):
 
 
 class RoleMakerBase(object):
-    """
+    r"""
     RoleMakerBase is a base class for assigning a role to current process
     in distributed training.
     A paddle developer can implement RoleMakerBase to design a role maker
@@ -82,19 +82,19 @@ class RoleMakerBase(object):
         self._current_id = -1
 
     def is_worker(self):
-        """
+        r"""
         return is_worker() of current process
         """
         raise NotImplementedError("Please implement this method in child class")
 
     def is_server(self):
-        """
+        r"""
         return is_server() of current process
         """
         raise NotImplementedError("Please implement this method in child class")
 
     def is_first_worker(self):
-        """
+        r"""
         Check whether the node is the first instance of worker.
         Returns:
             bool: True if this is the first node of worker,
@@ -103,7 +103,7 @@ class RoleMakerBase(object):
         raise NotImplementedError("Please implement this method in child class")
 
     def worker_num(self):
-        """
+        r"""
         Get current total worker number.
 
         Returns:
@@ -115,7 +115,7 @@ class RoleMakerBase(object):
         return self.worker_index() if self.is_worker() else self.server_index()
 
     def worker_index(self):
-        """
+        r"""
         Get current worker id.
 
         Returns:
@@ -124,7 +124,7 @@ class RoleMakerBase(object):
         raise NotImplementedError("Please implement this method in child class")
 
     def server_index(self):
-        """
+        r"""
         Get current server id.
 
         Returns:
@@ -133,13 +133,13 @@ class RoleMakerBase(object):
         raise NotImplementedError("Please implement this method in child class")
 
     def get_trainer_endpoints(self):
-        """
+        r"""
         return trainer endpoints
         """
         return self._worker_endpoints
 
     def get_pserver_endpoints(self):
-        """
+        r"""
         return pserver endpoints
         """
         return self._server_endpoints
@@ -150,7 +150,7 @@ class RoleMakerBase(object):
             self._server_endpoints)
 
     def all_gather(self, input):
-        """
+        r"""
         all gather between trainers and pservers
 
         Args:
@@ -163,7 +163,7 @@ class RoleMakerBase(object):
         return None
 
     def all_reduce_worker(self, input, output, mode="sum"):
-        """
+        r"""
         all reduce between trainers if current role is TRAINER,
         only support array of one dim.
 
@@ -175,26 +175,26 @@ class RoleMakerBase(object):
         print("warning: RoleMakerBase does not have all reduce worker.")
 
     def barrier_worker(self):
-        """
+        r"""
         barrier between trainers if current role is TRAINER
         """
         print("warning: RoleMakerBase does not have barrier worker.")
 
     def barrier_all(self):
-        """
+        r"""
         barrier between trainers if current role is PSERVER
         """
         print("warning: RoleMakerBase does not have barrier all.")
 
 
 class MPIRoleMaker(RoleMakerBase):
-    """
+    r"""
     MPIRoleMaker is a MPI-API based role maker which is a counter-part of K8SRoleMaker
     mpi4py will be used if a developer inherits MPIRoleMaker
     """
 
     def __init__(self):
-        """Init."""
+        r"""Init."""
         super(MPIRoleMaker, self).__init__()
         from mpi4py import MPI
         self.MPI = MPI
@@ -204,24 +204,24 @@ class MPIRoleMaker(RoleMakerBase):
         self._ip = None
 
     def _get_rank(self):
-        """Return rank."""
+        r"""Return rank."""
         self._rank = self._comm.Get_rank()
         return self._rank
 
     def _get_size(self):
-        """Return size."""
+        r"""Return size."""
         self._size = self._comm.Get_size()
         return self._size
 
     def _all_gather(self, obj):
-        """
+        r"""
         all_gather(obj) will call MPI's allgather function
         """
         self._barrier_all()
         return self._comm.allgather(obj)
 
     def _worker_gather(self, obj):
-        """
+        r"""
         worker_gather(obj) will call MPI's allgather function
         """
         if self.is_worker():
@@ -230,19 +230,19 @@ class MPIRoleMaker(RoleMakerBase):
         return None
 
     def _barrier_all(self):
-        """
+        r"""
         barrier_all() will call MPI's barrier_all function
         """
         self._comm.barrier()
 
     def _finalize(self):
-        """
+        r"""
         finalize the current MPI instance.
         """
         self.MPI.Finalize()
 
     def _get_ips(self):
-        """
+        r"""
         collect current distributed job's ip list
         """
         if not self._ips:
@@ -250,40 +250,40 @@ class MPIRoleMaker(RoleMakerBase):
         return self._ips
 
     def get_local_ip(self):
-        """Return get local ip."""
+        r"""Return get local ip."""
         import socket
         self._ip = socket.gethostbyname(socket.gethostname())
         return self._ip
 
     def generate_role(self):
-        """
+        r"""
         generate_role() should be called to identify current process's role
         """
         raise NotImplementedError("Please implement this method in child class")
 
 
 class MPISymetricRoleMaker(MPIRoleMaker):
-    """
+    r"""
     MPISymetricRoleMaker is designed for worker and server assignment
     under MPI. Typically, a worker and a server node will be appointed
     on each physical node. This role maker can be only used under MPI.
     """
 
     def __init__(self):
-        """Init."""
+        r"""Init."""
         super(MPISymetricRoleMaker, self).__init__()
         self._node_type = None
         self._proc_per_node = 2
         self._pserver_rand_port = 0
 
     def _check_role_generation(self):
-        """Check whether role has been generated."""
+        r"""Check whether role has been generated."""
         if not self._role_is_generated:
             raise NameError("generate_role() should be called first")
         return True
 
     def all_gather(self, input):
-        """
+        r"""
         all gather between trainers and pservers
 
         Args:
@@ -297,7 +297,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return self._all_gather(input)
 
     def all_reduce_worker(self, input, output, mode="sum"):
-        """
+        r"""
         all reduce between trainers if current role is TRAINER,
         only support array of one dim.
 
@@ -314,7 +314,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         self._all_reduce(input, output, mode)
 
     def barrier_worker(self):
-        """
+        r"""
         barrier between trainers if current role is TRAINER
         """
         if not self._role_is_generated:
@@ -325,7 +325,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             print("warning: current role is not worker in barrier_worker")
 
     def barrier_all(self):
-        """
+        r"""
         barrier between trainers if current role is PSERVER
         """
         if not self._role_is_generated:
@@ -333,7 +333,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         self._comm.barrier()
 
     def is_first_worker(self):
-        """
+        r"""
         return whether current process is the first worker assigned by role maker
         """
         if self._check_role_generation():
@@ -341,7 +341,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return False
 
     def get_pserver_endpoints(self):
-        """
+        r"""
         get pserver endpoints
         Returns:
             endpoints(list): pserver endpoints
@@ -363,7 +363,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return self._worker_num()
 
     def is_worker(self):
-        """
+        r"""
         return whether current process is worker assigned by role maker
         """
         if self._check_role_generation():
@@ -371,7 +371,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return False
 
     def is_server(self):
-        """
+        r"""
         return whether current process is server assigned by role maker
         """
         if self._check_role_generation():
@@ -379,7 +379,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return False
 
     def _worker_num(self):
-        """
+        r"""
         return the current number of worker
         """
         if self._check_role_generation():
@@ -387,7 +387,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return 0
 
     def _server_num(self):
-        """
+        r"""
         return the current number of server
         """
         if self._check_role_generation():
@@ -397,7 +397,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             return self._get_size() / self._proc_per_node
 
     def worker_index(self):
-        """
+        r"""
         return the index of worker
         """
         if self._check_role_generation():
@@ -407,7 +407,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             return self._get_size() / 2
 
     def server_index(self):
-        """
+        r"""
         return the index of server
         """
         if self._check_role_generation():
@@ -417,7 +417,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             return self._get_size() / self._proc_per_node
 
     def _all_reduce(self, input, output, mode="sum"):
-        """
+        r"""
         all reduce between trainers if current role is TRAINER,
         only support array of one dim.
 
@@ -439,7 +439,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         self._node_type_comm.Allreduce(input, output, op=mode)
 
     def _barrier_worker(self):
-        """
+        r"""
         barrier all workers in current distributed job
         """
         if self._check_role_generation():
@@ -449,7 +449,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             raise Exception("You should check role generation first")
 
     def _barrier_server(self):
-        """
+        r"""
         barrier all servers in current distributed job
         """
         if self._check_role_generation():
@@ -459,7 +459,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             raise Exception("You should check role generation first")
 
     def generate_role(self):
-        """
+        r"""
         generate currently process's role
         """
         if not self._role_is_generated:
@@ -478,7 +478,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    """
+    r"""
     role maker for paddle cloud,
     base class is RoleMakerBase
     """
@@ -489,7 +489,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._is_collective = is_collective
 
     def generate_role(self):
-        """Generate role."""
+        r"""Generate role."""
         if not self._role_is_generated:
             if not self._is_collective:
                 try:
@@ -579,7 +579,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
 
 class GeneralRoleMaker(RoleMakerBase):
-    """
+    r"""
     This role maker is for general use, you can set os.environ to customize:
         PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, separated by ','
         PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, separated by ','
@@ -615,7 +615,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def generate_role(self):
-        """
+        r"""
         generate role for general role maker
         """
         if not self._role_is_generated:
@@ -728,7 +728,7 @@ class GeneralRoleMaker(RoleMakerBase):
             self._role_is_generated = True
 
     def all_gather(self, input):
-        """
+        r"""
         all gather between trainers and pservers
 
         Args:
@@ -740,7 +740,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._all_gather(input)
 
     def all_reduce_worker(self, input, output, mode="sum"):
-        """
+        r"""
         all reduce between trainers if current role is TRAINER,
         only support array of one dim.
 
@@ -754,19 +754,19 @@ class GeneralRoleMaker(RoleMakerBase):
         self._all_reduce(input, output, mode)
 
     def barrier_worker(self):
-        """
+        r"""
         barrier between trainers if current role is TRAINER
         """
         self._barrier_worker()
 
     def barrier_all(self):
-        """
+        r"""
         barrier between trainers if current role is PSERVER
         """
         self._barrier_all()
 
     def get_local_endpoint(self):
-        """
+        r"""
         get local endpoint of current process
         """
         if not self._role_is_generated:
@@ -774,7 +774,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._cur_endpoint
 
     def get_trainer_endpoints(self):
-        """
+        r"""
         get endpoint of all trainers
         """
         if not self._role_is_generated:
@@ -782,7 +782,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._worker_endpoints
 
     def get_pserver_endpoints(self):
-        """
+        r"""
         get endpoint of all pservers
         """
         if not self._role_is_generated:
@@ -790,7 +790,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._server_endpoints
 
     def is_worker(self):
-        """
+        r"""
         whether current process is worker
         """
         if not self._role_is_generated:
@@ -798,7 +798,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._role == Role.WORKER
 
     def is_server(self):
-        """
+        r"""
         whether current process is server
         """
         if not self._role_is_generated:
@@ -806,7 +806,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._role == Role.SERVER
 
     def is_first_worker(self):
-        """
+        r"""
         whether current process is worker of rank 0
         """
         if not self._role_is_generated:
@@ -814,7 +814,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._role == Role.WORKER and self._current_id == 0
 
     def worker_index(self):
-        """
+        r"""
         get index of current worker
         """
         if not self._role_is_generated:
@@ -822,7 +822,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._current_id
 
     def server_index(self):
-        """
+        r"""
         get index of current server
         """
         if not self._role_is_generated:
@@ -830,7 +830,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._current_id
 
     def worker_num(self):
-        """
+        r"""
         retrun the current number of worker
         """
         if not self._role_is_generated:
@@ -838,7 +838,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._worker_num()
 
     def server_num(self):
-        """
+        r"""
         return the current number of server
         """
         if not self._role_is_generated:
@@ -846,7 +846,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._server_num()
 
     def _barrier_worker(self):
-        """
+        r"""
         barrier all workers in current distributed job
         """
         if not self._role_is_generated:
@@ -855,7 +855,7 @@ class GeneralRoleMaker(RoleMakerBase):
             self._node_type_comm.barrier()
 
     def _barrier_all(self):
-        """
+        r"""
         barrier all workers and servers in current distributed job
         """
         if not self._role_is_generated:
@@ -863,7 +863,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._all_comm.barrier()
 
     def _barrier_server(self):
-        """
+        r"""
         barrier all servers in current distributed job
         """
         if not self._role_is_generated:
@@ -872,7 +872,7 @@ class GeneralRoleMaker(RoleMakerBase):
             self._node_type_comm.barrier()
 
     def _worker_num(self):
-        """
+        r"""
         return the current number of worker
         """
         if not self._role_is_generated:
@@ -880,7 +880,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._trainers_num
 
     def _server_num(self):
-        """
+        r"""
         return the current number of server
         """
         if not self._role_is_generated:
@@ -888,11 +888,11 @@ class GeneralRoleMaker(RoleMakerBase):
         return len(self._server_endpoints)
 
     def _finalize(self):
-        """Default do nothing."""
+        r"""Default do nothing."""
         pass
 
     def _all_reduce(self, input, output, mode="sum"):
-        """
+        r"""
         all reduce between all workers
 
         Args:
@@ -908,7 +908,7 @@ class GeneralRoleMaker(RoleMakerBase):
             output[i] = ans[i]
 
     def _all_gather(self, obj):
-        """
+        r"""
         gather between all workers and pservers
         """
         if not self._role_is_generated:
@@ -917,7 +917,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._all_comm.all_gather(obj)
 
     def _worker_gather(self, obj):
-        """
+        r"""
         gather between all workers
         """
         if not self._role_is_generated:
@@ -928,7 +928,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._node_type_comm.all_gather(obj)
 
     def _get_rank(self):
-        """
+        r"""
         get current rank in all workers and pservers
         """
         if not self._role_is_generated:
@@ -936,7 +936,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._rank
 
     def _get_size(self):
-        """
+        r"""
         get total num of all workers and pservers
         """
         if not self._role_is_generated:
@@ -944,7 +944,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return self._size
 
     def __get_default_iface(self):
-        """
+        r"""
         get default physical interface
         """
         default1 = self.__get_default_iface_from_gateway()
@@ -952,7 +952,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return default2 if default1 == "lo" else default1
 
     def __get_default_iface_from_gateway(self):
-        """
+        r"""
         get default physical interface
         """
         res = os.popen("route -A inet").read().strip().split("\n")
@@ -974,7 +974,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return "lo"
 
     def __get_default_iface_from_interfaces(self):
-        """
+        r"""
         get default physical interface
         """
         res = os.popen("ip -f inet addr | awk NR%3==1").read().strip().split(
@@ -995,7 +995,7 @@ class GeneralRoleMaker(RoleMakerBase):
 
 
 class HeterRoleMaker(GeneralRoleMaker):
-    """
+    r"""
     This role maker is for general use, you can set os.environ to customize:
         PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, separated by ','
         PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, separated by ','
@@ -1007,7 +1007,7 @@ class HeterRoleMaker(GeneralRoleMaker):
     """
 
     def generate_role(self):
-        """
+        r"""
         generate role for general role maker
         """
         if not self._role_is_generated:
@@ -1094,7 +1094,7 @@ class HeterRoleMaker(GeneralRoleMaker):
             self._role_is_generated = True
 
     def is_xpu(self):
-        """
+        r"""
         whether current process is server
         """
         if not self._role_is_generated:
@@ -1102,7 +1102,7 @@ class HeterRoleMaker(GeneralRoleMaker):
         return self._role == Role.XPU
 
     def is_first_xpu(self):
-        """
+        r"""
         whether current process is worker of rank 0
         """
         if not self._role_is_generated:
@@ -1110,7 +1110,7 @@ class HeterRoleMaker(GeneralRoleMaker):
         return self._role == Role.XPU and self._current_id == 0
 
     def _barrier_xpu(self):
-        """
+        r"""
         barrier all workers in current distributed job
         """
         if not self._role_is_generated:
@@ -1119,7 +1119,7 @@ class HeterRoleMaker(GeneralRoleMaker):
             self._node_type_comm.barrier()
 
     def _barrier_heter(self):
-        """
+        r"""
         barrier all workers in current distributed job
         """
         if not self._role_is_generated:
@@ -1128,7 +1128,7 @@ class HeterRoleMaker(GeneralRoleMaker):
             self._heter_comm.barrier()
 
     def xpu_num(self):
-        """
+        r"""
         """
         if not self._role_is_generated:
             self.generate_role()
@@ -1136,7 +1136,7 @@ class HeterRoleMaker(GeneralRoleMaker):
 
 
 class UserDefinedRoleMaker(RoleMakerBase):
-    """
+    r"""
     UserDefinedRoleMaker is designed for worker and server assignment
     under manual. Typically, a worker and a server node will be appointed
     on each physical node, It can be assign by user.
@@ -1212,7 +1212,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
 
 
 class UserDefinedCollectiveRoleMaker(RoleMakerBase):
-    """
+    r"""
     UserDefinedCollectiveRoleMaker is designed for worker assignment
     under manual for collective mode.
     """

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Optimizer Factory."""
+r"""Optimizer Factory."""
 
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle.fluid as fluid
@@ -39,7 +39,7 @@ FLEET_GLOBAL_DICT = {
 
 
 class DistributedOptimizerImplBase(object):
-    """
+    r"""
     DistributedOptimizerImplBase
     base class of optimizers
     """
@@ -54,7 +54,7 @@ class DistributedOptimizerImplBase(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """
+        r"""
         Args:
             losses(Variable): loss variable defined by user
             startup_program(Program): startup program that defined by user
@@ -66,7 +66,7 @@ class DistributedOptimizerImplBase(object):
 
 
 class DistributedAdam(DistributedOptimizerImplBase):
-    """
+    r"""
     DistributedAdam
     adam optimizer in distributed training
     """
@@ -89,7 +89,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ]
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
-        """
+        r"""
         Find input variable of distribute lookup table in program.
         We could support multi-distribute table now.
         Args:
@@ -111,7 +111,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         return inputs_dict
 
     def _find_distributed_lookup_table_outputs(self, program, table_names):
-        """
+        r"""
         Find output variable of distribute lookup table in program.
         We could support multi-distribute table now.
         Args:
@@ -146,7 +146,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         return grads_dict
 
     def _find_multi_distributed_lookup_table(self, losses):
-        """
+        r"""
         find multi-sparse-table
         """
         table_names = set()
@@ -280,7 +280,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                   parameter_list=None,
                   no_grad_set=None,
                   strategy={}):
-        """
+        r"""
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
         operators and optimization operators within minimize function

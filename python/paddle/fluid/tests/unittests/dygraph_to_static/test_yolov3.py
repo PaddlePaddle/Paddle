@@ -30,7 +30,7 @@ np.random.seed(0)
 
 
 class SmoothedValue(object):
-    """Track a series of values and provide access to smoothed values over a
+    r"""Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
 

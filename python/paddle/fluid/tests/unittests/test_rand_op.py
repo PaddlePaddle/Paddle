@@ -25,7 +25,7 @@ import paddle
 
 
 class TestRandOpError(unittest.TestCase):
-    """
+    r"""
     This class test the input type check.
     """
 
@@ -50,7 +50,7 @@ class TestRandOpError(unittest.TestCase):
 
 
 class TestRandOp(unittest.TestCase):
-    """
+    r"""
     This class test the common usages of randop.
     """
 
@@ -92,7 +92,7 @@ class TestRandOp(unittest.TestCase):
 
 
 class TestRandOpForDygraph(unittest.TestCase):
-    """
+    r"""
     This class test the common usages of randop.
     """
 

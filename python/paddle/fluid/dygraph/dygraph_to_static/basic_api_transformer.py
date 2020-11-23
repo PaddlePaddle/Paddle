@@ -20,7 +20,7 @@ from paddle.fluid.dygraph.dygraph_to_static import utils
 
 
 class BasicApiTransformer(gast.NodeTransformer):
-    """
+    r"""
     Class to transform basic API from dygraph to static graph.
     """
 

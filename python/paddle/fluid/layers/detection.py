@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 All layers just related to the detection neural network.
 """
 
@@ -77,7 +77,7 @@ def retinanet_target_assign(bbox_pred,
                             num_classes=1,
                             positive_overlap=0.5,
                             negative_overlap=0.4):
-    """
+    r"""
     **Target Assign Layer for the detector RetinaNet.**
 
     This OP finds out positive and negative samples from all anchors
@@ -320,7 +320,7 @@ def rpn_target_assign(bbox_pred,
                       rpn_positive_overlap=0.7,
                       rpn_negative_overlap=0.3,
                       use_random=True):
-    """
+    r"""
     **Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection.**
 
     This layer can be, for given the  Intersection-over-Union (IoU) overlap
@@ -471,7 +471,7 @@ def rpn_target_assign(bbox_pred,
 
 
 def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
-    """
+    r"""
 	:alias_main: paddle.nn.functional.sigmoid_focal_loss
 	:alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
 	:old_api: paddle.fluid.layers.sigmoid_focal_loss
@@ -628,7 +628,7 @@ def detection_output(loc,
                      score_threshold=0.01,
                      nms_eta=1.0,
                      return_index=False):
-    """
+    r"""
 
     Given the regression locations, classification confidences and prior boxes,
     calculate the detection outputs by performing following steps:
@@ -761,7 +761,7 @@ def detection_output(loc,
 
 @templatedoc()
 def iou_similarity(x, y, box_normalized=True, name=None):
-    """
+    r"""
 	:alias_main: paddle.nn.functional.iou_similarity
 	:alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
 	:old_api: paddle.fluid.layers.iou_similarity
@@ -821,7 +821,7 @@ def box_coder(prior_box,
               box_normalized=True,
               name=None,
               axis=0):
-    """
+    r"""
 
     **Box Coder Layer**
 
@@ -966,7 +966,7 @@ def box_coder(prior_box,
 
 @templatedoc()
 def polygon_box_transform(input, name=None):
-    """
+    r"""
     ${comment}
 
     Args:
@@ -1011,7 +1011,7 @@ def yolov3_loss(x,
                 use_label_smooth=True,
                 name=None,
                 scale_x_y=1.):
-    """
+    r"""
 
     ${comment}
 
@@ -1137,7 +1137,7 @@ def yolo_box(x,
              clip_bbox=True,
              name=None,
              scale_x_y=1.):
-    """
+    r"""
 
     ${comment}
 
@@ -1228,7 +1228,7 @@ def detection_map(detect_res,
                   input_states=None,
                   out_states=None,
                   ap_version='integral'):
-    """
+    r"""
     ${comment}
 
     Args:
@@ -1315,7 +1315,7 @@ def bipartite_match(dist_matrix,
                     match_type=None,
                     dist_threshold=None,
                     name=None):
-    """
+    r"""
 
     This operator implements a greedy bipartite matching algorithm, which is
     used to obtain the matching with the maximum distance based on the input
@@ -1406,7 +1406,7 @@ def target_assign(input,
                   negative_indices=None,
                   mismatch_value=None,
                   name=None):
-    """
+    r"""
 
     This operator can be, for given the target bounding boxes or labels,
     to assign classification and regression targets to each prediction as well as
@@ -1523,7 +1523,7 @@ def ssd_loss(location,
              mining_type='max_negative',
              normalize=True,
              sample_size=None):
-    """
+    r"""
 	:alias_main: paddle.nn.functional.ssd_loss
 	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
 	:old_api: paddle.fluid.layers.ssd_loss
@@ -1770,7 +1770,7 @@ def prior_box(input,
               offset=0.5,
               name=None,
               min_max_aspect_ratios_order=False):
-    """
+    r"""
 
     This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
@@ -1930,7 +1930,7 @@ def density_prior_box(input,
                       offset=0.5,
                       flatten_to_2d=False,
                       name=None):
-    """
+    r"""
 
     This op generates density prior boxes for SSD(Single Shot MultiBox Detector) 
     algorithm. Each position of the input produce N prior boxes, N is 
@@ -2120,7 +2120,7 @@ def multi_box_head(inputs,
                    stride=1,
                    name=None,
                    min_max_aspect_ratios_order=False):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
@@ -2397,7 +2397,7 @@ def anchor_generator(input,
                      stride=None,
                      offset=0.5,
                      name=None):
-    """
+    r"""
 
     **Anchor generator operator**
 
@@ -2501,7 +2501,7 @@ def roi_perspective_transform(input,
                               transformed_width,
                               spatial_scale=1.0,
                               name=None):
-    """
+    r"""
     **The** `rois` **of this op should be a LoDTensor.**
 
     ROI perspective transform op applies perspective transform to map each roi into an 
@@ -2604,7 +2604,7 @@ def generate_proposal_labels(rpn_rois,
                              is_cascade_rcnn=False,
                              max_overlap=None,
                              return_max_overlap=False):
-    """
+    r"""
 
     **Generate Proposal Labels of Faster-RCNN**
 
@@ -2741,7 +2741,7 @@ def generate_proposal_labels(rpn_rois,
 
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
-    """
+    r"""
 
     **Generate Mask Labels for Mask-RCNN**
 
@@ -2897,7 +2897,7 @@ def generate_proposals(scores,
                        eta=1.0,
                        return_rois_num=False,
                        name=None):
-    """
+    r"""
 
     **Generate proposal Faster-RCNN**
 
@@ -3035,7 +3035,7 @@ def generate_proposals(scores,
 
 
 def box_clip(input, im_info, name=None):
-    """
+    r"""
 	
     Clip the box into the size given by im_info
     For each input box, The formula is given as follows:
@@ -3106,7 +3106,7 @@ def retinanet_detection_output(bboxes,
                                keep_top_k=100,
                                nms_threshold=0.3,
                                nms_eta=1.0):
-    """
+    r"""
     **Detection Output Layer for the detector RetinaNet.**
 
     In the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ , many 
@@ -3263,7 +3263,7 @@ def multiclass_nms(bboxes,
                    nms_eta=1.,
                    background_label=0,
                    name=None):
-    """
+    r"""
 
     **Multiclass NMS**
     
@@ -3417,7 +3417,7 @@ def locality_aware_nms(bboxes,
                        nms_eta=1.,
                        background_label=-1,
                        name=None):
-    """
+    r"""
     **Local Aware NMS**
     
     `Local Aware NMS <https://arxiv.org/abs/1704.03155>`_ is to do locality-aware non maximum
@@ -3549,7 +3549,7 @@ def matrix_nms(bboxes,
                normalized=True,
                return_index=False,
                name=None):
-    """
+    r"""
     **Matrix NMS**
 
     This operator does matrix non maximum suppression (NMS).
@@ -3671,7 +3671,7 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_scale,
                              rois_num=None,
                              name=None):
-    """
+    r"""
 	
     **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
     (FPN) models, it is needed to distribute all proposals into different FPN 
@@ -3794,7 +3794,7 @@ def box_decoder_and_assign(prior_box,
                            box_score,
                            box_clip,
                            name=None):
-    """
+    r"""
 	
     ${comment}
     Args:
@@ -3869,7 +3869,7 @@ def collect_fpn_proposals(multi_rois,
                           post_nms_top_n,
                           rois_num_per_level=None,
                           name=None):
-    """
+    r"""
 	
     **This OP only supports LoDTensor as input**. Concat multi-level RoIs 
     (Region of Interest) and select N RoIs with respect to multi_scores. 

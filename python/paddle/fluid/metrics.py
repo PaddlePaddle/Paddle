@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 Fluid Metrics
 """
 
@@ -56,7 +56,7 @@ def _is_number_or_matrix_(var):
 
 
 class MetricBase(object):
-    """
+    r"""
     In many cases, we usually have to split the test data into mini-batches for evaluating 
     deep neural networks, therefore we need to collect the evaluation results of each 
     mini-batch and aggregate them into the final result. The paddle.fluid.metrics is 
@@ -85,7 +85,7 @@ class MetricBase(object):
     """
 
     def __init__(self, name):
-        """
+        r"""
         The constructor of the metric class.
 
         Args:
@@ -105,7 +105,7 @@ class MetricBase(object):
         return self._name
 
     def reset(self):
-        """
+        r"""
         reset function empties the evaluation memory for previous mini-batches. 
         
         Args:
@@ -134,7 +134,7 @@ class MetricBase(object):
                 setattr(self, attr, None)
 
     def get_config(self):
-        """
+        r"""
         Get the metric and current states.
         The states are the members who do not has "_" prefix.
 
@@ -157,7 +157,7 @@ class MetricBase(object):
         return config
 
     def update(self, preds, labels):
-        """
+        r"""
         Given the prediction results (preds) and the labels (labels)
         of some mini-batch, compute the evaluation result of that mini-batch, 
         and memorize the evaluation result. Please notice that the update function only
@@ -179,7 +179,7 @@ class MetricBase(object):
             "Should not use it directly, please extend it.")
 
     def eval(self):
-        """
+        r"""
         Aggregate all existing evaluation results in the memory, and return the overall
         performance across different mini-batches.
 
@@ -197,7 +197,7 @@ class MetricBase(object):
 
 
 class CompositeMetric(MetricBase):
-    """
+    r"""
     This op creates a container that contains the union of all the added metrics. 
     After the metrics added in, calling eval() method will compute all the contained metrics automatically.
     CAUTION: only metrics with the SAME argument list can be added in a CompositeMetric instance.
@@ -233,7 +233,7 @@ class CompositeMetric(MetricBase):
         self._metrics = []
 
     def add_metric(self, metric):
-        """
+        r"""
         Add a new metric to container. Noted that the argument list 
         of the added one should be consistent with existed ones.  
 
@@ -245,7 +245,7 @@ class CompositeMetric(MetricBase):
         self._metrics.append(metric)
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the metrics of this container.
 
         Args:
@@ -256,7 +256,7 @@ class CompositeMetric(MetricBase):
             m.update(preds, labels)
 
     def eval(self):
-        """
+        r"""
         Calculate the results of all metrics sequentially.
 
         Returns:
@@ -270,7 +270,7 @@ class CompositeMetric(MetricBase):
 
 
 class Precision(MetricBase):
-    """
+    r"""
     Precision (also called positive predictive value) is the fraction of
     relevant instances among the retrieved instances. Refer to
     https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers
@@ -311,7 +311,7 @@ class Precision(MetricBase):
         self.fp = 0  # false positive
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the precision based on the current mini-batch prediction results .
 
         Args:
@@ -339,7 +339,7 @@ class Precision(MetricBase):
                     self.fp += 1
 
     def eval(self):
-        """
+        r"""
         Calculate the final precision.
 
         Returns:
@@ -350,7 +350,7 @@ class Precision(MetricBase):
 
 
 class Recall(MetricBase):
-    """
+    r"""
     Recall (also known as sensitivity) is the fraction of
     relevant instances that have been retrieved over the
     total amount of relevant instances
@@ -394,7 +394,7 @@ class Recall(MetricBase):
         self.fn = 0  # false negative
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the recall based on the current mini-batch prediction results.
 
         Args:
@@ -422,7 +422,7 @@ class Recall(MetricBase):
                     self.fn += 1
 
     def eval(self):
-        """
+        r"""
         Calculate the final recall.
 
         Returns:
@@ -433,7 +433,7 @@ class Recall(MetricBase):
 
 
 class Accuracy(MetricBase):
-    """
+    r"""
     This interface is used to calculate the mean accuracy over multiple batches.
     Accuracy object has two state: value and weight. The definition of Accuracy is available at 
     https://en.wikipedia.org/wiki/Accuracy_and_precision
@@ -475,7 +475,7 @@ class Accuracy(MetricBase):
         self.weight = .0
 
     def update(self, value, weight):
-        """
+        r"""
         This function takes the minibatch states (value, weight) as input,
         to accumulate and update the corresponding status of the Accuracy object. The update method is as follows:
 
@@ -497,7 +497,7 @@ class Accuracy(MetricBase):
         self.weight += weight
 
     def eval(self):
-        """
+        r"""
         This function returns the mean accuracy (float or numpy.array) for all accumulated minibatches.
 
         Returns: 
@@ -511,7 +511,7 @@ class Accuracy(MetricBase):
 
 
 class ChunkEvaluator(MetricBase):
-    """
+    r"""
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
     numbers.
@@ -561,7 +561,7 @@ class ChunkEvaluator(MetricBase):
         self.num_correct_chunks = 0
 
     def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
-        """
+        r"""
         This function takes (num_infer_chunks, num_label_chunks, num_correct_chunks) as input,
         to accumulate and update the corresponding status of the ChunkEvaluator object. The update method is as follows:
         
@@ -591,7 +591,7 @@ class ChunkEvaluator(MetricBase):
         self.num_correct_chunks += num_correct_chunks
 
     def eval(self):
-        """
+        r"""
         This function returns the mean precision, recall and f1 score for all accumulated minibatches.
 
         Returns: 
@@ -609,7 +609,7 @@ class ChunkEvaluator(MetricBase):
 
 
 class EditDistance(MetricBase):
-    """
+    r"""
     This API is for the management of edit distances.
     Editing distance is a method to quantify the degree of dissimilarity 
     between two strings, such as words, by calculating the minimum editing 
@@ -664,7 +664,7 @@ class EditDistance(MetricBase):
         self.instance_error = 0
 
     def update(self, distances, seq_num):
-        """
+        r"""
         Update the overall edit distance
 
         Args:
@@ -682,7 +682,7 @@ class EditDistance(MetricBase):
         self.total_distance += total_distance
 
     def eval(self):
-        """
+        r"""
         Return two floats:
         avg_distance: the average distance for all sequence pairs updated using the update function.
         avg_instance_error: the ratio of sequence pairs whose edit distance is not zero.
@@ -697,7 +697,7 @@ class EditDistance(MetricBase):
 
 
 class Auc(MetricBase):
-    """
+    r"""
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
@@ -753,7 +753,7 @@ class Auc(MetricBase):
         self._stat_neg = [0] * _num_pred_buckets
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the auc curve with the given predictions and labels.
 
         Args:
@@ -779,7 +779,7 @@ class Auc(MetricBase):
         return abs(x1 - x2) * (y1 + y2) / 2.0
 
     def eval(self):
-        """
+        r"""
         Return the area (a float score) under auc curve
 
         Return:
@@ -803,7 +803,7 @@ class Auc(MetricBase):
 
 
 class DetectionMAP(object):
-    """
+    r"""
     Calculate the detection mean average precision (mAP).
 
     The general steps are as follows:
@@ -952,7 +952,7 @@ class DetectionMAP(object):
         self.accum_map = accum_map
 
     def _create_state(self, suffix, dtype, shape):
-        """
+        r"""
         Create state variable.
         Args:
             suffix(str): the state suffix.
@@ -968,14 +968,14 @@ class DetectionMAP(object):
         return state
 
     def get_map_var(self):
-        """
+        r"""
         Returns: mAP variable of current mini-batch and
             accumulative mAP variable cross mini-batches.
         """
         return self.cur_map, self.accum_map
 
     def reset(self, executor, reset_program=None):
-        """
+        r"""
         Reset metric states at the begin of each pass/user specified batch.
         Args:
             executor(Executor): a executor for executing

@@ -38,7 +38,7 @@ from paddle.common_ops_import import *
 
 
 def argsort(x, axis=-1, descending=False, name=None):
-    """
+    r"""
 	:alias_main: paddle.argsort
 	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
 
@@ -123,7 +123,7 @@ def argsort(x, axis=-1, descending=False, name=None):
 
 
 def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
-    """
+    r"""
     This OP computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
@@ -201,7 +201,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 
 def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
-    """
+    r"""
     This OP computes the indices of the min elements of the input tensor's
     element along the provided axis.
 
@@ -279,7 +279,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
 
 
 def index_select(x, index, axis=0, name=None):
-    """
+    r"""
 
     Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using 
     the entries in ``index`` which is a Tensor. The returned tensor has the same number 
@@ -337,7 +337,7 @@ def index_select(x, index, axis=0, name=None):
 
 
 def nonzero(x, as_tuple=False):
-    """
+    r"""
     Return a tensor containing the indices of all non-zero elements of the `input` 
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
     in `input`, each containing the indices (in that dimension) of all non-zero elements 
@@ -418,7 +418,7 @@ def nonzero(x, as_tuple=False):
 
 
 def sort(x, axis=-1, descending=False, name=None):
-    """
+    r"""
 	:alias_main: paddle.sort
 	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
@@ -494,7 +494,7 @@ def sort(x, axis=-1, descending=False, name=None):
 
 
 def where(condition, x, y, name=None):
-    """
+    r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
@@ -563,7 +563,7 @@ def where(condition, x, y, name=None):
 
 
 def index_sample(x, index):
-    """
+    r"""
     **IndexSample Layer**
 
     IndexSample OP returns the element of the specified location of X, 
@@ -654,7 +654,7 @@ def index_sample(x, index):
 
 
 def masked_select(x, mask, name=None):
-    """
+    r"""
     This OP Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
 
@@ -700,7 +700,7 @@ def masked_select(x, mask, name=None):
 
 
 def topk(x, k, axis=None, largest=True, sorted=True, name=None):
-    """
+    r"""
     This OP is used to find values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.

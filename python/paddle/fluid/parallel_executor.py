@@ -27,7 +27,7 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
 class ParallelExecutor(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The ParallelExecutor is an upgraded version of :code:`paddle.static.Executor` that supports multi-node model
@@ -199,7 +199,7 @@ class ParallelExecutor(object):
         self._exe = executor.Executor(self._place)
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
-        """
+        r"""
         This interface is used to run the current model. It should be noted
         that the executor will execute all the operators in the Program,
         and will not prune some operators in the Program according to the
@@ -311,7 +311,7 @@ class ParallelExecutor(object):
         return len(self._places)
 
     def drop_local_exe_scopes(self):
-        """
+        r"""
         Drop the local execution scopes immediately. In order to avoid frequently
         application and release of temporary variables, the strategy adopted by
         ParallelExecutor is to drop the local execution scopes after several iterations.

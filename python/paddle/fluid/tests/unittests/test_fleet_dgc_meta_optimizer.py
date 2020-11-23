@@ -26,7 +26,7 @@ paddle.enable_static()
 
 class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
     def test_dgc_optimizer_backward(self):
-        """ test dgc optimizer backward """
+        r""" test dgc optimizer backward """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -42,7 +42,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertNotIn('dgc', ops)
 
     def test_dgc_optimizer_gradients(self):
-        """ test dgc optimizer backward + gradients """
+        r""" test dgc optimizer backward + gradients """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -61,7 +61,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('dgc_momentum', ops)
 
     def test_dgc_optimizer_optimize(self):
-        """ test dgc optimizer backward + optimize """
+        r""" test dgc optimizer backward + optimize """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
@@ -129,7 +129,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_amp_recompute_lars_dgc_not_apply_optimizer(self):
-        """ test amp + recompute + lars + dgc,
+        r""" test amp + recompute + lars + dgc,
             amp -/-> dgc, max_path is amp-->recompute-->lars
         """
         train_prog, startup_prog = fluid.Program(), fluid.Program()

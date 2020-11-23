@@ -37,7 +37,7 @@ NVPROF_CONFIG = [
 
 @signature_safe_contextmanager
 def cuda_profiler(output_file, output_mode=None, config=None):
-    """
+    r"""
     The CUDA profiler.
     
     This fuctions is used to profile CUDA program by CUDA runtime application
@@ -107,7 +107,7 @@ def cuda_profiler(output_file, output_mode=None, config=None):
 
 
 def reset_profiler():
-    """
+    r"""
     Clear the previous time record. This interface does not work for
     `fluid.profiler.cuda_profiler`, it only works for
     `fluid.profiler.start_profiler`, `fluid.profiler.stop_profiler`,
@@ -129,7 +129,7 @@ def reset_profiler():
 
 
 def start_profiler(state, tracer_option='Default'):
-    """
+    r"""
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
     of `fluid.profiler.profiler` interface.
@@ -196,7 +196,7 @@ def start_profiler(state, tracer_option='Default'):
 
 
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
-    """
+    r"""
     Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
     of `fluid.profiler.profiler` interface.
@@ -256,7 +256,7 @@ def profiler(state,
              sorted_key=None,
              profile_path='/tmp/profile',
              tracer_option='Default'):
-    """
+    r"""
     The profiler interface. Different from `fluid.profiler.cuda_profiler`, 
     this profiler can be used to profile both CPU and GPU program.
 

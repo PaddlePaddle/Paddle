@@ -58,7 +58,7 @@ class FSTest1(FSTestBase):
             time_out=6 * 1000,
             sleep_inter=100)
         self.assertFalse(fs.is_dir("./test_hdfs.py"))
-        s = """
+        s = r"""
 java.io.IOException: Input/output error
  responseErrorMsg : failed to getFileStatus, errorCode: 3, path: /user/PUBLIC_KM_Data/wangxi16/data/serving_model, lparam: d868f6bb6822c621, errorMessage: inner error
 	at org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)

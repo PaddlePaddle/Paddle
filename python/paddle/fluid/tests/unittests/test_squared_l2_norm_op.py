@@ -21,7 +21,7 @@ from op_test import OpTest
 
 
 class TestL2LossOp(OpTest):
-    """Test squared_l2_norm
+    r"""Test squared_l2_norm
     """
 
     def setUp(self):

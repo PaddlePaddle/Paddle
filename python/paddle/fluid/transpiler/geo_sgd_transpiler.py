@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-"""
+r"""
 Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
 2. create delta variable in global scope which used to send

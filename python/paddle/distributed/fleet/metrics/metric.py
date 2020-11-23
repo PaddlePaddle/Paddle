@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Fleet Metrics"""
+r"""Fleet Metrics"""
 
 import paddle.fluid as fluid
 import math
@@ -21,7 +21,7 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import f
 
 
 def sum(input, scope=None):
-    """
+    r"""
     distributed sum in fleet
 
     Args:
@@ -60,7 +60,7 @@ def sum(input, scope=None):
 
 
 def max(input, scope=None):
-    """
+    r"""
     distributed max in fleet
 
     Args:
@@ -99,7 +99,7 @@ def max(input, scope=None):
 
 
 def min(input, scope=None):
-    """
+    r"""
     distributed min in fleet
 
     Args:
@@ -138,7 +138,7 @@ def min(input, scope=None):
 
 
 def auc(stat_pos, stat_neg, scope=None):
-    """
+    r"""
     distributed auc in fleet
 
     Args:
@@ -221,7 +221,7 @@ def auc(stat_pos, stat_neg, scope=None):
 
 
 def mae(abserr, total_ins_num, scope=None):
-    """
+    r"""
     distributed mae in fleet
 
     Args:
@@ -259,7 +259,7 @@ def mae(abserr, total_ins_num, scope=None):
 
 
 def rmse(sqrerr, total_ins_num, scope=None):
-    """
+    r"""
     distributed rmse in fleet
 
     Args:
@@ -297,7 +297,7 @@ def rmse(sqrerr, total_ins_num, scope=None):
 
 
 def mse(sqrerr, total_ins_num, scope=None):
-    """
+    r"""
     distributed mse in fleet
 
     Args:
@@ -335,7 +335,7 @@ def mse(sqrerr, total_ins_num, scope=None):
 
 
 def acc(correct, total, scope=None):
-    """
+    r"""
     distributed accuracy in fleet
 
     Args:

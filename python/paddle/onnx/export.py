@@ -19,7 +19,7 @@ __all__ = ['export']
 
 
 def export(layer, path, input_spec=None, opset_version=9, **configs):
-    """
+    r"""
     Export Layer to ONNX format, which can use for inference via onnxruntime or other backends.
     For more details, Please refer to `paddle2onnx <https://github.com/PaddlePaddle/paddle2onnx>`_ .
 

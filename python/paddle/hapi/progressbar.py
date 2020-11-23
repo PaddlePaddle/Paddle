@@ -26,7 +26,7 @@ __all__ = ['ProgressBar']
 
 
 class ProgressBar(object):
-    """progress bar """
+    r"""progress bar """
 
     def __init__(self,
                  num=None,

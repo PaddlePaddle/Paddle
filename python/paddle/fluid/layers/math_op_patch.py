@@ -127,7 +127,7 @@ def monkey_patch_variable():
         return var
 
     def astype(self, dtype):
-        """
+        r"""
         **Notes**:
             **The variable must be a** :ref:`api_fluid_Tensor`
 
@@ -305,7 +305,7 @@ def monkey_patch_variable():
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
-        __impl__.__doc__ = """
+        __impl__.__doc__ = r"""
         {0}
         Args:
             self(Variable): left hand variable

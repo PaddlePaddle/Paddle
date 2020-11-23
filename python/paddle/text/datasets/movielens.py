@@ -35,7 +35,7 @@ MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
 class MovieInfo(object):
-    """
+    r"""
     Movie id, title and categories information are stored in MovieInfo.
     """
 
@@ -45,7 +45,7 @@ class MovieInfo(object):
         self.title = title
 
     def value(self, categories_dict, movie_title_dict):
-        """
+        r"""
         Get information from a movie.
         """
         return [[self.index], [categories_dict[c] for c in self.categories],
@@ -60,7 +60,7 @@ class MovieInfo(object):
 
 
 class UserInfo(object):
-    """
+    r"""
     User id, gender, age, and job information are stored in UserInfo.
     """
 
@@ -71,7 +71,7 @@ class UserInfo(object):
         self.job_id = int(job_id)
 
     def value(self):
-        """
+        r"""
         Get information from a user.
         """
         return [[self.index], [0 if self.is_male else 1], [self.age],
@@ -87,7 +87,7 @@ class UserInfo(object):
 
 
 class Movielens(Dataset):
-    """
+    r"""
     Implementation of `Movielens 1-M <https://grouplens.org/datasets/movielens/1m/>`_ dataset.
 
     Args:

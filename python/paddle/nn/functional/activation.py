@@ -58,7 +58,7 @@ import paddle
 
 
 def elu(x, alpha=1.0, name=None):
-    """
+    r"""
     elu activation.
 
     .. math::
@@ -101,7 +101,7 @@ def elu(x, alpha=1.0, name=None):
 
 
 def gelu(x, approximate=False, name=None):
-    """
+    r"""
     gelu activation.
 
     if approximate is True
@@ -155,7 +155,7 @@ def gelu(x, approximate=False, name=None):
 
 
 def hardshrink(x, threshold=0.5, name=None):
-    """
+    r"""
     hard shrinkage activation
 
     .. math::
@@ -204,7 +204,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 
 def hardtanh(x, min=-1.0, max=1.0, name=None):
-    """
+    r"""
     hardtanh activation
 
     .. math::
@@ -254,7 +254,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
 
 def hardsigmoid(x, name=None):
-    """
+    r"""
     hardsigmoid activation.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
@@ -308,7 +308,7 @@ def hardsigmoid(x, name=None):
 
 
 def hardswish(x, name=None):
-    """
+    r"""
     hardswish activation
 
     hardswish is proposed in MobileNetV3, and performs better in computational stability
@@ -357,7 +357,7 @@ def hardswish(x, name=None):
 
 
 def leaky_relu(x, negative_slope=0.01, name=None):
-    """
+    r"""
     leaky_relu activation
 
     .. math::
@@ -405,7 +405,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
 
 def prelu(x, weight, name=None):
-    """
+    r"""
     prelu activation.
 
     .. math::
@@ -478,7 +478,7 @@ def prelu(x, weight, name=None):
 
 
 def relu(x, name=None):
-    """
+    r"""
     relu activation.
 
     .. math::
@@ -515,7 +515,7 @@ def relu(x, name=None):
 
 
 def log_sigmoid(x, name=None):
-    """
+    r"""
     log_sigmoid activation.
 
     .. math::
@@ -552,7 +552,7 @@ def log_sigmoid(x, name=None):
 
 
 def maxout(x, groups, axis=1, name=None):
-    """
+    r"""
     maxout activation.
 
     Assumed the input shape is (N, Ci, H, W).
@@ -627,7 +627,7 @@ def maxout(x, groups, axis=1, name=None):
 
 
 def relu6(x, name=None):
-    """
+    r"""
     relu6 activation
 
     .. math::
@@ -671,7 +671,7 @@ def selu(x,
          scale=1.0507009873554804934193349852946,
          alpha=1.6732632423543772848170429916717,
          name=None):
-    """
+    r"""
     selu activation
 
     .. math::
@@ -726,7 +726,7 @@ def selu(x,
 
 
 def softmax(x, axis=-1, dtype=None, name=None):
-    """
+    r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
@@ -880,7 +880,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
 
 def softplus(x, beta=1, threshold=20, name=None):
-    """
+    r"""
     softplus activation
 
     .. math::
@@ -925,7 +925,7 @@ def softplus(x, beta=1, threshold=20, name=None):
 
 
 def softshrink(x, threshold=0.5, name=None):
-    """
+    r"""
     softshrink activation
 
     .. math::
@@ -976,7 +976,7 @@ def softshrink(x, threshold=0.5, name=None):
 
 
 def softsign(x, name=None):
-    """
+    r"""
     softsign activation
 
     .. math::
@@ -1013,7 +1013,7 @@ def softsign(x, name=None):
 
 
 def swish(x, name=None):
-    """
+    r"""
     swish activation.
 
     .. math::
@@ -1054,7 +1054,7 @@ def swish(x, name=None):
 
 
 def tanhshrink(x, name=None):
-    """
+    r"""
     tanhshrink activation
 
     .. math::
@@ -1091,7 +1091,7 @@ def tanhshrink(x, name=None):
 
 
 def thresholded_relu(x, threshold=1.0, name=None):
-    """
+    r"""
     thresholded relu activation.
 
     .. math::
@@ -1137,7 +1137,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):
-    """
+    r"""
     This operator implements the log_softmax layer. The calculation process is
     as follows:
 

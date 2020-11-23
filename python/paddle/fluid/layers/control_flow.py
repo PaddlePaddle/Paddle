@@ -40,7 +40,7 @@ __all__ = [
 
 
 def select_output(input, outputs, mask):
-    """
+    r"""
     **select_output**    
     This API takes in one input and multiple outputs and an integer mask. It
     selects the output specified by the mask and copy the input to selected
@@ -69,7 +69,7 @@ def select_output(input, outputs, mask):
 
 
 def select_input(inputs, mask):
-    """
+    r"""
     **select_input**
     
     This API takes in multiple inputs and uses an integer mask to select one
@@ -102,7 +102,7 @@ def select_input(inputs, mask):
 
 
 def split_lod_tensor(input, mask, level=0):
-    """
+    r"""
     This function takes in an input that contains the complete lod information,
     and takes in a mask which is used to mask certain parts of the input.
     The output is the true branch and the false branch with the mask applied to
@@ -155,7 +155,7 @@ def split_lod_tensor(input, mask, level=0):
 
 
 def merge_lod_tensor(in_true, in_false, x, mask, level=0):
-    """
+    r"""
     **merge_lod_tensor**
 
     This function takes in an input :math:`x`, the True branch, the False
@@ -375,7 +375,7 @@ def Assert(cond, data=None, summarize=20, name=None):
 
 
 class BlockGuard(object):
-    """
+    r"""
     BlockGuard class.
 
     BlockGuard class is used to create a sub-block in a program by
@@ -398,7 +398,7 @@ class BlockGuard(object):
 
 
 class BlockGuardWithCompletion(BlockGuard):
-    """
+    r"""
     BlockGuardWithCompletion class.
 
     BlockGuardWithCompletion class is used to create an op with a block in a program.
@@ -424,7 +424,7 @@ class BlockGuardWithCompletion(BlockGuard):
 
 
 class StaticRNNMemoryLink(object):
-    """
+    r"""
     StaticRNNMemoryLink class.
 
     StaticRNNMemoryLink class is used to create a link between two
@@ -447,7 +447,7 @@ class StaticRNNMemoryLink(object):
 
 
 class StaticRNN(object):
-    """
+    r"""
     :api_attr: Static Graph
 
     StaticRNN class.
@@ -507,7 +507,7 @@ class StaticRNN(object):
         self.seq_len = None
 
     def step(self):
-        """
+        r"""
         Define operators in each step. step is used in :code:`with` block, OP in :code:`with` block
         will be executed sequence_len times (sequence_len is the length of input)
         """
@@ -524,7 +524,7 @@ class StaticRNN(object):
                init_value=0.0,
                init_batch_dim_idx=0,
                ref_batch_dim_idx=1):
-        """
+        r"""
         Create a memory variable for static rnn.
         If the :code:`init` is not None, :code:`memory` will be initialized by
         this Variable. If the :code:`init` is None, :code:`shape` and :code:`batch_ref`
@@ -645,7 +645,7 @@ class StaticRNN(object):
             return pre_mem
 
     def step_input(self, x):
-        """
+        r"""
         Mark a sequence as a StaticRNN input.
 
         Args:
@@ -696,7 +696,7 @@ class StaticRNN(object):
         return ipt
 
     def step_output(self, o):
-        """
+        r"""
         Mark a sequence as a StaticRNN output.
 
         Args:
@@ -754,7 +754,7 @@ class StaticRNN(object):
         self.outputs.append(out_var)
 
     def output(self, *outputs):
-        """
+        r"""
         Mark the StaticRNN output variables.
 
         Args:
@@ -798,7 +798,7 @@ class StaticRNN(object):
             self.step_output(each)
 
     def update_memory(self, mem, var):
-        """
+        r"""
         Update the memory from :code:`mem` to :code:`var`.
 
         Args:
@@ -927,7 +927,7 @@ class WhileGuard(BlockGuard):
 
 def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
                                 helper):
-    """
+    r"""
     Find inputs and outputs in current control flow block.
     :param current_block: Current control flow block.
     :param inner_inputs: Input var name of ops in current block.
@@ -969,7 +969,7 @@ def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
 
 
 class While(object):
-    """
+    r"""
     :api_attr: Static Graph
     
     while loop control flow. Repeat while body until cond is False.
@@ -1094,7 +1094,7 @@ class While(object):
 
 
 def assign_skip_lod_tensor_array(input, output):
-    """
+    r"""
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
     if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -1108,7 +1108,7 @@ def assign_skip_lod_tensor_array(input, output):
 
 
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
@@ -1229,7 +1229,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
 
 def lod_rank_table(x, level=0):
-    """
+    r"""
     LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
@@ -1296,7 +1296,7 @@ def lod_rank_table(x, level=0):
 
 @templatedoc()
 def max_sequence_len(rank_table):
-    """
+    r"""
     ${comment}
 
     >>> import paddle.fluid as fluid
@@ -1321,7 +1321,7 @@ def max_sequence_len(rank_table):
 
 
 def lod_tensor_to_array(x, table):
-    """
+    r"""
     Convert a LoDTensor to a LoDTensorArray.
 
     This function split a LoDTesnor to a LoDTensorArray according to its LoD
@@ -1373,7 +1373,7 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """Convert a LoD_Tensor_Aarry to an LoDTensor.
+    r"""Convert a LoD_Tensor_Aarry to an LoDTensor.
 
     Args:
         x (Variable|list): The lod tensor array to be converted to a tensor.
@@ -1416,7 +1416,7 @@ def array_to_lod_tensor(x, table):
 
 
 def increment(x, value=1.0, in_place=True):
-    """
+    r"""
     The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
@@ -1452,7 +1452,7 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """
+    r"""
     This OP writes the input ``x`` into the i-th position of the ``array``
     :ref:`api_fluid_LoDTensorArray` and returns the modified array.
     If ``array`` is none, a new LoDTensorArray will be created and returned.
@@ -1549,7 +1549,7 @@ def array_write(x, i, array=None):
 
 
 def create_array(dtype):
-    """
+    r"""
     This OP creates an LOD_TENSOR_ARRAY. It is used as
     the input of :ref:`api_fluid_layers_array_read` and 
     :ref:`api_fluid_layers_array_write`. Also it can be used
@@ -1581,7 +1581,7 @@ def create_array(dtype):
 
 @templatedoc()
 def less_than(x, y, force_cpu=None, cond=None, name=None):
-    """
+    r"""
     :alias_main: paddle.less_than
 	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
 	:old_api: paddle.fluid.layers.less_than
@@ -1652,7 +1652,7 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
 
 @templatedoc()
 def less_equal(x, y, cond=None, name=None):
-    """
+    r"""
     :alias_main: paddle.less_equal
 	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
 	:old_api: paddle.fluid.layers.less_equal
@@ -1706,7 +1706,7 @@ def less_equal(x, y, cond=None, name=None):
 
 @templatedoc()
 def greater_than(x, y, cond=None, name=None):
-    """
+    r"""
     :alias_main: paddle.greater_than
 	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
 	:old_api: paddle.fluid.layers.greater_than
@@ -1759,7 +1759,7 @@ def greater_than(x, y, cond=None, name=None):
 
 @templatedoc()
 def greater_equal(x, y, cond=None, name=None):
-    """
+    r"""
     :alias_main: paddle.greater_equal
 	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
 	:old_api: paddle.fluid.layers.greater_equal
@@ -1813,7 +1813,7 @@ def greater_equal(x, y, cond=None, name=None):
 
 
 def equal(x, y, cond=None, name=None):
-    """
+    r"""
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:
@@ -1860,7 +1860,7 @@ def equal(x, y, cond=None, name=None):
 
 
 def not_equal(x, y, cond=None, name=None):
-    """
+    r"""
     :alias_main: paddle.not_equal
 	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
 	:old_api: paddle.fluid.layers.not_equal
@@ -1906,7 +1906,7 @@ def not_equal(x, y, cond=None, name=None):
 
 
 def array_read(array, i):
-    """
+    r"""
     This OP is used to read data at the specified position from the input array 
     :ref:`api_fluid_LoDTensorArray` . ``array`` is the input array and ``i``
     is the specified read position. This OP is often used together with 
@@ -1995,7 +1995,7 @@ def array_read(array, i):
 
 
 def shrink_memory(x, i, table):
-    """
+    r"""
     This function creates an operator to shrink rnn memory using the RankTable
     as mentioned in the input parameter.
 
@@ -2035,7 +2035,7 @@ def shrink_memory(x, i, table):
 
 
 def array_length(array):
-    """
+    r"""
     This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
     It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` , 
     :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
@@ -2101,7 +2101,7 @@ def array_length(array):
 
 
 class ConditionalBlockGuard(BlockGuard):
-    """
+    r"""
     ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
     holding a ConditionalBlock, and helping users entering and exiting the
     ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard
@@ -2296,7 +2296,7 @@ def copy_var_to_parent_block(var, layer_helper):
 
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
-    """
+    r"""
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
     ``None`` if do nothing and this API will treat the callable simply returns
@@ -2589,7 +2589,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
 
 class Switch(object):
-    """
+    r"""
     :api_attr: Static Graph
 
     This class is used to implement Switch branch control function. 
@@ -2698,7 +2698,7 @@ class Switch(object):
         return ConditionalBlockGuard(cond_block)
 
     def __enter__(self):
-        """
+        r"""
         set flag that now is inside switch.block {}
         :return:
         """
@@ -2747,7 +2747,7 @@ class IfElseBlockGuard(object):
 
 
 class IfElse(object):
-    """
+    r"""
     :api_attr: Static Graph
 
     This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
@@ -2925,7 +2925,7 @@ class IfElse(object):
 
 
 class DynamicRNN(object):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Note: the input of this class should be LoDTensor which holds the
@@ -3012,7 +3012,7 @@ class DynamicRNN(object):
         self.mem_link = []
 
     def step_input(self, x, level=0):
-        """
+        r"""
         This function is used to set sequence x as DynamicRNN's input.
         The maximum sequence length in x determines the number of time steps
         the RNN unit will be executed. DynamicRNN can take multiple inputs.
@@ -3144,7 +3144,7 @@ class DynamicRNN(object):
         return array_read(array=input_array, i=self.step_idx)
 
     def static_input(self, x):
-        """
+        r"""
         This function is used to set x as DynamicRNN's static input. It is optional.
 
         - Case 1, set static input with LoD
@@ -3288,7 +3288,7 @@ class DynamicRNN(object):
 
     @signature_safe_contextmanager
     def block(self):
-        """
+        r"""
         The function is used to list the operations executed during
         each time step in RNN. The operation list will be executed :code:`max_sequence_len`
         times (where :code:`max_sequence_len` is the maximum length of RNN's input sequences).
@@ -3322,7 +3322,7 @@ class DynamicRNN(object):
                     x=each_array, table=self.lod_rank_table))
 
     def __call__(self, *args, **kwargs):
-        """
+        r"""
         This function is used to get the output  sequences of DynamicRNN.
 
         Args:
@@ -3348,7 +3348,7 @@ class DynamicRNN(object):
                value=0.0,
                need_reorder=False,
                dtype='float32'):
-        """
+        r"""
         Create a memory Variable for DynamicRNN to deliver data cross time steps.
         It can be initialized by an existing Tensor or a constant Tensor of given
         dtype and shape.
@@ -3503,7 +3503,7 @@ class DynamicRNN(object):
             return self.memory(init=init)
 
     def update_memory(self, ex_mem, new_mem):
-        """
+        r"""
         Update the memory which need to be delivered across time steps.
 
         Args:
@@ -3535,7 +3535,7 @@ class DynamicRNN(object):
         self.mem_link.append((new_mem, mem_array))
 
     def output(self, *outputs):
-        """
+        r"""
         This function is used to set :code:`outputs` as RNN's output.
 
         Args:
@@ -3737,7 +3737,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
 @templatedoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
-    """
+    r"""
     ${comment}
 
     Args:
@@ -3778,7 +3778,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 
 def is_empty(x, name=None):
-    """
+    r"""
 
     Test whether a Tensor is empty.
 

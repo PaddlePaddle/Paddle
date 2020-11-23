@@ -24,7 +24,7 @@ __all__ = [
 
 
 class Sampler(object):
-    """
+    r"""
     An abstract class to encapsulate methods and behaviors of samplers.
 
     All sampler used by :code:`paddle.io.BatchSampler` should be a subclass
@@ -95,7 +95,7 @@ class Sampler(object):
 
 
 class SequenceSampler(Sampler):
-    """
+    r"""
     Iterate samples sequentially, yield :code:`0, 1, 2, ..., len(data_source) -1`
     generally,
 
@@ -144,7 +144,7 @@ class SequenceSampler(Sampler):
 
 
 class RandomSampler(Sampler):
-    """
+    r"""
     Iterate samples randomly, yield shuffled indices, if :attr:`replacement=False`,
     yield shuffled indices of the whole data souce, if :attr:`replacement=True`,
     :attr:`num_samples` can set to specify the sample number to draw.
@@ -274,7 +274,7 @@ def _weighted_sample(weights, num_samples, replacement=True):
 
 
 class WeightedRandomSampler(Sampler):
-    """
+    r"""
     Random sample with given weights (probabilities), sampe index will be in range
     [0, len(weights) - 1], if :attr:`replacement` is True, index can be sampled
     multiple times.

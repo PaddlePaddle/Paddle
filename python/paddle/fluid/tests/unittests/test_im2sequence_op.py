@@ -65,7 +65,7 @@ def get_output_shape(attrs, in_shape, img_real_size):
 
 
 def im2col(attrs, im, col):
-    """
+    r"""
     im: {CHW}
     col:
         {outputHeight, outputWidth, inputChannels, filterHeight, filterWidth}

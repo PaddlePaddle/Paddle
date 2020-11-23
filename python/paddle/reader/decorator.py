@@ -49,7 +49,7 @@ else:
 
 
 def cache(reader):
-    """
+    r"""
     Cache the reader data into memory. 
 
     Be careful that this method may take long time to process, 
@@ -89,7 +89,7 @@ def cache(reader):
 
 
 def map_readers(func, *readers):
-    """
+    r"""
     Creates a data reader that outputs return value of function using
     output of each data reader as arguments.
 
@@ -131,7 +131,7 @@ def map_readers(func, *readers):
 
 
 def shuffle(reader, buf_size):
-    """
+    r"""
     paddle.fluid.io.shuffle ( :ref:`api_fluid_io_shuffle` ) is recommended to use,
     and paddle.reader.shuffle is an alias.
 
@@ -180,7 +180,7 @@ def shuffle(reader, buf_size):
 
 
 def chain(*readers):
-    """
+    r"""
     Use the input data readers to create a chained data reader. The new created reader
     chains the outputs of input readers together as its output, and it do not change
     the format of the outputs.
@@ -245,7 +245,7 @@ class ComposeNotAligned(ValueError):
 
 
 def compose(*readers, **kwargs):
-    """
+    r"""
     Creates a data reader whose output is the combination of input readers.
 
     If input readers output following data entries:
@@ -305,7 +305,7 @@ def compose(*readers, **kwargs):
 
 
 def buffered(reader, size):
-    """
+    r"""
     Creates a buffered data reader.
 
     The buffered data reader will read and save data entries into a
@@ -364,7 +364,7 @@ def buffered(reader, size):
 
 
 def firstn(reader, n):
-    """
+    r"""
     paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
     and paddle.reader.firstn is an alias.
     
@@ -409,7 +409,7 @@ class XmapEndSignal():
 
 
 def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
-    """
+    r"""
     Use multi-threads to map samples from reader by a mapper defined by user.
 
     Args:
@@ -502,7 +502,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
 
 
 def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
-    """
+    r"""
     This API use python ``multiprocessing`` to read data from ``readers`` parallelly,
     and then ``multiprocess.Queue`` or ``multiprocess.Pipe`` is used to merge 
     these data. A separate process will be created for each reader in the 

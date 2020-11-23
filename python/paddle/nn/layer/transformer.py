@@ -37,7 +37,7 @@ from ...fluid.param_attr import ParamAttr
 
 
 def _convert_param_attr_to_list(param_attr, n):
-    """
+    r"""
     If `param_attr` is a list or tuple, convert every element in it to a
     ParamAttr instance. Otherwise, repeat `param_attr` `n` times to
     construct a list, and rename every one by appending a increasing index
@@ -83,7 +83,7 @@ def _convert_param_attr_to_list(param_attr, n):
 
 
 class MultiHeadAttention(Layer):
-    """
+    r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
@@ -157,7 +157,7 @@ class MultiHeadAttention(Layer):
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
 
     def _prepare_qkv(self, query, key, value, cache=None):
-        """
+        r"""
         Prapares linear projected queries, keys and values for usage of subsequnt
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
@@ -212,7 +212,7 @@ class MultiHeadAttention(Layer):
         return (q, k, v) if cache is None else (q, k, v, cache)
 
     def compute_kv(self, key, value):
-        """
+        r"""
         Applies linear projection on input keys and values, then splits heads
         (reshape and transpose) to get keys and values from different representation
         subspaces. The results are used as key-values pairs for subsequent multiple
@@ -244,7 +244,7 @@ class MultiHeadAttention(Layer):
         return k, v
 
     def gen_cache(self, key, value=None, type=Cache):
-        """
+        r"""
         Generates cache for `forward` usage in inference accroding to arguments.
         The generated cache is an instance of `MultiHeadAttention.Cache` or an
         instance of `MultiHeadAttention.StaticCache`.
@@ -312,7 +312,7 @@ class MultiHeadAttention(Layer):
             return self.Cache(key, value)
 
     def forward(self, query, key, value, attn_mask=None, cache=None):
-        """
+        r"""
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
 
@@ -402,7 +402,7 @@ class MultiHeadAttention(Layer):
 
 
 class TransformerEncoderLayer(Layer):
-    """
+    r"""
     TransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
     and post-precess would be applied on the input and output accordingly. If
@@ -499,7 +499,7 @@ class TransformerEncoderLayer(Layer):
         self.activation = getattr(F, activation)
 
     def forward(self, src, src_mask=None):
-        """
+        r"""
         Applies a Transformer encoder layer on the input.
 
         Parameters:
@@ -539,7 +539,7 @@ class TransformerEncoderLayer(Layer):
 
 
 class TransformerEncoder(Layer):
-    """
+    r"""
     TransformerEncoder is a stack of N encoder layers. 
 
     Parameters:
@@ -575,7 +575,7 @@ class TransformerEncoder(Layer):
         self.norm = norm
 
     def forward(self, src, src_mask=None):
-        """
+        r"""
         Applies a stack of N Transformer encoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last encoder
         layer.
@@ -609,7 +609,7 @@ class TransformerEncoder(Layer):
 
 
 class TransformerDecoderLayer(Layer):
-    """
+    r"""
     TransformerDecoderLayer is composed of three sub-layers which are decoder
     self (multi-head) attention, decoder-encoder cross attention and feedforward
     network. Before and after each sub-layer, pre-process and post-precess would
@@ -725,7 +725,7 @@ class TransformerDecoderLayer(Layer):
         self.activation = getattr(F, activation)
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
-        """
+        r"""
         Applies a Transformer decoder layer on the input.
 
         Parameters:
@@ -801,7 +801,7 @@ class TransformerDecoderLayer(Layer):
                                                 static_cache))
 
     def gen_cache(self, memory):
-        """
+        r"""
         Generates cache for `forward` usage. The generated cache is a tuple
         composed of an instance of `MultiHeadAttention.Cache` and an instance
         of `MultiHeadAttention.StaticCache`.
@@ -830,7 +830,7 @@ class TransformerDecoderLayer(Layer):
 
 
 class TransformerDecoder(Layer):
-    """
+    r"""
     TransformerDecoder is a stack of N decoder layers. 
 
     Parameters:
@@ -873,7 +873,7 @@ class TransformerDecoder(Layer):
         self.norm = norm
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
-        """
+        r"""
         Applies a stack of N Transformer decoder layers on inputs. If `norm` is
         provided, also applies layer normalization on the output of last decoder
         layer.
@@ -937,7 +937,7 @@ class TransformerDecoder(Layer):
         return output if cache is None else (output, new_caches)
 
     def gen_cache(self, memory, do_zip=False):
-        """
+        r"""
         Generates cache for `forward` usage. The generated cache is a list, and
         each element in it is a tuple( :code:`(incremental_cache, static_cache)` )
         produced by `TransformerDecoderLayer.gen_cache`. See `TransformerDecoderLayer.gen_cache`
@@ -965,7 +965,7 @@ class TransformerDecoder(Layer):
 
 
 class Transformer(Layer):
-    """
+    r"""
     A Transformer model composed of an instance of `TransformerEncoder` and an
     instance of `TransformerDecoder`. While the embedding layer and output layer
     are not included.
@@ -1139,7 +1139,7 @@ class Transformer(Layer):
         self.nhead = nhead
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
-        """
+        r"""
         Applies a Transformer model on the inputs.
 
         Parameters:
@@ -1178,7 +1178,7 @@ class Transformer(Layer):
         return output
 
     def generate_square_subsequent_mask(self, length):
-        """
+        r"""
         Generate a square mask for the sequence. The mask ensures that the
         predictions for position i can depend only on the known outputs at
         positions less than i.

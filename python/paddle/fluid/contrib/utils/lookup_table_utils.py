@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""lookup_table_utils.py will move to fluid/incubate/fleet/utils/lookup_table.py"""
+r"""lookup_table_utils.py will move to fluid/incubate/fleet/utils/lookup_table.py"""
 
 from __future__ import print_function
 
@@ -83,7 +83,7 @@ def __get_prefetch_op_tuples(main_program):
 
 
 def convert_dist_to_sparse_program(program):
-    """
+    r"""
     WARNING: this function will only be used for distributed training with distributed lookup table.
     when we train model with distributed lookup table but want to do the local inference, we can use
     this function to convert the train program with distributed lookup table to sparse lookup table.
@@ -135,7 +135,7 @@ def convert_dist_to_sparse_program(program):
 
 def load_persistables_for_increment(dirname, executor, program,
                                     lookup_table_var, lookup_table_var_path):
-    """
+    r"""
     WARNING: this function will only be used for distributed training with distributed lookup table.
     for increment training, the pserver will not only load dense variables,
     but also load the suitable lookup table var. Because of sliced lookup table
@@ -259,7 +259,7 @@ def load_persistables_for_increment(dirname, executor, program,
 
 def load_persistables_for_inference(dirname, executor, program,
                                     lookup_table_var_name):
-    """
+    r"""
     WARNING: this function will only be used for inference with distributed lookup table.
     Inference with distributed lookup table is a little funky, this function will load distributed
     lookup table vars into sparse var, can be used in local inference mode.
@@ -275,7 +275,7 @@ def load_persistables_for_inference(dirname, executor, program,
 
     def _load_persistable_vars(executor, dirname, program, lookup_table_vars):
         def _is_checkpoint_var(exclude_fluid_vars=None):
-            """
+            r"""
             the checkpoint will not save or load all the variables.
             var type is FEED_MINIBATCH/FETCH_LIST/RAW or var name ends with @GRAD are discarded.
 
@@ -411,7 +411,7 @@ def load_persistables_for_inference(dirname, executor, program,
 
 
 def get_inference_model(main_program, feeded_var_names, target_vars):
-    """
+    r"""
     Prune the given `main_program` to build a new program especially for inference with distributed lookup table ,
     and then add `feeded_vars` and `target_vars` in this program.
 

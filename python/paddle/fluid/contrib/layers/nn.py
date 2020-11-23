@@ -25,7 +25,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 Contrib layers just related to the neural network.
 """
 
@@ -68,7 +68,7 @@ def fused_elemwise_activation(x,
                               axis=-1,
                               scale=0.0,
                               save_intermediate_out=True):
-    """
+    r"""
     **Fused elementwise_add/mul and activation layers**
 
     This function computes an elementwise_add/mul cooperated with an activation.
@@ -137,7 +137,7 @@ def var_conv_2d(input,
                 act=None,
                 dtype='float32',
                 name=None):
-    """
+    r"""
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
     and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with
@@ -251,7 +251,7 @@ def match_matrix_tensor(x,
                         param_attr=None,
                         dtype='float32',
                         name=None):
-    """
+    r"""
     Calculate the semantic matching matrix of two word sequences with variable length.
     Given a query A of length `n` and a title B of length `m`, the input shape are respectively
     [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
@@ -332,7 +332,7 @@ def match_matrix_tensor(x,
 
 
 def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
-    """
+    r"""
     The :attr:`topks` is a list with incremental values in this function. For each topk,
     it will average the topk features as an output feature for each channel of every
     input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height
@@ -408,7 +408,7 @@ def tree_conv(nodes_vector,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """
+    r"""
     ${comment}
 Args : nodes_vector(${nodes_vector_type}) : $ { nodes_vector_comment }
 edge_set(${edge_set_type}) : $ { edge_set_comment }
@@ -477,7 +477,7 @@ def fused_embedding_seq_pool(input,
                              combiner='sum',
                              param_attr=None,
                              dtype='float32'):
-    """
+    r"""
     **Embedding Sequence pool**
 
     This layer is the fusion of lookup table and sequence_pool.
@@ -548,7 +548,7 @@ def multiclass_nms2(bboxes,
                     background_label=0,
                     return_index=False,
                     name=None):
-    """
+    r"""
     **Multiclass NMS2**
 
     This operator is to do multi-class non maximum suppression (NMS) on
@@ -684,7 +684,7 @@ def search_pyramid_hash(input,
                         name=None,
                         distribute_update_vars=None,
                         dtype='float32'):
-    """
+    r"""
     **Pyramid hash embedding**
 
     Args:
@@ -783,7 +783,7 @@ def search_pyramid_hash(input,
 
 
 def shuffle_batch(x, seed=None):
-    """
+    r"""
     This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
 
     :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
@@ -847,7 +847,7 @@ def shuffle_batch(x, seed=None):
 
 
 def partial_concat(input, start_index=0, length=-1):
-    """
+    r"""
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
     OP exists in contrib, which means that it is not shown to the public.
@@ -910,7 +910,7 @@ def partial_concat(input, start_index=0, length=-1):
 
 
 def partial_sum(input, start_index=0, length=-1):
-    """
+    r"""
     **PartialSum**
     This Op can sum the vars by specifying the initial position(start_index) and length(length).
     This Op exists in contrib, which means that it is not shown to the public.
@@ -1017,7 +1017,7 @@ def sparse_embedding(input,
 
 
 def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
-    """
+    r"""
     **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and 
       whether child is a leaf node by leaf_mask value.
@@ -1112,7 +1112,7 @@ def tdm_sampler(x,
                 seed=0,
                 tree_dtype='int32',
                 dtype='int32'):
-    """
+    r"""
     **Tdm Sampler**
     According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
     .. code-block:: text
@@ -1316,7 +1316,7 @@ def rank_attention(input,
                    rank_param_attr,
                    max_rank=3,
                    max_size=0):
-    """
+    r"""
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and 
     rank_param gives the organization of data. Notice: It currently supports
@@ -1379,7 +1379,7 @@ def rank_attention(input,
 
 
 def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
-    """
+    r"""
     **Batch FC layer**
     This Op can calculate BatchFC. This is similar to matmul op, 
     except that the bias and relu activation layers are added. 
@@ -1442,7 +1442,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
 
 
 def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
-    """
+    r"""
     **Pull Box Extended Sparse Layer**
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     BoxPS lookup table. The result of this lookup is the embedding of each ID in the
@@ -1489,7 +1489,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
 
 
 def bilateral_slice(x, guide, grid, has_offset, name=None):
-    """
+    r"""
     :alias_main: paddle.nn.functional.bilateral_slice
 	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
 	:old_api: paddle.fluid.layers.bilateral_slice
@@ -1560,7 +1560,7 @@ def correlation(x,
                 stride1,
                 stride2,
                 corr_type_multiply=1):
-    """
+    r"""
 
     This operation compute correlation of two tensor.
     For more information of correlation, please refer to PWC-Net: 
@@ -1640,7 +1640,7 @@ def fused_bn_add_act(x,
                      moving_variance_name=None,
                      act=None,
                      name=None):
-    """
+    r"""
     This Op performs batch norm on input x, and adds the result to input y. Then
     it performs activation on the sum. The data format of inputs must be NHWC
     `[batch, in_height, in_width, in_channels]`.

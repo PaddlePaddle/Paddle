@@ -41,7 +41,7 @@ __all__ = [
 
 
 def create_tensor(dtype, name=None, persistable=False):
-    """
+    r"""
     Create a variable, which will hold a Tensor with data type dtype.
 
     Args:
@@ -76,7 +76,7 @@ def create_parameter(shape,
                      attr=None,
                      is_bias=False,
                      default_initializer=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This function creates a parameter. The parameter is a learnable variable, which can have
@@ -140,7 +140,7 @@ def create_global_var(shape,
                       persistable=False,
                       force_cpu=False,
                       name=None):
-    """
+    r"""
     This function creates a new tensor variable with value in the global block(block 0).
 
     Parameters:
@@ -198,7 +198,7 @@ def create_global_var(shape,
 
 
 def cast(x, dtype):
-    """
+    r"""
 
     This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
@@ -242,7 +242,7 @@ def cast(x, dtype):
 
 
 def concat(input, axis=0, name=None):
-    """
+    r"""
     This OP concatenates the input along the axis.
 
     Args:
@@ -343,7 +343,7 @@ def concat(input, axis=0, name=None):
 
 
 def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
-    """
+    r"""
     This function concatenates or stacks all tensors in the input LoDTensorArray
     along the axis mentioned and returns that as the output.
 
@@ -452,7 +452,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 
 
 def sums(input, out=None):
-    """
+    r"""
     This function computes the sum of multiple input Tensors elementwisely.
 
     - Case 1, sum of 3 Tensors
@@ -527,7 +527,7 @@ def sums(input, out=None):
 
 
 def assign(input, output=None):
-    """
+    r"""
 
     The OP copies the :attr:`input` to the :attr:`output`.
 
@@ -604,7 +604,7 @@ def assign(input, output=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    """
+    r"""
 
     This OP creates a Tensor with specified `shape` and `dtype`, and
     initializes it with a constant specified by `value`.
@@ -722,7 +722,7 @@ def fill_constant_batch_size_like(input,
                                   input_dim_idx=0,
                                   output_dim_idx=0,
                                   force_cpu=False):
-    """
+    r"""
     This OP creates a Tesnor according the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
@@ -780,7 +780,7 @@ def fill_constant_batch_size_like(input,
 
 
 def argmin(x, axis=0):
-    """
+    r"""
 	:alias_main: paddle.argmin
 	:alias: paddle.argmin,paddle.tensor.argmin,paddle.tensor.search.argmin
 	:old_api: paddle.fluid.layers.argmin
@@ -847,7 +847,7 @@ def argmin(x, axis=0):
 
 
 def argmax(x, axis=0):
-    """
+    r"""
     **argmax**
 
     This OP computes the indices of the max elements of the input tensor's
@@ -910,7 +910,7 @@ def argmax(x, axis=0):
 
 
 def argsort(input, axis=-1, descending=False, name=None):
-    """
+    r"""
 	:alias_main: paddle.argsort
 	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
 	:old_api: paddle.fluid.layers.argsort
@@ -1002,7 +1002,7 @@ def argsort(input, axis=-1, descending=False, name=None):
 
 
 def ones(shape, dtype, force_cpu=False):
-    """
+    r"""
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
@@ -1031,7 +1031,7 @@ def ones(shape, dtype, force_cpu=False):
 
 
 def zeros(shape, dtype, force_cpu=False, name=None):
-    """
+    r"""
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
@@ -1062,7 +1062,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
 
 
 def reverse(x, axis):
-    """
+    r"""
 	:alias_main: paddle.reverse
 	:alias: paddle.reverse,paddle.tensor.reverse,paddle.tensor.manipulation.reverse
 	:old_api: paddle.fluid.layers.reverse
@@ -1139,7 +1139,7 @@ def reverse(x, axis):
 
 
 def save(x, file_path, overwrite=True):
-    """
+    r"""
     Saves a variable as a file.
 
     Args:
@@ -1159,7 +1159,7 @@ def save(x, file_path, overwrite=True):
 
 
 def save_combine(x, file_path, overwrite=True):
-    """
+    r"""
     Saves a list of variables into a single file.
 
     Args:
@@ -1196,7 +1196,7 @@ def save_combine(x, file_path, overwrite=True):
 
 
 def load_combine(out, file_path):
-    """
+    r"""
     Loads a list of variable from a single file.
 
     Args:
@@ -1212,7 +1212,7 @@ def load_combine(out, file_path):
 
 
 def has_inf(x):
-    """
+    r"""
     Test if any of x contains an infinity number
 
     Args:
@@ -1241,7 +1241,7 @@ def has_inf(x):
 
 
 def has_nan(x):
-    """
+    r"""
     Test if any of x contains a NAN
 
     Args:
@@ -1270,7 +1270,7 @@ def has_nan(x):
 
 
 def isfinite(x):
-    """
+    r"""
 	:alias_main: paddle.isfinite
 	:alias: paddle.isfinite,paddle.tensor.isfinite,paddle.tensor.logic.isfinite
 	:old_api: paddle.fluid.layers.isfinite
@@ -1304,7 +1304,7 @@ def isfinite(x):
 
 
 def range(start, end, step, dtype, name=None):
-    """
+    r"""
     This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
@@ -1391,7 +1391,7 @@ def range(start, end, step, dtype, name=None):
 
 
 def linspace(start, stop, num, dtype=None, name=None):
-    """
+    r"""
     This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
@@ -1483,7 +1483,7 @@ def linspace(start, stop, num, dtype=None, name=None):
 
 
 def zeros_like(x, out=None):
-    """
+    r"""
     This OP creates a zeros tensor which has identical shape and dtype 
     with `x`.
 
@@ -1527,7 +1527,7 @@ def zeros_like(x, out=None):
 
 @deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
-    """
+    r"""
 	:alias_main: paddle.diag
 	:alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
 	:old_api: paddle.fluid.layers.diag
@@ -1578,7 +1578,7 @@ def eye(num_rows,
         batch_shape=None,
         dtype='float32',
         name=None):
-    """
+    r"""
     This function constructs a or a batch of 2-D tensor with ones on the diagonal and zeros elsewhere. 
 
     Args:
@@ -1668,7 +1668,7 @@ def eye(num_rows,
 
 
 def ones_like(x, out=None):
-    """
+    r"""
     **ones_like**
 
     This function creates a ones tensor which has identical shape and dtype 

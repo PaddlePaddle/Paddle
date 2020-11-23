@@ -18,7 +18,7 @@ __all__ = ['Mode']
 
 
 class Mode:
-    """
+    r"""
     There are various mode for fleet, each of them is designed for different model.
     """
     TRANSPILER = 1

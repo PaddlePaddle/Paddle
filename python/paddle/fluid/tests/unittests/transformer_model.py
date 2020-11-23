@@ -29,7 +29,7 @@ batch_size = 2
 
 
 def position_encoding_init(n_position, d_pos_vec):
-    """
+    r"""
     Generate the initial values for the sinusoid position encoding table.
     """
     position_enc = np.array([[
@@ -50,7 +50,7 @@ def multi_head_attention(queries,
                          d_model,
                          n_head=1,
                          dropout_rate=0.):
-    """
+    r"""
     Multi-Head Attention. Note that attn_bias is added to the logit before
     computing softmax activiation to mask certain selected positions so that
     they will not considered in attention weights.
@@ -60,7 +60,7 @@ def multi_head_attention(queries,
             "Inputs: queries, keys and values should all be 3-D tensors.")
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
-        """
+        r"""
         Add linear projection to queries, keys, and values.
         """
         q = layers.fc(input=queries,
@@ -90,7 +90,7 @@ def multi_head_attention(queries,
         return q, k, v
 
     def __split_heads(x, n_head):
-        """
+        r"""
         Reshape the last dimension of input tensor x so that it becomes two
         dimensions and then transpose. Specifically, input a tensor with shape
         [bs, max_sequence_length, n_head * hidden_dim] then output a tensor
@@ -109,7 +109,7 @@ def multi_head_attention(queries,
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
-        """
+        r"""
         Transpose and then reshape the last two dimensions of input tensor x
         so that it becomes one dimension, which is reverse to __split_heads.
         """
@@ -126,7 +126,7 @@ def multi_head_attention(queries,
                           ])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
-        """
+        r"""
         Scaled Dot-Product Attention
         """
 
@@ -174,7 +174,7 @@ def multi_head_attention(queries,
 
 
 def positionwise_feed_forward(x, d_inner_hid, d_hid):
-    """
+    r"""
     Position-wise Feed-Forward Networks.
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
@@ -194,7 +194,7 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
 
 
 def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.):
-    """
+    r"""
     Add residual connection, layer normalization and droput to the out tensor
     optionally according to the value of process_cmd.
 
@@ -229,7 +229,7 @@ def prepare_encoder(src_word,
                     dropout=0.,
                     pos_pad_idx=0,
                     pos_enc_param_name=None):
-    """Add word embeddings and position encodings.
+    r"""Add word embeddings and position encodings.
     The output tensor has a shape of:
     [batch_size, max_src_length_in_batch, d_model].
 
@@ -270,7 +270,7 @@ def encoder_layer(enc_input,
                   d_model,
                   d_inner_hid,
                   dropout_rate=0.):
-    """The encoder layers that can be stacked to form a deep encoder.
+    r"""The encoder layers that can be stacked to form a deep encoder.
 
     This module consits of a multi-head (self) attention followed by
     position-wise feed-forward networks and both the two components companied
@@ -295,7 +295,7 @@ def encoder(enc_input,
             d_model,
             d_inner_hid,
             dropout_rate=0.):
-    """
+    r"""
     The encoder is composed of a stack of identical layers returned by calling
     encoder_layer.
     """
@@ -316,7 +316,7 @@ def decoder_layer(dec_input,
                   d_model,
                   d_inner_hid,
                   dropout_rate=0.):
-    """ The layer to be stacked in decoder part.
+    r""" The layer to be stacked in decoder part.
 
     The structure of this module is similar to that in the encoder part except
     a multi-head attention is added to implement encoder-decoder attention.
@@ -374,7 +374,7 @@ def decoder(dec_input,
             d_model,
             d_inner_hid,
             dropout_rate=0.):
-    """
+    r"""
     The decoder is composed of a stack of identical decoder_layer layers.
     """
     for i in range(n_layer):

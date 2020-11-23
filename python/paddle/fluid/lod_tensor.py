@@ -22,7 +22,7 @@ __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 
 
 def create_lod_tensor(data, recursive_seq_lens, place):
-    """
+    r"""
     Create a LoDTensor from a numpy array, list or existing LoDTensor.
 
     The implementation is as follows:
@@ -113,7 +113,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 
 def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
                                 high):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Create a LoDTensor containing random integers.

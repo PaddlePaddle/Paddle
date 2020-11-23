@@ -21,7 +21,7 @@ def _append_activation_in_dygraph(input,
                                   act=None,
                                   use_cudnn=None,
                                   use_mkldnn=None):
-    """Append activation in dygraph mode.
+    r"""Append activation in dygraph mode.
 
         Args:
             input: the input variable. 
@@ -46,7 +46,7 @@ def _append_activation_in_dygraph(input,
 
 @dygraph_only
 def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
-    """Append bias operation in dygraph mode.
+    r"""Append bias operation in dygraph mode.
 
         Args:
             input: the input variable. 

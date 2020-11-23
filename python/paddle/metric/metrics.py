@@ -35,7 +35,7 @@ def _is_numpy_(var):
 
 @six.add_metaclass(abc.ABCMeta)
 class Metric(object):
-    """
+    r"""
     Base class for metric, encapsulates metric logic and APIs
     Usage:
         
@@ -109,7 +109,7 @@ class Metric(object):
 
     @abc.abstractmethod
     def reset(self):
-        """
+        r"""
         Reset states and result
         """
         raise NotImplementedError("function 'reset' not implemented in {}.".
@@ -117,7 +117,7 @@ class Metric(object):
 
     @abc.abstractmethod
     def update(self, *args):
-        """
+        r"""
         Update states for metric
 
         Inputs of :code:`update` is the outputs of :code:`Metric.compute`,
@@ -132,7 +132,7 @@ class Metric(object):
 
     @abc.abstractmethod
     def accumulate(self):
-        """
+        r"""
         Accumulates statistics, computes and returns the metric value
         """
         raise NotImplementedError(
@@ -141,14 +141,14 @@ class Metric(object):
 
     @abc.abstractmethod
     def name(self):
-        """
+        r"""
         Returns metric name
         """
         raise NotImplementedError("function 'name' not implemented in {}.".
                                   format(self.__class__.__name__))
 
     def compute(self, *args):
-        """
+        r"""
         This API is advanced usage to accelerate metric calculating, calulations
         from outputs of model to the states which should be updated by Metric can
         be defined here, where Paddle OPs is also supported. Outputs of this API
@@ -170,7 +170,7 @@ class Metric(object):
 
 
 class Accuracy(Metric):
-    """
+    r"""
     Encapsulates accuracy metric logic.
 
     Args:
@@ -231,7 +231,7 @@ class Accuracy(Metric):
         self.reset()
 
     def compute(self, pred, label, *args):
-        """
+        r"""
         Compute the top-k (maxinum value in `topk`) indices.
 
         Args:
@@ -249,7 +249,7 @@ class Accuracy(Metric):
         return paddle.cast(correct, dtype='float32')
 
     def update(self, correct, *args):
-        """
+        r"""
         Update the metrics states (correct count and total count), in order to
         calculate cumulative accuracy of all instances. This function also
         returns the accuracy of current step.
@@ -273,14 +273,14 @@ class Accuracy(Metric):
         return accs
 
     def reset(self):
-        """
+        r"""
         Resets all of the metric state.
         """
         self.total = [0.] * len(self.topk)
         self.count = [0] * len(self.topk)
 
     def accumulate(self):
-        """
+        r"""
         Computes and returns the accumulated metric.
         """
         res = []
@@ -298,14 +298,14 @@ class Accuracy(Metric):
             self._name = [name]
 
     def name(self):
-        """
+        r"""
         Return name of metric instance.
         """
         return self._name
 
 
 class Precision(Metric):
-    """
+    r"""
     Precision (also called positive predictive value) is the fraction of
     relevant instances among the retrieved instances. Refer to
     https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers
@@ -378,7 +378,7 @@ class Precision(Metric):
         self._name = name
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the states based on the current mini-batch prediction results.
 
         Args:
@@ -412,14 +412,14 @@ class Precision(Metric):
                     self.fp += 1
 
     def reset(self):
-        """
+        r"""
         Resets all of the metric state.
         """
         self.tp = 0
         self.fp = 0
 
     def accumulate(self):
-        """
+        r"""
         Calculate the final precision.
 
         Returns:
@@ -429,14 +429,14 @@ class Precision(Metric):
         return float(self.tp) / ap if ap != 0 else .0
 
     def name(self):
-        """
+        r"""
         Returns metric name
         """
         return self._name
 
 
 class Recall(Metric):
-    """
+    r"""
     Recall (also known as sensitivity) is the fraction of
     relevant instances that have been retrieved over the
     total amount of relevant instances
@@ -512,7 +512,7 @@ class Recall(Metric):
         self._name = name
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the states based on the current mini-batch prediction results.
 
         Args:
@@ -546,7 +546,7 @@ class Recall(Metric):
                     self.fn += 1
 
     def accumulate(self):
-        """
+        r"""
         Calculate the final recall.
 
         Returns:
@@ -556,21 +556,21 @@ class Recall(Metric):
         return float(self.tp) / recall if recall != 0 else .0
 
     def reset(self):
-        """
+        r"""
         Resets all of the metric state.
         """
         self.tp = 0
         self.fn = 0
 
     def name(self):
-        """
+        r"""
         Returns metric name
         """
         return self._name
 
 
 class Auc(Metric):
-    """
+    r"""
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
@@ -668,7 +668,7 @@ class Auc(Metric):
         self._name = name
 
     def update(self, preds, labels):
-        """
+        r"""
         Update the auc curve with the given predictions and labels.
 
         Args:
@@ -703,7 +703,7 @@ class Auc(Metric):
         return abs(x1 - x2) * (y1 + y2) / 2.0
 
     def accumulate(self):
-        """
+        r"""
         Return the area (a float score) under auc curve
 
         Return:
@@ -726,7 +726,7 @@ class Auc(Metric):
         return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
 
     def reset(self):
-        """
+        r"""
         Reset states and result
         """
         _num_pred_buckets = self._num_thresholds + 1
@@ -734,14 +734,14 @@ class Auc(Metric):
         self._stat_neg = np.zeros(_num_pred_buckets)
 
     def name(self):
-        """
+        r"""
         Returns metric name
         """
         return self._name
 
 
 def accuracy(input, label, k=1, correct=None, total=None, name=None):
-    """
+    r"""
     accuracy layer.
     Refer to the https://en.wikipedia.org/wiki/Precision_and_recall                                                                                           
  

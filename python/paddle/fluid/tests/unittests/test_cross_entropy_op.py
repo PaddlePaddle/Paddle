@@ -23,7 +23,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestCrossEntropyOp(OpTest):
-    """Test cross-entropy with discrete one-hot labels.
+    r"""Test cross-entropy with discrete one-hot labels.
     """
 
     def setUp(self):
@@ -79,7 +79,7 @@ class TestCrossEntropyOp(OpTest):
 
 
 class TestCrossEntropyOpRemoveLastDim(TestCrossEntropyOp):
-    """Test cross-entropy with discrete one-hot labels with shape [batch_size]
+    r"""Test cross-entropy with discrete one-hot labels with shape [batch_size]
     """
 
     def init_label(self):
@@ -96,7 +96,7 @@ class TestCrossEntropyOpRemoveLastDim(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp2(TestCrossEntropyOp):
-    """Test cross-entropy with vectorized soft labels.
+    r"""Test cross-entropy with vectorized soft labels.
     """
 
     def init_label(self):
@@ -124,7 +124,7 @@ class TestCrossEntropyOp2(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp3(TestCrossEntropyOp):
-    """Test cross-entropy with vectorized one-hot representation of labels.
+    r"""Test cross-entropy with vectorized one-hot representation of labels.
     """
 
     def init_label(self):
@@ -154,7 +154,7 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp4(TestCrossEntropyOp):
-    """Test high rank tensor cross-entropy with discrete one-hot labels.
+    r"""Test high rank tensor cross-entropy with discrete one-hot labels.
     """
 
     def init_x(self):
@@ -187,7 +187,7 @@ class TestCrossEntropyOp4(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp4RemoveLastDim(TestCrossEntropyOp4):
-    """Test high rank tensor cross-entropy with discrete one-hot labels with shape [batch_size]
+    r"""Test high rank tensor cross-entropy with discrete one-hot labels with shape [batch_size]
     """
 
     def init_label(self):
@@ -203,7 +203,7 @@ class TestCrossEntropyOp4RemoveLastDim(TestCrossEntropyOp4):
 
 
 class TestCrossEntropyOp5(TestCrossEntropyOp):
-    """Test high rank tensor cross-entropy with vectorized soft labels.
+    r"""Test high rank tensor cross-entropy with vectorized soft labels.
     """
 
     def init_x(self):
@@ -240,7 +240,7 @@ class TestCrossEntropyOp5(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp6(TestCrossEntropyOp):
-    """Test high rank tensor cross-entropy with vectorized one-hot representation of labels.
+    r"""Test high rank tensor cross-entropy with vectorized one-hot representation of labels.
     """
 
     def init_x(self):
@@ -280,7 +280,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp7(TestCrossEntropyOp):
-    """Test cross-entropy with ignore index.
+    r"""Test cross-entropy with ignore index.
     """
 
     def init_label(self):
@@ -306,7 +306,7 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
-    """Test cross-entropy with ignore index with shape [batch_size].
+    r"""Test cross-entropy with ignore index with shape [batch_size].
     """
 
     def init_label(self):

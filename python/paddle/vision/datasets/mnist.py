@@ -28,7 +28,7 @@ __all__ = ["MNIST", "FashionMNIST"]
 
 
 class MNIST(Dataset):
-    """
+    r"""
     Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset
 
     Args:
@@ -178,7 +178,7 @@ class MNIST(Dataset):
 
 
 class FashionMNIST(MNIST):
-    """
+    r"""
     Implementation `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
 
     Args:

@@ -25,7 +25,7 @@ __all__ = ['AmpScaler']
 
 
 class AmpScaler(object):
-    """
+    r"""
     :api_attr: imperative
 
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
@@ -117,7 +117,7 @@ class AmpScaler(object):
             self._cache_founf_inf = None
 
     def scale(self, var):
-        """
+        r"""
         Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.  
         If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
 
@@ -154,7 +154,7 @@ class AmpScaler(object):
         return var * self._scale
 
     def minimize(self, optimizer, *args, **kwargs):
-        """
+        r"""
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
@@ -218,7 +218,7 @@ class AmpScaler(object):
                                           self._found_inf)
 
     def _update(self):
-        """
+        r"""
         Updates the loss_scaling.
         """
         if not self._enable:

@@ -29,7 +29,7 @@ CONTINUE_NAME_PREFIX = '__continue'
 
 
 class ForToWhileTransformer(gast.NodeTransformer):
-    """
+    r"""
     Transform python for loop into while loop and add condition node in the
     loop test
     """
@@ -85,7 +85,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
 
 
 class BreakContinueTransformer(BaseNodeVisitor):
-    """
+    r"""
     Rewrite 'break' and 'continue' key words in a if-else python way to make
     it equivalent to original control flow
     
@@ -275,7 +275,7 @@ def _find_ancestor_loop_index(node, ancestor_nodes):
 
 
 class BreakTransformOptimizer(BaseNodeVisitor):
-    """
+    r"""
     In specific pattern, the transformed code could be optimized by joining the 
     If.test with while.test. 
     
@@ -338,7 +338,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 for_to_while.transform()
 
     def _is_break_cond_pattern(self, break_node, loop_node):
-        """
+        r"""
         Judge whether if match the pattern to join `If.test` with `while.test`
         """
         # while/for -> if -> break
@@ -361,7 +361,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
         return is_matched
 
     def _join_with_while_cond(self, break_node, loop_node):
-        """
+        r"""
         Join the `If.test` with `While.test` together.
         """
         parent_if_node = self.ancestor_nodes[-2]

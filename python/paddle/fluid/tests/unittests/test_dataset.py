@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 TestCases for Dataset,
 including create, config, run, etc.
 """
@@ -28,7 +28,7 @@ import unittest
 
 
 class TestDataset(unittest.TestCase):
-    """  TestCases for Dataset. """
+    r"""  TestCases for Dataset. """
 
     def setUp(self):
         self.use_data_loader = False
@@ -36,7 +36,7 @@ class TestDataset(unittest.TestCase):
         self.drop_last = False
 
     def test_dataset_create(self):
-        """ Testcase for dataset create. """
+        r""" Testcase for dataset create. """
         try:
             dataset = paddle.distributed.InMemoryDataset()
         except:
@@ -59,7 +59,7 @@ class TestDataset(unittest.TestCase):
             self.assertTrue(True)
 
     def test_config(self):
-        """
+        r"""
         Testcase for python config.
         """
         dataset = fluid.InMemoryDataset()
@@ -69,7 +69,7 @@ class TestDataset(unittest.TestCase):
         self.assertTrue(dataset.parse_content)
 
     def test_run_with_dump(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         with open("test_run_with_dump_a.txt", "w") as f:
@@ -123,7 +123,7 @@ class TestDataset(unittest.TestCase):
         os.remove("./test_run_with_dump_b.txt")
 
     def test_dataset_config(self):
-        """ Testcase for dataset configuration. """
+        r""" Testcase for dataset configuration. """
         dataset = fluid.core.Dataset("MultiSlotDataset")
         dataset.set_thread_num(12)
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
@@ -152,7 +152,7 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(download_cmd, "./read_from_afs my_fs_name my_fs_ugi")
 
     def test_set_download_cmd(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         filename1 = "afs:test_in_memory_dataset_run_a.txt"
@@ -210,7 +210,7 @@ class TestDataset(unittest.TestCase):
         os.remove(filename2)
 
     def test_in_memory_dataset_run(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset_run_a.txt", "w") as f:
@@ -266,7 +266,7 @@ class TestDataset(unittest.TestCase):
         os.remove("./test_in_memory_dataset_run_b.txt")
 
     def test_in_memory_dataset_masterpatch(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset_masterpatch_a.txt", "w") as f:
@@ -331,7 +331,7 @@ class TestDataset(unittest.TestCase):
         os.remove("./test_in_memory_dataset_masterpatch_b.txt")
 
     def test_in_memory_dataset_masterpatch1(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset_masterpatch1_a.txt", "w") as f:
@@ -395,7 +395,7 @@ class TestDataset(unittest.TestCase):
         os.remove("./test_in_memory_dataset_masterpatch1_b.txt")
 
     def test_in_memory_dataset_run_2(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         Use CUDAPlace
         Use float type id
@@ -503,7 +503,7 @@ class TestDataset(unittest.TestCase):
         os.remove("./test_in_memory_dataset_run_b.txt")
 
     def test_queue_dataset_run(self):
-        """
+        r"""
         Testcase for QueueDataset from create to run.
         """
         with open("test_queue_dataset_run_a.txt", "w") as f:
@@ -565,7 +565,7 @@ class TestDataset(unittest.TestCase):
             os.remove("./test_queue_dataset_run_b.txt")
 
     def test_queue_dataset_run_2(self):
-        """
+        r"""
         Testcase for QueueDataset from create to run.
         Use CUDAPlace
         Use float type id
@@ -619,7 +619,7 @@ class TestDataset(unittest.TestCase):
             os.remove("./test_queue_dataset_run_b.txt")
 
     def test_queue_dataset_run_3(self):
-        """
+        r"""
         Testcase for QueueDataset from create to run.
         Use CUDAPlace
         Use float type id
@@ -680,12 +680,12 @@ class TestDataset(unittest.TestCase):
 
 
 class TestDatasetWithDataLoader(TestDataset):
-    """
+    r"""
     Test Dataset With Data Loader class. TestCases.
     """
 
     def setUp(self):
-        """
+        r"""
         Test Dataset With Data Loader, setUp.
         """
         self.use_data_loader = True
@@ -694,12 +694,12 @@ class TestDatasetWithDataLoader(TestDataset):
 
 
 class TestDatasetWithFetchHandler(unittest.TestCase):
-    """
+    r"""
     Test Dataset With Fetch Handler. TestCases.
     """
 
     def net(self):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
         """
         slots = ["slot1", "slot2", "slot3", "slot4"]
@@ -719,7 +719,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         return slots_vars, fc
 
     def get_dataset(self, inputs, files):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
 
         Args:
@@ -733,7 +733,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         return dataset
 
     def setUp(self):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
         """
         with open("test_queue_dataset_run_a.txt", "w") as f:
@@ -749,14 +749,14 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             f.write(data)
 
     def tearDown(self):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
         """
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
 
     def test_dataset_none(self):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
@@ -778,7 +778,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             self.assertTrue(False)
 
     def test_infer_from_dataset(self):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
@@ -796,7 +796,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             self.assertTrue(False)
 
     def test_fetch_handler(self):
-        """
+        r"""
         Test Dataset With Fetch Handler. TestCases.
         """
         slots_vars, out = self.net()
@@ -824,16 +824,16 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
 
 
 class TestDataset2(unittest.TestCase):
-    """  TestCases for Dataset. """
+    r"""  TestCases for Dataset. """
 
     def setUp(self):
-        """  TestCases for Dataset. """
+        r"""  TestCases for Dataset. """
         self.use_data_loader = False
         self.epoch_num = 10
         self.drop_last = False
 
     def test_dataset_fleet(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
 
@@ -900,7 +900,7 @@ class TestDataset2(unittest.TestCase):
         os.remove("./test_in_memory_dataset2_run_b.txt")
 
     def test_dataset_fleet2(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset2_run2_a.txt", "w") as f:
@@ -1024,7 +1024,7 @@ class TestDataset2(unittest.TestCase):
         os.remove("./test_in_memory_dataset2_run2_b.txt")
 
     def test_bosps_dataset_fleet2(self):
-        """
+        r"""
         Testcase for InMemoryDataset from create to run.
         """
         with open("test_in_memory_dataset2_run2_a.txt", "w") as f:

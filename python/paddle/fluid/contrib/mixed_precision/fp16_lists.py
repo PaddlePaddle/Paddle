@@ -18,7 +18,7 @@ __all__ = ["AutoMixedPrecisionLists"]
 
 
 class AutoMixedPrecisionLists(object):
-    """
+    r"""
     AutoMixedPrecisionLists is a class for black/white list. It can update
     pre-defined black list and white list according to users' custom black
     white lists. The lists are used for an algorithm which determines op's
@@ -42,7 +42,7 @@ class AutoMixedPrecisionLists(object):
         self._update_list()
 
     def _update_list(self):
-        """
+        r"""
         Update black and white list according to users' custom list.
         """
         if self._custom_white_list and self._custom_black_list:

@@ -158,7 +158,7 @@ class PipelineOptimizer(MetaOptimizerBase):
             self._insert_allreduce_ops(ring_id)
 
     def _insert_loss_grad_ops(self):
-        """
+        r"""
         In order to keep the learning rate consistent in different numbers of
         training workers, we scale the loss grad by the number of workers
         """

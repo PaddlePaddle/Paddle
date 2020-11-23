@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 math functions
 """
 from __future__ import print_function
@@ -142,7 +142,7 @@ _supported_float_dtype_ = [
 ]
 
 def pow(x, y, name=None):
-    """
+    r"""
     Compute the power of tensor elements. The equation is:
 
     .. math::
@@ -274,7 +274,7 @@ def _elementwise_op(helper):
 
 
 def add(x, y, name=None):
-    """
+    r"""
     Examples:
 
     ..  code-block:: python
@@ -296,7 +296,7 @@ def add(x, y, name=None):
 
 
 def divide(x, y, name=None):
-    """
+    r"""
     Divide two tensors element-wise. The equation is:
 
     .. math::
@@ -338,7 +338,7 @@ def divide(x, y, name=None):
 
 
 def floor_divide(x, y, name=None):
-    """
+    r"""
     Floor divide two tensors element-wise. The equation is:
 
     .. math::
@@ -379,7 +379,7 @@ def floor_divide(x, y, name=None):
 
 
 def remainder(x, y, name=None):
-    """
+    r"""
     Mod two tensors element-wise. The equation is:
 
     .. math::
@@ -422,7 +422,7 @@ floor_mod = remainder  #DEFINE_ALIAS
 
 
 def multiply(x, y, axis=-1, name=None):
-    """
+    r"""
     multiply two tensors element-wise. The equation is:
 
     .. math::
@@ -483,7 +483,7 @@ def multiply(x, y, axis=-1, name=None):
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, axis=-1, name=None):
-    """
+    r"""
 Examples:
 
     .. code-block:: python
@@ -527,7 +527,7 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def minimum(x, y, axis=-1, name=None):
-    """
+    r"""
 Examples:
 
     .. code-block:: python
@@ -590,11 +590,11 @@ for func in [
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
             "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
-        }) + """\n""" + str(func.__doc__)
+        }) + r"""\n""" + str(func.__doc__)
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
-    """
+    r"""
     Computes the sum of tensor elements over the given dimension.
 
     Args:
@@ -715,7 +715,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
-    """
+    r"""
     This OP is used to sum one or more Tensor of the input.
     
     For example:
@@ -801,7 +801,7 @@ def add_n(inputs, name=None):
 
 
 def mm(input, mat2, name=None):
-    """
+    r"""
 	:alias_main: paddle.mm
 	:alias: paddle.mm,paddle.tensor.mm,paddle.tensor.math.mm
 
@@ -901,7 +901,7 @@ def mm(input, mat2, name=None):
 
 
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
-    """
+    r"""
 	:alias_main: paddle.addmm
 	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
 
@@ -981,7 +981,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
@@ -1045,7 +1045,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
 
 
 def inverse(x, name=None):
-    """
+    r"""
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
     (2-D Tensor) or batches of square matrices.
@@ -1094,7 +1094,7 @@ def inverse(x, name=None):
 
 
 def max(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
 
     Computes the maximum of tensor elements over the given axis.
 
@@ -1189,7 +1189,7 @@ def max(x, axis=None, keepdim=False, name=None):
     return out
 
 def min(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
 
     Computes the minimum of tensor elements over the given axis
 
@@ -1281,7 +1281,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
 
 def log1p(x, name=None):
-    """
+    r"""
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
@@ -1315,7 +1315,7 @@ def log1p(x, name=None):
     return out
 
 def log2(x, name=None):
-    """
+    r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
     .. math::
@@ -1365,7 +1365,7 @@ def log2(x, name=None):
 
 
 def log10(x, name=None):
-    """
+    r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.
 
     .. math::
@@ -1415,7 +1415,7 @@ def log10(x, name=None):
 
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
-    """
+    r"""
 
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
@@ -1459,7 +1459,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
 
 
 def clip(x, min=None, max=None, name=None):
-    """
+    r"""
     **clip layer**
 
     This operator clip all elements in input into the range [ min, max ] and return
@@ -1547,7 +1547,7 @@ def clip(x, min=None, max=None, name=None):
 
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
-    """
+    r"""
     **trace**
 
     This OP computes the sum along diagonals of the input tensor x.
@@ -1637,7 +1637,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
 @templatedoc(op_type="kron")
 def kron(x, y, name=None):
-    """
+    r"""
 	:alias_main: paddle.kron
 	:alias: paddle.kron,paddle.tensor.kron,paddle.tensor.math.kron
 
@@ -1695,7 +1695,7 @@ ${comment}
 
 
 def cumsum(x, axis=None, dtype=None, name=None):
-    """
+    r"""
     The cumulative sum of the elements along a given axis. 
     
     **Note**:
@@ -1758,7 +1758,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     return _cum_sum_(**kwargs)
 
 def isfinite(x, name=None):
-    """
+    r"""
 
     Return whether every element of input tensor is finite number or not.
 
@@ -1787,7 +1787,7 @@ def isfinite(x, name=None):
     return out
 
 def isinf(x, name=None):
-    """
+    r"""
 
     Return whether every element of input tensor is `+/-INF` or not.
 
@@ -1816,7 +1816,7 @@ def isinf(x, name=None):
     return out
 
 def isnan(x, name=None):
-    """
+    r"""
 
     Return whether every element of input tensor is `NaN` or not.
 
@@ -1846,7 +1846,7 @@ def isnan(x, name=None):
 
 
 def prod(x, axis=None, keepdim=False, dtype=None, name=None):
-    """
+    r"""
     Compute the product of tensor elements over the given axis.
 
     Args:
@@ -1913,7 +1913,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
 
 def sign(x, name=None):
-    """
+    r"""
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
@@ -1947,7 +1947,7 @@ def sign(x, name=None):
 
 
 def tanh(x, name=None):
-    """
+    r"""
     Tanh Activation Operator.
 
     .. math::
@@ -1983,7 +1983,7 @@ def tanh(x, name=None):
     return out
 
 def increment(x, value=1.0, name=None):
-    """
+    r"""
     The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
@@ -2020,7 +2020,7 @@ def increment(x, value=1.0, name=None):
 
 
 def all(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     Computes the the ``logical and`` of tensor elements over the given dimension.
 
     Args:
@@ -2119,7 +2119,7 @@ def all(x, axis=None, keepdim=False, name=None):
 
 
 def any(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     Computes the the ``logical or`` of tensor elements over the given dimension.
 
     Args:
@@ -2217,7 +2217,7 @@ def any(x, axis=None, keepdim=False, name=None):
     return out
 
 def broadcast_shape(x_shape, y_shape):
-    """
+    r"""
     The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
 
     Args:

@@ -190,7 +190,7 @@ def train_network(batch_size,
 
 
 class TestDistSimnetBow2x2(FleetDistRunnerBase):
-    """
+    r"""
     For test SimnetBow model, use Fleet api
     """
 
@@ -214,7 +214,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             wn.write(str(program))
 
     def do_pyreader_training(self, fleet):
-        """
+        r"""
         do training using dataset, using fetch handler to catch variable
         Args:
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role

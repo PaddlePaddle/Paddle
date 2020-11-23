@@ -18,7 +18,7 @@ __all__ = ['ProbabilityEntry', 'CountFilterEntry']
 
 
 class EntryAttr(object):
-    """
+    r"""
     Examples:
         .. code-block:: python
 
@@ -29,7 +29,7 @@ class EntryAttr(object):
         self._name = None
 
     def to_attr(self):
-        """
+        r"""
         Returns the attributes of this parameter.
 
         Returns:

@@ -31,7 +31,7 @@ class TestSumOp(BenchmarkSuite):
         self.customize_fetch_list()
 
     def customize_fetch_list(self):
-        """
+        r"""
         customize fetch list, configure the wanted variables.
         >>> self.fetch_list = ["Out"]
         """
@@ -50,7 +50,7 @@ class TestSumOp(BenchmarkSuite):
         self.outputs = {"Out": x0 + x1 + x2}
 
     def test_check_output(self):
-        """
+        r"""
         compare the output with customized output. In this case,
         you should set the correct output by hands.
         >>> self.outputs = {"Out": x0 + x1 + x2}
@@ -62,7 +62,7 @@ class TestSumOp(BenchmarkSuite):
         self.check_output_stability()
 
     def test_timeit_output(self):
-        """
+        r"""
         perf the op, time cost will be averged in iters.
         output example
         >>> One pass of (sum_op) at CPUPlace cost 0.000461330413818
@@ -71,7 +71,7 @@ class TestSumOp(BenchmarkSuite):
         self.timeit_output(iters=100)
 
     def test_timeit_grad(self):
-        """
+        r"""
         perf the op gradient, time cost will be averged in iters.
         output example
         >>> One pass of (sum_grad_op) at CPUPlace cost 0.00279935121536

@@ -141,7 +141,7 @@ __all__ = framework.__all__ + executor.__all__ + \
 
 
 def __bootstrap__():
-    """
+    r"""
     Enable reading gflags from environment variables.
 
     Returns:

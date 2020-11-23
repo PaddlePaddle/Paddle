@@ -154,7 +154,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 
 class TestImperativeQat(unittest.TestCase):
-    """
+    r"""
     QAT = quantization-aware training
     """
 

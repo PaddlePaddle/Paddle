@@ -66,7 +66,7 @@ __all__ = [
 
 
 def concat(x, axis=0, name=None):
-    """
+    r"""
 
     This OP concatenates the input along the axis.
 
@@ -115,7 +115,7 @@ def concat(x, axis=0, name=None):
 
 
 def flip(x, axis, name=None):
-    """
+    r"""
 	:alias_main: paddle.flip
 	:alias: paddle.flip,paddle.tensor.flip,paddle.tensor.manipulation.flip
 
@@ -169,7 +169,7 @@ def flip(x, axis, name=None):
 
 
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
-    """
+    r"""
     **Flatten op**
 
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
@@ -274,7 +274,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
 
 def roll(x, shifts, axis=None, name=None):
-    """
+    r"""
 	:alias_main: paddle.roll
 	:alias: paddle.roll,paddle.tensor.roll,paddle.tensor.manipulation.roll
 
@@ -353,7 +353,7 @@ def roll(x, shifts, axis=None, name=None):
 
 
 def stack(x, axis=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.stack
 	:alias: paddle.stack, paddle.tensor.stack, paddle.tensor.manipulation.stack
 
@@ -438,7 +438,7 @@ def stack(x, axis=0, name=None):
 
 
 def split(x, num_or_sections, axis=0, name=None):
-    """
+    r"""
     Split the input tensor into multiple sub-Tensors.
     
     Args:
@@ -493,7 +493,7 @@ def split(x, num_or_sections, axis=0, name=None):
 
 
 def squeeze(x, axis=None, name=None):
-    """
+    r"""
 	:alias_main: paddle.squeeze
 	:alias: paddle.squeeze, paddle.tensor.squeeze, paddle.tensor.manipulation.squeeze
 
@@ -577,7 +577,7 @@ def unique(x,
            axis=None,
            dtype="int64",
            name=None):
-    """
+    r"""
     Returns the unique elements of `x` in ascending order.
 
     Args:
@@ -694,7 +694,7 @@ def unique(x,
 
 
 def unsqueeze(x, axis, name=None):
-    """
+    r"""
 	:alias_main: paddle.unsqueeze
 	:alias: paddle.unsqueeze, paddle.tensor.unsqueeze, paddle.tensor.manipulation.unsqueeze
 
@@ -738,7 +738,7 @@ def unsqueeze(x, axis, name=None):
 
 
 def gather(x, index, axis=None, name=None):
-    """
+    r"""
     Output is obtained by gathering entries of ``axis``
     of ``x`` indexed by ``index`` and concatenate them together.
 
@@ -816,7 +816,7 @@ def gather(x, index, axis=None, name=None):
 
 
 def unbind(input, axis=0):
-    """
+    r"""
 	:alias_main: paddle.tensor.unbind
 	:alias: paddle.tensor.unbind,paddle.tensor.manipulation.unbind
 
@@ -873,7 +873,7 @@ def unbind(input, axis=0):
 
 
 def scatter(x, index, updates, overwrite=True, name=None):
-    """
+    r"""
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
     
@@ -962,7 +962,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
 
 def scatter_nd_add(x, index, updates, name=None):
-    """
+    r"""
     **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
@@ -1034,7 +1034,7 @@ def scatter_nd_add(x, index, updates, name=None):
 
 
 def chunk(x, chunks, axis=0, name=None):
-    """
+    r"""
     Split the input tensor into multiple sub-Tensors.
     
     Args:
@@ -1077,7 +1077,7 @@ def chunk(x, chunks, axis=0, name=None):
 
 
 def tile(x, repeat_times, name=None):
-    """
+    r"""
 
     Construct a new Tensor by repeating ``x`` the number of times given by ``repeat_times``.
     After tiling, the value of the i'th dimension of the output is equal to ``x.shape[i]*repeat_times[i]``.
@@ -1173,7 +1173,7 @@ def tile(x, repeat_times, name=None):
 
 
 def expand_as(x, y, name=None):
-    """
+    r"""
 
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
 
@@ -1221,7 +1221,7 @@ def expand_as(x, y, name=None):
 
 
 def expand(x, shape, name=None):
-    """
+    r"""
 
     Expand the input tensor to a given shape.
 
@@ -1312,7 +1312,7 @@ broadcast_to = expand
 
 
 def reshape(x, shape, name=None):
-    """
+    r"""
     This operator changes the shape of ``x`` without changing its data.
 
     Some tricks exist when specifying the target shape.
@@ -1378,7 +1378,7 @@ def reshape(x, shape, name=None):
 
 
 def gather_nd(x, index, name=None):
-    """
+    r"""
 
     This function is actually a high-dimensional extension of :code:`gather`
     and supports for simultaneous indexing by multiple axes. :attr:`index` is a
@@ -1455,7 +1455,7 @@ def gather_nd(x, index, name=None):
 
 
 def strided_slice(x, axes, starts, ends, strides, name=None):
-    """
+    r"""
     This operator produces a slice of ``x`` along multiple axes. Similar to numpy:
     https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
     Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and

@@ -24,7 +24,7 @@ from op_test import OpTest
 
 
 class TestFlipOp_API(unittest.TestCase):
-    """Test flip api."""
+    r"""Test flip api."""
 
     def test_static_graph(self):
         startup_program = fluid.Program()

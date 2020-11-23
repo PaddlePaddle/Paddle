@@ -39,7 +39,7 @@ class _ChromeTraceFormatter(object):
         self._metadata = []
 
     def _create_event(self, ph, category, name, pid, tid, timestamp):
-        """Creates a new Chrome Trace event.
+        r"""Creates a new Chrome Trace event.
 
         For details of the file format, see:
         https://github.com/catapult-project/catapult/blob/master/tracing/README.md
@@ -65,7 +65,7 @@ class _ChromeTraceFormatter(object):
         return event
 
     def emit_pid(self, name, pid):
-        """Adds a process metadata event to the trace.
+        r"""Adds a process metadata event to the trace.
 
         Args:
           name:  The process name as a string.
@@ -79,7 +79,7 @@ class _ChromeTraceFormatter(object):
         self._metadata.append(event)
 
     def emit_region(self, timestamp, duration, pid, tid, category, name, args):
-        """Adds a region event to the trace.
+        r"""Adds a region event to the trace.
 
         Args:
           timestamp:  The start timestamp of this region as a long integer.
@@ -96,7 +96,7 @@ class _ChromeTraceFormatter(object):
         self._events.append(event)
 
     def emit_counter(self, category, name, pid, timestamp, counter, value):
-        """Emits a record for a single counter.
+        r"""Emits a record for a single counter.
 
         Args:
             category: The event category as string
@@ -112,7 +112,7 @@ class _ChromeTraceFormatter(object):
         self._events.append(event)
 
     def format_to_string(self, pretty=False):
-        """Formats the chrome trace to a string.
+        r"""Formats the chrome trace to a string.
 
         Args:
           pretty: (Optional.)  If True, produce human-readable JSON output.

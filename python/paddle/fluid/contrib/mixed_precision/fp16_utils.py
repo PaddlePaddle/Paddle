@@ -19,7 +19,7 @@ from ... import layers
 
 
 def _rename_arg(op, old_name, new_name):
-    """
+    r"""
     If an op has old_name input and output, rename these input 
     args new_name.
 
@@ -36,7 +36,7 @@ def _rename_arg(op, old_name, new_name):
 
 
 def _dtype_to_str(dtype):
-    """
+    r"""
     Convert specific variable type to its corresponding string.
 
     Args:
@@ -49,7 +49,7 @@ def _dtype_to_str(dtype):
 
 
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
-    """
+    r"""
     Insert cast op and rename args of input and output.
 
     Args:
@@ -119,7 +119,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
 
 
 def find_true_prev_op(ops, cur_op, var_name):
-    """
+    r"""
     Find the true prev op that outputs var_name variable.
 
     Args:
@@ -145,7 +145,7 @@ def find_true_prev_op(ops, cur_op, var_name):
 
 
 def find_true_post_op(ops, cur_op, var_name):
-    """
+    r"""
     if there are post ops, return them, if there is no post op,
     return None instead.
     Args:
@@ -170,7 +170,7 @@ def find_true_post_op(ops, cur_op, var_name):
 
 
 def find_op_index(block_desc, cur_op_desc):
-    """
+    r"""
     """
     for idx in range(block_desc.op_size()):
         if cur_op_desc == block_desc.op(idx):
@@ -191,7 +191,7 @@ def _is_in_black_varnames(op, amp_lists):
 
 
 def rewrite_program(main_prog, amp_lists):
-    """
+    r"""
     Traverse all ops in current block and insert cast op according to 
     which set current op belongs to.
 
@@ -286,7 +286,7 @@ def rewrite_program(main_prog, amp_lists):
 
 
 def update_role_var_grad(main_prog, params_grads):
-    """
+    r"""
     Update op_role_var attr for some ops to make sure the gradients
     transferred across GPUs is FP16.
     1. Check whether the op that outputs gradient is cast or not.

@@ -61,7 +61,7 @@ __all__ = [
 
 
 class _InstanceNormBase(layers.Layer):
-    """
+    r"""
     This class is based class for InstanceNorm1D, 2d, 3d. 
 
     See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
@@ -109,7 +109,7 @@ class _InstanceNormBase(layers.Layer):
 
 
 class InstanceNorm1D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
@@ -181,7 +181,7 @@ class InstanceNorm1D(_InstanceNormBase):
 
 
 class InstanceNorm2D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -252,7 +252,7 @@ class InstanceNorm2D(_InstanceNormBase):
 
 
 class InstanceNorm3D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
@@ -323,7 +323,7 @@ class InstanceNorm3D(_InstanceNormBase):
 
 
 class GroupNorm(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -437,7 +437,7 @@ class GroupNorm(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -542,7 +542,7 @@ class LayerNorm(layers.Layer):
 
 
 class _BatchNormBase(layers.Layer):
-    """
+    r"""
     BatchNorm base .
     """
 
@@ -649,7 +649,7 @@ class _BatchNormBase(layers.Layer):
 
 
 class BatchNorm1D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -740,7 +740,7 @@ class BatchNorm1D(_BatchNormBase):
 
 
 class BatchNorm2D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -829,7 +829,7 @@ class BatchNorm2D(_BatchNormBase):
 
 
 class BatchNorm3D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -919,7 +919,7 @@ class BatchNorm3D(_BatchNormBase):
 
 
 class SyncBatchNorm(_BatchNormBase):
-    """
+    r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
     be used as a normalizer function for other operations, such as conv2d and fully connected 
@@ -1081,7 +1081,7 @@ class SyncBatchNorm(_BatchNormBase):
 
     @classmethod
     def convert_sync_batchnorm(cls, layer):
-        """
+        r"""
         Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
 
         Parameters:
@@ -1123,7 +1123,7 @@ class SyncBatchNorm(_BatchNormBase):
 
 
 class LocalResponseNorm(layers.Layer):
-    """
+    r"""
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 

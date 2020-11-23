@@ -19,7 +19,7 @@ __all__ = ['Constant']
 
 
 class Constant(ConstantInitializer):
-    """Implement the constant initializer.
+    r"""Implement the constant initializer.
 
     Args:
         value (float32): constant value to initialize the parameter 

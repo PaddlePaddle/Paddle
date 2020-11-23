@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Fleet Utils."""
-"""distributed operations"""
-"""basic collective operations in python"""
-"""remote file system"""
+r"""Fleet Utils."""
+r"""distributed operations"""
+r"""basic collective operations in python"""
+r"""remote file system"""
 
 from ..utils.fs import FS, LocalFS, HDFSClient
 from paddle.fluid.proto import framework_pb2
@@ -58,7 +58,7 @@ class UtilBase(object):
         self.fs_client = fs_client
 
     def all_reduce(self, input, mode="sum", comm_world="worker"):
-        """
+        r"""
         All reduce `input` between specified collection. This is a distributed API.
 
         Args:
@@ -107,7 +107,7 @@ class UtilBase(object):
         return self.role_maker._all_reduce(input, mode, comm_world)
 
     def barrier(self, comm_world="worker"):
-        """
+        r"""
         Barrier between specified collection.
 
         Args:
@@ -147,7 +147,7 @@ class UtilBase(object):
         self.role_maker._barrier(comm_world)
 
     def all_gather(self, input, comm_world="worker"):
-        """
+        r"""
         All gather `input` between specified collection.
 
         Args:
@@ -203,7 +203,7 @@ class UtilBase(object):
         pass
 
     def get_file_shard(self, files):
-        """
+        r"""
         Split files before distributed training, and return filelist assigned to the current trainer.
 
         .. code-block:: text
@@ -261,7 +261,7 @@ class UtilBase(object):
         return trainer_files[trainer_id]
 
     def print_on_rank(self, message, rank_id):
-        """
+        r"""
         Woker of rank `rank_id` print some message. 
 
         Args:
@@ -300,13 +300,13 @@ class UtilBase(object):
 
     def _load_program(self, path, is_text):
         def load_program_binary(path):
-            """load program from binary string file"""
+            r"""load program from binary string file"""
             with open(path, "rb") as f:
                 program_desc_str = f.read()
             return Program.parse_from_string(program_desc_str)
 
         def load_program_text(path):
-            """load program from human-readable text file"""
+            r"""load program from human-readable text file"""
             with open(path, "r") as f:
                 program_desc_text = f.read()
 

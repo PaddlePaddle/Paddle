@@ -19,7 +19,7 @@ __all__ = ['Normal', 'TruncatedNormal']
 
 
 class Normal(NormalInitializer):
-    """The Random Normal (Gaussian) distribution initializer.
+    r"""The Random Normal (Gaussian) distribution initializer.
 
     Args:
         mean (float, optional): mean of the normal distribution. The default value is 0.0.
@@ -60,7 +60,7 @@ class Normal(NormalInitializer):
 
 
 class TruncatedNormal(TruncatedNormalInitializer):
-    """The Random TruncatedNormal (Gaussian) distribution initializer.
+    r"""The Random TruncatedNormal (Gaussian) distribution initializer.
 
     Args:
         mean (float, optional): mean of the normal distribution. The default value is 0.0.

@@ -57,7 +57,7 @@ def get_return_size(return_node):
 
 
 class ReplaceReturnNoneTransformer(gast.NodeTransformer):
-    """
+    r"""
     Replace 'return None' to  'return' because 'None' cannot be a valid input
     in control flow. In ReturnTransformer single 'Return' will be appended no
     value placeholder
@@ -80,7 +80,7 @@ class ReplaceReturnNoneTransformer(gast.NodeTransformer):
 
 
 class ReturnAnalysisVisitor(gast.NodeVisitor):
-    """
+    r"""
     Visits gast Tree and analyze the information about 'return'.
     """
 
@@ -133,7 +133,7 @@ class ReturnAnalysisVisitor(gast.NodeVisitor):
 
 
 class ReturnTransformer(gast.NodeTransformer):
-    """
+    r"""
     Transforms return statements into equivalent python statements containing
     only one return statement at last. The basics idea is using a return value
     variable to store the early return statements and boolean states with
@@ -180,7 +180,7 @@ class ReturnTransformer(gast.NodeTransformer):
                 self.visit(value)
 
     def visit(self, node):
-        """
+        r"""
         Self-defined visit for appending ancestor
         """
         self.ancestor_nodes.append(node)

@@ -27,7 +27,7 @@ import paddle
 
 
 def mean(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     Computes the mean of the input tensor's elements along ``axis``.
 
     Args:
@@ -107,7 +107,7 @@ def mean(x, axis=None, keepdim=False, name=None):
 
 
 def var(x, axis=None, unbiased=True, keepdim=False, name=None):
-    """
+    r"""
     Computes the variance of ``x`` along ``axis`` .
 
     Args:
@@ -164,7 +164,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
 
 
 def std(x, axis=None, unbiased=True, keepdim=False, name=None):
-    """
+    r"""
     Computes the standard-deviation of ``x`` along ``axis`` .
 
     Args:
@@ -215,7 +215,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
 
 def numel(x, name=None):
-    """
+    r"""
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
     or a scalar value in imperative mode
 
@@ -248,7 +248,7 @@ def numel(x, name=None):
 
 
 def median(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     Compute the median along the specified axis.
 
     Args:

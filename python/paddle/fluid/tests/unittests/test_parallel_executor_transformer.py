@@ -74,7 +74,7 @@ class ModelHyperParams(object):
 
 
 def prepare_batch_input(insts, src_pad_idx, trg_pad_idx, n_head):
-    """
+    r"""
     Pad the instances to the max sequence length in batch, and generate the
     corresponding position data and attention bias. Then, convert the numpy
     data to tensors and return a dict mapping names to tensors.
@@ -86,7 +86,7 @@ def prepare_batch_input(insts, src_pad_idx, trg_pad_idx, n_head):
                          return_pos=True,
                          return_attn_bias=True,
                          return_max_len=True):
-        """
+        r"""
         Pad the instances to the max sequence length in batch, and generate the
         corresponding position data and attention bias.
         """

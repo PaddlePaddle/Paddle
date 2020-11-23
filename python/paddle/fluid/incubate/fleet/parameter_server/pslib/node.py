@@ -10,13 +10,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-"""Defination of Server and Worker."""
+r"""Defination of Server and Worker."""
 
 from . import ps_pb2 as pslib
 
 
 class Server(object):
-    """
+    r"""
         A Server basic class
         it's a base class, does not have implementation
     """
@@ -26,7 +26,7 @@ class Server(object):
 
 
 class Worker(object):
-    """
+    r"""
         A Worker basic class.
         it's a base class, does not have implementation
     """
@@ -36,7 +36,7 @@ class Worker(object):
 
 
 class DownpourServer(Server):
-    """
+    r"""
         DownpourServer class is used to generate server program_desc
         Args:
             server: it is pslib.ServerParameter()
@@ -53,7 +53,7 @@ class DownpourServer(Server):
         self._server.downpour_server_param.service_param.server_thread_num = 12
 
     def add_sparse_table(self, table_id, strategy):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             strategy(dict): the config dict.
@@ -263,7 +263,7 @@ class DownpourServer(Server):
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             param_var(list): param vars
@@ -327,7 +327,7 @@ class DownpourServer(Server):
 
     def add_data_norm_table(self, table_id, learning_rate, param_var, grad_var,
                             strategy, sparse_table_names):
-        """
+        r"""
         Args:
             table_id(int): id of datanorm table
             learning_rate(float): the learning rate used to update parameters
@@ -451,14 +451,14 @@ class DownpourServer(Server):
         table2.deconverter = deconverter
 
     def get_desc(self):
-        """
+        r"""
         Return downpour server program_desc
         """
         return self._server
 
 
 class DownpourWorker(Worker):
-    """
+    r"""
         DownpourWorker class is used to generate worker program_desc
         Args:
             window (int): push params frequency
@@ -476,7 +476,7 @@ class DownpourWorker(Worker):
                          slot_key_vars,
                          slot_value_vars,
                          slot_value_grads=None):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             slot_key_vars(list): slot key id
@@ -527,7 +527,7 @@ class DownpourWorker(Worker):
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars,
                         dense_start_table_id, sparse_table_names):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -606,7 +606,7 @@ class DownpourWorker(Worker):
         table.dense_gradient_variable_name.extend(dense_grad_name)
 
     def get_desc(self):
-        """
+        r"""
         Return downpour worker program_desc
         """
         return self._worker

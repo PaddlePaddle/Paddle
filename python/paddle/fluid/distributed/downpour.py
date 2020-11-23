@@ -22,7 +22,7 @@ from google.protobuf import text_format
 
 
 class DownpourSGD(object):
-    """
+    r"""
     Distributed optimizer of downpour stochastic gradient descent
     Standard implementation of Google's Downpour SGD
     in Large Scale Distributed Deep Networks
@@ -56,7 +56,7 @@ class DownpourSGD(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """
+        r"""
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
         operators and optimization operators within minimize function

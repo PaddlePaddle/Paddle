@@ -435,7 +435,7 @@ class TestRnn(unittest.TestCase):
 
 
 class TestRnnUtil(unittest.TestCase):
-    """
+    r"""
     Test cases for rnn apis' utility methods for coverage.
     """
 
@@ -452,7 +452,7 @@ class TestRnnUtil(unittest.TestCase):
 
 
 class EncoderCell(RNNCell):
-    """Encoder Cell"""
+    r"""Encoder Cell"""
 
     def __init__(
             self,
@@ -484,7 +484,7 @@ class EncoderCell(RNNCell):
 
 
 class DecoderCell(RNNCell):
-    """Decoder Cell"""
+    r"""Decoder Cell"""
 
     def __init__(self, num_layers, hidden_size, dropout_prob=0.):
         self.num_layers = num_layers
@@ -553,7 +553,7 @@ def def_seq2seq_model(num_layers, hidden_size, dropout_prob, src_vocab_size,
 
 
 class TestSeq2SeqModel(unittest.TestCase):
-    """
+    r"""
     Test cases to confirm seq2seq api training correctly.
     """
 

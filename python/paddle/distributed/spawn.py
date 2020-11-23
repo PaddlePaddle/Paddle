@@ -229,7 +229,7 @@ class MultiprocessContext(object):
 
 
 def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
-    """
+    r"""
     Start multiple processes with ``spawn`` method for parallel training.
 
     Args:

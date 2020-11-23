@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 TestCases for Monitor
 """
 
@@ -25,7 +25,7 @@ import unittest
 
 
 class TestDatasetWithStat(unittest.TestCase):
-    """  TestCases for Dataset. """
+    r"""  TestCases for Dataset. """
 
     def setUp(self):
         self.use_data_loader = False

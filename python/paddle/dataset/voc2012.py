@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 Image dataset for segmentation.
 The 2012 dataset contains images from 2008-2011 for which additional
 segmentations have been prepared. As in previous years the assignment
@@ -72,7 +72,7 @@ def reader_creator(filename, sub_name):
     update_to="paddle.vision.datasets.VOC2012",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
-    """
+    r"""
     Create a train dataset reader containing 2913 images in HWC order.
     """
     return reader_creator(download(VOC_URL, CACHE_DIR, VOC_MD5), 'trainval')
@@ -83,7 +83,7 @@ def train():
     update_to="paddle.vision.datasets.VOC2012",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
-    """
+    r"""
     Create a test dataset reader containing 1464 images in HWC order.
     """
     return reader_creator(download(VOC_URL, CACHE_DIR, VOC_MD5), 'train')
@@ -94,7 +94,7 @@ def test():
     update_to="paddle.vision.datasets.VOC2012",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def val():
-    """
+    r"""
     Create a val dataset reader containing 1449 images in HWC order.
     """
     return reader_creator(download(VOC_URL, CACHE_DIR, VOC_MD5), 'val')

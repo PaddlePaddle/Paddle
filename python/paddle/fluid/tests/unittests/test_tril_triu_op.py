@@ -21,7 +21,7 @@ import paddle.tensor as tensor
 
 
 class TrilTriuOpDefaultTest(OpTest):
-    """ the base class of other op testcases
+    r""" the base class of other op testcases
     """
 
     def setUp(self):
@@ -52,7 +52,7 @@ class TrilTriuOpDefaultTest(OpTest):
 
 
 def case_generator(op_type, Xshape, diagonal, expected):
-    """
+    r"""
     Generate testcases with the params shape of X, diagonal and op_type.
     If arg`expercted` is 'success', it will register an Optest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
@@ -116,7 +116,7 @@ for _op_type in ['tril', 'triu']:
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension 
+    r""" test case by using API and has -1 dimension 
     """
 
     def test_api(self):

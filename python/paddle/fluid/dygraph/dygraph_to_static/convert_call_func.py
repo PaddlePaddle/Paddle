@@ -61,7 +61,7 @@ def is_paddle_func(func):
 
 
 def is_unsupported(func):
-    """
+    r"""
     Checks whether the func is supported by dygraph to static graph.
     """
 
@@ -86,7 +86,7 @@ def is_unsupported(func):
 
 
 def convert_call(func):
-    """
+    r"""
     Converts a function call which needs to be transformed to static function.
 
     Args:

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test cloud role maker."""
+r"""Test cloud role maker."""
 
 from __future__ import print_function
 import os
@@ -26,12 +26,12 @@ import paddle.fluid.core as core
 
 
 class TestGeneratorSeed(unittest.TestCase):
-    #     """
+    #     r"""
     #     Test cases for cpu generator seed.
     #     """
 
     def test_generator_uniform_random_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
 
         fluid.enable_dygraph()
 
@@ -141,7 +141,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(out1_np, out2_np))
 
     def test_generator_gaussian_random_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
@@ -198,7 +198,7 @@ class TestGeneratorSeed(unittest.TestCase):
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_randint_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
         gen = generator.Generator()
 
         fluid.enable_dygraph()
@@ -256,7 +256,7 @@ class TestGeneratorSeed(unittest.TestCase):
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_randint_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
@@ -311,7 +311,7 @@ class TestGeneratorSeed(unittest.TestCase):
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_randperm_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
 
         fluid.enable_dygraph()
 
@@ -370,7 +370,7 @@ class TestGeneratorSeed(unittest.TestCase):
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
     def test_generator_sampling_id_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
         gen = paddle.seed(12312321111)
 
         fluid.enable_dygraph()

@@ -327,7 +327,7 @@ class TestConcatAPI(unittest.TestCase):
 
 
 class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
-    """
+    r"""
     Test concat api when the input(x) is a LoDTensorArray.
     """
 

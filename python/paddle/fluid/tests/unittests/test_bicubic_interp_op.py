@@ -57,7 +57,7 @@ def bicubic_interp_np(input,
                       actual_shape=None,
                       align_corners=True,
                       data_layout='kNCHW'):
-    """trilinear interpolation implement in shape [N, C, H, W]"""
+    r"""trilinear interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:

@@ -18,7 +18,7 @@ from paddle.distributed.utils import get_cluster, logger
 
 
 def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):
-    """
+    r"""
     args_node_ips:string, args_node_ip:string, args_port: int, selected_gpus:list
     """
     #you can automatically get ip info while using paddlecloud multi nodes mode.

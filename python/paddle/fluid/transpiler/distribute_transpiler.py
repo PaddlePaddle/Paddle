@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-"""
+r"""
 Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
 2. rename split grad variables to add trainer_id suffix ".trainer_%d".
@@ -93,7 +93,7 @@ def same_or_split_var(p_name, var_name):
 
 
 def slice_variable(var_list, slice_count, min_block_size):
-    """
+    r"""
     We may need to split dense tensor to one or more blocks and put
     them equally onto parameter server. One block is a sub-tensor
     aligned by dim[0] of the tensor.
@@ -139,7 +139,7 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 
 class DistributeTranspilerConfig(object):
-    """
+    r"""
         :api_attr: Static Graph
 
     A configuration class that provide support for transpiler distributed jobs.
@@ -254,7 +254,7 @@ class ServerRuntimeConfig(object):
 
 
 class DistributeTranspiler(object):
-    """
+    r"""
         :api_attr: Static Graph
 
     **DistributeTranspiler**
@@ -550,7 +550,7 @@ class DistributeTranspiler(object):
                   sync_mode=True,
                   startup_program=None,
                   current_endpoint="127.0.0.1:6174"):
-        """
+        r"""
         Transpile the input program to distributed programs with config and arguments.
 
         Args:
@@ -584,7 +584,7 @@ class DistributeTranspiler(object):
                     current_endpoint="127.0.0.1:7000")
         """
 
-        err_msg = """
+        err_msg = r"""
 
 API is deprecated since 2.0.0 Please use FleetAPI instead.
 WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
@@ -1016,7 +1016,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     self.origin_program.global_block()._remove_var(var)
 
     def get_trainer_program(self, wait_port=True):
-        """
+        r"""
         Get transpiled trainer side program. The program on trainer side compared with origin program 
         has following difference:
 
@@ -1062,7 +1062,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return self.origin_program
 
     def _get_trainer_startup_program(self, recv_vars, eplist):
-        """
+        r"""
         Get transpiled trainer side startup program.
 
         Args:
@@ -1151,7 +1151,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return startup_program
 
     def get_pserver_program(self, endpoint):
-        """
+        r"""
         Get parameter server side program.The program on pserver side compared with origin program 
         has following difference:
 
@@ -1422,7 +1422,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return pserver_program
 
     def get_pserver_programs(self, endpoint):
-        """
+        r"""
         Get pserver side main program and startup program for distributed training.
         The ``main_program`` returned by this function is consistent with the 
         return value of the function ``get_pserver_program`` .
@@ -1456,7 +1456,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                             endpoint,
                             pserver_program=None,
                             startup_program=None):
-        """
+        r"""
         **Deprecated**
 
         Get startup program for current parameter server.
@@ -2001,7 +2001,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return table_opt_block
 
     def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
-        """
+        r"""
         create a new block to handle save checkpoint.
         """
 
@@ -2024,7 +2024,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                                     program,
                                     block_list,
                                     add_trainer_suffix=False):
-        """
+        r"""
         Create vars for each split.
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
@@ -2138,7 +2138,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def _get_optimizer_input_shape(self, op_type, varkey, orig_shape,
                                    param_shape):
-        """
+        r"""
         Returns the shape for optimizer inputs that need to be reshaped when
         Param and Grad is split to multiple servers.
         """
@@ -2395,7 +2395,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                                                          .name))
 
     def _get_pserver_grad_param_var(self, var, var_dict):
-        """
+        r"""
         Return pserver side grad/param variable, return None
         if the variable is not grad/param, e.g.
 
@@ -2526,7 +2526,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             return False
 
     def _get_input_map_from_op(self, varmap, op):
-        """Returns a dict from op input name to the vars in varmap."""
+        r"""Returns a dict from op input name to the vars in varmap."""
         iomap = collections.OrderedDict()
         for key in op.input_names:
             vars = []
@@ -2539,7 +2539,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return iomap
 
     def _get_output_map_from_op(self, varmap, op):
-        """Returns a dict from op output name to the vars in varmap."""
+        r"""Returns a dict from op output name to the vars in varmap."""
         iomap = collections.OrderedDict()
         for key in op.output_names:
             vars = []
@@ -2653,7 +2653,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return False
 
     def _get_optimize_pass(self):
-        """
+        r"""
         Get optimizer operators, parameters and gradients from origin_program
         Returns:
             opt_ops (list): optimize operators.
@@ -2700,7 +2700,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def _get_distribute_update_vars(self):
         # TODO(chengmo): find more powerful and simple way to deal with these special situation
-        """
+        r"""
         This Function is used for a special model, like PyramidDnn which has pyramid hash op.
         Some Parameters don't use optimizing op to update its value, but updated in its BP process.
         In these cases, Transpilse can't find these special vars by optimizing op information.

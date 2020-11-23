@@ -22,7 +22,7 @@ import numpy as np
 
 class TestMultiheadAttention(unittest.TestCase):
     def gen_random_input(self):
-        """Generate random input data.
+        r"""Generate random input data.
         """
         # batch_size, max_sequence_length, hidden dimension
         self.input_shape = (3, 13, 16)
@@ -30,7 +30,7 @@ class TestMultiheadAttention(unittest.TestCase):
         self.keys = np.random.random(size=self.input_shape).astype("float32")
 
     def set_program(self):
-        """Build the test program.
+        r"""Build the test program.
         """
         queries = fluid.layers.data(
             name="queries",
@@ -57,7 +57,7 @@ class TestMultiheadAttention(unittest.TestCase):
         self.fetch_list = [contexts]
 
     def run_program(self):
-        """Run the test program.
+        r"""Run the test program.
         """
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -75,7 +75,7 @@ class TestMultiheadAttention(unittest.TestCase):
             self.op_output = output
 
     def set_inputs(self, place):
-        """Set the randomly generated data to the test program.
+        r"""Set the randomly generated data to the test program.
         """
         self.inputs = {}
         queries = fluid.Tensor()

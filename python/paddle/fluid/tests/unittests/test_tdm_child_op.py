@@ -26,7 +26,7 @@ import six
 
 
 def create_tdm_tree():
-    """Create tdm tree info"""
+    r"""Create tdm tree info"""
     tree_info = [
         [0, 0, 0, 1, 2],
         [0, 1, 0, 3, 4],
@@ -95,7 +95,7 @@ class TestTDMChildOp(OpTest):
         self.outputs = {'Child': child, 'LeafMask': leaf_mask}
 
     def config(self):
-        """set test shape & type"""
+        r"""set test shape & type"""
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int32'
@@ -107,7 +107,7 @@ class TestTDMChildOp(OpTest):
 
 class TestCase1(TestTDMChildOp):
     def config(self):
-        """check int int64_t """
+        r"""check int int64_t """
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int32'
@@ -116,7 +116,7 @@ class TestCase1(TestTDMChildOp):
 
 class TestCase2(TestTDMChildOp):
     def config(self):
-        """check int64_t int64_t """
+        r"""check int64_t int64_t """
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int64'
@@ -125,7 +125,7 @@ class TestCase2(TestTDMChildOp):
 
 class TestCase3(TestTDMChildOp):
     def config(self):
-        """check int64 int32 """
+        r"""check int64 int32 """
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int64'
@@ -134,7 +134,7 @@ class TestCase3(TestTDMChildOp):
 
 class TestCase4(TestTDMChildOp):
     def config(self):
-        """check large shape """
+        r"""check large shape """
         self.x_shape = (100, 20)
         self.child_shape = (100, 20, 2)
         self.x_type = 'int32'

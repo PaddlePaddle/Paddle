@@ -16,7 +16,7 @@ import sys
 import platform
 import subprocess
 
-envs_template = """
+envs_template = r"""
 Paddle version: {paddle_version}
 Paddle With CUDA: {paddle_with_cuda}
 

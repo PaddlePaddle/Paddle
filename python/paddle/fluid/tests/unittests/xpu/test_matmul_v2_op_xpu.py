@@ -27,7 +27,7 @@ import paddle.fluid.framework as framework
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
-    """Reference forward implementation using np.matmul."""
+    r"""Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
     if transpose_X:
@@ -60,7 +60,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMulV2Op(OpTest):
-    """
+    r"""
     case 1
     """
 
@@ -106,7 +106,7 @@ class TestMatMulV2Op(OpTest):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp2(TestMatMulV2Op):
-    """
+    r"""
     case 2
     """
 
@@ -120,7 +120,7 @@ class TestMatMuklOp2(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp3(TestMatMulV2Op):
-    """
+    r"""
     case 3
     """
 
@@ -134,7 +134,7 @@ class TestMatMuklOp3(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp4(TestMatMulV2Op):
-    """
+    r"""
     case 4
     """
 
@@ -147,7 +147,7 @@ class TestMatMuklOp4(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp5(TestMatMulV2Op):
-    """
+    r"""
     case 5
     """
 
@@ -161,7 +161,7 @@ class TestMatMuklOp5(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp6(TestMatMulV2Op):
-    """
+    r"""
     case 6
     """
 
@@ -175,7 +175,7 @@ class TestMatMuklOp6(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp7(TestMatMulV2Op):
-    """
+    r"""
     case 7
     """
 
@@ -190,7 +190,7 @@ class TestMatMuklOp7(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp8(TestMatMulV2Op):
-    """
+    r"""
     case 8
     """
 
@@ -204,7 +204,7 @@ class TestMatMuklOp8(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp13(TestMatMulV2Op):
-    """
+    r"""
     case 13
     """
 
@@ -219,7 +219,7 @@ class TestMatMuklOp13(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp16(TestMatMulV2Op):
-    """
+    r"""
     case 16 : to check the gradient for special case
     """
 
@@ -233,7 +233,7 @@ class TestMatMuklOp16(TestMatMulV2Op):
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestMatMuklOp17(TestMatMulV2Op):
-    """
+    r"""
     case 17 : to check the gradient for special case
     """
 

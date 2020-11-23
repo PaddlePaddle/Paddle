@@ -69,7 +69,7 @@ def bow_net(data,
             hid_dim=128,
             hid_dim2=96,
             class_dim=2):
-    """
+    r"""
     BOW net
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py

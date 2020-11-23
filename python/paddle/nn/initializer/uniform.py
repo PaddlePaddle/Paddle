@@ -18,7 +18,7 @@ __all__ = ['Uniform']
 
 
 class Uniform(UniformInitializer):
-    """The random uniform distribution initializer.
+    r"""The random uniform distribution initializer.
 
     Args:
         low (float, optional): lower boundary of the uniform distribution. The default value is -1.0.

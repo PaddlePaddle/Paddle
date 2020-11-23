@@ -283,7 +283,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
 
 
 def prepare_fast_nan_inf_debug(_program):
-    """
+    r"""
     Given a program to run, insert a (reduce) sum op for every var in that program.
     Instead of checking all vars originally defined in the program,
     only those inserted ops will be checked in the c++ end, to detect if it contains NAN or INF.
@@ -337,7 +337,7 @@ def run_fast_nan_inf_debug(executor,
                            return_numpy=True,
                            use_program_cache=False,
                            dump_core=True):
-    """
+    r"""
     Run a program by the given executor. Catch the exception of NAN and INF, and save persistables into the dumped core.
     """
 

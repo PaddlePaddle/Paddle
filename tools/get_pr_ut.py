@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" For the PR that only modified the unit test, get cases in pull request. """
+r""" For the PR that only modified the unit test, get cases in pull request. """
 
 import os
 import json
@@ -21,7 +21,7 @@ PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
 
 
 class PRChecker(object):
-    """ PR Checker. """
+    r""" PR Checker. """
 
     def __init__(self):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
@@ -29,7 +29,7 @@ class PRChecker(object):
         self.pr = None
 
     def init(self):
-        """ Get pull request. """
+        r""" Get pull request. """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('No PR ID')
@@ -37,7 +37,7 @@ class PRChecker(object):
         self.pr = self.repo.get_pull(int(pr_id))
 
     def get_pr_files(self):
-        """ Get files in pull request. """
+        r""" Get files in pull request. """
         page = 0
         file_list = []
         while True:
@@ -50,7 +50,7 @@ class PRChecker(object):
         return file_list
 
     def get_pr_ut(self):
-        """ Get unit tests in pull request. """
+        r""" Get unit tests in pull request. """
         ut_list = []
         file_ut_map = None
         cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json'

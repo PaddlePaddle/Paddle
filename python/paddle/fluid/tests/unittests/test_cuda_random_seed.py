@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test cloud role maker."""
+r"""Test cloud role maker."""
 
 from __future__ import print_function
 import os
@@ -26,7 +26,7 @@ import paddle.fluid.core as core
 
 
 class TestGeneratorSeed(unittest.TestCase):
-    """
+    r"""
     Test cases for cpu generator seed.
     """
 
@@ -67,7 +67,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(y_np, y1_np))
 
     def test_generator_gaussian_random_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
         fluid.enable_dygraph()
 
         paddle.seed(12312321111)
@@ -89,7 +89,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(x_np, x3_np))
 
     def test_generator_randint_dygraph(self):
-        """Test Generator seed."""
+        r"""Test Generator seed."""
 
         fluid.enable_dygraph()
 

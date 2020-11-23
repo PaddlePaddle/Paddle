@@ -93,7 +93,7 @@ def param_guard(parameters):
 
 
 def enabled():
-    """
+    r"""
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
     or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable_dygraph`
@@ -120,7 +120,7 @@ def enabled():
 
 
 def enable_dygraph(place=None):
-    """
+    r"""
 
     .. note::
         Dynamic graph mode is turn ON by default since paddle 2.0.0
@@ -157,7 +157,7 @@ def enable_dygraph(place=None):
 
 
 def disable_dygraph():
-    """
+    r"""
 
     .. note::
         Dynamic graph mode is turn ON by default since paddle 2.0.0
@@ -201,7 +201,7 @@ def _switch_tracer_mode_guard_(is_train=True):
 
 
 def no_grad(func=None):
-    """
+    r"""
     :api_attr: imperative
 
     Create a context which disables dygraph gradient calculation.
@@ -260,7 +260,7 @@ def no_grad(func=None):
 
 
 class no_grad_:
-    """
+    r"""
     :api_attr: imperative
 
     Create a context which disables dygraph gradient calculation.
@@ -337,7 +337,7 @@ class no_grad_:
 
 @signature_safe_contextmanager
 def guard(place=None):
-    """
+    r"""
     :api_attr: imperative
 
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
@@ -593,7 +593,7 @@ def grad(outputs,
 
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None, dtype=None):
-    """
+    r"""
     :api_attr: imperative
 
     The API will create a ``Variable`` or ``ComplexVariable`` object from 

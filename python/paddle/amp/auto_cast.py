@@ -18,7 +18,7 @@ __all__ = ['auto_cast']
 
 
 def auto_cast(enable=True, custom_white_list=None, custom_black_list=None):
-    """
+    r"""
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided 
     by autocast algorithm for better performance. 

@@ -72,7 +72,7 @@ global_prog_seed = 0
 
 
 def require_version(min_version, max_version=None):
-    """
+    r"""
         Check if the installed version of PaddlePaddle is in [min_version, max_version],
         if the installed version is lower than ``min_version`` or higher than ``max_version``,
         an exception will be thrown, NO returns if the installed version is satisfied.
@@ -179,7 +179,7 @@ def require_version(min_version, max_version=None):
 
 
 def in_dygraph_mode():
-    """
+    r"""
 
     .. note::
         Dynamic graph mode is turn ON by default since paddle 2.0.0
@@ -315,7 +315,7 @@ def _set_expected_place(place):
 
 # TODO(zhiqiu): remove this function.
 def _var_base_to_np(var_base):
-    """	
+    r"""	
     convert VarBase tp numpy	
     	
     Args:	
@@ -355,7 +355,7 @@ def _cuda_ids():
 
 
 def is_compiled_with_xpu():
-    """
+    r"""
     Whether this whl package can be used to run the model on XPU.
 
     Returns (bool): support xpu or not.
@@ -370,7 +370,7 @@ def is_compiled_with_xpu():
 
 
 def is_compiled_with_cuda():
-    """
+    r"""
     Whether this whl package can be used to run the model on GPU.
 
     Returns (bool): `True` if CUDA is currently available, otherwise `False`.
@@ -385,7 +385,7 @@ def is_compiled_with_cuda():
 
 
 def cuda_places(device_ids=None):
-    """
+    r"""
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
         The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
@@ -431,7 +431,7 @@ def cuda_places(device_ids=None):
 
 
 def cpu_places(device_count=None):
-    """
+    r"""
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
     
     If :code:`device_count` is None, the device count would
@@ -464,7 +464,7 @@ def cpu_places(device_count=None):
 
 
 def cuda_pinned_places(device_count=None):
-    """
+    r"""
     This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
@@ -524,7 +524,7 @@ _name_scope = NameScope()
 
 @signature_safe_contextmanager
 def name_scope(prefix=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     Generate hierarchical name prefix for the operators in Static Graph.
@@ -602,7 +602,7 @@ def generate_control_dev_var_name():
 
 
 def grad_var_name(var_name):
-    """
+    r"""
     Returns:
         str: gradient name for a certain var name
     """
@@ -610,7 +610,7 @@ def grad_var_name(var_name):
 
 
 def convert_np_dtype_to_dtype_(np_dtype):
-    """
+    r"""
     Convert the data type in numpy to the data type in Paddle
 
     Args:
@@ -648,7 +648,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
 
 def dtype_is_floating(dtype):
-    """
+    r"""
     Check the data type is floating or not.
     Args:
         dtype(np.dtype|core.VarDesc.VarType): data type.
@@ -667,7 +667,7 @@ def dtype_is_floating(dtype):
 
 
 def _debug_string_(proto, throw_on_error=True):
-    """
+    r"""
     Get the debug string of a protobuf message. The message could be not
     initialized.
     Args:
@@ -722,7 +722,7 @@ class ParameterMetaClass(VariableMetaClass):
 
 
 def _getitem_impl_(var, item):
-    """
+    r"""
     Slice the variable.
 
     Args:
@@ -922,7 +922,7 @@ def _getitem_impl_(var, item):
 
 @six.add_metaclass(VariableMetaClass)
 class Variable(object):
-    """
+    r"""
     **Notes**:
         **The constructor of Variable should not be invoked directly.**
 
@@ -1069,7 +1069,7 @@ class Variable(object):
 
     @fake_interface_only
     def detach(self):
-        """
+        r"""
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1099,7 +1099,7 @@ class Variable(object):
 
     @fake_interface_only
     def numpy(self):
-        """
+        r"""
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1131,7 +1131,7 @@ class Variable(object):
 
     @fake_interface_only
     def set_value(self, value):
-        """
+        r"""
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1162,7 +1162,7 @@ class Variable(object):
 
     @fake_interface_only
     def backward(self, retain_graph=False):
-        """
+        r"""
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1201,7 +1201,7 @@ class Variable(object):
 
     @fake_interface_only
     def gradient(self):
-        """
+        r"""
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
@@ -1247,7 +1247,7 @@ class Variable(object):
 
     @fake_interface_only
     def clear_gradient(self):
-        """
+        r"""
         **Notes**:
             **1. This API is ONLY available in Dygraph mode**
 
@@ -1284,7 +1284,7 @@ class Variable(object):
         return self._to_readable_code()
 
     def _to_readable_code(self):
-        """
+        r"""
         Get readable debug string of Variable.
 
         .. note::
@@ -1327,7 +1327,7 @@ class Variable(object):
         return var_str
 
     def to_string(self, throw_on_error, with_details=False):
-        """
+        r"""
         Get debug string.
 
         Args:
@@ -1372,7 +1372,7 @@ class Variable(object):
 
     @property
     def stop_gradient(self):
-        """
+        r"""
         Indicating if we stop gradient from current Variable
 
         **Notes: This Property has default value as** ``True`` **in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
@@ -1409,7 +1409,7 @@ class Variable(object):
 
     @property
     def persistable(self):
-        """
+        r"""
         Indicating if we current Variable should be long-term alive
 
 
@@ -1438,7 +1438,7 @@ class Variable(object):
 
     @property
     def name(self):
-        """
+        r"""
         Indicating name of current Variable
 
         **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
@@ -1458,7 +1458,7 @@ class Variable(object):
 
     @property
     def grad_name(self):
-        """
+        r"""
         Indicating name of the gradient Variable of current Variable.
 
         **Notes: This is a read-only property. It simply returns name of
@@ -1482,7 +1482,7 @@ class Variable(object):
 
     @property
     def shape(self):
-        """
+        r"""
         Indicating shape of current Variable
 
         **Notes: This is a read-only property**
@@ -1504,7 +1504,7 @@ class Variable(object):
 
     @property
     def dtype(self):
-        """
+        r"""
         Indicating data type of current Variable
 
         **Notes: This is a read-only property**
@@ -1524,7 +1524,7 @@ class Variable(object):
 
     @property
     def lod_level(self):
-        """
+        r"""
         Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
         of ``LoD``
 
@@ -1552,7 +1552,7 @@ class Variable(object):
 
     @property
     def type(self):
-        """
+        r"""
         Indicating Type of current Variable
 
         **Notes: This is a read-only property**
@@ -1571,7 +1571,7 @@ class Variable(object):
         return self.desc.type()
 
     def _set_error_clip(self, error_clip):
-        """
+        r"""
         Set the error_clip.
 
         Args:
@@ -1583,7 +1583,7 @@ class Variable(object):
         self.error_clip = error_clip
 
     def _set_info(self, key, value):
-        """
+        r"""
         Set key-value information for this variable.
 
         Args:
@@ -1598,7 +1598,7 @@ class Variable(object):
         self._info[key] = value
 
     def _get_info(self, key):
-        """
+        r"""
         Get the information of this variable corresponding to key.
 
         Args:
@@ -1612,7 +1612,7 @@ class Variable(object):
         return None
 
     def _slice_indices(self, slice, length):
-        """
+        r"""
         Reference implementation for the slice.indices method.
         """
         # Compute step and length as integers.
@@ -1762,7 +1762,7 @@ class Variable(object):
 
 
 def get_all_op_protos():
-    """
+    r"""
     Get all registered op proto from PaddlePaddle C++ end.
 
     Returns:
@@ -1777,7 +1777,7 @@ def get_all_op_protos():
 
 
 class ComplexVariable(object):
-    """
+    r"""
     The ComplexTensor defined on the complex number domain. It contains two common 
     real number Tensor as its members, :attr:`real` and :attr:`imag` 
     holding the real part and imaginary part of complex numbers respectively.
@@ -1868,7 +1868,7 @@ class ComplexVariable(object):
 
 
 class OpProtoHolder(object):
-    """
+    r"""
     A global variable to hold all OpProtos from C++ as a map
     """
 
@@ -1888,7 +1888,7 @@ class OpProtoHolder(object):
             self.op_proto_map[proto.type] = proto
 
     def get_op_proto(self, type):
-        """
+        r"""
         Get OpProto by a type string.
         Args:
             type(str): The type that operator registered in C++ side.
@@ -1918,7 +1918,7 @@ class OpProtoHolder(object):
 
 
 class Operator(object):
-    """
+    r"""
     In Fluid, all the operation are represented by Operator, and Operator
     is regarded as a build in an instruction of a Block. Users can use the
     build in instructions to describe their neural network.
@@ -2134,7 +2134,7 @@ class Operator(object):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
     def to_string(self, throw_on_error):
-        """
+        r"""
         Get debug string.
 
         Args:
@@ -2150,7 +2150,7 @@ class Operator(object):
         return _debug_string_(proto, throw_on_error)
 
     def _to_readable_code(self, skip_op_callstack=True):
-        """
+        r"""
         Get readable debug string of Operator.
 
         .. note::
@@ -2252,7 +2252,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2265,7 +2265,7 @@ class Operator(object):
         return self.desc.input(name)
 
     def _rename_input(self, old_name, new_name):
-        """
+        r"""
         Rename the `old_name` to `new_name`.
 
         Args:
@@ -2278,7 +2278,7 @@ class Operator(object):
         self.desc._rename_input(old_name, new_name)
 
     def _rename_output(self, old_name, new_name):
-        """
+        r"""
         Rename the `old_name` to `new_name`.
 
         Args:
@@ -2303,7 +2303,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:
@@ -2328,7 +2328,7 @@ class Operator(object):
             "Can't find op itself in it's block. It could be a bug of Paddle.")
 
     def has_attr(self, name):
-        """
+        r"""
         Whether this Operator has the attribute with name or not.
 
         Args:
@@ -2341,7 +2341,7 @@ class Operator(object):
         return self.desc.has_attr(name)
 
     def attr_type(self, name):
-        """
+        r"""
         Get the type of attribute by attribute's name.
 
         Args:
@@ -2353,7 +2353,7 @@ class Operator(object):
         return self.desc.attr_type(name)
 
     def _set_attr(self, name, val):
-        """
+        r"""
         Set the value of attribute by attribute's name.
 
         Args:
@@ -2369,7 +2369,7 @@ class Operator(object):
         self.desc.remove_attr(name)
 
     def _update_desc_attr(self, name, val):
-        """
+        r"""
         Update the value of desc's attribute by attribute's name.
 
         Args:
@@ -2395,7 +2395,7 @@ class Operator(object):
         return self.desc.attr_names()
 
     def attr(self, name):
-        """
+        r"""
         Get the attribute by name.
 
         Args:
@@ -2408,7 +2408,7 @@ class Operator(object):
         return self.desc.attr(name)
 
     def _block_attr_id(self, name):
-        """
+        r"""
         Get the block attribute's id by name.
 
         Args:
@@ -2420,7 +2420,7 @@ class Operator(object):
         return self.desc._block_attr_id(name)
 
     def _block_attr(self, name):
-        """
+        r"""
         Get the block attribute  by name.
 
         Args:
@@ -2435,7 +2435,7 @@ class Operator(object):
         return self.block.program.blocks[id]
 
     def _blocks_attr(self, name):
-        """
+        r"""
         Get the blocks attribute  by name.
 
         Args:
@@ -2452,7 +2452,7 @@ class Operator(object):
         return attrs
 
     def _blocks_attr_ids(self, name):
-        """
+        r"""
         Get the blocks attribute's ids by name.
 
         Args:
@@ -2465,7 +2465,7 @@ class Operator(object):
         return self.desc._blocks_attr_ids(name)
 
     def all_attrs(self):
-        """
+        r"""
         Get the attribute dict.
 
         Returns:
@@ -2515,7 +2515,7 @@ class Operator(object):
 
 
 class Block(object):
-    """
+    r"""
     In Fluid, a Program is consistence of multi-Block, and Block stores
     VarDesc and OpDesc. In a specific Block, a VarDesc have a unique name.
     One block could have some child blocks, and child block's name scopes
@@ -2557,7 +2557,7 @@ class Block(object):
         return self._to_readable_code()
 
     def _to_readable_code(self, skip_op_callstack=True):
-        """
+        r"""
         Get readable debug string of Block.
 
         .. note::
@@ -2602,7 +2602,7 @@ class Block(object):
         return block_str
 
     def to_string(self, throw_on_error, with_details=False):
-        """
+        r"""
         Get debug string.
 
         Args:
@@ -2646,7 +2646,7 @@ class Block(object):
         return self.desc.get_forward_block_idx()
 
     def _set_forward_block_idx(self, idx):
-        """
+        r"""
         Set the forward block Idx.
 
         Args:
@@ -2670,7 +2670,7 @@ class Block(object):
         return self.desc.id
 
     def var(self, name):
-        """
+        r"""
         Get a Variable by name from this block.
 
         Args:
@@ -2693,7 +2693,7 @@ class Block(object):
         return v
 
     def _find_var_recursive(self, name):
-        """
+        r"""
         Get a Variable by name from this block recursively.
 
         Args:
@@ -2729,7 +2729,7 @@ class Block(object):
         return None
 
     def _var_recursive(self, name):
-        """
+        r"""
         Get a Variable by name from this block recursively.
 
         Args:
@@ -2768,7 +2768,7 @@ class Block(object):
         return name in self.vars
 
     def _rename_var(self, name, new_name):
-        """
+        r"""
         Rename variable in vars and ops' inputs and outputs
 
         Args:
@@ -2893,7 +2893,7 @@ class Block(object):
         return param
 
     def append_op(self, *args, **kwargs):
-        """
+        r"""
         Appends a new Operator according to the giving arguments.
 
         Returns:
@@ -2935,7 +2935,7 @@ class Block(object):
         return op
 
     def _insert_op(self, index, *args, **kwargs):
-        """
+        r"""
         Insert a Operator according to the giving arguments.
 
         Args:
@@ -2951,7 +2951,7 @@ class Block(object):
         return op
 
     def _insert_op_without_sync(self, index, *args, **kwargs):
-        """
+        r"""
         Insert an Operator according to the giving arguments, 
         without sync_with_cpp to meke the compilation faster.
 
@@ -2967,7 +2967,7 @@ class Block(object):
         return op
 
     def _remove_op(self, index, sync=True):
-        """
+        r"""
         Remove the specific position operator.
 
         Args:
@@ -2982,7 +2982,7 @@ class Block(object):
         del self.ops[index]
 
     def _slice_ops(self, start, end):
-        """
+        r"""
         Return the Operator between start and end.
 
         Args:
@@ -3020,7 +3020,7 @@ class Block(object):
         return op
 
     def _sync_with_cpp(self):
-        """
+        r"""
         Sync from the desc on the c++ end. This method is used to synchronize
         the c++ desc instance generated by backward.
         """
@@ -3086,7 +3086,7 @@ class Block(object):
             assert self.ops[index].desc == ops_in_cpp[index]
 
     def _copy_param_info_from(self, other):
-        """
+        r"""
         Copy the information of parameters from the other block.
 
         Args:
@@ -3139,7 +3139,7 @@ class Block(object):
             self.vars[new_p.name] = new_p
 
     def _clone_variable(self, var, force_persistable=True):
-        """
+        r"""
         Clone a variable into current block.
 
         Args:
@@ -3183,12 +3183,12 @@ class Block(object):
 
 
 class IrNode(object):
-    """
+    r"""
     Python IrNode. Beneath it is a core.Node, which is used for Ir Pass.
     """
 
     def __init__(self, node):
-        """
+        r"""
         Construct an IrNode using core.Node.
 
         Args:
@@ -3199,7 +3199,7 @@ class IrNode(object):
         self.node = node
 
     def name(self):
-        """
+        r"""
         Return the node name.
 
         Returns:
@@ -3208,7 +3208,7 @@ class IrNode(object):
         return self.node.name()
 
     def node_type(self):
-        """
+        r"""
         Return the node type.
 
         Returns:
@@ -3217,7 +3217,7 @@ class IrNode(object):
         return self.node.node_type()
 
     def var(self):
-        """
+        r"""
         Return the node variable description.
 
         Returns:
@@ -3226,7 +3226,7 @@ class IrNode(object):
         return self.node.var()
 
     def op(self):
-        """
+        r"""
         Return the node operator description.
 
         Returns:
@@ -3235,7 +3235,7 @@ class IrNode(object):
         return self.node.op()
 
     def id(self):
-        """
+        r"""
         Return the node id.
 
         Returns:
@@ -3244,7 +3244,7 @@ class IrNode(object):
         return self.node.id()
 
     def is_op(self):
-        """
+        r"""
         If the node is an operator, then return true.
 
         Returns:
@@ -3253,7 +3253,7 @@ class IrNode(object):
         return self.node.is_op()
 
     def is_var(self):
-        """
+        r"""
         If the node is a variable, then return true.
 
         Returns:
@@ -3262,7 +3262,7 @@ class IrNode(object):
         return self.node.is_var()
 
     def is_ctrl_var(self):
-        """
+        r"""
         If the node is a control dependence variable, then return true.
 
         Returns:
@@ -3271,14 +3271,14 @@ class IrNode(object):
         return self.node.is_ctrl_var()
 
     def clear_inputs(self):
-        """
+        r"""
         Clear the node inputs. After executing the `clear_inputs` function,
         the node inputs will be empty.
         """
         self.node.clear_inputs()
 
     def remove_input_by_id(self, node_id):
-        """
+        r"""
         Remove a node from inputs by the given node id.
 
         Args:
@@ -3287,7 +3287,7 @@ class IrNode(object):
         self.node.remove_input(node_id)
 
     def remove_input(self, node):
-        """
+        r"""
         Remove a node from inputs.
 
         Args:
@@ -3296,7 +3296,7 @@ class IrNode(object):
         self.node.remove_input(node.node)
 
     def append_input(self, node):
-        """
+        r"""
         Append a node in inputs.
 
         Args:
@@ -3305,14 +3305,14 @@ class IrNode(object):
         self.node.append_input(node.node)
 
     def clear_outputs(self):
-        """
+        r"""
         Clear the node outputs. After executing the `clear_outputs` function,
         the node outputs will be empty.
         """
         self.node.clear_outputs()
 
     def remove_output_by_id(self, node_id):
-        """
+        r"""
         Remove a node from outputs by the given node id.
 
         Args:
@@ -3321,7 +3321,7 @@ class IrNode(object):
         self.node.remove_output(node_id)
 
     def remove_output(self, node):
-        """
+        r"""
         Remove a node from outputs.
 
         Args:
@@ -3330,7 +3330,7 @@ class IrNode(object):
         self.node.remove_output(node.node)
 
     def append_output(self, node):
-        """
+        r"""
         Append a node in outputs.
 
         Args:
@@ -3340,7 +3340,7 @@ class IrNode(object):
 
     @property
     def inputs(self):
-        """
+        r"""
         Return the node inputs.
 
         Returns:
@@ -3350,7 +3350,7 @@ class IrNode(object):
 
     @property
     def outputs(self):
-        """
+        r"""
         Return the node outputs.
 
         Returns:
@@ -3360,12 +3360,12 @@ class IrNode(object):
 
 
 class IrVarNode(IrNode):
-    """
+    r"""
     Python IrVarNode. Beneath it is a core.Node, it inherits from IrNode.
     """
 
     def __init__(self, node):
-        """
+        r"""
         Construct an IrVarNode using core.Node.
 
         Args:
@@ -3377,7 +3377,7 @@ class IrVarNode(IrNode):
         self.node = node
 
     def set_shape(self, shape):
-        """
+        r"""
         Set the node variable shape.
 
         Args:
@@ -3388,7 +3388,7 @@ class IrVarNode(IrNode):
         self.node.var().set_shape(shape)
 
     def persistable(self):
-        """
+        r"""
         If the variable node is a persistable variable, then return true.
 
         Returns:
@@ -3399,7 +3399,7 @@ class IrVarNode(IrNode):
         return self.node.var().persistable()
 
     def type(self):
-        """
+        r"""
         Return the variable type.
 
         Returns:
@@ -3410,7 +3410,7 @@ class IrVarNode(IrNode):
         return self.node.var().type()
 
     def dtype(self):
-        """
+        r"""
         Return the variable data type.
 
         Returns:
@@ -3421,7 +3421,7 @@ class IrVarNode(IrNode):
         return self.node.var().dtype()
 
     def shape(self):
-        """
+        r"""
         Return the variable shape.
 
         Returns:
@@ -3433,7 +3433,7 @@ class IrVarNode(IrNode):
 
     @property
     def inputs(self):
-        """
+        r"""
         Return the node inputs.
 
         Returns:
@@ -3443,7 +3443,7 @@ class IrVarNode(IrNode):
 
     @property
     def outputs(self):
-        """
+        r"""
         Return the node outputs.
 
         Returns:
@@ -3453,12 +3453,12 @@ class IrVarNode(IrNode):
 
 
 class IrOpNode(IrNode):
-    """
+    r"""
     Python IrOpNode. Beneath it is a core.Node, it inherits from IrNode.
     """
 
     def __init__(self, node):
-        """
+        r"""
         Construct an IrOpNode using core.Node.
 
         Args:
@@ -3470,7 +3470,7 @@ class IrOpNode(IrNode):
         self.node = node
 
     def rename_input(self, old_input_name, new_input_name):
-        """
+        r"""
         Rename the input of this node.
 
         Args:
@@ -3482,7 +3482,7 @@ class IrOpNode(IrNode):
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
-        """
+        r"""
         Rename the output of this node.
 
         Args:
@@ -3494,7 +3494,7 @@ class IrOpNode(IrNode):
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
-        """
+        r"""
         Get the argument name list by the parameter name for input.
 
         Args:
@@ -3508,7 +3508,7 @@ class IrOpNode(IrNode):
         return self.node.op().input(name)
 
     def output(self, name):
-        """
+        r"""
         Get the argument name list by the parameter name for output.
 
         Args:
@@ -3522,7 +3522,7 @@ class IrOpNode(IrNode):
         return self.node.op().output(name)
 
     def set_type(self, new_type):
-        """
+        r"""
         Change the operator type into new type.
 
         Args:
@@ -3533,7 +3533,7 @@ class IrOpNode(IrNode):
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
-        """
+        r"""
         Set the value of attribute by attribute's name.
 
         Args:
@@ -3543,7 +3543,7 @@ class IrOpNode(IrNode):
         self._update_desc_attr(name, val)
 
     def _update_desc_attr(self, name, val):
-        """
+        r"""
         Update the value of the op desc's attribute by attribute's name.
         """
         assert self.node.op() is not None, \
@@ -3561,7 +3561,7 @@ class IrOpNode(IrNode):
             desc._set_attr(name, val)
 
     def input_arg_names(self):
-        """
+        r"""
         Return input arguments' names of this op node.
 
         Returns:
@@ -3572,7 +3572,7 @@ class IrOpNode(IrNode):
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
-        """
+        r"""
         Return output arguments' names of this op node.
 
         Returns:
@@ -3584,7 +3584,7 @@ class IrOpNode(IrNode):
 
     @property
     def inputs(self):
-        """
+        r"""
         Return the node inputs.
 
         Returns:
@@ -3594,7 +3594,7 @@ class IrOpNode(IrNode):
 
     @property
     def outputs(self):
-        """
+        r"""
         Return the node outputs.
 
         Returns:
@@ -3604,7 +3604,7 @@ class IrOpNode(IrNode):
 
 
 class IrGraph(object):
-    """
+    r"""
     Python IrGraph. Beneath it is a core.Graph, which is used for
     creating a c++ Ir Pass Graph. An IrGraph is just a graph view of
     a Program. In an IrGraph, both Variables and Operators are graph
@@ -3612,7 +3612,7 @@ class IrGraph(object):
     """
 
     def __init__(self, graph, for_test=False):
-        """
+        r"""
         Construct an IrGraph using core.Graph.
 
         Args:
@@ -3625,7 +3625,7 @@ class IrGraph(object):
         self._for_test = for_test
 
     def clone(self):
-        """
+        r"""
         Create a new and duplicated IrGraph.
 
         Warns:
@@ -3638,25 +3638,25 @@ class IrGraph(object):
         return IrGraph(g, self._for_test)
 
     def is_test(self):
-        """
+        r"""
         If the graph is used for testing, the function returns true. Otherwise, returns false.
         """
         return self._for_test
 
     def all_nodes(self):
-        """
+        r"""
         Return all nodes included in the graph as a set.
         """
         return {IrNode(node) for node in self.graph.nodes()}
 
     def all_var_nodes(self):
-        """
+        r"""
         Return all variable nodes included in the graph as a set.
         """
         return {IrVarNode(node) for node in self.graph.nodes() if node.is_var()}
 
     def all_persistable_nodes(self):
-        """
+        r"""
         Return all persistable variable nodes included in the graph as a set.
         """
         persistable_nodes = set()
@@ -3667,13 +3667,13 @@ class IrGraph(object):
         return {IrVarNode(p) for p in persistable_nodes}
 
     def all_op_nodes(self):
-        """
+        r"""
         Return all operator nodes included in the graph as a set.
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
     def create_persistable_node(self, name, var_type, shape, var_dtype):
-        """
+        r"""
         Create a persistable variable node in the graph. In IrGraph,
         it can not distinguish between persistable variables and parameters.
 
@@ -3694,7 +3694,7 @@ class IrGraph(object):
         return IrVarNode(self.graph.create_var_node(var_desc))
 
     def create_var_node(self, name, var_type, shape, var_dtype):
-        """
+        r"""
         Create a variable node in the graph. The created variable node is
         not persistable.
 
@@ -3715,13 +3715,13 @@ class IrGraph(object):
         return IrVarNode(self.graph.create_var_node(var_desc))
 
     def create_control_dep_var(self):
-        """
+        r"""
         create a control var
         """
         return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
-        """
+        r"""
         Create a variable node by using an existing VarDesc in the graph.
         Depend on the giving VarDesc, the created variable node may be persistable.
 
@@ -3734,7 +3734,7 @@ class IrGraph(object):
         return IrVarNode(self.graph.create_var_node(var_desc))
 
     def create_op_node(self, op_type, attrs, inputs, outputs):
-        """
+        r"""
         Create a operator node in the graph.
 
         Args:
@@ -3763,7 +3763,7 @@ class IrGraph(object):
         return IrOpNode(self.graph.create_op_node(op_desc))
 
     def create_op_node_from_desc(self, op_desc):
-        """
+        r"""
         Create a operator node by using an existing OpDesc in the graph.
 
         Args:
@@ -3775,7 +3775,7 @@ class IrGraph(object):
         return IrOpNode(self.graph.create_op_node(op_desc))
 
     def update_input_link(self, old_input_node, new_input_node, op_node):
-        """
+        r"""
         Update the input's link of a operator node.
 
         Args:
@@ -3793,7 +3793,7 @@ class IrGraph(object):
         op_node.rename_input(old_input_node.name(), new_input_node.name())
 
     def update_output_link(self, old_output_node, new_output_node, op_node):
-        """
+        r"""
         Update the output's link of an operator node.
 
         Args:
@@ -3811,7 +3811,7 @@ class IrGraph(object):
         op_node.rename_output(old_output_node.name(), new_output_node.name())
 
     def link_to(self, node_in, node_out):
-        """
+        r"""
         Connect two nodes.
 
         Args:
@@ -3824,7 +3824,7 @@ class IrGraph(object):
         node_out.append_input(node_in)
 
     def safe_remove_nodes(self, remove_nodes):
-        """
+        r"""
         Remove nodes safely since links connected to these removed nodes are
         also removed.
 
@@ -3861,7 +3861,7 @@ class IrGraph(object):
         self.graph.resolve_hazard(var_nodes)
 
     def has_circle(self):
-        """
+        r"""
         Check if the graph has a circle.
 
         Returns:
@@ -3870,7 +3870,7 @@ class IrGraph(object):
         return core.has_circle(self.graph)
 
     def graph_num(self):
-        """
+        r"""
         Count the number of unconnected graphs in this graph.
 
         Returns:
@@ -3879,7 +3879,7 @@ class IrGraph(object):
         return core.graph_num(self.graph)
 
     def topology_sort(self):
-        """
+        r"""
         Perform the topology sort operation on the graph.
 
         Notes: the `graph` can not contain a circle.
@@ -3891,7 +3891,7 @@ class IrGraph(object):
         return [IrNode(n) for n in ordered_nodes]
 
     def build_adjacency_list(self):
-        """
+        r"""
         Build an adjacency list of operations for the `graph`.
 
         Returns:
@@ -3904,7 +3904,7 @@ class IrGraph(object):
         return wrapped_adj_list
 
     def draw(self, save_path, name, marked_nodes=None, remove_ctr_var=True):
-        """
+        r"""
         Draw the graph. If `dot` command is installed, the drawn graph
         will be saved as pdf file type, otherwise dot file type is used.
 
@@ -3955,7 +3955,7 @@ class IrGraph(object):
         _convert_to_pdf(viz_dot_path)
 
     def to_program(self):
-        """
+        r"""
         Convert the graph into a Program.
 
         WARN: When the graph includes backward operator nodes, the
@@ -3973,7 +3973,7 @@ class IrGraph(object):
         return program
 
     def _find_node_by_name(self, nodes, node_name):
-        """
+        r"""
         Find a node in the giving nodes set by the name.
         """
         target_node = None
@@ -3984,7 +3984,7 @@ class IrGraph(object):
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
-        """
+        r"""
         Update the value of desc's attribute by attribute's name.
         """
         if isinstance(val, Block):
@@ -4000,7 +4000,7 @@ class IrGraph(object):
 
 
 class Program(object):
-    """
+    r"""
     Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
     control flow op like conditional_block, while :ref:`api_paddle_fluid_layers_While` is included,
     it will contain nested block.
@@ -4098,7 +4098,7 @@ class Program(object):
         self._graph = None
 
     def global_seed(self, seed=0):
-        """
+        r"""
         Set global seed for Program
 
         Returns:
@@ -4129,7 +4129,7 @@ class Program(object):
 
     @property
     def _op_role(self):
-        """
+        r"""
         The operator role. In a enum {Forward, Backward, Optimize}.
 
         Notes: this is a low level API. It is used only for ParallelExecutor to
@@ -4150,7 +4150,7 @@ class Program(object):
 
     @property
     def _op_role_var(self):
-        """
+        r"""
         The auxiliary variables for :code:`_op_role` property.
 
         See Also: :code:`Program._op_role`'s documentation for details.
@@ -4172,7 +4172,7 @@ class Program(object):
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
-        """
+        r"""
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
 
@@ -4205,7 +4205,7 @@ class Program(object):
 
     @signature_safe_contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
-        """
+        r"""
         A with guard to set :code:`LRSched` :code:`OpRole` and
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
         set to the target learning rate.
@@ -4241,7 +4241,7 @@ class Program(object):
             self._current_role = tmp_role
 
     def __str__(self):
-        """
+        r"""
         Get the protobuf debug string of this Program.
 
         Returns:
@@ -4253,7 +4253,7 @@ class Program(object):
         return self._to_readable_code()
 
     def _to_readable_code(self, skip_op_callstack=True):
-        """
+        r"""
         Get readable debug string of Program.
 
         .. note::
@@ -4293,7 +4293,7 @@ class Program(object):
         return program_str
 
     def to_string(self, throw_on_error, with_details=False):
-        """
+        r"""
         To debug string.
 
         Args:
@@ -4345,7 +4345,7 @@ class Program(object):
         return res_str
 
     def _get_desc(self):
-        """
+        r"""
         Get the C++ side of `ProgramDesc` object pointer. The C++ object is
         exposed by :code:`pybind`.
 
@@ -4358,7 +4358,7 @@ class Program(object):
         return self.desc._version()
 
     def clone(self, for_test=False):
-        """
+        r"""
         .. note:::
             1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` . 
             2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` . 
@@ -4570,7 +4570,7 @@ class Program(object):
         return p
 
     def _prune(self, targets):
-        """
+        r"""
         Prune operators and variables which are not needed to generate
         :code:`targets`.
 
@@ -4587,7 +4587,7 @@ class Program(object):
         return self._prune_with_input([], targets)
 
     def _prune_with_input(self, feeded_var_names, targets):
-        """
+        r"""
         Prune operators and variables which are not needed to generate
         :code:`targets`. Prune operators and variables which are needed 
         to generate feeded_var 
@@ -4680,7 +4680,7 @@ class Program(object):
         return res
 
     def _inference_optimize(self, prune_read_op=True):
-        """
+        r"""
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
 
@@ -4733,7 +4733,7 @@ class Program(object):
 
     @staticmethod
     def parse_from_string(binary_str):
-        """
+        r"""
         .. note::
             1. All information about parameters will be lost after serialization; 
             2. This API has no effect in Dygraph mode.
@@ -4779,7 +4779,7 @@ class Program(object):
 
     @staticmethod
     def _construct_from_desc(desc):
-        """
+        r"""
         Construct a program from program desc.
 
         Args:
@@ -4796,7 +4796,7 @@ class Program(object):
 
     @property
     def random_seed(self):
-        """
+        r"""
         The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
@@ -4835,7 +4835,7 @@ class Program(object):
 
     @property
     def num_blocks(self):
-        """
+        r"""
         The number of :ref:`api_guide_Block_en`  in this Program.
 
         .. note:: 
@@ -4874,7 +4874,7 @@ class Program(object):
         return self.__str__()
 
     def global_block(self):
-        """
+        r"""
         .. note::
             This API has no effect in Dygraph mode.
 
@@ -4900,7 +4900,7 @@ class Program(object):
         return self.blocks[0]
 
     def block(self, index):
-        """
+        r"""
         .. note::
             This API has no effect in Dygraph mode.
 
@@ -4927,7 +4927,7 @@ class Program(object):
         return self.blocks[index]
 
     def current_block(self):
-        """
+        r"""
         .. note::
             This API has no effect in Dygraph mode.
 
@@ -4952,7 +4952,7 @@ class Program(object):
         return self.blocks[self.current_block_idx]
 
     def _create_block(self, parent_idx=None):
-        """
+        r"""
         Create a new block with the :code:`parent_idx` and change the current block
         to new block.
 
@@ -4972,7 +4972,7 @@ class Program(object):
         return self.current_block()
 
     def _rollback(self):
-        """
+        r"""
         Exit a code block, i.e., roll back to the parent block.
         Returns:
             None
@@ -4980,7 +4980,7 @@ class Program(object):
         self.current_block_idx = self.current_block().parent_idx
 
     def _sync_with_cpp(self):
-        """
+        r"""
         Synchronize Python instance to its binding C++ object instance.
         If the program is modified in C++ space, this method should be invoked.
 
@@ -4996,7 +4996,7 @@ class Program(object):
             block._sync_with_cpp()
 
     def _copy_param_info_from(self, other):
-        """
+        r"""
         Copy the information of parameters from other program.
 
         Notes: This is a very low level API. Users should not invoke it
@@ -5016,7 +5016,7 @@ class Program(object):
         self.global_block()._copy_param_info_from(other.global_block())
 
     def _copy_dist_param_info_from(self, other):
-        """
+        r"""
         Copy the information of distributed information from other program.
 
         Args:
@@ -5037,7 +5037,7 @@ class Program(object):
         self._distributed_lookup_table = other._distributed_lookup_table
 
     def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
-        """
+        r"""
         Copy the information of data variables from other program.
 
         Notes: This is a very low level API. Users should not invoke it
@@ -5078,7 +5078,7 @@ class Program(object):
                     var.stop_gradient = True
 
     def list_vars(self):
-        """
+        r"""
         Get all Tensors from this Program. A iterable object is returned.
 
         Returns:
@@ -5106,7 +5106,7 @@ class Program(object):
                 yield each_var
 
     def all_parameters(self):
-        """
+        r"""
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
 
         Returns:
@@ -5147,7 +5147,7 @@ class Program(object):
 
 @six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):
-    """
+    r"""
     Parameter is derived from Variable. A parameter is a persistable
     Variable, and will be updated by optimizers after each iteration.
     The training of a neural network is essentially the updating of
@@ -5215,7 +5215,7 @@ class Parameter(Variable):
         return self._to_readable_code()
 
     def to_string(self, throw_on_error, with_details=False):
-        """
+        r"""
         To debug string.
 
         Args:
@@ -5253,7 +5253,7 @@ class Parameter(Variable):
 
 
 class ParamBase(core.VarBase):
-    """
+    r"""
     ParamBase is derived from Tensor( Which is the concept in Dygraph Mode). 
     A ParamBase is a persistable Tensor, and will be updated by optimizers 
     after each iteration.
@@ -5333,7 +5333,7 @@ class ParamBase(core.VarBase):
                 type(trainable))
 
     def __str__(self):
-        """
+        r"""
         Convert a ParamBase object to a readable string.
 
         Returns(str): A readable string.
@@ -5362,7 +5362,7 @@ _startup_program_ = Program()
 
 
 def default_startup_program():
-    """
+    r"""
     Get default/global startup program.
 
     The :code:`paddle.nn` function will append the initialization operators into startup program.
@@ -5391,7 +5391,7 @@ def default_startup_program():
 
 
 def default_main_program():
-    """
+    r"""
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
     
@@ -5427,7 +5427,7 @@ def default_main_program():
 
 
 def switch_main_program(program):
-    """
+    r"""
     Switch the main program to a new program.
 
     Args:
@@ -5443,7 +5443,7 @@ def switch_main_program(program):
 
 
 def switch_startup_program(program):
-    """
+    r"""
     Switch the startup program to a new program
     Args:
         program(Program): The new startup program
@@ -5459,7 +5459,7 @@ def switch_startup_program(program):
 
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     Change the global main program and startup program with ``with`` statement.
@@ -5517,7 +5517,7 @@ def program_guard(main_program, startup_program=None):
 
 
 def _get_var(name, program=None):
-    """
+    r"""
     Get a variable by name from the global block of a program.
 
     Args:
@@ -5563,7 +5563,7 @@ def _dygraph_place_guard(place):
 
 
 def load_op_library(lib_filename):
-    """
+    r"""
     :api_attr: Static Graph
     
     Load a dynamic library, including custom operators and kernels.
@@ -5595,7 +5595,7 @@ def switch_device(device):
 
 @signature_safe_contextmanager
 def device_guard(device=None):
-    """
+    r"""
     **Notes**:
         **The API only supports static mode.**
 
@@ -5655,7 +5655,7 @@ def device_guard(device=None):
 
 
 def set_flags(flags):
-    """
+    r"""
     This function sets the GFlags value in Paddle.
 
     Args:
@@ -5678,7 +5678,7 @@ def set_flags(flags):
 
 
 def get_flags(flags):
-    """
+    r"""
     This function gets the GFlags value in Paddle.
 
     Args:

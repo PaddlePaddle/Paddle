@@ -34,7 +34,7 @@ else:
 
 
 def to_tensor(pic, data_format='CHW'):
-    """Converts a ``numpy.ndarray`` to paddle.Tensor.
+    r"""Converts a ``numpy.ndarray`` to paddle.Tensor.
 
     See ``ToTensor`` for more details.
 
@@ -67,7 +67,7 @@ def to_tensor(pic, data_format='CHW'):
 
 
 def resize(img, size, interpolation='bilinear'):
-    """
+    r"""
     Resizes the image to given size
 
     Args:
@@ -129,7 +129,7 @@ def resize(img, size, interpolation='bilinear'):
 
 
 def pad(img, padding, fill=0, padding_mode='constant'):
-    """
+    r"""
     Pads the given numpy.array on all sides with specified padding mode and fill value.
 
     Args:
@@ -219,7 +219,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
 
 def crop(img, top, left, height, width):
-    """Crops the given image.
+    r"""Crops the given image.
 
     Args:
         img (np.array): Image to be cropped. (0,0) denotes the top left 
@@ -238,7 +238,7 @@ def crop(img, top, left, height, width):
 
 
 def center_crop(img, output_size):
-    """Crops the given image and resize it to desired size.
+    r"""Crops the given image and resize it to desired size.
 
         Args:
             img (np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
@@ -262,7 +262,7 @@ def center_crop(img, output_size):
 
 
 def hflip(img):
-    """Horizontally flips the given image.
+    r"""Horizontally flips the given image.
 
     Args:
         img (np.array): Image to be flipped.
@@ -277,7 +277,7 @@ def hflip(img):
 
 
 def vflip(img):
-    """Vertically flips the given np.array.
+    r"""Vertically flips the given np.array.
 
     Args:
         img (np.array): Image to be flipped.
@@ -295,7 +295,7 @@ def vflip(img):
 
 
 def adjust_brightness(img, brightness_factor):
-    """Adjusts brightness of an image.
+    r"""Adjusts brightness of an image.
 
     Args:
         img (np.array): Image to be adjusted.
@@ -319,7 +319,7 @@ def adjust_brightness(img, brightness_factor):
 
 
 def adjust_contrast(img, contrast_factor):
-    """Adjusts contrast of an image.
+    r"""Adjusts contrast of an image.
 
     Args:
         img (np.array): Image to be adjusted.
@@ -342,7 +342,7 @@ def adjust_contrast(img, contrast_factor):
 
 
 def adjust_saturation(img, saturation_factor):
-    """Adjusts color saturation of an image.
+    r"""Adjusts color saturation of an image.
 
     Args:
         img (np.array): Image to be adjusted.
@@ -367,7 +367,7 @@ def adjust_saturation(img, saturation_factor):
 
 
 def adjust_hue(img, hue_factor):
-    """Adjusts hue of an image.
+    r"""Adjusts hue of an image.
 
     The image hue is adjusted by converting the image to HSV and
     cyclically shifting the intensities in the hue channel (H).
@@ -408,7 +408,7 @@ def adjust_hue(img, hue_factor):
 
 
 def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
-    """Rotates the image by angle.
+    r"""Rotates the image by angle.
 
     Args:
         img (np.array): Image to be rotated.
@@ -446,7 +446,7 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
 
 
 def to_grayscale(img, num_output_channels=1):
-    """Converts image to grayscale version of image.
+    r"""Converts image to grayscale version of image.
 
     Args:
         img (np.array): Image to be converted to grayscale.
@@ -473,7 +473,7 @@ def to_grayscale(img, num_output_channels=1):
 
 
 def normalize(img, mean, std, data_format='CHW', to_rgb=False):
-    """Normalizes a ndarray imge or image with mean and standard deviation.
+    r"""Normalizes a ndarray imge or image with mean and standard deviation.
 
     Args:
         img (np.array): input data to be normalized.

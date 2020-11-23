@@ -54,7 +54,7 @@ __all__ = [
 
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
-    """
+    r"""
     Constructs a ``paddle.Tensor`` or ``paddle.ComplexTensor`` from ``data`` , 
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
 
@@ -202,7 +202,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
 
 def full_like(x, fill_value, dtype=None, name=None):
-    """
+    r"""
 
     This function creates a tensor filled with ``fill_value`` which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
@@ -259,7 +259,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def ones(shape, dtype=None, name=None):
-    """
+    r"""
 
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
@@ -299,7 +299,7 @@ def ones(shape, dtype=None, name=None):
 
 
 def ones_like(x, dtype=None, name=None):
-    """
+    r"""
     This OP returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -336,7 +336,7 @@ def ones_like(x, dtype=None, name=None):
 
 
 def zeros(shape, dtype=None, name=None):
-    """
+    r"""
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
@@ -374,7 +374,7 @@ def zeros(shape, dtype=None, name=None):
 
 
 def zeros_like(x, dtype=None, name=None):
-    """
+    r"""
     This OP returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
@@ -411,7 +411,7 @@ def zeros_like(x, dtype=None, name=None):
 
 
 def eye(num_rows, num_columns=None, dtype=None, name=None):
-    """
+    r"""
     
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
@@ -454,7 +454,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
 
 def full(shape, fill_value, dtype=None, name=None):
-    """
+    r"""
 
     This Op return a Tensor with the ``fill_value`` which size is same as ``shape``.
     
@@ -508,7 +508,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
 
 def arange(start=0, end=None, step=1, dtype=None, name=None):
-    """
+    r"""
     This OP returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
@@ -575,7 +575,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
 
 def _tril_triu_op(helper):
-    """Base op of tril_op and triu_op
+    r"""Base op of tril_op and triu_op
     """
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -609,7 +609,7 @@ def _tril_triu_op(helper):
 
 
 def tril(x, diagonal=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.tril
 	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
 
@@ -680,7 +680,7 @@ def tril(x, diagonal=0, name=None):
 
 
 def triu(x, diagonal=0, name=None):
-    """
+    r"""
 	:alias_main: paddle.triu
 	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
 
@@ -751,7 +751,7 @@ def triu(x, diagonal=0, name=None):
 
 
 def meshgrid(*args, **kwargs):
-    """
+    r"""
 	:alias_main: paddle.meshgrid
 	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
 
@@ -816,7 +816,7 @@ def meshgrid(*args, **kwargs):
 
 
 def diag(x, offset=0, padding_value=0, name=None):
-    """
+    r"""
     If ``x`` is a vector (1-D tensor), a 2-D square tensor whth the elements of ``x`` as the diagonal is returned.
 
     If ``x`` is a matrix (2-D tensor), a 1-D tensor with the diagonal elements of ``x`` is returned.
@@ -912,7 +912,7 @@ def diag(x, offset=0, padding_value=0, name=None):
 
 
 def empty(shape, dtype=None, name=None):
-    """
+    r"""
     This Op returns a Tensor with uninitialized data which size is same as ``shape``.
     
     Args:
@@ -998,7 +998,7 @@ def empty(shape, dtype=None, name=None):
 
 
 def empty_like(x, dtype=None, name=None):
-    """
+    r"""
     This Op returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
     
@@ -1064,7 +1064,7 @@ def empty_like(x, dtype=None, name=None):
 
 
 def assign(x, output=None):
-    """
+    r"""
  
  
     The OP copies the :attr:`x` to the :attr:`output`.

@@ -42,7 +42,7 @@ from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
     def _load_persistable_vars(self, executor, dirname, program):
         def _is_checkpoint_var(var):
-            """
+            r"""
             the checkpoint will not save or load all the variables.
             var type is FEED_MINIBATCH/FETCH_LIST/RAW or var name ends with @GRAD are discarded.
 

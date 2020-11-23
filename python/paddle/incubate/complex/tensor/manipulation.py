@@ -24,7 +24,7 @@ __all__ = [
 
 
 def reshape(x, shape, inplace=False, name=None):
-    """
+    r"""
     To change the shape of ``x`` without changing its data.
 
     There are some tricks when specifying the target shape.
@@ -110,7 +110,7 @@ def reshape(x, shape, inplace=False, name=None):
 
 
 def transpose(x, perm, name=None):
-    """
+    r"""
     Permute the data dimensions for complex number :attr:`input` according to `perm`. 
     
     See :ref:`api_fluid_layers_transpose` for the real number API. 

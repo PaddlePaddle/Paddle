@@ -120,7 +120,7 @@ class CallbackList(object):
 
 
 class Callback(object):
-    """
+    r"""
     Base class used to build new callbacks.
 
     Examples:
@@ -148,7 +148,7 @@ class Callback(object):
         self.params = {}
 
     def set_params(self, params):
-        """
+        r"""
         Set parameters, which is dict. The keys contain:
 
           - 'batch_size': an integer. Number of samples per batch.
@@ -162,19 +162,19 @@ class Callback(object):
         self.params = params
 
     def set_model(self, model):
-        """model is instance of paddle.Model.
+        r"""model is instance of paddle.Model.
         """
         self.model = model
 
     def on_train_begin(self, logs=None):
-        """Called at the start of training.
+        r"""Called at the start of training.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
     def on_train_end(self, logs=None):
-        """Called at the end of training.
+        r"""Called at the end of training.
 
         Args:
             logs (dict): The logs is a dict or None. The keys of logs
@@ -183,7 +183,7 @@ class Callback(object):
         """
 
     def on_eval_begin(self, logs=None):
-        """Called at the start of evaluation.
+        r"""Called at the start of evaluation.
 
         Args:
             logs (dict): The logs is a dict or None. The keys of logs
@@ -194,7 +194,7 @@ class Callback(object):
         """
 
     def on_eval_end(self, logs=None):
-        """Called at the end of evaluation.
+        r"""Called at the end of evaluation.
 
         Args:
             logs (dict): The logs is a dict or None. The `logs` passed by
@@ -203,21 +203,21 @@ class Callback(object):
         """
 
     def on_test_begin(self, logs=None):
-        """Called at the beginning of predict.
+        r"""Called at the beginning of predict.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
     def on_test_end(self, logs=None):
-        """Called at the end of predict.
+        r"""Called at the end of predict.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
     def on_epoch_begin(self, epoch, logs=None):
-        """Called at the beginning of each epoch.
+        r"""Called at the beginning of each epoch.
 
         Args:
             epoch (int): The index of epoch.
@@ -226,7 +226,7 @@ class Callback(object):
         """
 
     def on_epoch_end(self, epoch, logs=None):
-        """Called at the end of each epoch.
+        r"""Called at the end of each epoch.
 
         Args:
             epoch (int): The index of epoch.
@@ -236,7 +236,7 @@ class Callback(object):
         """
 
     def on_train_batch_begin(self, step, logs=None):
-        """Called at the beginning of each batch in training.
+        r"""Called at the beginning of each batch in training.
 
         Args:
             step (int): The index of step (or iteration).
@@ -245,7 +245,7 @@ class Callback(object):
         """
 
     def on_train_batch_end(self, step, logs=None):
-        """Called at the end of each batch in training.
+        r"""Called at the end of each batch in training.
 
         Args:
             step (int): The index of step (or iteration).
@@ -255,7 +255,7 @@ class Callback(object):
         """
 
     def on_eval_batch_begin(self, step, logs=None):
-        """Called at the beginning of each batch in evaluation.
+        r"""Called at the beginning of each batch in evaluation.
 
         Args:
             step (int): The index of step (or iteration).
@@ -264,7 +264,7 @@ class Callback(object):
         """
 
     def on_eval_batch_end(self, step, logs=None):
-        """Called at the end of each batch in evaluation.
+        r"""Called at the end of each batch in evaluation.
 
         Args:
             step (int): The index of step (or iteration).
@@ -274,7 +274,7 @@ class Callback(object):
         """
 
     def on_test_batch_begin(self, step, logs=None):
-        """Called at the beginning of each batch in predict.
+        r"""Called at the beginning of each batch in predict.
 
         Args:
             step (int): The index of step (or iteration).
@@ -282,7 +282,7 @@ class Callback(object):
         """
 
     def on_test_batch_end(self, step, logs=None):
-        """Called at the end of each batch in predict.
+        r"""Called at the end of each batch in predict.
 
         Args:
             step (int): The index of step (or iteration).
@@ -291,7 +291,7 @@ class Callback(object):
 
 
 class ProgBarLogger(Callback):
-    """Logger callback function
+    r"""Logger callback function
     Args:
         log_freq (int): The frequency, in number of steps, the logs such as `loss`, 
                 `metrics` are printed. Default: 1.
@@ -432,7 +432,7 @@ class ProgBarLogger(Callback):
 
 
 class ModelCheckpoint(Callback):
-    """Model checkpoint callback function
+    r"""Model checkpoint callback function
     Args:
         save_freq(int): The frequency, in number of epochs, the model checkpoint 
                         are saved. Default: 1.
@@ -492,7 +492,7 @@ class ModelCheckpoint(Callback):
 
 
 class LRScheduler(Callback):
-    """Lr scheduler callback function
+    r"""Lr scheduler callback function
     Args:
         by_step(bool, optional): whether to update learning rate scheduler 
             by step. Default: True.
@@ -582,7 +582,7 @@ class LRScheduler(Callback):
 
 
 class VisualDL(Callback):
-    """VisualDL callback function
+    r"""VisualDL callback function
     Args:
         log_dir (str): The directory to save visualdl log file.
 

@@ -38,7 +38,7 @@ if fluid.is_compiled_with_cuda():
 
 def get_interp1d_mask(tscale, dscale, prop_boundary_ratio, num_sample,
                       num_sample_perbin):
-    """ generate sample mask for each point in Boundary-Matching Map """
+    r""" generate sample mask for each point in Boundary-Matching Map """
     mask_mat = []
     for start_index in range(tscale):
         mask_mat_vector = []
@@ -66,7 +66,7 @@ def get_interp1d_mask(tscale, dscale, prop_boundary_ratio, num_sample,
 
 def _get_interp1d_bin_mask(seg_xmin, seg_xmax, tscale, num_sample,
                            num_sample_perbin):
-    """ generate sample mask for a boundary-matching pair """
+    r""" generate sample mask for a boundary-matching pair """
     plen = float(seg_xmax - seg_xmin)
     plen_sample = plen / (num_sample * num_sample_perbin - 1.0)
     total_samples = [
@@ -446,7 +446,7 @@ def optimizer(cfg, parameter_list):
 
 def fake_data_reader(args, mode='train'):
     def iou_with_anchors(anchors_min, anchors_max, box_min, box_max):
-        """Compute jaccard score between a box and the anchors.
+        r"""Compute jaccard score between a box and the anchors.
         """
         len_anchors = anchors_max - anchors_min
         int_xmin = np.maximum(anchors_min, box_min)
@@ -457,7 +457,7 @@ def fake_data_reader(args, mode='train'):
         return jaccard
 
     def ioa_with_anchors(anchors_min, anchors_max, box_min, box_max):
-        """Compute intersection between score a box and the anchors.
+        r"""Compute intersection between score a box and the anchors.
         """
         len_anchors = anchors_max - anchors_min
         int_xmin = np.maximum(anchors_min, box_min)

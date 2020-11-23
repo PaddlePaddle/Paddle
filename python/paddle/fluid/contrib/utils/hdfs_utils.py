@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
+r"""hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
 
 import os
 import sys
@@ -33,7 +33,7 @@ _logger = get_logger(
 
 
 class HDFSClient(object):
-    """
+    r"""
     A tool of HDFS 
 
     Args:
@@ -93,7 +93,7 @@ class HDFSClient(object):
         return ret_code, ret_out, ret_err
 
     def upload(self, hdfs_path, local_path, overwrite=False, retry_times=5):
-        """
+        r"""
         upload the local file to hdfs
 
         Args:
@@ -143,7 +143,7 @@ class HDFSClient(object):
             return True
 
     def download(self, hdfs_path, local_path, overwrite=False, unzip=False):
-        """
+        r"""
         download file from HDFS
 
         Args:
@@ -192,7 +192,7 @@ class HDFSClient(object):
             return True
 
     def is_exist(self, hdfs_path=None):
-        """
+        r"""
         whether the remote HDFS path exists
 
         Args:
@@ -215,7 +215,7 @@ class HDFSClient(object):
             return True
 
     def is_dir(self, hdfs_path=None):
-        """
+        r"""
         whether the remote HDFS path is directory
 
         Args:
@@ -241,7 +241,7 @@ class HDFSClient(object):
             return True
 
     def delete(self, hdfs_path):
-        """
+        r"""
         Remove a file or directory from HDFS.
 
         whether the remote HDFS path exists
@@ -277,7 +277,7 @@ class HDFSClient(object):
             return True
 
     def rename(self, hdfs_src_path, hdfs_dst_path, overwrite=False):
-        """
+        r"""
         Move a file or folder on HDFS.
 
         Args:
@@ -311,7 +311,7 @@ class HDFSClient(object):
 
     @staticmethod
     def make_local_dirs(local_path):
-        """
+        r"""
         create a directory local, is same to mkdir
         Args:
             local_path: local path that wants to create a directory.
@@ -323,7 +323,7 @@ class HDFSClient(object):
                 raise
 
     def makedirs(self, hdfs_path):
-        """
+        r"""
         Create a remote directory, recursively if necessary.
 
         Args:
@@ -351,7 +351,7 @@ class HDFSClient(object):
             return True
 
     def ls(self, hdfs_path):
-        """
+        r"""
         ls directory contents about HDFS hdfs_path
 
         Args:
@@ -385,7 +385,7 @@ class HDFSClient(object):
             return ret_lines
 
     def lsr(self, hdfs_path, only_file=True, sort=True):
-        """
+        r"""
         list directory contents about HDFS hdfs_path recursively
 
         Args:
@@ -440,7 +440,7 @@ def multi_download(client,
                    trainer_id,
                    trainers,
                    multi_processes=5):
-    """
+    r"""
     Download files from HDFS using multi process.
 
     Args:
@@ -521,7 +521,7 @@ def multi_upload(client,
                  multi_processes=5,
                  overwrite=False,
                  sync=True):
-    """
+    r"""
     Upload files to HDFS using multi process.
 
     Args:

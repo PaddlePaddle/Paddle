@@ -26,7 +26,7 @@ __all__ = ['data', 'InputSpec']
 
 @static_only
 def data(name, shape, dtype=None, lod_level=0):
-    """
+    r"""
     **Data Layer**
 
     This function creates a variable on the global block. The global variable
@@ -120,7 +120,7 @@ def data(name, shape, dtype=None, lod_level=0):
 
 
 class InputSpec(object):
-    """
+    r"""
     InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 
     This interface is often used to specify input tensor information of models in high-level API.
@@ -169,7 +169,7 @@ class InputSpec(object):
 
     @classmethod
     def from_tensor(cls, tensor, name=None):
-        """
+        r"""
         Generates a InputSpec based on the description of input tensor.
 
         Args:
@@ -201,7 +201,7 @@ class InputSpec(object):
 
     @classmethod
     def from_numpy(cls, ndarray, name=None):
-        """
+        r"""
         Generates a InputSpec based on the description of input np.ndarray.
 
         Args:
@@ -224,7 +224,7 @@ class InputSpec(object):
         return cls(ndarray.shape, ndarray.dtype, name)
 
     def batch(self, batch_size):
-        """
+        r"""
         Inserts `batch_size` in front of the `shape`.
 
         Args:
@@ -259,7 +259,7 @@ class InputSpec(object):
         return self
 
     def unbatch(self):
-        """
+        r"""
         Removes the first element of `shape`.
 
         Returns:
@@ -283,7 +283,7 @@ class InputSpec(object):
         return self
 
     def _verify(self, shape):
-        """
+        r"""
         Verifies the input shape and modifies `None` into `-1`.
         """
         if not isinstance(shape, (list, tuple)):

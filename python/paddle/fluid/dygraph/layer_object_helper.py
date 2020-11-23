@@ -33,7 +33,7 @@ class LayerObjectHelper(LayerHelperBase):
                   outputs=None,
                   attrs=None,
                   stop_gradient=None):
-        """append an operator for this layer object.
+        r"""append an operator for this layer object.
 
            Args:
                type: operator type
@@ -84,7 +84,7 @@ class LayerObjectHelper(LayerHelperBase):
         return param_attr
 
     def iter_inputs_and_params(self, inputs_in, param_attr_in=None):
-        """Access all inputs and params one by one
+        r"""Access all inputs and params one by one
 
            Args:
                inputs_in: inputs to be iter
@@ -103,7 +103,7 @@ class LayerObjectHelper(LayerHelperBase):
             yield ipt, param_attr
 
     def input_dtype(self, inputs_in):
-        """Get input data type
+        r"""Get input data type
 
            Args:
                inputs_in: inputs wanted know the data type
@@ -122,7 +122,7 @@ class LayerObjectHelper(LayerHelperBase):
         return dtype
 
     def get_parameter(self, name):
-        """Get parameter specifically
+        r"""Get parameter specifically
 
            Args:
                name: parameter's name
@@ -137,7 +137,7 @@ class LayerObjectHelper(LayerHelperBase):
 
     # TODO: this should not be called anymore after all activation func move to Layers
     def append_activation(self, input_var, act=None, use_cudnn=None):
-        """Append activation
+        r"""Append activation
 
             Args:
                 input_var: the input variable. The len(input_var.shape) is
@@ -172,7 +172,7 @@ class LayerObjectHelper(LayerHelperBase):
         return tmp
 
     def is_instance(self, param, cls):
-        """Check if the input parameter is instance of input class
+        r"""Check if the input parameter is instance of input class
 
             Args:
                 param: parameter to be check

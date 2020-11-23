@@ -25,7 +25,7 @@ import paddle.fluid as fluid
 
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
-    """Test sigmoid_cross_entropy_with_logit_op with binary label
+    r"""Test sigmoid_cross_entropy_with_logit_op with binary label
     """
 
     def setUp(self):
@@ -56,7 +56,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
-    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    r"""Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
 
     def setUp(self):
@@ -90,7 +90,7 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
-    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    r"""Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
 
     def setUp(self):
@@ -152,7 +152,7 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
-    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    r"""Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
 
     def setUp(self):
@@ -214,7 +214,7 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
-    """Test sigmoid_cross_entropy_with_logit_op with binary label
+    r"""Test sigmoid_cross_entropy_with_logit_op with binary label
     """
 
     def setUp(self):

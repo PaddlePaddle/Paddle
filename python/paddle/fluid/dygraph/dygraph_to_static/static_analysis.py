@@ -21,7 +21,7 @@ __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
 
 class NodeVarType(object):
-    """
+    r"""
     Enum class of python variable types. We have to know some variable types
     during compile time to transfer AST. For example, a string variable and a
     tensor variable in if clause may lead to different conversion from dygraph
@@ -85,7 +85,7 @@ class NodeVarType(object):
 
 
 class AstNodeWrapper(object):
-    """
+    r"""
     Wrapper for python gast.node. We need a node wrapper because gast.node
     doesn't store all required information when we are transforming AST.
     We should collect additional information which the actual transformation
@@ -100,7 +100,7 @@ class AstNodeWrapper(object):
 
 
 class AstVarScope(object):
-    """
+    r"""
     AstVarScope is a class holding the map from current scope variable to its
     type.
     """
@@ -153,7 +153,7 @@ class AstVarScope(object):
 
 
 class AstVarEnv(object):
-    """
+    r"""
     A class maintains scopes and mapping from name strings to type.
     """
 
@@ -198,7 +198,7 @@ class AstVarEnv(object):
 
 
 class StaticAnalysisVisitor(object):
-    """
+    r"""
     A class that does static analysis
     """
 

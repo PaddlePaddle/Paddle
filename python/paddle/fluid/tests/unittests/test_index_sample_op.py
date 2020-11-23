@@ -45,7 +45,7 @@ class TestIndexSampleOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def config(self):
-        """
+        r"""
         For multi-dimension input
         """
         self.x_shape = (10, 20)
@@ -56,7 +56,7 @@ class TestIndexSampleOp(OpTest):
 
 class TestCase1(TestIndexSampleOp):
     def config(self):
-        """
+        r"""
         For one dimension input
         """
         self.x_shape = (100, 1)
@@ -67,7 +67,7 @@ class TestCase1(TestIndexSampleOp):
 
 class TestCase2(TestIndexSampleOp):
     def config(self):
-        """
+        r"""
         For int64_t index type
         """
         self.x_shape = (10, 100)
@@ -78,7 +78,7 @@ class TestCase2(TestIndexSampleOp):
 
 class TestCase3(TestIndexSampleOp):
     def config(self):
-        """
+        r"""
         For int index type
         """
         self.x_shape = (10, 100)
@@ -89,7 +89,7 @@ class TestCase3(TestIndexSampleOp):
 
 class TestCase4(TestIndexSampleOp):
     def config(self):
-        """
+        r"""
         For int64 index type
         """
         self.x_shape = (10, 100)

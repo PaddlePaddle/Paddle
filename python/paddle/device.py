@@ -39,7 +39,7 @@ _cudnn_version = None
 
 
 def is_compiled_with_xpu():
-    """
+    r"""
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
 
     Returns (bool): whether paddle was built with WITH_XPU=ON
@@ -54,7 +54,7 @@ def is_compiled_with_xpu():
 
 
 def XPUPlace(dev_id):
-    """
+    r"""
     Return a Baidu Kunlun Place
 
     Parameters:
@@ -70,7 +70,7 @@ def XPUPlace(dev_id):
 
 
 def get_cudnn_version():
-    """
+    r"""
     This funciton return the version of cudnn. the retuen value is int which represents the 
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
     
@@ -102,7 +102,7 @@ def get_cudnn_version():
 
 
 def set_device(device):
-    """
+    r"""
     Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
@@ -168,7 +168,7 @@ def set_device(device):
 
 
 def get_device():
-    """
+    r"""
     This funciton can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x' and 'xpu:x'. if the global device is not
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it 

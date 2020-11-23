@@ -20,7 +20,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 
 class CastTransformer(gast.NodeTransformer):
-    """
+    r"""
     This class transforms type casting into Static Graph Ast.
     """
 

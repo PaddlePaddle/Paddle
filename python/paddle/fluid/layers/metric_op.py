@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 All layers just related to metric.
 """
 
@@ -30,7 +30,7 @@ __all__ = ['accuracy', 'auc']
 
 
 def accuracy(input, label, k=1, correct=None, total=None):
-    """
+    r"""
     accuracy layer.
     Refer to the https://en.wikipedia.org/wiki/Precision_and_recall
 
@@ -114,7 +114,7 @@ def auc(input,
         num_thresholds=2**12 - 1,
         topk=1,
         slide_steps=1):
-    """
+    r"""
     **Area Under the Curve (AUC) Layer**
 
     This implementation computes the AUC according to forward output and label.

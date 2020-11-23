@@ -23,7 +23,7 @@ __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
 def _create_regularization_of_grad(param, grad, regularization=None):
-    """ Create and add backward regularization Operators
+    r""" Create and add backward regularization Operators
 
     Function helper of append_regularization_ops.
     """
@@ -63,7 +63,7 @@ def _create_regularization_of_grad(param, grad, regularization=None):
 
 
 def append_regularization_ops(parameters_and_grads, regularization=None):
-    """Create and add backward regularization Operators
+    r"""Create and add backward regularization Operators
 
     Creates and adds backward regularization operators in the BlockDesc.
     This will add gradients of the regularizer function to the gradients
@@ -107,7 +107,7 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
 
 
 class WeightDecayRegularizer(object):
-    """Base class for weight decay regularizers
+    r"""Base class for weight decay regularizers
 
     Defines the common interface of weight-decay regularizers.
     Weight-decay regularizers are added only during the backward
@@ -121,18 +121,18 @@ class WeightDecayRegularizer(object):
         pass
 
     def __call__(self, param, grad, block):
-        """Add corresponding weight decay operations to the network
+        r"""Add corresponding weight decay operations to the network
         """
         raise NotImplementedError()
 
     def __str__(self):
-        """Debug string
+        r"""Debug string
         """
         raise NotImplementedError()
 
 
 class L2DecayRegularizer(WeightDecayRegularizer):
-    """ 
+    r""" 
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
     It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
@@ -201,7 +201,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         self._regularization_coeff = regularization_coeff
 
     def __call__(self, param, grad, block):
-        """Add L2 weight decay ops to network
+        r"""Add L2 weight decay ops to network
 
         Adds L2 weight decay ops.
         L2WeightDecay = reg_coeff * parameter
@@ -239,7 +239,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
 
 class L1DecayRegularizer(WeightDecayRegularizer):
-    """
+    r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
     It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ). 
@@ -308,7 +308,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         self._regularization_coeff = regularization_coeff
 
     def __call__(self, param, grad, block):
-        """Add L1 weight decay ops to network
+        r"""Add L1 weight decay ops to network
 
         Adds L1 weight decay ops.
         L1WeightDecay = reg_coeff * sign(parameter)

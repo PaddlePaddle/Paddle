@@ -42,12 +42,12 @@ def add_position_encoding(input, alpha=1.0, beta=1.0):
 
 
 class TestAddPositionEncodingTensorOp(OpTest):
-    """
+    r"""
     This class is to test the AddPositionEncodingOp
     """
 
     def setUp(self):
-        """
+        r"""
         the prepared section for add position encoding op
         """
         self.op_type = "add_position_encoding"
@@ -59,19 +59,19 @@ class TestAddPositionEncodingTensorOp(OpTest):
         self.attrs = {'alpha': self.alpha, 'beta': self.beta}
 
     def test_check_output(self):
-        """
+        r"""
         check the correctness of output
         """
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        """
+        r"""
         check the correctness of grad
         """
         self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def init_input_output(self):
-        """
+        r"""
         init the input and output for test cases
         """
         self.alpha = 0.6
@@ -82,12 +82,12 @@ class TestAddPositionEncodingTensorOp(OpTest):
 
 
 class TestAddPositionEncodingLoDTensorOp(OpTest):
-    """
+    r"""
     This class is to test the AddPositionEncodingLoDTensorOp
     """
 
     def setUp(self):
-        """
+        r"""
         the prepared section for add position encoding LoDTensor op
         """
         self.op_type = "add_position_encoding"
@@ -99,19 +99,19 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
         self.attrs = {'alpha': self.alpha, 'beta': self.beta}
 
     def test_check_output(self):
-        """
+        r"""
         check the correctness of output
         """
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        """
+        r"""
         check the correctness of grad
         """
         self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def init_input_output(self):
-        """
+        r"""
         init the input and output for test cases
         """
         self.alpha = 0.6

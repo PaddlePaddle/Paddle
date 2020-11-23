@@ -30,7 +30,7 @@ __all__ = [
 
 
 def elementwise_add(x, y, axis=-1, name=None):
-    """
+    r"""
     The element-wise addition layer for complex number inputs. At least one of 
     inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the detailed 
     description for the function and other arguments 
@@ -81,7 +81,7 @@ def elementwise_add(x, y, axis=-1, name=None):
 
 
 def elementwise_sub(x, y, axis=-1, name=None):
-    """
+    r"""
     The element-wise subtraction layer for complex number inputs. At least one of 
     inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the detailed 
     description for the function and other arguments 
@@ -132,7 +132,7 @@ def elementwise_sub(x, y, axis=-1, name=None):
 
 
 def elementwise_mul(x, y, axis=-1, name=None):
-    """
+    r"""
     The element-wise multiplication layer for complex number inputs. At least 
     one of inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the 
     detailed description for the function and other arguments 
@@ -186,7 +186,7 @@ def elementwise_mul(x, y, axis=-1, name=None):
 
 
 def elementwise_div(x, y, axis=-1, name=None):
-    """
+    r"""
     The element-wise division layer for complex number inputs. At least one of 
     inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the detailed 
     description for the function and other arguments 
@@ -237,7 +237,7 @@ def elementwise_div(x, y, axis=-1, name=None):
 
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
-    """
+    r"""
     The layer to compute the trace for a complex number tensor. x :attr:`x` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
     in :ref:`api_tensor_math_trace` . 
@@ -273,7 +273,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
 
 def sum(input, dim=None, keep_dim=False, name=None):
-    """
+    r"""
     The layer to compute the sum for a complex number tensor elements over the given dimension. input :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
     in :ref:`api_tensor_math_sum` . 
@@ -336,7 +336,7 @@ def sum(input, dim=None, keep_dim=False, name=None):
 
 
 def kron(x, y, name=None):
-    """
+    r"""
     The kronecker product of two complex tensors. At least one of inputs :attr:`x` 
     and :attr:`y` must be a ComplexVariable. See the detailed description for 
     the function and other arguments in :ref:`api_paddle_tensor_kron` . 

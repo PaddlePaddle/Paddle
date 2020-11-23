@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test fleet."""
+r"""Test fleet."""
 
 from __future__ import print_function
 import os
@@ -20,18 +20,18 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestFleet1(unittest.TestCase):
-    """
+    r"""
     Test cases for fleet minimize.
     """
 
     def setUp(self):
-        """Set up, set envs."""
+        r"""Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
             "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_pslib_1(self):
-        """Test cases for pslib."""
+        r"""Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
         from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
@@ -80,7 +80,7 @@ class TestFleet1(unittest.TestCase):
             # worker should call these methods instead of server
             # the following is only for test when with_pslib=off
             def test_func():
-                """
+                r"""
                 it is only a test function
                 """
                 return True

@@ -20,7 +20,7 @@ from op_test import OpTest
 
 
 class TestL1NormOp(OpTest):
-    """Test l1_norm
+    r"""Test l1_norm
     """
 
     def setUp(self):

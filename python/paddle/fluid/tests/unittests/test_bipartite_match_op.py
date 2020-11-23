@@ -19,7 +19,7 @@ from op_test import OpTest
 
 
 def bipartite_match(distance, match_indices, match_dist):
-    """Bipartite Matching algorithm.
+    r"""Bipartite Matching algorithm.
     Arg:
         distance (numpy.array) : The distance of two entries with shape [M, N].
         match_indices (numpy.array): the matched indices from column to row
@@ -62,7 +62,7 @@ def argmax_match(distance, match_indices, match_dist, threshold):
 
 
 def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
-    """Bipartite Matching algorithm for batch input.
+    r"""Bipartite Matching algorithm for batch input.
     Arg:
         distance (numpy.array) : The distance of two entries with shape [M, N].
         lod (list of int): The length of each input in this batch.

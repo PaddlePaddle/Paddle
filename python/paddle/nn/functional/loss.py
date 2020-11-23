@@ -62,7 +62,7 @@ __all__ = [
 
 def binary_cross_entropy(input, label, weight=None, reduction='mean',
                          name=None):
-    """
+    r"""
     This op measures the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
 
@@ -184,7 +184,7 @@ def binary_cross_entropy_with_logits(logit,
                                      reduction='mean',
                                      pos_weight=None,
                                      name=None):
-    """
+    r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -337,7 +337,7 @@ def hsigmoid_loss(input,
                   path_code=None,
                   is_sparse=False,
                   name=None):
-    """
+    r"""
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -461,7 +461,7 @@ def hsigmoid_loss(input,
 
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
-    """
+    r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
@@ -544,7 +544,7 @@ def margin_ranking_loss(input,
                         margin=0.0,
                         reduction='mean',
                         name=None):
-    """
+    r"""
 
     This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows.
 
@@ -646,7 +646,7 @@ def margin_ranking_loss(input,
 
 
 def l1_loss(input, label, reduction='mean', name=None):
-    """
+    r"""
     This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
@@ -738,7 +738,7 @@ def nll_loss(input,
              ignore_index=-100,
              reduction='mean',
              name=None):
-    """
+    r"""
     This api returns negative log likelihood.
     See more detail in :ref:`api_nn_loss_NLLLoss` .
 
@@ -842,7 +842,7 @@ def nll_loss(input,
 
 
 def kl_div(input, label, reduction='mean', name=None):
-    """
+    r"""
     This operator calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
@@ -949,7 +949,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
 
 def mse_loss(input, label, reduction='mean', name=None):
-    """
+    r"""
     This op accepts input predications and label and returns the mean square error.
 
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
@@ -1029,7 +1029,7 @@ def ctc_loss(log_probs,
              label_lengths,
              blank=0,
              reduction='mean'):
-    """
+    r"""
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
@@ -1123,7 +1123,7 @@ def cross_entropy(input,
                   weight=None,
                   ignore_index=-100,
                   reduction='mean'):
-    """
+    r"""
     This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
     and ``NLLLoss`` together.
 
@@ -1254,7 +1254,7 @@ def sigmoid_focal_loss(logit,
                        gamma=2.0,
                        reduction='sum',
                        name=None):
-    """
+    r"""
     `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is proposed to address the
     foreground-background class imbalance for classification tasks. It down-weights
     easily-classified examples and thus focuses training on hard examples. For example,

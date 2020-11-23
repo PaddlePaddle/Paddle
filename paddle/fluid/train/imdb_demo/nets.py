@@ -27,7 +27,7 @@ def bow_net(data,
             hid_dim=128,
             hid_dim2=96,
             class_dim=2):
-    """
+    r"""
     bow net
     """
     emb = fluid.layers.embedding(
@@ -52,7 +52,7 @@ def cnn_net(data,
             hid_dim2=96,
             class_dim=2,
             win_size=3):
-    """
+    r"""
     conv net
     """
     emb = fluid.layers.embedding(
@@ -82,7 +82,7 @@ def lstm_net(data,
              hid_dim2=96,
              class_dim=2,
              emb_lr=30.0):
-    """
+    r"""
     lstm net
     """
     emb = fluid.layers.embedding(
@@ -118,7 +118,7 @@ def gru_net(data,
             hid_dim2=96,
             class_dim=2,
             emb_lr=400.0):
-    """
+    r"""
     gru net
     """
     emb = fluid.layers.embedding(

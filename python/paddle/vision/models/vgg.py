@@ -32,7 +32,7 @@ model_urls = {
 
 
 class VGG(nn.Layer):
-    """VGG model from
+    r"""VGG model from
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
 
     Args:
@@ -134,7 +134,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
 
 
 def vgg11(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 11-layer model
+    r"""VGG 11-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
@@ -158,7 +158,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg13(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 13-layer model
+    r"""VGG 13-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
@@ -182,7 +182,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg16(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 16-layer model 
+    r"""VGG 16-layer model 
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
@@ -206,7 +206,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg19(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 19-layer model 
+    r"""VGG 19-layer model 
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.

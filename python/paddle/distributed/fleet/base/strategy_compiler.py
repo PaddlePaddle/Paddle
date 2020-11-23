@@ -110,7 +110,7 @@ class StrategyCompilerBase(object):
 
 
 class StrategyCompiler(StrategyCompilerBase):
-    """
+    r"""
     StrategyCompiler is responsible for meta optimizers combination
     Generally, a user can define serveral distributed strategies that
     can generate serveral meta optimizer. The combination of these 
@@ -153,7 +153,7 @@ class StrategyCompiler(StrategyCompilerBase):
             opt._disable_strategy(valid_strategy)
         return valid_strategy
 
-    """
+    r"""
     Meta Optimizer Type A: rewrite forward, backward. e.g. recompute, async, sync, pipeline.
                            results will be splitted in async, sync, pipeline
     Meta Optimizer Type B: rewrite forward, 

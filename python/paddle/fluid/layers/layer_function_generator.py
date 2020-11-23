@@ -30,7 +30,7 @@ __all__ = [
 
 
 def _convert_(name):
-    """
+    r"""
     Formatting.
 
     Args:
@@ -64,7 +64,7 @@ def escape_math(text):
 def _generate_doc_string_(op_proto,
                           additional_args_lines=None,
                           skip_attrs_set=None):
-    """
+    r"""
     Generate docstring by OpProto
 
     Args:
@@ -133,7 +133,7 @@ def _generate_doc_string_(op_proto,
 
 
 def generate_layer_fn(op_type):
-    """Register the Python layer for an Operator.
+    r"""Register the Python layer for an Operator.
 
     Args:
        op_type: The name of the operator to be created.
@@ -165,7 +165,7 @@ def generate_layer_fn(op_type):
     intermediate_output_names = [output.name for output in intermediate_outputs]
 
     def infer_and_check_dtype(op_proto, *args, **kwargs):
-        """
+        r"""
         This function performs the sanity check for dtype and
         instance type.
         """
@@ -242,7 +242,7 @@ def generate_layer_fn(op_type):
 
 
 def generate_activation_fn(op_type):
-    """Register the Python layer for an Operator without Attribute.
+    r"""Register the Python layer for an Operator without Attribute.
 
     Args:
        op_type: The name of the operator to be created.
@@ -292,7 +292,7 @@ def autodoc(comment=""):
 
 
 def templatedoc(op_type=None):
-    """
+    r"""
     Decorator of layer function. It will use the docstring from the layer
     function as the template. The template arguments are:
 
@@ -350,7 +350,7 @@ def templatedoc(op_type=None):
 
 
 def add_sample_code(func, sample_code):
-    """
+    r"""
     Append sample code for dynamically generated functions. 
 
     Args:

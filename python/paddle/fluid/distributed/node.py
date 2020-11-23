@@ -15,7 +15,7 @@ import ps_pb2 as pslib
 
 
 class Server(object):
-    """
+    r"""
         A Server basic class.
     """
 
@@ -24,7 +24,7 @@ class Server(object):
 
 
 class Worker(object):
-    """
+    r"""
         A Worker basic class.
     """
 
@@ -33,7 +33,7 @@ class Worker(object):
 
 
 class DownpourServer(Server):
-    """
+    r"""
         DownpourServer class is used to generate server program_desc
         Args:
             server: it is pslib.ServerParameter() 
@@ -52,7 +52,7 @@ class DownpourServer(Server):
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_var):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -84,7 +84,7 @@ class DownpourServer(Server):
         table.accessor.downpour_accessor_param.delete_threshold = 0.8
 
     def add_dense_table(self, table_id, learning_rate, param_var, grad_var):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -113,14 +113,14 @@ class DownpourServer(Server):
         table.accessor.fea_dim = fea_dim
 
     def get_desc(self):
-        """
+        r"""
         Return downpour server program_desc
         """
         return self.server_
 
 
 class DownpourWorker(Worker):
-    """
+    r"""
         DownpourWorker class is used to generate worker program_desc
         Args:
             window (int): push params frequency
@@ -135,7 +135,7 @@ class DownpourWorker(Worker):
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_vars):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -153,7 +153,7 @@ class DownpourWorker(Worker):
             [var.name + "@GRAD" for var in slot_value_vars])
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -173,7 +173,7 @@ class DownpourWorker(Worker):
                    [g.name for g in grad_vars]))
 
     def get_desc(self):
-        """
+        r"""
         Return downpour worker program_desc
         """
         return self.worker_

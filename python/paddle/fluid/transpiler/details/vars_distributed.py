@@ -16,7 +16,7 @@ from paddle.fluid.framework import Variable
 
 
 class VarStruct(object):
-    """
+    r"""
     record part properties of a Variable in python.
     """
 
@@ -30,7 +30,7 @@ class VarStruct(object):
 
 
 class VarDistributed(object):
-    """
+    r"""
     a class to record the var distributed on parameter servers.
     the class will record the relationship between origin var and slice var.
     the slice var's properties, such as type/shape/offset/endpoint.
@@ -44,7 +44,7 @@ class VarDistributed(object):
                  offset=None,
                  vtype=None,
                  endpoint=None):
-        """
+        r"""
         Args:
             origin_var(Variable|VarStruct): origin var properties
             slice_var(Variable|VarStruct): slice var properties
@@ -91,7 +91,7 @@ class VarDistributed(object):
 
     @staticmethod
     def equal(var1, var2):
-        """
+        r"""
         the two var is equal or not.
         Returns:
             bool: equal will return True else False
@@ -121,7 +121,7 @@ class VarDistributed(object):
 
 
 class VarsDistributed(object):
-    """
+    r"""
     a gather about VarDistributed with many methods to find distributed vars.
     through the class, we can get overview about the distributed parameters on parameter servers.
     this class may centralized and convenient for developer to manage and get variable's distribute.
@@ -139,7 +139,7 @@ class VarsDistributed(object):
                             offset=None,
                             vtype=None,
                             endpoint=None):
-        """
+        r"""
         add distributed var in this.
 
         Args:
@@ -158,7 +158,7 @@ class VarsDistributed(object):
                            vtype, endpoint))
 
     def get_distributed_var_by_slice(self, var_name):
-        """
+        r"""
         get distributed var by conditions.
 
         Args:
@@ -173,7 +173,7 @@ class VarsDistributed(object):
 
     @staticmethod
     def equal(var1, var2):
-        """
+        r"""
         the two var is equal or not.
         Returns:
             bool: equal will return True else False
@@ -186,7 +186,7 @@ class VarsDistributed(object):
                var1.persistable == var2.persistable
 
     def get_distributed_var_by_origin_and_ep(self, origin_var_name, endpoint):
-        """
+        r"""
         get distributed var by conditions.
 
         Args:
@@ -201,7 +201,7 @@ class VarsDistributed(object):
         return None
 
     def get_distributed_vars_by_vtypes(self, vtypes, groupby=False):
-        """
+        r"""
         get distributed vars by conditions.
 
         Args:
@@ -232,7 +232,7 @@ class VarsDistributed(object):
         return params_map
 
     def get_distributed_vars_by_ep(self, endpoint, vtype=None):
-        """
+        r"""
         get distributed vars by conditions.
 
         Args:
@@ -256,7 +256,7 @@ class VarsDistributed(object):
         return vtype_vars
 
     def overview(self):
-        """
+        r"""
         get the overview string about all params on all parameter servers.
 
         Returns:

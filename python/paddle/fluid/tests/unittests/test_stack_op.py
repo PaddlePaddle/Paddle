@@ -91,7 +91,7 @@ class TestStackOp6(TestStackOpBase):
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):
-    """
+    r"""
     Test stack api when the input(x) is a LoDTensorArray.
     """
 
@@ -127,7 +127,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
 
 
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
-    """
+    r"""
     Test stack api when the input(x) is a LoDTensorArray.
     """
 

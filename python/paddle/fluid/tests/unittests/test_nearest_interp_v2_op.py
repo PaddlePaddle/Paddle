@@ -32,7 +32,7 @@ def nearest_neighbor_interp_np(X,
                                actual_shape=None,
                                align_corners=True,
                                data_layout='NCHW'):
-    """nearest neighbor interpolation implement in shape [N, C, H, W]"""
+    r"""nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:

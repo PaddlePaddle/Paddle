@@ -218,7 +218,7 @@ class NameVisitor(gast.NodeVisitor):
         attr_full_name = get_attribute_full_name(node)
         # Class variables are not allowed to appear in the arguments list
         # of defined function under class methods in Python.
-        """
+        r"""
         def class_func(self):
             def while_loop_body(self.x, y) # `self.x` is illegal.
         """
@@ -312,7 +312,7 @@ class NameVisitor(gast.NodeVisitor):
         return None
 
     def _remove_unnecessary_vars(self, loop_vars, loop_node):
-        """
+        r"""
         Remove unnecessary vars from before_loop_vars, after_loop_vars or in_loop_vars about loop_node.
             1. Remove target vars of gast.For from before_loop_vars or after_loop_vars.
             2. Remove vars only in gast.comprehension.
@@ -411,7 +411,7 @@ class NameVisitor(gast.NodeVisitor):
 
 
 class LoopTransformer(gast.NodeTransformer):
-    """
+    r"""
     This class transforms python while/for statement into Static Graph Ast
     """
 

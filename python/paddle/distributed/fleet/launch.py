@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 fleetrun is a module that spawns multiple distributed
 process on each training node for gpu training and cpu training.
 Usage:
@@ -81,7 +81,7 @@ def _print_arguments(args):
 
 
 def _parse_args():
-    """
+    r"""
     Helper function parsing the command line options
     @retval ArgumentParser
     """

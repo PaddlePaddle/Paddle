@@ -16,7 +16,7 @@ __all__ = ['batch']
 
 
 def batch(reader, batch_size, drop_last=False):
-    """
+    r"""
     This operator creates a batched reader which combines the data from the 
     input reader to batched data.
     

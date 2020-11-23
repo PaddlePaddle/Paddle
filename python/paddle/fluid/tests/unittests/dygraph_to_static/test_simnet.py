@@ -95,7 +95,7 @@ simnet_process = FakeReaderProcessor(args, vocab)
 
 
 def train(conf_dict, to_static):
-    """
+    r"""
     train process
     """
     program_translator = ProgramTranslator()

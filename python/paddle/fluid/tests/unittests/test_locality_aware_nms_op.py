@@ -33,7 +33,7 @@ def nms(boxes,
         top_k=200,
         normalized=True,
         eta=1.0):
-    """Apply non-maximum suppression at test time to avoid detecting too many
+    r"""Apply non-maximum suppression at test time to avoid detecting too many
     overlapping bounding boxes for a given object.
     Args:
         boxes: (tensor) The location preds for the img, Shape: [num_priors,4].

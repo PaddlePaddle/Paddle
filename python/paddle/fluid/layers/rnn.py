@@ -58,7 +58,7 @@ __all__ = [
 
 
 class RNNCell(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     RNNCell is the base class for abstraction representing the calculations
@@ -67,7 +67,7 @@ class RNNCell(object):
     """
 
     def call(self, inputs, states, **kwargs):
-        """
+        r"""
         Every cell must implement this method to do the calculations mapping the
         inputs and states to the output and new states.
 
@@ -97,7 +97,7 @@ class RNNCell(object):
                            dtype='float32',
                            init_value=0,
                            batch_dim_idx=0):
-        """
+        r"""
         Generate initialized states according to provided shape, data type and
         value.
 
@@ -153,7 +153,7 @@ class RNNCell(object):
                     long, )
             else:
                 integer_types = (int, )
-            """For shape, list/tuple of integer is the finest-grained objection"""
+            r"""For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
                 if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
                           seq, True):
@@ -195,7 +195,7 @@ class RNNCell(object):
 
     @property
     def state_shape(self):
-        """
+        r"""
         Abstract method (property).
         Used to initialize states.
         A (possibly nested structure of) shape[s], where a shape is represented
@@ -210,7 +210,7 @@ class RNNCell(object):
 
     @property
     def state_dtype(self):
-        """
+        r"""
         Abstract method (property).
         Used to initialize states.
         A (possibly nested structure of) data types[s]. The structure must be
@@ -225,7 +225,7 @@ class RNNCell(object):
 
 
 class GRUCell(RNNCell):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Gated Recurrent Unit cell. It is a wrapper for 
@@ -262,7 +262,7 @@ class GRUCell(RNNCell):
                  activation=None,
                  dtype="float32",
                  name="GRUCell"):
-        """
+        r"""
         Constructor of GRUCell.
 
         Parameters:
@@ -287,7 +287,7 @@ class GRUCell(RNNCell):
             activation, dtype)
 
     def call(self, inputs, states):
-        """
+        r"""
         Perform calculations of GRU.
 
         Parameters:
@@ -314,7 +314,7 @@ class GRUCell(RNNCell):
 
     @property
     def state_shape(self):
-        """
+        r"""
         The `state_shape` of GRUCell is a shape `[hidden_size]` (-1 for batch
         size would be automatically inserted into shape). The shape corresponds
         to :math:`h_{t-1}`.
@@ -323,7 +323,7 @@ class GRUCell(RNNCell):
 
 
 class LSTMCell(RNNCell):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Long-Short Term Memory cell. It is a wrapper for 
@@ -362,7 +362,7 @@ class LSTMCell(RNNCell):
                  forget_bias=1.0,
                  dtype="float32",
                  name="LSTMCell"):
-        """
+        r"""
         Constructor of LSTMCell.
 
         Parameters:
@@ -390,7 +390,7 @@ class LSTMCell(RNNCell):
             activation, forget_bias, dtype)
 
     def call(self, inputs, states):
-        """
+        r"""
         Perform calculations of LSTM.
 
         Parameters:
@@ -424,7 +424,7 @@ class LSTMCell(RNNCell):
 
     @property
     def state_shape(self):
-        """
+        r"""
         The `state_shape` of LSTMCell is a list with two shapes: `[[hidden_size], [hidden_size]]`
         (-1 for batch size would be automatically inserted into shape). These two
         shapes correspond to :math:`h_{t-1}` and :math:`c_{t-1}` separately.
@@ -439,7 +439,7 @@ def rnn(cell,
         time_major=False,
         is_reverse=False,
         **kwargs):
-    """
+    r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
     which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`) 
     repeatedly until reaches to the maximum length of `inputs`.
@@ -513,7 +513,7 @@ class ArrayWrapper(object):
 
 
 def _maybe_copy(state, new_state, step_mask):
-    """update rnn state or just pass the old state through"""
+    r"""update rnn state or just pass the old state through"""
     new_state = nn.elementwise_mul(new_state, step_mask, axis=0) \
               + nn.elementwise_mul(state, (1 - step_mask), axis=0)
     return new_state
@@ -663,7 +663,7 @@ def birnn(cell_fw,
           sequence_length=None,
           time_major=False,
           **kwargs):
-    """
+    r"""
     birnn creates a bidirectional recurrent neural network specified by 
     RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()` 
     (for dygraph mode :code:`cell.forward`) repeatedly until reaches to 
@@ -749,7 +749,7 @@ def birnn(cell_fw,
 
 
 class Decoder(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Decoder is the base class for any decoder instance used in `dynamic_decode`.
@@ -782,7 +782,7 @@ class Decoder(object):
     """
 
     def initialize(self, inits):
-        """
+        r"""
         Called once before the decoding iterations.
 
         Parameters:
@@ -797,7 +797,7 @@ class Decoder(object):
         raise NotImplementedError
 
     def step(self, time, inputs, states, **kwargs):
-        """
+        r"""
         Called per step of decoding. 
 
         Parameters:
@@ -818,7 +818,7 @@ class Decoder(object):
         raise NotImplementedError
 
     def finalize(self, outputs, final_states, sequence_lengths):
-        """
+        r"""
         Called once after the decoding iterations if implemented.
 
         Parameters:
@@ -840,7 +840,7 @@ class Decoder(object):
 
     @property
     def tracks_own_finished(self):
-        """
+        r"""
         Describes whether the Decoder keeps track of finished states by itself.
 
         `decoder.step()` would emit a bool `finished` value at each decoding
@@ -862,7 +862,7 @@ class Decoder(object):
 
 
 class BeamSearchDecoder(Decoder):
-    """
+    r"""
     Decoder with beam search decoding strategy. It wraps a cell to get probabilities,
     and follows a beam search step to calculate scores and select candidate
     token ids for each decoding step.
@@ -906,7 +906,7 @@ class BeamSearchDecoder(Decoder):
                  beam_size,
                  embedding_fn=None,
                  output_fn=None):
-        """
+        r"""
         Constructor of BeamSearchDecoder.
 
         Parameters:
@@ -931,7 +931,7 @@ class BeamSearchDecoder(Decoder):
 
     @staticmethod
     def tile_beam_merge_with_batch(x, beam_size):
-        """
+        r"""
         Tile the batch dimension of a tensor. Specifically, this function takes
         a tensor t shaped `[batch_size, s0, s1, ...]` composed of minibatch 
         entries `t[0], ..., t[batch_size - 1]` and tiles it to have a shape
@@ -966,7 +966,7 @@ class BeamSearchDecoder(Decoder):
         return x
 
     def _split_batch_beams(self, x):
-        """
+        r"""
         Reshape a tensor with shape `[batch_size * beam_size, ...]` to a new
         tensor with shape `[batch_size, beam_size, ...]`. 
 
@@ -983,7 +983,7 @@ class BeamSearchDecoder(Decoder):
         return nn.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
 
     def _merge_batch_beams(self, x):
-        """
+        r"""
         Reshape a tensor with shape `[batch_size, beam_size, ...]` to a new
         tensor with shape `[batch_size * beam_size, ...]`. 
 
@@ -1000,7 +1000,7 @@ class BeamSearchDecoder(Decoder):
         return nn.reshape(x, shape=[-1] + list(x.shape[2:]))
 
     def _expand_to_beam_size(self, x):
-        """
+        r"""
         This function takes a tensor t shaped `[batch_size, s0, s1, ...]` composed
         of minibatch entries `t[0], ..., t[batch_size - 1]` and tiles it to have a
         shape `[batch_size, beam_size, s0, s1, ...]` composed of minibatch entries
@@ -1023,7 +1023,7 @@ class BeamSearchDecoder(Decoder):
         return x
 
     def _mask_probs(self, probs, finished):
-        """
+        r"""
         Mask log probabilities. It forces finished beams to allocate all probability
         mass to eos and unfinished beams to remain unchanged.
 
@@ -1052,7 +1052,7 @@ class BeamSearchDecoder(Decoder):
         return probs
 
     def _gather(self, x, indices, batch_size):
-        """
+        r"""
         Gather from the tensor `x` using `indices`.
 
         Parameters:
@@ -1087,7 +1087,7 @@ class BeamSearchDecoder(Decoder):
     class OutputWrapper(
             collections.namedtuple("OutputWrapper",
                                    ("scores", "predicted_ids", "parent_ids"))):
-        """
+        r"""
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes scores, predicted_ids, parent_ids as fields.
         """
@@ -1097,14 +1097,14 @@ class BeamSearchDecoder(Decoder):
             collections.namedtuple(
                 "StateWrapper",
                 ("cell_states", "log_probs", "finished", "lengths"))):
-        """
+        r"""
         The structure for the argument `states` of `decoder.step`.
         A namedtuple includes cell_states, log_probs, finished, lengths as fields.
         """
         pass
 
     def initialize(self, initial_cell_states):
-        """
+        r"""
         Initialize the BeamSearchDecoder.
 
         Parameters:
@@ -1162,7 +1162,7 @@ class BeamSearchDecoder(Decoder):
                                               init_lengths), init_finished
 
     def _beam_search_step(self, time, logits, next_cell_states, beam_state):
-        """
+        r"""
         Calculate scores and select candidate token ids.
 
         Parameters:
@@ -1235,7 +1235,7 @@ class BeamSearchDecoder(Decoder):
         return beam_search_output, beam_search_state
 
     def step(self, time, inputs, states, **kwargs):
-        """
+        r"""
         Perform a beam search decoding step, which uses `cell` to get probabilities,
         and follows a beam search step to calculate scores and select candidate
         token ids.
@@ -1287,7 +1287,7 @@ class BeamSearchDecoder(Decoder):
         return (beam_search_output, beam_search_state, next_inputs, finished)
 
     def finalize(self, outputs, final_states, sequence_lengths):
-        """
+        r"""
         Use `gather_tree` to backtrace along the beam search tree and construct
         the full predicted sequences.
 
@@ -1317,7 +1317,7 @@ class BeamSearchDecoder(Decoder):
 
     @property
     def tracks_own_finished(self):
-        """
+        r"""
         BeamSearchDecoder reorders its beams and their finished state. Thus it
         conflicts with `dynamic_decode` function's tracking of finished states.
         Setting this property to true to avoid early stopping of decoding due
@@ -1572,7 +1572,7 @@ def dynamic_decode(decoder,
                    is_test=False,
                    return_length=False,
                    **kwargs):
-    """
+    r"""
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
     decoding step reaches to :attr:`max_step_num`.
@@ -1657,14 +1657,14 @@ def dynamic_decode(decoder,
 
 
 class DecodeHelper(object):
-    """
+    r"""
     DecodeHelper is the base class for any helper instance used in `BasicDecoder`.
     It provides interface to implement sampling and produce inputs for the next
     time step in dynamic decoding.
     """
 
     def initialize(self):
-        """
+        r"""
         DecodeHelper initialization to produce inputs for the first decoding step
         and give the initial status telling whether each sequence in the batch
         is finished. It is the partial of the initialization of `BasicDecoder`.
@@ -1678,7 +1678,7 @@ class DecodeHelper(object):
         pass
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling with some strategies according to `outputs`. It is the
         partial of `BasicDecoder.step`.
 
@@ -1698,7 +1698,7 @@ class DecodeHelper(object):
         pass
 
     def next_inputs(self, time, outputs, states, sample_ids):
-        """
+        r"""
         Produce the inputs and states for next time step and give status telling
         whether each minibatch entry is finished. It is called after `sample` in
         `BasicDecoder.step`. It is the partial of `BasicDecoder.step`.
@@ -1726,7 +1726,7 @@ class DecodeHelper(object):
 
 
 class TrainingHelper(DecodeHelper):
-    """
+    r"""
     TrainingHelper is a subclass of DecodeHelper. It is a decoding helper
     slicing from the full sequence inputs as the inputs for corresponding
     step. And it uses `argmax` to sample from the outputs of `cell.call()`.
@@ -1755,7 +1755,7 @@ class TrainingHelper(DecodeHelper):
     """
 
     def __init__(self, inputs, sequence_length, time_major=False):
-        """
+        r"""
         Constructor of TrainingHelper.
 
         Parameters:
@@ -1787,7 +1787,7 @@ class TrainingHelper(DecodeHelper):
             self.inputs)
 
     def initialize(self):
-        """
+        r"""
         TrainingHelper initialization produces inputs for the first decoding
         step by slicing at the first time step of full sequence inputs, and it
         gives initial status telling whether each sequence in the batch is
@@ -1809,7 +1809,7 @@ class TrainingHelper(DecodeHelper):
         return init_inputs, init_finished
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling by using `argmax` according to the `outputs`. Mostly
         the sampled ids would not be used since the inputs for next decoding
         step would be got by slicing.
@@ -1832,7 +1832,7 @@ class TrainingHelper(DecodeHelper):
         return sample_ids
 
     def next_inputs(self, time, outputs, states, sample_ids):
-        """
+        r"""
         Generate inputs for the next decoding step by slicing at corresponding
         step of the full sequence inputs. Simultaneously, produce the states
         for next time step by directly using the input `states` and emit status
@@ -1879,7 +1879,7 @@ class TrainingHelper(DecodeHelper):
 
 
 class GreedyEmbeddingHelper(DecodeHelper):
-    """
+    r"""
     GreedyEmbeddingHelper is a subclass of DecodeHelper. It is a decoding helper
     uses the argmax of the output (treated as logits) and passes the results
     through an embedding layer to get inputs for the next decoding step.
@@ -1909,7 +1909,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
     """
 
     def __init__(self, embedding_fn, start_tokens, end_token):
-        """
+        r"""
         Constructor of GreedyEmbeddingHelper.
 
         Parameters:
@@ -1934,7 +1934,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
             shape=[1], dtype="int64", value=end_token)
 
     def initialize(self):
-        """
+        r"""
         GreedyEmbeddingHelper initialization produces inputs for the first decoding
         step by using `start_tokens` of the constructor, and gives initial
         status telling whether each sequence in the batch is finished. 
@@ -1957,7 +1957,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
         return init_inputs, init_finished
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling by using `argmax` according to the `outputs`.
 
         Parameters:
@@ -1978,7 +1978,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
         return sample_ids
 
     def next_inputs(self, time, outputs, states, sample_ids):
-        """
+        r"""
         Generate inputs for the next decoding step by applying `embedding_fn`
         to `sample_ids`. Simultaneously, produce the states for next time step
         by directly using the input `states` and emit status telling whether
@@ -2010,7 +2010,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
 
 
 class SampleEmbeddingHelper(GreedyEmbeddingHelper):
-    """
+    r"""
     SampleEmbeddingHelper is a subclass of GreedyEmbeddingHelper. It is a decoding
     helper uses sampling (from a distribution) instead of argmax of the output
     (treated as logits) and passes the results through an embedding layer to get
@@ -2046,7 +2046,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
                  end_token,
                  softmax_temperature=None,
                  seed=None):
-        """
+        r"""
         Constructor of SampleEmbeddingHelper.
 
         Parameters:
@@ -2080,7 +2080,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         self.seed = seed
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling from a categorical distribution, and the distribution
         is computed by `softmax(outputs/softmax_temperature)`.
 
@@ -2111,7 +2111,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
 
 
 class BasicDecoder(Decoder):
-    """
+    r"""
     BasicDecoder is a subclass of Decoder and assembles a RNNCell and DecodeHelper
     instance as members, where the DecodeHelper helps to implement customed
     decoding strategies.. It performs one decoding step as following steps:
@@ -2151,7 +2151,7 @@ class BasicDecoder(Decoder):
     """
 
     def __init__(self, cell, helper, output_fn=None):
-        """
+        r"""
         Constructor of BasicDecoder.
 
         Parameters:
@@ -2165,7 +2165,7 @@ class BasicDecoder(Decoder):
         self.output_fn = output_fn
 
     def initialize(self, initial_cell_states):
-        """
+        r"""
         BasicDecoder initialization includes helper initialization and cell
         initialization, and cell initialization uses `initial_cell_states` as
         the result directly.
@@ -2188,14 +2188,14 @@ class BasicDecoder(Decoder):
     class OutputWrapper(
             collections.namedtuple("OutputWrapper",
                                    ("cell_outputs", "sample_ids"))):
-        """
+        r"""
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes cell_outputs, sample_ids as fields.
         """
         pass
 
     def step(self, time, inputs, states, **kwargs):
-        """
+        r"""
         Perform one decoding step as following steps:
 
         1. Perform `cell_outputs, cell_states = cell.call(inputs, states)`
@@ -2258,7 +2258,7 @@ def dynamic_lstm(input,
                  candidate_activation='tanh',
                  dtype='float32',
                  name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -2430,7 +2430,7 @@ def lstm(input,
          name=None,
          default_initializer=None,
          seed=-1):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -2612,7 +2612,7 @@ def dynamic_lstmp(input,
                   c_0=None,
                   cell_clip=None,
                   proj_clip=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -2823,7 +2823,7 @@ def dynamic_gru(input,
                 candidate_activation='tanh',
                 h_0=None,
                 origin_mode=False):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note: The input type of this must be LoDTensor. If the input type to be
@@ -2985,7 +2985,7 @@ def gru_unit(input,
              activation='tanh',
              gate_activation='sigmoid',
              origin_mode=False):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
@@ -3143,7 +3143,7 @@ def beam_search(pre_ids,
                 is_accumulated=True,
                 name=None,
                 return_parent_idx=False):
-    """
+    r"""
 
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
@@ -3293,7 +3293,7 @@ def beam_search(pre_ids,
 
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
-    """
+    r"""
 
     This operator is used after beam search has completed. It constructs the
     full predicted sequences for each sample by walking back along the search
@@ -3378,7 +3378,7 @@ def lstm_unit(x_t,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test cloud role maker."""
+r"""Test cloud role maker."""
 
 from __future__ import print_function
 import os
@@ -20,18 +20,18 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
-    """
+    r"""
     Test cases for PaddleCloudRoleMaker.
     """
 
     def setUp(self):
-        """Set up, set envs."""
+        r"""Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
             "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_pslib_1(self):
-        """Test cases for pslib."""
+        r"""Test cases for pslib."""
         import sys
         import threading
         import paddle.fluid as fluid
@@ -48,12 +48,12 @@ class TestCloudRoleMaker(unittest.TestCase):
             return
 
         class FakeStream():
-            """
+            r"""
             it is a fake stream only for test.
             """
 
             def write(self, a):
-                """
+                r"""
                 write a to stream, do nothing
 
                 Args:
@@ -62,7 +62,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 pass
 
             def read(self, b):
-                """
+                r"""
                 read data of len b from stream, do nothing
 
                 Args:
@@ -80,12 +80,12 @@ class TestCloudRoleMaker(unittest.TestCase):
         try:
 
             class TmpKVHander(KVHandler):
-                """
+                r"""
                 it is a fake handler only for this test case.
                 """
 
                 def __init__(self, server):
-                    """Init."""
+                    r"""Init."""
                     self.path = "a/b/c"
                     self.server = server
                     self.wfile = FakeStream()
@@ -94,13 +94,13 @@ class TestCloudRoleMaker(unittest.TestCase):
                     self.headers['Content-Length'] = 0
 
                 def address_string(self):
-                    """
+                    r"""
                     fake address string, it will do nothing.
                     """
                     return "123"
 
                 def send_response(self, code):
-                    """
+                    r"""
                     fake send response, it will do nothing.
 
                     Args:
@@ -109,7 +109,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     pass
 
                 def send_header(self, a, b):
-                    """
+                    r"""
                     fake send header, it will do nothing.
 
                     Args:
@@ -119,7 +119,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     pass
 
                 def end_headers(self):
-                    """
+                    r"""
                     fake end header, it will do nothing.
                     """
                     pass
@@ -132,12 +132,12 @@ class TestCloudRoleMaker(unittest.TestCase):
         try:
 
             class TmpServer(KVHTTPServer):
-                """
+                r"""
                 it is a fake server only for this test case.
                 """
 
                 def __init__(self):
-                    """Init."""
+                    r"""Init."""
                     self.delete_kv_lock = threading.Lock()
                     self.delete_kv = {}
                     self.kv_lock = threading.Lock()
@@ -149,12 +149,12 @@ class TestCloudRoleMaker(unittest.TestCase):
         try:
 
             class TmpS(KVServer):
-                """
+                r"""
                 it is a fake server only for this test case.
                 """
 
                 def __init__(self):
-                    """Init."""
+                    r"""Init."""
                     self.http_server = TmpServer()
                     self.listen_thread = None
                     self.size = {}

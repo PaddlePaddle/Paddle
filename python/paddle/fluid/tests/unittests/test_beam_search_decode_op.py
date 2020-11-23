@@ -24,7 +24,7 @@ from paddle.fluid.framework import Program, program_guard
 
 
 class TestBeamSearchDecodeOp(unittest.TestCase):
-    """unittest of beam_search_decode_op"""
+    r"""unittest of beam_search_decode_op"""
 
     def setUp(self):
         self.scope = core.Scope()

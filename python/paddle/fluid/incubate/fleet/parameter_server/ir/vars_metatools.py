@@ -53,7 +53,7 @@ def create_var_struct(var):
 
 
 class VarStruct(object):
-    """
+    r"""
     record part properties of a Variable in python.
     """
 
@@ -75,7 +75,7 @@ class VarStruct(object):
 
 
 class VarDistributed(object):
-    """
+    r"""
     a class to record the var distributed on parameter servers.
     the class will record the relationship between origin var and slice var.
     the slice var's properties, such as type/shape/offset/endpoint.
@@ -89,7 +89,7 @@ class VarDistributed(object):
                  offset=None,
                  vtype=None,
                  endpoint=None):
-        """
+        r"""
         Args:
             origin_var(Variable|VarStruct): origin var properties
             slice_var(Variable|VarStruct): slice var properties
@@ -131,7 +131,7 @@ class VarDistributed(object):
 
     @staticmethod
     def equal(var1, var2):
-        """
+        r"""
         the two var is equal or not.
         Returns:
             bool: equal will return True else False
@@ -161,7 +161,7 @@ class VarDistributed(object):
 
 
 class VarsDistributed(object):
-    """
+    r"""
     a gather about VarDistributed with many methods to find distributed vars.
     through the class, we can get overview about the distributed parameters on parameter servers.
     this class may centralized and convenient for developer to manage and get variable's distribute.
@@ -179,7 +179,7 @@ class VarsDistributed(object):
                             offset=None,
                             vtype=None,
                             endpoint=None):
-        """
+        r"""
         add distributed var in this.
 
         Args:

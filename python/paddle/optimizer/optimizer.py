@@ -47,7 +47,7 @@ __all__ = ['Optimizer']
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
@@ -293,7 +293,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def set_lr(self, value):
-        """
+        r"""
         :api_attr: imperative
         
         Set the value of the learning rate manually in the optimizer. If the optimizer use LRScheduler,
@@ -350,7 +350,7 @@ class Optimizer(object):
                 stop_gradient=True)
 
     def get_lr(self):
-        """
+        r"""
         Get current learning rate of optimizer. 
         If 'LRScheduler' is not used, the return value is all the same.
         If 'LRScheduler' is used, the return value is the current scheduled learing rete.
@@ -412,7 +412,7 @@ class Optimizer(object):
             return self._learning_rate()
 
     def _global_learning_rate(self, program=None):
-        """
+        r"""
         get global decayed learning rate
         :return:
         """
@@ -421,7 +421,7 @@ class Optimizer(object):
         return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):
-        """ append optimize operator to block and return all the added optimize_op
+        r""" append optimize operator to block and return all the added optimize_op
         """
         raise NotImplementedError(
             "Class \"Optimizer\" connot be used directly as an optimizer, please use its subclasses such as \"Adam\""
@@ -443,7 +443,7 @@ class Optimizer(object):
                     return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
-        """Create all accumulators needed by the parameters
+        r"""Create all accumulators needed by the parameters
 
         Args:
             block: the block in which the loss tensor is present
@@ -452,7 +452,7 @@ class Optimizer(object):
         pass
 
     def _finish_update(self, block, parameters_and_grads):
-        """Finish any custom updates needed
+        r"""Finish any custom updates needed
            before completing an optimization step
 
         Args:
@@ -472,7 +472,7 @@ class Optimizer(object):
                          shape=None,
                          type=None,
                          device=None):
-        """Utility function to add an accumulator for a parameter
+        r"""Utility function to add an accumulator for a parameter
 
         Args:
             block: the block in which the loss tensor is present
@@ -520,7 +520,7 @@ class Optimizer(object):
         return var
 
     def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
+        r"""Utility function to fetch an accumulator for a parameter
 
         Args:
             name: name of the accumulator
@@ -558,7 +558,7 @@ class Optimizer(object):
         return device
 
     def _create_optimization_pass(self, parameters_and_grads):
-        """Add optimization operators to update gradients to tensors.
+        r"""Add optimization operators to update gradients to tensors.
 
         Args:
           parameters_and_grads(list(tuple(Tensor, Tensor))):
@@ -633,7 +633,7 @@ class Optimizer(object):
                  parameters=None,
                  no_grad_set=None,
                  callbacks=None):
-        """
+        r"""
         The first part of ``minimize``, do auto-diff to append backward operations for
         the current program.
 
@@ -713,7 +713,7 @@ class Optimizer(object):
         return params_grads
 
     def apply_gradients(self, params_grads):
-        """
+        r"""
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
 
@@ -758,7 +758,7 @@ class Optimizer(object):
         return optimize_ops
 
     def _apply_optimize(self, loss, startup_program, params_grads):
-        """
+        r"""
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
         Args:
@@ -795,7 +795,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def clear_grad(self):
-        """
+        r"""
         Clear the gradients of all optimized parameters for model.
         
         Returns:
@@ -829,7 +829,7 @@ class Optimizer(object):
                  startup_program=None,
                  parameters=None,
                  no_grad_set=None):
-        """
+        r"""
         Add operations to minimize ``loss`` by updating ``parameters``.
 
         Args:
@@ -889,7 +889,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def step(self):
-        """
+        r"""
         Execute the optimizer and update parameters once.
         
         Returns:

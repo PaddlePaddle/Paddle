@@ -33,7 +33,7 @@ __all__ = [
 
 
 class AvgPool1D(layers.Layer):
-    """
+    r"""
     This operation applies a 1D average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
@@ -120,7 +120,7 @@ class AvgPool1D(layers.Layer):
 
 
 class AvgPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
@@ -223,7 +223,7 @@ class AvgPool2D(layers.Layer):
 
 
 class AvgPool3D(layers.Layer):
-    """
+    r"""
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCDHW format, where N is batch size, C is the number of channels,
@@ -314,7 +314,7 @@ class AvgPool3D(layers.Layer):
 
 
 class MaxPool1D(layers.Layer):
-    """
+    r"""
     Applies a 1D max pooling over an input signal composed of several input planes based
     on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
@@ -401,7 +401,7 @@ class MaxPool1D(layers.Layer):
 
 
 class MaxPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D max pooling over input feature based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
@@ -504,7 +504,7 @@ class MaxPool2D(layers.Layer):
 
 
 class MaxPool3D(layers.Layer):
-    """
+    r"""
     This operation applies 3D max pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCDHW format, where N is batch size, C is the number of channels,
@@ -595,7 +595,7 @@ class MaxPool3D(layers.Layer):
 
 
 class AdaptiveAvgPool1D(layers.Layer):
-    """
+    r"""
 
     This operation applies a 1D adaptive average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_mask parameters.
@@ -663,7 +663,7 @@ class AdaptiveAvgPool1D(layers.Layer):
 
 
 class AdaptiveAvgPool2D(layers.Layer):
-    """
+    r"""
 
     This operation applies 2D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
@@ -745,7 +745,7 @@ class AdaptiveAvgPool2D(layers.Layer):
 
 
 class AdaptiveAvgPool3D(layers.Layer):
-    """
+    r"""
 
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
@@ -833,7 +833,7 @@ class AdaptiveAvgPool3D(layers.Layer):
 
 
 class AdaptiveMaxPool1D(layers.Layer):
-    """
+    r"""
 
     This operation applies a 1D adaptive max pooling over an input signal composed
     of several input planes, based on the input, output_size, return_mask parameters.
@@ -911,7 +911,7 @@ class AdaptiveMaxPool1D(layers.Layer):
 
 
 class AdaptiveMaxPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D adaptive max pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size. The difference between adaptive pooling and pooling is adaptive one focus on the output size.
 
@@ -978,7 +978,7 @@ class AdaptiveMaxPool2D(layers.Layer):
 
 
 class AdaptiveMaxPool3D(layers.Layer):
-    """
+    r"""
     This operation applies 3D adaptive max pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size. The difference between adaptive pooling and pooling is adaptive one focus on the output size.
 

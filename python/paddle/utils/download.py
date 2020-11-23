@@ -101,7 +101,7 @@ nlp_models = OrderedDict((
 
 
 def is_url(path):
-    """
+    r"""
     Whether path is URL.
     Args:
         path (string): URL string or not.
@@ -110,7 +110,7 @@ def is_url(path):
 
 
 def get_weights_path_from_url(url, md5sum=None):
-    """Get weights path from WEIGHT_HOME, if not exists,
+    r"""Get weights path from WEIGHT_HOME, if not exists,
     download it from url.
 
     Args:
@@ -141,7 +141,7 @@ def _map_path(url, root_dir):
 
 
 def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
-    """ Download from given url to root_dir.
+    r""" Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
     from url and decompress it, return the path.
@@ -179,7 +179,7 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
 
 
 def _download(url, path, md5sum=None):
-    """
+    r"""
     Download from url, save to path.
 
     url (str): download url
@@ -245,7 +245,7 @@ def _md5check(fullname, md5sum=None):
 
 
 def _decompress(fname):
-    """
+    r"""
     Decompress for zip and tar file
     """
     logger.info("Decompressing {}...".format(fname))

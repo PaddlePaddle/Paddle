@@ -1,4 +1,19 @@
 #!/bin/python
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #
 import platform
 from sys import argv
@@ -138,7 +153,7 @@ python setup.py install
 
 
 def meta_build_mac(var, python_str, paddle_version, build_var, build_name_str):
-    package_str = """
+    package_str = r"""
 package:
   name: paddlepaddle
   version: """ + paddle_version
@@ -162,12 +177,12 @@ def meta_build_linux(var,
                      build_name_str,
                      cuda_str=None):
     if cuda_str == None:
-        package_str = """
+        package_str = r"""
 package:
   name: paddlepaddle
   version: """ + paddle_version
     else:
-        package_str = """
+        package_str = r"""
 package:
   name: paddlepaddle-gpu
   version: """ + paddle_version
@@ -195,12 +210,12 @@ def meta_build_windows(var,
                        build_name_str,
                        cuda_str=None):
     if cuda_str == None:
-        package_str = """
+        package_str = r"""
 package:
   name: paddlepaddle
   version: """ + paddle_version
     else:
-        package_str = """
+        package_str = r"""
 package:
   name: paddlepaddle-gpu
   version: """ + paddle_version
@@ -209,22 +224,22 @@ package:
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
     if (python_str == var.python27 or python_str == var.python35):
-        meta_str = meta_str + """
+        meta_str = meta_str + r"""
     - matplotlib<=2.2.4"""
     else:
-        meta_str = meta_str + """
+        meta_str = meta_str + r"""
     - matplotlib"""
     if not (cuda_str == None):
         meta_str = meta_str + cuda_str
-    
+
     blt_str = var.blt_const + blt_var
     if (python_str == var.python27):
-        blt_str = blt_str + """
+        blt_str = blt_str + r"""
     pip install C:\package\opencv_python-4.2.0.32-cp27-cp27m-win_amd64.whl"""
     else:
-        meta_str = meta_str + """
+        meta_str = meta_str + r"""
     - opencv>=3.4.2"""
-    
+
     meta_str = meta_str + var.test + var.about
     meta_filename = "meta.yaml"
     build_filename = "bld.bat"

@@ -26,7 +26,7 @@ __all__ = [
 
 
 class LRScheduler(object):
-    """
+    r"""
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
 
@@ -90,13 +90,13 @@ class LRScheduler(object):
         self.step()
 
     def __call__(self):
-        """ 
+        r""" 
         Return lastest computed learning rate on current epoch.
         """
         return self.last_lr
 
     def step(self, epoch=None):
-        """
+        r"""
 
         ``step`` should be called after ``optimizer.step`` . It will update the learning rate in optimizer according to current ``epoch`` .  
         The new learning rate will take effect on next ``optimizer.step`` .
@@ -123,7 +123,7 @@ class LRScheduler(object):
                 self.last_epoch, self.__class__.__name__, self.last_lr))
 
     def state_dict(self):
-        """
+        r"""
 
         Returns the state of the scheduler as a :class:`dict`.
 
@@ -148,7 +148,7 @@ class LRScheduler(object):
     # For those subclass who overload LRScheduler, "last_epoch, last_lr" will be saved by default.
     # (Note): you can change it for your subclass.
     def state_keys(self):
-        """
+        r"""
 
         For those subclass who overload ``LRScheduler`` (Base Class). Acquiescently, "last_epoch, last_lr" will be saved by ``self.keys = ['last_epoch', 'last_lr']`` .
 
@@ -160,7 +160,7 @@ class LRScheduler(object):
         self.keys = ['last_epoch', 'last_lr']
 
     def set_state_dict(self, state_dict):
-        """
+        r"""
 
         Loads the schedulers state.
         """
@@ -181,7 +181,7 @@ class LRScheduler(object):
     set_dict = set_state_dict
 
     def get_lr(self):
-        """
+        r"""
         
         For those subclass who overload ``LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
 
@@ -192,7 +192,7 @@ class LRScheduler(object):
 
 
 class NoamDecay(LRScheduler):
-    """
+    r"""
 
     Applies Noam Decay to the initial learning rate. 
 
@@ -285,7 +285,7 @@ class NoamDecay(LRScheduler):
 
 
 class PiecewiseDecay(LRScheduler):
-    """
+    r"""
 
     Piecewise learning rate scheduler.
 
@@ -376,7 +376,7 @@ class PiecewiseDecay(LRScheduler):
 
 
 class NaturalExpDecay(LRScheduler):
-    """
+    r"""
 
     Applies natural exponential decay to the initial learning rate.
     
@@ -455,7 +455,7 @@ class NaturalExpDecay(LRScheduler):
 
 
 class InverseTimeDecay(LRScheduler):
-    """
+    r"""
 
     Applies inverse time decay to the initial learning rate.
 
@@ -536,7 +536,7 @@ class InverseTimeDecay(LRScheduler):
 
 
 class PolynomialDecay(LRScheduler):
-    """
+    r"""
 
     Applies polynomial decay to the initial learning rate.
 
@@ -656,7 +656,7 @@ class PolynomialDecay(LRScheduler):
 
 
 class LinearWarmup(LRScheduler):
-    """
+    r"""
 
     Linear learning rate warm up strategy. Update the learning rate preliminarily before the normal learning rate scheduler.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
@@ -762,7 +762,7 @@ class LinearWarmup(LRScheduler):
         super(LinearWarmup, self).__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self):
-        """
+        r"""
         Returns the state of the LinearWarmup scheduler as a :class:`dict`.
 
         It is a subset of ``self.__dict__`` .
@@ -773,7 +773,7 @@ class LinearWarmup(LRScheduler):
         return state_dict
 
     def set_state_dict(self, state_dict):
-        """
+        r"""
         Loads state_dict for LinearWarmup scheduler.
         """
         super(LinearWarmup, self).set_state_dict(state_dict)
@@ -794,7 +794,7 @@ class LinearWarmup(LRScheduler):
 
 
 class ExponentialDecay(LRScheduler):
-    """
+    r"""
 
     Update learning rate by `gamma` each epoch.
 
@@ -874,7 +874,7 @@ class ExponentialDecay(LRScheduler):
 
 
 class MultiStepDecay(LRScheduler):
-    """
+    r"""
     Update the learning rate by ``gamma`` once ``epoch`` reaches one of the milestones.
 
     The algorithm can be described as the code below. 
@@ -984,7 +984,7 @@ class MultiStepDecay(LRScheduler):
 
 
 class StepDecay(LRScheduler):
-    """
+    r"""
     Update the learning rate of ``optimizer`` by ``gamma`` every ``step_size`` number of epoch.
 
     The algorithm can be described as the code below. 
@@ -1085,7 +1085,7 @@ class StepDecay(LRScheduler):
 
 
 class LambdaDecay(LRScheduler):
-    """
+    r"""
     Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
 
     The algorithm can be described as the code below. 
@@ -1173,7 +1173,7 @@ class LambdaDecay(LRScheduler):
 
 
 class ReduceOnPlateau(LRScheduler):
-    """
+    r"""
     Reduce learning rate when ``metrics`` has stopped descending. Models often benefit from reducing the learning rate 
     by 2 to 10 times once model performance has no longer improvement.
 
@@ -1316,7 +1316,7 @@ class ReduceOnPlateau(LRScheduler):
         ]
 
     def step(self, metrics, epoch=None):
-        """
+        r"""
         step should be called after `optimizer.step()` . It will update the learning rate in optimizer according to ``metrics`` .  
         The new learning rate will take effect on next epoch.
 
@@ -1383,7 +1383,7 @@ class ReduceOnPlateau(LRScheduler):
 
 
 class CosineAnnealingDecay(LRScheduler):
-    """
+    r"""
 
     Set the learning rate using a cosine annealing schedule, where :math:`\eta_{max}` is set to 
     the initial learning_rate. :math:`T_{cur}` is the number of epochs since the last restart in 

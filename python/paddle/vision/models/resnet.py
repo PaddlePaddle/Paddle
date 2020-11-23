@@ -149,7 +149,7 @@ class BottleneckBlock(nn.Layer):
 
 
 class ResNet(nn.Layer):
-    """ResNet model from
+    r"""ResNet model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
 
     Args:
@@ -270,7 +270,7 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
 
 
 def resnet18(pretrained=False, **kwargs):
-    """ResNet 18-layer model
+    r"""ResNet 18-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -290,7 +290,7 @@ def resnet18(pretrained=False, **kwargs):
 
 
 def resnet34(pretrained=False, **kwargs):
-    """ResNet 34-layer model
+    r"""ResNet 34-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -310,7 +310,7 @@ def resnet34(pretrained=False, **kwargs):
 
 
 def resnet50(pretrained=False, **kwargs):
-    """ResNet 50-layer model
+    r"""ResNet 50-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -330,7 +330,7 @@ def resnet50(pretrained=False, **kwargs):
 
 
 def resnet101(pretrained=False, **kwargs):
-    """ResNet 101-layer model
+    r"""ResNet 101-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -350,7 +350,7 @@ def resnet101(pretrained=False, **kwargs):
 
 
 def resnet152(pretrained=False, **kwargs):
-    """ResNet 152-layer model
+    r"""ResNet 152-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet

@@ -24,7 +24,7 @@ __all__ = [
 
 
 class Sequential(Layer):
-    """Sequential container.
+    r"""Sequential container.
     Sub layers will be added to this container in the order of argument in the constructor.
     The argument passed to the constructor can be iterable Layers or iterable name Layer pairs.
 
@@ -88,7 +88,7 @@ class Sequential(Layer):
 
 
 class ParameterList(Layer):
-    """ParameterList Container.
+    r"""ParameterList Container.
 
     This container acts like a Python list, but parameters it contains will be properly added.
 
@@ -161,7 +161,7 @@ class ParameterList(Layer):
         return iter(self._parameters.values())
 
     def append(self, parameter):
-        """Appends a given parameter at the end of the list.
+        r"""Appends a given parameter at the end of the list.
 
         Parameters:
             parameter (Parameter): parameter to append
@@ -172,7 +172,7 @@ class ParameterList(Layer):
 
 
 class LayerList(Layer):
-    """
+    r"""
     LayerList holds sublayers, and sublayers it contains are properly registered.
     Holded sublayers can be indexed like a regular python list.
 
@@ -230,7 +230,7 @@ class LayerList(Layer):
         return iter(self._sub_layers.values())
 
     def append(self, sublayer):
-        """
+        r"""
         Appends a sublayer to the end of the list.
 
         Parameters:
@@ -250,7 +250,7 @@ class LayerList(Layer):
         return self
 
     def insert(self, index, sublayer):
-        """
+        r"""
         Insert a sublayer before a given index in the list.
 
         Parameters:
@@ -275,7 +275,7 @@ class LayerList(Layer):
         self._sub_layers[str(index)] = sublayer
 
     def extend(self, sublayers):
-        """
+        r"""
         Appends sublayers to the end of the list.
 
         Parameters:

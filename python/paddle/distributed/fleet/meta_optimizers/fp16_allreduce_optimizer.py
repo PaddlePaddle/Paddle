@@ -53,7 +53,7 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
 
     @staticmethod
     def fp16_compression(param_and_grads):
-        """
+        r"""
         Compress fp32 gradients to fp16 during allreduce.
         """
         op_maker = core.op_proto_and_checker_maker

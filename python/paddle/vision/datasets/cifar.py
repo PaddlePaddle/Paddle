@@ -41,7 +41,7 @@ MODE_FLAG_MAP = {
 
 
 class Cifar10(Dataset):
-    """
+    r"""
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.
 
@@ -175,7 +175,7 @@ class Cifar10(Dataset):
 
 
 class Cifar100(Cifar10):
-    """
+    r"""
     Implementation of `Cifar-100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 100 categories.
 

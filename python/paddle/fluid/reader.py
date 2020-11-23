@@ -145,7 +145,7 @@ class DataLoaderBase(object):
 
 
 class DataLoader(object):
-    """
+    r"""
     DataLoader prodives an iterator which iterates given dataset
     once by the batch_sampler.
 
@@ -425,7 +425,7 @@ class DataLoader(object):
                        return_list=False,
                        use_multiprocess=False,
                        drop_last=True):
-        """
+        r"""
         .. warning::
           This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
@@ -674,7 +674,7 @@ class DataLoader(object):
 
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
-        """
+        r"""
         .. warning::
           This API will be deprecated in the future, it is recommended to use
           :code:`paddle.io.DataLoader` which supports multi-processes acceleration.
@@ -715,7 +715,7 @@ class DataLoader(object):
 
 
 class DygraphGeneratorLoader(DataLoaderBase):
-    """
+    r"""
     The GeneratorLoader of dygraph
 
     The multiprocess dygraph GeneratorLoader's most functions are different from 
@@ -1250,7 +1250,7 @@ class GeneratorLoader(DataLoaderBase):
 
 
 class PyReader(DataLoaderBase):
-    """
+    r"""
     Create a reader object for data feeding in Python. 
     Data would be prefetched using Python thread and be pushed
     into a queue asynchronously. Data in the queue would be extracted 

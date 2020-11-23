@@ -85,7 +85,7 @@ def _has_optimizer_in_control_flow(program):
 
 
 class CompiledProgram(object):
-    """
+    r"""
     :api_attr: Static Graph
     
     The CompiledProgram is used to transform a program or graph for
@@ -166,7 +166,7 @@ class CompiledProgram(object):
                            exec_strategy=None,
                            share_vars_from=None,
                            places=None):
-        """
+        r"""
         This interface is used to transform the input Program or Graph to a multi-graph
         to run the model in data parallel mode. Users can use the build_strategy and
         exec_strategy to set some optimizations that can be applied during the construction
@@ -293,7 +293,7 @@ class CompiledProgram(object):
         return self
 
     def _with_inference_optimize(self, config):
-        """ Add inference optimize
+        r""" Add inference optimize
 
         Args:
             config: instance of `NativeConfig` or `AnalysisConfig` to create predictor
@@ -410,7 +410,7 @@ class CompiledProgram(object):
         return core.create_paddle_predictor(self._infer_config)
 
     def _compile(self, scope, place):
-        """Compile the program based on the configs.
+        r"""Compile the program based on the configs.
 
         Args:
             scope: The variables (resources) that are associated with

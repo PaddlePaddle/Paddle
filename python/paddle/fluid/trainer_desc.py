@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of trainers."""
+r"""Defination of trainers."""
 
 import sys
 import os
@@ -293,7 +293,7 @@ class MultiTrainer(TrainerDesc):
 
 
 class DistMultiTrainer(TrainerDesc):
-    """
+    r"""
     Implement of DistMultiTrainer.
     It's for Distributed training.
     """
@@ -317,7 +317,7 @@ class DistMultiTrainer(TrainerDesc):
 
 
 class HeterXpuTrainer(TrainerDesc):
-    """
+    r"""
     Implement of HeterXpuTrainer.
     It's for Distributed training.
     """
@@ -341,7 +341,7 @@ class HeterXpuTrainer(TrainerDesc):
 
 
 class PipelineTrainer(TrainerDesc):
-    """
+    r"""
     Implement of PipelineTrainer.
     It's for Pipeline.
     """

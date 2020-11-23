@@ -20,7 +20,7 @@ from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, lo
 
 
 def convert_while_loop(cond, body, loop_vars):
-    """
+    r"""
     A function representation of a Python ``while`` statement.
 
     Args:
@@ -57,7 +57,7 @@ def _run_py_while(cond, body, loop_vars):
 
 
 def convert_logical_and(x, y):
-    """
+    r"""
     A function representation of a Python ``and`` statement.
 
     Args:
@@ -90,7 +90,7 @@ def _run_py_logical_and(x, y):
 
 
 def convert_logical_or(x, y):
-    """
+    r"""
     A function representation of a Python ``or`` statement.
 
     Args:
@@ -123,7 +123,7 @@ def _run_py_logical_or(x, y):
 
 
 def convert_logical_not(x):
-    """
+    r"""
     A function representation of a Python ``not`` statement.
 
     Args:
@@ -149,7 +149,7 @@ def _run_py_logical_not(x):
 
 
 def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
-    """
+    r"""
     A function representation of a Python ``if/else`` statement.
 
     Args:
@@ -198,7 +198,7 @@ def _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args):
 
 
 def convert_len(var):
-    """
+    r"""
     Returns variable(length) from shape ops based on var.type
 
     Note: In addition to some ast transformations, some block-related
@@ -225,7 +225,7 @@ def convert_len(var):
 
 
 def convert_var_shape(x):
-    """
+    r"""
     A function representation of the shape of variable.
     """
     if isinstance(x, Variable):
@@ -263,7 +263,7 @@ def convert_var_dtype(var, dtype):
 
 
 def convert_assert(cond, message=""):
-    """
+    r"""
     A function representation of a Python ``assert`` statement.
     """
     if isinstance(cond, Variable):
@@ -275,7 +275,7 @@ def convert_assert(cond, message=""):
 
 
 def convert_print(*args):
-    """
+    r"""
     A function representing Python ``print`` statement. Note: this is a basic
     python function so we haven't handle sep, end, file and flush parameters of
     python function.

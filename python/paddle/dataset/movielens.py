@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 Movielens 1-M dataset.
 
 Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000
@@ -47,7 +47,7 @@ MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
 class MovieInfo(object):
-    """
+    r"""
     Movie id, title and categories information are stored in MovieInfo.
     """
 
@@ -57,7 +57,7 @@ class MovieInfo(object):
         self.title = title
 
     def value(self):
-        """
+        r"""
         Get information from a movie.
         """
         return [
@@ -74,7 +74,7 @@ class MovieInfo(object):
 
 
 class UserInfo(object):
-    """
+    r"""
     User id, gender, age, and job information are stored in UserInfo.
     """
 
@@ -85,7 +85,7 @@ class UserInfo(object):
         self.job_id = int(job_id)
 
     def value(self):
-        """
+        r"""
         Get information from a user.
         """
         return [self.index, 0 if self.is_male else 1, self.age, self.job_id]
@@ -185,7 +185,7 @@ test = functools.partial(__reader_creator__, is_test=True)
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def get_movie_title_dict():
-    """
+    r"""
     Get movie title dictionary.
     """
     __initialize_meta_info__()
@@ -204,7 +204,7 @@ def __max_index_info__(a, b):
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def max_movie_id():
-    """
+    r"""
     Get the maximum value of movie id.
     """
     __initialize_meta_info__()
@@ -216,7 +216,7 @@ def max_movie_id():
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def max_user_id():
-    """
+    r"""
     Get the maximum value of user id.
     """
     __initialize_meta_info__()
@@ -235,7 +235,7 @@ def __max_job_id_impl__(a, b):
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def max_job_id():
-    """
+    r"""
     Get the maximum value of job id.
     """
     __initialize_meta_info__()
@@ -248,7 +248,7 @@ def max_job_id():
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def movie_categories():
-    """
+    r"""
     Get movie categories dictionary.
     """
     __initialize_meta_info__()
@@ -260,7 +260,7 @@ def movie_categories():
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def user_info():
-    """
+    r"""
     Get user info dictionary.
     """
     __initialize_meta_info__()
@@ -272,7 +272,7 @@ def user_info():
     update_to="paddle.text.datasets.Movielens",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def movie_info():
-    """
+    r"""
     Get movie info dictionary.
     """
     __initialize_meta_info__()

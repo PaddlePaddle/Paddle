@@ -112,7 +112,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
 
 
 def box_coder(all_anchors, bbox_deltas, variances):
-    """
+    r"""
     Decode proposals by anchors and bbox_deltas from RPN 
     """
     #proposals: xmin, ymin, xmax, ymax
@@ -162,7 +162,7 @@ def box_coder(all_anchors, bbox_deltas, variances):
 
 
 def clip_tiled_boxes(boxes, im_shape):
-    """Clip boxes to image boundaries. im_shape is [height, width] and boxes
+    r"""Clip boxes to image boundaries. im_shape is [height, width] and boxes
     has shape (N, 4 * num_tiled_boxes)."""
     assert boxes.shape[1] % 4 == 0, \
         'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
@@ -180,7 +180,7 @@ def clip_tiled_boxes(boxes, im_shape):
 
 
 def filter_boxes(boxes, min_size, im_info):
-    """Only keep boxes with both sides >= min_size and center within the image.
+    r"""Only keep boxes with both sides >= min_size and center within the image.
     """
     # Scale min_size to match image scale
     im_scale = im_info[2]
@@ -197,7 +197,7 @@ def filter_boxes(boxes, min_size, im_info):
 
 
 def iou(box_a, box_b):
-    """
+    r"""
 	Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
@@ -228,7 +228,7 @@ def iou(box_a, box_b):
 
 
 def nms(boxes, scores, nms_threshold, eta=1.0):
-    """Apply non-maximum suppression at test time to avoid detecting too many
+    r"""Apply non-maximum suppression at test time to avoid detecting too many
     overlapping bounding boxes for a given object.
     Args:
         boxes: (tensor) The location preds for the img, Shape: [num_priors,4].

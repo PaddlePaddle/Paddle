@@ -19,7 +19,7 @@ from .. import functional as F
 
 
 class RowConv(layers.Layer):
-    """
+    r"""
 	:alias_main: paddle.nn.RowConv
 	:alias: paddle.nn.RowConv,paddle.nn.layer.RowConv,paddle.nn.layer.extension.RowConv
 

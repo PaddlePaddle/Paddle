@@ -84,7 +84,7 @@ class CRFDecoding(object):
 
 
 class TestCRFDecodingOp1(OpTest):
-    """
+    r"""
     Compare the dynamic program with random generated parameters and inputs
     with grouth truth not being given.
     """
@@ -123,7 +123,7 @@ class TestCRFDecodingOp1(OpTest):
 
 
 class TestCRFDecodingOp2(OpTest):
-    """
+    r"""
     Compare the dynamic program with brute force computation with
     ground truth being given.
     """
@@ -188,7 +188,7 @@ def seq_pad(data, length):
 
 
 class TestCRFDecodingOp5(OpTest):
-    """
+    r"""
     Compare the dynamic program with random generated parameters and inputs
     with grouth truth not being given.
     """

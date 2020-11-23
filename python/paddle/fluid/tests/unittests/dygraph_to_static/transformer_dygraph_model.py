@@ -24,7 +24,7 @@ from paddle.fluid.layers.utils import map_structure
 
 
 def position_encoding_init(n_position, d_pos_vec):
-    """
+    r"""
     Generate the initial values for the sinusoid position encoding table.
     """
     channels = d_pos_vec

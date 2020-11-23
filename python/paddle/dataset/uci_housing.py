@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 UCI Housing dataset.
 
 This module will download dataset from
@@ -89,7 +89,7 @@ def load_data(filename, feature_num=14, ratio=0.8):
     update_to="paddle.text.datasets.UCIHousing",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
-    """
+    r"""
     UCI_HOUSING training set creator.
 
     It returns a reader creator, each sample in the reader is features after
@@ -113,7 +113,7 @@ def train():
     update_to="paddle.text.datasets.UCIHousing",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
-    """
+    r"""
     UCI_HOUSING test set creator.
 
     It returns a reader creator, each sample in the reader is features after
@@ -148,7 +148,7 @@ def fluid_model():
     update_to="paddle.text.datasets.UCIHousing",
     reason="Please use new dataset API which supports paddle.io.DataLoader")
 def predict_reader():
-    """
+    r"""
     It returns just one tuple data to do inference.
 
     :return: one tuple data

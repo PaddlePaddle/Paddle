@@ -20,7 +20,7 @@ __all__ = ['matmul', ]
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
-    """
+    r"""
     Applies matrix multiplication to two complex number tensors. See the 
     detailed description in :ref:`api_fluid_layers_matmul`.
 

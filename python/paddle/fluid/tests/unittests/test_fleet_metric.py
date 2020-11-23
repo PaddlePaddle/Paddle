@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test fleet metric."""
+r"""Test fleet metric."""
 
 from __future__ import print_function
 import numpy as np
@@ -24,16 +24,16 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import f
 
 
 class TestFleetMetric(unittest.TestCase):
-    """Test cases for fleet metric."""
+    r"""Test cases for fleet metric."""
 
     def setUp(self):
-        """Set up, set envs."""
+        r"""Set up, set envs."""
 
         class FakeFleet:
-            """Fake fleet only for test."""
+            r"""Fake fleet only for test."""
 
             def __init__(self):
-                """Init."""
+                r"""Init."""
                 self.gloo = fluid.core.Gloo()
                 self.gloo.set_rank(0)
                 self.gloo.set_size(1)
@@ -43,21 +43,21 @@ class TestFleetMetric(unittest.TestCase):
                 self.gloo.init()
 
             def _all_reduce(self, input, output, mode="sum"):
-                """All reduce using gloo."""
+                r"""All reduce using gloo."""
                 input_list = [i for i in input]
                 ans = self.gloo.all_reduce(input_list, mode)
                 for i in range(len(ans)):
                     output[i] = 1
 
             def _barrier_worker(self):
-                """Fake barrier worker, do nothing."""
+                r"""Fake barrier worker, do nothing."""
                 pass
 
         self.fleet = FakeFleet()
         fleet._role_maker = self.fleet
 
     def test_metric_1(self):
-        """Test cases for metrics."""
+        r"""Test cases for metrics."""
         train = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train, startup):

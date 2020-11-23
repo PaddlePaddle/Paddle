@@ -255,7 +255,7 @@ class InputField(object):
 
 
 def load(program, model_path, executor=None, var_list=None):
-    """
+    r"""
     To load python2 saved models in python3.
     """
     try:
@@ -273,7 +273,7 @@ def load(program, model_path, executor=None, var_list=None):
 
 
 def load_dygraph(model_path, keep_name_table=False):
-    """
+    r"""
     To load python2 saved models in python3.
     """
     try:

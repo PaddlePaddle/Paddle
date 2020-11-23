@@ -22,7 +22,7 @@ import os
 
 
 def check_broadcast(block):
-    """
+    r"""
     if a var is broadcasted, it should have a sync_comm before
     this var is used, if not, raise error.
     if the broadcasted var has a fill_constant op, the fill_constant
@@ -79,7 +79,7 @@ def check_broadcast(block):
 
 
 def check_allreduce_sum(block):
-    """
+    r"""
     if a Var is allreduced, the op order should be:
         - 0: op that generate Var
         - 1: sync_calc
@@ -128,7 +128,7 @@ def check_allreduce_sum(block):
 
 
 def get_valid_op_role(block, insert_idx):
-    """
+    r"""
     return OpRole.Forward or OpRole.Backward
     """
     op_role = block.ops[insert_idx].attr('op_role')
@@ -142,7 +142,7 @@ def get_valid_op_role(block, insert_idx):
 
 
 def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
-    """
+    r"""
     _insert_sync_calc_op
     """
     op_role = get_valid_op_role(block, insert_idx)
@@ -156,7 +156,7 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
 
 
 def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars):
-    """
+    r"""
     _insert_sync_comm_ops
     """
     op_role = get_valid_op_role(block, insert_idx)
@@ -172,7 +172,7 @@ def insert_sync_comm_ops(block, insert_idx, nrings, comm_dep_vars):
 
 
 def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
-    """
+    r"""
     _add_fill_constant_ops
     """
     op_role = get_valid_op_role(block, insert_idx)
@@ -192,7 +192,7 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
 
 
 def insert_cast_ops(block, insert_idx, cast_ops):
-    """
+    r"""
     _add_cast_ops
     """
     op_role = get_valid_op_role(block, insert_idx)
@@ -211,7 +211,7 @@ def insert_cast_ops(block, insert_idx, cast_ops):
 
 
 def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
-    """
+    r"""
     _add_allreduce_ops
     """
     ring_id = -1
@@ -228,7 +228,7 @@ def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
 
 
 def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
-    """
+    r"""
     _add_broadcast_ops
     """
     ring_id = -1
@@ -261,7 +261,7 @@ DtypeToSize = {
 
 
 def get_var_size(param):
-    """
+    r"""
     input:
         - param: var
     return:
@@ -290,7 +290,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
 
 
 def comm_analyse(main_program):
-    """
+    r"""
     Analyse the parameter size that need to be broadcast/allreduce during sharding training 
     """
     reduce_vars = {}
@@ -330,7 +330,7 @@ def comm_analyse(main_program):
 
 
 def add_sync_comm_for_test(program, dist_strategy):
-    """
+    r"""
     When clone a test prog by clone from the sharding main prog, 
     part of the sync_comm op maybe be pruned by mistake, this function
     add the sync_comm op for the test prog.
@@ -362,7 +362,7 @@ def add_sync_comm_for_test(program, dist_strategy):
 
 
 def sharding_save_persistables(exe, dirname, main_program, filename=None):
-    """
+    r"""
     When use sharding, part of persistable vars are unique and are partitioned in different ranks,
     and part of persistable vars are duplicated and exist in all the ranks with different values.
     This function handles the model saving for sharding training.

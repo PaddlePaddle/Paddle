@@ -580,7 +580,7 @@ class ParameterServerRuntime(RuntimeBase):
                                         main_program=None,
                                         mode=0,
                                         **kwargs):
-        """
+        r"""
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
         or file `filename`.
@@ -619,7 +619,7 @@ class ParameterServerRuntime(RuntimeBase):
                                            target_vars,
                                            main_program=None,
                                            export_for_deployment=True):
-        """
+        r"""
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """

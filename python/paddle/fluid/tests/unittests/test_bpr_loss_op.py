@@ -20,7 +20,7 @@ from op_test import OpTest, randomize_probability
 
 
 class TestBprLossOp1(OpTest):
-    """Test BprLoss with discrete one-hot labels.
+    r"""Test BprLoss with discrete one-hot labels.
     """
 
     def setUp(self):

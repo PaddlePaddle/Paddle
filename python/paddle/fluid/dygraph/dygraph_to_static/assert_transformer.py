@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 
 class AssertTransformer(gast.NodeTransformer):
-    """
+    r"""
     A class transforms python assert to convert_assert.
     """
 

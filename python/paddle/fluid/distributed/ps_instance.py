@@ -15,7 +15,7 @@ from .helper import MPIHelper
 
 
 class PaddlePSInstance(object):
-    """
+    r"""
         PaddlePSInstance class is used to generate A instance of server or worker 
         Args:
             server_worker_mode: is a value 0 or 1, default is 1
@@ -67,7 +67,7 @@ class PaddlePSInstance(object):
         pass
 
     def get_worker_id(self):
-        """
+        r"""
         Return worker index 
         """
         if self._server_worker_mode == 0:
@@ -76,7 +76,7 @@ class PaddlePSInstance(object):
             return self._rankid / self._proc_per_node
 
     def get_server_id(self):
-        """
+        r"""
         Return server index 
         """
         if self._server_worker_mode == 0:
@@ -85,62 +85,62 @@ class PaddlePSInstance(object):
             return self.rank_id / self._proc_per_node
 
     def is_worker(self):
-        """
+        r"""
         Return instance is worker or not
         """
         return self._node_type == 1
 
     def is_server(self):
-        """
+        r"""
         Return instance is server or not
         """
         return self._node_type == 0
 
     def is_first_worker(self):
-        """
+        r"""
         Return instance is first worker or not
         """
         return self.is_worker() and 0 == self.get_worker_id()
 
     def set_ip(self, ip):
-        """
+        r"""
             set server ip
         """
         self._ip = ip
 
     def gather_ips(self):
-        """
+        r"""
         Return all servers and workers ip through mpi allgather 
         """
         self._ips = self.dh.comm.allgather(self._ip)
         return self._ips
 
     def get_node_cnt(self):
-        """
+        r"""
         Return node cnt
         """
         return self._nodes
 
     def get_worker_num(self):
-        """
+        r"""
         Return worker num
         """
         return self._worker_num
 
     def get_server_num(self):
-        """
+        r"""
         Return server num
         """
         return self._server_num
 
     def barrier_all(self):
-        """
+        r"""
         barrier workers and servers
         """
         self.dh.comm.barrier()
 
     def barrier_worker(self):
-        """
+        r"""
         barrier workers
         """
         if self.is_worker():
@@ -148,7 +148,7 @@ class PaddlePSInstance(object):
         pass
 
     def finalize(self):
-        """
+        r"""
         MPI finalize
         """
         self.dh.finalize()

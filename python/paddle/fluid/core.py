@@ -50,14 +50,14 @@ except ImportError as e:
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+            r"""NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"%s\" with your own
         directory. The original error is: \n %s""" %
             (executable_path, executable_path, cpt.get_exception_message(e)))
     else:
         raise ImportError(
-            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
+            r"""NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
         if you encounters \"libmkldnn.so not found\" errors. If you have python
         installed in other directory, replace \"/usr/local/lib\" with your own
         directory. The original error is: \n""" + cpt.get_exception_message(e))
@@ -66,7 +66,7 @@ except Exception as e:
 
 
 def avx_supported():
-    """
+    r"""
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
     """
     from .. import compat as cpt

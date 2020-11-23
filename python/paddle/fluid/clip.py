@@ -40,7 +40,7 @@ class BaseErrorClipAttr(object):
 
 
 class ErrorClipByValue(BaseErrorClipAttr):
-    """
+    r"""
     Clips tensor values to the range [min, max].
 
     Given a tensor ``t`` (see Examples below), this operation clips its value \
@@ -150,7 +150,7 @@ class ClipGradBase(object):
 
 
 class ClipGradByValue(ClipGradBase):
-    """
+    r"""
     Limit the value of multi-dimensional Tensor :math:`X` to the range [min, max].
     
     - Any values less than min are set to ``min``.
@@ -241,7 +241,7 @@ class ClipGradByValue(ClipGradBase):
 
 
 class ClipGradByNorm(ClipGradBase):
-    """
+    r"""
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
     
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
@@ -343,7 +343,7 @@ class ClipGradByNorm(ClipGradBase):
 
 
 class ClipGradByGlobalNorm(ClipGradBase):
-    """
+    r"""
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
     :math:`t\_list` , and limit it to ``clip_norm`` .
     
@@ -540,7 +540,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
 @framework.dygraph_not_support
 def set_gradient_clip(clip, param_list=None, program=None):
-    """
+    r"""
     :api_attr: Static Graph
     
     Warning:

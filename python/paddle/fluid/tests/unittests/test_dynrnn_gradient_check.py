@@ -213,7 +213,7 @@ class BaseRNN(object):
 class SeedFixedTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Fix random seeds to remove randomness from tests"""
+        r"""Fix random seeds to remove randomness from tests"""
         cls._np_rand_state = numpy.random.get_state()
         cls._py_rand_state = random.getstate()
 
@@ -222,7 +222,7 @@ class SeedFixedTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Restore random seeds"""
+        r"""Restore random seeds"""
         numpy.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 

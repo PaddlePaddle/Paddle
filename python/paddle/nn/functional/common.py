@@ -69,7 +69,7 @@ def interpolate(x,
                 align_mode=0,
                 data_format='NCHW',
                 name=None):
-    """
+    r"""
 
     This op resizes a batch of images.
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -504,7 +504,7 @@ def upsample(x,
              align_mode=0,
              data_format='NCHW',
              name=None):
-    """
+    r"""
     This op resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -702,7 +702,7 @@ def upsample(x,
 
 
 def bilinear(x1, x2, weight, bias=None, name=None):
-    """
+    r"""
 
     This layer performs bilinear on two inputs.
     See :ref:`api_nn_Bilinear` for details and output shape.
@@ -760,7 +760,7 @@ def dropout(x,
             training=True,
             mode="upscale_in_train",
             name=None):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
     outputs of some units to zero, while upscale others according to the given
@@ -977,7 +977,7 @@ def dropout(x,
 
 
 def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
-    """
+    r"""
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
@@ -1034,7 +1034,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
 
 
 def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
-    """
+    r"""
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
@@ -1090,7 +1090,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
 
 
 def alpha_dropout(x, p=0.5, training=True, name=None):
-    """
+    r"""
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
     For an input with zero mean and unit standard deviation, the output of Alpha Dropout
     maintains the original mean and standard deviation of the input.
@@ -1166,7 +1166,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
 
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
-    """
+    r"""
     Pad tensor according to 'pad' and 'mode'.
     If mode is 'constant' and length of pad is twice as length of x dimension,
     then the padding will be started from the first dimension and moved back onto x
@@ -1360,7 +1360,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
 
 def cosine_similarity(x1, x2, axis=1, eps=1e-8):
-    """
+    r"""
     Compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
@@ -1414,7 +1414,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
 
 
 def linear(x, weight, bias=None, name=None):
-    """
+    r"""
 
     Fully-connected linear transformation operator. For each input :math:`X` ,
     the equation is:
@@ -1501,7 +1501,7 @@ def linear(x, weight, bias=None, name=None):
 
 
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
-    """
+    r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
     label-smoothing regularization (LSR).
 

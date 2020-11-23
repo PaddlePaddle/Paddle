@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Get pull requests. """
+r""" Get pull requests. """
 
 import os
 import time
@@ -21,14 +21,14 @@ from github import Github
 
 
 class PRChecker(object):
-    """ PR Checker. """
+    r""" PR Checker. """
 
     def __init__(self):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = None
 
     def check(self, filename, msg):
-        """ 
+        r""" 
         Args:
             filename (str): File to get block names.  
             msg (str): Error message.  

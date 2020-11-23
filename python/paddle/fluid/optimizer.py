@@ -55,7 +55,7 @@ __all__ = [
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
@@ -339,7 +339,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def set_lr(self, value):
-        """
+        r"""
         :api_attr: imperative
         
         Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
@@ -416,7 +416,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def current_step_lr(self):
-        """
+        r"""
         :api_attr: imperative
         
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
@@ -479,7 +479,7 @@ class Optimizer(object):
                 return step_lr.numpy()[0]
 
     def _global_learning_rate(self, program=None):
-        """
+        r"""
         get global decayed learning rate
         :return:
         """
@@ -488,7 +488,7 @@ class Optimizer(object):
         return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):
-        """ append optimize operator to block and return all the added optimize_op
+        r""" append optimize operator to block and return all the added optimize_op
         """
         raise NotImplementedError()
 
@@ -508,7 +508,7 @@ class Optimizer(object):
                     return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
-        """Create all accumulators needed by the parameters
+        r"""Create all accumulators needed by the parameters
 
         Args:
             block: the block in which the loss variable is present
@@ -517,7 +517,7 @@ class Optimizer(object):
         pass
 
     def _finish_update(self, block, parameters_and_grads):
-        """Finish any custom updates needed
+        r"""Finish any custom updates needed
            before completing an optimization step
 
         Args:
@@ -537,7 +537,7 @@ class Optimizer(object):
                          shape=None,
                          type=None,
                          device=None):
-        """Utility function to add an accumulator for a parameter
+        r"""Utility function to add an accumulator for a parameter
 
         Args:
             block: the block in which the loss variable is present
@@ -585,7 +585,7 @@ class Optimizer(object):
         return var
 
     def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
+        r"""Utility function to fetch an accumulator for a parameter
 
         Args:
             name: name of the accumulator
@@ -623,7 +623,7 @@ class Optimizer(object):
         return device
 
     def _create_optimization_pass(self, parameters_and_grads):
-        """Add optimization operators to update gradients to variables.
+        r"""Add optimization operators to update gradients to variables.
 
         Args:
           parameters_and_grads(list(tuple(Variable, Variable))):
@@ -690,7 +690,7 @@ class Optimizer(object):
         return target_block._slice_ops(start, end)
 
     def _process_distribute_lookuptable(self, param_grads):
-        """
+        r"""
         Because distribute lookup table only support SGD optimizer for now, not support
         other optimizer and regularization, so we should find the table parameter out,
         and avoid to add regularization and other op for it, and add sgd optimize op
@@ -737,7 +737,7 @@ class Optimizer(object):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        """
+        r"""
         The first part of ``minimize``, do auto-diff to append backward operations for
         the current program.
 
@@ -801,7 +801,7 @@ class Optimizer(object):
         return params_grads
 
     def apply_gradients(self, params_grads):
-        """
+        r"""
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
 
@@ -839,7 +839,7 @@ class Optimizer(object):
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        """
+        r"""
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
         Args:
@@ -876,7 +876,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def clear_gradients(self):
-        """
+        r"""
         Clear the gradients of all optimized parameters for model.
         
         Returns:
@@ -911,7 +911,7 @@ class Optimizer(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        """
+        r"""
         Add operations to minimize ``loss`` by updating ``parameter_list``.
 
         Args:
@@ -954,7 +954,7 @@ class Optimizer(object):
 
 
 class SGDOptimizer(Optimizer):
-    """
+    r"""
     Optimizer of the stochastic gradient descent algorithm.
 
     .. math::
@@ -1048,7 +1048,7 @@ class SGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(Optimizer):
-    """
+    r"""
 
     Simple Momentum optimizer with velocity state
 
@@ -1183,7 +1183,7 @@ class MomentumOptimizer(Optimizer):
 
 
 class DGCMomentumOptimizer(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
@@ -1603,7 +1603,7 @@ class DGCMomentumOptimizer(Optimizer):
 
 
 class LarsMomentumOptimizer(Optimizer):
-    """
+    r"""
     Momentum optimizer with LARS support
 
     The update equations are as follows:
@@ -1735,7 +1735,7 @@ class LarsMomentumOptimizer(Optimizer):
 
 
 class AdagradOptimizer(Optimizer):
-    """
+    r"""
     The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
     different learning rates to individual parameters.
 
@@ -1851,7 +1851,7 @@ class AdagradOptimizer(Optimizer):
 
 
 class AdamOptimizer(Optimizer):
-    """
+    r"""
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
@@ -2117,7 +2117,7 @@ class AdamOptimizer(Optimizer):
 
 
 class AdamaxOptimizer(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -2270,7 +2270,7 @@ class AdamaxOptimizer(Optimizer):
         return adamax_op
 
     def _finish_update(self, block, parameters_and_grads):
-        """Update Beta1 Power accumulator
+        r"""Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
         for param, grad in parameters_and_grads:
@@ -2289,7 +2289,7 @@ class AdamaxOptimizer(Optimizer):
 
 
 class DpsgdOptimizer(Optimizer):
-    """
+    r"""
     We implement the Dpsgd optimizer according to CCS16 paper -
     Deep Learning with Differential Privacy.
 
@@ -2384,7 +2384,7 @@ class DpsgdOptimizer(Optimizer):
 
 
 class DecayedAdagradOptimizer(Optimizer):
-    """
+    r"""
     The Decayed Adagrad optimizer can be seen as an Adagrad algorithm that introduces
     the decay rate to solve the problem of a sharp drop in the learning rate
     during model training when using the AdagradOptimizer.
@@ -2494,7 +2494,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
 
 class AdadeltaOptimizer(Optimizer):
-    """
+    r"""
     **Notes: This API does not support sparse parameter optimization.**
 
     Adadelta Optimizer. Please refer to this for details:
@@ -2613,7 +2613,7 @@ class AdadeltaOptimizer(Optimizer):
 
 
 class RMSPropOptimizer(Optimizer):
-    """
+    r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
     rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
@@ -2801,7 +2801,7 @@ class RMSPropOptimizer(Optimizer):
 
 
 class FtrlOptimizer(Optimizer):
-    """
+    r"""
     FTRL (Follow The Regularized Leader) Optimizer.
 
     The paper that proposed Follow The Regularized Leader (FTRL):
@@ -2960,7 +2960,7 @@ class FtrlOptimizer(Optimizer):
 
 
 class LambOptimizer(AdamOptimizer):
-    """
+    r"""
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
@@ -3132,7 +3132,7 @@ Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
@@ -3331,7 +3331,7 @@ class ModelAverage(Optimizer):
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
-        """
+        r"""
         Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
 
         Args:
@@ -3388,7 +3388,7 @@ class ModelAverage(Optimizer):
                 self.restore(executor)
 
     def restore(self, executor):
-        """
+        r"""
         Restore ``Parameter`` values of current model.
         
         Args:
@@ -3441,7 +3441,7 @@ class ModelAverage(Optimizer):
 
 
 class ExponentialMovingAverage(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
@@ -3636,7 +3636,7 @@ class ExponentialMovingAverage(object):
         return param_ema
 
     def update(self):
-        """ 
+        r""" 
         Update Exponential Moving Average. Should only call this method in 
         train program.
         """
@@ -3668,7 +3668,7 @@ class ExponentialMovingAverage(object):
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
-        """
+        r"""
         Apply moving average to parameters for evaluation.
         
         Args:
@@ -3684,7 +3684,7 @@ class ExponentialMovingAverage(object):
                 self.restore(executor)
 
     def restore(self, executor):
-        """Restore parameters.
+        r"""Restore parameters.
         
         Args:
             executor (Executor): The Executor to execute restoring.
@@ -3693,7 +3693,7 @@ class ExponentialMovingAverage(object):
 
 
 class PipelineOptimizer(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Pipeline Optimizer: Make a program to run as pipeline, that is splitting a
@@ -3817,7 +3817,7 @@ class PipelineOptimizer(object):
             "LearningRate" in op.input_names)
 
     def _split_program(self, main_program):
-        """
+        r"""
         Split a program into sections according to devices that ops run on.
 
         Args:
@@ -3847,7 +3847,7 @@ class PipelineOptimizer(object):
         return programs
 
     def _find_post_op(self, ops, cur_op, var_name):
-        """
+        r"""
         Find the real post op that has variable named var_name as input.
 
         Args:
@@ -3874,7 +3874,7 @@ class PipelineOptimizer(object):
         return None
 
     def _find_real_prev_op(self, ops, cur_op, var_name):
-        """
+        r"""
         Find the real previous op that outputs variable named var_name.
 
         Args:
@@ -3905,7 +3905,7 @@ class PipelineOptimizer(object):
         op_desc._rename_output(old_name, new_name)
 
     def _create_var(self, block, ref_var, name):
-        """
+        r"""
         Create a new var for block, which has the same type,
         shape and dtype as ref_var, then rename it with the
         name `name`.
@@ -3922,7 +3922,7 @@ class PipelineOptimizer(object):
         return new_var
 
     def _get_data_var_info(self, block):
-        """
+        r"""
         Get all vars whose is_data attribute are true and then rename them.
 
         For PipelineTrainer, all data vars are binded to
@@ -3962,7 +3962,7 @@ class PipelineOptimizer(object):
         return data_devices_map, raw_name_new_name_map
 
     def _rename_var_in_block(self, block, raw_name_new_name_map):
-        """
+        r"""
         Rename vars whose names in raw_name_new_name_map to the corresponding
         new names.
         """
@@ -3976,7 +3976,7 @@ class PipelineOptimizer(object):
 
     def _insert_enq_deq_for_data_var(self, main_block, programs, startup,
                                      devices):
-        """
+        r"""
         Insert enqueue and dequeue ops for data var
 
         Args:
@@ -4052,14 +4052,14 @@ class PipelineOptimizer(object):
                 self._rename_var_in_block(block, raw_name_new_name_map)
 
     def _strip_grad_suffix(self, name):
-        """
+        r"""
         Strip the grad suffix from the given variable name
         """
         pos = name.find(core.grad_var_suffix())
         return name[:pos] if pos != -1 else name
 
     def _append_grad_suffix(self, name):
-        """
+        r"""
         Append grad suffix to the given variable name
         """
         return name + core.grad_var_suffix()
@@ -4077,7 +4077,7 @@ class PipelineOptimizer(object):
                     break
 
     def _add_opdevice_attr_for_regularization_clip(self, block):
-        """
+        r"""
         Add op_device attribute for regulization and clip ops.
         """
         for op in block.ops:
@@ -4095,7 +4095,7 @@ class PipelineOptimizer(object):
             op._set_attr(self._op_device_key, device)
 
     def _add_default_opdevice_attr(self, block):
-        """
+        r"""
         1. Add default op_device attribute for lr-related ops.
            The default value is the one that of the first place.
         2. Add default op_device attribute for sum ops added during
@@ -4138,7 +4138,7 @@ class PipelineOptimizer(object):
                 op._set_attr(self._op_device_key, first_device)
 
     def _check_validation(self, block):
-        """
+        r"""
         Check whether ops in a block are all validate (i.e., the 
         op_device attribute has been set).
         Then, return all device specifications in order.
@@ -4163,7 +4163,7 @@ class PipelineOptimizer(object):
 
     def _insert_enq_deq_ops_for_boundaries(self, block, origin_block,
                                            startup_program):
-        """
+        r"""
         Insert a pair of enqueue and dequeue ops for every two
         consecutive ops on different devices.
         """
@@ -4299,7 +4299,7 @@ class PipelineOptimizer(object):
         return grad_queue_map
 
     def _insert_enq_deq_ops_for_update(self, block, startup_program):
-        """
+        r"""
         Insert enqueue and dequeue ops for gradients of parameters.
         """
         startup_block = startup_program.global_block()
@@ -4373,7 +4373,7 @@ class PipelineOptimizer(object):
 
     def _process_persistable_vars_in_multi_sections(self, main_program,
                                                     startup_prog, program_list):
-        """
+        r"""
         Special Case: process persistable vars that exist in
         multiple sections, e.g., shared weight
         """
@@ -4545,7 +4545,7 @@ class PipelineOptimizer(object):
 
 
 class RecomputeOptimizer(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Recompute Optimizer Wrapper
@@ -4616,7 +4616,7 @@ class RecomputeOptimizer(Optimizer):
         self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
-        """
+        r"""
         Args:
             checkpoints (list): List of Variable or string    
         """
@@ -4631,7 +4631,7 @@ class RecomputeOptimizer(Optimizer):
 
     @framework.deprecate_stat_dict
     def load(self, state_dict):
-        """
+        r"""
 	    :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
@@ -4671,7 +4671,7 @@ class RecomputeOptimizer(Optimizer):
             "load function is not supported by Recompute Optimizer for now")
 
     def apply_gradients(self, params_grads):
-        """
+        r"""
         call apply_gradients function of self._optimizer.
 
         Args:
@@ -4723,7 +4723,7 @@ class RecomputeOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  callbacks=None):
-        """
+        r"""
         call append_backward with checkpoints.
 
         Args:
@@ -4786,7 +4786,7 @@ class RecomputeOptimizer(Optimizer):
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        """
+        r"""
         call the apply_optimize function of self._optimizer
         Args:
             loss (Variable): loss variable to run optimizations.
@@ -4851,7 +4851,7 @@ class RecomputeOptimizer(Optimizer):
 
 
 class LookaheadOptimizer(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This implements the Lookahead optimizer of the
@@ -5023,7 +5023,7 @@ class LookaheadOptimizer(object):
 
 
 class GradientMergeOptimizer(object):
-    """
+    r"""
     Gradient Merge, also called as Gradient Accumulation,
     is a training strategy for larger batches. With this strategy,
     the parameter will not be updated until specific steps.

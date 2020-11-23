@@ -63,7 +63,7 @@ AMP_RELATED_FLAGS_SETTING = {
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
 def _update_list(custom_white_list, custom_black_list):
-    """
+    r"""
     Update black and white list according to users' custom list.
     """
     _white_list = copy.copy(WHITE_LIST)
@@ -89,7 +89,7 @@ def _update_list(custom_white_list, custom_black_list):
 @signature_safe_contextmanager
 @dygraph_only
 def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
-    """
+    r"""
     :api_attr: imperative
 
     Create a context which enables auto-mixed-precision(AMP) of operators executed in imperative mode.

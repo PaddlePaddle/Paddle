@@ -14,7 +14,7 @@
 
 
 class PSMode:
-    """
+    r"""
     There are various mode for fleet, each of them is designed for different model.
     """
     TRANSPILER = 1

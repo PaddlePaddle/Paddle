@@ -21,7 +21,7 @@ __all__ = ["Adamax"]
 
 
 class Adamax(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -180,7 +180,7 @@ class Adamax(Optimizer):
         return adamax_op
 
     def _finish_update(self, block, parameters_and_grads):
-        """Update Beta1 Power accumulator
+        r"""Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
         for param, grad in parameters_and_grads:

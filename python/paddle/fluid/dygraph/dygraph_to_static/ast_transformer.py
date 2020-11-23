@@ -44,7 +44,7 @@ DECORATOR_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func']
 
 
 class DygraphToStaticAst(gast.NodeTransformer):
-    """
+    r"""
     Main class to transform Dygraph to Static Graph
     """
 
@@ -123,7 +123,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return node
 
     def get_module_name(self):
-        """
+        r"""
         Return the main function name which will be used as module name
         in ast_to_func.
         """

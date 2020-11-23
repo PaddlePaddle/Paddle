@@ -36,7 +36,7 @@ class AttrDict(dict):
 
 
 def parse_config(cfg_file):
-    """Load a config file into AttrDict"""
+    r"""Load a config file into AttrDict"""
     import yaml
     with open(cfg_file, 'r') as fopen:
         yaml_config = AttrDict(yaml.load(fopen, Loader=yaml.Loader))

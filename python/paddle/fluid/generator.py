@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This is definition of generator class, which is for managing the state of the algorithm that produces pseudo random numbers."""
+r"""This is definition of generator class, which is for managing the state of the algorithm that produces pseudo random numbers."""
 
 from . import core
 
@@ -19,10 +19,10 @@ __all__ = ['Generator']
 
 
 class Generator(core.Generator):
-    """Generator class"""
+    r"""Generator class"""
 
     def __init__(self, place=None):
-        """
+        r"""
         Create a generator object which manages the random number generation. ( Experimental Feature )
 
         Parameters:

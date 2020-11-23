@@ -60,7 +60,7 @@ def judge_update_shape(ref, index):
 
 
 class TestScatterNdAddSimpleOp(OpTest):
-    """
+    r"""
     A simple example
     """
 
@@ -82,7 +82,7 @@ class TestScatterNdAddSimpleOp(OpTest):
 
 
 class TestScatterNdAddWithEmptyIndex(OpTest):
-    """
+    r"""
     Index has empty element
     """
 
@@ -105,7 +105,7 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
 
 
 class TestScatterNdAddWithHighRankSame(OpTest):
-    """
+    r"""
     Both Index and X have high rank, and Rank(Index) = Rank(X)
     """
 
@@ -131,7 +131,7 @@ class TestScatterNdAddWithHighRankSame(OpTest):
 
 
 class TestScatterNdAddWithHighRankDiff(OpTest):
-    """
+    r"""
     Both Index and X have high rank, and Rank(Index) < Rank(X)
     """
 
@@ -157,7 +157,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
 
 #Test Python API
 class TestScatterNdOpAPI(unittest.TestCase):
-    """
+    r"""
     test scatter_nd_add api and scatter_nd api
     """
 
