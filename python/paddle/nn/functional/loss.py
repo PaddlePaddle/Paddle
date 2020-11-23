@@ -24,13 +24,11 @@ import paddle.fluid as fluid
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
-from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
-from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
 from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
@@ -46,7 +44,6 @@ __all__ = [
     'cross_entropy',
     'dice_loss',
     'hsigmoid_loss',
-    'iou_similarity',
     'kl_div',
     'l1_loss',
     'log_loss',
@@ -59,7 +56,6 @@ __all__ = [
     'smooth_l1_loss',
     'softmax_with_cross_entropy',
     'square_error_cost',
-    'ssd_loss',
     'ctc_loss',
 ]
 
@@ -895,8 +891,6 @@ def kl_div(input, label, reduction='mean', name=None):
             import numpy as np
             import paddle.nn.functional as F
 
-            paddle.disable_static()
-
             shape = (5, 20)
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
@@ -995,32 +989,11 @@ def mse_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-
-
-            # static graph mode
-            paddle.enable_static()
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.fluid.data(name="input", shape=[1])
-            label = paddle.fluid.data(name="label", shape=[1])
-            place = paddle.CPUPlace()
-
-            output = mse_loss(input,label)
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            output_data = exe.run(
-                paddle.static.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
-            print(output_data)
-            # [array([0.04000002], dtype=float32)]
-
-            # dynamic graph mode
-            paddle.disable_static()
             input = paddle.to_tensor(1.5)
             label = paddle.to_tensor(1.7)
             output = mse_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [0.04000002]
 
     """
@@ -1112,7 +1085,6 @@ def ctc_loss(log_probs,
             input_lengths = np.array([5, 5]).astype("int64")
             label_lengths = np.array([3, 3]).astype("int64")
 
-            paddle.disable_static()
             log_probs = paddle.to_tensor(log_probs)
             labels = paddle.to_tensor(labels)
             input_lengths = paddle.to_tensor(input_lengths)
@@ -1123,14 +1095,14 @@ def ctc_loss(log_probs,
                 label_lengths,
                 blank=0,
                 reduction='none')
-            print(loss.numpy())  #[3.9179852 2.9076521]
+            print(loss)  #[3.9179852 2.9076521]
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
                 label_lengths,
                 blank=0,
                 reduction='mean')
-            print(loss.numpy())  #[1.1376063]
+            print(loss)  #[1.1376063]
 
     """
 

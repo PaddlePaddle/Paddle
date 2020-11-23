@@ -622,7 +622,9 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int8_t, ops::ReshapeKernel,
                                uint8_t, ops::ReshapeKernel, int,
                                ops::ReshapeKernel, int64_t, ops::ReshapeKernel,
-                               bool, ops::ReshapeKernel);
+                               bool, ops::ReshapeKernel,
+                               paddle::platform::bfloat16, ops::ReshapeKernel);
+
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,

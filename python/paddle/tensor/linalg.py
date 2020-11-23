@@ -454,8 +454,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
 def dist(x, y, p=2):
     """
-	:alias_main: paddle.dist
-	:alias: paddle.dist,paddle.tensor.dist,paddle.tensor.linalg.dist
 
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
@@ -510,34 +508,32 @@ def dist(x, y, p=2):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
-        y (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
 
     Returns:
-        Variable: Tensor that is the p-norm of (x - y).
+        Tensor: Tensor that is the p-norm of (x - y).
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
-                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
-                out = paddle.dist(x, y, 0)
-                print(out.numpy()) # out = [1.]
+            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
+            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            out = paddle.dist(x, y, 0)
+            print(out) # out = [1.]
 
-                out = paddle.dist(x, y, 2)
-                print(out.numpy()) # out = [2.]
+            out = paddle.dist(x, y, 2)
+            print(out) # out = [2.]
 
-                out = paddle.dist(x, y, float("inf"))
-                print(out.numpy()) # out = [2.]
+            out = paddle.dist(x, y, float("inf"))
+            print(out) # out = [2.]
 
-                out = paddle.dist(x, y, float("-inf"))
-                print(out.numpy()) # out = [0.]
+            out = paddle.dist(x, y, float("-inf"))
+            print(out) # out = [0.]
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
@@ -613,45 +609,45 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
-	:alias_main: paddle.t
-	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
-
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
-    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    the paddle.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
+
         .. code-block:: text
-        # Example 1 (0-D tensor)
-         x = tensor([0.79])
-         paddle.t(x) = tensor([0.79])
-         # Example 2 (1-D tensor)
-         x = tensor([0.79, 0.84, 0.32])
-         paddle.t(x) = tensor([0.79, 0.84, 0.32])
-        
-         # Example 3 (2-D tensor)
-         x = tensor([0.79, 0.84, 0.32],
-                    [0.64, 0.14, 0.57])
-         paddle.t(x) = tensor([0.79, 0.64],
-                              [0.84, 0.14],
-                              [0.32, 0.57])
-    
+
+             # Example 1 (0-D tensor)
+             x = tensor([0.79])
+             paddle.t(x) = tensor([0.79])
+
+             # Example 2 (1-D tensor)
+             x = tensor([0.79, 0.84, 0.32])
+             paddle.t(x) = tensor([0.79, 0.84, 0.32])
+
+             # Example 3 (2-D tensor)
+             x = tensor([0.79, 0.84, 0.32],
+                        [0.64, 0.14, 0.57])
+             paddle.t(x) = tensor([0.79, 0.64],
+                                  [0.84, 0.14],
+                                  [0.32, 0.57])
+
      Examples:
+
         .. code-block:: python
+
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3],
-                            dtype='float32')
+            x = paddle.ones(shape=[2, 3], dtype='int32')
             x_transposed = paddle.t(x)
-            print x_transposed.shape
-            #(3L, 2L)
+            print(x_transposed.shape)
+            # [3, 2]
     """
     if len(input.shape) > 2:
         raise ValueError(
@@ -921,13 +917,11 @@ def mv(x, vec, name=None):
             import numpy as np
             import paddle
 
-            paddle.disable_static()
             x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
             x = paddle.to_tensor(x_data)
             vec_data = np.array([3, 5, 1])
             vec = paddle.to_tensor(vec_data).astype("float64")
             out = paddle.mv(x, vec)
-            paddle.enable_static()
     """
     if in_dygraph_mode():
         out = core.ops.mv(x, vec)

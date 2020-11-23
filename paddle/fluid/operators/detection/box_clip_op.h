@@ -67,7 +67,9 @@ class BoxClipKernel : public framework::OpKernel<T> {
       Tensor im_shape_slice = im_shape->Slice(i, i + 1);
       Tensor box_slice = input_box->Slice(box_lod[i], box_lod[i + 1]);
       Tensor output_slice = output_box->Slice(box_lod[i], box_lod[i + 1]);
-      ClipTiledBoxes<T>(dev_ctx, im_shape_slice, box_slice, &output_slice);
+      bool is_scale = true;
+      ClipTiledBoxes<T>(dev_ctx, im_shape_slice, box_slice, &output_slice,
+                        is_scale);
     }
   }
 };

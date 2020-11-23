@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -157,3 +158,8 @@ void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(cpu_bfloat16_pass, paddle::framework::ir::CPUBFloat16Pass);
+
+REGISTER_PASS_CAPABILITY(cpu_bfloat16_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().GE(
+            "quantize", 1));

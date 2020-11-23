@@ -39,6 +39,7 @@ import scipy.io as scio
 from paddle.dataset.image import *
 from paddle.reader import map_readers, xmap_readers
 from paddle import compat as cpt
+import paddle.utils.deprecated as deprecated
 import os
 import numpy as np
 from multiprocessing import cpu_count
@@ -143,6 +144,10 @@ def reader_creator(data_file,
         return map_readers(mapper, reader)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Flowers",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers training set reader.
@@ -172,6 +177,10 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
         cycle=cycle)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Flowers",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers test set reader.
@@ -201,6 +210,10 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
         cycle=cycle)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Flowers",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''
     Create flowers validation set reader.
