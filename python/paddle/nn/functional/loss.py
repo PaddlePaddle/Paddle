@@ -199,16 +199,16 @@ def binary_cross_entropy_with_logits(logit,
     .. math::
            Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
+           Out = Logit - Logit * Labels + \\log(1 + e^{-Logit})
 
-    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
+    For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
+           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
@@ -650,22 +650,22 @@ def l1_loss(input, label, reduction='mean', name=None):
     If `reduction` set to ``'none'``, the loss is:
 
     .. math::
-        Out = \lvert input - label\rvert
+        Out = \\lvert input - label \\rvert
 
     If `reduction` set to ``'mean'``, the loss is:
 
     .. math::
-        Out = MEAN(\lvert input - label\rvert)
+        Out = MEAN(\\lvert input - label \\rvert)
 
     If `reduction` set to ``'sum'``, the loss is:
 
     .. math::
-        Out = SUM(\lvert input - label\rvert)
+        Out = SUM(\\lvert input - label\\rvert)
 
 
     Parameters:
-        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+        input (Tensor): The input tensor. The shapes is [N, `*`], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        label (Tensor): label. The shapes is [N, `*`], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
         reduction (str, optional): Indicate the reduction to apply to the loss,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'none'``, the unreduced loss is returned;
@@ -673,12 +673,15 @@ def l1_loss(input, label, reduction='mean', name=None):
             If `reduction` is ``'sum'``, the reduced sum loss is returned.
             Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
             If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.disable_static()

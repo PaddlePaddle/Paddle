@@ -403,6 +403,7 @@ def less_than(x, y, name=None):
 def not_equal(x, y, name=None):
     """
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
+    
     **NOTICE**: The output of this OP has no gradient.
 
     Args:

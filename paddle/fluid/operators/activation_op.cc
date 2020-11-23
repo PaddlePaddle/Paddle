@@ -273,7 +273,7 @@ $$out = cosh(x)$$
 UNUSED constexpr char RoundDoc[] = R"DOC(
 The OP rounds the values in the input to the nearest integer value.
 
-.. code-block:: python
+.. code-block:: text
 
   input:
     x.shape = [4]
