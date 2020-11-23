@@ -26,6 +26,7 @@ import shutil
 from contextlib import closing
 import socket
 import warnings
+import six
 from enum import IntEnum
 
 import paddle
@@ -586,8 +587,10 @@ def get_device_mode():
     #TODO(gongwb):Add XPU supported
     if not fluid.core.is_compiled_with_cuda(
     ) or fluid.core.get_cuda_device_count() <= 0:
+        print("launch train in CPU mode")
         return DeviceMode.CPU
 
+    print("launch train in GPU mode")
     return DeviceMode.GPU
 
 
@@ -600,12 +603,14 @@ def get_device_proc_info(args):
     if device_mode == DeviceMode.GPU:
         gpus = get_gpus(args.gpus)
         if args.nproc_per_node is not None:
-            n = len(gpus) % arg.nproc_per_node
-            assert n ==0, \
-                "gpus' number:{} mod arg.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
+            assert (len(gpus) % int(args.nproc_per_node)) ==0, \
+                "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
+
+            n = int(len(gpus) / int(args.nproc_per_node))
             devices_per_proc = [
-                lst[gpus:gpus + n] for i in six.moves.range(0, len(gpus), n)
+                gpus[i:i + n] for i in six.moves.range(0, len(gpus), n)
             ]
+            print("devices_per_proc:", devices_per_proc)
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.CPU:
