@@ -67,8 +67,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     event = platform::CudaEventResourcePool::Instance().New(
         BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
-  // just for copy back
-  copy_enent_ = platform::CudaEventResourcePool::Instance().New(
+  comm_enent_ = platform::CudaEventResourcePool::Instance().New(
       BOOST_GET_CONST(platform::CUDAPlace, place_).device);
 
   std::call_once(once_flag_, []() {
@@ -80,7 +79,7 @@ void Reducer::ReleaseReducer() {
   for (auto &event : events_) {
     event.reset();
   }
-  copy_enent_.reset();
+  comm_enent_.reset();
 }
 
 void Reducer::InitializeGroups(
@@ -169,10 +168,9 @@ void Reducer::InitializeGroups(
 void Reducer::PrepareForBackward() {
   VLOG(3) << "start reseting count..";
   next_group_ = 0;
-  for (size_t group_index = 0; group_index < groups_.size(); ++group_index) {
-    auto &group = groups_[group_index];
+  std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending = group.variable_indices_.size();
-  }
+  });
 }
 
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
@@ -208,7 +206,7 @@ void Reducer::MarkVariableReady(const VariableIndex &var_index,
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
-    VLOG(0) << "Maybe it need adjust the order of group";
+    LOG(WARNING) << "Maybe it need adjust the order of group";
     return;
   }
 
@@ -241,9 +239,9 @@ void Reducer::MarkGroupReady(size_t group_index) {
 }
 
 void Reducer::FinalizeBackward() {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(copy_enent_.get(), comm_stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(comm_enent_.get(), comm_stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaStreamWaitEvent(compute_stream_, copy_enent_.get(), 0));
+      cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 

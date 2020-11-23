@@ -371,9 +371,9 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
   if (var->HasGradNode()) {
     unchange_input = true;
   }
+
   auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVar(var);
-
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {

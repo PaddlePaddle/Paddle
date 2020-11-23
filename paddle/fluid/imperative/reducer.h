@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -200,7 +201,7 @@ class Reducer {
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
-  std::shared_ptr<platform::CudaEventObject> copy_enent_;
+  std::shared_ptr<platform::CudaEventObject> comm_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
 };

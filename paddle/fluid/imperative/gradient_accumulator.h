@@ -20,7 +20,6 @@
 
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/reducer.h"
 
 namespace paddle {
 namespace imperative {
