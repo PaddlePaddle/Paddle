@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
