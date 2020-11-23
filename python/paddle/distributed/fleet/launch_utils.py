@@ -42,6 +42,7 @@ class DistributeMode(IntEnum):
     PS = 1
     PS_HETER = 2
 
+
 class DeviceMode(IntEnum):
     """
     Training devices type
@@ -253,7 +254,8 @@ def get_logger(log_level=20, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc):
+def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                devices_per_proc):
     assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
@@ -269,10 +271,11 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode, devices_per_p
         for i in range(len(devices_per_proc)):
             trainer = Trainer()
             if device_mode == DeviceMode.GPU:
-                if isinstance(devices_per_proc, (list, tuple))
+                if isinstance(devices_per_proc, (list, tuple)):
                     trainer.gpus.extend(devices_per_proc[i])
                 else:
                     trainer.gpus.append(devices_per_proc[i])
+            print("trianer_gpus:", trainer.gpus)
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
@@ -578,26 +581,31 @@ def get_gpus(gpus):
 
     return res_gpus
 
+
 def get_device_mode():
     #TODO(gongwb):Add XPU supported
-    if not fluid.core.is_compiled_with_cuda() or fluid.core.get_cuda_device_count() <=0:
-       return DeviceMode.CPU
+    if not fluid.core.is_compiled_with_cuda(
+    ) or fluid.core.get_cuda_device_count() <= 0:
+        return DeviceMode.CPU
 
     return DeviceMode.GPU
 
+
 def get_device_proc_info(args):
     # device_mode
-    device_mode =get_device_mode()
+    device_mode = get_device_mode()
 
     # devices
-    devices_per_proc=[]
+    devices_per_proc = []
     if device_mode == DeviceMode.GPU:
         gpus = get_gpus(args.gpus)
         if args.nproc_per_node is not None:
             n = len(gpus) % arg.nproc_per_node
             assert n ==0, \
                 "gpus' number:{} mod arg.nproc_per_node:{} must == 0".format(len(gpus), arg.nproc_per_node)
-            devices_per_proc = [lst[gpus:gpus + n] for i in six.moves.range(0, len(gpus), n)]
+            devices_per_proc = [
+                lst[gpus:gpus + n] for i in six.moves.range(0, len(gpus), n)
+            ]
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.CPU:
@@ -606,9 +614,11 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = [x for x in range(0, args.nproc_per_node)]
     else:
-        assert False, "Can't support device_mode:{}, support only cpu and gpu now.".format(device_mode)
+        assert False, "Can't support device_mode:{}, support only cpu and gpu now.".format(
+            device_mode)
 
     return (device_mode, devices_per_proc)
+
 
 def direct_start(args):
     # run ps-cpu mode on paddlecloud, using given envs

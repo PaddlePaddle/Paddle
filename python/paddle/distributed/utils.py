@@ -24,10 +24,9 @@ import subprocess
 from contextlib import closing
 import socket
 
-from . import cloud_utils
-
 logger = logging.getLogger("root")
 logger.propagate = False
+
 
 def get_cluster_from_args(args, selected_gpus):
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
@@ -83,9 +82,14 @@ def get_gpus(selected_gpus):
             logger.info("Change selected_gpus into reletive values. --ips:{} "
                         "will change into relative_ips:{} according to your "
                         "CUDA_VISIBLE_DEVICES:{}".format(
-                selected_gpus, gpus, cuda_visible_devices_list))
+                            selected_gpus, gpus, cuda_visible_devices_list))
 
     return gpus
+
+
+def get_trainers_num():
+    return int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+
 
 def get_cluster_and_pod(args):
     # parse arguments, used for cloud-single-machine and local
@@ -107,6 +111,7 @@ def get_cluster_and_pod(args):
         logger.info("get cluster from args:{}".format(cluster))
 
     return cluster, pod
+
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")

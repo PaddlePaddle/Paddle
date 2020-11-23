@@ -92,7 +92,3 @@ paddlecloud environment.".format(args_node_ips, node_ips))
     cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
                                selected_gpus)
     return cluster, cluster.pods[node_rank]
-
-
-def get_trainers_num():
-    return int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
