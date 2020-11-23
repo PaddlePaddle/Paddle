@@ -229,14 +229,14 @@ $$out = |x|$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\left \\lceil x \\right \\rceil$$
+$$out = \\lceil x \\rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
-$$out = \\left \\lfloor x \\right \\rfloor$$
+$$out = \\lfloor x \\rfloor$$
 
 )DOC";
 
