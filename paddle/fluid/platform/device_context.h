@@ -184,7 +184,6 @@ class CUDAContext {
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
-  template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
     if (cublas_tensor_core_handle_) {
       cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
