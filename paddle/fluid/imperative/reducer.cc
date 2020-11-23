@@ -38,7 +38,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   // initialize groups
   InitializeGroups(group_indices);
 
-  // initialize varname2index_
+  // initialize varname2index_ and add disthook
   {
     for (size_t group_index = 0; group_index < group_indices.size();
          ++group_index) {
@@ -49,7 +49,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
             .group_index = group_index, .variable_index = var_index,
         };
         VLOG(0) << "add hook for var[" << vars_[global_var_index]->GradVarName()
-                << "]";
+                << "], it's in group [" << group_index << "]";
         vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
             std::unique_ptr<LambdaGradAccumulatorPostHook>(
                 new LambdaGradAccumulatorPostHook([=](VariableWrapper *grad) {
@@ -166,27 +166,6 @@ void Reducer::InitializeGroups(
   }
 }
 
-void Reducer::SetGradSpace(Group *p_group) {
-  const std::vector<size_t> &global_indices = p_group->variable_indices_;
-  std::vector<const framework::Tensor *> shape_refer;
-  std::vector<framework::Tensor *> outputs;
-
-  for (size_t index = 0; index < global_indices.size(); ++index) {
-    const auto &var = vars_[global_indices[index]];  // varbase of var
-    auto &grad_var = var->GradVarBase();             // varbase of var grad
-    auto grad_tensor =
-        grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
-
-    shape_refer.emplace_back(grad_tensor);
-    outputs.emplace_back(&(p_group->dense_tensors[index]));
-  }
-
-  // split the tensor for fuse grad
-  split_functor_(*parallel_ctx_->GetDeviceContext(0),
-                 *(p_group->dense_contents.GetMutable<framework::LoDTensor>()),
-                 shape_refer, 0, &outputs);
-}
-
 void Reducer::PrepareForBackward() {
   VLOG(3) << "start reseting count..";
   next_group_ = 0;
@@ -237,26 +216,26 @@ void Reducer::MarkGroupReady(size_t group_index) {
       cudaEventRecord(events_[group_index].get(), compute_stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(comm_stream_, events_[group_index].get(), 0));
+
   for (; next_group_ < groups_.size() && groups_[next_group_].pending == 0;
        ++next_group_) {
-    if (groups_[next_group_].is_sparse_) {
+    auto &group = groups_[next_group_];
+    if (group.is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
-      parallel_ctx_->AllReduceByStream(*groups_[next_group_].sparse_contents,
-                                       groups_[next_group_].sparse_contents, 0,
-                                       false);
+      parallel_ctx_->AllReduceByStream(*group.sparse_contents,
+                                       group.sparse_contents, 0, false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
-      // concat the tensor for fuse grad
-      concat_functor_(*parallel_ctx_->GetDeviceContext(0),
-                      groups_[next_group_].dense_tensors, 0,
-                      groups_[next_group_]
-                          .dense_contents.GetMutable<framework::LoDTensor>());
-      // start allreduce
-      parallel_ctx_->AllReduceByStream(groups_[next_group_].dense_contents,
-                                       &(groups_[next_group_].dense_contents),
-                                       0, false);
-      // copy back use comm stream
-      SetGradSpace(&groups_[next_group_]);
+      // Select common commstream to concat tensors
+      // group.dense_tensors ---> group.dense_contents
+      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(0));
+
+      // Start allreduce
+      parallel_ctx_->AllReduceByStream(group.dense_contents,
+                                       &(group.dense_contents), 0, false);
+      // Select common commstream to split tensors
+      // group.dense_contents ---> group.dense_tensors
+      group.SplitTensors(*parallel_ctx_->GetDeviceContext(0));
     }
   }
 }

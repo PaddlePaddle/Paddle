@@ -23,11 +23,48 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/operators/strided_memcpy.h"
 
 #include "paddle/fluid/platform/cuda_resource_pool.h"
 
 namespace paddle {
 namespace imperative {
+
+template <typename T>
+void ConcatTensorsForAllReduce(
+    const platform::CUDADeviceContext& context,
+    const std::vector<framework::Tensor>& dense_tensors,
+    framework::Variable* p_dense_contents) {
+  operators::math::ConcatFunctor<platform::CUDADeviceContext, T>
+      concat_functor_;
+  concat_functor_(context, dense_tensors, 0,
+                  p_dense_contents->GetMutable<framework::LoDTensor>());
+}
+
+template <typename T>
+void SplitTensorsForAllReduce(const platform::CUDADeviceContext& context,
+                              framework::Variable* p_dense_contents,
+                              std::vector<framework::Tensor>* p_dense_tensors) {
+  auto* in = p_dense_contents->GetMutable<framework::LoDTensor>();
+  std::vector<framework::Tensor*> outs;
+  std::vector<const framework::Tensor*> shape_refer;
+
+  outs.reserve(p_dense_tensors->size());
+  shape_refer.reserve(p_dense_tensors->size());
+
+  for (auto& tensor : *p_dense_tensors) {
+    outs.emplace_back(&tensor);
+    shape_refer.emplace_back(&tensor);
+  }
+  // Sometimes direct copies will be faster
+  if (p_dense_tensors->size() < 10) {
+    operators::StridedMemcpyWithAxis0<T>(context, *in, shape_refer, &outs);
+  } else {
+    operators::math::SplitFunctor<platform::CUDADeviceContext, T>
+        split_functor_;
+    split_functor_(context, *in, shape_refer, 0, &outs);
+  }
+}
 
 struct Group {
   // Here, we use dense_contents & sparse_contents to
@@ -52,9 +89,51 @@ struct Group {
   // external message of group
   framework::proto::VarType::Type dtype;
 
-  // void ConcatTensorsForAllReduce(){
+  // context is used to select the stream for concat
+  void ConcatTensors(const platform::CUDADeviceContext& context) {
+    switch (dtype) {
+      case framework::proto::VarType::FP16:
+        ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors,
+                                                     &dense_contents);
+        break;
+      case framework::proto::VarType::FP32:
+        ConcatTensorsForAllReduce<float>(context, dense_tensors,
+                                         &dense_contents);
+        break;
+      case framework::proto::VarType::FP64:
+        ConcatTensorsForAllReduce<double>(context, dense_tensors,
+                                          &dense_contents);
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Data type (%s) is not supported when it concats tensors for "
+            "allreduce.",
+            framework::DataTypeToString(dtype)));
+    }
+  }
 
-  // }
+  // context is used to select the stream for split
+  void SplitTensors(const platform::CUDADeviceContext& context) {
+    switch (dtype) {
+      case framework::proto::VarType::FP16:
+        SplitTensorsForAllReduce<platform::float16>(context, &dense_contents,
+                                                    &dense_tensors);
+        break;
+      case framework::proto::VarType::FP32:
+        SplitTensorsForAllReduce<float>(context, &dense_contents,
+                                        &dense_tensors);
+        break;
+      case framework::proto::VarType::FP64:
+        SplitTensorsForAllReduce<double>(context, &dense_contents,
+                                         &dense_tensors);
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Data type (%s) is not supported when it splits tensors for "
+            "allreduce.",
+            framework::DataTypeToString(dtype)));
+    }
+  }
 };
 
 struct VariableIndex {
@@ -74,8 +153,6 @@ class Reducer {
   virtual ~Reducer() {}
 
   void InitializeGroups(const std::vector<std::vector<size_t>>& group_indices);
-
-  void SetGradSpace(Group* p_group);
 
   void PrepareForBackward();
 
@@ -126,12 +203,6 @@ class Reducer {
   std::shared_ptr<platform::CudaEventObject> copy_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
-  paddle::operators::math::ConcatFunctor<paddle::platform::CUDADeviceContext,
-                                         float>
-      concat_functor_;
-  paddle::operators::math::SplitFunctor<paddle::platform::CUDADeviceContext,
-                                        float>
-      split_functor_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

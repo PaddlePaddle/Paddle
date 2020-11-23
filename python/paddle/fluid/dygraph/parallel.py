@@ -286,6 +286,8 @@ def scale_loss(loss):
 def apply_collective_grads(parameters):
     if not ParallelEnv().world_size > 1:
         return
+    warnings.warn("If you use DataParallel, "
+                  "you shouldn't use apply_collective_grads.")
 
     grad_var_set = set()
     grad_vars = []
@@ -426,9 +428,9 @@ class DataParallel(layers.Layer):
         else:
             self._strategy = _build_default_parallel_strategy()
 
-        # convert group_size_limits MB
-        self.group_size_limits = [group_size_limits * 1024 * 1024]
         if self._strategy.nranks > 1:
+            # convert group_size_limits MB
+            self.group_size_limits = int(group_size_limits * 1024 * 1024)
             self.init_reducer()
         else:
             warnings.warn(
@@ -438,11 +440,15 @@ class DataParallel(layers.Layer):
                 "start distributed programs. ")
 
     def init_reducer(self):
-        layers_param = [(sublayer, param)
-                        for sublayer in self.sublayers() for param in filter(
-                            lambda (_, param): param.trainable,
-                            sublayer.named_parameters(include_sublayers=False))]
-        trainable_parameters = [param[1] for _, param in layers_param]
+        layers_param = []
+        for sublayer in self.sublayers():
+            for _, param in sublayer.named_parameters(include_sublayers=False):
+                if not isinstance(param, core.VarBase):
+                    raise TypeError("The data type of '%s' must be Varbase" %
+                                    param.name)
+                if param.trainable:
+                    layers_param.append((sublayer, param))
+        trainable_parameters = [param for _, param in layers_param]
 
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
@@ -456,8 +462,13 @@ class DataParallel(layers.Layer):
         is_sparse_gradient = [
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
+        # NOTE(shenliang03): We can set environment variables to control the size of the group,
+        # Default: 1MB
+        small_group_size = float(
+            os.getenv('FLAGS_small_group_memory_size', 1.0))  # MB
         self.group_indices = core.assign_group_by_size(
-            trainable_parameters, is_sparse_gradient, self.group_size_limits)
+            trainable_parameters, is_sparse_gradient,
+            [int(small_group_size * 1024 * 1024), self.group_size_limits])
 
         assert parallel_helper.__parallel_ctx__clz__ is not None, \
             "ParallelContext must be initialized before."
@@ -468,7 +479,6 @@ class DataParallel(layers.Layer):
                                      parallel_helper.__parallel_ctx__clz__)
 
     def forward(self, *inputs, **kwargs):
-        # prepare the backward
         if self._strategy.nranks > 1:
             self._reducer.prepare_for_backward()
 
