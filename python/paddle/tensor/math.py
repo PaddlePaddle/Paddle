@@ -791,8 +791,6 @@ def add_n(inputs, name=None):
 
 def mm(input, mat2, name=None):
     """
-	:alias_main: paddle.mm
-	:alias: paddle.mm,paddle.tensor.mm,paddle.tensor.math.mm
 
     Applies matrix multiplication to two tensors.
 
@@ -805,41 +803,42 @@ def mm(input, mat2, name=None):
     removed after matrix multiplication.
 
     Args:
-        x (Tensor): The input tensor which is a Tensor or LoDTensor.
-        mat2 (Tensor): The input tensor which is a Tensor or LoDTensor.
+        x (Tensor): The input tensor which is a Tensor.
+        mat2 (Tensor): The input tensor which is a Tensor.
         name(str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor: The product Tensor (or LoDTensor).
+        Tensor: The product Tensor.
 
     Examples:
         .. code-block:: python
 
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], mat2: [B, ..., K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [B, ..., M, N]
+            # paddle.matmul(x, mat2)  # out: [B, ..., M, N]
 
             # x: [B, M, K], mat2: [B, K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [B, M, N]
+            # paddle.matmul(x, mat2)  # out: [B, M, N]
 
             # x: [B, M, K], mat2: [K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [B, M, N]
+            # paddle.matmul(x, mat2)  # out: [B, M, N]
 
             # x: [M, K], mat2: [K, N]
-            # fluid.layers.matmul(x, mat2)  # out: [M, N]
+            # paddle.matmul(x, mat2)  # out: [M, N]
 
             # x: [B, M, K], mat2: [K]
-            # fluid.layers.matmul(x, mat2)  # out: [B, M]
+            # paddle.matmul(x, mat2)  # out: [B, M]
 
             # x: [K], mat2: [K]
-            # fluid.layers.matmul(x, mat2)  # out: [1]
+            # paddle.matmul(x, mat2)  # out: [1]
 
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3], dtype='float32')
-            mat2 = fluid.data(name='mat2', shape=[3, 2], dtype='float32')
-            out = paddle.mm(x, mat2) # out shape is [2, 2]
+
+            x = paddle.rand(shape=[2, 3], dtype='float32')
+            y = paddle.rand(shape=[3, 2], dtype='float32')
+            out = paddle.mm(x, y)
+            print(out.shape) # [2, 2]
     """
     if in_dygraph_mode():
         out = _varbase_creator(dtype=input.dtype)
