@@ -9862,20 +9862,12 @@ def leaky_relu(x, alpha=0.02, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+            import paddle
 
-            # Graph Organizing
-            x = fluid.layers.data(name="x", shape=[2], dtype="float32")
-            res = fluid.layers.leaky_relu(x, alpha=0.1)
+            x = paddle.to_tensor([[-1, 2], [3, -4]], dtype='float32')
+            y = paddle.fluid.layers.leaky_relu(x, alpha=0.1)
+            print(y) # [[-0.1, 2], [3, -0.4]]
 
-            # Create an executor using CPU as an example
-            exe = fluid.Executor(fluid.CPUPlace())
-
-            # Execute
-            x_i = np.array([[-1, 2], [3, -4]]).astype(np.float32)
-            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
-            print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
     return paddle.nn.functional.leaky_relu(x, alpha, name)
 
