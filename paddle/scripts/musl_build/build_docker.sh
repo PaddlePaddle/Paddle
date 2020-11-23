@@ -20,12 +20,24 @@ CUR_DIR=$(realpath "$CUR_DIR")
 # shellcheck disable=1090
 source "$CUR_DIR/config.sh"
 
+# setup configure to default value
+WITH_REQUIREMENT="${WITH_REQUIREMENT-1}"
+WITH_UT_REQUIREMENT="${WITH_UT_REQUIREMENT-0}"
+WITH_REBUILD="${WITH_REBUILD-0}"
+
 # exit when any command fails
 set -e
 
 remove_image(){
     echo "clean up docker images: $BUILD_IMAGE"
     docker rmi -f "$BUILD_IMAGE"
+}
+
+prune_image(){
+    HOURS="$(expr $1 '*' 24)"
+    FILTER="until=${HOURS}h"
+    echo "prune old docker images: $FILTER"
+    docker image prune -f -a --filter "$FILTER"
 }
 
 build_image(){
@@ -45,23 +57,46 @@ build_image(){
     PACKAGE_B64="$(base64 -w0 $PACKAGE_REQ)"
     BUILD_ARGS+=("--build-arg" package="$PACKAGE_B64")
 
-    if [ ! "$WITHOUT_REQUIREMENT" ]; then
-        echo "with python requirement: $PACKAGE_REQ"
+    if [ "$WITH_REQUIREMENT" == "1" ]; then
+        echo "with python requirement: $PYTHON_REQ"
         PYTHON_B64="$(base64 -w0 $PYTHON_REQ)"
         BUILD_ARGS+=("--build-arg" requirement="$PYTHON_B64")
     fi
+
+    if [ "$WITH_UT_REQUIREMENT" == "1" ]; then
+        echo "with unittest requirement: $UNITTEST_REQ"
+        UT_B64="$(base64 -w0 $UNITTEST_REQ)"
+        BUILD_ARGS+=("--build-arg" requirement_ut="$UT_B64")
+    fi
+
+    if [ "$WITH_PIP_INDEX" ]; then
+        echo "with pip index: $WITH_PIP_INDEX"
+        BUILD_ARGS+=("--build-arg" pip_index="$WITH_PIP_INDEX")
+    fi
+        
 
     echo "build docker image: $BUILD_IMAGE"
 
     # shellcheck disable=2086
     docker build \
         -t "$BUILD_IMAGE" \
-        -f "$CUR_DIR/Dockerfile" \
+        -f "$BUILD_DOCKERFILE" \
         --rm=false \
         --network host \
         ${BUILD_ARGS[*]} \
-        --output type=tar,dest=build.tar \
-        .
+        $PWD
 }
 
-build_image
+if [ "$WITH_PRUNE_DAYS" ]; then
+    prune_image "$WITH_PRUNE_DAYS"
+fi
+
+if [ "$WITH_REBUILD" == "1" ]; then
+    remove_image
+fi
+
+if [ "$ONLY_NAME" == "1" ]; then
+    echo "$BUILD_IMAGE"
+else
+    build_image
+fi

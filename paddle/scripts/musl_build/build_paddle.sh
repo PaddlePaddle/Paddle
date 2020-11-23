@@ -54,6 +54,10 @@ echo "container name: $BUILD_NAME"
 MOUNT_DIR="/paddle"
 echo "mount paddle: $PADDLE_DIR => $MOUNT_DIR"
 
+CCACHE_DIR="${HOME}/.ccache"
+mkdir -p "$CCACHE_DIR"
+echo "ccache dir: $CCACHE_DIR"
+
 if [ "$BUILD_AUTO" -eq "1" ]; then
     echo "enter automatic build mode"
 
@@ -71,7 +75,8 @@ if [ "$BUILD_AUTO" -eq "1" ]; then
     # shellcheck disable=2086,2068
     docker run \
         -v "$PADDLE_DIR":"$MOUNT_DIR" \
-        -v "$OUTPUT_DIR":/output \
+        -v "$OUTPUT_DIR":"/output" \
+        -v "$CCACHE_DIR":"/root/.ccache" \
         --rm \
         --workdir /root \
         --network host \
@@ -81,7 +86,7 @@ if [ "$BUILD_AUTO" -eq "1" ]; then
         "$BUILD_SCRIPT" $@
 
     echo "list output: $OUTPUT_DIR"
-    ls "$OUTPUT_DIR"
+    find "$OUTPUT_DIR" -type f
 else
     echo "enter manual build mode"
 
@@ -89,6 +94,7 @@ else
     docker run \
         -it \
         -v "$PADDLE_DIR":"$MOUNT_DIR" \
+        -v "$CCACHE_DIR":"/root/.ccache" \
         --workdir /root \
         --network host ${ENV_ARGS[*]}\
         --name "$BUILD_NAME" \
