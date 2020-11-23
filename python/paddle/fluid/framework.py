@@ -5744,7 +5744,8 @@ def _get_paddle_place(place):
     "convert the string to paddle Place"
     if place is None:
         return place
-    if isinstance(place, (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+    if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
+                          core.CUDAPinnedPlace, core.CUDAPlace)):
         return place
     if (place == "CPUPlace"):
         return core.CPUPlace()
