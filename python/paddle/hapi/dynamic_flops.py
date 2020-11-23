@@ -167,6 +167,7 @@ register_hooks = {
     nn.Conv1DTranspose: count_convNd,
     nn.Conv2DTranspose: count_convNd,
     nn.Conv3DTranspose: count_convNd,
+    nn.layer.norm.BatchNorm2D: count_bn,
     nn.BatchNorm: count_bn,
     nn.ReLU: count_zero_ops,
     nn.ReLU6: count_zero_ops,

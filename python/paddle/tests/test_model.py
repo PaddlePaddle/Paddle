@@ -557,7 +557,14 @@ class TestModelFunction(unittest.TestCase):
 
     def test_dynamic_flops(self):
         net = models.__dict__['mobilenet_v2'](pretrained=False)
-        paddle.flops(net, [1, 3, 224, 224], print_detail=True)
+
+        def customize_dropout(m, x, y):
+            m.total_ops += 0
+
+        paddle.flops(
+            net, [1, 3, 224, 224],
+            custom_ops={paddle.nn.Dropout: customize_dropout},
+            print_detail=True)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
