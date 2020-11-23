@@ -591,8 +591,8 @@ class TestModelFunction(unittest.TestCase):
             with fluid.scope_guard(new_scope):
                 exe = fluid.Executor(place)
                 [inference_program, feed_target_names, fetch_targets] = (
-                    fluid.io.load_inference_model(
-                        dirname=save_dir, executor=exe))
+                    paddle.static.io.load_inference_model(
+                        path_prefix=save_dir, executor=exe))
                 results = exe.run(inference_program,
                                   feed={feed_target_names[0]: tensor_img},
                                   fetch_list=fetch_targets)
@@ -787,7 +787,6 @@ class TestModelWithLRScheduler(unittest.TestCase):
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
         net = MyModel()
-
         inputs = [InputSpec([None, 10], 'float32')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
@@ -809,6 +808,18 @@ class TestRaiseError(unittest.TestCase):
             model = Model(net)
             model.save(save_dir, training=False)
         paddle.enable_static()
+
+    def test_save_infer_model_without_file_prefix(self):
+        paddle.enable_static()
+        net = LeNet()
+        inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+        model = Model(net, inputs)
+        model.prepare()
+        path = ""
+        tensor_img = np.array(
+            np.random.random((1, 1, 28, 28)), dtype=np.float32)
+        with self.assertRaises(ValueError):
+            model.save(path, training=False)
 
 
 if __name__ == '__main__':
