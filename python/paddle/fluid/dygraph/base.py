@@ -25,7 +25,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..layers.utils import _get_paddle_place
+from ..framework import _get_paddle_place
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',

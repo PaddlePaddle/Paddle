@@ -14,7 +14,7 @@
 """This is definition of generator class, which is for managing the state of the algorithm that produces pseudo random numbers."""
 
 from . import core
-from .layers.utils import _get_paddle_paddle
+from .framework import _get_paddle_place
 
 __all__ = ['Generator']
 

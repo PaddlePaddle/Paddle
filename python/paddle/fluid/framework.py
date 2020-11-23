@@ -5738,3 +5738,57 @@ def get_flags(flags):
     else:
         raise TypeError('Flags in get_flags should be a list, tuple or string.')
     return flags_value
+
+
+def _get_paddle_place(place):
+    "convert the string to paddle Place"
+    if place is None:
+        return place
+    if isinstance(place, (core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
+        return place
+    if (place == "CPUPlace"):
+        return core.CPUPlace()
+
+    avaliable_gpu_place = re.match(r'CUDAPlace:\d+', place)
+    if place == "CUDAPinnedPlace" or place == "CUDAPlace" or avaliable_gpu_place:
+        if not core.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with CUDA".format(avaliable_gpu_place))
+        if place == "CUDAPinnedPlace":
+            return core.CUDAPinnedPlace()
+        elif place == "CUDAPlace":
+            return core.CUDAPlace(0)
+        else:
+            place_info_list = place.split(':', 1)
+            device_id = device_info_list[1]
+            device_id = int(device_id)
+            return core.CUDAPlace(device_id)
+    avaliable_xpu_place = re.match(r'XPUPlace:\d+', place)
+    if avaliable_xpu_place:
+        if not core.is_compiled_with_xpu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with XPU".format(avaliable_xpu_place))
+        place_info_list = device.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.XPUPlace(device_id)
+    raise ValueError(
+        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
+    )
+
+
+def _convert_places(places):
+    if not isinstance(places, (list, tuple)):
+        places = [places]
+
+    ret = []
+    for p in _get_paddle_place(places):
+        if not isinstance(p, core.Place):
+            tmp = core.Place()
+            tmp.set_place(p)
+            p = tmp
+
+        ret.append(p)
+    return ret

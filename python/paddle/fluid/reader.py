@@ -26,7 +26,7 @@ from .dataloader import BatchSampler, Dataset, IterableDataset
 from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, _DatasetKind, default_collate_fn
 from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
-from .layers.utils import _convert_places
+from .framework import _convert_places
 from .unique_name import UniqueNameGenerator
 import logging
 import warnings

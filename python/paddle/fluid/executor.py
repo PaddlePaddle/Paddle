@@ -33,7 +33,6 @@ from .trainer_factory import FetchHandlerMonitor
 import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
-from .layers.utils import _get_paddle_place
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -551,7 +550,7 @@ class Executor(object):
             expected_place = framework._current_expected_place()
             self.place = expected_place
         else:
-            self.place = _get_paddle_place(place)
+            self.place = framework._get_paddle_place(place)
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()

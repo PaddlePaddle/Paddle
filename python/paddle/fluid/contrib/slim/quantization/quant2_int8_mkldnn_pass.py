@@ -15,7 +15,7 @@
 import numpy as np
 from .... import core
 from ....framework import IrGraph
-from ....layers.utils import _get_paddle_place
+from ....framework import _get_paddle_place
 
 __all__ = ['Quant2Int8MkldnnPass']
 

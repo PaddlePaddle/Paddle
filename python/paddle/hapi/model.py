@@ -31,7 +31,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-from paddle.fluid.framework import in_dygraph_mode, Variable
+from paddle.fluid.framework import in_dygraph_mode, Variable, _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
