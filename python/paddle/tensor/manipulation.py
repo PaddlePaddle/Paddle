@@ -487,9 +487,6 @@ def split(x, num_or_sections, axis=0, name=None):
 
 def squeeze(x, axis=None, name=None):
     """
-	:alias_main: paddle.squeeze
-	:alias: paddle.squeeze, paddle.tensor.squeeze, paddle.tensor.manipulation.squeeze
-
     This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
@@ -545,12 +542,10 @@ def squeeze(x, axis=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
-            # output.shape [5, 10]
+            print(output.shape)  # [5, 10]
 
     """
     if axis is None:
@@ -688,9 +683,6 @@ def unique(x,
 
 def unsqueeze(x, axis, name=None):
     """
-	:alias_main: paddle.unsqueeze
-	:alias: paddle.unsqueeze, paddle.tensor.unsqueeze, paddle.tensor.manipulation.unsqueeze
-
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.

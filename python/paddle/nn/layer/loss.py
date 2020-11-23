@@ -496,7 +496,6 @@ class L1Loss(fluid.dygraph.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
             label = paddle.to_tensor([[1.7, 1.0], [0.4, 0.5]])
