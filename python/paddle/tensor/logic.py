@@ -185,6 +185,7 @@ def equal(x, y, name=None):
     """
 
     This layer returns the truth value of :math:`x == y` elementwise.
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
