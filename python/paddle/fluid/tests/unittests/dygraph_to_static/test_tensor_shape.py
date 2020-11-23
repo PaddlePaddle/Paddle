@@ -60,9 +60,17 @@ def dyfunc_tensor_shape_5(x):
     return res
 
 
-def dyfunc_tuple_shape(x):
+def dyfunc_tuple_shape_1(x):
     x = paddle.to_tensor(x)
     a, b = x.shape
+    res = paddle.reshape(x, shape=(b, a))
+    return res
+
+
+def dyfunc_tuple_shape_2(x):
+    x = paddle.to_tensor(x)
+    shape = x.shape
+    a, b = shape
     res = paddle.reshape(x, shape=(b, a))
     return res
 
@@ -232,10 +240,16 @@ class TestTensorShapeBasic5(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tensor_shape_5
 
 
-class TestTupleShape(TestTensorShapeBasic):
+class TestTupleShape1(TestTensorShapeBasic):
     def init_test_func(self):
         self.input = numpy.ones((5, 7)).astype("int32")
-        self.dygraph_func = dyfunc_tuple_shape
+        self.dygraph_func = dyfunc_tuple_shape_1
+
+
+class TestTupleShape2(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.dygraph_func = dyfunc_tuple_shape_2
 
 
 # 2. Tests with control flow if
