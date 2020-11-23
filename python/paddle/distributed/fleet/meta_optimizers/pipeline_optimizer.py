@@ -40,8 +40,6 @@ class PipelineHelper(object):
                                startup_program=None,
                                inner_parallelism=None):
         self.startup_program = startup_program
-        if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
 
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]

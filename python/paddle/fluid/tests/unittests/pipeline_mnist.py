@@ -102,7 +102,13 @@ class TestDistMnist2x2(TestDistRunnerBase):
                 input=predict, label=label, total=batch_size_tensor)
 
         inference_program = fluid.default_main_program().clone()
-        opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+        base_lr = self.lr
+        passes = [30, 60, 80, 90]
+        steps_per_pass = 10
+        bd = [steps_per_pass * p for p in passes]
+        lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+        lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
+        opt = fluid.optimizer.Momentum(learning_rate=lr_val, momentum=0.9)
 
         # Reader
         train_reader = paddle.batch(
