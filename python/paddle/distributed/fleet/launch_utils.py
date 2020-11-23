@@ -51,7 +51,7 @@ class DeviceMode(IntEnum):
     CPU = 0
     GPU = 1
     KUNLUN = 2
-    OHTERS = 3
+    UNKNOWN = 3
 
 
 class Cluster(object):
