@@ -132,6 +132,7 @@ class TestDistRunnerBase(object):
             self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        eprint(type(self).__name__, "device_id: %d." % device_id)
         place = fluid.CUDAPlace(device_id)
 
         exe = fluid.Executor(place)
@@ -143,8 +144,9 @@ class TestDistRunnerBase(object):
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
-            loss, = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
-            out_losses.append(loss[0])
+            loss = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
+            loss = loss[0] if loss else None
+            out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
@@ -1056,9 +1058,13 @@ class TestDistBase(unittest.TestCase):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num)
             tr_env.update(envs)
+            tr_env['CUDA_VISIBLE_DEVICES'] = "0,1"
+            tr_env['NCCL_SHM_DISABLE'] = '1'
+            tr_env['FLAGS_selected_gpus'] = str(i)
+            tr_env['FLAGS_cudnn_deterministic'] = '0'
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            tr_pipe = open("/tmp/" + "pipeline_tr{}_err.log".format(i), "wb")
+            tr_pipe = open("/tmp/" + "tr{}_err.log".format(i), "wb")
 
             print_to_err(
                 type(self).__name__,
