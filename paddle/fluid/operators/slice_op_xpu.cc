@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-
+#include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/slice_op.h"
+#include "xpu/refactor/math.h"
 
 namespace paddle {
 namespace operators {
@@ -85,10 +85,8 @@ class SliceXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto* in_data = in->data<T>();
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    int r = xpu::slice_forward(dev_ctx.x_context(), shape.data(),
-                               starts_extension.data(), ends_extension.data(),
-                               shape_size, in_data, out_data);
+    int r = xpu::slice<T>(dev_ctx.x_context(), in_data, out_data, shape,
+                          starts_extension, ends_extension);
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External("XPU slice kernel error!"));
   }
@@ -149,12 +147,14 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
         shape_size > axes.size() ? starts_extension.data() : starts.data();
     int* ends_host =
         shape_size > axes.size() ? ends_extension.data() : ends.data();
-    PADDLE_ENFORCE_EQ(
-        xpu_malloc((void**)(&starts_device), shape_size * sizeof(int)),
-        XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
-    PADDLE_ENFORCE_EQ(
-        xpu_malloc((void**)(&ends_device), shape_size * sizeof(int)),
-        XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&starts_device),
+                                 shape_size * sizeof(int)),
+                      XPU_SUCCESS,
+                      platform::errors::External("XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&ends_device),
+                                 shape_size * sizeof(int)),
+                      XPU_SUCCESS,
+                      platform::errors::External("XPU has no enough memory"));
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
                  starts_device, platform::CPUPlace(), starts_host,
                  shape_size * sizeof(int));
@@ -168,9 +168,10 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
       shape[i] = in_dims[i];
     }
     int* shape_device = nullptr;
-    PADDLE_ENFORCE_EQ(
-        xpu_malloc((void**)(&shape_device), shape_size * sizeof(int)),
-        XPU_SUCCESS, platform::errors::External("XPU has no enough memory"));
+    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&shape_device),
+                                 shape_size * sizeof(int)),
+                      XPU_SUCCESS,
+                      platform::errors::External("XPU has no enough memory"));
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
                  shape_device, platform::CPUPlace(), shape.data(),
                  shape_size * sizeof(int));
@@ -196,7 +197,8 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    slice, ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    slice, ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, int>);
 REGISTER_OP_XPU_KERNEL(
     slice_grad,
     ops::SliceGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
