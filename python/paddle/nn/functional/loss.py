@@ -49,7 +49,6 @@ __all__ = [
     'log_loss',
     'mse_loss',
     'margin_ranking_loss',
-    #       'nce',
     'nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
@@ -1117,6 +1116,7 @@ def ctc_loss(log_probs,
         loss_out = paddle.sum(loss_out)
     return loss_out
 
+
 def softmax_cross_entropy(input,
                           label,
                           weight=None,
@@ -1206,7 +1206,6 @@ def softmax_cross_entropy(input,
             print(output.numpy()) #[1.30719427]
     """
 
-
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in softmax_cross_entropy"
@@ -1214,7 +1213,12 @@ def softmax_cross_entropy(input,
             % reduction)
 
     if in_dygraph_mode():
-        out = softmax_with_cross_entropy(input, label, soft_label=soft_label, ignore_index=ignore_index, axis=axis)
+        out = softmax_with_cross_entropy(
+            input,
+            label,
+            soft_label=soft_label,
+            ignore_index=ignore_index,
+            axis=axis)
         if weight is not None:
             out = core.ops.elementwise_mul(out, weight)
 
@@ -1224,17 +1228,25 @@ def softmax_cross_entropy(input,
             if weight is not None:
                 total_weight = core.ops.reduce_sum(weight, 'reduce_all', True)
                 out_sum = core.ops.reduce_sum(out, 'reduce_all', True)
-                return out_sum / total_weight 
+                return out_sum / total_weight
             else:
                 return core.ops.mean(out)
         else:
             return out
 
-    fluid.data_feeder.check_variable_and_dtype( input, 'input', ['float32', 'float64'], 'softmax_cross_entropy')
-    fluid.data_feeder.check_variable_and_dtype( label, 'label', ['int32', 'int64'], 'softmax_cross_entropy')
-    out = softmax_with_cross_entropy( input, label, soft_label=soft_label, ignore_index=ignore_index, axis=axis)
+    fluid.data_feeder.check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'softmax_cross_entropy')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['int32', 'int64'], 'softmax_cross_entropy')
+    out = softmax_with_cross_entropy(
+        input,
+        label,
+        soft_label=soft_label,
+        ignore_index=ignore_index,
+        axis=axis)
     if weight is not None:
-        fluid.data_feeder.check_variable_and_dtype( weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
+        fluid.data_feeder.check_variable_and_dtype(
+            weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
         weight_name = name if reduction == 'none' else None
         out = paddle.multiply(out, weight, name=weight_name)
 
@@ -1243,14 +1255,12 @@ def softmax_cross_entropy(input,
     elif reduction == "mean":
         if weight is not None:
             total_weight = paddle.sum(weight)
-            out_sum = paddle.sum(out,name=name)
-            return out_sum / total_weight 
+            out_sum = paddle.sum(out, name=name)
+            return out_sum / total_weight
         else:
             return paddle.mean(out, name=name)
     else:
         return out
-
-
 
 
 def sigmoid_focal_loss(logit,

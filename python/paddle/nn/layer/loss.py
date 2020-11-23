@@ -225,7 +225,13 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             print(output.numpy()) #[1.44375251]
     """
 
-    def __init__(self, weight=None, ignore_index=-100, reduction='mean',soft_label=False, axis=-1, name=None):
+    def __init__(self,
+                 weight=None,
+                 ignore_index=-100,
+                 reduction='mean',
+                 soft_label=False,
+                 axis=-1,
+                 name=None):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
@@ -235,7 +241,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         self.name = name
 
     def forward(self, input, label):
-        ret =  paddle.nn.functional.softmax_cross_entropy(
+        ret = paddle.nn.functional.softmax_cross_entropy(
             input,
             label,
             weight=self.weight,
@@ -244,7 +250,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             soft_label=self.soft_label,
             axis=self.axis,
             name=self.name)
-        
+
         return ret
 
 
