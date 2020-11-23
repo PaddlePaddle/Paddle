@@ -21,6 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
 
+paddle.enable_static()
+
 
 class TestBroadcastToError(unittest.TestCase):
     def test_errors(self):
