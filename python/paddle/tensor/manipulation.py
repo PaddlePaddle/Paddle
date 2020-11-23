@@ -785,9 +785,12 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
     axis_tensor = axis
+    if not isinstance(axis, Variable) and axis == 0:
+        return paddle.fluid.layers.gather(input=x, index=index, overwrite=False)
     if not isinstance(axis, Variable):
         with device_guard("cpu"):
-            axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+            axis_tensor = fill_constant(
+                shape=[1], dtype='int64', value=axis, force_cpu=True)
     if in_dygraph_mode():
         return core.ops.gather(x, index, axis_tensor)
 
@@ -801,7 +804,7 @@ def gather(x, index, axis=None, name=None):
         check_type(axis, 'axis', (int), 'gather')
 
     helper = LayerHelper('gather', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype('x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
@@ -1095,7 +1098,6 @@ def tile(x, repeat_times, name=None):
 
             import paddle
 
-            paddle.disable_static()
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.tile(data, repeat_times=[2, 1])
             np_out = out.numpy()
@@ -1189,8 +1191,6 @@ def expand_as(x, y, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
 
             data_x = paddle.to_tensor([1, 2, 3], 'int32')
             data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
@@ -1500,6 +1500,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                 strides = [1, 3]
             Then:
                 result = [ [2], ]
+
     Args:
         x (Tensor): An N-D ``Tensor``. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
@@ -1531,7 +1532,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             # sliced_1 is x[:, 1:3:1, 0:2:1, 2:4:1].                                
             # example 2:
             # attr starts is a list which contain tensor Tensor.
-            minus_3 = paddle.fill_constant([1], "int32", -3)
+            minus_3 = paddle.full(shape=[1], fill_value=-3, dtype='int32')
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """

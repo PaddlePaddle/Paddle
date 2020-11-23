@@ -80,6 +80,7 @@ __all__ = [
         'increment',
         'log',
         'log2',
+        'log10',
         'logsumexp',
         'mul',
         'multiplex',
@@ -274,18 +275,15 @@ def _elementwise_op(helper):
 
 def add(x, y, name=None):
     """
-Examples:
+    Examples:
 
     ..  code-block:: python
 
         import paddle
-
-        paddle.disable_static()
         x = paddle.to_tensor([2, 3, 4], 'float64')
         y = paddle.to_tensor([1, 5, 2], 'float64')
         z = paddle.add(x, y)
-        np_z = z.numpy()
-        print(np_z)  # [3., 8., 6. ]
+        print(z)  # [3., 8., 6. ]
 
     """
     op_type = 'elementwise_add'
@@ -1178,7 +1176,7 @@ def max(x, axis=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
 
     out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=x.dtype)
     helper.append_op(
         type='reduce_max',
         inputs={'X': x},
@@ -1269,7 +1267,7 @@ def min(x, axis=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
 
     out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=x.dtype)
     helper.append_op(
         type='reduce_min',
         inputs={'X': x},
@@ -1365,6 +1363,57 @@ def log2(x, name=None):
     helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
     return out
 
+
+def log10(x, name=None):
+    """
+    Calculates the log to the base 10 of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\log_10_x
+
+    Args:
+        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        Tensor: The log to the base 10 of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import paddle
+
+            # example 1: x is a float
+            x_i = paddle.to_tensor([[1.0], [10.0]])
+            res = paddle.log10(x_i) # [[0.], [1.0]]
+
+            # example 2: x is float32
+            x_i = paddle.full(shape=[1], fill_value=10, dtype='float32')
+            paddle.to_tensor(x_i)
+            res = paddle.log10(x_i)
+            print(res) # [1.0]
+
+            # example 3: x is float64
+            x_i = paddle.full(shape=[1], fill_value=10, dtype='float64')
+            paddle.to_tensor(x_i)
+            res = paddle.log10(x_i)
+            print(res) # [1.0]
+    """
+    if in_dygraph_mode():
+        return core.ops.log10(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log10', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
 
@@ -1411,9 +1460,6 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
 
 def clip(x, min=None, max=None, name=None):
     """
-        :alias_main: paddle.clip
-        :alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
-
     **clip layer**
 
     This operator clip all elements in input into the range [ min, max ] and return
@@ -1440,15 +1486,13 @@ def clip(x, min=None, max=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
             x1 = paddle.to_tensor([[1.2, 3.5], [4.5, 6.4]], 'float32')
             out1 = paddle.clip(x1, min=3.5, max=5.0)
             out2 = paddle.clip(x1, min=2.5)
-            print(out1.numpy())
+            print(out1)
             # [[3.5, 3.5]
             # [4.5, 5.0]]
-            print(out2.numpy())
+            print(out2)
             # [[2.5, 3.5]
             # [[4.5, 6.4]
     """

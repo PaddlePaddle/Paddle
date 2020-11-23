@@ -323,10 +323,7 @@ def predict_test_util(place, mode):
         exe = paddle.static.Executor(place)
         [inference_program, feed_target_names,
          fetch_targets] = paddle.static.load_inference_model(
-             dirname="./inference",
-             executor=exe,
-             model_filename="%s_infer.pdmodel" % mode,
-             params_filename="%s_infer.pdiparams" % mode)
+             "./inference/%s_infer" % mode, exe)
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: x.numpy()},
                           fetch_list=fetch_targets)

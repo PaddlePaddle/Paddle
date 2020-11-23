@@ -163,6 +163,21 @@ class DataLoader(object):
 
     For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
 
+    **Disable automatic batching**
+
+    In certain cases such as some NLP tasks, instead of automatic batching,
+    handling batching manually in dataset is needed by users. For these
+    cases, automatic batching is disabled if both :attr:`batch_size` and
+    :attr:`batch_sampler` is set as None, each data got from :attr:`dataset`
+    should be batched data and will be processed with function define by
+    :attr:`collate_fn` or :attr:`default_collate_fn`.
+
+
+    .. note::
+        When automatic batching is disabled, :attr:`default_collate_fn` will
+        do nothing to data from dataset.
+
+
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
             instance of subclass of :code:`paddle.io.Dataset` or
@@ -181,11 +196,11 @@ class DataLoader(object):
             the key of the dict is the name of each fed variables. If 
             :attr:`return_list=True`, the return value on each device would
             be a list(Tensor). :attr:`return_list` can only be True
-            in dynamic graph mode. Default False.
+            in dynamic graph mode. Default True.
         batch_sampler(BatchSampler): an instance of `paddle.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
             and combine a batch. Default None.
-        batch_size(int): sample number in a mini-batch, a substitution
+        batch_size(int|None): sample number in a mini-batch, a substitution
             parameter for :attr:`batch_sampler`, if :attr:`batch_sampler`
             is not set, a default `paddle.io.BatchSampler` will be used
             and initialize by :attr:`batch_size`, :attr:`shuffle` and
@@ -293,7 +308,7 @@ class DataLoader(object):
                  dataset,
                  feed_list=None,
                  places=None,
-                 return_list=False,
+                 return_list=True,
                  batch_sampler=None,
                  batch_size=1,
                  shuffle=False,
@@ -358,10 +373,15 @@ class DataLoader(object):
                 "batch_size/shuffle/drop_last should not be set when " \
                 "batch_sampler is given"
             self.batch_sampler = batch_sampler
+            self.batch_size = None
+        elif batch_size is None:
+            self.batch_sampler = None
+            self.batch_size = None
         else:
-            assert batch_size is not None and batch_size > 0, \
-                "batch_size should be a positive value when " \
+            assert batch_size > 0, \
+                "batch_size should be None or a positive value when " \
                 "batch_sampler is not given"
+            self.batch_size = batch_size
             if isinstance(dataset, IterableDataset):
                 self.batch_sampler = _InfiniteIterableSampler(dataset,
                                                               batch_size)
@@ -372,13 +392,21 @@ class DataLoader(object):
                     shuffle=shuffle,
                     drop_last=drop_last)
 
+        self.auto_collate_batch = self.batch_sampler is not None
+
         self.pin_memory = False
         if in_dygraph_mode():
             self.pin_memory = True if use_pinned_memory(
             ) is None else use_pinned_memory()
 
     def __len__(self):
-        return len(self.batch_sampler)
+        if self.dataset_kind == _DatasetKind.ITER:
+            raise ValueError("length of IterableDataset not supported")
+        else:
+            if self.auto_collate_batch:
+                return len(self.batch_sampler)
+            else:
+                return len(self.dataset)
 
     def __iter__(self):
         if self.num_workers == 0:
