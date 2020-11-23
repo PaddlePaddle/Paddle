@@ -456,7 +456,7 @@ def start_local_trainers(cluster,
         }
 
         if len(t.gpus) > 0:
-            proc_env.update["FLAGS_selected_gpus"] = ",".join(
+            proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
                 [str(g) for g in t.gpus])
 
         current_env.update(proc_env)

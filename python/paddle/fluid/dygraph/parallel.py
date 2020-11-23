@@ -104,7 +104,11 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+
+        # imperative only support one gpu
+        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+        self._device_id = int(selected_gpus[0])
+
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
