@@ -620,7 +620,7 @@ class DataLoader(object):
             .. code-block:: python
 
                 '''
-                Example in static graph mode. 
+                Example in dynamic graph mode. 
                 '''
                 import numpy as np
 
