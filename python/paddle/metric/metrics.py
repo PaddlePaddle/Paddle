@@ -72,8 +72,9 @@ class Metric(object):
               metric states(numpy)            ||    numpy data
                        |                      ||
                 {Metric.update}               \/ ------------------
+
     Examples:
-        
+
         For :code:`Accuracy` metric, which takes :code:`pred` and :code:`label`
         as inputs, we can calculate the correct prediction matrix between
         :code:`pred` and :code:`label` in :code:`compute`.
@@ -213,6 +214,7 @@ class Accuracy(Metric):
 
           import paddle
           from paddle.static import InputSpec
+          import paddle.vision.transforms as T
           from paddle.vision.datasets import MNIST
              
           input = InputSpec([None, 1, 28, 28], 'float32', 'image')
