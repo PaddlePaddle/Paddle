@@ -108,7 +108,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (platform::CanMKLDNNBeUsed(ctx) && SupportMKLDNN()) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -265,7 +265,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       return (ctx.Input<Tensor>("X")->dims() == ctx.Input<Tensor>("Y")->dims());
     };
 
-    if (platform::CanMKLDNNBeUsed(ctx) &&
+    if (platform::CanMKLDNNBeUsed(ctx) && SupportMKLDNN() &&
         (ctx.Type() != "elementwise_add_grad" ||
          CanMKLDNNElementwiseAddGradBeUsed())) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -304,7 +304,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (platform::CanMKLDNNBeUsed(ctx) && SupportMKLDNN()) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -343,7 +343,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
     }
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (platform::CanMKLDNNBeUsed(ctx) && SupportMKLDNN()) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
