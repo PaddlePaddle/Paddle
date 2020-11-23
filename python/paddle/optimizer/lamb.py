@@ -95,7 +95,6 @@ class Lamb(Optimizer):
                  epsilon=1e-6,
                  parameters=None,
                  grad_clip=None,
-                 exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -112,7 +111,6 @@ class Lamb(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lamb_weight_decay = lamb_weight_decay
-        self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -149,8 +147,7 @@ class Lamb(Optimizer):
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
 
-        if self._exclude_from_weight_decay_fn is not None \
-            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+        if param_and_grad[0].need_clip:
             weight_decay = 0.0
         else:
             weight_decay = self._lamb_weight_decay
