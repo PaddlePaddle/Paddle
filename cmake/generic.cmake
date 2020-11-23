@@ -481,8 +481,6 @@ function(nv_library TARGET_NAME)
         endif()
       endforeach()
 
-      check_coverage_opt(${TARGET_NAME} ${nv_library_SRCS})
-
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         list(REMOVE_DUPLICATES nv_library_DEPS)
@@ -518,8 +516,6 @@ function(nv_binary TARGET_NAME)
     endif(WIN32)
   endif()
 
-  check_coverage_opt(${TARGET_NAME} ${nv_binary_SRCS})
-
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
@@ -543,7 +539,6 @@ function(nv_test TARGET_NAME)
     if (WIN32)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif(WIN32)
-    check_coverage_opt(${TARGET_NAME} ${nv_test_SRCS})
   endif()
 
 endfunction(nv_test)
