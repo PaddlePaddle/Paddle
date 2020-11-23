@@ -394,7 +394,9 @@ class Layer(core.Layer):
         update_to="paddle.nn.Layer.create_tensor",
         reason="New api in create_tensor, easier to use.")
     def create_variable(self, name=None, persistable=None, dtype=None):
-        """Create Tensor for this layer.
+        """
+
+        Create Tensor for this layer.
 
         Parameters:
             name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
@@ -439,7 +441,9 @@ class Layer(core.Layer):
 
     # TODO: Add more parameter list when we need them
     def create_tensor(self, name=None, persistable=None, dtype=None):
-        """Create Tensor for this layer.
+        """
+
+        Create Tensor for this layer.
 
         Parameters:
             name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
