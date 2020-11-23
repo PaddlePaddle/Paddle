@@ -12262,9 +12262,6 @@ def logical_xor(x, y, out=None, name=None):
 @templatedoc()
 def logical_not(x, out=None, name=None):
     """
-    :alias_main: paddle.logical_not
-    :alias: paddle.logical_not, paddle.tensor.logical_not, paddle.tensor.logic.logical_not
-    :old_api: paddle.fluid.layers.logical_not
 
     ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``x`` and ``out`` are N-dim boolean ``Variable``.
     Each element of ``out`` is calculated by
@@ -12274,15 +12271,16 @@ def logical_not(x, out=None, name=None):
         out = !x
 
     Args:
-        x(${x_type}): ${x_comment}.
-        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable` will be created to save the output.
+        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool.
+        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
         name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ${out_type}: ${out_comment}
+        Tensor: ${out_comment}
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.to_tensor([True, False, True, False])
