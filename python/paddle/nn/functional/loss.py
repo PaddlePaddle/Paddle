@@ -1141,7 +1141,6 @@ def cross_entropy(input,
 def softmax_cross_entropy(input,
                           label,
                           weight=None,
-                          weight_format='sample',
                           ignore_index=-100,
                           reduction='mean',
                           soft_label=False,
@@ -1192,12 +1191,6 @@ def softmax_cross_entropy(input,
         weight (Variable, optional): Weight tensor, a manual rescaling weight for each
             sample relative to each class. It has the same shape as label.
 	    and the data type is float32, float64. Default is ``'None'``.
-        weight_format(str, optional):It support two kinds of weight format. the 1st is recommended
-            for the reason of performance.
-            1, when weight_format='sample'(default), weight's shape is same with label. it means
-               the weight belong to each sample.
-            2, when weight_format='class', weight's shape is [C]. it means the weight
-               belong to each class.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1239,11 +1232,6 @@ def softmax_cross_entropy(input,
             "The value of 'reduction' in softmax_cross_entropy"
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
-    if weight_format not in ['sample', 'class']:
-        raise ValueError(
-            "The value of 'weight_format' in softmax_cross_entropy"
-            "should be 'sample' or 'class', but received %s, which is not allowed."
-            % weight_format)
 
     if in_dygraph_mode():
         out = softmax_with_cross_entropy(
@@ -1253,29 +1241,19 @@ def softmax_cross_entropy(input,
             ignore_index=ignore_index,
             axis=axis)
         if weight is not None:
-            if weight_format == "class":
-                weight_gather = core.ops.gather_nd(weight,
-                                                   label)  #trans to sample
-                input_shape = list(label.shape)
-                weight_gather_reshape, _ = core.ops.reshape2(
-                    weight_gather, 'shape', input_shape)
-                out = core.ops.elementwise_mul(out, weight_gather_reshape)
-                print("chaj weight:", weight, "weight_gather:", weight_gather,
-                      "weight_gather_reshape:", weight_gather_reshape)
-            elif weight_format == "sample":
-                out = core.ops.elementwise_mul(out, weight)
+            weight_gather = core.ops.gather_nd(weight, label)  #trans to sample
+            input_shape = list(label.shape)
+            weight_gather_reshape, _ = core.ops.reshape2(weight_gather, 'shape',
+                                                         input_shape)
+            out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
             return core.ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == "mean":
             if weight is not None:
                 out_sum = core.ops.reduce_sum(out, 'reduce_all', True)
-                if weight_format == "class":
-                    total_weight = core.ops.reduce_sum(weight_gather_reshape,
-                                                       'reduce_all', True)
-                elif weight_format == "sample":
-                    total_weight = core.ops.reduce_sum(weight, 'reduce_all',
-                                                       True)
+                total_weight = core.ops.reduce_sum(weight_gather_reshape,
+                                                   'reduce_all', True)
                 return out_sum / total_weight
             else:
                 return core.ops.mean(out)
@@ -1296,25 +1274,17 @@ def softmax_cross_entropy(input,
         fluid.data_feeder.check_variable_and_dtype(
             weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
         weight_name = name if reduction == 'none' else None
-        if weight_format == "class":
-            weight_gather = paddle.gather_nd(weight, label)  #trans to sample
-            input_shape = list(label.shape)
-            weight_gather_reshape = reshape(weight_gather, shape=input_shape)
-            out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
-            print("chaj weight:", weight, "weight_gather:", weight_gather,
-                  "weight_gather_reshape:", weight_gather_reshape)
-        elif weight_format == "sample":
-            out = paddle.multiply(out, weight, name=weight_name)
+        weight_gather = paddle.gather_nd(weight, label)  #trans to sample
+        input_shape = list(label.shape)
+        weight_gather_reshape = reshape(weight_gather, shape=input_shape)
+        out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
 
     if reduction == "sum":
         return paddle.sum(out, name=name)
     elif reduction == "mean":
         if weight is not None:
             out_sum = paddle.sum(out, name=name)
-            if weight_format == "class":
-                total_weight = paddle.sum(weight_gather_reshape)
-            elif weight_format == "sample":
-                total_weight = paddle.sum(weight)
+            total_weight = paddle.sum(weight_gather_reshape)
             return out_sum / total_weight
         else:
             return paddle.mean(out, name=name)

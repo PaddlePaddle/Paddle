@@ -189,12 +189,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         weight (Variable, optional): Weight tensor, a manual rescaling weight for each
             sample relative to each class. It has the same shape as label.
 	    and the data type is float32, float64. Default is ``'None'``.
-        weight_format(str, optional):It support two kinds of weight format. the 1st is recommended
-            for the reason of performance.
-            1, when weight_format='sample'(default), weight's shape is same with label. it means
-               the weight belong to each sample.
-            2, when weight_format='class', weight's shape is [C]. it means the weight
-               belong to each class.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -233,7 +227,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
     def __init__(self,
                  weight=None,
-                 weight_format='sample',
                  ignore_index=-100,
                  reduction='mean',
                  soft_label=False,
@@ -241,7 +234,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                  name=None):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
-        self.weight_format = weight_format
         self.reduction = reduction
         self.ignore_index = ignore_index
         self.soft_label = soft_label
@@ -253,7 +245,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             input,
             label,
             weight=self.weight,
-            weight_format=self.weight_format,
             ignore_index=self.ignore_index,
             reduction=self.reduction,
             soft_label=self.soft_label,
