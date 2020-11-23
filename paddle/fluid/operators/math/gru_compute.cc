@@ -42,7 +42,8 @@ struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
     }
 
     detail::forward_reset_output(detail::forward::gru_resetOutput<T>(), value,
-                                 frame_size, batch_size, active_gate);
+                                 frame_size, batch_size, active_gate, true,
+                                 &context);
 
     if (value.prev_out_value) {
       blas.GEMM(false, false, batch_size, frame_size, frame_size, 1,
@@ -53,7 +54,7 @@ struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
 
     detail::forward_final_output(detail::forward::gru_finalOutput<T>(), value,
                                  frame_size, batch_size, active_node,
-                                 origin_mode);
+                                 origin_mode, &context);
 #endif
   }
 };
@@ -116,7 +117,8 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
                 value.reset_output_value);
     }
     detail::forward_reset_output(detail::forward::gru_resetOutput<T>(), value,
-                                 frame_size, batch_size, active_gate, false);
+                                 frame_size, batch_size, active_gate, false,
+                                 &context);
 
     T *cell_state_value = value.gate_value + 2 * frame_size;
     T *reset_output_value = value.reset_output_value;
@@ -129,7 +131,7 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
 
     detail::forward_final_output(detail::forward::gru_finalOutput<T>(), value,
                                  frame_size, batch_size, active_node, true,
-                                 false);
+                                 false, &context);
 #endif
   }
 };

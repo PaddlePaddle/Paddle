@@ -294,7 +294,7 @@ def unstack(array, axis=0):
 def dropout(array, p=0.5):
     if p == 0.0:
         return array
-    mask = (np.array(rand_seq).reshape(array.shape) >= p).astype(array.dtype)
+    mask = (np.random.uniform(size=array.shape) < (1 - p)).astype(array.dtype)
     return array * (mask / (1 - p))
 
 
@@ -389,11 +389,12 @@ class RNNMixin(LayerListMixin):
         states = split_states(initial_states, self.num_directions == 2,
                               self.state_components)
         final_states = []
-
+        input_temp = inputs
         for i, rnn_layer in enumerate(self):
             if i > 0:
-                inputs = dropout(inputs, self.dropout)
-            outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
+                input_temp = dropout(inputs, self.dropout)
+            outputs, final_state = rnn_layer(input_temp, states[i],
+                                             sequence_length)
             final_states.append(final_state)
             inputs = outputs
 

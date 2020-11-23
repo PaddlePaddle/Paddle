@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 
@@ -21,6 +23,10 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace detail {
+using Array1 = Eigen::DSizes<int64_t, 1>;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 #ifndef __NVCC__
 
@@ -242,23 +248,48 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
 #endif
 }
 
+template <typename T>
+inline void eigen_forward_reset_output(
+    const platform::CPUDeviceContext &context, GRUMetaValue<T> value,
+    int frame_size) {
+  auto &place = *context.eigen_device();
+  auto eigen_value_reset_gate =
+      typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
+  auto eigen_value_update_gate = typename EigenVector<T>::Type(
+      value.gate_value + frame_size, Array1(frame_size));
+  auto eigen_value_reset_output = typename EigenVector<T>::Type(
+      value.reset_output_value, Array1(frame_size));
+  auto eigen_value_reset_bias =
+      typename EigenVector<T>::ConstType(value.reset_bias, Array1(frame_size));
+  SigmoidFunctor<T>()(place, eigen_value_reset_gate, eigen_value_reset_gate);
+  SigmoidFunctor<T>()(place, eigen_value_update_gate, eigen_value_update_gate);
+  eigen_value_reset_output.device(place) =
+      (eigen_value_reset_output + eigen_value_reset_bias) *
+      eigen_value_reset_gate;
+}
+
 template <class OpResetOutput, typename T>
-inline void forward_reset_output(OpResetOutput op_reset_output,
-                                 GRUMetaValue<T> value, int frame_size,
-                                 int batch_size, ActivationType active_gate,
-                                 bool old_version = true) {
+inline void forward_reset_output(
+    OpResetOutput op_reset_output, GRUMetaValue<T> value, int frame_size,
+    int batch_size, ActivationType active_gate, bool old_version = true,
+    const platform::CPUDeviceContext *context = nullptr) {
   for (int b = 0; b < batch_size; b++) {
-    if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
-        (sizeof(T) == 4)) {
-      hl_avx_gru_forward_reset_output(
-          op_reset_output, value.gate_value, value.reset_output_value,
-          value.prev_out_value, frame_size, active_gate, old_version,
-          value.reset_bias);
+    if (!old_version) {
+      // eigen
+      eigen_forward_reset_output(*context, value, frame_size);
     } else {
-      hl_naive_gru_forward_reset_output(
-          op_reset_output, value.gate_value, value.reset_output_value,
-          value.prev_out_value, frame_size, active_gate, old_version,
-          value.reset_bias);
+      if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
+          (sizeof(T) == 4)) {
+        hl_avx_gru_forward_reset_output(
+            op_reset_output, value.gate_value, value.reset_output_value,
+            value.prev_out_value, frame_size, active_gate, old_version,
+            value.reset_bias);
+      } else {
+        hl_naive_gru_forward_reset_output(
+            op_reset_output, value.gate_value, value.reset_output_value,
+            value.prev_out_value, frame_size, active_gate, old_version,
+            value.reset_bias);
+      }
     }
     value.gate_value += frame_size * 3;
     value.reset_output_value += frame_size;
@@ -268,25 +299,52 @@ inline void forward_reset_output(OpResetOutput op_reset_output,
   }
 }
 
+template <typename T>
+inline void eigen_forward_final_output(
+    const platform::CPUDeviceContext &context, GRUMetaValue<T> value,
+    int frame_size) {
+  auto &place = *context.eigen_device();
+  auto eigen_value_update_gate = typename EigenVector<T>::Type(
+      value.gate_value + frame_size, Array1(frame_size));
+  auto eigen_value_frame_state = typename EigenVector<T>::Type(
+      value.gate_value + 2 * frame_size, Array1(frame_size));
+  auto eigen_value_output =
+      typename EigenVector<T>::Type(value.output_value, Array1(frame_size));
+  TanhFunctor<T>()(place, eigen_value_frame_state, eigen_value_frame_state);
+  eigen_value_output.device(place) =
+      (static_cast<T>(1.0) - eigen_value_update_gate) * eigen_value_frame_state;
+  if (value.prev_out_value) {
+    auto eigen_value_prev_out = typename EigenVector<T>::ConstType(
+        value.prev_out_value, Array1(frame_size));
+    eigen_value_output.device(place) =
+        eigen_value_output + eigen_value_update_gate * eigen_value_prev_out;
+  }
+}
+
 template <class OpFinalOutput, typename T>
-inline void forward_final_output(OpFinalOutput op_final_output,
-                                 GRUMetaValue<T> value, int frame_size,
-                                 int batch_size, ActivationType active_node,
-                                 bool origin_mode, bool old_version = true) {
+inline void forward_final_output(
+    OpFinalOutput op_final_output, GRUMetaValue<T> value, int frame_size,
+    int batch_size, ActivationType active_node, bool origin_mode,
+    bool old_version = true,
+    const platform::CPUDeviceContext *context = nullptr) {
   for (int b = 0; b < batch_size; b++) {
-    if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
-        (sizeof(T) == 4)) {
-      hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
-                                      value.prev_out_value, value.output_value,
-                                      frame_size, active_node, origin_mode,
-                                      old_version);
+    if (!old_version) {
+      // eigen
+      eigen_forward_final_output(*context, value, frame_size);
     } else {
-      hl_naive_gru_forward_final_output(op_final_output, value.gate_value,
+      if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
+          (sizeof(T) == 4)) {
+        hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
                                         value.prev_out_value,
                                         value.output_value, frame_size,
                                         active_node, origin_mode, old_version);
+      } else {
+        hl_naive_gru_forward_final_output(
+            op_final_output, value.gate_value, value.prev_out_value,
+            value.output_value, frame_size, active_node, origin_mode,
+            old_version);
+      }
     }
-
     value.gate_value += frame_size * 3;
     value.output_value += frame_size;
     if (value.prev_out_value) {

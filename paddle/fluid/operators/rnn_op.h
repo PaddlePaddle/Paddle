@@ -241,16 +241,15 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
       std::fill(mask_data, mask_data + size, static_cast<uint8_t>(0));
-      *is_has_reset = true;
-      return;
-    }
-    auto engine = framework::GetCPURandomEngine(seed_number);
-    std::uniform_real_distribution<float> dist(0, 1);
-    for (size_t i = 0; i < size; ++i) {
-      if (dist(*engine) < dropout_prob) {
-        mask_data[i] = 0;
-      } else {
-        mask_data[i] = 1;
+    } else {
+      auto engine = framework::GetCPURandomEngine(seed_number);
+      std::uniform_real_distribution<float> dist(0, 1);
+      for (size_t i = 0; i < size; ++i) {
+        if (dist(*engine) < dropout_prob) {
+          mask_data[i] = 0;
+        } else {
+          mask_data[i] = 1;
+        }
       }
     }
     *is_has_reset = true;
@@ -908,6 +907,9 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
           dropout_cpu_function_inplace<T>(ctx, &prev_hidden_data, input_holder,
                                           dropout_mask, dropout_prob, seed,
                                           is_test, &has_dropout_reset);
+        } else {
+          input_holder = &prev_hidden_data;
+          input_holder->Resize(output->dims());
         }
       } else {
         SwapPoniter(&output_holder, &input_holder);
