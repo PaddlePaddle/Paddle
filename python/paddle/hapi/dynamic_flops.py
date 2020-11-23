@@ -23,13 +23,13 @@ __all__ = ['flops']
 
 
 def flops(net, input_size, custom_ops=None, print_detail=False):
-    """Prints a table about the flops of network.
+    """Print a table about the flops of network.
 
     Args:
         net (Layer||Program): the network which could be a subinstance of Layer in dygraph or Program in static graph.
         input_size (list): size of input tensor. Note that input_size only dim of
                     batch_size can be 1.
-        custom (A dict of Function): A dictionary whose key is the class of specific 
+        custom_ops (A dict of Function): A dictionary whose key is the class of specific 
                     op and the value is the function used to count the flops of this op.
                     This argument only work when argument: 'net' is a instance of nn.Layer.
 
