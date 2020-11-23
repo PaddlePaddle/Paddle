@@ -361,6 +361,12 @@ class ScopedDropoutDescriptor {
                                              float dropout_prob_,
                                              framework::Tensor* dropout_state_,
                                              int seed, size_t state_size) {
+    if (dropout_state_ == nullptr) {  // for no dropout or test
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+          desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
+          0 /* seed */));
+      return desc_;
+    }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(

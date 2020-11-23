@@ -609,6 +609,9 @@ class ConcreteProgram(object):
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
                         error.attach_error_data(e)
+                        error_data = getattr(e, error.ERROR_DATA, None)
+                        if error_data:
+                            error_data.raise_new_exception()
                         raise
 
                 if outputs is not None:
@@ -789,7 +792,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 # ProgramTranslator is disabled so the func is run in dygraph
-                print(func(x).numpy())  # [[0. 0.]]
+                print(func(x))  # [[0. 0.]]
 
         """
         check_type(enable_to_static, "enable_to_static", bool,
@@ -828,7 +831,7 @@ class ProgramTranslator(object):
 
                 x = paddle.ones([1, 2])
                 x_v = prog_trans.get_output(func, x)
-                print(x_v.numpy())  # [[0. 0.]]
+                print(x_v)  # [[0. 0.]]
 
         """
         assert callable(

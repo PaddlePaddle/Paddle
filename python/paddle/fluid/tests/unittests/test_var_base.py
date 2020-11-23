@@ -40,6 +40,9 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(np.array_equal(x.numpy(), [1]))
                 self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
 
+                y = paddle.to_tensor(2, place=x.place)
+                self.assertEqual(str(x.place), str(y.place))
+
                 # set_default_dtype should not take effect on numpy
                 x = paddle.to_tensor(
                     np.array([1.2]).astype('float16'),
@@ -430,18 +433,7 @@ class TestVarBase(unittest.TestCase):
         paddle.set_printoptions(4, 100, 3)
         a_str = str(a)
 
-        if six.PY2:
-            expected = '''Tensor(shape=[10L, 20L], dtype=float32, place=CPUPlace, stop_gradient=True,
-       [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
-        [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
-        [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
-        ...,
-        [0.3426, 0.1909, 0.7240, ..., 0.4218, 0.2676, 0.5679],
-        [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
-        [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])'''
-
-        else:
-            expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[10, 20], dtype=float32, place=CPUPlace, stop_gradient=True,
        [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
         [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
         [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
@@ -458,12 +450,7 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor([[1.5111111, 1.0], [0, 0]])
         a_str = str(a)
 
-        if six.PY2:
-            expected = '''Tensor(shape=[2L, 2L], dtype=float32, place=CPUPlace, stop_gradient=True,
-       [[1.5111, 1.    ],
-        [0.    , 0.    ]])'''
-        else:
-            expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
        [[1.5111, 1.    ],
         [0.    , 0.    ]])'''
 
@@ -475,14 +462,20 @@ class TestVarBase(unittest.TestCase):
         a = paddle.to_tensor([[-1.5111111, 1.0], [0, -0.5]])
         a_str = str(a)
 
-        if six.PY2:
-            expected = '''Tensor(shape=[2L, 2L], dtype=float32, place=CPUPlace, stop_gradient=True,
+        expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
        [[-1.5111,  1.    ],
         [ 0.    , -0.5000]])'''
-        else:
-            expected = '''Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=True,
-       [[-1.5111,  1.    ],
-        [ 0.    , -0.5000]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_scaler(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor(np.array(False))
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
+       False)'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()
