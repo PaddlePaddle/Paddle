@@ -276,7 +276,6 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
                     trainer.gpus.extend(devices_per_proc[i])
                 else:
                     trainer.gpus.append(devices_per_proc[i])
-            print("trainer_gpus:", trainer.gpus)
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
@@ -610,7 +609,6 @@ def get_device_proc_info(args):
             devices_per_proc = [
                 gpus[i:i + n] for i in six.moves.range(0, len(gpus), n)
             ]
-            print("devices_per_proc:", devices_per_proc)
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.CPU:
