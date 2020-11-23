@@ -203,14 +203,14 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-.. math:: out=\\sqrt{x}=x^{1/2}
+$$out=\\sqrt{x}=x^{1/2}$$
 
 **Note**:
   input value must be greater than or equal to zero.
 
 )DOC";
 
-UNUSED constexpr char RsqrtDoc[] = R"DOC(
+-UNUSED constexpr char RsqrtDoc[] = R"DOC(
 Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
@@ -592,7 +592,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input of STanh operator."
-             " A LoDTensor or Tensor with type float32, float64.");
+             " A Tensor with type float32, float64.");
     AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
     AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
         .SetDefault(0.67f);

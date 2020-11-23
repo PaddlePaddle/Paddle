@@ -9544,9 +9544,6 @@ def pow(x, factor=1.0, name=None):
 @templatedoc()
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
-    :alias_main: paddle.stanh
-	:alias: paddle.stanh,paddle.tensor.stanh,paddle.tensor.math.stanh
-	:old_api: paddle.fluid.layers.stanh
 
     ${comment}
     Args:
@@ -9557,27 +9554,24 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
                         will be named automatically.
 
     Returns:
-        output(${out_type}): ${out_comment}.
+        output(Tensor): ${out_comment}.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
-            data = fluid.data(name="input", shape=[-1, 3])
-            result = fluid.layers.stanh(data,scale_a=0.67, scale_b=1.72)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            x = np.random.random(size=(3, 3)).astype('float32')
-            output= exe.run(feed={"input": x},
-                         fetch_list=[result])
-            print(output)
+            import paddle
 
-            #[array([[0.626466  , 0.89842904, 0.7501062 ],
-            #       [0.25147712, 0.7484996 , 0.22902708],
-            #       [0.62705994, 0.23110689, 0.56902856]], dtype=float32)]
+            data = paddle.rand(shape=[3, 3], dtype='float32')
+            output = paddle.stanh(data, scale_a=0.67, scale_b=1.72)
+            print(data)
+            # [[0.19412413, 0.66871136, 0.77059180],
+            #  [0.89738929, 0.35827777, 0.60592669],
+            #  [0.66346580, 0.78424633, 0.46533889]]
+            print(output)
+            # [[0.22245567, 0.72288811, 0.81671900],
+            #  [0.92525512, 0.40512756, 0.66227961],
+            #  [0.71790355, 0.82885355, 0.51953089]]
 
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
