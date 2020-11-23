@@ -912,19 +912,22 @@ def cos_sim(X, Y):
     ${comment}
 
     Args:
-        X (Variable): ${x_comment}.
-        Y (Variable): ${y_comment}.
+        X (Tensor): ${x_comment}.
+        Y (Tensor): ${y_comment}.
 
     Returns:
-        A Variable holding LoDTensor representing the output of cosine(X, Y).
+        A Tensor representing the output of cosine(X, Y).
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[3, 7], dtype='float32')
-            y = fluid.data(name='y', shape=[1, 7], dtype='float32')
-            out = fluid.layers.cos_sim(x, y)
+            import paddle
+
+            x = paddle.rand(shape=[3, 7], dtype='float32')
+            y = paddle.rand(shape=[1, 7], dtype='float32')
+            out = paddle.fluid.layers.cos_sim(x, y)
+            print(out)
+
     """
     check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
     check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
