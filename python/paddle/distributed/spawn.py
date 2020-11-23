@@ -28,6 +28,7 @@ from paddle.device import get_device
 from paddle.fluid import core
 from paddle.fluid.framework import _cpu_num
 
+
 class ParallelEnvArgs(object):
     def __init__(self):
         # Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..
@@ -59,7 +60,7 @@ def _py_supported_check():
             "Use `paddle.distributed.spawn` to start parallel training "
             "requires python version greater than 3.4, if your python "
             "is lower than this version, please use "
-            "`paddle.distributed.fleet.launch` instead.")
+            "`paddle.distributed.launch` instead.")
 
 
 def _get_subprocess_env_list(nprocs, options):

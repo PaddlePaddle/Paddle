@@ -25,7 +25,7 @@ function test_nproc_0(){
     rm -f ${file_0}
     distributed_args="--log_dir=testlog --nproc_per_node=1"
     # nproc_per_node=1, each with 2 gpus
-    python -m paddle.distributed.fleet.launch ${distributed_args} nproc_process.py  fleet_nproc_0
+    python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_0
 
     str0="selected_gpus:${gpus} worker_endpoints:127.0.0.1:35789 trainers_num:1 current_endpoint:127.0.0.1:35789 trainer_id:0"
     if grep -q "$str0" "$file_0"; then
@@ -57,7 +57,7 @@ function test_nproc_1_gpu(){
     rm -f ${file_0} ${file_1}
 
     distributed_args="--log_dir=testlog --nproc_per_node=2"
-    python -m paddle.distributed.fleet.launch ${distributed_args} nproc_process.py  fleet_nproc_1
+    python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
 
     str0="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
     if grep -q "$str0" "$file_0"; then
@@ -89,7 +89,7 @@ function test_nproc_1_cpu(){
     rm -f ${file_0} ${file_1}
 
     distributed_args="--log_dir=testlog --nproc_per_node=2"
-    python -m paddle.distributed.fleet.launch ${distributed_args} nproc_process.py  fleet_nproc_1
+    python -m paddle.distributed.launch ${distributed_args} nproc_process.py  fleet_nproc_1
 
     str0="selected_gpus: worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"
     if grep -q "$str0" "$file_0"; then
