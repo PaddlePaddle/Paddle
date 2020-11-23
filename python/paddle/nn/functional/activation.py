@@ -79,9 +79,8 @@ def elu(x, alpha=1.0, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+            x = paddle.to_tensor([[-1., 6.], [1., 15.6]])
             out = F.elu(x, alpha=0.2)
             # [[-0.12642411  6.        ]
             #  [ 1.          15.6      ]]
@@ -131,11 +130,14 @@ def gelu(x, approximate=False, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
-            out1 = F.gelu(x) # [-0.158655 0.345731 0.841345 1.39979]
-            out2 = F.gelu(x, True) # [-0.158808 0.345714 0.841192 1.39957]
+            x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
+            out1 = F.gelu(x)
+            # [[-0.15865529,  0.34573123],
+            #  [ 0.84134471,  1.39978933]]
+            out2 = F.gelu(x, True)
+            # [[-0.15880799,  0.34571400],
+            #  [ 0.84119201,  1.39957154]]
     """
 
     if in_dygraph_mode():
@@ -181,11 +183,8 @@ def hardshrink(x, threshold=0.5, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            x = paddle.to_tensor([-1, 0.3, 2.5])
             out = F.hardshrink(x) # [-1., 0., 2.5]
 
     """
@@ -385,11 +384,8 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            x = paddle.to_tensor([-2., 0., 1.])
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
@@ -1147,8 +1143,10 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     .. math::
 
-        log\\_softmax[i, j] = log(softmax(x))
-                            = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
+        \\begin{aligned} 
+        log\\_softmax[i, j] &= log(softmax(x)) \\\\
+        &= log(\\frac{\\exp(X[i, j])}{\\sum_j(\\exp(X[i, j])})
+        \\end{aligned}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1174,16 +1172,13 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                            [3.0, -4.0, 5.0, -6.0],
-                            [-7.0, -8.0, 8.0, 9.0]],
-                            [[1.0, -2.0, -3.0, 4.0],
-                            [-5.0, 6.0, 7.0, -8.0],
-                            [6.0, 7.0, 8.0, 9.0]]], 'float32')
+            x = [[[-2.0, 3.0, -4.0, 5.0],
+                  [3.0, -4.0, 5.0, -6.0],
+                  [-7.0, -8.0, 8.0, 9.0]],
+                 [[1.0, -2.0, -3.0, 4.0],
+                  [-5.0, 6.0, 7.0, -8.0],
+                  [6.0, 7.0, 8.0, 9.0]]]
             x = paddle.to_tensor(x)
             out1 = F.log_softmax(x)
             out2 = F.log_softmax(x, dtype='float64')
