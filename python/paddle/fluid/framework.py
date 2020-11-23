@@ -5784,7 +5784,8 @@ def _convert_places(places):
         places = [places]
 
     ret = []
-    for p in _get_paddle_place(places):
+    for p in places:
+        p = _get_paddle_place(p)
         if not isinstance(p, core.Place):
             tmp = core.Place()
             tmp.set_place(p)
