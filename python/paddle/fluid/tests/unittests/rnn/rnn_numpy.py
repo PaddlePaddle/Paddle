@@ -294,8 +294,7 @@ def unstack(array, axis=0):
 def dropout(array, p=0.5):
     if p == 0.0:
         return array
-
-    mask = (np.random.uniform(size=array.shape) < (1 - p)).astype(array.dtype)
+    mask = (np.array(rand_seq).reshape(array.shape) >= p).astype(array.dtype)
     return array * (mask / (1 - p))
 
 

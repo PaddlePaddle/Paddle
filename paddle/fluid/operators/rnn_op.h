@@ -211,22 +211,36 @@ struct LSTMCell : Cell<T> {
 };
 
 template <typename T>
+void dropout_helper(const framework::ExecutionContext& context, Tensor* x,
+                    Tensor* y, const Tensor* mask, const float& dropout_prob) {
+  auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                     .eigen_device();
+  auto eigen_dropout_mask = EigenVector<uint8_t>::Flatten(*mask);
+  auto eigen_x = EigenVector<T>::Flatten(*x);
+  auto eigen_y = EigenVector<T>::Flatten(*y);
+  if (dropout_prob == 1.0f) {
+    eigen_y.device(place) = static_cast<T>(0) * eigen_x;
+  } else {
+    eigen_y.device(place) = eigen_x * eigen_dropout_mask.cast<T>() /
+                            static_cast<T>(1.0f - dropout_prob);
+  }
+}
+
+template <typename T>
 void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
-                                  Tensor* x, Tensor* mask,
+                                  Tensor* x, Tensor* y, Tensor* mask,
                                   const float& dropout_prob,
                                   const int& seed_number, const bool& is_test,
                                   bool* is_has_reset) {
   if (is_test) {
     return;
   }
-  auto* x_data = x->data<T>();
   size_t size = framework::product(x->dims());
   auto* mask_data = mask->data<uint8_t>();
   if (!(*is_has_reset)) {
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
-      std::fill(x_data, x_data + size, static_cast<T>(0));
-      std::fill(mask_data, mask_data + size, static_cast<T>(0));
+      std::fill(mask_data, mask_data + size, static_cast<uint8_t>(0));
       *is_has_reset = true;
       return;
     }
@@ -235,41 +249,20 @@ void dropout_cpu_function_inplace(const framework::ExecutionContext& context,
     for (size_t i = 0; i < size; ++i) {
       if (dist(*engine) < dropout_prob) {
         mask_data[i] = 0;
-        x_data[i] = static_cast<T>(0);
       } else {
         mask_data[i] = 1;
-        x_data[i] /= static_cast<T>(1.0f - dropout_prob);
       }
     }
     *is_has_reset = true;
-  } else {
-    if (dropout_prob == 1.0f) {
-      std::fill(x_data, x_data + size, static_cast<T>(0));
-      return;
-    }
-    for (size_t i = 0; i < size; ++i) {
-      if (mask_data[i] == 0) {
-        x_data[i] = static_cast<T>(0);
-      } else {
-        x_data[i] /= static_cast<T>(1.0f - dropout_prob);
-      }
-    }
   }
+  dropout_helper<T>(context, x, y, mask, dropout_prob);
 }
 
 template <typename T>
 void dropout_cpu_grad_function_inplace(
     const framework::ExecutionContext& context, Tensor* grad_x,
     const Tensor* mask, const float& dropout_prob) {
-  auto& place = *context.template device_context<platform::CPUDeviceContext>()
-                     .eigen_device();
-  auto M = EigenVector<uint8_t>::Flatten(*mask);
-  auto dX = EigenVector<T>::Flatten(*grad_x);
-  if (dropout_prob == 1.0f) {
-    dX.device(place) = static_cast<T>(0) * dX;
-  } else {
-    dX.device(place) = dX * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
-  }
+  dropout_helper<T>(context, grad_x, grad_x, mask, dropout_prob);
 }
 
 template <typename T, typename CellType>
@@ -910,15 +903,14 @@ void RnnFunc(const framework::ExecutionContext& ctx, const Tensor* input,
       }
       if (!is_test) {
         prev_hidden_data = hidden_data.Slice(i - 1, i);
-        input_holder = &prev_hidden_data;
         input_holder->Resize(output->dims());
+        if (dropout_prob != 0) {
+          dropout_cpu_function_inplace<T>(ctx, &prev_hidden_data, input_holder,
+                                          dropout_mask, dropout_prob, seed,
+                                          is_test, &has_dropout_reset);
+        }
       } else {
         SwapPoniter(&output_holder, &input_holder);
-      }
-      if (dropout_prob != 0 && (!is_test)) {
-        dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
-                                        dropout_prob, seed, is_test,
-                                        &has_dropout_reset);
       }
     }
     const Tensor* input_temp_holder = input;
@@ -2001,7 +1993,12 @@ void RnnGradFunc(const framework::ExecutionContext& context,
   for (int i = num_layers - 1; i >= 0; --i) {
     // the layer input output had saved, just use the data
     if (i > 0) {
-      layer_input.ShareDataWith(hidden_tensor_unbind[i - 1]);
+      if (layer_input.numel() == 0) {
+        layer_input.Resize(hidden_tensor_unbind[i - 1].dims());
+        layer_input.mutable_data<T>(context.GetPlace());
+      }
+      dropout_helper<T>(context, &hidden_tensor_unbind[i - 1], &layer_input,
+                        dropout_state, dropout_prob);
     } else {
       layer_input.ShareDataWith(*input);
     }
