@@ -1582,19 +1582,16 @@ def create_array(dtype):
 @templatedoc()
 def less_than(x, y, force_cpu=None, cond=None, name=None):
     """
-    :alias_main: paddle.less_than
-	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
-	:old_api: paddle.fluid.layers.less_than
 
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}.
-        y(${y_type}): ${y_comment}.
+        x(Tensor): ${x_comment}.
+        y(Tensor): ${y_comment}.
         force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Variable, optional): Optional output which can be any created Variable
+        cond(Tensor, optional): Optional output which can be any created Tensor
             that meets the requirements to store the result of *less_than*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Tensor will be created to store the result.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -1603,25 +1600,13 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy as np
-  
-          # Graph Organizing
-          x = fluid.layers.data(name='x', shape=[2], dtype='float64')
-          y = fluid.layers.data(name='y', shape=[2], dtype='float64')
-          result = fluid.layers.less_than(x=x, y=y)
-          # The comment lists another available method.
-          # result = fluid.layers.fill_constant(shape=[2], dtype='float64', value=0)
-          # fluid.layers.less_than(x=x, y=y, cond=result)
-  
-          # Create an executor using CPU as example
-          exe = fluid.Executor(fluid.CPUPlace())
-  
-          # Execute
-          x_i = np.array([[1, 2], [3, 4]]).astype(np.float64)
-          y_i = np.array([[2, 2], [1, 3]]).astype(np.float64)
-          result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
-          print(result_value) # [[True, False], [False, False]]
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 3, 4], dtype='float32')
+            y = paddle.to_tensor([2, 2, 1, 3], dtype='float32')
+            result = paddle.less_than(x, y)
+            print(result) # [True, False, False, False]
+
     """
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "less_than")
