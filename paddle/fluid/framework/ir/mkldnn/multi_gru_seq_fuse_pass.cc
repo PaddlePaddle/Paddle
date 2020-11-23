@@ -32,32 +32,12 @@ using string::PrettyLogDetail;
 
 namespace {
 
-void UnlinkNodes(ir::Node* a, ir::Node* b) {
-  a->outputs.erase(std::remove(a->outputs.begin(), a->outputs.end(), b),
-                   a->outputs.end());
-  b->inputs.erase(std::remove(b->inputs.begin(), b->inputs.end(), a),
-                  b->inputs.end());
-}
-
 std::vector<std::string> join_inputs(Node* op1, Node* op2,
                                      std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
   in1.insert(in1.end(), in2.begin(), in2.end());
   return in1;
-}
-
-void link_inputs_by_name(ir::Graph* graph, std::vector<std::string> input_names,
-                         Node* op) {
-  std::vector<std::string>::iterator it;
-  for (auto node : graph->Nodes()) {
-    if (input_names.size() == 0) return;
-    it = find(input_names.begin(), input_names.end(), node->Name());
-    if (it != input_names.end()) {
-      IR_NODE_LINK_TO(node, op);
-      input_names.erase(it);
-    }
-  }
 }
 
 }  // namespace
