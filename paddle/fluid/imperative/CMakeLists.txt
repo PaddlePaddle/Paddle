@@ -17,6 +17,6 @@ if(NOT WIN32)
     cc_library(data_loader SRCS data_loader.cc DEPS enforce)
 endif(NOT WIN32)
 
-cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows selected_rows_functor var_type_traits layer math_function reducer)
+cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows selected_rows_functor var_type_traits layer math_function)
 
 add_subdirectory(tests)
