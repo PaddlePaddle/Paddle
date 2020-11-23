@@ -377,9 +377,7 @@ def edit_distance(input,
 
     So the edit distance between A and B is 3.
 
-    The input is a LoDTensor or Tensor.
-    If it is a LoDTensor, The separation is specified by the LoD information.
-    If it is a Tensor, The input_length and label_length should be supported.
+    The input is a Tensor, the input_length and label_length should be supported.
 
     The `batch_size` of labels should be same as `input`.
 
@@ -388,59 +386,36 @@ def edit_distance(input,
     the edit distance value will be divided by the length of label.
 
     Parameters:
-        input(Variable): The input variable which is a tensor or LoDTensor, its rank should be equal to 2 and its data type should be int64.
-        label(Variable): The label variable which is a tensor or LoDTensor, its rank should be equal to 2 and its data type should be int64.
+        input(Tensor): The input tensor, its rank should be equal to 2 and its data type should be int64.
+        label(Tensor): The label tensor, its rank should be equal to 2 and its data type should be int64.
         normalized(bool, default True): Indicated whether to normalize the edit distance.
         ignored_tokens(list<int>, default None): Tokens that will be removed before
                                      calculating edit distance.
-        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
-        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
+        input_length(Tensor): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
+        label_length(Tensor): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
         NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
         NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
 	Tuple:
 
-        distance(Variable): edit distance result, its data type is float32, and its shape is (batch_size, 1).
-        sequence_num(Variable): sequence number, its data type is float32, and its shape is (1,).
+        distance(Tensor): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+        sequence_num(Tensor): sequence number, its data type is float32, and its shape is (1,).
 
     Examples:
         .. code-block:: python
-            
-            import paddle.fluid as fluid
-            import numpy as np
 
-            # using LoDTensor
-            x_lod = fluid.data(name='x_lod', shape=[None,1], dtype='int64', lod_level=1)
-            y_lod = fluid.data(name='y_lod', shape=[None,1], dtype='int64', lod_level=1)
-            distance_lod, seq_num_lod = fluid.layers.edit_distance(input=x_lod, label=y_lod)
+            import paddle
+            import paddle.nn.functional as F
 
-            # using Tensor
-            input_data = np.array([[1,2,3],[4,5,6],[4,4,4],[1,1,1]]).astype('int64')
-            label_data = np.array([[1,3,4,1],[4,5,8,1],[7,7,7,1],[1,1,1,1]]).astype('int64')
-            input_len = np.array([3,3,3,3]).astype('int64')
-            label_len = np.array([4,4,4,4]).astype('int64')
+            input = paddle.to_tensor([[1,2,3],[4,5,6],[4,4,4],[1,1,1]], dtype='int64')
+            label = paddle.to_tensor([[1,3,4,1],[4,5,8,1],[7,7,7,1],[1,1,1,1]], dtype='int64')
+            input_len = paddle.to_tensor([3,3,3,3], dtype='int64')
+            label_len = paddle.to_tensor([4,4,4,4], dtype='int64')
 
-            input_t = fluid.data(name='input', shape=[None,3], dtype='int64')
-            label_t = fluid.data(name='label', shape=[None,4], dtype='int64')
-            input_len_t = fluid.data(name='input_length', shape=[None], dtype='int64')
-            label_len_t = fluid.data(name='label_length', shape=[None], dtype='int64')
+            distance, sequence_num = F.loss.edit_distance(input=input, label=label, input_length=input_len, label_length=label_len, normalized=False)
 
-            distance, sequence_num = fluid.layers.edit_distance(input=input_t, label=label_t, input_length=input_len_t, label_length=label_len_t,normalized=False)
-
-            # print(input_data.shape, label_data.shape)
-            # ((4,3), (4,4))
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            dis, seq_num = exe.run(fluid.default_main_program(),
-                                   feed={"input":input_data,
-                                         "label":label_data,
-                                         "input_length": input_len,
-                                         "label_length": label_len},
-            fetch_list=[distance,sequence_num])
-            # print(dis)
+            # print(distance)
             # [[3.]
             #  [2.]
             #  [4.]
@@ -451,7 +426,7 @@ def edit_distance(input,
             #  [1.  ]
             #  [0.25]
             #
-            # print(seq_num)
+            # print(sequence_num)
             # [4]
 
     """
