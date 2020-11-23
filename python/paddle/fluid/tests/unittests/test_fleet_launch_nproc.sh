@@ -37,14 +37,18 @@ function test_nproc_0(){
 }
 
 # unittest1:gpu
-echo "begin ut 1:"
-export CUDA_VISIBLE_DEVICES=0,1
-test_nproc_0 "0,1"
+if python detected_gpu.py ; then
+    echo "begin ut 1:"
+    export CUDA_VISIBLE_DEVICES=0,1
+    test_nproc_0 "0,1"
+fi
 
 # unittest2:cpu
-echo "begin ut 2:"
-export CUDA_VISIBLE_DEVICES=""
-test_nproc_0 ""
+if ! python detected_gpu.py ; then
+    echo "begin ut 2:"
+    export CUDA_VISIBLE_DEVICES=""
+    test_nproc_0 ""
+fi
 
 
 function test_nproc_1_gpu(){
@@ -73,9 +77,11 @@ function test_nproc_1_gpu(){
 }
 
 # unittest3: nproc_per_node=2, each with 1 gpus
-echo "begin ut 3:"
-export CUDA_VISIBLE_DEVICES=0,1
-test_nproc_1_gpu
+if python detected_gpu.py ; then
+    echo "begin ut 3:"
+    export CUDA_VISIBLE_DEVICES=0,1
+    test_nproc_1_gpu
+fi
 
 function test_nproc_1_cpu(){
     file_0="fleet_nproc_1.check_0.log"
@@ -103,6 +109,8 @@ function test_nproc_1_cpu(){
 }
 
 # unittest4: nproc_per_node=2, cpu
-echo "begin ut 4:"
-export CUDA_VISIBLE_DEVICES=""
-test_nproc_1_cpu
+if ! python detected_gpu.py ; then
+    echo "begin ut 4:"
+    export CUDA_VISIBLE_DEVICES=""
+    test_nproc_1_cpu
+fi
