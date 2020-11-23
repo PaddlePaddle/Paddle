@@ -841,6 +841,27 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+// log10(x) = logarithm to the base 10 of the elements of x
+template <typename T>
+struct Log10Functor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.log() / static_cast<T>(log(10));
+  }
+};
+
+// the gradient of log10(x) is 1/(x*ln(10))
+template <typename T>
+struct Log10GradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // log1p(x) = natural logarithm of x+1
 template <typename T>
 struct Log1pFunctor : public BaseActivationFunctor<T> {
@@ -1930,6 +1951,7 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
   __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                      \
   __macro(log2, Log2, Log2Functor, Log2GradFunctor);                          \
+  __macro(log10, Log10, Log10Functor, Log10GradFunctor);                      \
   __macro(brelu, BRelu, BReluFunctor, BReluGradFunctor);                      \
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);         \
   __macro(stanh, STanh, STanhFunctor, STanhGradFunctor);                      \

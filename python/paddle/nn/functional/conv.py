@@ -95,6 +95,68 @@ def _update_padding_nd(padding, channel_last, num_dims):
     return padding, padding_algorithm
 
 
+def _conv_nd(x,
+             weight,
+             bias=None,
+             stride=1,
+             padding=0,
+             padding_algorithm=None,
+             dilation=1,
+             groups=1,
+             data_format="NCHW",
+             channel_dim=1,
+             op_type="conv2d",
+             use_cudnn=True,
+             use_mkldnn=False,
+             name=None):
+
+    if in_dygraph_mode():
+        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
+                 'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
+                 use_mkldnn, 'fuse_relu_before_depthwise_conv', False,
+                 "padding_algorithm", padding_algorithm, "data_format",
+                 data_format)
+        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+        else:
+            out = pre_bias
+    else:
+        inputs = {'Input': [x], 'Filter': [weight]}
+        attrs = {
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': use_mkldnn,
+            'fuse_relu_before_depthwise_conv': False,
+            "padding_algorithm": padding_algorithm,
+            "data_format": data_format
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pre_bias = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Output": [pre_bias]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        if bias is not None:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [bias]},
+                outputs={'Out': [out]},
+                attrs={'axis': channel_dim,
+                       'use_mkldnn': use_mkldnn})
+        else:
+            out = pre_bias
+
+    return out
+
+
 def conv1d(x,
            weight,
            bias=None,
@@ -310,7 +372,7 @@ def conv1d(x,
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d')
         helper = LayerHelper(l_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
         helper.append_op(
@@ -472,11 +534,12 @@ def conv2d(x,
             "received: the number of filters is {}, the shape of weight is {}"
             ", the groups is {}".format(num_filters, weight.shape, groups))
 
-    # use_cudnn = True if core.is_compiled_with_cuda() else False
     cudnn_version = get_cudnn_version()
 
     use_cudnn = True if (core.is_compiled_with_cuda() and
                          cudnn_version is not None) else False
+
+    use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -489,56 +552,9 @@ def conv2d(x,
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    inputs = {'Input': [x], 'Filter': [weight]}
-    attrs = {
-        'strides': stride,
-        'paddings': padding,
-        'dilations': dilation,
-        'groups': groups,
-        'use_cudnn': use_cudnn,
-        'use_mkldnn': False,
-        'fuse_relu_before_depthwise_conv': False,
-        "padding_algorithm": padding_algorithm,
-        "data_format": data_format
-    }
-
-    if in_dygraph_mode():
-        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
-                 'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
-                 'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
-                 padding_algorithm, "data_format", data_format)
-        pre_bias = getattr(core.ops, l_type)(x, weight, *attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-    else:
-        inputs = {'Input': [x], 'Filter': [weight]}
-        attrs = {
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
-            'fuse_relu_before_depthwise_conv': False,
-            "padding_algorithm": padding_algorithm,
-            "data_format": data_format
-        }
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'conv2d')
-        helper = LayerHelper(l_type, **locals())
-        dtype = helper.input_dtype()
-        pre_bias = helper.create_variable_for_type_inference(dtype)
-        outputs = {"Output": [pre_bias]}
-        helper.append_op(
-            type=l_type, inputs=inputs, outputs=outputs, attrs=attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-
-    return out
+    return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
+                    dilation, groups, data_format, channel_dim, l_type,
+                    use_cudnn, use_mkldnn, name)
 
 
 def conv1d_transpose(x,
@@ -789,7 +805,7 @@ def conv1d_transpose(x,
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d_transpose')
         helper = LayerHelper(op_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
         helper.append_op(
@@ -1201,44 +1217,9 @@ def conv3d(x,
     dilation = utils.convert_to_list(dilation, 3, 'dilation')
     op_type = "conv3d"
 
-    if in_dygraph_mode():
-        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
-                 'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
-                 "padding_algorithm", padding_algorithm, "data_format",
-                 data_format)
-        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-    else:
-        inputs = {'Input': [x], 'Filter': [weight]}
-        attrs = {
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
-            "padding_algorithm": padding_algorithm,
-            "data_format": data_format
-        }
-        helper = LayerHelper(op_type, **locals())
-        dtype = helper.input_dtype()
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'conv3d')
-
-        pre_bias = helper.create_variable_for_type_inference(dtype)
-        outputs = {"Output": [pre_bias]}
-
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-
-    return out
+    return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
+                    dilation, groups, data_format, channel_dim, op_type,
+                    use_cudnn, False, name)
 
 
 def conv3d_transpose(x,
