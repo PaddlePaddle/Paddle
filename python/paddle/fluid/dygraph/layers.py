@@ -389,7 +389,6 @@ class Layer(core.Layer):
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
-    # TODO: Add more parameter list when we need them
     @deprecated(
         since="2.0.0",
         update_to="paddle.nn.Layer.create_tensor",
