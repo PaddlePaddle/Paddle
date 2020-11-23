@@ -2543,6 +2543,11 @@ def lstm(input,
     weight_size = 0
     num_dirrection = 2 if is_bidirec == True else 1
 
+    print(
+        'This API (fluid.layers.LSTM) has been deprecated. It is recommended to use the new API (class paddle.nn.LSTM).'
+        'Please refer to the link: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/nn/layer/rnn/LSTM_cn.html#lstm'
+    )
+
     for i in range(num_layers):
         if i == 0:
             input_weight_size = (input_size * hidden_size) * 4 * num_dirrection
