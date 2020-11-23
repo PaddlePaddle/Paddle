@@ -17,6 +17,7 @@ import six
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestTF32Switch(unittest.TestCase):
@@ -30,7 +31,13 @@ class TestTF32Switch(unittest.TestCase):
 
 class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
-        device = fluid.CUDAPlace(0)
+        # if cuda is used, allow tf32 
+        if core.is_compiled_with_cuda():
+            device = core.CUDAPlace(0)
+        # if cuda is not available, tf32 is not allowed
+        else:
+            device = core.CPUPlace()
+            fluid.tf32_switch.set_tf32(0)  # turn off
         with fluid.dygraph.guard(device):
             input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
             input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
