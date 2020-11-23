@@ -135,7 +135,7 @@ python setup.py install
         self.py_str = ["py27", "py35", "py36", "py37"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
-        self.pip_prefix_windows = "pip install C:\package\paddlepaddle"
+        self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
