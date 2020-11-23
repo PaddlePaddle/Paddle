@@ -59,6 +59,8 @@ message TrainerDesc {
   optional int32 xpu_start_idx = 30;
   optional int32 xpu_end_idx = 31;
 
+  optional bool use_ps_gpu = 32 [ default = false ];
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;
