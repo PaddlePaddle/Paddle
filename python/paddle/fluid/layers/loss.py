@@ -1433,18 +1433,15 @@ def sigmoid_cross_entropy_with_logits(x,
                                       name=None,
                                       normalize=False):
     """
-    :alias_main: paddle.nn.functional.sigmoid_cross_entropy_with_logits
-	:alias: paddle.nn.functional.sigmoid_cross_entropy_with_logits,paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits
-	:old_api: paddle.fluid.layers.sigmoid_cross_entropy_with_logits
 
     ${comment}
 
     Args:
-        x(Variable): a 2-D tensor with shape N x D, where N is the batch size and
+        x(Tensor): a 2-D tensor with shape N x D, where N is the batch size and
                 D is the number of classes. This input is a tensor of logits computed
                 by the previous operator. Logits are unscaled log probabilities given
                 as log(p/(1-p)) The data type should be float32 or float64.
-        label (Variable): a 2-D tensor of the same type and shape as X.
+        label (Tensor): a 2-D tensor of the same type and shape as X.
                 This input is a tensor of probabalistic labels for each logit.
         ignore_index(int): Specifies a target value that is ignored and 
                 does not contribute to the input gradient.
@@ -1455,22 +1452,19 @@ def sigmoid_cross_entropy_with_logits(x,
             targets != ignore_index.
 
     Returns:
-        out(${out_type}): ${out_comment}
+        out(Tensor): ${out_comment}
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            input = fluid.data(
-                name='data', shape=[10], dtype='float32')
-            label = fluid.data(
-                name='data', shape=[10], dtype='float32')
-            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
-                x=input,
-                label=label,
-                ignore_index=-1,
-                normalize=True) # or False
-            # loss = fluid.layers.reduce_sum(loss) # summation of loss
+
+            import paddle
+
+            input = paddle.rand(shape=[10], dtype='float32')
+            label = paddle.rand(shape=[10], dtype='float32')
+            loss = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(input, label, 
+                                                            ignore_index=-1, normalize=True)
+            print(loss)
     """
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid_cross_entropy_with_logits')
