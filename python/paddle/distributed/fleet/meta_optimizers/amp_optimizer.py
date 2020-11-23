@@ -53,6 +53,8 @@ class AMPOptimizer(MetaOptimizerBase):
             config['incr_ratio'], config['decr_ratio'],
             config['use_dynamic_loss_scaling'])
         is_distributed = self.role_maker._worker_num() > 1
+        if self.user_defined_strategy.sharding:
+            is_distributed = False
         self.wrapped_opt._set_distributed(is_distributed)
 
     def _can_apply(self):
