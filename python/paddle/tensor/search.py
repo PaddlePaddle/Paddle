@@ -348,17 +348,15 @@ def nonzero(x, as_tuple=False):
         Tensor. The data type is int64.
 
     Examples:
-    
-        .. code-block:: python
 
+        .. code-block:: python
 
             import paddle
 
             x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
-                          [0.0, 2.0, 0.0],
-                          [0.0, 0.0, 3.0]])
+                                   [0.0, 2.0, 0.0],
+                                   [0.0, 0.0, 3.0]])
             x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
-            x3 = paddle.to_tensor([0.0, 0.0, 0.0])
             out_z1 = paddle.nonzero(x1)
             print(out_z1)
             #[[0 0]
@@ -382,13 +380,7 @@ def nonzero(x, as_tuple=False):
                 print(out)
             #[[1]
             # [3]]
-            out_z3 = paddle.nonzero(x3)
-            print(out_z3)
-            #[]
-            out_z3_tuple = paddle.nonzero(x3, as_tuple=True)
-            for out in out_z3_tuple:
-                print(out)
-            #[]                    
+
     """
     list_out = []
     shape = x.shape
