@@ -87,7 +87,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
         };
         // [3, N, H] -> [N, 3, H]
-        auto transpose_bias_v2 = [](const float* src, float* dst, int N, int H) {
+        auto transpose_bias_v2 = [](const float* src, float* dst, int N,
+                                    int H) {
           for (int i = 0; i < 3; ++i) {
             for (int n = 0; n < N; ++n) {
               for (int h = 0; h < H; ++h) {
@@ -106,15 +107,16 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
         std::vector<float> bias_data_tmp;
         bias_data_tmp.reserve(bias_t->numel());
-        memcpy(bias_data_tmp.data(), bias_data, bias_t->numel() * sizeof(float));
+        memcpy(bias_data_tmp.data(), bias_data,
+               bias_t->numel() * sizeof(float));
         transpose_bias_v2(bias_data_tmp.data(), bias_data, head_number,
                           head_size);
         nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
 
-        auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
-                                              weight, bias);
+        auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input,
+                                              n, weight, bias);
 
         auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
 
@@ -151,15 +153,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
         plugin_inputs.emplace_back(engine_->GetITensor(
             engine_->network()->getInput(2)->getName()));  // cu_seqlens,
                                                            // eval_placeholder_2
-        auto max_seqlen_tensor = engine_->GetITensor(
-            engine_->network()->getInput(3)->getName());
+        auto max_seqlen_tensor =
+            engine_->GetITensor(engine_->network()->getInput(3)->getName());
         auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Shuffle, *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+            engine_, Shuffle,
+            *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
         nvinfer1::Dims shape_dim;
         shape_dim.nbDims = 1;
         shape_dim.d[0] = -1;
         shuffle_layer->setReshapeDimensions(shape_dim);
-        plugin_inputs.emplace_back(shuffle_layer->getOutput(0)); // max_seqlen, eval_placeholder_3
+        plugin_inputs.emplace_back(
+            shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
 
         auto plugin_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
@@ -178,8 +182,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                     static_cast<void*>(bias_data),
                                     static_cast<size_t>(bias_t->numel())};
 
-        auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
-                                              weight.get(), bias.get());
+        auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input,
+                                              n, weight.get(), bias.get());
         auto* fc_out = fc_layer->getOutput(0);
         // add qkv to context
         int head_size = all_head_size / head_number;
@@ -191,8 +195,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         plugin::DynamicPluginTensorRT* plugin =
-            new plugin::QkvToContextPluginDynamic(hidden, head_number, head_size,
-                                                  scale, with_fp16);
+            new plugin::QkvToContextPluginDynamic(hidden, head_number,
+                                                  head_size, scale, with_fp16);
         layer = engine_->AddPluginV2(plugin_inputs.data(), 2, plugin);
       }
     } else {

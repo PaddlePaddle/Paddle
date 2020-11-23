@@ -76,8 +76,8 @@ class SkipLayerNormOpConverter : public OpConverter {
         pluginPtr->nbFields = static_cast<int>(fields.size());
         pluginPtr->fields = fields.data();
 
-        auto pluginObj =
-            creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+        auto pluginObj = creator->createPlugin(
+            "CustomSkipLayerNormPluginDynamic", pluginPtr);
         auto plugin_layer = engine_->network()->addPluginV2(
             inputs.data(), inputs.size(), *pluginObj);
 

@@ -72,7 +72,8 @@ __global__ void swish_kernel(int num, const T *input, T *output, T beta) {
 }
 
 template <>
-__global__ void swish_kernel<half>(int num, const half *input, half *output, half beta) {
+__global__ void swish_kernel<half>(int num, const half *input, half *output,
+                                   half beta) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < num) {
 #if __CUDA_ARCH__ >= 600
