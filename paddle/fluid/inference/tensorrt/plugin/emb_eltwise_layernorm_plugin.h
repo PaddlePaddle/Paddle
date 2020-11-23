@@ -8,8 +8,7 @@
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  // See the License for the specific language governing permissions and
 // limitations under the License.
 
 #pragma once
@@ -114,16 +113,12 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
 #else
-      with_fp16_ = false;
-      VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
-          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
-          hidden_size_, eps_);
-      LOG(WARNING)
-          << "You are running the Ernie(Bert) model in fp16 mode while the "
-             "Cuda Version is less than 10.0, which EmbEltwiseLayerNorm "
-             "Plugin's fp16 not "
-             "supported. So fp32 will be chosen actually.";
+      PADDLE_THROW(platform::errors::Fatal(
+          "The Ernie(Bert) tensorRT plugin should be "
+          "complied with CUDA version >= 10.0 when running with fp16. "
+          "Please recomplie it or try to use fp32 by set "
+          "config.EnableTensorRtEngine(1 << 30, 1, 5, "
+          "AnalysisConfig::Precision::kFloat32, false, false) "));
 #endif
     } else {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
@@ -179,8 +174,8 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
           "The Ernie(Bert) tensorRT plugin should be "
           "complied with CUDA version >= 10.0 when running with fp16. "
           "Please recomplie it or try to use fp32 by set "
-          "AnalysisConfig::SetTRTDynamicShapeInfo(min_input_shape, "
-          "max_input_shape, opt_input_shape, true"));
+          "config.EnableTensorRtEngine(1 << 30, 1, 5, "
+          "AnalysisConfig::Precision::kFloat32, false, false) "));
 #endif
     } else {
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
