@@ -1223,7 +1223,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
     .. math::
 
-        Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
+        Out[i, j] = \\frac{\\exp(X[i, j])}{\\sum_j(exp(X[i, j])}
 
     Example:
 
@@ -1290,18 +1290,24 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
 
-            data = fluid.data(name="input", shape=[-1, 3],dtype="float32")
-            result = fluid.layers.softmax(data,axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            x = np.random.rand(3, 3).astype("float32")
-            output= exe.run(feed={"input": x},
-                             fetch_list=[result[0]])
-            print(output)
+            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+                                [3.0, 4.0, 5.0, 6.0],
+                                [7.0, 8.0, 8.0, 9.0]],
+                                [[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
+            y = F.softmax(x, axis=1)
+            print(y)
+            # [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+            #   [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+            #   [0.97555870, 0.97555870, 0.93623954, 0.93623954]],
+            #  [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+            #   [0.26762316, 0.26762316, 0.26762316, 0.26762316],
+            #   [0.72747517, 0.72747517, 0.72747517, 0.72747517]]]
+
     """
 
     if in_dygraph_mode():
