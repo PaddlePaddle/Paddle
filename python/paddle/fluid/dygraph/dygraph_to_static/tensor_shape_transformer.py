@@ -205,20 +205,22 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
                 if isinstance(value_node, gast.Name):
                     if value_node.id in self.name_to_var_shape:
+                        index_value_node = gast.Constant(value=idx, kind=None)
+                        slice_index_node = gast.Index(value=index_value_node)
                         var_shape_node = self.name_to_var_shape[value_node.id]
                         sub_node = gast.Subscript(
                             value=var_shape_node,
-                            slice=gast.Index(value=gast.Constant(
-                                value=idx, kind=None)),
+                            slice=slice_index_node,
                             ctx=gast.Load())
                         self.name_to_var_shape[target_id] = sub_node
                         has_updated = True
                 if isinstance(value_node, gast.Attribute):
                     if self.is_var_shape(value_node):  # eg: x.shape
+                        index_value_node = gast.Constant(value=idx, kind=None)
+                        slice_index_node = gast.Index(value=index_value_node)
                         sub_node = gast.Subscript(
                             value=value_node,
-                            slice=gast.Index(value=gast.Constant(
-                                value=idx, kind=None)),
+                            slice=slice_index_node,
                             ctx=gast.Load())
                         self.name_to_var_shape[target_id] = sub_node
                         has_updated = True
