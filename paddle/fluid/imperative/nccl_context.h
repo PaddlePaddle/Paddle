@@ -69,6 +69,8 @@ class ParallelContext {
                                  bool use_calc_stream = false) = 0;
   virtual void SyncCalcStream() = 0;
   virtual void SyncCommStream(int ring_id = 0) = 0;
+  virtual paddle::platform::CUDADeviceContext* GetDeviceContext(
+      int ring_id) = 0;
 
  protected:
   ParallelStrategy strategy_;
@@ -96,6 +98,8 @@ class NCCLParallelContext : public ParallelContext {
   void SyncCalcStream() override;
 
   void SyncCommStream(int ring_id) override;
+
+  paddle::platform::CUDADeviceContext* GetDeviceContext(int ring_id) override;
 
  protected:
   void RecvNCCLID(const std::string& endpoint, ncclUniqueId* nccl_id);

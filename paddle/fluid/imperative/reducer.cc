@@ -70,6 +70,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   // just for copy back
   copy_enent_ = platform::CudaEventResourcePool::Instance().New(
       BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+
   std::call_once(once_flag_, []() {
     std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
   });
@@ -109,10 +110,6 @@ void Reducer::InitializeGroups(
       group.sparse_contents = first_varbase->MutableGradVar();
       group.dtype = first_varbase->DataType();
       group.is_sparse_ = true;
-      all_length = first_varbase->MutableGradVar()
-                       ->GetMutable<framework::SelectedRows>()
-                       ->value()
-                       .numel();
     } else {
       // process the dense gradient.
       for (size_t index = 0; index < variable_indices_.size(); ++index) {
@@ -137,6 +134,8 @@ void Reducer::InitializeGroups(
 
         group.offset_.push_back(offset);
         group.length_.push_back(size);
+        // for concat operator
+        group.dense_tensors.push_back(framework::Tensor());
         offset += size;
 
         // check the dtype and place, it must be same.
@@ -160,8 +159,8 @@ void Reducer::InitializeGroups(
           .mutable_data(place_, group.dtype);
     }
     // Debug Message For Reducer
-    VLOG(3) << "the groups_[" << group_index << "] basic message:";
-    VLOG(3) << "numul: " << all_length << " ;is_sparse: " << group.is_sparse_
+    VLOG(0) << "the groups_[" << group_index << "] basic message:";
+    VLOG(0) << "numul: " << all_length << " ;is_sparse: " << group.is_sparse_
             << " ;var number: " << group.variable_indices_.size();
     groups_.emplace_back(std::move(group));
   }
@@ -169,42 +168,23 @@ void Reducer::InitializeGroups(
 
 void Reducer::SetGradSpace(Group *p_group) {
   const std::vector<size_t> &global_indices = p_group->variable_indices_;
-  const auto &offset = p_group->offset_;
-  const auto &length = p_group->length_;
+  std::vector<const framework::Tensor *> shape_refer;
+  std::vector<framework::Tensor *> outputs;
+
   for (size_t index = 0; index < global_indices.size(); ++index) {
     const auto &var = vars_[global_indices[index]];  // varbase of var
     auto &grad_var = var->GradVarBase();             // varbase of var grad
     auto grad_tensor =
         grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
-    auto &contents = p_group->dense_contents;
 
-    PADDLE_ENFORCE_EQ(
-        contents.IsInitialized(), true,
-        platform::errors::PreconditionNotMet("Group must be initialized."));
-    auto dim = grad_tensor->dims();
-
-    // grad_tensor
-    //     ->ShareDataWith(contents.GetMutable<framework::LoDTensor>()->Slice(
-    //         static_cast<int64_t>(offset[index]),
-    //         static_cast<int64_t>(offset[index] + length[index])))
-    //     .Resize(dim);
-
-    auto sub_tensor =
-        contents.GetMutable<framework::LoDTensor>()
-            ->Slice(static_cast<int64_t>(offset[index]),
-                    static_cast<int64_t>(offset[index] + length[index]))
-            .Resize(dim);
-
-    auto src_ptr = sub_tensor.data<void>();
-    auto dst_ptr = grad_tensor->data<void>();
-    auto var_dtype = sub_tensor.type();
-
-    // framework::TensorCopy(sub_tensor, place_, grad_tensor);
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), dst_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, place_), src_ptr,
-                 framework::SizeOfType(var_dtype) * length[index],
-                 comm_stream_);
+    shape_refer.emplace_back(grad_tensor);
+    outputs.emplace_back(&(p_group->dense_tensors[index]));
   }
+
+  // split the tensor for fuse grad
+  split_functor_(*parallel_ctx_->GetDeviceContext(0),
+                 *(p_group->dense_contents.GetMutable<framework::LoDTensor>()),
+                 shape_refer, 0, &outputs);
 }
 
 void Reducer::PrepareForBackward() {
@@ -218,8 +198,6 @@ void Reducer::PrepareForBackward() {
 
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
                           const VariableIndex &var_index) {
-  VLOG(3) << "AddDistHook for var [" << var_warpper->Name() << "]";
-
   auto group_index = var_index.group_index;
   auto &group = groups_[group_index];
 
@@ -242,37 +220,23 @@ void Reducer::MarkVariableReady(const VariableIndex &var_index,
   auto group_index = var_index.group_index;
   auto variable_index = var_index.variable_index;
   auto &group = groups_[group_index];
-  auto offset = group.offset_[variable_index];
   auto length = group.length_[variable_index];
-  auto contents_tensor =
-      group.dense_contents.GetMutable<framework::LoDTensor>();
 
   auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-  const auto &var_dtype = var_warpper->DataType();
-  void *src_data = tensor->mutable_data(var_warpper->Place(), var_dtype);
-
-  void *dst_data = contents_tensor
-                       ->Slice(static_cast<int64_t>(offset),
-                               static_cast<int64_t>(offset + length))
-                       .mutable_data(place_, group.dtype);
-  // use cal_stream
-  // auto *cal_stream = static_cast<platform::CUDADeviceContext *>(
-  //                        platform::DeviceContextPool::Instance().Get(place_))
-  //                        ->stream();
-  memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), dst_data,
-               BOOST_GET_CONST(platform::CUDAPlace, var_warpper->Place()),
-               src_data, framework::SizeOfType(var_dtype) * length,
-               compute_stream_);
+  group.dense_tensors[variable_index].ShareDataWith(*tensor).Resize(
+      {static_cast<int64_t>(length)});
 }
 
 void Reducer::MarkGroupReady(size_t group_index) {
-  if (group_index > next_group_) return;
-  // parallel_ctx_->SyncCalcStream();
+  if (group_index > next_group_) {
+    VLOG(0) << "Maybe it need adjust the order of group";
+    return;
+  }
+
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaEventRecord(events_[group_index].get(), compute_stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(comm_stream_, events_[group_index].get(), 0));
-
   for (; next_group_ < groups_.size() && groups_[next_group_].pending == 0;
        ++next_group_) {
     if (groups_[next_group_].is_sparse_) {
@@ -282,7 +246,12 @@ void Reducer::MarkGroupReady(size_t group_index) {
                                        false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
-      // for (int i = 0;i<50;i++)
+      // concat the tensor for fuse grad
+      concat_functor_(*parallel_ctx_->GetDeviceContext(0),
+                      groups_[next_group_].dense_tensors, 0,
+                      groups_[next_group_]
+                          .dense_contents.GetMutable<framework::LoDTensor>());
+      // start allreduce
       parallel_ctx_->AllReduceByStream(groups_[next_group_].dense_contents,
                                        &(groups_[next_group_].dense_contents),
                                        0, false);
@@ -293,16 +262,9 @@ void Reducer::MarkGroupReady(size_t group_index) {
 }
 
 void Reducer::FinalizeBackward() {
-  // parallel_ctx_->SyncCommStream(0);
-  // parallel_ctx_->SyncCalcStream();
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(copy_enent_.get(), comm_stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(compute_stream_, copy_enent_.get(), 0));
-
-  // VLOG(3) << "set gradient space according dense group";
-  // for (auto &group : groups_) {
-  //   if (!group.is_sparse_) SetGradSpace(&group);
-  // }
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 

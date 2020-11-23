@@ -215,6 +215,14 @@ void NCCLParallelContext::SyncCommStream(int ring_id) {
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
 }
+
+paddle::platform::CUDADeviceContext *NCCLParallelContext::GetDeviceContext(
+    int ring_id) {
+  return platform::NCCLCommContext::Instance()
+      .Get(ring_id, place_)
+      ->dev_context();
+}
+
 #endif
 
 }  //  namespace imperative

@@ -22,6 +22,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 
 #include "paddle/fluid/platform/cuda_resource_pool.h"
 
@@ -36,6 +37,9 @@ struct Group {
   framework::Variable* sparse_contents = nullptr;
   bool is_sparse_ = false;
 
+  // for concat kernel
+  std::vector<framework::Tensor> dense_tensors;
+
   std::vector<size_t> offset_;
   std::vector<size_t> length_;
   // Global indices of participating variables in the group
@@ -47,6 +51,10 @@ struct Group {
 
   // external message of group
   framework::proto::VarType::Type dtype;
+
+  // void ConcatTensorsForAllReduce(){
+
+  // }
 };
 
 struct VariableIndex {
@@ -95,9 +103,9 @@ class Reducer {
   }
 
   static std::shared_ptr<Reducer> GetInstance() {
-    // PADDLE_ENFORCE_EQ(
-    //     s_instance_ != NULL, true,
-    //     platform::errors::InvalidArgument("Reducer is not initialized."));
+    PADDLE_ENFORCE_EQ(
+        s_instance_ != NULL, true,
+        platform::errors::InvalidArgument("Reducer is not initialized."));
     return s_instance_;
   }
 
@@ -118,6 +126,12 @@ class Reducer {
   std::shared_ptr<platform::CudaEventObject> copy_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
+  paddle::operators::math::ConcatFunctor<paddle::platform::CUDADeviceContext,
+                                         float>
+      concat_functor_;
+  paddle::operators::math::SplitFunctor<paddle::platform::CUDADeviceContext,
+                                        float>
+      split_functor_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
