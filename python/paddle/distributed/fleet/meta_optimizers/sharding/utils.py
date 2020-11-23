@@ -269,7 +269,7 @@ def get_var_size(param):
     """
     assert -1 not in param.shape
     return reduce(lambda x, y: x * y,
-                  param.shape) * DtypeToSize[param.dtype] / 1024.0 / 1024.0
+                  param.shape) * DtypeToSize[param.dtype] / 1024.0
 
 
 def insert_scale_loss_grad_ops(block, scale=1.0):
@@ -329,7 +329,7 @@ def comm_analyse(main_program):
                                                       count))
 
 
-def add_sync_comm_for_test(program, dist_strategy):
+def add_sync_comm(program, dist_strategy):
     """
     When clone a test prog by clone from the sharding main prog, 
     part of the sync_comm op maybe be pruned by mistake, this function
@@ -361,7 +361,7 @@ def add_sync_comm_for_test(program, dist_strategy):
     return
 
 
-def sharding_save_persistables(exe, dirname, main_program, filename=None):
+def save_persistables(exe, dirname, main_program, filename=None):
     """
     When use sharding, part of persistable vars are unique and are partitioned in different ranks,
     and part of persistable vars are duplicated and exist in all the ranks with different values.
