@@ -185,14 +185,9 @@ def pow(x, y, name=None):
         if isinstance(y, (int, float)):
             return core.ops.pow(x, 'factor', y)
         elif isinstance(y, (paddle.Tensor, Variable)):
-
             if x.dtype != y.dtype:
                 y = cast(y, dtype='float64')
                 x = cast(x, dtype='float64')
-                out_dygraph = _elementwise_op_in_dygraph(
-                x, y, axis=-1, act=None, op_name='elementwise_pow')
-                return out_dygraph
-
             return _elementwise_op_in_dygraph(
                 x, y, axis=-1, act=None, op_name='elementwise_pow')
         else:
@@ -213,9 +208,7 @@ def pow(x, y, name=None):
             if x.dtype != y.dtype:
                 y = cast(y, dtype='float64')
                 x = cast(x, dtype='float64')
-                out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            else:
-                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
             return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
