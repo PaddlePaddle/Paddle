@@ -164,6 +164,10 @@ def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
 
 
 def _rename_var_program_desc(program_desc):
+    """
+    Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication
+    e.g. x ==> x_0, x_0 ==> x._1
+    """
     dict_rename_var_old_new = dict()
     dict_rename_var_new_old = dict()
     old_names = []
