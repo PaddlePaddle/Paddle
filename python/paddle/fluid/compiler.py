@@ -18,7 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places, _get_paddle_place
+from .framework import cuda_places, cpu_places, _convert_places
 from . import core
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
