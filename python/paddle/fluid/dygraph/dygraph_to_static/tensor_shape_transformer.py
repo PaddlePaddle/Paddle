@@ -195,11 +195,6 @@ class TensorShapeTransformer(gast.NodeTransformer):
         target_node = node.targets[0]
         value_node = node.value
 
-        value_str = ast_to_source_code(value_node).strip()
-        while value_str in self.name_to_var_shape:
-            value_node = self.name_to_var_shape[value_str]
-            value_str = ast_to_source_code(value_node).strip()
-
         if isinstance(target_node, gast.Tuple):
             has_updated = False
             for idx, element in enumerate(target_node.elts):
@@ -210,8 +205,9 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
                 if isinstance(value_node, gast.Name):
                     if value_node.id in self.name_to_var_shape:
+                        var_shape_node = self.name_to_var_shape[value_node.id]
                         sub_node = gast.Subscript(
-                            value=value_node,
+                            value=var_shape_node,
                             slice=gast.Index(value=gast.Constant(
                                 value=idx, kind=None)),
                             ctx=gast.Load())
