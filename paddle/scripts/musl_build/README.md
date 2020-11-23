@@ -1,11 +1,11 @@
 Paddle for Linux-musl Usage Guide
 ===========================================
 
-# introduction
+# Introduction
 Paddle can be built for linux-musl such as alpine, and be used in libos-liked SGX TEE environment. Currently supported commericial product TEE Scone, and community maintanced TEE Occlum. We also working on to support open source TEE Graphene.
 
 
-# build automaticly
+# Build Automatically
 1. clone paddle source from github
    
 ```bash
@@ -34,7 +34,7 @@ mkdir -p build && cd build
 ```
 
 4. compile paddle in previous built docker. proxy setup method is same as previous step.
-output wheel package will save to "dist" directory.
+
 
 ```bash
 # setup proxy addresss, when the speed of internet is not good.
@@ -46,10 +46,11 @@ output wheel package will save to "dist" directory.
 ../paddle/scripts/musl_build/build_paddle.sh -j8
 
 # find output wheel package
-ls dist/*.whl
+# output wheel packages will save to "./output" directory.
+ls ./output/*.whl
 ```
 
-# build manually  
+# Build Manually  
 
 1. start up the building docker, and enter the shell in the container
 ```bash
@@ -84,12 +85,11 @@ cmake -DWITH_MUSL=ON DWITH_CRYPTO=OFF -DWITH_MKL=OFF -DWITH_GPU=OFF -DWITH_TESTI
 make -j8
 ```
 
-# scripts
-1. build_docker.sh
-   
-    compiling docker building script
+# Scripts
+1. **build_docker.sh**
+   compiling docker building script. it use alpine linux 3.10 as musl linux build enironment. it will try to install all the compiling tools, development packages, and python requirements for paddle musl compiling.
     
-    environment arguments:
+    environment variables:
 
    - WITH_PRUNE_DAYS: prune old docker images, with days limitation.
    - WITH_REBUILD: force to rebuild the image, default=0.
@@ -100,9 +100,9 @@ make -j8
    - HTTP_PROXY: use http proxy
    - HTTPS_PROXY: use https proxy
 
-2. build_paddle.sh
-   
-    paddle building script, accept follow environment variables as arguments:
+2. **build_paddle.sh** automatically or manually paddle building script. it will mount the root directory of paddle source to /paddle, and run compile procedure in /root/build directory. the output wheel package will save to the ./output directory relative to working directory.
+    
+    environment variables:
 
     - BUILD_AUTO: build the paddle automatically, save output wheel package to ./output directory, default=1.
     
@@ -110,9 +110,11 @@ make -j8
     - HTTPS_PROXY: use https proxy
 
 
-# files
-- build_docker.sh: docker building script
-- build_paddle.sh: paddle building script
-- build_inside.sh: build_paddle.sh will invoke this script inside the docker for compiling.
-- config.sh: build config script for configure compiling option setting.
-- Dockerfile: build docker defination file.
+# Files
+- **build_docker.sh**: docker building script
+- **build_paddle.sh**: paddle building script
+- **build_inside.sh**: build_paddle.sh will invoke this script inside the docker for compiling.
+- **config.sh**: build config script for configure compiling option setting.
+- **Dockerfile**: build docker defination file.
+- **package.txt**: build required develop packages for alpine linux.
+- **REAME.md**: this file.

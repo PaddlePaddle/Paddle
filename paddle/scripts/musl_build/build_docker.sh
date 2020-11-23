@@ -74,7 +74,6 @@ build_image(){
         BUILD_ARGS+=("--build-arg" pip_index="$WITH_PIP_INDEX")
     fi
         
-
     echo "build docker image: $BUILD_IMAGE"
 
     # shellcheck disable=2086

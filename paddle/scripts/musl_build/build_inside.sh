@@ -64,6 +64,7 @@ echo "save paddle wheel package to /output"
 cp  "$OUTPUT_WHL" /output/
 
 if [ "$WITH_TEST" == "1" ]; then
+
     echo "install paddle wheel package"
     pip3 install --no-cache --force-overwrite "$OUTPUT_WHL"
 
