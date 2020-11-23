@@ -68,21 +68,18 @@ class Lamb(Optimizer):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
         .. code-block:: python
-
-            import paddle.fluid as fluid
             import paddle
-
-            paddle.enable_static()
-            data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-            hidden = fluid.layers.fc(input=data, size=10)
-            cost = fluid.layers.mean(hidden)
-
-            def exclude_fn(param):
-                return param.name.endswith('.b_0')
-
-            optimizer = fluid.optimizer.Lamb(learning_rate=0.002,
-                                             exclude_from_weight_decay_fn=exclude_fn)
-            optimizer.minimize(cost)
+            import numpy as np
+            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+            linear = paddle.nn.Linear(10, 10)
+            out = linear(inp)
+            loss = paddle.mean(out)
+            beta1 = paddle.to_tensor([0.9], dtype="float32")
+            beta2 = paddle.to_tensor([0.85], dtype="float32")
+            lamb = paddle.optimizer.Lamb(learning_rate=0.002, parameters=linear.parameters(), lamb_weight_decay=0.01)
+            back = out.backward()
+            lamb.step()
+            lamb.clear_grad()
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
