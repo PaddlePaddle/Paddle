@@ -166,17 +166,26 @@ def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
 def _rename_var_program_desc(program_desc):
     dict_rename_var_old_new = dict()
     dict_rename_var_new_old = dict()
+    old_names = []
+    for b_idx in six.moves.range(program_desc.num_blocks()):
+        cur_block = program_desc.block(b_idx)
+        for var in cur_block.all_vars():
+            old_names.append(var.name())
     for b_idx in six.moves.range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var in cur_block.all_vars():
             name_old = var.name()
-            temp_name = name_old.split('_')
-            if len(temp_name) > 1:
-                temp_name = "_".join(temp_name[:-1])
-            else:
-                temp_name = "_".join(temp_name[:-1])
-            name_new = _generate_unique_var_name_sync_with_main_program(
-                temp_name)
+            while True:
+                temp_name = name_old.split('_')
+                if len(temp_name) > 1 and temp_name[-1].isnumeric():
+                    temp_name = "_".join(temp_name[:-1])
+                else:
+                    temp_name = "_".join(temp_name)
+
+                name_new = _generate_unique_var_name_sync_with_main_program(
+                    temp_name)
+                if name_new not in old_names:
+                    break
             if name_old != name_new:
                 cur_block._rename_var(
                     cpt.to_bytes(name_old), cpt.to_bytes(name_new))
