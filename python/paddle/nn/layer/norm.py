@@ -109,7 +109,7 @@ class _InstanceNormBase(layers.Layer):
 
 
 class InstanceNorm1D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
@@ -181,7 +181,7 @@ class InstanceNorm1D(_InstanceNormBase):
 
 
 class InstanceNorm2D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -252,7 +252,7 @@ class InstanceNorm2D(_InstanceNormBase):
 
 
 class InstanceNorm3D(_InstanceNormBase):
-    """
+    r"""
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
@@ -437,7 +437,7 @@ class GroupNorm(layers.Layer):
 
 
 class LayerNorm(layers.Layer):
-    """
+    r"""
     :alias_main: paddle.nn.LayerNorm
 	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
 	:old_api: paddle.fluid.dygraph.LayerNorm
@@ -649,7 +649,7 @@ class _BatchNormBase(layers.Layer):
 
 
 class BatchNorm1D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -740,7 +740,7 @@ class BatchNorm1D(_BatchNormBase):
 
 
 class BatchNorm2D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -829,7 +829,7 @@ class BatchNorm2D(_BatchNormBase):
 
 
 class BatchNorm3D(_BatchNormBase):
-    """
+    r"""
     Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When track_running_stats = False, the :math:`\\mu_{\\beta}`
@@ -919,7 +919,7 @@ class BatchNorm3D(_BatchNormBase):
 
 
 class SyncBatchNorm(_BatchNormBase):
-    """
+    r"""
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
     be used as a normalizer function for other operations, such as conv2d and fully connected 

@@ -36,7 +36,7 @@ __all__ = [
 
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
-    """
+    r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -141,7 +141,7 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
-    """
+    r"""
 	:alias_main: paddle.nn.CrossEntropyLoss
 	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
 
@@ -375,7 +375,7 @@ class HSigmoidLoss(fluid.dygraph.Layer):
 
 
 class MSELoss(fluid.dygraph.layers.Layer):
-    """
+    r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -454,7 +454,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
 
 class L1Loss(fluid.dygraph.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
@@ -491,31 +491,29 @@ class L1Loss(fluid.dygraph.Layer):
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
+        
         .. code-block:: python
-            import paddle
-            import numpy as np
 
-            paddle.disable_static()
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            import paddle
+
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1.0], [0.4, 0.5]])
 
             l1_loss = paddle.nn.loss.L1Loss()
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [0.35]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [1.4]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='none')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            #  [0.2        0.79999995]]
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -624,7 +622,7 @@ class BCELoss(fluid.dygraph.Layer):
 
 
 class NLLLoss(fluid.dygraph.Layer):
-    """
+    r"""
 
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
@@ -735,7 +733,7 @@ class NLLLoss(fluid.dygraph.Layer):
 
 
 class KLDivLoss(fluid.dygraph.Layer):
-    """
+    r"""
     This interface calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
@@ -808,7 +806,7 @@ class KLDivLoss(fluid.dygraph.Layer):
 
 
 class MarginRankingLoss(fluid.dygraph.Layer):
-    """
+    r"""
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
     The MarginRankingLoss layer calculates the margin rank loss between the input, other and label
@@ -960,7 +958,7 @@ class CTCLoss(fluid.dygraph.Layer):
 
 
 class SmoothL1Loss(fluid.dygraph.Layer):
-    """
+    r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
@@ -1001,7 +999,7 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             is the same as the shape of input.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
+        The tensor storing the smooth_l1_loss of input and label.
 
     Return type: Tensor.
 

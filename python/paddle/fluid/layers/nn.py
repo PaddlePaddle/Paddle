@@ -215,7 +215,7 @@ def fc(input,
        bias_attr=None,
        act=None,
        name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Fully Connected Layer**
@@ -377,7 +377,7 @@ def embedding(input,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
-    """
+    r"""
     :api_attr: Static Graph
 
     **WARING:** This OP will be deprecated in a future release. This OP requires the
@@ -530,7 +530,7 @@ def _pull_sparse(input,
                  padding_id=0,
                  dtype='float32',
                  scale_sparse_grad=True):
-    """
+    r"""
     **Pull Fleet Sparse Layer**
 
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
@@ -601,7 +601,7 @@ def _pull_sparse_v2(input,
                     padding_id=0,
                     dtype='float32',
                     scale_sparse_grad=True):
-    """
+    r"""
     **Pull Fleet Sparse Layer**
 
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
@@ -664,7 +664,7 @@ def _pull_sparse_v2(input,
 
 
 def _pull_box_sparse(input, size, dtype='float32'):
-    """
+    r"""
     **Pull Box Sparse Layer**
 
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
@@ -1050,7 +1050,7 @@ def chunk_eval(input,
                num_chunk_types,
                excluded_chunk_types=None,
                seq_length=None):
-    """
+    r"""
     This operator computes the precision, recall and F1-score for chunk detection.
     It is often used in sequence tagging tasks, such as Named Entity Recognition(NER).
 
@@ -1199,7 +1199,7 @@ def chunk_eval(input,
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
 def softmax(input, use_cudnn=False, name=None, axis=-1):
-    """
+    r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
@@ -1339,7 +1339,7 @@ def conv2d(input,
            act=None,
            name=None,
            data_format="NCHW"):
-    """
+    r"""
     :api_attr: Static Graph
 
     The convolution2D layer calculates the output based on the input, filter
@@ -1618,7 +1618,7 @@ def conv3d(input,
            act=None,
            name=None,
            data_format="NCDHW"):
-    """
+    r"""
     :api_attr: Static Graph
 
     The convolution3D layer calculates the output based on the input, filter
@@ -2325,7 +2325,7 @@ def adaptive_pool2d(input,
                     pool_type="max",
                     require_index=False,
                     name=None):
-    """
+    r"""
 
     This operation calculates the output based on the input, pool_size,
     pool_type parameters. Input(X) and output(Out) are in NCHW format, where N is batch
@@ -2471,7 +2471,7 @@ def adaptive_pool3d(input,
                     pool_type="max",
                     require_index=False,
                     name=None):
-    """
+    r"""
 
     This operation calculates the output based on the input, pool_size,
     pool_type parameters. Input(X) and output(Out) are in NCDHW format, where N is batch
@@ -2638,7 +2638,7 @@ def batch_norm(input,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=True,
                use_global_stats=False):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Batch Normalization Layer**
@@ -2902,7 +2902,7 @@ def inplace_abn(input,
                 do_model_average_for_mean_and_var=True,
                 use_global_stats=False,
                 act_alpha=1.0):
-    """
+    r"""
     **In-place Activation Batch Normalization Layer**
 
     This layer calculates batch normalization and activation with in-place memory.
@@ -3096,7 +3096,7 @@ def instance_norm(input,
                   param_attr=None,
                   bias_attr=None,
                   name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Instance Normalization Layer**
@@ -3231,7 +3231,7 @@ def data_norm(input,
               sync_stats=False,
               summary_decay_rate=0.9999999,
               enable_scale_and_shift=False):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Data Normalization Layer**
@@ -3416,7 +3416,7 @@ def layer_norm(input,
                bias_attr=None,
                act=None,
                name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Layer Normalization Layer**
@@ -3637,7 +3637,7 @@ def group_norm(input,
 
 @templatedoc()
 def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Spectral Normalization Layer**
@@ -3757,7 +3757,7 @@ def conv2d_transpose(input,
                      act=None,
                      name=None,
                      data_format='NCHW'):
-    """
+    r"""
     :api_attr: Static Graph
 
     The convolution2D transpose layer calculates the output based on the input,
@@ -4049,7 +4049,7 @@ def conv3d_transpose(input,
                      act=None,
                      name=None,
                      data_format='NCDHW'):
-    """
+    r"""
     :api_attr: Static Graph
 
     The convolution3D transpose layer calculates the output based on the input,
@@ -4953,7 +4953,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
 
 def l2_normalize(x, axis, epsilon=1e-12, name=None):
-    """
+    r"""
 
     This op normalizes `x` along dimension `axis` using an L2
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
@@ -5278,7 +5278,7 @@ def ctc_greedy_decoder(input,
                        input_length=None,
                        padding_value=0,
                        name=None):
-    """
+    r"""
     This op is used to decode sequences by greedy policy by the following steps:
 
     1. Get the indexes of maximum value for each row in input. a.k.a.
@@ -5530,7 +5530,7 @@ def im2sequence(input,
                 input_image_size=None,
                 out_stride=1,
                 name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     Extracts image patches from the input tensor to form a tensor of shape
@@ -6038,7 +6038,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
 
 
 def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
-    """
+    r"""
     :alias_main: paddle.reshape
 	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
 
@@ -6527,7 +6527,7 @@ def lod_append(x, level):
 
 def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
         data_format='NCHW'):
-    """
+    r"""
     :alias_main: paddle.nn.functional.lrn
 	:alias: paddle.nn.functional.lrn,paddle.nn.functional.norm.lrn
 	:old_api: paddle.fluid.layers.lrn
@@ -6617,7 +6617,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
 
 
 def pad(x, paddings, pad_value=0., name=None):
-    """
+    r"""
     :alias_main: paddle.nn.functional.pad
 	:alias: paddle.nn.functional.pad,paddle.nn.functional.common.pad
 	:old_api: paddle.fluid.layers.pad
@@ -6687,7 +6687,7 @@ def pad(x, paddings, pad_value=0., name=None):
 
 
 def pad_constant_like(x, y, pad_value=0., name=None):
-    """
+    r"""
     Pad :attr:`y` with :attr:`pad_value`, the number of values padded to
     the edges of each axis is specified by the difference of the shape
     of :attr:`x` and :attr:`y` . ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
@@ -6786,7 +6786,7 @@ def label_smooth(label,
                  epsilon=0.1,
                  dtype="float32",
                  name=None):
-    """
+    r"""
     :alias_main: paddle.nn.functional.label_smooth
 	:alias: paddle.nn.functional.label_smooth,paddle.nn.functional.common.label_smooth
 	:old_api: paddle.fluid.layers.label_smooth
@@ -7059,7 +7059,7 @@ def roi_align(input,
 
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
-    """
+    r"""
 
     Dice loss for comparing the similarity between the input predictions and the label.
     This implementation is for binary classification, where the input is sigmoid
@@ -8492,7 +8492,7 @@ def scatter(input, index, updates, name=None, overwrite=True):
 
 
 def scatter_nd_add(ref, index, updates, name=None):
-    """
+    r"""
     **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
@@ -8678,7 +8678,7 @@ def random_crop(x, shape, seed=None):
 
 
 def log(x, name=None):
-    """
+    r"""
     Calculates the natural log of the given input tensor, element-wise.
 
     .. math::
@@ -8760,7 +8760,7 @@ def relu(x, name=None):
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.selu")
 def selu(x, scale=None, alpha=None, name=None):
-    """
+    r"""
 
     Selu Operator.
 
@@ -8828,7 +8828,7 @@ def selu(x, scale=None, alpha=None, name=None):
 
 
 def mean_iou(input, label, num_classes):
-    """
+    r"""
     Mean Intersection-Over-Union is a common evaluation metric for
     semantic image segmentation, which first computes the IOU for each
     semantic class and then computes the average over classes.
@@ -9632,7 +9632,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 
 @templatedoc()
 def swish(x, beta=1.0, name=None):
-    """
+    r"""
     :alias_main: paddle.nn.functional.swish
 	:alias: paddle.nn.functional.swish,paddle.nn.functional.activation.swish
 	:old_api: paddle.fluid.layers.swish
@@ -9717,7 +9717,7 @@ def swish(x, beta=1.0, name=None):
 
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, name=None):
-    """
+    r"""
     prelu activation.
 
     .. math::
@@ -9875,7 +9875,7 @@ def leaky_relu(x, alpha=0.02, name=None):
 
 
 def soft_relu(x, threshold=40.0, name=None):
-    """
+    r"""
 
     SoftRelu Activation Operator.
 
@@ -9924,7 +9924,7 @@ def soft_relu(x, threshold=40.0, name=None):
 
 
 def flatten(x, axis=1, name=None):
-    """
+    r"""
     **Flatten op**
 
     Flatten the input tensor into a 2D matrix.
@@ -12145,7 +12145,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 
 
 def logical_and(x, y, out=None, name=None):
-    """
+    r"""
 
     ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
@@ -12222,7 +12222,7 @@ def logical_or(x, y, out=None, name=None):
 
 
 def logical_xor(x, y, out=None, name=None):
-    """
+    r"""
 
     ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
@@ -12360,7 +12360,7 @@ def clip_by_norm(x, max_norm, name=None):
             None by default.
 
     Returns:
-        Variable:
+        Tensor:
 
         out(${out_type}): ${out_comment}
 
@@ -12371,7 +12371,6 @@ def clip_by_norm(x, max_norm, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             input = paddle.to_tensor(data=np.array([[0.1, 0.2], [0.3, 0.4]]), dtype="float32")
             reward = paddle.nn.clip_by_norm(x=input, max_norm=1.0)
     """
@@ -12557,7 +12556,7 @@ def maxout(x, groups, name=None, axis=1):
 
 
 def space_to_depth(x, blocksize, name=None):
-    """
+    r"""
 
     Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
 
@@ -12745,7 +12744,7 @@ def affine_channel(x,
 
 
 def similarity_focus(input, axis, indexes, name=None):
-    """
+    r"""
     SimilarityFocus Operator
 
     Generate a similarity focus mask with the same shape of input using the following method:
@@ -13026,7 +13025,7 @@ def grid_sampler(x, grid, name=None):
 
 
 def log_loss(input, label, epsilon=1e-4, name=None):
-    """
+    r"""
 
     **Negative Log Loss Layer**
 
@@ -13078,7 +13077,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
 
 
 def add_position_encoding(input, alpha, beta, name=None):
-    """
+    r"""
 
     This operator performs weighted sum of input feature at each position
     (position in the sequence) and the corresponding position encoding.
@@ -13152,7 +13151,7 @@ def bilinear_tensor_product(x,
                             name=None,
                             param_attr=None,
                             bias_attr=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Bilinear Tensor Product Layer**
@@ -13979,7 +13978,7 @@ def fsp_matrix(x, y):
 
 
 def continuous_value_model(input, cvm, use_cvm=True):
-    """
+    r"""
 
     **continuous_value_model layers**
 
@@ -14084,7 +14083,7 @@ def where(condition):
 
 @deprecated(since="2.0.0", update_to="paddle.sign")
 def sign(x):
-    """
+    r"""
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
@@ -14117,7 +14116,7 @@ def sign(x):
 
 
 def unique(x, dtype='int32'):
-    """
+    r"""
     Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
 
     Args:
@@ -14156,7 +14155,7 @@ def unique(x, dtype='int32'):
 
 
 def unique_with_counts(x, dtype='int32'):
-    """
+    r"""
     This OP return a unique tensor for `x` , and count tensor that the count of unique result in raw input, \
     and an index tensor pointing to this unique tensor.
 
@@ -14228,7 +14227,7 @@ def deformable_conv(input,
                     bias_attr=None,
                     modulated=True,
                     name=None):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Deformable Convolution op**
@@ -14445,7 +14444,7 @@ def deformable_conv(input,
 
 
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
-    """
+    r"""
 
     This op returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
@@ -14582,7 +14581,7 @@ def deformable_roi_pooling(input,
                            trans_std=0.1,
                            position_sensitive=False,
                            name=None):
-    """
+    r"""
 
     Deformable ROI Pooling Layer
 
@@ -14813,7 +14812,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 
 @templatedoc()
 def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
-    """
+    r"""
     This operator implements the hard_swish activation function.
     Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
     For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
@@ -14882,7 +14881,7 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
 
 @templatedoc()
 def mish(x, threshold=20, name=None):
-    """
+    r"""
     This operator implements the mish activation function.
     Refer to `Mish: A Self Regularized Non-Monotonic Neural
     Activation Function <https://arxiv.org/abs/1908.08681>`_
@@ -14956,7 +14955,7 @@ def mish(x, threshold=20, name=None):
 
 
 def gather_tree(ids, parents):
-    """
+    r"""
     To be used after beam search. After beam search, we get selected ids at
     each time step and the corresponding parents in the search tree. Both ids
     and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
