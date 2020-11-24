@@ -54,6 +54,17 @@ def to_text(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_text(data)
+            # paddlepaddle
+
     """
     if obj is None:
         return obj
@@ -140,6 +151,17 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_bytes(data)
+            # b'paddlepaddle'
+
     """
     if obj is None:
         return obj
