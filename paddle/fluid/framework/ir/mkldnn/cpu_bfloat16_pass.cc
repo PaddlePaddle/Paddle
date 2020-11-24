@@ -151,7 +151,7 @@ void RemoveUnnecessaryReorders(ir::Graph* graph, int* quantize_counter) {
             "Operator before operator should have input as op output"));
 
     prev_op->Op()->SetOutput(op_output_name,
-                            std::vector<std::string>({quant_out->Name()}));
+                             std::vector<std::string>({quant_out->Name()}));
 
     IR_NODE_LINK_TO(prev_op, quant_out);
     GraphSafeRemoveNodes(graph, {quant_in, quant_op});
