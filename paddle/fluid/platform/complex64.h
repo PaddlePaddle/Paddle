@@ -68,14 +68,18 @@ struct PADDLE_ALIGN(8) complex64 {
   }
 #endif
 
-  // todo
-  HOSTDEVICE inline explicit complex64(float val) {
-    std::memcpy(&real, &val, 4);
+  HOSTDEVICE inline explicit complex64(float val) { real = val; }
+
+  HOSTDEVICE inline explicit operator std::complex<float>() {
+    return static_cast<std::complex<float>>(std::complex<float>(real, imag));
   }
 
   template <class T>
   HOSTDEVICE inline explicit complex64(const T& val)
       : real(complex64(static_cast<float>(val)).real) {}
+
+  HOSTDEVICE complex64(const std::complex<float> val)
+      : real(val.real()), imag(val.imag()) {}
 
   HOSTDEVICE inline complex64& operator=(bool b) {
     real = b ? 1 : 0;
@@ -84,42 +88,42 @@ struct PADDLE_ALIGN(8) complex64 {
   }
 
   HOSTDEVICE inline complex64& operator=(int8_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint8_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(int16_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint16_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(int32_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint32_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(int64_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline complex64& operator=(uint64_t val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
@@ -129,14 +133,14 @@ struct PADDLE_ALIGN(8) complex64 {
   }
 
   HOSTDEVICE inline complex64& operator=(double val) {
-    real = float(val);
+    real = static_cast<float>(val);
     return *this;
   }
 
   HOSTDEVICE inline explicit operator float() const { return this->real; }
 
   HOSTDEVICE inline explicit operator bool() const {
-    return bool(this->real) || bool(this->imag);
+    return static_cast<bool>(this->real) || static_cast<bool>(this->imag);
   }
 
   HOSTDEVICE inline explicit operator int8_t() const {
@@ -338,7 +342,7 @@ struct is_floating_point<paddle::platform::complex64>
                                  paddle::platform::complex64>::type>::value> {};
 template <>
 struct is_signed<paddle::platform::complex64> {
-  static const bool value = true;
+  static const bool value = false;
 };
 
 template <>
@@ -354,95 +358,14 @@ inline bool isinf(const paddle::platform::complex64& a) {
   return paddle::platform::isinf(a);
 }
 
-/*
-template <>
-struct numeric_limits<paddle::platform::complex64> {
-  static const bool is_specialized = false;
-  static const bool is_signed = false;
-  static const bool is_integer = false;
-  static const bool is_exact = false;
-  static const bool has_infinity = true;
-  static const bool has_quiet_NaN = true;
-  static const bool has_signaling_NaN = true;
-  static const float_denorm_style has_denorm = denorm_present;
-  static const bool has_denorm_loss = false;
-  static const std::float_round_style round_style = std::round_to_nearest;
-  static const bool is_iec559 = false;
-  static const bool is_bounded = false;
-  static const bool is_modulo = false;
-  static const int digits = 8;
-  static const int digits10 = 2;
-  static const int max_digits10 = 9;
-  static const int radix = 2;
-  static const int min_exponent = -125;
-  static const int min_exponent10 = -37;
-  static const int max_exponent = 128;
-  static const int max_exponent10 = 38;
-  static const bool traps = true;
-  static const bool tinyness_before = false;
-
-  static paddle::platform::complex64(min)() {
-    return paddle::platform::raw_uint16_to_complex64(0x007f);
-  }
-  static paddle::platform::complex64 lowest() {
-    return paddle::platform::raw_uint16_to_complex64(0xff7f);
-  }
-  static paddle::platform::complex64(max)() {
-    return paddle::platform::raw_uint16_to_complex64(0x7f7f);
-  }
-  static paddle::platform::complex64 epsilon() {
-    return paddle::platform::raw_uint16_to_complex64(0x3400);
-  }
-  static paddle::platform::complex64 round_error() {
-    return paddle::platform::complex64(0.5);
-  }
-  static paddle::platform::complex64 infinity() {
-    return paddle::platform::raw_uint16_to_complex64(0x7f80);
-  }
-  static paddle::platform::complex64 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_complex64(0xffc1);
-  }
-  static paddle::platform::complex64 signaling_NaN() {
-    return paddle::platform::raw_uint16_to_complex64(0xff81);
-  }
-  static paddle::platform::complex64 denorm_min() {
-    return paddle::platform::raw_uint16_to_complex64(0x0001);
-  }
-};
-*/
-
 }  // namespace std
 namespace Eigen {
 
 using complex64 = paddle::platform::complex64;
 
 template <>
-struct NumTraits<complex64> : GenericNumTraits<complex64> {
-  enum {
-    IsSigned = true,
-    IsInteger = false,
-    IsComplex = false,
-    RequireInitialization = false
-  };
-  HOSTDEVICE static inline complex64 epsilon() {
-    return paddle::platform::raw_uint16_to_complex64(0x3400);
-  }
-  HOSTDEVICE static inline complex64 dummy_precision() {
-    return complex64(1e-5f);
-  }
-  HOSTDEVICE static inline complex64 highest() {
-    return paddle::platform::raw_uint16_to_complex64(0x7f7f);
-  }
-  HOSTDEVICE static inline complex64 lowest() {
-    return paddle::platform::raw_uint16_to_complex64(0xff7f);
-  }
-  HOSTDEVICE static inline complex64 infinity() {
-    return paddle::platform::raw_uint16_to_complex64(0x7f80);
-  }
-  HOSTDEVICE static inline complex64 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_complex64(0xffc1);
-  }
-};
+struct NumTraits<complex64> : NumTraits<std::complex<float>> {};
+
 namespace numext {
 
 template <>
@@ -460,56 +383,57 @@ HOSTDEVICE inline bool(isfinite)(const complex64& a) {
   return (std::isfinite)(a.real) || (std::isfinite)(a.imag);
 }
 
-// todo not impl
 template <>
 HOSTDEVICE inline complex64 exp(const complex64& a) {
-  return complex64(::expf(static_cast<float>(a.real)));
-}
-
-template <>
-HOSTDEVICE inline complex64 erf(const complex64& a) {
-  return complex64(::erff(static_cast<float>(a.real)));
+  float com = ::expf(a.real);
+  float res_real = com * ::cosf(a.imag);
+  float res_imag = com * ::sinf(a.imag);
+  return complex64(res_real, res_imag);
 }
 
 template <>
 HOSTDEVICE inline complex64 log(const complex64& a) {
-  return complex64(::logf(static_cast<float>(a.real)));
+  std::complex<float> a_(a.real, a.imag);
+  return complex64(std::log(a_));
 }
 
 template <>
 HOSTDEVICE inline complex64 tanh(const complex64& a) {
-  return complex64(::tanhf(static_cast<float>(a.real)));
+  std::complex<float> a_(a.real, a.imag);
+  return complex64(std::tanh(a_));
 }
 
 template <>
 HOSTDEVICE inline complex64 sqrt(const complex64& a) {
-  return complex64(::sqrtf(static_cast<float>(a.real)));
+  std::complex<float> a_(a.real, a.imag);
+  return complex64(std::sqrt(a_));
 }
 
 template <>
 HOSTDEVICE inline complex64 ceil(const complex64& a) {
-  return complex64(::ceilf(static_cast<float>(a.real)));
+  return complex64(::ceilf(a.real), ::ceilf(a.imag));
 }
 
 template <>
 HOSTDEVICE inline complex64 floor(const complex64& a) {
-  return complex64(::floorf(static_cast<float>(a.real)));
+  return complex64(::floorf(a.real), ::floor(a.imag));
 }
 
 template <>
 HOSTDEVICE inline complex64 round(const complex64& a) {
-  return complex64(::roundf(static_cast<float>(a.real)));
+  return complex64(::roundf(a.real), ::roundf(a.imag));
 }
 
 template <>
 HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
-  return complex64(
-      ::powf(static_cast<float>(a.real), static_cast<float>(b.real)));
+  std::complex<float> a_(a.real, a.imag);
+  std::complex<float> b_(b.real, b.imag);
+  return complex64(std::pow(a_, b_));
 }
 
 template <>
-HOSTDEVICE inline complex64 abs(const complex64& a) {
-  return complex64(::fabs(static_cast<float>(a.real)));
+HOSTDEVICE inline float abs(const complex64& a) {
+  return ::hypotf(a.real, a.imag);
 }
 
 }  // namespace numext

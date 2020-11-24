@@ -186,19 +186,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             stop_gradient=stop_gradient)
     else:
         name = unique_name.generate('generated_tensor')
-        real_tensor = paddle.Tensor(
-            value=data.real,
+        tensor = paddle.Tensor(
+            value=data,
             place=place,
             zero_copy=False,
-            name=name + ".real",
+            name=name,
             stop_gradient=stop_gradient)
-        imag_tensor = paddle.Tensor(
-            value=data.imag,
-            place=place,
-            zero_copy=False,
-            name=name + ".imag",
-            stop_gradient=stop_gradient)
-        return paddle.ComplexTensor(real_tensor, imag_tensor)
+
+        return tensor
 
 
 def full_like(x, fill_value, dtype=None, name=None):
