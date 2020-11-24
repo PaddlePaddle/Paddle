@@ -19,6 +19,8 @@ import inspect
 import logging
 import os
 import six
+import warnings
+import numpy as np
 
 import paddle
 from paddle.fluid import (
@@ -31,13 +33,7 @@ from paddle.fluid import (
         unique_name,
         program_guard,
         )
-from paddle.fluid.io import (
-        save_vars,
-        prepend_feed_ops,
-        append_fetch_ops,
-        save_persistables,
-        load_persistables,
-        )
+from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.log_helper import get_logger
@@ -57,7 +53,9 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-def _check_args(caller, args, supported_args=[], deprecated_args=[]):
+def _check_args(caller, args, supported_args=None, deprecated_args=None):
+    supported_args = [] if supported_args is None else supported_args
+    deprecated_args = [] if deprecated_args is None else deprecated_args
     for arg in args:
         if arg in deprecated_args:
             raise ValueError(
@@ -134,7 +132,8 @@ def _normalize_program(program, feed_vars, fetch_vars):
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         op._set_attr(device_attr_name, "")
         if op.type == 'auc':
-            warnings.warn("Be sure that you have set auc states to 0 before saving inference model.")
+            warnings.warn("Be sure that you have set auc states to 0 "
+                          "before saving inference model.")
             break
 
     # fix the bug that the activation op's output as target will be pruned.
@@ -208,7 +207,7 @@ def serialize_program(feed_vars, fetch_vars):
     program = _get_valid_program()
     program = _normalize_program(program, feed_vars, fetch_vars)
     return _serialize_program(program)
- 
+
 
 def _serialize_program(program):
     """
@@ -538,7 +537,7 @@ def load_inference_model(path_prefix, executor, **configs):
         if params_filename is None:
             raise ValueError(
                 "params_filename cannot be None when path_prefix is None.")
-        load_dirname = path_prefix
+        load_dirname = ''
         program_bytes = model_filename
         params_filename = params_filename
     # load from file
@@ -581,6 +580,7 @@ def load_inference_model(path_prefix, executor, **configs):
     # deserialize bytes to program
     program = deserialize_program(program_bytes)
     # load params data
+    params_path = os.path.join(load_dirname, params_filename)
     params_bytes = load_from_file(params_path)
     # deserialize bytes to params
     deserialize_persistables(program, params_bytes, executor)
