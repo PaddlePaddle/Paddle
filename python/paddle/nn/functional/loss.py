@@ -1234,12 +1234,12 @@ def softmax_cross_entropy(input,
             % reduction)
     input_dims = len(list(input.shape))
     label_dims = len(list(label.shape))
-    if input_dims - 1 != label_dims:
+    if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected nput_dims - 1 = label_dims (got nput_dims{}, label_dims{})'.
-            format(input_dims, label_dims))
-
-    label = paddle.unsqueeze(label, axis=axis)
+            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+             (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
+    if input_dims - 1 == label_dims:
+        label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
         out = softmax_with_cross_entropy(
             input,
