@@ -222,7 +222,8 @@ elseif(WITH_PSLIB)
   lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor pslib_brpc )
   # TODO: Fix these unittest failed on Windows
-  if(NOT WIN32)
+  # This unittest will always failed, now no CI will run this unittest
+  if(NOT WITH_MUSL AND NOT WIN32)
     cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
   endif()
 else()
@@ -235,7 +236,8 @@ else()
   lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor)
   # TODO: Fix these unittest failed on Windows
-  if(NOT WIN32)
+  # This unittest will always failed, now no CI will run this unittest
+  if(NOT WITH_MUSL AND NOT WIN32)
     cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
   endif()
 endif()

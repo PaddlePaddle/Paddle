@@ -76,12 +76,14 @@ if(NOT WITH_GPU OR WIN32)
 endif()
 
 if(WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
+endif()
+
+if(NOT WITH_DISTRIBUTE OR WIN32)
+    # DISTRIBUTE related
+    LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-
     LIST(REMOVE_ITEM TEST_OPS test_distributed_strategy)
     LIST(REMOVE_ITEM TEST_OPS test_downpoursgd)
     LIST(REMOVE_ITEM TEST_OPS test_fleet)
@@ -104,6 +106,11 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
+if(NOT WITH_DISTRIBUTE)
+    LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
+    LIST(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
+    LIST(REMOVE_ITEM TEST_OPS test_program_code_dist)
+endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
@@ -176,8 +183,12 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
+
 if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+endif()
+
+if(NOT WITH_DISTRIBUTE OR WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
 
@@ -543,7 +554,7 @@ if(NOT WIN32)
     set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
 
-if(NOT APPLE AND NOT WIN32)
+if(WITH_DISTRIBUTE AND NOT APPLE AND NOT WIN32)
     bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 140 LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
     bash_test_modules(test_auto_checkpoint1 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
     bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 140  LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
@@ -613,6 +624,9 @@ if (NOT WIN32)
     set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
     set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
     set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT 120)
+endif()
+
+if (WITH_DISTRIBUTE AND NOT WIN32)
     set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
 endif()
 
