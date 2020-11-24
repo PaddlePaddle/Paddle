@@ -18,6 +18,7 @@ import sys
 from functools import partial, reduce
 
 import paddle
+from paddle.utils import deprecated
 from . import nn
 from . import tensor
 from . import control_flow
@@ -2418,6 +2419,10 @@ def dynamic_lstm(input,
     return hidden, cell
 
 
+@deprecated(
+    since='2.0.0',
+    update_to='paddle.nn.LSTM',
+    reason="This API may occur CUDNN errors.")
 def lstm(input,
          init_h,
          init_c,
@@ -2542,11 +2547,6 @@ def lstm(input,
     input_size = input_shape[-1]
     weight_size = 0
     num_dirrection = 2 if is_bidirec == True else 1
-
-    print(
-        'This API (fluid.layers.LSTM) has been deprecated. It is recommended to use the new API (class paddle.nn.LSTM).'
-        'Please refer to the link: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/nn/layer/rnn/LSTM_cn.html#lstm'
-    )
 
     for i in range(num_layers):
         if i == 0:
