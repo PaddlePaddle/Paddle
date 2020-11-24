@@ -31,13 +31,14 @@ def parse_log_file(log_file):
 
     result = None
     with open(log_file) as f:
-        for line in f:
+        for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
+                return result
             except ValueError:
                 pass  # do nothing
 
-    return result
+    assert result != None, "Parse log file fail!"
 
 
 def load_benchmark_result_from_logs_dir(logs_dir):
@@ -55,9 +56,10 @@ def compare_benchmark_result(develop_result, pr_result):
     """Compare the differences between devlop and pr.
     """
     develop_speed = develop_result.get("speed")
-    pr_speed = develop_result.get("speed")
+    pr_speed = pr_result.get("speed")
 
-    assert type(develop_speed) == type(pr_speed), "Erorr"
+    assert type(develop_speed) == type(
+        pr_speed), "The types of comparison results need to be consistent."
 
     if isinstance(develop_speed, dict) and isinstance(pr_speed, dict):
         pr_gpu_time = pr_speed.get("gpu_time")
