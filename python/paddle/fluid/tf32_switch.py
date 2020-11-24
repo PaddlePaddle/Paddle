@@ -28,16 +28,20 @@ def set_tf32(on_off):
       None
     Examples:
       .. code-block:: python
+
         import numpy as np
         import paddle
         import paddle.fluid as fluid
+        import paddle.fluid.core as core
 
-        device = fluid.CUDAPlace(0)
+        if core.is_compiled_with_cuda():
+            device = core.CUDAPlace(0)
+        else:
+            device = core.CPUPlace()
+            fluid.tf32_switch.set_tf32(0)  # turn off
         with fluid.dygraph.guard(device):
             input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
-            input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
-            # turn the switch off 
-            fluid.tf32_switch.set_tf32(False) 
+            input_array2 = np.random.rand(4, 12, 88, 512).astype("float32") 
             data1 = fluid.dygraph.to_variable(input_array1)
             data2 = fluid.dygraph.to_variable(input_array2)
             out = paddle.matmul(data1, data2)
@@ -61,11 +65,14 @@ def allow_tf32():
     Examples:
       .. code-block:: python
         import paddle.fluid as fluid
-
-        if fluid.tf32_switch.allow_tf32():
-          print("tf32 acceleration is on")
+        
+        if core.is_compiled_with_cuda():
+            if fluid.tf32_switch.allow_tf32():
+                print("tf32 acceleration is on")
+            else:
+                print("tf32 acceleration is off")
         else:
-          print("tf32 acceleration is off")
+            pass
     """
 
     return core.get_switch()

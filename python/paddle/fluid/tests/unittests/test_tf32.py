@@ -22,19 +22,20 @@ import paddle.fluid.core as core
 
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
-        self.assertTrue(fluid.tf32_switch.allow_tf32())  # default
-        fluid.tf32_switch.set_tf32(0)
-        self.assertFalse(fluid.tf32_switch.allow_tf32())  # turn off
-        fluid.tf32_switch.set_tf32(1)
-        self.assertTrue(fluid.tf32_switch.allow_tf32())  # turn on
+        if core.is_compiled_with_cuda():
+            self.assertTrue(fluid.tf32_switch.allow_tf32())  # default
+            fluid.tf32_switch.set_tf32(0)
+            self.assertFalse(fluid.tf32_switch.allow_tf32())  # turn off
+            fluid.tf32_switch.set_tf32(1)
+            self.assertTrue(fluid.tf32_switch.allow_tf32())  # turn on
+        else:
+            pass
 
 
 class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
-        # if cuda is used, allow tf32 
         if core.is_compiled_with_cuda():
             device = core.CUDAPlace(0)
-        # if cuda is not available, tf32 is not allowed
         else:
             device = core.CPUPlace()
             fluid.tf32_switch.set_tf32(0)  # turn off
