@@ -3126,7 +3126,7 @@ def instance_norm(input,
         `H` means height of feature map, `W` means width of feature map.
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        input(Tensor): The rank of input tensor can be 2, 3, 4, 5.
             The data type is float32 or float64.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
@@ -3146,19 +3146,18 @@ def instance_norm(input,
             will be named automatically.
 
     Returns:
-        A Variable holding Tensor which is the result after applying instance normalization on the input,
+        A Tensor which is the result after applying instance normalization on the input,
         has same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.instance_norm(input=hidden1)
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x, size=200, param_attr='fc1.w')
+            hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'instance_norm')
