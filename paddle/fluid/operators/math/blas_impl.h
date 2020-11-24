@@ -400,7 +400,8 @@ struct CBlas<platform::complex64> {
                          int group_count, int *group_size) {
     const void **A_void = (const void **)(&(*A));
     const void **B_void = (const void **)(&(*B));
-    void **C_void = static_cast<void **>(&(*C));
+    void **C_void = reinterpret_cast<void **>(C);
+
     platform::dynload::cblas_cgemm_batch(layout, trans_a, trans_b, M, N, K,
                                          alpha, A_void, lda, B_void, ldb, beta,
                                          C_void, ldc, group_count, group_size);
@@ -519,7 +520,8 @@ struct CBlas<platform::complex128> {
                          int group_count, int *group_size) {
     const void **A_void = (const void **)(&(*A));
     const void **B_void = (const void **)(&(*B));
-    void **C_void = static_cast<void **>(&(*C));
+    void **C_void = reinterpret_cast<void **>(C);
+
     platform::dynload::cblas_zgemm_batch(layout, trans_a, trans_b, M, N, K,
                                          alpha, A_void, lda, B_void, ldb, beta,
                                          C_void, ldc, group_count, group_size);
