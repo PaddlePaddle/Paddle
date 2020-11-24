@@ -76,7 +76,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
                     return x
 
             lenet = LeNet()
-            # m is the instance of Layer，x is are inputs of layer，y are outputs of layer.
             def count_leaky_relu(m, x, y):
                 x = x[0]
                 nelements = x.numel()
