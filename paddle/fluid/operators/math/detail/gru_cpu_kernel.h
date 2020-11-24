@@ -722,23 +722,74 @@ inline void backward_reset_grad(OpResetGrad op_reset_grad,
   }
 }
 
+template <typename T>
+inline void eigen_gru_backward(const platform::CPUDeviceContext &context,
+                               GRUMetaValue<T> value, GRUMetaGrad<T> grad,
+                               int frame_size) {
+  auto &place = *context.eigen_device();
+
+  auto eigen_value_reset_gate =
+      typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
+  auto eigen_grad_reset_gate =
+      typename EigenVector<T>::Type(grad.gate_grad, Array1(frame_size));
+  auto eigen_value_update_gate = typename EigenVector<T>::Type(
+      value.gate_value + frame_size, Array1(frame_size));
+  auto eigen_grad_update_gate = typename EigenVector<T>::Type(
+      grad.gate_grad + frame_size, Array1(frame_size));
+  auto eigen_value_frame_state = typename EigenVector<T>::Type(
+      value.gate_value + frame_size * 2, Array1(frame_size));
+  auto eigen_grad_frame_state = typename EigenVector<T>::Type(
+      grad.gate_grad + frame_size * 2, Array1(frame_size));
+
+  auto eigen_grad_output =
+      typename EigenVector<T>::Type(grad.output_grad, Array1(frame_size));
+  auto eigen_value_reset_output = typename EigenVector<T>::Type(
+      value.reset_output_value, Array1(frame_size));
+  auto eigen_grad_reset_output =
+      typename EigenVector<T>::Type(grad.reset_output_grad, Array1(frame_size));
+
+  if (value.prev_out_value) {
+    auto eigen_value_prev_out = typename EigenVector<T>::ConstType(
+        value.prev_out_value, Array1(frame_size));
+    SigmoidGradFunctor<T>()(
+        place, 1 /*useless*/, eigen_value_update_gate,
+        (eigen_value_prev_out - eigen_value_frame_state) * eigen_grad_output,
+        eigen_grad_update_gate);
+  } else {
+    SigmoidGradFunctor<T>()(
+        place, 1 /*useless*/, eigen_value_update_gate,
+        static_cast<T>(-1) * eigen_value_frame_state * eigen_grad_output,
+        eigen_grad_update_gate);
+  }
+  if (grad.prev_out_grad) {
+    auto eigen_grad_prev_out =
+        typename EigenVector<T>::Type(grad.prev_out_grad, Array1(frame_size));
+    eigen_grad_prev_out.device(place) =
+        eigen_grad_prev_out + eigen_grad_output * eigen_value_update_gate;
+  }
+  TanhGradFunctor<T>()(
+      place, 1 /*useless*/, eigen_value_frame_state,
+      eigen_grad_output * (static_cast<T>(1.0) - eigen_value_update_gate),
+      eigen_grad_frame_state);
+  SigmoidGradFunctor<T>()(place, 1 /*useless*/, eigen_value_reset_gate,
+                          eigen_value_reset_output / eigen_value_reset_gate *
+                              eigen_grad_frame_state,
+                          eigen_grad_reset_gate);
+  if (value.prev_out_value && grad.prev_out_grad) {
+    eigen_grad_reset_output.device(place) =
+        eigen_value_reset_gate * eigen_grad_frame_state;
+  }
+}
+
 template <class OpGruGrad, typename T>
-inline void cpu_gru_backward(OpGruGrad op_gru_grad, GRUMetaValue<T> value,
+inline void cpu_gru_backward(const platform::CPUDeviceContext &context,
+                             OpGruGrad op_gru_grad, GRUMetaValue<T> value,
                              GRUMetaGrad<T> grad, int frame_size,
                              int batch_size, ActivationType active_node,
                              ActivationType active_gate) {
   for (int b = 0; b < batch_size; ++b) {
-    if (OpGruGrad::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
-      hl_avx_gru_backward(
-          op_gru_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
-          grad.prev_out_grad, value.reset_output_value, grad.reset_output_grad,
-          grad.output_grad, frame_size, active_node, active_gate);
-    } else {
-      hl_naive_gru_backward(
-          op_gru_grad, value.gate_value, grad.gate_grad, value.prev_out_value,
-          grad.prev_out_grad, value.reset_output_value, grad.reset_output_grad,
-          grad.output_grad, frame_size, active_node, active_gate);
-    }
+    // eigen
+    eigen_gru_backward(context, value, grad, frame_size);
 
     value.gate_value += frame_size * 3;
     value.reset_output_value += frame_size;

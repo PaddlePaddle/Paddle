@@ -1034,53 +1034,6 @@ void create_tensor_by_list(const framework::ExecutionContext& context,
   }
 }
 
-template <typename T>
-void make_grad_gate_buf(const framework::ExecutionContext& context,
-                        Tensor* grad_gate, Tensor* grad_gate_buf,
-                        Tensor* reset_output_grad = nullptr) {
-  int dim_size = grad_gate->dims().size();
-  int batch_size = grad_gate->dims()[dim_size - 2];
-  int frame_size = grad_gate->dims()[dim_size - 1];
-
-  Tensor grad_gate_mask;
-  create_tensor_by_list<T>(context, &grad_gate_mask, {1, 1, 0});
-
-  auto& place = *context.template device_context<platform::CPUDeviceContext>()
-                     .eigen_device();
-  auto eigen_grad_gate_mask = framework::EigenMatrix<T>::From(
-      grad_gate_mask, framework::make_ddim({3, 1}));
-  auto eigen_grad_gate_mask_broadcast =
-      eigen_grad_gate_mask.broadcast(Eigen::DSizes<int, 2>(1, frame_size / 3))
-          .reshape(Eigen::DSizes<int, 1>(frame_size))
-          .broadcast(Eigen::DSizes<int, 2>(batch_size, 1));
-  auto eigen_grad_gate_buf = framework::EigenMatrix<T>::From(
-      *grad_gate_buf, framework::make_ddim({batch_size, frame_size}));
-  auto eigen_grad_gate = framework::EigenMatrix<T>::From(
-      *grad_gate, framework::make_ddim({batch_size, frame_size}));
-  eigen_grad_gate_buf.device(place) =
-      eigen_grad_gate * eigen_grad_gate_mask_broadcast;
-
-  if (reset_output_grad) {
-    Tensor grad_reset_output_mask;
-    create_tensor_by_list<T>(context, &grad_reset_output_mask, {0, 0, 1});
-    auto eigen_grad_reset_output_mask = framework::EigenMatrix<T>::From(
-        grad_reset_output_mask, framework::make_ddim({3, 1}));
-    auto eigen_grad_reset_output_mask_broadcast =
-        eigen_grad_reset_output_mask
-            .broadcast(Eigen::DSizes<int, 2>(1, frame_size / 3))
-            .reshape(Eigen::DSizes<int, 1>(frame_size))
-            .broadcast(Eigen::DSizes<int, 2>(batch_size, 1));
-    auto eigen_grad_reset_output =
-        framework::EigenMatrix<T>::Reshape(*reset_output_grad,
-                                           reset_output_grad->dims().size() - 1)
-            .broadcast(Eigen::DSizes<int, 3>(1, 3, 1))
-            .reshape(Eigen::DSizes<int, 2>(batch_size, frame_size));
-    eigen_grad_gate_buf.device(place) =
-        eigen_grad_gate_buf +
-        eigen_grad_reset_output_mask_broadcast * eigen_grad_reset_output;
-  }
-}
-
 template <typename T, typename GradCellType>
 struct GradLayer {
   explicit GradLayer(const GradCellType& cell) : cell_(cell) {}
@@ -1190,12 +1143,10 @@ struct GradLayer {
     Tensor* pre_hidden = nullptr;
     Tensor* pre_state = nullptr;
     Tensor* hidden = nullptr;
-    Tensor grad_gate_buf;
-    TensorList grad_gate_buf_unbind;
     if (is_gru(context)) {
-      grad_gate_buf.Resize(layer_grad_gate_tensor->dims());
-      grad_gate_buf.mutable_data<T>(context.GetPlace());
-      grad_gate_buf_unbind = Unbind(grad_gate_buf);
+      zero(device_ctx,
+           &((*weight_list_grad)[layer_idx][current_reverse_idx * 4 + 3]),
+           static_cast<T>(0.0));
     }
     for (int i = time_step - 1; i >= 0; --i) {
       if (has_sequence_length) {
@@ -1226,7 +1177,7 @@ struct GradLayer {
           &(parameter_lists[layer_idx][current_reverse_idx * 4 + 1]),
           pre_hidden, pre_state, dynamic_grad_last_h, dynamic_grad_last_c,
           &(*layer_grad_gate_tensor_unbind)[i], weight_grad, dynamic_grad_pre_h,
-          dynamic_grad_pre_c, &grad_gate_buf_unbind[i],
+          dynamic_grad_pre_c,
           &((*weight_list_grad)[layer_idx][current_reverse_idx * 4 + 3]),
           mask_tensor_list[i], has_sequence_length);
       SwapPoniter(&dynamic_grad_last_h, &dynamic_grad_pre_h);
@@ -1235,8 +1186,7 @@ struct GradLayer {
     // postproces for gradient for w_hi, X, bias_hi, bias_hh
     this->postprocess(context, *layer_grad_gate_tensor, *input, input_grad,
                       parameter_lists[layer_idx],
-                      &((*weight_list_grad)[layer_idx]), &grad_gate_buf,
-                      is_reverse);
+                      &((*weight_list_grad)[layer_idx]), is_reverse);
 
     // copy the gradient to init_c init_h
     if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
@@ -1312,8 +1262,7 @@ struct GradLayer {
   void postprocess(const framework::ExecutionContext& context,
                    const Tensor& grad_gate, const Tensor& input,
                    Tensor* input_grad, const TensorList& parameters,
-                   TensorList* grad_parameters, Tensor* grad_gate_buf,
-                   const int& is_reverse) {
+                   TensorList* grad_parameters, const int& is_reverse) {
     // we get the grad_gate step by step, and need to bradocast the grad to the
     // grad_w_hi, grad_bias_hi, grad_bias_hh
     int begin_idx = 0;
@@ -1354,10 +1303,7 @@ struct GradLayer {
         {grad_gate.dims()[0] * grad_gate.dims()[1], grad_gate.dims()[2]});
     col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 2]));
     // Bias_hh
-    if (is_gru(context)) {
-      grad_gate_buf->Resize(tmp_grad_gate.dims());
-      col_sum(device_ctx, *grad_gate_buf, &((*grad_parameters)[begin_idx + 3]));
-    } else {
+    if (!is_gru(context)) {
       col_sum(device_ctx, tmp_grad_gate, &((*grad_parameters)[begin_idx + 3]));
     }
   }
@@ -1594,33 +1540,17 @@ struct GradCell {
                           Tensor* pre_state, Tensor* grad_hidden,
                           Tensor* grad_state, Tensor* grad_gate,
                           Tensor* grad_weight_hh, Tensor* grad_pre_hidden,
-                          Tensor* grad_pre_state, Tensor* grad_gate_buf,
-                          Tensor* grad_bias_hh, const Tensor& mask_tensor,
+                          Tensor* grad_pre_state, Tensor* grad_bias_hh,
+                          const Tensor& mask_tensor,
                           bool has_sequence_length) const {}
-  virtual void update_pre_hidden_grad(
-      const framework::ExecutionContext& context, Tensor* grad_gate,
-      const Tensor* weight_hh, Tensor* grad_pre_hidden,
-      Tensor* grad_pre_hidden_bak, Tensor* grad_pre_state,
-      Tensor* grad_pre_state_bak, Tensor* grad_gate_buf,
-      const Tensor& mask_tensor, bool has_sequence_length) const {
-    auto& device_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
-    T beta = 0;
-    Tensor* grad_gate_tmp = grad_gate;
-    if (is_gru(context)) {
-      beta = 1.0;
-      grad_gate_tmp = grad_gate_buf;
-    }
 
-    auto mat_dim_a =
-        math::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
-    mat_dim_a.height_ *= mat_dim_a.batch_size_;
-    mat_dim_a.batch_size_ = 0;
-    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
-    blas.MatMul(*grad_gate_tmp, mat_dim_a, *weight_hh, mat_dim_b,
-                static_cast<T>(1.0), grad_pre_hidden, beta);
-
+  void postprocess_pre_hidden_grad(const framework::ExecutionContext& context,
+                                   Tensor* grad_pre_hidden,
+                                   Tensor* grad_pre_hidden_bak,
+                                   Tensor* grad_pre_state,
+                                   Tensor* grad_pre_state_bak,
+                                   const Tensor& mask_tensor,
+                                   bool has_sequence_length) const {
     if (has_sequence_length) {
       auto& place =
           *context.template device_context<platform::CPUDeviceContext>()
@@ -1648,10 +1578,31 @@ struct GradCell {
     }
   }
 
+  virtual void update_pre_hidden_grad(
+      const framework::ExecutionContext& context, Tensor* grad_gate,
+      const Tensor* weight_hh, Tensor* grad_pre_hidden,
+      Tensor* grad_pre_hidden_bak, Tensor* grad_pre_state,
+      Tensor* grad_pre_state_bak, const Tensor& mask_tensor,
+      bool has_sequence_length) const {
+    auto& device_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
+    Tensor* grad_gate_tmp = grad_gate;
+    auto mat_dim_a =
+        math::CreateMatrixDescriptor(grad_gate_tmp->dims(), 0, false);
+    mat_dim_a.height_ *= mat_dim_a.batch_size_;
+    mat_dim_a.batch_size_ = 0;
+    auto mat_dim_b = math::CreateMatrixDescriptor(weight_hh->dims(), 0, false);
+    blas.MatMul(*grad_gate_tmp, mat_dim_a, *weight_hh, mat_dim_b,
+                static_cast<T>(1.0), grad_pre_hidden, 0);
+    postprocess_pre_hidden_grad(context, grad_pre_hidden, grad_pre_hidden_bak,
+                                grad_pre_state, grad_pre_state_bak, mask_tensor,
+                                has_sequence_length);
+  }
+
   virtual void update_weight_hh_grad(const framework::ExecutionContext& context,
                                      Tensor* grad_gate, Tensor* pre_hidden,
-                                     Tensor* grad_weight_hh,
-                                     Tensor* grad_gate_buf) const {
+                                     Tensor* grad_weight_hh) const {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(device_ctx);
@@ -1661,11 +1612,7 @@ struct GradCell {
     auto mat_dim_d = math::CreateMatrixDescriptor(pre_hidden->dims(), 0, false);
     mat_dim_d.height_ *= mat_dim_d.batch_size_;
     mat_dim_d.batch_size_ = 0;
-    Tensor* grad_gate_tmp = grad_gate;
-    if (is_gru(context)) {
-      grad_gate_tmp = grad_gate_buf;
-    }
-    blas.MatMul(*grad_gate_tmp, mat_dim_c, *pre_hidden, mat_dim_d,
+    blas.MatMul(*grad_gate, mat_dim_c, *pre_hidden, mat_dim_d,
                 static_cast<T>(1.0), grad_weight_hh, static_cast<T>(1.0));
   }
 };
@@ -1679,8 +1626,7 @@ struct SimpleRNNGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  Tensor* grad_gate_buf, Tensor* grad_bias_hh,
-                  const Tensor& mask_tensor,
+                  Tensor* grad_bias_hh, const Tensor& mask_tensor,
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -1705,11 +1651,10 @@ struct SimpleRNNGradCell : GradCell<T> {
     functor(*place, z, h, dh, dz);
 
     // update grad_weight_hh, grad_pre_hidden
-    this->update_pre_hidden_grad(
-        context, grad_gate, weight_hh, grad_pre_hidden, &grad_pre_hidden_bak,
-        nullptr, nullptr, grad_gate_buf, mask_tensor, has_sequence_length);
-    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh,
-                                grad_gate_buf);
+    this->update_pre_hidden_grad(context, grad_gate, weight_hh, grad_pre_hidden,
+                                 &grad_pre_hidden_bak, nullptr, nullptr,
+                                 mask_tensor, has_sequence_length);
+    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh);
   }
 };
 
@@ -1722,8 +1667,7 @@ struct GRUGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  Tensor* grad_gate_buf, Tensor* grad_bias_hh,
-                  const Tensor& mask_tensor,
+                  Tensor* grad_bias_hh, const Tensor& mask_tensor,
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -1741,6 +1685,8 @@ struct GRUGradCell : GradCell<T> {
     gru_value.gate_value = gate_tensor->data<T>();
     gru_value.prev_out_value = pre_hidden->data<T>();
     gru_value.reset_output_value = state_tensor->data<T>();
+    gru_value.state_weight = weight_hh->data<T>() + 2 * frame_size * frame_size;
+    gru_value.gate_weight = weight_hh->data<T>();
 
     gru_grad.gate_grad = grad_gate->data<T>();
     gru_grad.reset_output_grad = grad_state->data<T>();
@@ -1749,7 +1695,7 @@ struct GRUGradCell : GradCell<T> {
     gru_grad.gate_weight_grad = grad_weight_hh->data<T>();
     gru_grad.state_weight_grad =
         grad_weight_hh->data<T>() + 2 * frame_size * frame_size;
-    gru_grad.state_bias_grad = grad_bias_hh->data<T>() + 2 * frame_size;
+    gru_grad.bias_hh_grad = grad_bias_hh->data<T>();
 
     auto act_gate = math::detail::GetActivationType("sigmoid_v2");
     auto act_node = math::detail::GetActivationType("tanh_v2");
@@ -1757,13 +1703,9 @@ struct GRUGradCell : GradCell<T> {
         device_ctx, gru_value, gru_grad, frame_size, batch_size, act_node,
         act_gate);
 
-    make_grad_gate_buf<T>(context, grad_gate, grad_gate_buf, grad_state);
-
-    this->update_pre_hidden_grad(
-        context, grad_gate, weight_hh, grad_pre_hidden, &grad_pre_hidden_bak,
-        nullptr, nullptr, grad_gate_buf, mask_tensor, has_sequence_length);
-    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh,
-                                grad_gate_buf);
+    this->postprocess_pre_hidden_grad(context, grad_pre_hidden,
+                                      &grad_pre_hidden_bak, nullptr, nullptr,
+                                      mask_tensor, has_sequence_length);
   }
 };
 
@@ -1776,8 +1718,7 @@ struct LSTMGradCell : GradCell<T> {
                   Tensor* pre_state, Tensor* grad_hidden, Tensor* grad_state,
                   Tensor* grad_gate, Tensor* grad_weight_hh,
                   Tensor* grad_pre_hidden, Tensor* grad_pre_state,
-                  Tensor* grad_gate_buf, Tensor* grad_bias_hh,
-                  const Tensor& mask_tensor,
+                  Tensor* grad_bias_hh, const Tensor& mask_tensor,
                   bool has_sequence_length) const override {
     auto& device_ctx =
         context.template device_context<platform::CPUDeviceContext>();
@@ -1816,12 +1757,10 @@ struct LSTMGradCell : GradCell<T> {
     math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
         device_ctx, lstm_value, lstm_grad, frame_size, batch_size, cell_clip,
         gate_act, state_act, cand_act, false);
-    this->update_pre_hidden_grad(context, grad_gate, weight_hh, grad_pre_hidden,
-                                 &grad_pre_hidden_bak, grad_pre_state,
-                                 &grad_pre_state_bak, grad_gate_buf,
-                                 mask_tensor, has_sequence_length);
-    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh,
-                                grad_gate_buf);
+    this->update_pre_hidden_grad(
+        context, grad_gate, weight_hh, grad_pre_hidden, &grad_pre_hidden_bak,
+        grad_pre_state, &grad_pre_state_bak, mask_tensor, has_sequence_length);
+    this->update_weight_hh_grad(context, grad_gate, pre_hidden, grad_weight_hh);
   }
 };
 
