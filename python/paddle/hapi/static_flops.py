@@ -213,4 +213,4 @@ def _graph_flops(graph, detail=False):
 
 def static_flops(program, print_detail=False):
     graph = GraphWrapper(program)
-    return _graph_flops(graph, detail=detail)
+    return _graph_flops(graph, detail=print_detail)
