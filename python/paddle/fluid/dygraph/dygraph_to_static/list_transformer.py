@@ -17,7 +17,7 @@ from __future__ import print_function
 import astor
 import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.framework import core, Variable
@@ -69,21 +69,36 @@ def tensor_array_pop(array, idx):
     return pop_item
 
 
-def convert_list_pop(target, idx=None):
+def convert_pop(target, *args):
     """
-    Convert list pop.
+    A function representation of a Python pop statement for a list or dict.
     """
 
-    if idx is None:
+    # Parse args
+    if len(args) == 0:
         idx = -1
+    elif len(args) == 1:
+        idx = args[0]
+    elif len(args) == 2:
+        idx = args[0]
+        default = args[1]
 
     is_variable = isinstance(target, Variable)
     if is_variable:
         is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+
+    # 1. Paddle tensor array pop
     if is_variable and is_tensor_array:
         result = tensor_array_pop(target, idx)
+    # 2. Python pop
     else:
-        result = target.pop(idx)
+        # 2.1 pop for a dict
+        if len(args) == 2:
+            result = target.pop(idx, default)
+        # 2.1 pop for a list or dict
+        else:
+            result = target.pop(idx)
+
     return result
 
 
@@ -117,7 +132,7 @@ class ListTransformer(gast.NodeTransformer):
         if isinstance(node.func, gast.Attribute):
             func_name = node.func.attr
             if func_name == "pop":
-                node = self._replace_list_pop(node)
+                node = self._replace_pop(node)
         return node
 
     def visit_Assign(self, node):
@@ -283,20 +298,44 @@ class ListTransformer(gast.NodeTransformer):
             del self.list_name_to_updated[target_id]
         return False
 
-    def _replace_list_pop(self, node):
+    def _replace_pop(self, node):
+        """
+        Replace a pop statement for a list or dict.
+        For example:
+
+            list_a = [0,1,2,3,4]
+            x = list_a.pop()  # --> convert_pop(list_a)
+            y = list_a.pop(1) # --> convert_pop(list_a, 1)
+
+            dict_a = {"red":0, "blue":1, "yellow":2}
+            m = dict_a.pop("red")           # --> convert_pop(dict_a, "red")
+            n = dict_a.pop("black", 3)      # --> convert_pop(dict_a, "black", 3)
+
+        """
         assert isinstance(node, gast.Call)
         assert isinstance(node.func, gast.Attribute)
 
         target_node = node.func.value
         target_str = ast_to_source_code(target_node).strip()
 
-        if node.args:
-            idx_node = node.args[0]
-            idx_str = ast_to_source_code(idx_node).strip()
-        else:
-            idx_str = "None"
+        args_str = [ast_to_source_code(arg).strip() for arg in node.args]
 
-        new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_list_pop({}, {})".format(
-            target_str, idx_str)
+        # 1. pop stmt for a list
+        if len(args_str) == 0:
+            new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_pop({})".format(
+                target_str, args_str)
+
+        # 2. pop stmt for a list or dict
+        elif len(args_str) == 1:
+            new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_pop({}, {})".format(
+                target_str, args_str[0])
+
+        # 3. pop stmt for a dict
+        elif len(args_str) == 2:
+            new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_pop({}, {}, {})".format(
+                target_str, args_str[0], args_str[1])
+        else:
+            raise node
+
         new_call_node = gast.parse(new_call_str).body[0].value
         return new_call_node
