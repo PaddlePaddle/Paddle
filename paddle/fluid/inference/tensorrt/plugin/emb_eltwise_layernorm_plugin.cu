@@ -160,7 +160,7 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
 }
 
 template class EmbEltwiseLayernormPluginDynamicImpl<float>;
-#if CUDA_VERSION >= 10000
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
 template class EmbEltwiseLayernormPluginDynamicImpl<half>;
 #endif
 

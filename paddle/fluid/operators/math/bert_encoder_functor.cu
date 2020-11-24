@@ -149,6 +149,7 @@ template <>
 __global__ void EmbEltwiseLayernormKernel<half, 256>(
     int hidden, const int64_t *ids, const float *scale, const float *bias,
     const int64_t *embs, half *output, float eps, int input_num) {
+// only when cuda arch supports fp16
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   cub::Sum pair_sum;
   // blockIdx.x: position in the sequence
@@ -204,6 +205,7 @@ void EmbEltwiseLayerNormFunctor<T>::operator()(
 
 template class EmbEltwiseLayerNormFunctor<float>;
 
+// device function 'operator()' is not supportted until cuda 10.0
 #if CUDA_VERSION >= 10000
 template class EmbEltwiseLayerNormFunctor<half>;
 #endif
@@ -233,6 +235,7 @@ template <>
 __global__ void SoftmaxKernelWithEltadd<half>(
     half *qk_buf_, const half *bias_qk_, const int batch_size,
     const int head_num, const int seq_len, const unsigned mask) {
+// only when cuda arch supports fp16
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % 32 == 0);
@@ -280,6 +283,8 @@ template <>
 __global__ void SoftmaxKernelWithEltadd2<half2>(
     half2 *qk_buf_, const half2 *bias_qk_, const int batch_size,
     const int head_num, const int seq_len, const unsigned mask) {
+// 1. only cuda arch which's version is not less than 600 supports fp16
+// 2. operator "+" of half only suppotted after cuda version 10.0
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600 && CUDA_VERSION >= 10000
   int qk_offset = blockIdx.x * seq_len;
   int idx = threadIdx.x;
@@ -338,19 +343,10 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
           reinterpret_cast<const float2 *>(bias_qk), batch_size, head_num,
           seq_len / 2, FINAL_MASK);
     } else {
-#if CUDA_VERSION >= 10000
       SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
           reinterpret_cast<__half2 *>(qk_buf_),
           reinterpret_cast<const __half2 *>(bias_qk), batch_size, head_num,
           seq_len / 2, FINAL_MASK);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "The MatMulWithHeadQK TRT Plugin should "
-          "complied with CUDA version >= 10.0 when running with fp16. "
-          "Please recomplie it or try to use fp32 by set "
-          "AnalysisConfig::SetTRTDynamicShapeInfo(min_input_shape, "
-          "max_input_shape, opt_input_shape, true"));
-#endif
     }
   } else {
     block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
@@ -404,6 +400,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(
 
 template class MultiHeadGPUComputeFunctor<float>;
 
+// device function 'operator()' is not supportted until cuda 10.0
 #if CUDA_VERSION >= 10000
 template class MultiHeadGPUComputeFunctor<half>;
 #endif
@@ -432,6 +429,7 @@ template <>
 __global__ void SkipLayerNormSmallKernel<half, 32>(
     int num, int hidden, const half *input1, const half *input2, half *output,
     const float *scale, const float *bias, float eps) {
+// only when cuda arch supports fp16
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -453,6 +451,7 @@ template <>
 __global__ void SkipLayerNormSmallKernel<half, 128>(
     int num, int hidden, const half *input1, const half *input2, half *output,
     const float *scale, const float *bias, float eps) {
+// only when cuda arch supports fp16
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -474,6 +473,7 @@ template <>
 __global__ void SkipLayerNormSmallKernel<half, 384>(
     int num, int hidden, const half *input1, const half *input2, half *output,
     const float *scale, const float *bias, float eps) {
+// only when cuda arch supports fp16
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -517,6 +517,7 @@ __global__ void SkipLayerNormKernel<half, 256>(int num, int hidden,
                                                const half *input2, half *output,
                                                const float *scale,
                                                const float *bias, float eps) {
+// only when cuda arch supports fp16
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
   const half rld = half(1) / half(hidden);
   const int offset = blockIdx.x * hidden;
@@ -559,6 +560,8 @@ template <>
 __global__ void SkipLayerNormKernel2<half, half2, 256>(
     int num, int hidden, const half2 *input1, const half2 *input2,
     half2 *output, const float2 *scale, const float2 *bias, float eps) {
+// 1. only cuda arch which's version is not less than 600 supports fp16
+// 2. operator "+" of half only suppotted after cuda version 10.0
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600 && CUDA_VERSION >= 10000
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
   const int offset = blockIdx.x * hidden;
@@ -609,7 +612,6 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
             reinterpret_cast<const float2 *>(scale),
             reinterpret_cast<const float2 *>(bias), eps);
       } else if (std::is_same<T, __half>::value) {
-#if CUDA_VERSION >= 10000
         SkipLayerNormKernel2<__half, __half2,
                              threads><<<block, threads, 0, stream>>>(
             num, hidden / 2, reinterpret_cast<const __half2 *>(input1),
@@ -617,14 +619,6 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
             reinterpret_cast<__half2 *>(output),
             reinterpret_cast<const float2 *>(scale),
             reinterpret_cast<const float2 *>(bias), eps);
-#else
-        PADDLE_THROW(platform::errors::Fatal(
-            "The SkipLayerNormFunctor should "
-            "complied with CUDA version >= 10.0 when running with fp16. "
-            "Please recomplie it or try to use fp32 by set "
-            "AnalysisConfig::SetTRTDynamicShapeInfo(min_input_shape, "
-            "max_input_shape, opt_input_shape, true"));
-#endif
       } else {
         assert(false);
         // should not be here
@@ -638,6 +632,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
 
 template class SkipLayerNormFunctor<float>;
 
+// device function 'operator()' is not supportted until cuda 10.0
 #if CUDA_VERSION >= 10000
 template class SkipLayerNormFunctor<half>;
 #endif

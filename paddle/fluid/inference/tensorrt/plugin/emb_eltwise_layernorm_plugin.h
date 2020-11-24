@@ -108,7 +108,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
         own_host_buff_(false) {
     with_fp16_ = with_fp16;
     if (with_fp16_) {
-#if CUDA_VERSION >= 10000
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
@@ -166,7 +166,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 
     if (with_fp16_) {
-#if CUDA_VERSION >= 10000
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
       impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
           embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
           hidden_size_, eps_);
