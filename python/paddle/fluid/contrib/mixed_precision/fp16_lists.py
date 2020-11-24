@@ -74,7 +74,6 @@ class AutoMixedPrecisionLists(object):
 white_list = {
     'conv2d',
     'matmul',
-    'matmul_v2',
     'mul',
 }
 
@@ -109,9 +108,11 @@ gray_list = {
     'elementwise_mod',
     'elementwise_floordiv',
     'batch_norm',
+    'layer_norm',
     'tanh',
     'sigmoid',
     'lookup_table',
+    'lookup_table_v2',
     'top_k',
     'pool2d',
     'pool3d',
@@ -123,6 +124,7 @@ gray_list = {
     'flatten2',
     'stack',
     'unstack',
+    'uniform_random',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
@@ -192,7 +194,6 @@ unsupported_fp16_list = {
     'sequence_concat',
     'sequence_slice',
     'data_norm',
-    'layer_norm',
     'group_norm',
     'spectral_norm',
     'depthwise_conv2d_transpose',
