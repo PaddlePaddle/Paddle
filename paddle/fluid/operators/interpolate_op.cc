@@ -323,7 +323,7 @@ class InterpolateOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
-      auto align_corners = ctx.Attr<float>("align_corners");
+      auto align_corners = ctx.Attr<bool>("align_corners");
       auto align_mode = ctx.Attr<int>("align_mode");
       if (align_corners && align_mode == 1) {
         framework::LibraryType library = framework::LibraryType::kMKLDNN;

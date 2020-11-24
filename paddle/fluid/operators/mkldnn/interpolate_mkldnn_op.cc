@@ -76,7 +76,7 @@ class InterpolateMKLDNNHandler
     this->fwd_pd_ =
         std::static_pointer_cast<dnnl::resampling_forward::primitive_desc>(
             this->dev_ctx_.GetBlob(key_pd));
-    if (this->fwd_pd_ == nullptr || !this->isCached()) {
+    if (this->fwd_pd_ == nullptr) {
       std::cout << "ERROR!" << std::endl;
     }
     return this->fwd_pd_;
