@@ -57,7 +57,7 @@ def to_text(obj, encoding='utf-8', inplace=False):
     
     Examples:
 
-        .. code-block: python
+        .. code-block:: python
 
             import paddle
 
@@ -154,7 +154,7 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
     
     Examples:
 
-        .. code-block: python
+        .. code-block:: python
 
             import paddle
 
