@@ -3586,6 +3586,7 @@ def group_norm(input,
             
             data = paddle.static.data(name='data', shape=[2, 8, 32, 32], dtype='float32')
             x = paddle.static.nn.group_norm(input=data, groups=4)
+            print(x.shape) # [2, 8, 32, 32]
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
@@ -3695,7 +3696,8 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             paddle.enable_static()
             weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
             x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
-    """
+            print(x.shape) # [2, 8, 32, 32]
+"""
     helper = LayerHelper('spectral_norm', **locals())
     check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
                              'spectral_norm')
