@@ -494,7 +494,7 @@ def sort(x, axis=-1, descending=False, name=None):
 
 
 def where(condition, x, y, name=None):
-    """
+    r"""
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::

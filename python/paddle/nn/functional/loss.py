@@ -184,7 +184,7 @@ def binary_cross_entropy_with_logits(logit,
                                      reduction='mean',
                                      pos_weight=None,
                                      name=None):
-    """
+    r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -461,7 +461,7 @@ def hsigmoid_loss(input,
 
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
-    """
+    r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
@@ -544,7 +544,7 @@ def margin_ranking_loss(input,
                         margin=0.0,
                         reduction='mean',
                         name=None):
-    """
+    r"""
 
     This op the calcluate the the margin rank loss between the input, other and label, use the math function as follows.
 
@@ -646,7 +646,7 @@ def margin_ranking_loss(input,
 
 
 def l1_loss(input, label, reduction='mean', name=None):
-    """
+    r"""
     This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
@@ -840,7 +840,7 @@ def nll_loss(input,
 
 
 def kl_div(input, label, reduction='mean', name=None):
-    """
+    r"""
     This operator calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
@@ -947,7 +947,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
 
 def mse_loss(input, label, reduction='mean', name=None):
-    """
+    r"""
     This op accepts input predications and label and returns the mean square error.
 
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
@@ -1121,7 +1121,7 @@ def cross_entropy(input,
                   weight=None,
                   ignore_index=-100,
                   reduction='mean'):
-    """
+    r"""
     This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
     and ``NLLLoss`` together.
 
@@ -1252,7 +1252,7 @@ def sigmoid_focal_loss(logit,
                        gamma=2.0,
                        reduction='sum',
                        name=None):
-    """
+    r"""
     `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is proposed to address the
     foreground-background class imbalance for classification tasks. It down-weights
     easily-classified examples and thus focuses training on hard examples. For example,

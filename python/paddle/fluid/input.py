@@ -137,7 +137,7 @@ def embedding(input,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
-    """
+    r"""
     :api_attr: Static Graph
 
     The operator is used to lookup embeddings vector of ids provided by :attr:`input` . 
