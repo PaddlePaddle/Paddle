@@ -105,9 +105,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=int,
         default=None,
         help="The number of processes to launch on a node."
-        "In gpu training, it should be less or equal to the gpus number of you system. And so each process can"
-        " bound to one or average number of gpus. It will be ignored if you set --gpus arguments."
-    )
+        "In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can"
+        " bound to one or average number of gpus.")
 
     base_group.add_argument(
         "--gpus",
