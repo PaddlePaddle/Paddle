@@ -47,6 +47,9 @@ using BlockDesc = framework::BlockDesc;
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
+using ExecutorInfo =
+    std::tuple<std::shared_ptr<framework::Executor>,
+               std::shared_ptr<framework::ExecutorPrepareContext>>;
 
 namespace details {
 
@@ -199,17 +202,44 @@ static void AppendSafeEagerDeletionSkipVars(
   }
 }
 
-}  // namespace details
+static ExecutorInfo GetExecutorInfoFromCache(
+    std::unordered_map<framework::ProgramDesc *, ExecutorInfo> *cached_exe_info,
+    const framework::ExecutionContext &ctx,
+    const std::vector<std::vector<std::string>> &ctx_output_names,
+    bool is_grad = false) {
+  auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
 
-using ExeCachedVal =
-    std::tuple<std::shared_ptr<framework::Executor>,
-               std::shared_ptr<framework::ExecutorPrepareContext>>;
+  auto it = cached_exe_info->find(program);
+  if (it == cached_exe_info->end()) {
+    VLOG(1) << "create exe_info for program: " << program;
+    auto exe = std::make_shared<framework::Executor>(ctx.GetPlace());
+    // skip delete vars
+    std::vector<std::string> skip_vars;
+    for (auto &output_names : ctx_output_names) {
+      details::AppendSkipDeletionVars(output_names, &skip_vars);
+    }
+
+    if (is_grad) {
+      details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
+    }
+
+    VLOG(2) << "Prepare to skip " << skip_vars.size()
+            << " var(s): " << string::join_strings(skip_vars, ' ');
+    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx =
+        std::move(exe->Prepare(*program, 0, skip_vars));
+    cached_exe_info->emplace(program, std::make_tuple(exe, exe_ctx));
+  }
+
+  return cached_exe_info->at(program);
+}
+
+}  // namespace details
 
 template <typename DeviceContext, typename T>
 class RunProgramOpKernel : public framework::OpKernel<T> {
  private:
-  static std::unordered_map<framework::ProgramDesc *, ExeCachedVal>
-      cached_exe_map;
+  static std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
+      cached_exe_info_;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -228,8 +258,6 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       param_names = ctx.InputNames("Params");
     }
 
-    auto *block = ctx.Attr<BlockDesc *>("global_block");
-    auto *program = block->Program();
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");
     auto is_test = ctx.Attr<bool>("is_test");
@@ -245,24 +273,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // Step 2. prepare executor and init persistable variables
     std::shared_ptr<framework::Executor> exe;
     std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx;
-    auto it = cached_exe_map.find(program);
-    if (it == cached_exe_map.end()) {
-      VLOG(1) << "create exe_info for program: " << program;
-      exe = std::make_shared<framework::Executor>(ctx.GetPlace());
-      // skip delete vars
-      std::vector<std::string> skip_vars;
-      details::AppendSkipDeletionVars(output_var_names, &skip_vars);
-      VLOG(2) << "Prepare to skip " << skip_vars.size()
-              << " var(s): " << string::join_strings(skip_vars, ' ');
-      exe_ctx = std::move(exe->Prepare(*program, 0, skip_vars));
-
-      cached_exe_map[program] = std::make_tuple(exe, exe_ctx);
-    } else {
-      VLOG(1) << "hit cache of program: " << program;
-      // std::tie(exe, exe_ctx) = it->second;
-      exe = std::get<0>(it->second);
-      exe_ctx = std::get<1>(it->second);
-    }
+    std::tie(exe, exe_ctx) = details::GetExecutorInfoFromCache(
+        &cached_exe_info_, ctx, {output_var_names}, /*is_grad=*/false);
 
     // NOTE(Aurelius84): While training some models, forward can be called many
     // times and then apply backpropagation all at once, such as Reinforcement
@@ -302,14 +314,14 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-std::unordered_map<framework::ProgramDesc *, ExeCachedVal>
-    RunProgramOpKernel<DeviceContext, T>::cached_exe_map;
+std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
+    RunProgramOpKernel<DeviceContext, T>::cached_exe_info_;
 
 template <typename DeviceContext, typename T>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
  private:
-  static std::unordered_map<framework::ProgramDesc *, ExeCachedVal>
-      cached_exe_map;
+  static std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
+      cached_exe_info_;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -336,8 +348,6 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     }
 
     auto *block = ctx.Attr<BlockDesc *>("global_block");
-    auto *program = block->Program();
-
     auto orig_end_op_index = ctx.Attr<int64_t>("end_op_index");
     // NOTE: skip `shape` and `fill_constant` op created by
     // fluid.backward.gradients, one forward output will generate one `shape`
@@ -364,31 +374,12 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     // Step 2. prepare executor and scope
     std::shared_ptr<framework::Executor> exe;
     std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx;
-    auto it = cached_exe_map.find(program);
-    if (it == cached_exe_map.end()) {
-      VLOG(1) << "create exe_info for backward program: " << program;
-      exe = std::make_shared<framework::Executor>(ctx.GetPlace());
-      // skip delete vars
-      std::vector<std::string> skip_vars;
-      details::AppendSkipDeletionVars(input_grad_var_names, &skip_vars);
-      details::AppendSkipDeletionVars(param_grad_names, &skip_vars);
-      details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
-      VLOG(2) << "Prepare to skip " << skip_vars.size()
-              << " var(s): " << string::join_strings(skip_vars, ' ');
-
-      exe_ctx = std::move(exe->Prepare(*program, 0, skip_vars));
-
-      cached_exe_map[program] = std::make_tuple(exe, exe_ctx);
-    } else {
-      VLOG(1) << "hit cache of backward program: " << program;
-      // std::tie(exe, exe_ctx) = it->second;
-      exe = std::get<0>(it->second);
-      exe_ctx = std::get<1>(it->second);
-    }
+    std::tie(exe, exe_ctx) = details::GetExecutorInfoFromCache(
+        &cached_exe_info_, ctx, {input_grad_var_names, param_grad_names},
+        /*is_grad=*/true);
 
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);
-
     // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
@@ -407,9 +398,10 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
             << global_inner_scope->kids().size();
   }
 };
+
 template <typename DeviceContext, typename T>
-std::unordered_map<framework::ProgramDesc *, ExeCachedVal>
-    RunProgramGradOpKernel<DeviceContext, T>::cached_exe_map;
+std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
+    RunProgramGradOpKernel<DeviceContext, T>::cached_exe_info_;
 
 }  // namespace operators
 }  // namespace paddle
