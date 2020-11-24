@@ -36,7 +36,7 @@ __all__ = [
 
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
-    """
+    r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -141,7 +141,7 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
-    """
+    r"""
 	:alias_main: paddle.nn.CrossEntropyLoss
 	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
 
@@ -375,7 +375,7 @@ class HSigmoidLoss(fluid.dygraph.Layer):
 
 
 class MSELoss(fluid.dygraph.layers.Layer):
-    """
+    r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -418,12 +418,11 @@ class MSELoss(fluid.dygraph.layers.Layer):
             input_data = np.array([1.5]).astype("float32")
             label_data = np.array([1.7]).astype("float32")
 
-            paddle.disable_static()
             mse_loss = paddle.nn.loss.MSELoss()
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
             output = mse_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [0.04000002]
     """
 
@@ -455,7 +454,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
 
 class L1Loss(fluid.dygraph.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
@@ -492,31 +491,29 @@ class L1Loss(fluid.dygraph.Layer):
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
+        
         .. code-block:: python
-            import paddle
-            import numpy as np
 
-            paddle.disable_static()
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            import paddle
+
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1.0], [0.4, 0.5]])
 
             l1_loss = paddle.nn.loss.L1Loss()
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [0.35]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [1.4]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='none')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            #  [0.2        0.79999995]]
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -625,9 +622,7 @@ class BCELoss(fluid.dygraph.Layer):
 
 
 class NLLLoss(fluid.dygraph.Layer):
-    """
-	:alias_main: paddle.nn.NLLLoss
-	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
+    r"""
 
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
@@ -694,7 +689,7 @@ class NLLLoss(fluid.dygraph.Layer):
                 import paddle
                 import numpy as np
 
-                nll_loss = paddle.nn.layer.NLLLoss()
+                nll_loss = paddle.nn.NLLLoss()
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
                 input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
@@ -704,13 +699,11 @@ class NLLLoss(fluid.dygraph.Layer):
                                  [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
                 label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
 
-                place = paddle.CPUPlace()
-                paddle.disable_static(place)
                 input = paddle.to_tensor(input_np)
                 log_out = log_softmax(input)
                 label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
-                print(result.numpy()) # [1.0720209]
+                print(result) # [1.0720209]
 
     """
 
@@ -740,7 +733,7 @@ class NLLLoss(fluid.dygraph.Layer):
 
 
 class KLDivLoss(fluid.dygraph.Layer):
-    """
+    r"""
     This interface calculates the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
@@ -773,8 +766,6 @@ class KLDivLoss(fluid.dygraph.Layer):
             import paddle
             import numpy as np
             import paddle.nn as nn
-
-            paddle.disable_static()
 
             shape = (5, 20)
             x = np.random.uniform(-10, 10, shape).astype('float32')
@@ -815,7 +806,7 @@ class KLDivLoss(fluid.dygraph.Layer):
 
 
 class MarginRankingLoss(fluid.dygraph.Layer):
-    """
+    r"""
 
     This interface is used to construct a callable object of the ``MarginRankingLoss`` class.
     The MarginRankingLoss layer calculates the margin rank loss between the input, other and label
@@ -883,8 +874,6 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
 class CTCLoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.CTCLoss
-	:alias: paddle.nn.CTCLoss, paddle.nn.layer.CTCLoss, paddle.nn.layer.loss.CTCLoss
 
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
@@ -941,7 +930,6 @@ class CTCLoss(fluid.dygraph.Layer):
             input_lengths = np.array([5, 5]).astype("int64")
             label_lengths = np.array([3, 3]).astype("int64")
 
-            paddle.disable_static()
             log_probs = paddle.to_tensor(log_probs)
             labels = paddle.to_tensor(labels)
             input_lengths = paddle.to_tensor(input_lengths)
@@ -950,12 +938,12 @@ class CTCLoss(fluid.dygraph.Layer):
             loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels,
                 input_lengths,
                 label_lengths)
-            print(loss.numpy())  #[3.9179852 2.9076521]
+            print(loss)  #[3.9179852 2.9076521]
 
             loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels,
                 input_lengths,
                 label_lengths)
-            print(loss.numpy())  #[1.1376063]
+            print(loss)  #[1.1376063]
     """
 
     def __init__(self, blank=0, reduction='mean'):
@@ -970,7 +958,7 @@ class CTCLoss(fluid.dygraph.Layer):
 
 
 class SmoothL1Loss(fluid.dygraph.Layer):
-    """
+    r"""
     This operator calculates smooth_l1_loss. Creates a criterion that uses a squared
     term if the absolute element-wise error falls below 1 and an L1 term otherwise.
     In some cases it can prevent exploding gradients and it is more robust and less
@@ -1011,7 +999,7 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             is the same as the shape of input.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
+        The tensor storing the smooth_l1_loss of input and label.
 
     Return type: Tensor.
 

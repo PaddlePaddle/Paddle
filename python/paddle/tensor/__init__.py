@@ -66,8 +66,6 @@ from .logic import logical_not  #DEFINE_ALIAS
 from .logic import logical_or  #DEFINE_ALIAS
 from .logic import logical_xor  #DEFINE_ALIAS
 from .logic import not_equal  #DEFINE_ALIAS
-# from .logic import reduce_all  #DEFINE_ALIAS
-# from .logic import reduce_any  #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
 from .logic import equal_all  #DEFINE_ALIAS
 # from .logic import isnan        #DEFINE_ALIAS
@@ -153,6 +151,8 @@ from .math import add  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
 from .math import logsumexp  #DEFINE_ALIAS
 from .math import inverse  #DEFINE_ALIAS
+from .math import log2  #DEFINE_ALIAS
+from .math import log10  #DEFINE_ALIAS
 from .math import log1p  #DEFINE_ALIAS
 from .math import erf  #DEFINE_ALIAS
 # from .math import addcmul  #DEFINE_ALIAS
@@ -164,6 +164,10 @@ from .math import isfinite  #DEFINE_ALIAS
 from .math import isinf  #DEFINE_ALIAS
 from .math import isnan  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
+from .math import all  #DEFINE_ALIAS
+from .math import any  #DEFINE_ALIAS
+from .math import broadcast_shape  #DEFINE_ALIAS
+
 from .random import multinomial  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
@@ -190,7 +194,8 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
 from .stat import numel  #DEFINE_ALIAS
+from .stat import median  #DEFINE_ALIAS
 # from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
-from .to_string import set_printoptions
+from .to_string import set_printoptions  #DEFINE_ALIAS

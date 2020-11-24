@@ -1,6 +1,6 @@
 # Add TRT tests
 nv_library(tensorrt_converter
-           SRCS mul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc elementwise_op.cc
+           SRCS matmul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc elementwise_op.cc
                 batch_norm_op.cc activation_op.cc softmax_op.cc concat_op.cc dropout_op.cc
                 pad_op.cc split_op.cc prelu_op.cc leaky_relu_op.cc gelu_op.cc layer_norm_op.cc multihead_matmul_op.cc
                 shuffle_channel_op.cc swish_op.cc instance_norm_op.cc stack_op.cc

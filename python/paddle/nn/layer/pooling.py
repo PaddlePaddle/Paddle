@@ -35,7 +35,7 @@ __all__ = [
 class AvgPool1D(layers.Layer):
     """
     This operation applies a 1D average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
+    of several input planes, based on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
     size, C is the number of channels, L is the length of the feature.
     The output tensor shape will be [N, C, output_size].
@@ -61,7 +61,7 @@ class AvgPool1D(layers.Layer):
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `True`.
         ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
             If it is set to False, the floor function will be used. The default value is False.
@@ -90,7 +90,6 @@ class AvgPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
@@ -103,7 +102,7 @@ class AvgPool1D(layers.Layer):
                  kernel_size,
                  stride=None,
                  padding=0,
-                 count_include_pad=True,
+                 exclusive=True,
                  ceil_mode=False,
                  name=None):
         super(AvgPool1D, self).__init__()
@@ -111,17 +110,17 @@ class AvgPool1D(layers.Layer):
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
+        self.exclusive = exclusive
         self.name = name
 
     def forward(self, x):
         out = F.avg_pool1d(x, self.kernel_size, self.stride, self.padding,
-                           self.count_include_pad, self.ceil_mode, self.name)
+                           self.exclusive, self.ceil_mode, self.name)
         return out
 
 
 class AvgPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
@@ -156,7 +155,7 @@ class AvgPool2D(layers.Layer):
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        count_include_pad (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
         divisor_override (float): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
@@ -181,7 +180,6 @@ class AvgPool2D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # max pool2d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
@@ -197,7 +195,7 @@ class AvgPool2D(layers.Layer):
                  stride=None,
                  padding=0,
                  ceil_mode=False,
-                 count_include_pad=True,
+                 exclusive=True,
                  divisor_override=None,
                  data_format="NCHW",
                  name=None):
@@ -206,7 +204,7 @@ class AvgPool2D(layers.Layer):
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
+        self.exclusive = exclusive
         self.divisor = divisor_override
         self.data_format = data_format
         self.name = name
@@ -218,7 +216,7 @@ class AvgPool2D(layers.Layer):
             stride=self.stride,
             padding=self.padding,
             ceil_mode=self.ceil_mode,
-            count_include_pad=self.count_include_pad,
+            exclusive=self.exclusive,
             divisor_override=self.divisor,
             data_format=self.data_format,
             name=self.name)
@@ -247,7 +245,7 @@ class AvgPool3D(layers.Layer):
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): ${ceil_mode_comment}
-        count_include_pad (bool): Whether to exclude padding points in average pooling
+        exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is True.
         divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
@@ -273,7 +271,6 @@ class AvgPool3D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # avg pool3d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
@@ -289,7 +286,7 @@ class AvgPool3D(layers.Layer):
                  stride,
                  padding=0,
                  ceil_mode=False,
-                 count_include_pad=True,
+                 exclusive=True,
                  divisor_override=None,
                  data_format="NCDHW",
                  name=None):
@@ -298,7 +295,7 @@ class AvgPool3D(layers.Layer):
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
+        self.exclusive = exclusive
         self.divisor = divisor_override
         self.data_format = data_format
         self.name = name
@@ -310,7 +307,7 @@ class AvgPool3D(layers.Layer):
             stride=self.stride,
             padding=self.padding,
             ceil_mode=self.ceil_mode,
-            count_include_pad=self.count_include_pad,
+            exclusive=self.exclusive,
             divisor_override=self.divisor,
             data_format=self.data_format,
             name=self.name)
@@ -319,7 +316,7 @@ class AvgPool3D(layers.Layer):
 class MaxPool1D(layers.Layer):
     """
     Applies a 1D max pooling over an input signal composed of several input planes based
-    on the input, output_size, return_indices parameters.
+    on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
     size, C is the number of channels, L is the length of the feature.
 
@@ -343,7 +340,7 @@ class MaxPool1D(layers.Layer):
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
+        return_mask (bool): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False.
         name(str, optional): For detailed information, please refer
@@ -370,14 +367,13 @@ class MaxPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
           pool_out = MaxPool1D(data)
           # pool_out shape: [1, 3, 16]
 
-          MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_indices=True)
+          MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0, return_mask=True)
           pool_out, indices = MaxPool1D(data)
           # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
 
@@ -387,7 +383,7 @@ class MaxPool1D(layers.Layer):
                  kernel_size,
                  stride=None,
                  padding=0,
-                 return_indices=False,
+                 return_mask=False,
                  ceil_mode=False,
                  name=None):
         super(MaxPool1D, self).__init__()
@@ -395,17 +391,17 @@ class MaxPool1D(layers.Layer):
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
-        self.return_indices = return_indices
+        self.return_mask = return_mask
         self.name = name
 
     def forward(self, input):
         out = F.max_pool1d(input, self.kernel_size, self.stride, self.padding,
-                           self.return_indices, self.ceil_mode, self.name)
+                           self.return_mask, self.ceil_mode, self.name)
         return out
 
 
 class MaxPool2D(layers.Layer):
-    """
+    r"""
     This operation applies 2D max pooling over input feature based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
@@ -440,7 +436,7 @@ class MaxPool2D(layers.Layer):
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        return_indices (bool): Whether to return the max indices along with the outputs.
+        return_mask (bool): Whether to return the max indices along with the outputs.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -464,7 +460,6 @@ class MaxPool2D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # max pool2d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
@@ -473,8 +468,8 @@ class MaxPool2D(layers.Layer):
           output = MaxPool2D(input)
           # output.shape [1, 3, 16, 16]
 
-          # for return_indices=True
-          MaxPool2D = nn.MaxPool2D(kernel_size=2,stride=2, padding=0, return_indices=True)
+          # for return_mask=True
+          MaxPool2D = nn.MaxPool2D(kernel_size=2, stride=2, padding=0, return_mask=True)
           output, max_indices = MaxPool2D(input)
           # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
@@ -483,7 +478,7 @@ class MaxPool2D(layers.Layer):
                  kernel_size,
                  stride=None,
                  padding=0,
-                 return_indices=False,
+                 return_mask=False,
                  ceil_mode=False,
                  data_format="NCHW",
                  name=None):
@@ -491,7 +486,7 @@ class MaxPool2D(layers.Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
-        self.return_indices = return_indices
+        self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
         self.name = name
@@ -502,7 +497,8 @@ class MaxPool2D(layers.Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
-            return_indices=self.return_indices,
+            return_mask=self.return_mask,
+            ceil_mode=self.ceil_mode,
             data_format=self.data_format,
             name=self.name)
 
@@ -530,7 +526,7 @@ class MaxPool3D(layers.Layer):
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): ${ceil_mode_comment}
-        return_indices (bool): Whether to return the max indices along with the outputs.
+        return_mask (bool): Whether to return the max indices along with the outputs.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
@@ -555,7 +551,6 @@ class MaxPool3D(layers.Layer):
           import paddle
           import paddle.nn as nn
           import numpy as np
-          paddle.disable_static()
 
           # max pool3d
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
@@ -564,8 +559,8 @@ class MaxPool3D(layers.Layer):
           output = MaxPool3D(input)
           # output.shape [1, 2, 3, 16, 16]
 
-          # for return_indices=True
-          MaxPool3D = nn.MaxPool3D(kernel_size=2,stride=2, padding=0, return_indices=True)
+          # for return_mask=True
+          MaxPool3D = nn.MaxPool3D(kernel_size=2, stride=2, padding=0, return_mask=True)
           output, max_indices = MaxPool3D(input)
           # output.shape [1, 2, 3, 16, 16], max_indices.shape [1, 2, 3, 16, 16],
     """
@@ -574,7 +569,7 @@ class MaxPool3D(layers.Layer):
                  kernel_size,
                  stride,
                  padding,
-                 return_indices=False,
+                 return_mask=False,
                  ceil_mode=False,
                  data_format="NCDHW",
                  name=None):
@@ -582,7 +577,7 @@ class MaxPool3D(layers.Layer):
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
-        self.return_indices = return_indices
+        self.return_mask = return_mask
         self.ceil_mode = ceil_mode
         self.data_format = data_format
         self.name = name
@@ -593,16 +588,17 @@ class MaxPool3D(layers.Layer):
             kernel_size=self.ksize,
             stride=self.stride,
             padding=self.padding,
-            return_indices=self.return_indices,
+            return_mask=self.return_mask,
+            ceil_mode=self.ceil_mode,
             data_format=self.data_format,
             name=self.name)
 
 
 class AdaptiveAvgPool1D(layers.Layer):
-    """
+    r"""
 
     This operation applies a 1D adaptive average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
+    of several input planes, based on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
     size, C is the number of channels, L is the length of the feature.
     The output tensor shape will be [N, C, output_size].
@@ -650,7 +646,6 @@ class AdaptiveAvgPool1D(layers.Layer):
           #
           import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
@@ -668,7 +663,7 @@ class AdaptiveAvgPool1D(layers.Layer):
 
 
 class AdaptiveAvgPool2D(layers.Layer):
-    """
+    r"""
 
     This operation applies 2D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
@@ -726,7 +721,7 @@ class AdaptiveAvgPool2D(layers.Layer):
             #
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 32, 32]
@@ -750,7 +745,7 @@ class AdaptiveAvgPool2D(layers.Layer):
 
 
 class AdaptiveAvgPool3D(layers.Layer):
-    """
+    r"""
 
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
@@ -814,7 +809,7 @@ class AdaptiveAvgPool3D(layers.Layer):
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]
@@ -841,7 +836,7 @@ class AdaptiveMaxPool1D(layers.Layer):
     """
 
     This operation applies a 1D adaptive max pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
+    of several input planes, based on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
     size, C is the number of channels, L is the length of the feature.
     The output tensor shape will be [N, C, output_size].
@@ -859,7 +854,7 @@ class AdaptiveMaxPool1D(layers.Layer):
     Args:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
              it must contain one int.
-        return_indices (bool): If true, the index of max pooling point will be returned along
+        return_mask (bool): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -891,29 +886,28 @@ class AdaptiveMaxPool1D(layers.Layer):
           #
                     import paddle
           import paddle.nn as nn
-          paddle.disable_static()
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
           pool_out = AdaptiveMaxPool1D(data)
           # pool_out shape: [1, 3, 16]
 
-          # for return_indices = true
-          AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_indices=True)
+          # for return_mask = true
+          AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16, return_mask=True)
           pool_out, indices = AdaptiveMaxPool1D(data)
           # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
 
     """
 
-    def __init__(self, output_size, return_indices=False, name=None):
+    def __init__(self, output_size, return_mask=False, name=None):
         super(AdaptiveMaxPool1D, self).__init__()
         self.output_size = output_size
-        self.return_indices = return_indices
+        self.return_mask = return_mask
         self.name = name
 
     def forward(self, input):
-        return F.adaptive_max_pool1d(input, self.output_size,
-                                     self.return_indices, self.name)
+        return F.adaptive_max_pool1d(input, self.output_size, self.return_mask,
+                                     self.name)
 
 
 class AdaptiveMaxPool2D(layers.Layer):
@@ -932,7 +926,7 @@ class AdaptiveMaxPool2D(layers.Layer):
        Output(i ,j) &= max(Input[hstart:hend, wstart:wend])
     Parameters:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
-        return_indices (bool): If true, the index of max pooling point will be returned along with outputs. It cannot be set in average pooling type. Default False.
+        return_mask (bool): If true, the index of max pooling point will be returned along with outputs. It cannot be set in average pooling type. Default False.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -962,24 +956,24 @@ class AdaptiveMaxPool2D(layers.Layer):
             #
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
-            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_indices=True)
+            adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
             pool_out, indices = adaptive_max_pool(x = x)
     """
 
-    def __init__(self, output_size, return_indices=False, name=None):
+    def __init__(self, output_size, return_mask=False, name=None):
         super(AdaptiveMaxPool2D, self).__init__()
         self._output_size = output_size
-        self._return_indices = return_indices
+        self._return_mask = return_mask
         self._name = name
 
     def forward(self, x):
         return F.adaptive_max_pool2d(
             x,
             output_size=self._output_size,
-            return_indices=self._return_indices,
+            return_mask=self._return_mask,
             name=self._name)
 
 
@@ -1002,7 +996,7 @@ class AdaptiveMaxPool3D(layers.Layer):
 
     Parameters:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
-        return_indices (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
+        return_mask (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -1034,27 +1028,27 @@ class AdaptiveMaxPool3D(layers.Layer):
             #                     max(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
             import numpy as np
-            paddle.disable_static()
+
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)
             out = pool(x)
             # out shape: [2, 3, 4, 4, 4]
-            pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_indices=True)
+            pool = paddle.nn.AdaptiveMaxPool3D(output_size=3, return_mask=True)
             out, indices = pool(x)
             # out shape: [2, 3, 4, 4, 4], indices shape: [2, 3, 4, 4, 4]
 
     """
 
-    def __init__(self, output_size, return_indices=False, name=None):
+    def __init__(self, output_size, return_mask=False, name=None):
         super(AdaptiveMaxPool3D, self).__init__()
         self._output_size = output_size
-        self._return_indices = return_indices
+        self._return_mask = return_mask
         self._name = name
 
     def forward(self, x):
         return F.adaptive_max_pool3d(
             x,
             output_size=self._output_size,
-            return_indices=self._return_indices,
+            return_mask=self._return_mask,
             name=self._name)

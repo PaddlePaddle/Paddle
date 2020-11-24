@@ -49,9 +49,9 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             test_process.start()
 
             set_child_signal_handler(id(self), test_process.pid)
-            time.sleep(5)
-        except core.EnforceNotMet as ex:
-            self.assertIn("FatalError", cpt.get_exception_message(ex))
+            time.sleep(10)
+        except SystemError as ex:
+            self.assertIn("Fatal", cpt.get_exception_message(ex))
             exception = ex
 
         self.assertIsNotNone(exception)
@@ -67,8 +67,8 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             test_process.start()
 
             set_child_signal_handler(id(self), test_process.pid)
-            time.sleep(3)
-        except core.EnforceNotMet as ex:
+            time.sleep(10)
+        except SystemError as ex:
             self.assertIn("Segmentation fault", cpt.get_exception_message(ex))
             exception = ex
 
@@ -85,8 +85,8 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             test_process.start()
 
             set_child_signal_handler(id(self), test_process.pid)
-            time.sleep(3)
-        except core.EnforceNotMet as ex:
+            time.sleep(10)
+        except SystemError as ex:
             self.assertIn("Bus error", cpt.get_exception_message(ex))
             exception = ex
 

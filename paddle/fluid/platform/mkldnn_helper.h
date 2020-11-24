@@ -289,6 +289,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb16a;
         }
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::Abcde16a;
+        }
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
             strides[2] >= strides[3] && strides[3] >= strides[4]) {
@@ -426,6 +430,23 @@ template <typename T>
 inline void AppendKey(std::string* key, const std::vector<T>& dims) {
   for (size_t i = 0; i < dims.size(); i++) {
     AppendKey(key, std::to_string(dims[i]));
+  }
+}
+
+inline unsigned int HashPointer(uintptr_t ptr) {
+  // Get four less meaningful digits in decimal numerals
+  return ptr % 1000;
+}
+
+// If MKLDNN build and CPU place then register suffix in DeviceContext
+inline void AttachPointerHashToMKLDNNKey(void* ptr,
+                                         const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->SetKeySuffix("E" + std::to_string(platform::HashPointer(
+                                    reinterpret_cast<uintptr_t>(ptr))));
   }
 }
 

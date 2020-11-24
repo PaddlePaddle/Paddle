@@ -19,6 +19,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -755,3 +756,10 @@ REGISTER_OP_CPU_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_VERSION(data_norm)
+    .AddCheckpoint(
+        R"ROC(
+              upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "scale_w",
+            "scale_w is used to do scale duirng data_norm like batchnorm "));

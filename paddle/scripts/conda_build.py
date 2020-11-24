@@ -1,4 +1,19 @@
 #!/bin/python
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #
 import platform
 from sys import argv
@@ -120,7 +135,7 @@ python setup.py install
         self.py_str = ["py27", "py35", "py36", "py37"]
         self.pip_end = ".whl --no-deps"
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
-        self.pip_prefix_windows = "pip install C:\package\paddlepaddle"
+        self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
@@ -216,7 +231,7 @@ package:
     - matplotlib"""
     if not (cuda_str == None):
         meta_str = meta_str + cuda_str
-    
+
     blt_str = var.blt_const + blt_var
     if (python_str == var.python27):
         blt_str = blt_str + """
@@ -224,7 +239,7 @@ package:
     else:
         meta_str = meta_str + """
     - opencv>=3.4.2"""
-    
+
     meta_str = meta_str + var.test + var.about
     meta_filename = "meta.yaml"
     build_filename = "bld.bat"

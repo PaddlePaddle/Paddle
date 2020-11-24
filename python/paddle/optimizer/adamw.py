@@ -15,6 +15,7 @@
 from .optimizer import Optimizer
 from .adam import Adam
 from ..fluid import framework
+from ..fluid.dygraph import base as imperative_base
 import paddle
 from paddle.fluid.dygraph.parallel import apply_collective_grads
 
@@ -22,7 +23,7 @@ __all__ = ['AdamW']
 
 
 class AdamW(Adam):
-    """
+    r"""
     The AdamW optimizer is implemented based on the AdamW Optimization
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
     it can resolves the problem of L2 regularization failure in the Adam optimizer.
@@ -57,7 +58,7 @@ class AdamW(Adam):
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         apply_decay_param_fun (function|None, optional): If it is not None,
-            only tensors that makes apply_decay_param_fun(Tensor)==True
+            only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated. It only works when we want to specify tensors.
             Default: None.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
@@ -168,16 +169,17 @@ class AdamW(Adam):
             if isinstance(self._learning_rate, float):
                 learning_rate = self._learning_rate
             else:
-                self._learning_rate()
+                learning_rate = self._learning_rate()
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
+                scaled_params.append(
+                    (param, grad, param * self._coeff * learning_rate))
                 if param.name not in self._params_name:
-                    scaled_params.append(
-                        (param, grad, param * self._coeff * learning_rate))
                     self._params_name.add(param.name)
                     param = param * self._coeff
         return scaled_params
 
+    @imperative_base.no_grad
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -207,6 +209,7 @@ class AdamW(Adam):
         return optimize_ops, params_grads
 
     @framework.dygraph_only
+    @imperative_base.no_grad
     def step(self):
         if paddle.distributed.get_world_size() > 1:
             apply_collective_grads(self._parameter_list)
@@ -227,7 +230,7 @@ class AdamW(Adam):
                 [param, grad]), framework.name_scope('weight decay'):
                 updated_param = paddle.fluid.layers.elementwise_sub(
                     x=param, y=scaled_param)
-                param.set_value(updated_param.numpy())
+                paddle.fluid.layers.assign(input=updated_param, output=param)
         self._apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads)
 

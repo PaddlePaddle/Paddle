@@ -522,9 +522,11 @@ function run_mac_test() {
 EOF
         #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac. 
         #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
+        set +x
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
+        set -x
 
         set +ex
         if [ "$1" == "cp27-cp27m" ]; then
@@ -558,7 +560,15 @@ EOF
         set +ex
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='' # indicate whether the case was in quickly disable list 
-        ctest -E "($disable_ut_quickly)" --output-on-failure -j $2 | tee $tmpfile
+        if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
+            nightly_label=""
+        else
+            nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
+            echo "========================================="
+            echo "Unittests with nightly labels  are only run at night"
+            echo "========================================="
+        fi
+        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -566,43 +576,56 @@ EOF
         retry_time=3
         exec_times=0
         exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=20
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
-            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
-                do
-                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    failed_test_lists_ult=`echo "${failed_test_lists}"`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-                    echo "========================================="
-                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
-                    echo "========================================="
-                    echo "The following unittest will be re-run:"
-                    echo "${retry_unittests}"
-                    echo "========================================="
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                    do
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        echo "========================================="
 
-                    retry_unittests_regular=''
-                    for line in ${retry_unittests[@]} ;
-                        do
-                            if [[ "$retry_unittests_regular" == "" ]];then
-                                retry_unittests_regular="^$line$"
-                            else
-                                retry_unittests_regular="$retry_unittests_regular|^$line$"
-                            fi
-                        done
-                    rm -f $tmp_dir/*
-                    failed_test_lists=''
-                    ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
-                    collect_failed_tests
-                    exec_times=$[$exec_times+1]
-                done
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        rm -f $tmp_dir/*
+                        failed_test_lists=''
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        collect_failed_tests
+                        exec_times=$[$exec_times+1]
+                    done
+            else
+                echo "========================================="
+                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
+                echo "========================================="
+            fi
+
         fi
         #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
+        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
+        set -x
         if [ "$mactest_error" != 0 ];then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
@@ -704,6 +727,7 @@ function generate_api_spec() {
 }
 
 function check_approvals_of_unittest() {
+    set +x
     if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
         return 0
     fi
@@ -713,7 +737,6 @@ function check_approvals_of_unittest() {
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
         if [ "${approval_line}" != "" ]; then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
-            set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "TRUE" ]; then
                 echo "==================================="
@@ -726,14 +749,13 @@ function check_approvals_of_unittest() {
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
-            set +x
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
@@ -1076,71 +1098,81 @@ set +x
         retry_unittests_record=''
         retry_time=3
         exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=20
         if [ -n "$failed_test_lists" ];then
-            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
-                do
-                    
-                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
-                    echo "========================================="
-                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
-                    echo "========================================="
-                    echo "The following unittest will be re-run:"
-                    echo "${failed_test_lists_ult}"
+            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                    do
                         
-                    for line in ${retry_unittests[@]} ;
-                        do
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${failed_test_lists_ult}"
+                            
+                        for line in ${retry_unittests[@]} ;
+                            do
 
-                            one_card_tests=$single_card_tests'|'$single_card_tests_1
+                                one_card_tests=$single_card_tests'|'$single_card_tests_1
 
-                            read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
-                            read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
-                            read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
+                                read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
+                                read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
+                                read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
-                            if [[ "$tmp_one_tmp" != ""  ]]; then
-                                if [[ "$one_card_retry" == "" ]]; then
-                                    one_card_retry="^$line$"
+                                if [[ "$tmp_one_tmp" != ""  ]]; then
+                                    if [[ "$one_card_retry" == "" ]]; then
+                                        one_card_retry="^$line$"
+                                    else
+                                        one_card_retry="$one_card_retry|^$line$"
+                                    fi
+                                elif [[ "$tmp_mul_tmp" != "" ]]; then
+                                    if [[ "$multiple_card_retry" == "" ]]; then
+                                        multiple_card_retry="^$line$"
+                                    else
+                                        multiple_card_retry="$multiple_card_retry|^$line$"
+                                    fi
                                 else
-                                    one_card_retry="$one_card_retry|^$line$"
+                                    if [[ "$exclusive_retry" == "" ]];then
+                                        exclusive_retry="^$line$"
+                                    else
+                                        exclusive_retry="$exclusive_retry|^$line$"
+                                    fi
                                 fi
-                            elif [[ "$tmp_mul_tmp" != "" ]]; then
-                                if [[ "$multiple_card_retry" == "" ]]; then
-                                    multiple_card_retry="^$line$"
-                                else
-                                    multiple_card_retry="$multiple_card_retry|^$line$"
-                                fi
-                            else
-                                if [[ "$exclusive_retry" == "" ]];then
-                                    exclusive_retry="^$line$"
-                                else
-                                    exclusive_retry="$exclusive_retry|^$line$"
-                                fi
-                            fi
 
-                        done
+                            done
 
-                    if [[ "$one_card_retry" != "" ]]; then
-                        card_test "$one_card_retry" 1
-                    fi
+                        if [[ "$one_card_retry" != "" ]]; then
+                            card_test "$one_card_retry" 1
+                        fi
 
-                    if [[ "$multiple_card_retry" != "" ]]; then
-                        card_test "$multiple_card_retry" 2
-                    fi
+                        if [[ "$multiple_card_retry" != "" ]]; then
+                            card_test "$multiple_card_retry" 2
+                        fi
 
-                    if [[ "$exclusive_retry" != "" ]]; then
-                        card_test "$exclusive_retry"
-                    fi
-                    
-                    exec_times=$[$exec_times+1]
-                    failed_test_lists=''
-                    collect_failed_tests
-                    rm -f $tmp_dir/*
-                    one_card_retry=''
-                    multiple_card_retry=''
-                    exclusive_retry=''
-                    retry_unittests=''
-                done
+                        if [[ "$exclusive_retry" != "" ]]; then
+                            card_test "$exclusive_retry"
+                        fi
+                        
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                        multiple_card_retry=''
+                        exclusive_retry=''
+                        retry_unittests=''
+                    done
+            else 
+                echo "========================================="
+                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
+                echo "========================================="
+            fi
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -1196,6 +1228,7 @@ EOF
 set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue

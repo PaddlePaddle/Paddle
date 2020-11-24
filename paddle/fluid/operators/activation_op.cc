@@ -301,6 +301,24 @@ Natural logarithm of x.
 
 )DOC";
 
+UNUSED constexpr char Log2Doc[] = R"DOC(
+Log2 Activation Operator.
+
+$$out = \log_2x$$
+
+logarithm of x base to 2.
+
+)DOC";
+
+UNUSED constexpr char Log10Doc[] = R"DOC(
+Log10 Activation Operator.
+
+$$out = \log_10_x$$
+
+logarithm of x base to 10.
+
+)DOC";
+
 UNUSED constexpr char Log1pDoc[] = R"DOC(
 Log Activation Operator.
 
@@ -697,6 +715,8 @@ REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log2, Log2Doc);
+REGISTER_ACTIVATION_OP_MAKER(Log10, Log10Doc);
 REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);

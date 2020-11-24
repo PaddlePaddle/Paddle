@@ -39,6 +39,48 @@ from white_list import op_accuracy_white_list, check_shape_white_list, compile_v
 from white_list import op_threshold_white_list, no_grad_set_white_list
 
 
+def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
+    """
+    Determines whether dtype of output tensor is as expected.
+
+    Args:
+        api_fn(callable):  paddle api function
+        in_specs(list[tuple]): list of shape and dtype information for constructing input tensor of api_fn, such as [(shape, dtype), (shape, dtype)].
+        expected_dtype(list[str]): expected dtype of output tensor.
+        target_index(int): indicate which one from in_specs to infer the dtype of output.
+        config(dict): other arguments of paddle api function
+
+    Example:
+        check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
+
+    """
+    paddle.enable_static()
+    for i, expect_dtype in enumerate(expect_dtypes):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input_t = []
+            for index, spec in enumerate(in_specs):
+                if len(spec) == 1:
+                    shape = spec[0]
+                    dtype = expect_dtype if target_index == index else 'float32'
+                elif len(spec) == 2:
+                    shape, dtype = spec
+                else:
+                    raise ValueError(
+                        "Value of in_specs[{}] should contains two elements: [shape, dtype]".
+                        format(index))
+                input_t.append(
+                    paddle.static.data(
+                        name='data_%s' % index, shape=shape, dtype=dtype))
+
+            out = api_fn(*input_t, **configs)
+            out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+
+            if out_dtype != expect_dtype:
+                raise ValueError(
+                    "Expected out.dtype is {}, but got {} from {}.".format(
+                        expect_dtype, out_dtype, api_fn.__name__))
+
+
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
     old_value = core.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
@@ -1320,6 +1362,13 @@ class OpTest(unittest.TestCase):
         cache_list = None
         if hasattr(self, "cache_name_list"):
             cache_list = self.cache_name_list
+
+        # oneDNN numeric gradient should use CPU kernel
+        use_onednn = False
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+            op_attrs["use_mkldnn"] = False
+            use_onednn = True
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -1327,6 +1376,9 @@ class OpTest(unittest.TestCase):
             op_outputs,
             op_attrs,
             cache_list=cache_list)
+
+        if use_onednn:
+            op_attrs["use_mkldnn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

@@ -25,7 +25,7 @@ SET(GTEST_PREFIX_DIR    ${THIRD_PARTY_PATH}/gtest)
 SET(GTEST_SOURCE_DIR    ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 SET(GTEST_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gtest)
 SET(GTEST_INCLUDE_DIR   "${GTEST_INSTALL_DIR}/include" CACHE PATH "gtest include directory." FORCE)
-set(GTEST_REPOSITORY     https://github.com/google/googletest.git)
+set(GTEST_REPOSITORY     ${GIT_URL}/google/googletest.git)
 set(GTEST_TAG            release-1.8.1)
 
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIR})
