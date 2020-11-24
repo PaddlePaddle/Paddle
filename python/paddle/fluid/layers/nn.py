@@ -3554,7 +3554,7 @@ def group_norm(input,
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Parameters:
-        input(Variable): 4-D Tensor, the data type is float32 or float64.
+        input(Tensor): 4-D Tensor, the data type is float32 or float64.
         groups(int): The number of groups that divided from channels, the data type
             is int32.
         epsilon(float, optional): The small value added to the variance to prevent
@@ -3576,26 +3576,16 @@ def group_norm(input,
             property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A 4-D Tensor has same data type and data format with `input`.
-
-    Raises:
-        ValueError: If `data_layout` is neither 'NCHW' nor 'NHWC'.
-        ValueError: If `groups` is greater than the number of input channels.
-        ValueError: If `groups` is less than 1.
-        ShapeError: If the param_attr(Scale) is not 1-D Tensor.
-        ShapeError: If the param_attr(Scale)'s first dimension size is not equal to the input channels.
-        ShapeError: If the bias_attr(Bias) is not 1-D Tensor.
-        ShapeError: If the bias_attr(Bias)'s first dimension size is not equal to the input channels.
+        Tensor: A 4-D Tensor has same data type and data format with `input`.
 
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
             
-            data = fluid.data(name='data', shape=[None, 8, 32, 32], dtype='float32')
-            x = fluid.layers.group_norm(input=data, groups=4)
+            data = paddle.static.data(name='data', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.group_norm(input=data, groups=4)
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
@@ -3685,7 +3675,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Args:
-        weight(${weight_type}): ${weight_comment}
+        weight(Tensor): ${weight_comment}
         dim(int): ${dim_comment}
         power_iters(int): ${power_iters_comment}
         eps(float): ${eps_comment}
@@ -3694,7 +3684,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                              None by default.
 
     Returns:
-        Variable: A tensor variable of weight parameters after spectral normalization.
+        Tensor: A tensor of weight parameters after spectral normalization.
                   The data type and shape is same as input tensor.
 
     Examples:
@@ -3703,7 +3693,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             import paddle
 
             paddle.enable_static()
-            weight = paddle.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
+            weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
             x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())

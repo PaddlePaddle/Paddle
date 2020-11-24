@@ -2980,9 +2980,6 @@ class GroupNorm(layers.Layer):
 
 class SpectralNorm(layers.Layer):
     """
-    :alias_main: paddle.nn.SpectralNorm
-	:alias: paddle.nn.SpectralNorm,paddle.nn.layer.SpectralNorm,paddle.nn.layer.norm.SpectralNorm
-	:old_api: paddle.fluid.dygraph.SpectralNorm
 
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
@@ -3031,13 +3028,13 @@ class SpectralNorm(layers.Layer):
     Examples:
        .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+            import paddle
+            x = paddle.rand((2,8,32,32))
 
-            with fluid.dygraph.guard():
-                weight = np.random.random((2, 8, 32, 32)).astype('float32')
-                spectralNorm = fluid.dygraph.nn.SpectralNorm(weight.shape, dim=1, power_iters=2)
-                ret = spectralNorm(fluid.dygraph.base.to_variable(weight))
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
+            spectral_norm_out = spectral_norm(x)
+
+            print(spectral_norm_out.shape) # [2, 8, 32, 32]
 
     """
 
