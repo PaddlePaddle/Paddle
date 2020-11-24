@@ -13,14 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/multi_gru_fuse_pass.h"
-#include <limits>
-#include <sstream>
-#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -32,15 +28,8 @@ using string::PrettyLogDetail;
 
 namespace {
 
-void UnlinkNodes(ir::Node* a, ir::Node* b) {
-  a->outputs.erase(std::remove(a->outputs.begin(), a->outputs.end(), b),
-                   a->outputs.end());
-  b->inputs.erase(std::remove(b->inputs.begin(), b->inputs.end(), a),
-                  b->inputs.end());
-}
-
-std::vector<std::string> join_inputs(Node* op1, Node* op2,
-                                     std::string input_name) {
+std::vector<std::string> JoinInputs(Node* op1, Node* op2,
+                                    std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
   in1.insert(in1.end(), in2.begin(), in2.end());
@@ -86,9 +75,9 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    auto wx = join_inputs(gru1, gru2, "WeightX");
-    auto wh = join_inputs(gru1, gru2, "WeightH");
-    auto b = join_inputs(gru1, gru2, "Bias");
+    auto wx = JoinInputs(gru1, gru2, "WeightX");
+    auto wh = JoinInputs(gru1, gru2, "WeightH");
+    auto b = JoinInputs(gru1, gru2, "Bias");
 
     OpDesc multi_gru_desc;
     multi_gru_desc.SetType("multi_gru");

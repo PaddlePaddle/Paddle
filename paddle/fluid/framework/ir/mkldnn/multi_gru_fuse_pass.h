@@ -14,18 +14,20 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
+// This pass fuses two concatenated fusion_gru ops into a single multi_gru op.
+// It turns
+// a -> fusion_gru -> c -> concat -> e
+//   \> fusion_gru -> d /
+// into
+// a -> multi_gru -> e
 class MultiGRUFusePass : public FusePassBase {
  public:
   virtual ~MultiGRUFusePass() {}

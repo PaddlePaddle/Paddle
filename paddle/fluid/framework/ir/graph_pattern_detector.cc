@@ -2545,12 +2545,12 @@ PDNode *patterns::TwoFusionGruConcat::operator()() {
   auto h1 = pattern->NewNode(h1_repr())
                 ->AsOutput()
                 ->assert_is_op_output("fusion_gru", "Hidden")
-                ->assert_is_op_nth_input("concat", "X", 0)
+                ->assert_is_op_input("concat")
                 ->AsIntermediate();
   auto h2 = pattern->NewNode(h2_repr())
                 ->AsOutput()
                 ->assert_is_op_output("fusion_gru", "Hidden")
-                ->assert_is_op_nth_input("concat", "X", 1)
+                ->assert_is_op_input("concat")
                 ->AsIntermediate();
   auto concat = pattern->NewNode(concat_repr())->assert_is_op("concat");
   auto out = pattern->NewNode(out_repr())
