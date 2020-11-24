@@ -57,7 +57,8 @@ class ExpandAsV2OpMaker : public framework::OpProtoAndCheckerMaker {
               "to size of the corresponding dimension of Input(X) multiplying "
               "the corresponding value given by Attr(expand_times).");
     AddAttr<std::vector<int>>("target_shape",
-                              "Expand shape for each dimension.");
+                              "Expand shape for each dimension.")
+        .SetDefault({});
     AddComment(R"DOC(
 Expand the input to the given shape.
 )DOC");
