@@ -150,7 +150,7 @@ void RemoveUnnecessaryReorders(ir::Graph* graph, int* quantize_counter) {
         platform::errors::NotFound(
             "Operator before operator should have input as op output"));
 
-    prev_op->Op()->SetInput(op_output_name,
+    prev_op->Op()->SetOutput(op_output_name,
                             std::vector<std::string>({quant_out->Name()}));
 
     IR_NODE_LINK_TO(prev_op, quant_out);
