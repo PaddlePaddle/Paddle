@@ -65,6 +65,7 @@ def allow_tf32():
     Examples:
       .. code-block:: python
         import paddle.fluid as fluid
+        import paddle.fluid.core as core
         
         if core.is_compiled_with_cuda():
             if fluid.tf32_switch.allow_tf32():
