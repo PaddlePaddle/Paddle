@@ -27,6 +27,7 @@ from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoade
 from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
+from .framework import _get_paddle_place, _get_paddle_place_list
 import logging
 import warnings
 
@@ -335,6 +336,10 @@ class DataLoader(object):
 
         if places is None:
             places = _current_expected_place()
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
         self.places = _convert_places(places)
 
         assert num_workers >= 0, "num_workers should be a non-negative value"
@@ -1033,6 +1038,10 @@ class DygraphGeneratorLoader(DataLoaderBase):
                              drop_last=True,
                              places=None):
         assert batch_size > 0, "batch_size must be larger than 0"
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
         self.set_sample_list_generator(
             paddle.batch(
                 reader, batch_size=batch_size, drop_last=drop_last),
@@ -1040,6 +1049,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
         return self
 
     def set_sample_list_generator(self, reader, places=None):
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
+
         def __batch_reader_impl__():
             for batch in reader():
                 slots = []
@@ -1055,6 +1069,10 @@ class DygraphGeneratorLoader(DataLoaderBase):
         return self
 
     def set_batch_generator(self, reader, places=None):
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
         self._batch_reader = reader
         if places is None:
             places = _current_expected_place()
@@ -1278,6 +1296,10 @@ class GeneratorLoader(DataLoaderBase):
                              drop_last=True,
                              places=None):
         assert batch_size > 0, "batch_size must be larger than 0"
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
         has_lod = False
         for f in self._feed_list:
             if f.lod_level != 0:
@@ -1300,6 +1322,10 @@ class GeneratorLoader(DataLoaderBase):
         return self
 
     def set_sample_list_generator(self, reader, places=None):
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
         with program_guard(Program(), Program()):
             feeder = DataFeeder(
                 feed_list=self._feed_list, place=core.CPUPlace())
@@ -1313,6 +1339,10 @@ class GeneratorLoader(DataLoaderBase):
         return self
 
     def set_batch_generator(self, reader, places=None):
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
         self._tensor_reader = reader
         if self._iterable:
             assert places is not None, "Places cannot be None when DataLoader is iterable"
@@ -1787,6 +1817,10 @@ class DatasetLoader(DataLoaderBase):
                           DatasetBase), "dataset must be type of DatasetBase"
         assert not in_dygraph_mode(
         ), "DatasetLoader is not supported in dygraph mode yet"
+        if isinstance(place, (list, tuple)):
+            places = _get_paddle_place_list(place)
+        else:
+            places = _get_paddle_place(place)
 
         thread_num = len(places)
 
