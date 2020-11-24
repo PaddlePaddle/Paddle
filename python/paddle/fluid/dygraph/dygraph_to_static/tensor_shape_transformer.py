@@ -198,10 +198,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
         if isinstance(target_node, gast.Tuple):
             has_updated = False
             for idx, element in enumerate(target_node.elts):
-                try:
-                    target_id = ast_to_source_code(element).strip()
-                except AttributeError:
-                    continue
+                target_id = ast_to_source_code(element).strip()
 
                 if isinstance(value_node, gast.Name):
                     if value_node.id in self.name_to_var_shape:
@@ -227,10 +224,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
             return has_updated
         else:
-            try:
-                target_id = ast_to_source_code(target_node).strip()
-            except AttributeError:
-                return False
+            target_id = ast_to_source_code(target_node).strip()
 
             if isinstance(value_node, gast.Name):
                 if value_node.id in self.name_to_var_shape:
