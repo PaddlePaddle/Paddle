@@ -26,7 +26,8 @@ class TestProgram(unittest.TestCase):
         prog_string = prog.to_string(throw_on_error=True, with_details=False)
         prog_string_with_details = prog.to_string(
             throw_on_error=False, with_details=True)
-        assert prog_string is not None
+        test_string = prog_string
+        assert test_string is not None
         assert len(prog_string_with_details) > len(prog_string)
 
 
