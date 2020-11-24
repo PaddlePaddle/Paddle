@@ -210,13 +210,21 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     return
 
 
-def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
+def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars,
+                         varname2ringidx):
     """
     _add_allreduce_ops
     """
-    ring_id = -1
+    pre_ring_id = -1
     for var in allreduce_vars:
-        ring_id = (ring_id + 1) % nrings
+
+        if var in varname2ringidx:
+            ring_id = varname2ringidx[var]
+        else:
+            ring_id = (pre_ring_id + 1) % nrings
+            varname2ringidx[var] = ring_id
+        pre_ring_id = ring_id
+
         block._insert_op_without_sync(
             insert_idx,
             type='c_allreduce_sum',
@@ -227,14 +235,22 @@ def insert_allreduce_ops(block, insert_idx, nrings, allreduce_vars):
     return
 
 
-def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root):
+def insert_broadcast_ops(block, insert_idx, nrings, broadcast2root,
+                         varname2ringidx):
     """
     _add_broadcast_ops
     """
-    ring_id = -1
+    pre_ring_id = -1
     op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name, root_device in broadcast2root:
-        ring_id = (ring_id + 1) % nrings
+
+        if broadcast_name in varname2ringidx:
+            ring_id = varname2ringidx[broadcast_name]
+        else:
+            ring_id = (pre_ring_id + 1) % nrings
+            varname2ringidx[broadcast_name] = ring_id
+        pre_ring_id = ring_id
+
         block._insert_op_without_sync(
             insert_idx,
             type='c_broadcast',

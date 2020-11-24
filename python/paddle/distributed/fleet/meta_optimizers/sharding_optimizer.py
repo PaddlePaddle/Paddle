@@ -49,6 +49,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._reduced_grads_to_param = {}
         self._shard = Shard()
 
+        # dict={varname:ring_idx}
+        self._varname2ringidx = {}
+
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
@@ -110,6 +113,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         check_broadcast(main_block)
         check_allreduce_sum(main_block)
         self._wait()
+
+        print("#######" * 30)
+        print(self._varname2ringidx)
         return optimize_ops, params_grads
 
     def _set_up(self, params_grads):
@@ -291,9 +297,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                  self._nrings,
                                  self._segments[-1]._allreduce_vars)
-            insert_allreduce_ops(block, self._segments[-1]._end_idx,
-                                 self._nrings,
-                                 self._segments[-1]._allreduce_vars)
+            insert_allreduce_ops(
+                block, self._segments[-1]._end_idx, self._nrings,
+                self._segments[-1]._allreduce_vars, self._varname2ringidx)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
@@ -355,11 +361,11 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step5: add broadcast ops
             insert_broadcast_ops(block, segment._start_idx, self._nrings,
-                                 broadcast_vars)
+                                 broadcast_vars, self._varname2ringidx)
 
             # step6: add all_reduce ops
             insert_allreduce_ops(block, segment._start_idx, self._nrings,
-                                 allreduce_vars)
+                                 allreduce_vars, self._varname2ringidx)
 
             block._sync_with_cpp()
 
@@ -367,9 +373,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_sync_comm_ops(
                 block, self._segments[0]._start_idx, self._nrings,
                 [x[0] for x in self._segments[0]._broadcast_vars])
-            insert_broadcast_ops(block, self._segments[0]._start_idx,
-                                 self._nrings,
-                                 self._segments[0]._broadcast_vars)
+            insert_broadcast_ops(
+                block, self._segments[0]._start_idx, self._nrings,
+                self._segments[0]._broadcast_vars, self._varname2ringidx)
 
         fill_constant_vars = []
         for x in self._segments[:2]:
