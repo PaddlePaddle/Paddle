@@ -210,7 +210,7 @@ $$out=\\sqrt{x}=x^{1/2}$$
 
 )DOC";
 
--UNUSED constexpr char RsqrtDoc[] = R"DOC(
+UNUSED constexpr char RsqrtDoc[] = R"DOC(
 Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
