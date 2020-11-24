@@ -33,7 +33,7 @@ DEFINE_string(dirname, "", "Directory of the train model.");
 namespace paddle {
 
 void Train(std::string model_dir) {
-  framework::InitDevices(false);
+  framework::InitDevices();
   const auto cpu_place = platform::CPUPlace();
   framework::Executor executor(cpu_place);
   framework::Scope scope;

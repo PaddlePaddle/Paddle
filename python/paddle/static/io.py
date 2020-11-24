@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-
 import errno
 import inspect
 import logging
@@ -31,7 +30,6 @@ from paddle.fluid.io import prepend_feed_ops, append_fetch_ops, save_persistable
 from paddle.fluid.io import load_persistables, _endpoints_replacement
 from paddle.fluid.log_helper import get_logger
 
-
 __all__ = [
     'save_inference_model',
     'load_inference_model',
@@ -44,10 +42,13 @@ _logger = get_logger(
 def _check_args(caller, args, supported_args=[], deprecated_args=[]):
     for arg in args:
         if arg in deprecated_args:
-            raise ValueError("argument '{}' in function '{}' is deprecated, only {} are supported.".format(arg, caller, supported_args))
+            raise ValueError(
+                "argument '{}' in function '{}' is deprecated, only {} are supported.".
+                format(arg, caller, supported_args))
         elif arg not in supported_args:
             raise ValueError(
-                "function '{}' doesn't support argument '{}',\n only {} are supported.".format(caller, arg, supported_args))
+                "function '{}' doesn't support argument '{}',\n only {} are supported.".
+                format(caller, arg, supported_args))
 
 
 @static_only
@@ -78,28 +79,26 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
 
             paddle.enable_static()
 
             path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
-            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            avg_loss = paddle.tensor.stat.mean(loss)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
 
             # Feed data and train process
 
             # Save inference model. Note we don't save label and loss in this example
-            paddle.static.io.save_inference_model(path_prefix, [image], [predict], exe)
+            paddle.static.save_inference_model(path_prefix, [image], [predict], exe)
 
             # In this example, the save_inference_mode inference will prune the default
             # main program according to the network's input node (img) and output node(predict).
@@ -131,14 +130,18 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
     # verify feed_vars
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
-    if not feed_vars or not all([isinstance(var, Variable) for var in feed_vars]):
-        raise ValueError("'feed_vars' should be a Variable or a list of Variable.")
+    if not feed_vars or not all(
+        [isinstance(var, Variable) for var in feed_vars]):
+        raise ValueError(
+            "'feed_vars' should be a Variable or a list of Variable.")
 
     # verify fetch_vars
     if not isinstance(fetch_vars, list):
         fetch_vars = [fetch_vars]
-    if not fetch_vars or not all([isinstance(var, Variable) for var in fetch_vars]):
-        raise ValueError("'fetch_vars' should be a Variable or a list of Variable.")
+    if not fetch_vars or not all(
+        [isinstance(var, Variable) for var in fetch_vars]):
+        raise ValueError(
+            "'fetch_vars' should be a Variable or a list of Variable.")
 
     main_program = _get_valid_program()
     # remind users to set auc_states to 0 if auc op were found.
@@ -147,7 +150,9 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         op._set_attr(device_attr_name, "")
         if op.type == 'auc':
-            warnings.warn("Be sure that you have set auc states to 0 before saving inference model.")
+            warnings.warn(
+                "Be sure that you have set auc states to 0 before saving inference model."
+            )
             break
 
     # fix the bug that the activation op's output as target will be pruned.
@@ -156,10 +161,11 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
     with program_guard(main_program):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
-            var = layers.scale(var, 1., name="save_infer_model/scale_{}".format(i))
+            var = layers.scale(
+                var, 1., name="save_infer_model/scale_{}".format(i))
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
-    
+
     # save model
     origin_program = main_program.clone()
     main_program = main_program.clone()
@@ -223,31 +229,29 @@ def load_inference_model(path_prefix, executor, **configs):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
             paddle.enable_static()
 
             # Build the model
-            startup_prog = fluid.default_startup_program()
-            main_prog = fluid.default_main_program()
-            with fluid.program_guard(main_prog, startup_prog):
-                image = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32')
-                hidden_w = fluid.layers.matmul(x=image, y=w)
-                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            startup_prog = paddle.static.default_startup_program()
+            main_prog = paddle.static.default_main_program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(name="img", shape=[64, 784])
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+                b = paddle.create_parameter(shape=[200], dtype='float32')
+                hidden_w = paddle.matmul(x=image, y=w)
+                hidden_b = paddle.add(hidden_w, b)
+            exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(startup_prog)
 
             # Save the inference model
             path_prefix = "./infer_model"
-            paddle.static.io.save_inference_model(path_prefix, [image], [hidden_b], exe)
+            paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
             [inference_program, feed_target_names, fetch_targets] = (
-                paddle.static.io.load_inference_model(path_prefix, exe))
-            tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
+                paddle.static.load_inference_model(path_prefix, exe))
+            tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
@@ -261,7 +265,7 @@ def load_inference_model(path_prefix, executor, **configs):
     """
     # check configs
     supported_args = ('model_filename', 'params_filename')
-    deprecated_args = ('pserver_endpoints',)
+    deprecated_args = ('pserver_endpoints', )
     caller = inspect.currentframe().f_code.co_name
     _check_args(caller, configs, supported_args, deprecated_args)
 
@@ -272,8 +276,7 @@ def load_inference_model(path_prefix, executor, **configs):
         params_filename = configs.get('params_filename', None)
         if params_filename is None:
             raise ValueError(
-                "params_filename cannot be None when path_prefix is None."
-            )
+                "params_filename cannot be None when path_prefix is None.")
         load_dirname = path_prefix
         program_desc_str = model_filename
         params_filename = params_filename
@@ -301,18 +304,21 @@ def load_inference_model(path_prefix, executor, **configs):
             if model_filename is None:
                 model_path = os.path.join(path_prefix, "__model__")
             else:
-                model_path = os.path.join(path_prefix, model_filename + ".pdmodel")
+                model_path = os.path.join(path_prefix,
+                                          model_filename + ".pdmodel")
                 if not os.path.exists(model_path):
                     model_path = os.path.join(path_prefix, model_filename)
             # set params_path
             if params_filename is None:
                 params_path = os.path.join(path_prefix, "")
             else:
-                params_path = os.path.join(path_prefix, params_filename + ".pdiparams")
+                params_path = os.path.join(path_prefix,
+                                           params_filename + ".pdiparams")
                 if not os.path.exists(params_path):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning("The old way to load inference model is deprecated."
-                    " model path: {}, params path: {}".format(model_path, params_path))
+                            " model path: {}, params path: {}".format(
+                                model_path, params_path))
         with open(model_path, "rb") as f:
             program_desc_str = f.read()
         load_dirname = os.path.dirname(params_path)
@@ -332,4 +338,3 @@ def load_inference_model(path_prefix, executor, **configs):
     ]
 
     return [program, feed_target_names, fetch_targets]
-

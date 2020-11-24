@@ -92,7 +92,7 @@ def get_cudnn_info():
         cudnn_dll_path = run_shell_command('where cudnn*')
         if cudnn_dll_path:
             cudnn_header_path = cudnn_dll_path.split('bin')[
-                0] + 'include\cudnn.h'
+                0] + r'include\cudnn.h'
             cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None

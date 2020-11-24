@@ -161,7 +161,7 @@ def nested_for_loop_dyfunc():
     three = fluid.layers.fill_constant(shape=[1], value=3, dtype="int32")
     for j in range(two):
         for i in range(10):
-            a = 2
+            a = 2 + j
 
     for i in range(three):
         b = fluid.layers.zeros(shape=[1], dtype='float32')
@@ -216,16 +216,25 @@ class TestNameVisitor(unittest.TestCase):
         self.loop_var_names = [
             set(["j", "two"]),
             set(["i", "three", "b"]),
-            set(["i"]),
+            set(["i", "j"]),
         ]
         self.create_var_names = [set(), set(["b"]), set()]
+
         i = 0
         for node in gast.walk(gast_root):
             if isinstance(node, (gast.While, gast.For)):
                 loop_var_names, create_var_names = name_visitor.get_loop_var_names(
                     node)
-                self.assertEqual(loop_var_names, self.loop_var_names[i])
-                self.assertEqual(create_var_names, self.create_var_names[i])
+                self.assertEqual(
+                    loop_var_names,
+                    self.loop_var_names[i],
+                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".
+                    format(loop_var_names, self.loop_var_names[i]))
+                self.assertEqual(
+                    create_var_names,
+                    self.create_var_names[i],
+                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".
+                    format(i, create_var_names, self.create_var_names[i]))
                 i += 1
 
 

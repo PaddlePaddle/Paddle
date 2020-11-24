@@ -24,7 +24,7 @@ __all__ = ["Adam"]
 
 
 class Adam(Optimizer):
-    """
+    r"""
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using

@@ -15,7 +15,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "xpu/refactor/nn.h"
 
 namespace paddle {
 namespace operators {
