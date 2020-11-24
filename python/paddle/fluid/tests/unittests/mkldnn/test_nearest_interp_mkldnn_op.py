@@ -17,100 +17,162 @@ from __future__ import print_function
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.test_nearest_interp_op import nearest_neighbor_interp_np, TestNearestInterpOp
+from paddle.fluid.tests.unittests.op_test import OpTest
 
-# def nearest_neighbor_interp_np(X,
-#                                out_h,
-#                                out_w,
-#                                out_size=None,
-#                                actual_shape=None,
-#                                align_corners=True,
-#                                data_layout='NCHW'):
-#     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
-#     if data_layout == "NHWC":
-#         X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
-#     if out_size is not None:
-#         out_h = out_size[0]
-#         out_w = out_size[1]
-#     if actual_shape is not None:
-#         out_h = actual_shape[0]
-#         out_w = actual_shape[1]
-#     n, c, in_h, in_w = X.shape
+# from paddle.fluid.tests.unittests.test_nearest_interp_op import nearest_neighbor_interp_np, TestNearestInterpOp
 
-#     ratio_h = ratio_w = 0.0
-#     if (out_h > 1):
-#         if (align_corners):
-#             ratio_h = (in_h - 1.0) / (out_h - 1.0)
+
+def nearest_neighbor_interp_np(X,
+                               out_h,
+                               out_w,
+                               out_size=None,
+                               actual_shape=None,
+                               align_corners=True,
+                               data_layout='NCHW'):
+    """nearest neighbor interpolation implement in shape [N, C, H, W]"""
+    if data_layout == "NHWC":
+        X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
+    if out_size is not None:
+        out_h = out_size[0]
+        out_w = out_size[1]
+    if actual_shape is not None:
+        out_h = actual_shape[0]
+        out_w = actual_shape[1]
+    n, c, in_h, in_w = X.shape
+
+    ratio_h = ratio_w = 0.0
+    if (out_h > 1):
+        if (align_corners):
+            ratio_h = (in_h - 1.0) / (out_h - 1.0)
+        else:
+            ratio_h = 1.0 * in_h / out_h
+    if (out_w > 1):
+        if (align_corners):
+            ratio_w = (in_w - 1.0) / (out_w - 1.0)
+        else:
+            ratio_w = 1.0 * in_w / out_w
+
+    out = np.zeros((n, c, out_h, out_w))
+
+    if align_corners:
+        for i in range(out_h):
+            in_i = int(ratio_h * i + 0.5)
+            for j in range(out_w):
+                in_j = int(ratio_w * j + 0.5)
+                out[:, :, i, j] = X[:, :, in_i, in_j]
+    else:
+        for i in range(out_h):
+            in_i = int(ratio_h * i)
+            for j in range(out_w):
+                in_j = int(ratio_w * j)
+                out[:, :, i, j] = X[:, :, in_i, in_j]
+
+    if data_layout == "NHWC":
+        out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+
+    return out.astype(X.dtype)
+
+
+# class TestNearestInterpMKLDNNOp(OpTest):
+#     def setUp(self):
+#         # self.use_mkldnn = True
+#         self.out_size = None
+#         self.actual_shape = None
+#         self.data_layout = 'NCHW'
+#         self.init_test_case()
+#         self.op_type = "nearest_interp"
+#         input_np = np.random.random(self.input_shape).astype('float32')
+
+#         if self.data_layout == "NCHW":
+#             in_h = self.input_shape[2]
+#             in_w = self.input_shape[3]
 #         else:
-#             ratio_h = 1.0 * in_h / out_h
-#     if (out_w > 1):
-#         if (align_corners):
-#             ratio_w = (in_w - 1.0) / (out_w - 1.0)
+#             in_h = self.input_shape[1]
+#             in_w = self.input_shape[2]
+
+#         if self.scale > 0:
+#             out_h = int(in_h * self.scale)
+#             out_w = int(in_w * self.scale)
 #         else:
-#             ratio_w = 1.0 * in_w / out_w
+#             out_h = self.out_h
+#             out_w = self.out_w
 
-#     out = np.zeros((n, c, out_h, out_w))
+#         output_np = nearest_neighbor_interp_np(
+#             input_np, out_h, out_w, self.out_size, self.actual_shape,
+#             self.align_corners, self.data_layout)
+#         self.inputs = {'X': input_np}
+#         if self.out_size is not None:
+#             self.inputs['OutSize'] = self.out_size
+#         if self.actual_shape is not None:
+#             self.inputs['OutSize'] = self.actual_shape
+#         self.attrs = {
+#             'out_h': self.out_h,
+#             'out_w': self.out_w,
+#             'scale': self.scale,
+#             'interp_method': self.interp_method,
+#             'align_corners': self.align_corners,
+#             'data_layout': self.data_layout,
+#             'use_mkldnn': True
+#         }
+#         self.outputs = {'Out': output_np}
 
-#     if align_corners:
-#         for i in range(out_h):
-#             in_i = int(ratio_h * i + 0.5)
-#             for j in range(out_w):
-#                 in_j = int(ratio_w * j + 0.5)
-#                 out[:, :, i, j] = X[:, :, in_i, in_j]
-#     else:
-#         for i in range(out_h):
-#             in_i = int(ratio_h * i)
-#             for j in range(out_w):
-#                 in_j = int(ratio_w * j)
-#                 out[:, :, i, j] = X[:, :, in_i, in_j]
+#     def test_check_output(self):
+#         self.check_output(check_dygraph=False)
 
-#     if data_layout == "NHWC":
-#         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+#     def test_check_grad(self):
+#         # self.check_grad(['X'], 'Out', in_place=True)
+#         pass
 
-#     return out.astype(X.dtype)
+#     def init_test_case(self):
+#         self.interp_method = 'nearest'
+#         self.input_shape = [2, 3, 4, 5]
+#         self.out_h = -1
+#         self.out_w = -1
+#         self.scale = 2.0
+#         self.out_size = np.array([3, 3]).astype('float32')
+#         self.align_corners = True
 
 
-class TestNearestInterpMKLDNNOp(TestNearestInterpOp):
+class TestNearestInterpOpMKLDNN_attr_tensor(OpTest):
     def setUp(self):
-        # self.use_mkldnn = True
         self.out_size = None
         self.actual_shape = None
-        self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp"
-        input_np = np.random.random(self.input_shape).astype(np.float32)
+        self.shape_by_1Dtensor = False
+        self.scale_by_1Dtensor = False
+        self.attrs = {
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+        }
 
-        if self.data_layout == "NCHW":
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        else:
-            in_h = self.input_shape[1]
-            in_w = self.input_shape[2]
+        input_np = np.random.random(self.input_shape).astype("float64")
+        self.inputs = {'X': input_np}
 
-        if self.scale > 0:
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+        if self.scale_by_1Dtensor:
+            self.inputs['Scale'] = np.array([self.scale]).astype("float64")
+        elif self.scale > 0:
+            out_h = int(self.input_shape[2] * self.scale)
+            out_w = int(self.input_shape[3] * self.scale)
+            self.attrs['scale'] = self.scale
         else:
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = nearest_neighbor_interp_np(
-            input_np, out_h, out_w, self.out_size, self.actual_shape,
-            self.align_corners, self.data_layout)
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
+        if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-        self.attrs = {
-            'out_h': self.out_h,
-            'out_w': self.out_w,
-            'scale': self.scale,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'data_layout': self.data_layout,
-            'use_mkldnn': True
-        }
+        elif self.out_size is not None:
+            size_tensor = []
+            for index, ele in enumerate(self.out_size):
+                size_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+            self.inputs['SizeTensor'] = size_tensor
+
+        self.attrs['out_h'] = self.out_h
+        self.attrs['out_w'] = self.out_w
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
+                                               self.out_size, self.actual_shape,
+                                               self.align_corners)
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -122,12 +184,13 @@ class TestNearestInterpMKLDNNOp(TestNearestInterpOp):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 5]
-        self.out_h = 2
-        self.out_w = 2
-        self.scale = 2
-        self.out_size = np.array([3, 3]).astype(np.float32)
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 2.0
+        self.out_size = None
         self.align_corners = True
+        self.scale_by_1Dtensor = True
 
 
 # class TestNearestNeighborInterpCase1(TestNearestInterpMKLDNNOp):
