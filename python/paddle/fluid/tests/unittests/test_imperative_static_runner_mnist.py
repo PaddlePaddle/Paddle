@@ -23,7 +23,9 @@ import six
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid import unique_name
 from test_imperative_base import new_program_scope
+from jit_load_rename_var import rename_var_with_generator
 
 LOADED_VAR_SUFFIX = ".load_0"
 
@@ -301,21 +303,25 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
             self.load_and_train_dygraph()
 
-        static_x_data, static_out, static_param_init_value, static_param_value = \
-            self.load_and_train_static()
+        with unique_name.guard():
+            static_x_data, static_out, static_param_init_value, static_param_value = \
+                self.load_and_train_static()
 
         # Phase 3. compare
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
 
+        with unique_name.guard():
+            dict_old_new_init = rename_var_with_generator(
+                static_param_init_value.keys())
         for key, value in six.iteritems(static_param_init_value):
-            key += LOADED_VAR_SUFFIX
+            key = dict_old_new_init[key]
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
         for key, value in six.iteritems(static_param_value):
-            key += LOADED_VAR_SUFFIX
+            key = dict_old_new_init[key]
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
     def test_mnist_train_with_params_filename(self):
@@ -329,21 +335,24 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
             self.load_and_train_dygraph()
 
-        static_x_data, static_out, static_param_init_value, static_param_value = \
-            self.load_and_train_static()
+        with unique_name.guard():
+            static_x_data, static_out, static_param_init_value, static_param_value = \
+                self.load_and_train_static()
 
         # Phase 3. compare
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
-
+        with unique_name.guard():
+            dict_old_new_init = rename_var_with_generator(
+                static_param_init_value.keys())
         for key, value in six.iteritems(static_param_init_value):
-            key += LOADED_VAR_SUFFIX
+            key = dict_old_new_init[key]
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
         for key, value in six.iteritems(static_param_value):
-            key += LOADED_VAR_SUFFIX
+            key = dict_old_new_init[key]
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
     def test_mnist_infer_no_params_filename(self):

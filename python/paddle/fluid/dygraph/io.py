@@ -166,7 +166,7 @@ def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
 def _rename_var_program_desc(program_desc):
     """
     Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication
-    e.g. x ==> x_0, x_0 ==> x._1
+    e.g. x ==> x_0, x_0 ==> x_1
     """
     dict_rename_var_old_new = dict()
     dict_rename_var_new_old = dict()
@@ -175,9 +175,12 @@ def _rename_var_program_desc(program_desc):
         cur_block = program_desc.block(b_idx)
         for var in cur_block.all_vars():
             old_names.append(var.name())
+    persistable_vars = _get_persistable_vars(program_desc)
     for b_idx in six.moves.range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
-        for var in cur_block.all_vars():
+        for var_idx, var in enumerate(cur_block.all_vars()):
+            if var not in persistable_vars:
+                continue
             name_old = var.name()
             while True:
                 temp_name = name_old.split('_')
@@ -188,15 +191,35 @@ def _rename_var_program_desc(program_desc):
 
                 name_new = _generate_unique_var_name_sync_with_main_program(
                     temp_name)
-                if name_new not in old_names:
+                if name_new not in old_names[:var_idx] + old_names[var_idx +
+                                                                   1:]:
                     break
             if name_old != name_new:
                 cur_block._rename_var(
                     cpt.to_bytes(name_old), cpt.to_bytes(name_new))
             dict_rename_var_old_new[name_old] = name_new
             dict_rename_var_new_old[name_new] = name_old
+
+    for b_idx in six.moves.range(program_desc.num_blocks()):
+        cur_block = program_desc.block(b_idx)
+        for op_idx in six.moves.range(cur_block.op_size()):
+            op = cur_block.op(op_idx)
+            for input_arg_name in op.input_arg_names():
+                if input_arg_name in dict_rename_var_old_new:
+                    if input_arg_name != dict_rename_var_old_new[
+                            input_arg_name]:
+                        op._rename_input(
+                            input_arg_name,
+                            dict_rename_var_old_new[input_arg_name])
+            for output_arg_name in op.output_arg_names():
+                if output_arg_name in dict_rename_var_old_new:
+                    if output_arg_name != dict_rename_var_old_new[
+                            output_arg_name]:
+                        op._rename_output(
+                            output_arg_name,
+                            dict_rename_var_old_new[output_arg_name])
     program_desc.flush()
-    return dict_rename_var_new_old
+    return dict_rename_var_new_old, dict_rename_var_old_new
 
 
 @switch_to_static_graph
@@ -277,7 +300,7 @@ class _ProgramHolder(object):
         return self._inner_scope
 
     def _preprocess(self, program_desc):
-        rename_new_old_dict = _rename_var_program_desc(program_desc)
+        rename_new_old_dict, _ = _rename_var_program_desc(program_desc)
         # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
@@ -342,7 +365,6 @@ class _ProgramHolder(object):
         # and later after loading, a new linear is added. At this time, 
         # there will be a problem of duplicate names, so here is unified 
         # to add the LOADED suffix to the parameters of the model loaded
-        # self._suffix_varname_dict = _append_loaded_suffix_to_var(program_desc)  
         self._suffix_varname_dict = _get_loaded_var_new_old(program_desc,
                                                             rename_new_old_dict)
 
@@ -451,8 +473,12 @@ def _load_persistable_vars_by_program(model_path,
 
     if params_filename is not None:
         load_var_list = []
-        for name in sorted(load_var_dict.keys()):
-            load_var_list.append(load_var_dict[name])
+        dict_name_old_new = {
+            v: k
+            for k, v in program_holder._suffix_varname_dict.items()
+        }
+        for name in sorted(dict_name_old_new.keys()):
+            load_var_list.append(load_var_dict[dict_name_old_new[name]])
 
         framework._dygraph_tracer().trace_op(
             type='load_combine',
