@@ -54,11 +54,7 @@ import numpy as np
 # from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
 # from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
 
-__all__ = [
-    'affine_grid',
-    'grid_sample',
-    'pixel_shuffle'
-]
+__all__ = ['affine_grid', 'grid_sample', 'pixel_shuffle']
 
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):

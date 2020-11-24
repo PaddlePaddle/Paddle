@@ -379,7 +379,7 @@ def floor_divide(x, y, name=None):
 
 
 def remainder(x, y, name=None):
-    """
+    r"""
     Mod two tensors element-wise. The equation is:
 
     .. math::
@@ -981,7 +981,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
@@ -1281,7 +1281,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
 
 def log1p(x, name=None):
-    """
+    r"""
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
@@ -1315,7 +1315,7 @@ def log1p(x, name=None):
     return out
 
 def log2(x, name=None):
-    """
+    r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
     .. math::
@@ -1365,7 +1365,7 @@ def log2(x, name=None):
 
 
 def log10(x, name=None):
-    """
+    r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.
 
     .. math::
@@ -1947,7 +1947,7 @@ def sign(x, name=None):
 
 
 def tanh(x, name=None):
-    """
+    r"""
     Tanh Activation Operator.
 
     .. math::

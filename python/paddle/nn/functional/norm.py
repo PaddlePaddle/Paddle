@@ -35,7 +35,7 @@ __all__ = [
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
-    """
+    r"""
     This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
@@ -412,7 +412,7 @@ def local_response_norm(x,
                         k=1.,
                         data_format="NCHW",
                         name=None):
-    """
+    r"""
         Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
         For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 

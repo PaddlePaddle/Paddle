@@ -64,7 +64,7 @@ class ImperativeQuantAware(object):
                  act_preprocess_layer=None,
                  weight_quantize_layer=None,
                  act_quantize_layer=None):
-        """
+        r"""
         The constructor for ImperativeQuantAware.
 
         Args:
