@@ -33,15 +33,13 @@ class ExpandAsV2Op : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "The rank of target_shape must be greater than or equal "
             "to the rank of Input(X). But received Input(X): input "
-            "rank %u, input shape [%s]; received target_shape: "
-            "input rank %u, input shape [%s].",
-            x_dims.size(), x_dims, target_shape.size(), target_shape));
-    PADDLE_ENFORCE_LE(
-        target_shape.size(), MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
-            "The rank of target_shape must be less than or equal "
-            "to %d. But received: rank %u, shape [%s].",
-            MAX_RANK_SUPPORTED, target_shape.size(), target_shape));
+            "rank %u; received target_shape: rank %u.",
+            x_dims.size(), target_shape.size()));
+    PADDLE_ENFORCE_LE(target_shape.size(), MAX_RANK_SUPPORTED,
+                      platform::errors::InvalidArgument(
+                          "The rank of target_shape must be less than or equal "
+                          "to %d. But received: rank %u.",
+                          MAX_RANK_SUPPORTED, target_shape.size()));
     ctx->SetOutputDim("Out", framework::make_ddim(target_shape));
   }
 };

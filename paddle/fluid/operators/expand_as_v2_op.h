@@ -131,7 +131,7 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
-    auto target_shape = framework::vectorize<int>(target_tensor->dims());
+    auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto x_dims = in0->dims();
     auto vec_in_dims = framework::vectorize<int>(x_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
