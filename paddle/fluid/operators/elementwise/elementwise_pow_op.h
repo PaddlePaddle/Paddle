@@ -34,9 +34,6 @@ struct PowFunctor {
       return std::llrint(std::pow(a, b));
     }
 #endif
-    if (std::is_integral<T>::value) {
-      return std::llrint(std::pow(a, b));
-    }
     return std::pow(a, b);
   }
 };

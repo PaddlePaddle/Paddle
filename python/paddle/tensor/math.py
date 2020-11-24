@@ -124,7 +124,6 @@ __all__ = [
         'isfinite',
         'isinf',
         'isnan',
-        'sub',
         'broadcast_shape'
 ]
 # yapf: enable.
