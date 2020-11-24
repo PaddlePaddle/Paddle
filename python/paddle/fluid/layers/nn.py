@@ -12368,7 +12368,7 @@ def clip_by_norm(x, max_norm, name=None):
             None by default.
 
     Returns:
-        Variable:
+        Tensor:
 
         out(${out_type}): ${out_comment}
 
@@ -12379,7 +12379,6 @@ def clip_by_norm(x, max_norm, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             input = paddle.to_tensor(data=np.array([[0.1, 0.2], [0.3, 0.4]]), dtype="float32")
             reward = paddle.nn.clip_by_norm(x=input, max_norm=1.0)
     """
