@@ -76,14 +76,6 @@ class TestSpawnAssistMethod(unittest.TestCase):
         self.assertEqual(env_dict['PADDLE_TRAINER_ID'], '0')
         self.assertEqual(env_dict['PADDLE_TRAINERS_NUM'], '1')
 
-    def test_invaild_options(self):
-        def train():
-            # only for test
-            pass
-
-        with self.assertRaises(ValueError):
-            dist.spawn(train, selelcted_gpus='2,3')
-
 
 if __name__ == "__main__":
     unittest.main()
