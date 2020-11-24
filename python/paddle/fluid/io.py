@@ -30,7 +30,7 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
-    program_guard, dygraph_not_support
+    program_guard, dygraph_not_support, static_only
 from paddle.reader import cache, map_readers, buffered, compose, chain, shuffle, \
     ComposeNotAligned, firstn, xmap_readers, multiprocess_reader
 from .wrapped_decorator import signature_safe_contextmanager

@@ -18,7 +18,7 @@ from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, static_only
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc

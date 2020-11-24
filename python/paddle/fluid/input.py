@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import warnings
-from .framework import Variable, in_dygraph_mode
+from .framework import Variable, in_dygraph_mode, static_only
 from .layer_helper import LayerHelper
 from .data_feeder import check_variable_and_dtype, check_dtype
 from ..utils import deprecated

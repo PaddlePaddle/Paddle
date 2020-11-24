@@ -21,6 +21,7 @@ import sys
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.framework import static_only
 
 __all__ = [
     'ParamAttr',
@@ -283,6 +284,7 @@ class WeightNormParamAttr(ParamAttr):
     # these paramters for inference.
     params_with_weight_norm = []
 
+    @static_only
     def __init__(self,
                  dim=None,
                  name=None,

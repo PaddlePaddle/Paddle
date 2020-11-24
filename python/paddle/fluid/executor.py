@@ -23,7 +23,7 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
-from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
+from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_, static_only
 from . import core
 from . import unique_name
 from . import compiler
@@ -546,6 +546,7 @@ class Executor(object):
 
     """
 
+    @static_only
     def __init__(self, place=None):
         if place is None:
             expected_place = framework._current_expected_place()
