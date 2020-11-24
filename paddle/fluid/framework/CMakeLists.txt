@@ -205,10 +205,10 @@ if(WITH_DISTRIBUTE)
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-    heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
-    fleet_wrapper heter_wrapper box_wrapper lodtensor_printer
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto pslib_brpc)
@@ -219,10 +219,10 @@ if(WITH_DISTRIBUTE)
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-    heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+    heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
-    fleet_wrapper heter_wrapper box_wrapper lodtensor_printer
+    fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto)
@@ -234,10 +234,10 @@ elseif(WITH_PSLIB)
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-  lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor pslib_brpc )
   # TODO: Fix these unittest failed on Windows
   if(NOT WIN32)
@@ -248,10 +248,10 @@ else()
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+  heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
-  lod_rank_table fs shell fleet_wrapper heter_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor)
   # TODO: Fix these unittest failed on Windows
   if(NOT WIN32)

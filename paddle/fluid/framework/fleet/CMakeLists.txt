@@ -20,5 +20,6 @@ else()
 endif(WITH_GLOO)
 
 cc_library(heter_wrapper SRCS heter_wrapper.cc DEPS framework_proto device_context heter_service_proto)
+cc_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cc DEPS framework_proto device_context)
 
 cc_test(test_fleet SRCS test_fleet.cc DEPS fleet_wrapper gloo_wrapper fs shell)
