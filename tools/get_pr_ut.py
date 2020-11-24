@@ -51,6 +51,7 @@ class PRChecker(object):
 
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
+        check_added_ut = False
         ut_list = []
         file_ut_map = None
         cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json'
@@ -62,6 +63,7 @@ class PRChecker(object):
                 return ''
             if f not in file_ut_map:
                 if f.find('test_') != -1 or f.find('_test') != -1:
+                    check_added_ut = True
                     continue
                 else:
                     return ''
@@ -72,6 +74,14 @@ class PRChecker(object):
         os.system(cmd)
         with open('prec_delta') as delta:
             for ut in delta:
+                ut_list.append(ut.rstrip('\r\n'))
+
+        if check_added_ut:
+            cmd = 'bash {}/tools/check_added_ut.sh'.format(PADDLE_ROOT)
+            os.system(cmd)
+
+        with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
+            for ut in utfile:
                 ut_list.append(ut.rstrip('\r\n'))
 
         return ' '.join(ut_list)
