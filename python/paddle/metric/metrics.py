@@ -35,7 +35,7 @@ def _is_numpy_(var):
 
 @six.add_metaclass(abc.ABCMeta)
 class Metric(object):
-    """
+    r"""
     Base class for metric, encapsulates metric logic and APIs
     Usage:
         

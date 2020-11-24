@@ -14,10 +14,7 @@
 
 # TODO: define the extention functions
 
-__all__ = [
-    'diag_embed',
-    'row_conv'
-]
+__all__ = ['diag_embed', 'row_conv']
 
 import numpy as np
 from ...fluid.data_feeder import check_dtype

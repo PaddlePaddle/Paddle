@@ -453,7 +453,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
 
 def dist(x, y, p=2):
-    """
+    r"""
 
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
@@ -740,7 +740,7 @@ def cross(x, y, axis=None, name=None):
 
 
 def cholesky(x, upper=False, name=None):
-    """
+    r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     

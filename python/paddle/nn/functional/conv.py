@@ -166,7 +166,7 @@ def conv1d(x,
            groups=1,
            data_format='NCL',
            name=None):
-    """
+    r"""
     The convolution1D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCL format, where N is batch size, C is the number of
@@ -392,7 +392,7 @@ def conv2d(x,
            groups=1,
            data_format="NCHW",
            name=None):
-    """
+    r"""
 
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
@@ -568,7 +568,7 @@ def conv1d_transpose(x,
                      output_size=None,
                      data_format="NCL",
                      name=None):
-    """
+    r"""
     The 1-D convolution transpose layer calculates the output based on the input,
     filter, and dilation, stride, padding. Input(Input) and output(Output)
     are in 'NCL' format or 'NLC' where N is batch size, C is the number of channels,
@@ -828,7 +828,7 @@ def conv2d_transpose(x,
                      output_size=None,
                      data_format='NCHW',
                      name=None):
-    """
+    r"""
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1068,7 +1068,7 @@ def conv3d(x,
            groups=1,
            data_format="NCDHW",
            name=None):
-    """
+    r"""
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -1233,7 +1233,7 @@ def conv3d_transpose(x,
                      output_size=None,
                      data_format='NCDHW',
                      name=None):
-    """
+    r"""
     The convolution3d transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW or NDHWC format. Where N is batch size, C is the number of channels,
