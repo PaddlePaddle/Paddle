@@ -20,86 +20,6 @@ import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
-from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import array_length, array_read, array_write, create_array
-from paddle.fluid.layers import assign, fill_constant, slice
-from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
-
-
-# TODO(liym27): A better way to slice tensor array.
-#  Maybe support start == end for slice op.
-def slice_tensor_array(array, start, end):
-    def true_fn():
-        null_array = create_array("float32")
-        return null_array
-
-    def false_fn(array, start, end):
-        new_array = slice(array, starts=[start], ends=[end], axes=[0])
-        return new_array
-
-    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
-    return new_array
-
-
-def tensor_array_pop(array, idx):
-    assert isinstance(idx, int)
-
-    def cond(i, new_array):
-        return less_than(i, arr_len)
-
-    def body(i, new_array):
-        item = array_read(array=array, i=i)
-        array_write(item, array_length(new_array), new_array)
-        i = increment(i)
-        return i, new_array
-
-    arr_len = array_length(array)
-    if idx < 0:
-        idx = idx + arr_len
-    else:
-        idx = fill_constant(shape=[1], dtype="int64", value=idx)
-
-    pop_item = array_read(array, idx)
-
-    new_array = slice_tensor_array(array, 0, idx)
-    i = idx + 1
-    _, new_array = while_loop(cond, body, [i, new_array])
-    assign(input=new_array, output=array)
-
-    return pop_item
-
-
-def convert_pop(target, *args):
-    """
-    A function representation of a Python pop statement for a list or dict.
-    """
-
-    # Parse args
-    if len(args) == 0:
-        idx = -1
-    elif len(args) == 1:
-        idx = args[0]
-    elif len(args) == 2:
-        idx = args[0]
-        default = args[1]
-
-    is_variable = isinstance(target, Variable)
-    if is_variable:
-        is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-
-    # 1. Paddle tensor array pop
-    if is_variable and is_tensor_array:
-        result = tensor_array_pop(target, idx)
-    # 2. Python pop
-    else:
-        # 2.1 pop for a dict
-        if len(args) == 2:
-            result = target.pop(idx, default)
-        # 2.1 pop for a list or dict
-        else:
-            result = target.pop(idx)
-
-    return result
 
 
 class ListTransformer(gast.NodeTransformer):
@@ -322,17 +242,17 @@ class ListTransformer(gast.NodeTransformer):
 
         # 1. pop stmt for a list
         if len(args_str) == 0:
-            new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_pop({})".format(
+            new_call_str = "paddle.jit.dy2static.convert_pop({})".format(
                 target_str, args_str)
 
         # 2. pop stmt for a list or dict
         elif len(args_str) == 1:
-            new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_pop({}, {})".format(
+            new_call_str = "paddle.jit.dy2static.convert_pop({}, {})".format(
                 target_str, args_str[0])
 
         # 3. pop stmt for a dict
         elif len(args_str) == 2:
-            new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_pop({}, {}, {})".format(
+            new_call_str = "paddle.jit.dy2static.convert_pop({}, {}, {})".format(
                 target_str, args_str[0], args_str[1])
         else:
             raise node
