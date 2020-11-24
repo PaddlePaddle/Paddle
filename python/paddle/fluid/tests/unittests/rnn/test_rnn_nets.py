@@ -346,5 +346,6 @@ def load_tests(loader, tests, pattern):
                     suite.addTest(test_class(time_major, direction, device))
     return suite
 
+
 if __name__ == '__main__':
     unittest.main()
