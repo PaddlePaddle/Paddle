@@ -13,17 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/reducer.h"
-#include <algorithm>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
 namespace imperative {
 
+#if defined(PADDLE_WITH_NCCL)
 std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
 
 Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
@@ -38,7 +32,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   // initialize groups
   InitializeGroups(group_indices);
 
-  // initialize varname2index_ and add disthook
   {
     for (size_t group_index = 0; group_index < group_indices.size();
          ++group_index) {
@@ -46,7 +39,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
            ++var_index) {
         size_t global_var_index = group_indices[group_index][var_index];
         const auto variable_index = VariableIndex{
-            .group_index = group_index, .variable_index = var_index,
+            .group_index = group_index, .inside_group_index = var_index,
         };
         VLOG(0) << "add hook for var[" << vars_[global_var_index]->GradVarName()
                 << "], it's in group [" << group_index << "]";
@@ -59,7 +52,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     }
   }
 
-#if defined(PADDLE_WITH_NCCL)
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
                         platform::DeviceContextPool::Instance().Get(place_))
                         ->stream();
@@ -75,17 +67,14 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   std::call_once(once_flag_, []() {
     std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
   });
-#endif
 }
 
-#if defined(PADDLE_WITH_NCCL)
 void Reducer::ReleaseReducer() {
   for (auto &event : events_) {
     event.reset();
   }
   comm_enent_.reset();
 }
-#endif
 
 void Reducer::InitializeGroups(
     const std::vector<std::vector<size_t>> &group_indices) {
@@ -136,7 +125,6 @@ void Reducer::InitializeGroups(
                 "The number of tensor `%s`'s elements is 0.", var_name));
         all_length += size;
 
-        group.offset_.push_back(offset);
         group.length_.push_back(size);
         // for concat operator
         group.dense_tensors.push_back(framework::Tensor());
@@ -180,7 +168,6 @@ void Reducer::PrepareForBackward() {
 
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
                           const VariableIndex &var_index) {
-#if defined(PADDLE_WITH_NCCL)
   auto group_index = var_index.group_index;
   auto &group = groups_[group_index];
 
@@ -201,7 +188,7 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper,
 void Reducer::MarkVariableReady(const VariableIndex &var_index,
                                 VariableWrapper *var_warpper) {
   auto group_index = var_index.group_index;
-  auto variable_index = var_index.variable_index;
+  auto variable_index = var_index.inside_group_index;
   auto &group = groups_[group_index];
   auto length = group.length_[variable_index];
 
@@ -250,9 +237,6 @@ void Reducer::FinalizeBackward() {
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   VLOG(3) << "In the batch, Reducer is finished...";
 }
-#else
-}
-#endif
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
@@ -291,13 +275,11 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
     int64_t var_size = -1;
     if (var->Var().IsType<framework::LoDTensor>()) {
       var_size = var->Var().Get<framework::LoDTensor>().numel();
-      VLOG(3) << "dims: " << var->Var().Get<framework::LoDTensor>().dims();
     } else {
       VLOG(3) << "var " << var->Name()
               << " is not tensor or selected_rows, so skip it";
       continue;
     }
-    VLOG(3) << "var[" << var->GradVarName() << "] 's size is " << var_size;
     group_info.first.push_back(i);
     group_info.second += framework::SizeOfType(var_dtype) * var_size;
 
@@ -327,7 +309,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
     PADDLE_ENFORCE_NE(
         group_index.empty(), true,
         platform::errors::PreconditionNotMet(
-            "AssignGroupBySize construct empty group, please check"));
+            "AssignGroupBySize construct empty group, please check."));
   }
   std::sort(res.begin(), res.end(),
             [](const std::vector<size_t> &x, const std::vector<size_t> &y) {
@@ -335,6 +317,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
             });
   return res;
 }
+#endif
 
 }  // namespace imperative
 }  // namespace paddle

@@ -463,7 +463,8 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
         # NOTE(shenliang03): We can set environment variables to control the size of the group,
-        # Default: 1MB
+        # Default: 1MB. The role of this small group is: when the last group allreduce, 
+        # the overlap cannot work. Making the the last group small is useful to improve performance.
         small_group_size = float(
             os.getenv('FLAGS_small_group_memory_size', 1.0))  # MB
         self.group_indices = core.assign_group_by_size(

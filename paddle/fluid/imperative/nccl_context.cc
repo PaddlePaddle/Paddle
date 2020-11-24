@@ -204,18 +204,6 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   AllReduce(src, dst, strategy_, stream);
 }
 
-void NCCLParallelContext::SyncCalcStream() {
-  auto dev_ctx = static_cast<platform::CUDADeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
-  dev_ctx->Wait();
-}
-
-void NCCLParallelContext::SyncCommStream(int ring_id) {
-  auto stream =
-      platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
-}
-
 paddle::platform::CUDADeviceContext *NCCLParallelContext::GetDeviceContext(
     int ring_id) {
   return platform::NCCLCommContext::Instance()

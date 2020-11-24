@@ -15,10 +15,13 @@
 #pragma once
 
 #include <algorithm>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
@@ -69,7 +72,6 @@ void SplitTensorsForAllReduce(const platform::CUDADeviceContext& context,
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 }
-#endif
 
 struct Group {
   // Here, we use dense_contents & sparse_contents to
@@ -82,7 +84,6 @@ struct Group {
   // for concat kernel
   std::vector<framework::Tensor> dense_tensors;
 
-  std::vector<size_t> offset_;
   std::vector<size_t> length_;
   // Global indices of participating variables in the group
   std::vector<size_t> variable_indices_;
@@ -93,7 +94,7 @@ struct Group {
 
   // external message of group
   framework::proto::VarType::Type dtype;
-#if defined(PADDLE_WITH_NCCL)
+
   // context is used to select the stream for concat
   void ConcatTensors(const platform::CUDADeviceContext& context) {
     switch (dtype) {
@@ -139,13 +140,12 @@ struct Group {
             framework::DataTypeToString(dtype)));
     }
   }
-#endif
 };
 
 struct VariableIndex {
   // record the index in groups_
   size_t group_index;
-  size_t variable_index;
+  size_t inside_group_index;
 };
 
 class Reducer {
@@ -165,7 +165,6 @@ class Reducer {
   void AddDistHook(VariableWrapper* var_warpper,
                    const VariableIndex& var_index);
 
-#if defined(PADDLE_WITH_NCCL)
   void MarkVariableReady(const VariableIndex& var_index,
                          VariableWrapper* var_warpper);
 
@@ -174,7 +173,6 @@ class Reducer {
   void FinalizeBackward();
 
   void ReleaseReducer();
-#endif
 
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
@@ -207,18 +205,17 @@ class Reducer {
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 
-#if defined(PADDLE_WITH_NCCL)
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
   std::shared_ptr<platform::CudaEventObject> comm_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
-#endif
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>>& tensors,
     const std::vector<bool>& is_sparse_gradient,
     const std::vector<size_t>& group_size_limits);
+#endif
 
 }  // namespace imperative
 }  // namespace paddle

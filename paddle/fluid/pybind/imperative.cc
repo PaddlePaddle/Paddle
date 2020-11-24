@@ -1183,7 +1183,6 @@ void BindImperative(py::module *m_ptr) {
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
-#endif
 
   py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
       m, "Reducer", R"DOC()DOC")
@@ -1202,6 +1201,7 @@ void BindImperative(py::module *m_ptr) {
         py::arg("is_sparse_gradient"),
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
         py::call_guard<py::gil_scoped_release>());
+#endif
 }
 
 }  // namespace pybind

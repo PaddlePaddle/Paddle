@@ -68,8 +68,6 @@ class ParallelContext {
   virtual void AllReduceByStream(const framework::Variable& src,
                                  framework::Variable* dst, int ring_id = 0,
                                  bool use_calc_stream = false) = 0;
-  virtual void SyncCalcStream() = 0;
-  virtual void SyncCommStream(int ring_id = 0) = 0;
 #if defined(PADDLE_WITH_NCCL)
   virtual paddle::platform::CUDADeviceContext* GetDeviceContext(
       int ring_id) = 0;
@@ -96,11 +94,6 @@ class NCCLParallelContext : public ParallelContext {
   void AllReduceByStream(const framework::Variable& src,
                          framework::Variable* dst, int ring_id,
                          bool use_calc_stream) override;
-
-  // const platform::Place& GetVarPlace(const framework::Variable& src);
-  void SyncCalcStream() override;
-
-  void SyncCommStream(int ring_id) override;
 
   paddle::platform::CUDADeviceContext* GetDeviceContext(int ring_id) override;
 
