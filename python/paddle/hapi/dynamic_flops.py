@@ -29,12 +29,11 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         net (Layer||Program): the network which could be a subinstance of Layer in dygraph or Program in static graph.
         input_size (list): size of input tensor. Note that input_size's batch_size only
                     support 1.
-        custom_ops (A dict of Function, optional): A dictionary whose key is the class of specific 
-                    op and the value is the function used to count the flops of this op.  The details
-                    of function could be found in example code. This argument only work when argument: 
-                    'net' is a instance of nn.Layer.
+        custom_ops (A dict of function, optional): A dictionary which key is the class of specific op and the value 
+                    is the function used to count the flops of this op.  This argument only work when argument 'net'
+                    is an instance of nn.Layer. The details could be found in following example code.
                     Default is None.
-        print_detail (bool, optional): Whether to print the detail information about the flops of network.
+        print_detail (bool, optional): Whether to print the detail information, like flops per layer, about the net flops.
                     Default is False.
 
     Returns:
@@ -93,10 +92,10 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             custom_ops=custom_ops,
             print_detail=print_detail)
     elif isinstance(net, paddle.static.Program):
-        return static_flops(net, detail=print_detail)
+        return static_flops(net, print_detail=print_detail)
     else:
         warnings.warn(
-            "Your model must be a instance of paddle.nn.Layer or paddle.static.Program."
+            "Your model must be an instance of paddle.nn.Layer or paddle.static.Program."
         )
         return -1
 
