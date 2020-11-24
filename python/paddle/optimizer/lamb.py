@@ -61,9 +61,6 @@ class Lamb(Optimizer):
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight
-            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
-            Default None.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
