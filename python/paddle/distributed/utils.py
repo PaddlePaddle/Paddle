@@ -87,32 +87,6 @@ def get_gpus(selected_gpus):
     return gpus
 
 
-def get_trainers_num():
-    return int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-
-
-def get_cluster_and_pod(args):
-    # parse arguments, used for cloud-single-machine and local
-    selected_gpus = get_gpus(args.selected_gpus)
-    trainers_num = cloud_utils.get_trainers_num()
-    logger.debug("parsed from args trainerss_num:{} selected_gpus:{}".format(
-        trainers_num, selected_gpus))
-
-    cluster = None
-    pod = None
-
-    if args.use_paddlecloud and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(
-            args.cluster_node_ips, args.node_ip, args.started_port,
-            selected_gpus)
-        logger.info("get cluster from cloud:{}".format(cluster))
-    else:
-        cluster, pod = get_cluster_from_args(args, selected_gpus)
-        logger.info("get cluster from args:{}".format(cluster))
-
-    return cluster, pod
-
-
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(six.iteritems(vars(args))):
