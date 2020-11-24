@@ -5734,8 +5734,15 @@ def _get_paddle_place(place):
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
                           core.CUDAPinnedPlace, core.CUDAPlace)):
         return place
+
+    if not isinstance(place, str):
+        raise ValueError(
+            "place only support string which is 'Place' and so on.")
+
     if (place == "CPUPlace"):
         return core.CPUPlace()
+    if (place == "Place"):
+        return core.Place()
 
     avaliable_gpu_place = re.match(r'CUDAPlace:\d+', place)
     if place == "CUDAPinnedPlace" or place == "CUDAPlace" or avaliable_gpu_place:
