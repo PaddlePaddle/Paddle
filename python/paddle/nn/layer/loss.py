@@ -491,31 +491,29 @@ class L1Loss(fluid.dygraph.Layer):
             If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
+        
         .. code-block:: python
-            import paddle
-            import numpy as np
 
-            paddle.disable_static()
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            import paddle
+
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1.0], [0.4, 0.5]])
 
             l1_loss = paddle.nn.loss.L1Loss()
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [0.35]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [1.4]
 
             l1_loss = paddle.nn.loss.L1Loss(reduction='none')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            #  [0.2        0.79999995]]
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -625,8 +623,6 @@ class BCELoss(fluid.dygraph.Layer):
 
 class NLLLoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.NLLLoss
-	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
 
     This class accepts input and target label and returns negative log likelihood
     cross error. It is useful to train a classification problem with C classes.
@@ -693,7 +689,7 @@ class NLLLoss(fluid.dygraph.Layer):
                 import paddle
                 import numpy as np
 
-                nll_loss = paddle.nn.layer.NLLLoss()
+                nll_loss = paddle.nn.NLLLoss()
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
                 input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
@@ -703,13 +699,11 @@ class NLLLoss(fluid.dygraph.Layer):
                                  [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
                 label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
 
-                place = paddle.CPUPlace()
-                paddle.disable_static(place)
                 input = paddle.to_tensor(input_np)
                 log_out = log_softmax(input)
                 label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
-                print(result.numpy()) # [1.0720209]
+                print(result) # [1.0720209]
 
     """
 
@@ -1005,7 +999,7 @@ class SmoothL1Loss(fluid.dygraph.Layer):
             is the same as the shape of input.
 
     Returns:
-        The tensor variable storing the smooth_l1_loss of input and label.
+        The tensor storing the smooth_l1_loss of input and label.
 
     Return type: Tensor.
 
