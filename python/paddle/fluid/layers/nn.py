@@ -5448,22 +5448,18 @@ def ctc_greedy_decoder(input,
 
 def transpose(x, perm, name=None):
     """
-    :alias_main: paddle.transpose
-	:alias: paddle.transpose,paddle.tensor.transpose,paddle.tensor.linalg.transpose,paddle.tensor.manipulation.transpose
-	:old_api: paddle.fluid.layers.transpose
-
     Permute the data dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
 
     For Example:
 
@@ -5702,16 +5698,18 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         ${out_comment}.
 
     Examples:
-        >>>  # for LodTensor inputs
-        >>> import paddle.fluid as fluid
-        >>> import paddle
-        >>> paddle.enable_static()
-        >>> x = fluid.data(name='x', shape=[9, 16],
-        >>>                        dtype='float32', lod_level=1)
-        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
-        >>> # for Tensor inputs
-        >>> x = fluid.data(name='x', shape=[9, 4, 16], dtype='float32')
-        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
+
+      .. code-block:: python
+
+        # for LodTensor inputs
+        import paddle
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[9, 16],
+                               dtype='float32', lod_level=1)
+        out = paddle.static.nn.row_conv(input=x, future_context_size=2)
+        # for Tensor inputs
+        x = paddle.static.data(name='x', shape=[9, 4, 16], dtype='float32')
+        out = paddle.static.nn.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
@@ -6684,8 +6682,8 @@ def pad(x, paddings, pad_value=0., name=None):
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
 
-    helper = LayerHelper('pad', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('pad', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad',
@@ -6779,8 +6777,8 @@ def pad_constant_like(x, y, pad_value=0., name=None):
     check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
                              "pad_constant_like")
 
-    helper = LayerHelper('pad_constant_like', input=x, **locals())
-    dtype = helper.input_dtype()
+    helper = LayerHelper('pad_constant_like', **locals())
+    dtype = helper.input_dtype(input_param_name='y')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='pad_constant_like',
@@ -7070,9 +7068,6 @@ def roi_align(input,
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
     """
-    :alias_main: paddle.nn.functional.dice_loss
-	:alias: paddle.nn.functional.dice_loss,paddle.nn.functional.loss.dice_loss
-	:old_api: paddle.fluid.layers.dice_loss
 
     Dice loss for comparing the similarity between the input predictions and the label.
     This implementation is for binary classification, where the input is sigmoid
@@ -7108,7 +7103,6 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
             import paddle
             import paddle.nn.functional as F
 
-            paddle.disable_static()
             x = paddle.randn((3,224,224,2))
             label = paddle.randint(high=2, shape=(3,224,224,1))
             predictions = F.softmax(x)
@@ -8891,7 +8885,6 @@ def mean_iou(input, label, num_classes):
     check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
                              'mean_iou')
     check_variable_and_dtype(label, 'Labels', ['int32', 'int64'], 'mean_iou')
-    dtype = helper.input_dtype()
     out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
     out_wrong = helper.create_variable_for_type_inference(dtype='int32')
     out_correct = helper.create_variable_for_type_inference(dtype='int32')
@@ -13042,9 +13035,6 @@ def grid_sampler(x, grid, name=None):
 
 def log_loss(input, label, epsilon=1e-4, name=None):
     """
-    :alias_main: paddle.nn.functional.log_loss
-	:alias: paddle.nn.functional.log_loss,paddle.nn.functional.loss.log_loss
-	:old_api: paddle.fluid.layers.log_loss
 
     **Negative Log Loss Layer**
 
@@ -13076,7 +13066,6 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           import paddle
           import paddle.nn.functional as F
 
-          paddle.disable_static()
           label = paddle.randn((10,1))
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
@@ -13500,16 +13489,16 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     principe of py_func is that Tensor and numpy array can be converted to each
     other easily. So you can use Python and numpy API to register a python OP.
 
-    The forward  function of the registered OP is ``func`` and the backward function
-    of that is  ``backward_func``. Paddle will call ``func`` at forward runtime and
+    The forward function of the registered OP is ``func`` and the backward function
+    of that is ``backward_func``. Paddle will call ``func`` at forward runtime and
     call ``backward_func`` at backward runtime(if ``backward_func`` is not  None).
     ``x`` is the input of ``func``, whose type must be Tensor; ``out`` is
     the output of ``func``, whose type can be either Tensor or numpy array.
 
     The input of the backward function ``backward_func`` is ``x``, ``out`` and
-    the gradient of ``out``. If some variables of ``out`` have no gradient, the
-    relevant input variable of ``backward_func`` is None. If some variables of
-    ``x`` do not have a gradient, the user should return None in ``backward_func``.
+    the gradient of ``out``. If ``out`` have no gradient, the relevant input of
+    ``backward_func`` is None. If ``x`` do not have a gradient, the user should
+    return None in ``backward_func``.
 
     The data type and shape of ``out`` should also be set correctly before this
     API is called, and the data type and shape of the gradient of ``out`` and
@@ -13524,27 +13513,26 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             function and the forward input ``x``. In ``func`` , it's suggested that we
             actively convert Tensor into a numpy array, so that we can use Python and
             numpy API arbitrarily. If not, some operations of numpy may not be compatible.
-        x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``.
-            It can be Variable|tuple(Variale)|list[Variale], where Variable is Tensor or
-            Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
-            or list[Variale].
-        out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``,
-            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either Tensor
-            or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``,
-            you must create ``out`` in advance.
+        x (Tensor|tuple(Tensor)|list[Tensor]): The input of the forward function ``func``.
+            It can be Tensor|tuple(Tensor)|list[Tensor]. In addition, Multiple Tensor
+            should be passed in the form of tuple(Tensor) or list[Tensor].
+        out (T|tuple(T)|list[T]): The output of the forward function ``func``, it can be
+            T|tuple(T)|list[T], where T can be either Tensor or numpy array. Since Paddle
+            cannot automatically infer the shape and type of ``out``, you must create
+            ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP.
             Its default value is None, which means there is no reverse calculation. If
             it is not None, ``backward_func`` is called to calculate the gradient of
             ``x`` when the network is at backward runtime.
-        skip_vars_in_backward_input (Variable, optional): It's used to limit the input
-            variable list of ``backward_func``, and it can be Variable|tuple(Variale)|list[Variale].
+        skip_vars_in_backward_input (Tensor, optional): It's used to limit the input
+            list of ``backward_func``, and it can be Tensor|tuple(Tensor)|list[Tensor].
             It must belong to either ``x`` or ``out``. The default  value is None, which means
-            that no variables need to be removed from ``x`` and ``out``. If it is not None,
-            these variables will not be the input of ``backward_func``. This parameter is only
+            that no tensors need to be removed from ``x`` and ``out``. If it is not None,
+            these tensors will not be the input of ``backward_func``. This parameter is only
             useful when ``backward_func`` is not None.
 
     Returns:
-        Variable|tuple(Variale)|list[Variale]: The output ``out`` of the forward function ``func``.
+        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
 
     Examples:
         .. code-block:: python
@@ -13552,6 +13540,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             # example 1:
             import paddle
             import six
+            import numpy as np
 
             paddle.enable_static()
 
@@ -13582,16 +13571,31 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                         dtype=hidden.dtype, shape=hidden.shape)
 
                     # User-defined forward and backward
-                    hidden = paddle.static.nn.py_func(func=tanh, x=hidden,
+                    hidden = paddle.static.py_func(func=tanh, x=hidden,
                         out=new_hidden, backward_func=tanh_grad,
                         skip_vars_in_backward_input=hidden)
 
                     # User-defined debug functions that print out the input Tensor
-                    paddle.static.nn.py_func(func=debug_func, x=hidden, out=None)
+                    paddle.static.py_func(func=debug_func, x=hidden, out=None)
 
                 prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
-                loss = paddle.static.nn.cross_entropy(input=prediction, label=label)
-                return paddle.mean(loss)
+                ce_loss = paddle.nn.loss.CrossEntropyLoss()
+                return ce_loss(prediction, label)
+
+            x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
+            y = paddle.static.data(name='y', shape=[1,10], dtype='int64')
+            res = simple_net(x, y)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            input1 = np.random.random(size=[1,4]).astype('float32')
+            input2 = np.random.randint(1, 10, size=[1,10], dtype='int64')
+            out = exe.run(paddle.static.default_main_program(),
+                          feed={'x':input1, 'y':input2},
+                          fetch_list=[res.name])
+            print(out)
+
+        .. code-block:: python
 
             # example 2:
             # This example shows how to turn Tensor into numpy array and
@@ -13633,7 +13637,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 output = create_tmp_var('output','int32', [3,1])
 
                 # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
-                paddle.static.nn.py_func(func=element_wise_add, x=[x,y], out=output)
+                paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
 
                 exe=paddle.static.Executor(paddle.CPUPlace())
                 exe.run(start_program)
@@ -14450,9 +14454,6 @@ def deformable_conv(input,
 
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     """
-    :alias_main: paddle.nn.functional.unfold
-	:alias: paddle.nn.functional.unfold,paddle.nn.functional.common.unfold
-	:old_api: paddle.fluid.layers.unfold
 
     This op returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
@@ -14478,7 +14479,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Parameters:
-        x(Varaible):              4-D Tensor, input tensor of format [N, C, H, W],
+        x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
@@ -14501,22 +14502,24 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Returns:
-        The tensor variable corresponding to the sliding local blocks.
+        The tensor corresponding to the sliding local blocks.
         The output shape is [N, Cout, Lout] as decriabled above.
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
 
     Return Type:
-        Variable
+        Tensor
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name = 'data', shape = [100, 3, 224, 224], dtype = 'float32')
-            y = fluid.layers.unfold(x, [3, 3], 1, 1, 1)
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.randn((100,3,224,224))
+            y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
     helper = LayerHelper("unfold", **locals())
