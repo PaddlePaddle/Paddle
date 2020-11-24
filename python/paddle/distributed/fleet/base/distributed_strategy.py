@@ -862,7 +862,7 @@ class DistributedStrategy(object):
 
     @property
     def dgc_configs(self):
-        """
+        r"""
         Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
         settings that can be configured through a dict.
 

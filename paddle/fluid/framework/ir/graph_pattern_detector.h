@@ -1420,6 +1420,33 @@ struct FusionGru : public PatternBase {
   PATTERN_DECL_NODE(out);
 };
 
+// two subsequent bi_fusion_gru ops
+// Forward pass for fusion of two subsequent fusion_gru ops.
+// Hidden of the last fusion_gru op is a result of the operator().
+struct MultiGruSeq : public PatternBase {
+  MultiGruSeq(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_gru_seq") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(wx11);
+  PATTERN_DECL_NODE(wx12);
+  PATTERN_DECL_NODE(wh11);
+  PATTERN_DECL_NODE(wh12);
+  PATTERN_DECL_NODE(b11);
+  PATTERN_DECL_NODE(b12);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wx21);
+  PATTERN_DECL_NODE(wx22);
+  PATTERN_DECL_NODE(wh21);
+  PATTERN_DECL_NODE(wh22);
+  PATTERN_DECL_NODE(b21);
+  PATTERN_DECL_NODE(b22);
+  PATTERN_DECL_NODE(h2);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

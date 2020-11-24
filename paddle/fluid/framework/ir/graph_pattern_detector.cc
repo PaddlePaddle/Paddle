@@ -2101,13 +2101,18 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "fusion_gru", "gelu",
-                                       "reshape2", "softmax", "sum",
-                                       "transpose2"});
+      std::unordered_set<std::string>(
+          {"concat", "conv2d", "elementwise_add", "elementwise_mul", "fc",
+           "fusion_gru", "gelu", "layer_norm", "matmul", "reshape2", "softmax",
+           "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+           node->Op()->Type() == "reshape2";
+  });
   return op;
 }
 
@@ -2504,6 +2509,59 @@ PDNode *patterns::FusionGru::operator()() {
                  ->assert_is_op_output("fusion_gru", "Hidden");
   op->LinksFrom({x, weight_h, weight_x}).LinksTo({out});
   return out;
+}
+
+PDNode *patterns::MultiGruSeq::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "multi_gru", "X");
+  auto gru1 = pattern->NewNode(gru1_repr())->assert_is_op("multi_gru");
+  auto wx11 = pattern->NewNode(wx11_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 0);
+  auto wx12 = pattern->NewNode(wx12_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 1);
+  auto wh11 = pattern->NewNode(wh11_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 0);
+  auto wh12 = pattern->NewNode(wh12_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 1);
+  auto b11 = pattern->NewNode(b11_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 0);
+  auto b12 = pattern->NewNode(b12_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 1);
+  auto h1 = pattern->NewNode(h1_repr())
+                ->AsOutput()
+                ->assert_is_op_output("multi_gru", "Hidden")
+                ->assert_is_op_input("multi_gru", "X")
+                ->AsIntermediate();
+  auto gru2 = pattern->NewNode(gru2_repr())->assert_is_op("multi_gru");
+  auto wx21 = pattern->NewNode(wx21_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 0);
+  auto wx22 = pattern->NewNode(wx22_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 1);
+  auto wh21 = pattern->NewNode(wh21_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 0);
+  auto wh22 = pattern->NewNode(wh22_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 1);
+  auto b21 = pattern->NewNode(b21_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 0);
+  auto b22 = pattern->NewNode(b22_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 1);
+  auto h2 = pattern->NewNode(h2_repr())->AsOutput()->assert_is_op_output(
+      "multi_gru", "Hidden");
+  gru1->LinksFrom({x, wx11, wx12, wh11, wh12, b11, b12}).LinksTo({h1});
+  gru2->LinksFrom({h1, wx21, wx22, wh21, wh22, b21, b22}).LinksTo({h2});
+  return h2;
 }
 
 }  // namespace ir
