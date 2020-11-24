@@ -129,6 +129,7 @@ def one_hot(input, depth, allow_out_of_range=False):
     return one_hot_out
 
 
+@static_only
 @deprecated(since='2.0.0', update_to='paddle.nn.functional.embedding')
 def embedding(input,
               size,

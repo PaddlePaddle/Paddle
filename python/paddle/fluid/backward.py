@@ -1272,6 +1272,7 @@ def _get_no_grad_set_name(no_grad_set):
     return no_grad_set_name
 
 
+@static_only
 def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
@@ -1861,6 +1862,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         return grad_vars
 
 
+@static_only
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
     :api_attr: Static Graph

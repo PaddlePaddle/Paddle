@@ -2099,6 +2099,7 @@ def density_prior_box(input,
     return box, var
 
 
+@static_only
 def multi_box_head(inputs,
                    image,
                    base_size,

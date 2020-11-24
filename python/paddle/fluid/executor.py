@@ -41,6 +41,7 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 
 
+@static_only
 def global_scope():
     """
     :api_attr: Static Graph

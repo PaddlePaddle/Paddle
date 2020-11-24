@@ -1710,7 +1710,7 @@ def _load_persistable_nodes(executor, dirname, graph):
     load_vars(executor=executor, dirname=dirname, vars=var_list)
 
 
-@dygraph_not_support
+@static_only
 def save(program, model_path):
     """
     :api_attr: Static Graph
@@ -1773,7 +1773,7 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-@dygraph_not_support
+@static_only
 def load(program, model_path, executor=None, var_list=None):
     """
     :api_attr: Static Graph
@@ -2079,7 +2079,7 @@ def load_program_state(model_path, var_list=None):
     return para_dict
 
 
-@dygraph_not_support
+@static_only
 def set_program_state(program, state_dict):
     """
     :api_attr: Static Graph

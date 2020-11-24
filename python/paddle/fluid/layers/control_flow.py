@@ -211,6 +211,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     return out
 
 
+@static_only
 def Print(input,
           first_n=-1,
           message=None,
@@ -2295,6 +2296,7 @@ def copy_var_to_parent_block(var, layer_helper):
     return parent_block_var
 
 
+@static_only
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
@@ -2474,6 +2476,7 @@ def _error_message(what, arg_name, op_name, right_value, error_value):
     return error_message
 
 
+@static_only
 def case(pred_fn_pairs, default=None, name=None):
     '''
     :api_attr: Static Graph
@@ -3591,6 +3594,7 @@ class DynamicRNN(object):
                 method))
 
 
+@static_only
 def switch_case(branch_index, branch_fns, default=None, name=None):
     '''
     :api_attr: Static Graph

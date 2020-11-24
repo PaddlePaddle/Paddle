@@ -229,7 +229,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -384,6 +384,7 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
+@static_only
 def cuda_places(device_ids=None):
     """
     **Note**:
@@ -430,6 +431,7 @@ def cuda_places(device_ids=None):
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
 
 
+@static_only
 def cpu_places(device_count=None):
     """
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
@@ -463,6 +465,7 @@ def cpu_places(device_count=None):
     return [core.CPUPlace()] * device_count
 
 
+@static_only
 def cuda_pinned_places(device_count=None):
     """
     This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
@@ -5361,6 +5364,7 @@ _main_program_ = Program()
 _startup_program_ = Program()
 
 
+@static_only
 def default_startup_program():
     """
     Get default/global startup program.
@@ -5390,6 +5394,7 @@ def default_startup_program():
     return _startup_program_
 
 
+@static_only
 def default_main_program():
     """
     This API can be used to get ``default main program`` which store the 

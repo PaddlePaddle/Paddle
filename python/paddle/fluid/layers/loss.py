@@ -664,6 +664,7 @@ def warpctc(input,
 # FIXME(wuyi): let docstring_checker.py understand @autodoc.
 # For now, the comments in c++ use types like Tensor, but in python side
 # the type is often "Variable", and arguments may vary.
+@static_only
 @templatedoc(op_type="nce")
 def nce(input,
         label,

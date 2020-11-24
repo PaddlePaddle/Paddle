@@ -70,6 +70,7 @@ def create_tensor(dtype, name=None, persistable=False):
         name=helper.name, dtype=dtype, persistable=persistable)
 
 
+@static_only
 def create_parameter(shape,
                      dtype,
                      name=None,
