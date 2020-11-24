@@ -21,14 +21,25 @@ import os
 import six
 
 import paddle
-from paddle.fluid import core, Variable, CompiledProgram, program_guard, default_main_program, Program
+from paddle.fluid import (
+        core,
+        Variable,
+        CompiledProgram,
+        default_main_program,
+        Program,
+        layers,
+        unique_name,
+        program_guard,
+        )
+from paddle.fluid.io import (
+        save_vars,
+        prepend_feed_ops,
+        append_fetch_ops,
+        save_persistables,
+        load_persistables,
+        )
 from paddle.fluid.framework import static_only, Parameter
-from paddle.fluid import layers, unique_name
 from paddle.fluid.executor import Executor, global_scope
-
-from paddle.fluid.io import save_vars, _save_distributed_persistables
-from paddle.fluid.io import prepend_feed_ops, append_fetch_ops, save_persistables
-from paddle.fluid.io import load_persistables, _endpoints_replacement
 from paddle.fluid.log_helper import get_logger
 
 __all__ = [
