@@ -59,7 +59,7 @@ class LayerHelperBase(object):
         return cls.__dtype
 
     def to_variable(self, value, name=None):
-        """
+        r"""
         The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
         Parameters:

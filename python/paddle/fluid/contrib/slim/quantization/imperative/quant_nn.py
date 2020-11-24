@@ -30,7 +30,7 @@ __all__ = [
 
 
 class FakeQuantMovingAverage(layers.Layer):
-    """
+    r"""
     FakeQuantMovingAverage layer does the moving_average_abs_max quant and then dequant.
     Its computational formula is described as below:
 
@@ -128,7 +128,7 @@ class FakeQuantMovingAverage(layers.Layer):
 
 
 class FakeQuantAbsMax(layers.Layer):
-    """
+    r"""
     FakeQuantAbsMax layer does the abs_max quant and then dequant.
     Its computational formula is described as below:
 
@@ -545,7 +545,7 @@ class QuantizedLinear(layers.Layer):
 
 class MovingAverageAbsMaxScale(layers.Layer):
     def __init__(self, name=None, moving_rate=0.9, dtype='float32'):
-        """
+        r"""
         MovingAverageMaxScale layer is used to calculating the output quantization scale of Layer.
         Its computational formula is described as below:
 

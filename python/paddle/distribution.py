@@ -166,7 +166,7 @@ class Distribution(object):
 
 
 class Uniform(Distribution):
-    """Uniform distribution with `low` and `high` parameters.
+    r"""Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
 
@@ -374,7 +374,7 @@ class Uniform(Distribution):
         return elementwise_div((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
-        """Shannon entropy in nats.
+        r"""Shannon entropy in nats.
 
         The entropy is
 
@@ -391,7 +391,7 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
-    """The Normal distribution with location `loc` and `scale` parameters.
+    r"""The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
 
@@ -534,7 +534,7 @@ class Normal(Distribution):
                 return output
 
     def entropy(self):
-        """Shannon entropy in nats.
+        r"""Shannon entropy in nats.
 
         The entropy is
 
@@ -599,7 +599,7 @@ class Normal(Distribution):
             name=name)
 
     def kl_divergence(self, other):
-        """The KL-divergence between two normal distributions.
+        r"""The KL-divergence between two normal distributions.
 
         The probability density function (pdf) is
 
@@ -644,7 +644,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    """
+    r"""
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
     one of K possible categories, with the probability of each category 

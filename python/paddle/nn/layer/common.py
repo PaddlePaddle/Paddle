@@ -40,7 +40,7 @@ __all__ = [
 
 
 class Linear(layers.Layer):
-    """
+    r"""
 
     Fully-connected linear transformation layer. For each input :math:`X` ,
     the equation is:
@@ -381,7 +381,7 @@ class Upsample(layers.Layer):
 
 
 class Bilinear(layers.Layer):
-    """
+    r"""
 
     This layer performs bilinear on two inputs.
 
@@ -988,7 +988,7 @@ class CosineSimilarity(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    """
+    r"""
     **Embedding Layer**
 
     This interface is used to construct a callable object of the ``Embedding`` class.

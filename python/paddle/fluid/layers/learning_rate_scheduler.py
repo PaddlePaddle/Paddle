@@ -440,7 +440,7 @@ Applies piecewise decay to the initial learning rate.
 
 
 def cosine_decay(learning_rate, step_each_epoch, epochs):
-    """
+    r"""
 
     Applies cosine decay to the learning rate.
 
