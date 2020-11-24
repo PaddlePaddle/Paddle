@@ -3156,7 +3156,7 @@ def instance_norm(input,
             import paddle
             paddle.enable_static()
             x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = paddle.static.nn.fc(x, size=200, param_attr='fc1.w')
+            hidden1 = paddle.static.nn.fc(x, size=200)
             hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
