@@ -23,6 +23,7 @@
 #endif
 
 #ifdef PADDLE_WITH_CUDA
+#include <cuComplex.h>
 #include <thrust/complex.h>
 #endif  // PADDLE_WITH_CUDA
 

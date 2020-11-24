@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
@@ -130,6 +131,8 @@ REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex64>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex128>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int>,
@@ -138,6 +141,8 @@ REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext,
                                   paddle::platform::complex64>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex128>,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int>,
@@ -146,6 +151,8 @@ REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad_grad,
     ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         paddle::platform::complex64>,
+    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex128>,
     ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         float>,
     ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
