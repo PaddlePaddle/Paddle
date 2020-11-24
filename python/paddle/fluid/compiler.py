@@ -18,7 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places, _get_paddle_place, _convert_places
+from .framework import cuda_places, cpu_places, _get_paddle_place, _get_paddle_place_list
 from . import core
 
 __all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
@@ -280,8 +280,8 @@ class CompiledProgram(object):
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        if isinstance(places, list) or isinstance(places, tuple):
-            self._places = _convert_places(places)
+        if isinstance(places, (list, tuple)):
+            self._places = _get_paddle_place_list(places)
         else:
             self._places = _get_paddle_place(places)
 

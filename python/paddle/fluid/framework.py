@@ -5767,17 +5767,14 @@ def _get_paddle_place(place):
     )
 
 
-def _convert_places(places):
+def _get_paddle_place_list(places):
+
     if not isinstance(places, (list, tuple)):
-        places = [places]
+        raise TypeError("places must to be List or Tuple")
 
     ret = []
     for p in places:
         p = _get_paddle_place(p)
-        if not isinstance(p, core.Place):
-            tmp = core.Place()
-            tmp.set_place(p)
-            p = tmp
-
         ret.append(p)
+
     return ret

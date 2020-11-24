@@ -16,13 +16,11 @@ from __future__ import print_function
 import collections
 import copy
 import six
-import re
 import numpy as np
 from ..framework import Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
 from sys import version_info
-from paddle.fluid import core
 
 
 def convert_to_list(value, n, name, dtype=np.int):
