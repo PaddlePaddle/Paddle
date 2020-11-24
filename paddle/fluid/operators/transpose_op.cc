@@ -88,7 +88,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -186,7 +186,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -233,7 +233,7 @@ class Transpose2Op : public TransposeOp {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
@@ -298,7 +298,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }

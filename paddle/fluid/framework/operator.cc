@@ -1007,13 +1007,14 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
-bool OperatorWithKernel::SupportMKLDNN() const {
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-               [](OpKernelMap::const_reference kern_pair) {
-                 return platform::is_cpu_place(kern_pair.first.place_) &&
-                     kern_pair.first.library_type_ == LibraryType::kMKLDNN;
-               });
+bool OperatorWithKernel::SupportsMKLDNN() const {
+  auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+  return std::any_of(op_kernels.begin(), op_kernels.end(),
+                     [](OpKernelMap::const_reference kern_pair) {
+                       return platform::is_cpu_place(kern_pair.first.place_) &&
+                              kern_pair.first.library_type_ ==
+                                  LibraryType::kMKLDNN;
+                     });
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,

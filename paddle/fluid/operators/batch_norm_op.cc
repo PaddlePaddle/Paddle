@@ -158,7 +158,7 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -528,7 +528,7 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
 
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }

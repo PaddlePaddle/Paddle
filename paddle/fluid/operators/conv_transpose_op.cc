@@ -193,7 +193,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }

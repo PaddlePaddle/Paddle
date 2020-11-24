@@ -201,7 +201,7 @@ class LRNOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -341,7 +341,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }

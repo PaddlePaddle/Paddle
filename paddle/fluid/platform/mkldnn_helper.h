@@ -134,11 +134,6 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
   return mkldnn::memory::desc({dims}, data_type, format);
 }
 
-inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
-  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
-}
-
 inline void ClearMKLDNNCache(const platform::Place& place) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {

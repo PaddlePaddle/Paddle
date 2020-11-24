@@ -156,7 +156,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -565,7 +565,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
