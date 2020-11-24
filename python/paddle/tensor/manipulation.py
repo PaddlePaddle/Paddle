@@ -354,9 +354,6 @@ def roll(x, shifts, axis=None, name=None):
 
 def stack(x, axis=0, name=None):
     """
-	:alias_main: paddle.stack
-	:alias: paddle.stack, paddle.tensor.stack, paddle.tensor.manipulation.stack
-
     This OP stacks all the input tensors ``x`` along ``axis`` dimemsion. 
     All tensors must be of the same shape and same dtype.
     
@@ -423,13 +420,12 @@ def stack(x, axis=0, name=None):
 
             import paddle
             
-            paddle.disable_static()
             x1 = paddle.to_tensor([[1.0, 2.0]])
             x2 = paddle.to_tensor([[3.0, 4.0]])
             x3 = paddle.to_tensor([[5.0, 6.0]])
             out = paddle.stack([x1, x2, x3], axis=0)
             print(out.shape)  # [3, 1, 2]
-            print(out.numpy())
+            print(out)
             # [[[1., 2.]],
             #  [[3., 4.]],
             #  [[5., 6.]]]
@@ -459,34 +455,31 @@ def split(x, num_or_sections, axis=0, name=None):
     Example:
         .. code-block:: python
             
-            import numpy as np
             import paddle
             
-            # x is a Tensor which shape is [3, 9, 5]
-            x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_tensor(x_np)
+            # x is a Tensor of shape [3, 9, 5]
+            x = paddle.rand([3, 9, 5])
 
-            out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
-            # out0.shape [3, 3, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 3, 5]
+            out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
+            print(out0.shape)  # [3, 3, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 3, 5]
 
             out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
-            # out0.shape [3, 2, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 4, 5]
+            print(out0.shape)  # [3, 2, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 4, 5]
 
             out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
-            # out0.shape [3, 2, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 4, 5]
+            print(out0.shape)  # [3, 2, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 4, 5]
             
-            # axis is negative, the real axis is (rank(x) + axis) which real
-            # value is 1.
+            # axis is negative, the real axis is (rank(x) + axis)=1
             out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
-            # out0.shape [3, 3, 5]
-            # out1.shape [3, 3, 5]
-            # out2.shape [3, 3, 5]
+            print(out0.shape)  # [3, 3, 5]
+            print(out1.shape)  # [3, 3, 5]
+            print(out2.shape)  # [3, 3, 5]
     """
     return paddle.fluid.layers.split(
         input=x, num_or_sections=num_or_sections, dim=axis, name=name)
@@ -494,9 +487,6 @@ def split(x, num_or_sections, axis=0, name=None):
 
 def squeeze(x, axis=None, name=None):
     """
-	:alias_main: paddle.squeeze
-	:alias: paddle.squeeze, paddle.tensor.squeeze, paddle.tensor.manipulation.squeeze
-
     This OP will squeeze the dimension(s) of size 1 of input tensor x's shape. 
 
     If axis is provided, it will remove the dimension(s) by given axis that of size 1. 
@@ -552,12 +542,10 @@ def squeeze(x, axis=None, name=None):
         .. code-block:: python
 
             import paddle
-
-            paddle.disable_static()
             
             x = paddle.rand([5, 1, 10])
             output = paddle.squeeze(x, axis=1)
-            # output.shape [5, 10]
+            print(output.shape)  # [5, 10]
 
     """
     if axis is None:
@@ -695,9 +683,6 @@ def unique(x,
 
 def unsqueeze(x, axis, name=None):
     """
-	:alias_main: paddle.unsqueeze
-	:alias: paddle.unsqueeze, paddle.tensor.unsqueeze, paddle.tensor.manipulation.unsqueeze
-
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.
     Dimension indices in axis are as seen in the output tensor.
@@ -718,7 +703,6 @@ def unsqueeze(x, axis, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.rand([5, 10])
             print(x.shape)  # [5, 10]
             
@@ -728,7 +712,7 @@ def unsqueeze(x, axis, name=None):
             out2 = paddle.unsqueeze(x, axis=[0, 2]) 
             print(out2.shape)  # [1, 5, 1, 10]
 
-            axis = paddle.fluid.dygraph.to_variable([0, 1, 2])
+            axis = paddle.to_tensor([0, 1, 2])
             out3 = paddle.unsqueeze(x, axis=axis) 
             print(out3.shape)  # [1, 1, 1, 5, 10]
             
