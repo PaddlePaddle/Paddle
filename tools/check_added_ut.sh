@@ -27,12 +27,14 @@ CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 git checkout -b prec_added_ut upstream/${BRANCH}
 mkdir prec_build
 cd prec_build
-$PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >prebuild.log 2>&1
+bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >prebuild.log 2>&1
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/pr-ut
 cd /$PADDLE_ROOT
 grep -F -x -v -f br-ut pr-ut > /$PADDLE_ROOT/added_ut
+echo "New-UT:"
+cat /$PADDLE_ROOT/added_ut
 rm -rf prec_build
 rm /$PADDLE_ROOT/br-ut /$PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 git checkout $CURBRANCH
