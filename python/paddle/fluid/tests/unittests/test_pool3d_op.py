@@ -405,12 +405,38 @@ def create_test_cudnn_fp16_class(parent):
     globals()[cls_name] = TestCUDNNFp16Case
 
 
+def create_test_fp16_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestFp16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = False
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=1e-2)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
+
+
 create_test_cudnn_fp16_class(TestPool3D_Op)
 create_test_cudnn_fp16_class(TestCase1)
 create_test_cudnn_fp16_class(TestCase2)
 create_test_cudnn_fp16_class(TestCase3)
 create_test_cudnn_fp16_class(TestCase4)
 create_test_cudnn_fp16_class(TestCase5)
+
+create_test_fp16_class(TestPool3D_Op)
+create_test_fp16_class(TestCase1)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
 
 
 # ---- test ceil mode ------

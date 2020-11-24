@@ -2102,11 +2102,17 @@ PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>(
-          {"concat", "conv2d", "fusion_gru", "reshape2", "transpose2"});
+          {"concat", "conv2d", "elementwise_add", "elementwise_mul", "fc",
+           "fusion_gru", "gelu", "layer_norm", "matmul", "reshape2", "softmax",
+           "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+           node->Op()->Type() == "reshape2";
+  });
   return op;
 }
 
