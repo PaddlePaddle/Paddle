@@ -321,7 +321,7 @@ class LocalFS(FS):
                 return
             raise FSFileExistsError
 
-        return Path(fs_path).touch(exist_ok=True)
+        return os.sysmtem("touch {}".format(fs_path))
 
     def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
         """
