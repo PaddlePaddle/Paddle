@@ -26,6 +26,7 @@ from ...fluid.layers.nn import _elementwise_op_in_dygraph
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
+from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
 from ...fluid.layers import reshape
 from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
@@ -1182,15 +1183,15 @@ def softmax_cross_entropy(input,
 
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32, float64. Shape is
+        input (Tensor): Input tensor, the data type is float32, float64. Shape is
 	    (N, C), where C is number of classes, and if shape is more than 2D, this
 	    is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Variable): Label tensor, the data type is int64. Shape is (N), where each
+        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each
 	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
 	    (N, D1, D2,..., Dk), k >= 1.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight for each
-            sample relative to each class. It has the same shape as label.
-	    and the data type is float32, float64. Default is ``'None'``.
+        weight (Tensor, optional):a manual rescaling weight given to each class. 
+            If given, has to be a Tensor of size C and the data type is float32, float64. 
+            Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1217,13 +1218,12 @@ def softmax_cross_entropy(input,
             import paddle.nn.functional as F
             import numpy as np
             input_np = np.random.random([2, 4]).astype(np.float64)
-            label_np = np.random.randint(0, 4, size=(2, 1)).astype(np.int64)
+            label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
             weight_np = np.random.random([4]).astype(np.float64) #shape:C
-            weight_ce = weight_np[label_np]  #shape:N,1
             output = F.softmax_cross_entropy(
                 paddle.to_tensor(input_np),
                 paddle.to_tensor(label_np),
-                weight=paddle.to_tensor(weight_ce))
+                weight=paddle.to_tensor(weight_np))
             print(output.numpy()) #[1.30719427]
     """
 
@@ -1232,7 +1232,14 @@ def softmax_cross_entropy(input,
             "The value of 'reduction' in softmax_cross_entropy"
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
+    input_dims = len(list(input.shape))
+    label_dims = len(list(label.shape))
+    if input_dims - 1 != label_dims:
+        raise ValueError(
+            'Expected nput_dims - 1 = label_dims (got nput_dims{}, label_dims{})'.
+            format(input_dims, label_dims))
 
+    label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
         out = softmax_with_cross_entropy(
             input,
