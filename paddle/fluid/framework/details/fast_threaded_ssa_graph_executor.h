@@ -90,8 +90,6 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
       std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
       std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
-
-  void test() { std::cout << "hello" << std::endl; }
 };
 }  // namespace details
 }  // namespace framework

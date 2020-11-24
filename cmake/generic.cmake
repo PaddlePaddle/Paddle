@@ -372,7 +372,6 @@ function(cc_library TARGET_NAME)
       message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
     endif()
   endif(cc_library_SRCS)
-
 endfunction(cc_library)
 
 
@@ -480,7 +479,6 @@ function(nv_library TARGET_NAME)
           list(APPEND nv_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-
     else(nv_library_SRCS)
       if (nv_library_DEPS)
         list(REMOVE_DUPLICATES nv_library_DEPS)
@@ -496,7 +494,6 @@ function(nv_library TARGET_NAME)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif(WIN32)
   endif()
-
 endfunction(nv_library)
 
 function(nv_binary TARGET_NAME)
@@ -515,7 +512,6 @@ function(nv_binary TARGET_NAME)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif(WIN32)
   endif()
-
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
@@ -540,7 +536,6 @@ function(nv_test TARGET_NAME)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
     endif(WIN32)
   endif()
-
 endfunction(nv_test)
 
 function(hip_library TARGET_NAME)
@@ -590,7 +585,6 @@ function(hip_library TARGET_NAME)
       endif()
     endif(hip_library_SRCS)
   endif()
-
 endfunction(hip_library)
 
 function(hip_binary TARGET_NAME)
