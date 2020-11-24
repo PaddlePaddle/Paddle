@@ -397,5 +397,43 @@ class TestReshapeOpError(unittest.TestCase):
         self._test_errors()
 
 
+class API_TestDygraphReshape(unittest.TestCase):
+    def test_out(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("int32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_uint8(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("uint8")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_float32(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("float32")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+    def test_out_float16(self):
+        paddle.disable_static()
+        input_1 = np.random.random([5, 1, 10]).astype("float16")
+        input = paddle.to_tensor(input_1)
+        output = paddle.reshape(x=input, shape=[5, 10])
+        out_np = output.numpy()
+        expected_out = np.reshape(input_1, newshape=[5, 10])
+        self.assertTrue(np.allclose(expected_out, out_np))
+
+
 if __name__ == "__main__":
     unittest.main()
