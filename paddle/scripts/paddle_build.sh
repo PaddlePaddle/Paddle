@@ -1609,6 +1609,10 @@ function example() {
     fi
 }
 
+function test_op_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -1783,6 +1787,9 @@ function main() {
         ;;
       api_example)
         example
+        ;;
+      test_op_benchmark)
+        test_op_benchmark
         ;;
       *)
         print_usage
