@@ -151,7 +151,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for op_idx in reversed(range(last_backward_op_idx)):
             op = block.ops[op_idx]
             assert (int(op.attr('op_role')) != int(OpRole.Optimize))
-            if segment._param_mem >= (self._fuse_broadcast_MB * 1024.0):
+            if segment._param_mem >= self._fuse_broadcast_MB:
                 segment._start_idx = op_idx + 1
                 self._segments.insert(0, segment)
                 segment = ProgramSegment(block)

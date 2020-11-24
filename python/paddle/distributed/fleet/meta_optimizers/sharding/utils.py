@@ -265,11 +265,11 @@ def get_var_size(param):
     input:
         - param: var
     return:
-        var size in Kilo Bytes
+        var size in MB
     """
     assert -1 not in param.shape
     return reduce(lambda x, y: x * y,
-                  param.shape) * DtypeToSize[param.dtype] / 1024.0
+                  param.shape) * DtypeToSize[param.dtype] / 1024.0 / 1024.0
 
 
 def insert_scale_loss_grad_ops(block, scale=1.0):
@@ -299,10 +299,12 @@ def comm_analyse(main_program):
     for op in block.ops:
         if op.type == "c_broadcast":
             var_name = op.desc.input_arg_names()[0]
-            broadcast_vars[var_name] = get_var_size(block.var(var_name))
+            # convert MB to KB
+            broadcast_vars[var_name] = get_var_size(block.var(
+                var_name)) * 1024.0
         elif op.type == "c_allreduce_sum":
             var_name = op.desc.input_arg_names()[0]
-            reduce_vars[var_name] = get_var_size(block.var(var_name))
+            reduce_vars[var_name] = get_var_size(block.var(var_name)) * 1024.0
 
     varsize_count = {}
     gap = 1
