@@ -265,7 +265,7 @@ def get_var_size(param):
     input:
         - param: var
     return:
-        var size in Bytes
+        var size in Kilo Bytes
     """
     assert -1 not in param.shape
     return reduce(lambda x, y: x * y,
