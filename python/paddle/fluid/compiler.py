@@ -280,9 +280,10 @@ class CompiledProgram(object):
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        if isinstance(places, list):
+        if isinstance(places, list) or isinstance(places, tuple):
             self._places = _convert_places(places)
-        self._places = _get_paddle_place(places)
+        else:
+            self._places = _get_paddle_place(places)
 
         if _has_backward_op(self._graph):
             assert self._loss_name is not None, "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
