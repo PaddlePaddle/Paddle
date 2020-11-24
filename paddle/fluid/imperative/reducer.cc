@@ -58,6 +58,8 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       }
     }
   }
+
+#if defined(PADDLE_WITH_NCCL)
   compute_stream_ = static_cast<platform::CUDADeviceContext *>(
                         platform::DeviceContextPool::Instance().Get(place_))
                         ->stream();
@@ -73,14 +75,17 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   std::call_once(once_flag_, []() {
     std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
   });
+#endif
 }
 
+#if defined(PADDLE_WITH_NCCL)
 void Reducer::ReleaseReducer() {
   for (auto &event : events_) {
     event.reset();
   }
   comm_enent_.reset();
 }
+#endif
 
 void Reducer::InitializeGroups(
     const std::vector<std::vector<size_t>> &group_indices) {
@@ -175,6 +180,7 @@ void Reducer::PrepareForBackward() {
 
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
                           const VariableIndex &var_index) {
+#if defined(PADDLE_WITH_NCCL)
   auto group_index = var_index.group_index;
   auto &group = groups_[group_index];
 
@@ -244,6 +250,9 @@ void Reducer::FinalizeBackward() {
       cudaStreamWaitEvent(compute_stream_, comm_enent_.get(), 0));
   VLOG(3) << "In the batch, Reducer is finished...";
 }
+#else
+}
+#endif
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,

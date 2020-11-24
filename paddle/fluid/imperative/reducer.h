@@ -19,18 +19,21 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/memory/memory.h"
+
+#if defined(PADDLE_WITH_NCCL)
+#include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-
 #include "paddle/fluid/platform/cuda_resource_pool.h"
+#endif
 
 namespace paddle {
 namespace imperative {
 
+#if defined(PADDLE_WITH_NCCL)
 template <typename T>
 void ConcatTensorsForAllReduce(
     const platform::CUDADeviceContext& context,
@@ -66,6 +69,7 @@ void SplitTensorsForAllReduce(const platform::CUDADeviceContext& context,
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 }
+#endif
 
 struct Group {
   // Here, we use dense_contents & sparse_contents to
@@ -89,7 +93,7 @@ struct Group {
 
   // external message of group
   framework::proto::VarType::Type dtype;
-
+#if defined(PADDLE_WITH_NCCL)
   // context is used to select the stream for concat
   void ConcatTensors(const platform::CUDADeviceContext& context) {
     switch (dtype) {
@@ -135,6 +139,7 @@ struct Group {
             framework::DataTypeToString(dtype)));
     }
   }
+#endif
 };
 
 struct VariableIndex {
@@ -160,12 +165,16 @@ class Reducer {
   void AddDistHook(VariableWrapper* var_warpper,
                    const VariableIndex& var_index);
 
+#if defined(PADDLE_WITH_NCCL)
   void MarkVariableReady(const VariableIndex& var_index,
                          VariableWrapper* var_warpper);
 
   void MarkGroupReady(size_t group_index);
 
   void FinalizeBackward();
+
+  void ReleaseReducer();
+#endif
 
   // Reducer Singleton
   static std::shared_ptr<Reducer> SetInstance(
@@ -187,8 +196,6 @@ class Reducer {
     return s_instance_;
   }
 
-  void ReleaseReducer();
-
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
@@ -200,10 +207,12 @@ class Reducer {
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;
 
+#if defined(PADDLE_WITH_NCCL)
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
   std::shared_ptr<platform::CudaEventObject> comm_enent_;
   cudaStream_t compute_stream_;
   cudaStream_t comm_stream_;
+#endif
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(

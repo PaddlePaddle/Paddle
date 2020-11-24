@@ -51,6 +51,7 @@ struct ParallelStrategy {
   int local_rank_{0};
   std::vector<std::string> trainer_endpoints_{};
   std::string current_endpoint_{""};
+  // TODO(shenliang03): support multi stream communication
   int nrings_{1};
 };
 
@@ -69,8 +70,10 @@ class ParallelContext {
                                  bool use_calc_stream = false) = 0;
   virtual void SyncCalcStream() = 0;
   virtual void SyncCommStream(int ring_id = 0) = 0;
+#if defined(PADDLE_WITH_NCCL)
   virtual paddle::platform::CUDADeviceContext* GetDeviceContext(
       int ring_id) = 0;
+#endif
 
  protected:
   ParallelStrategy strategy_;

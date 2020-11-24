@@ -884,6 +884,7 @@ class Model(object):
 
         # init backend
         if fluid.in_dygraph_mode():
+            fluid.dygraph.parallel.prepare_context()
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -1268,7 +1269,6 @@ class Model(object):
                     fluid.default_main_program().random_seed = main_prog_seed
                     fluid.default_startup_program(
                     ).random_seed = startup_prog_seed
-                    fluid.dygraph.parallel.prepare_context()
                 else:
                     prepare_distributed_context(self._place)
                 _parallel_context_initialized = True

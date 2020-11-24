@@ -471,7 +471,8 @@ class DataParallel(layers.Layer):
             [int(small_group_size * 1024 * 1024), self.group_size_limits])
 
         assert parallel_helper.__parallel_ctx__clz__ is not None, \
-            "ParallelContext must be initialized before."
+            "ParallelContext must be initialized before. Maybe you should use init_parallel_env() before" \
+            "constructing the DataParallel."
 
         self._reducer = core.Reducer(trainable_parameters,
                                      list(reversed(self.group_indices)),
