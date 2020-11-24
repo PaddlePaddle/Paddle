@@ -566,12 +566,12 @@ def _construct_params_and_buffers(model_path,
 
 class TranslatedLayer(layers.Layer):
     """
-    TranslatedLayer is a imperative Layer for holding the model loaded by 
-    :ref:`api_imperative_jit_load` . It can be used like a general Layer 
-    object in eval or train mode.
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model 
+    loaded by :ref:`api_paddle_jit_load` . It can be used like a 
+    general Layer object in eval or train mode.
     
     .. note:
-        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_imperative_jit_load` .
+        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
     Examples:
         .. code-block:: python
@@ -621,10 +621,6 @@ class TranslatedLayer(layers.Layer):
                         print("Epoch {} batch {}: loss = {}".format(
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
-            # enable dygraph mode
-            place = paddle.CPUPlace()
-            paddle.disable_static(place) 
-
             # 1. train & save model.
 
             # create network
@@ -635,7 +631,6 @@ class TranslatedLayer(layers.Layer):
             # create data loader
             dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
             loader = paddle.io.DataLoader(dataset,
-                places=place,
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
@@ -896,10 +891,6 @@ class TranslatedLayer(layers.Layer):
                             print("Epoch {} batch {}: loss = {}".format(
                                 epoch_id, batch_id, np.mean(loss.numpy())))
 
-                # enable dygraph mode
-                place = paddle.CPUPlace()
-                paddle.disable_static(place) 
-
                 # create network
                 layer = LinearNet()
                 loss_fn = nn.CrossEntropyLoss()
@@ -908,7 +899,6 @@ class TranslatedLayer(layers.Layer):
                 # create data loader
                 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
                 loader = paddle.io.DataLoader(dataset,
-                    places=place,
                     batch_size=BATCH_SIZE,
                     shuffle=True,
                     drop_last=True,

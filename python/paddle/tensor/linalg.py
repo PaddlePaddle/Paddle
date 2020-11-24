@@ -453,9 +453,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
 
 def dist(x, y, p=2):
-    """
-	:alias_main: paddle.dist
-	:alias: paddle.dist,paddle.tensor.dist,paddle.tensor.linalg.dist
+    r"""
 
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
@@ -510,34 +508,32 @@ def dist(x, y, p=2):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
-        y (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
 
     Returns:
-        Variable: Tensor that is the p-norm of (x - y).
+        Tensor: Tensor that is the p-norm of (x - y).
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
-                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
-                out = paddle.dist(x, y, 0)
-                print(out.numpy()) # out = [1.]
+            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
+            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            out = paddle.dist(x, y, 0)
+            print(out) # out = [1.]
 
-                out = paddle.dist(x, y, 2)
-                print(out.numpy()) # out = [2.]
+            out = paddle.dist(x, y, 2)
+            print(out) # out = [2.]
 
-                out = paddle.dist(x, y, float("inf"))
-                print(out.numpy()) # out = [2.]
+            out = paddle.dist(x, y, float("inf"))
+            print(out) # out = [2.]
 
-                out = paddle.dist(x, y, float("-inf"))
-                print(out.numpy()) # out = [0.]
+            out = paddle.dist(x, y, float("-inf"))
+            print(out) # out = [0.]
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
@@ -744,7 +740,7 @@ def cross(x, y, axis=None, name=None):
 
 
 def cholesky(x, upper=False, name=None):
-    """
+    r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
