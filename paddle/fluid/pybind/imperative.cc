@@ -69,12 +69,9 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
-  } else if (py::isinstance<platform::Place>(place_obj)) {
-    return place_obj.cast<platform::Place>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
 }
 
@@ -643,32 +640,24 @@ void BindImperative(py::module *m_ptr) {
              return TensorToPyArray(tensor, true);
            },
            R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
-        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
+        Returns a numpy array shows the value of current Tensor.
 
         Returns:
-            ndarray: The numpy value of current Variable.
+            ndarray: The numpy value of current Tensor.
 
         Returns type:
-            ndarray: dtype is same as current Variable
+            ndarray: dtype is same as current Tensor
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                import paddle
                 import numpy as np
-
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    print(x.numpy())
-
+                linear = paddle.nn.Linear(32, 64)
+                data = paddle.to_tensor(data)
+                x = linear(data)
+                print(x.numpy())
        )DOC")
       .def("detach",
            [](const imperative::VarBase &self) {
@@ -994,6 +983,35 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+      .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
+                             R"DOC(
+      Whether a Tensor is leaf Tensor.
+
+      For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor. 
+      
+      For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
+
+      Returns:
+          bool: Whether a Tensor is leaf Tensor.
+
+      Examples:
+          .. code-block:: python
+
+              import paddle
+
+              x = paddle.to_tensor(1.)
+              print(x.is_leaf) # True
+
+              x = paddle.to_tensor(1., stop_gradient=True)
+              y = x + 1
+              print(x.is_leaf) # True
+              print(y.is_leaf) # True
+
+              x = paddle.to_tensor(1., stop_gradient=False)
+              y = x + 1
+              print(x.is_leaf) # True
+              print(y.is_leaf) # False
+       )DOC")
       .def_property_readonly(
           "place", [](imperative::VarBase &self) { return self.Place(); },
           py::return_value_policy::copy)

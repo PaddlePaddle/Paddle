@@ -480,6 +480,8 @@ def do_train(args, to_static):
                 avg_cost.backward()
                 optimizer.minimize(avg_cost)
                 model.clear_gradients()
+                for param in model.parameters():
+                    print(param.grad)
                 end_time = time.time()
 
                 if step % args.print_steps == 0:
@@ -523,6 +525,8 @@ class TestLACModel(unittest.TestCase):
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)
+        print(dy_out)
+        print(st_out)
         self.assertTrue(
             np.allclose(dy_out, st_out),
             msg="dygraph output:\n{},\nstatic output:\n {}.".format(dy_out,

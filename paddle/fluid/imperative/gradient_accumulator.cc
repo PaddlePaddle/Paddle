@@ -35,11 +35,12 @@ namespace imperative {
 static void MoveOrCopyVar(framework::Variable* dst, framework::Variable* src,
                           bool force_copy) {
   if (!force_copy) {
+    VLOG(6) << "Just Move Variable when accumulating gradients with this graph";
     *dst = std::move(*src);
     return;
   }
 
-  VLOG(10) << "Copy occurs when accumulating gradients";
+  VLOG(10) << "Copy occurs when accumulating gradients with this graph";
   if (src->IsType<framework::LoDTensor>()) {
     auto& src_tensor = src->Get<framework::LoDTensor>();
     if (!dst->IsType<framework::LoDTensor>()) {
@@ -362,6 +363,34 @@ static platform::Place GetPlaceOfVar(
   return place;
 }
 
+void GradientAccumulator::AccumulateGrad() {
+  if (HasPreviousVar()) {
+    VLOG(8) << "Variable Add for " << var_->Name()
+            << " when accumulating gradients with previous graph";
+    auto& src = var_->Var();
+    std::shared_ptr<VariableWrapper> previous_var = previous_var_.lock();
+    auto* dst = previous_var->MutableVar();
+    PADDLE_ENFORCE_EQ(src.Type(), dst->Type(),
+                      platform::errors::InvalidArgument(
+                          "(%s) should have the same data type with (%s).",
+                          previous_var->Name(), var_->Name()));
+    if (dst->IsType<framework::LoDTensor>()) {
+      TensorAdd(src, dst);
+    } else if (dst->IsType<framework::SelectedRows>()) {
+      auto temp = SelectedRowsMerge(src, *dst);
+      *dst = std::move(*(temp->MutableVar()));
+    } else {
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Only support LoDTensor and SelectedRows for gradient var"));
+    }
+    VLOG(3) << previous_var_.lock()->Name()
+            << previous_var_.lock()->Var().Get<framework::LoDTensor>();
+    VLOG(3) << var_->Name() << var_->Var().Get<framework::LoDTensor>();
+    var_ = previous_var_.lock();
+    previous_var_.reset();
+  }
+}
+
 void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
                                    size_t trace_id, bool unchange_input) {
   /**
@@ -374,12 +403,13 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
 
   auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVar(var);
+  VLOG(6) << "var_->name() " << var_->Name() << "var_->OverridedStopGradient() "
+          << var_->OverridedStopGradient();
   if (!var_->OverridedStopGradient()) {
-    VLOG(3) << "Sum Gradient for: " << var_->Name();
-    if (cur_cnt_ == 0) {
+    if (CurCnt() == 0) {
       MoveOrCopyVar(dst_var, var->MutableVar(), unchange_input);
     } else {
-      VariableWrapperAdd(var, var_, unchange_input);
+      VariableWrapperAdd(var, var_.get(), unchange_input);
     }
   } else {
     if (!var_->Var().IsInitialized() ||
@@ -408,7 +438,6 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
     var_->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 
-  // Increase count & call post hooks
   IncreaseCurCnt();
 }
 
@@ -418,8 +447,13 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
   platform::Place place = GetPlaceOfVar(var);
   if (!var_->OverridedStopGradient()) {
     if (ref_cnt_ == 1) {
-      MoveOrCopyVar(dst_var, var->MutableVar(),
-                    unchange_input || var->HasGradNode());
+      if (CurCnt() == 0) {
+        MoveOrCopyVar(dst_var, var->MutableVar(),
+                      unchange_input || var->HasGradNode());
+      } else {
+        VariableWrapperAdd(var, var_.get(),
+                           unchange_input || var->HasGradNode());
+      }
     } else {
       if (tmp_grad_vars_.empty()) {
         tmp_grad_vars_.reserve(ref_cnt_);
@@ -444,22 +478,22 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
 
 #ifdef PADDLE_WITH_CUDA
       if (paddle::platform::is_gpu_place(place)) {
-        bool dst_varbase_is_initialized = false;
         // accumulate selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
           if (!var_info.var->Var().IsType<framework::SelectedRows>()) {
             continue;
           }
 
-          if (!dst_varbase_is_initialized) {
-            dst_varbase_is_initialized = true;
+          if (CurCnt() == 0) {
             MoveOrCopyVar(dst_var, var_info.var->MutableVar(),
                           var_info.unchange_input);
           } else {
-            VariableWrapperAdd(var_info.var, var_, var_info.unchange_input);
+            VariableWrapperAdd(var_info.var, var_.get(),
+                               var_info.unchange_input);
           }
 
           var_info.var = nullptr;
+          IncreaseCurCnt();
         }
 
         for (auto& var_info : tmp_grad_vars_) {
@@ -471,24 +505,40 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
                             true, platform::errors::PermissionDenied(
                                       "Gradient var must be LoDTensor"));
 
-          if (!dst_varbase_is_initialized) {
-            dst_varbase_is_initialized = true;
+          if (CurCnt() == 0) {
             MoveOrCopyVar(dst_var, var_info.var->MutableVar(),
                           var_info.unchange_input);
           } else {
-            VariableWrapperAdd(var_info.var, var_, var_info.unchange_input);
+            VLOG(3) << "Sum Gradient for: Initialized " << var_->Name()
+                    << " --var->Name()-- " << var->Name();
+            VariableWrapperAdd(var_info.var, var_.get(),
+                               var_info.unchange_input);
           }
 
           var_info.var = nullptr;
+          IncreaseCurCnt();
         }
       } else {
 #endif
-        MoveOrCopyVar(dst_var, tmp_grad_vars_[0].var->MutableVar(),
-                      tmp_grad_vars_[0].unchange_input);
-        for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
-          VariableWrapperAdd(tmp_grad_vars_[i].var, var_,
-                             tmp_grad_vars_[i].unchange_input);
-          tmp_grad_vars_[i].var = nullptr;
+        for (auto& var_info : tmp_grad_vars_) {
+          if (!var_info.var) {
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(
+              var_info.var->Var().IsType<framework::LoDTensor>() ||
+                  var_info.var->Var().IsType<framework::SelectedRows>(),
+              true, platform::errors::PermissionDenied("The type of Gradient "
+                                                       "var must be LoDTensor "
+                                                       "or SelectedRows"));
+          if (CurCnt() == 0) {
+            MoveOrCopyVar(dst_var, var_info.var->MutableVar(),
+                          var_info.unchange_input);
+          } else {
+            VariableWrapperAdd(var_info.var, var_.get(),
+                               var_info.unchange_input);
+          }
+          var_info.var = nullptr;
+          IncreaseCurCnt();
         }
 #ifdef PADDLE_WITH_CUDA
       }
@@ -521,11 +571,6 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
     var_->SetType(framework::proto::VarType::LOD_TENSOR);
   } else if (var_->Var().IsType<framework::SelectedRows>()) {
     var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-  }
-
-  // call post hooks
-  if (HasPostHooks()) {
-    CallBackwardPostHooks();
   }
 }
 

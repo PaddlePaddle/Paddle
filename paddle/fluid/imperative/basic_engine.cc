@@ -38,7 +38,19 @@ namespace imperative {
 void BasicEngine::Init(VarBase* var, bool retain_graph) {
   retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
-  var->GradVarBase()->ClearGradNode();
+  PADDLE_ENFORCE_EQ(
+      var->GradVarBase()->GraphIsFree(), false,
+      platform::errors::Unavailable(
+          "Trying to backward through the same graph a second time, but this "
+          "graph have already been freed. Please specify retain_graph=True "
+          "when calling backward the first time."));
+
+  if (!retain_graph) {
+    VLOG(5) << "Clear the auto-grad graph from grad var " << var->Name()
+            << " because of retain_graph=False when calling backward";
+    var->GradVarBase()->SetGraphIsFree(true);
+    var->GradVarBase()->ClearGradNode();
+  }
 
   if (init_node_ == nullptr || var->OverridedStopGradient()) {
     VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
@@ -47,7 +59,7 @@ void BasicEngine::Init(VarBase* var, bool retain_graph) {
     return;
   }
 
-  VLOG(3) << "start backward";
+  VLOG(3) << "Init first node of backward";
 
   PADDLE_ENFORCE_EQ(
       var->HasGradVar(), true,
@@ -106,13 +118,17 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
       auto& accumulator = accumulators_[var.get()];
       if (!accumulator) {
         if (FLAGS_sort_sum_gradient) {
-          accumulator.reset(new SortedGradientAccumulator(var.get()));
+          accumulator.reset(new SortedGradientAccumulator(var));
         } else {
-          accumulator.reset(new EagerGradientAccumulator(var.get()));
+          accumulator.reset(new EagerGradientAccumulator(var));
         }
       }
 
       accumulator->IncreaseRefCnt();
+
+      VLOG(3) << "Prepare acccumulator for grad variable " << var->Name() << "("
+              << var.get() << ")  with reference count "
+              << accumulator->RefCnt();
 
       if (var->HasLeafHooks()) {
         VLOG(3) << "Grad variable wrapper (" << var->Name()
@@ -123,10 +139,6 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
                               "Gradientaccumulator."));
         accumulator->SetPostHooks(var->GetLeafHooks());
       }
-
-      VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
-              << var.get() << ")  with reference count "
-              << accumulator->RefCnt();
     }
   }
 }
@@ -195,8 +207,9 @@ void BasicEngine::Execute() {
       auto& bwd_outs = cur_op.GetOutsMap();
 
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
-      // 1. construct the output map 2. replace the element in the map
-      // A var may be coresponding to several grad var in one op
+      // 1. construct the temp output map, avoid to disrupt graph
+      // 2. replace the element in the map by temp var, because a
+      // var may be coresponding to several grad var in one op
       for (auto& pair : tmp_outs) {
         if (!pair.second.IsGrad()) {
           continue;
@@ -213,40 +226,59 @@ void BasicEngine::Execute() {
               platform::errors::NotFound("Cannot find gradient of variable %s",
                                          var->Name()));
 
-          if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
-            no_need_run_accumulators_.emplace_back(iter->second.get());
-            continue;
+          if (!var->HasGradNode() || var->OverridedStopGradient()) {
+            out_accumulators_.emplace_back(iter->second.get());
           }
 
-          auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
-          tmp_var->SetType(var->Type());
-          var = tmp_var;
-          need_accu_var_list_.emplace_back(iter->second.get(), var);
+          if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
+            auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+            tmp_var->SetType(var->Type());
+            var = tmp_var;
+            need_accu_var_list_.emplace_back(iter->second.get(), var);
+            VLOG(10) << "create temporary var of " << var->Name()
+                     << " for gradient accumulation! CurCnt"
+                     << iter->second->CurCnt();
+          } else if (iter->second->HasPreviousVar()) {
+            var = iter->second->Var();
+          }
         }
       }
 
       {
-        VLOG(3) << "Start to execute grad op " << cur_op.Type();
+        VLOG(3) << "Start to execute grad op " << bwd_ins.size()
+                << cur_op.Type();
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
       }
 
-      // Step 2: Sum Gradient & Call Accumulator Hooks
-      for (auto* accumulator : no_need_run_accumulators_) {
+      // Step 2: Sum Gradient of This graph
+      for (auto& pair : need_accu_var_list_) {
+        pair.first->Add(std::move(pair.second), cur_op.id());
+        VLOG(3) << pair.first->Var()->Name()
+                << pair.first->Var()->Var().Get<framework::LoDTensor>();
+      }
+
+      // Step 3: Call Hooks && Sum Gradient with Pre-Graph && Call BackwardHooks
+      for (auto* accumulator : out_accumulators_) {
+        if (!accumulator->AddGradCompleted()) {
+          continue;
+        }
+        // 1. Call Hooks
+
+        // 2. Sum Gradient with Previous Graph
+        accumulator->AccumulateGrad();
+
+        // 3. Call backward Hooks
         if (accumulator->HasPostHooks()) {
           accumulator->CallBackwardPostHooks();
         }
       }
 
-      for (auto& pair : need_accu_var_list_) {
-        pair.first->Add(std::move(pair.second), cur_op.id());
-      }
-
       need_accu_var_list_.clear();
-      no_need_run_accumulators_.clear();
+      out_accumulators_.clear();
 
-      VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
       if (!retain_graph_) {
+        VLOG(5) << "Remove op after op " << cur_op.Type() << " runs";
         cur_op.ClearBackwardTrace();
       }
     }
@@ -276,7 +308,7 @@ void BasicEngine::Clear() {
   node_deps_.clear();
   accumulators_.clear();
   need_accu_var_list_.clear();
-  no_need_run_accumulators_.clear();
+  out_accumulators_.clear();
 }
 
 }  // namespace imperative

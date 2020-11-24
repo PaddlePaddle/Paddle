@@ -146,6 +146,8 @@ class VarBase {
 
   bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
 
+  bool IsLeaf() const { return var_->IsLeaf(); }
+
   void InnerSetOverridedStopGradient(bool stop_gradient) {
     if (var_->InnerOverridedStopGradient() == -1) {
       var_->InnerSetOverridedStopGradient(stop_gradient);
@@ -182,6 +184,10 @@ class VarBase {
 
   std::string GradVarName() { return framework::GradVarName(Name()); }
 
+  void SetGraphIsFree(bool free) { graph_is_free_ = free; }
+
+  const bool& GraphIsFree() const { return graph_is_free_; }
+
   void SetType(framework::proto::VarType::Type type) { var_->SetType(type); }
 
   framework::proto::VarType::Type Type() const { return var_->Type(); }
@@ -217,6 +223,8 @@ class VarBase {
    * or other things like that.
    */
   std::shared_ptr<GradOpNode> grad_node_;
+
+  bool graph_is_free_ = false;
 
   mutable size_t copied_counter_ = 0;
 

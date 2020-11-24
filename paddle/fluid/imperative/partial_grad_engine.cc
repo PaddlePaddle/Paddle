@@ -328,10 +328,10 @@ class GradientAccumulationInfo {
         grad_var_->SetOverridedStopGradient(false);
         if (sort_gradient_) {
           accumulator_.reset(
-              new SortedGradientAccumulator(grad_var_->SharedVar().get()));
+              new SortedGradientAccumulator(grad_var_->SharedVar()));
         } else {
           accumulator_.reset(
-              new EagerGradientAccumulator(grad_var_->SharedVar().get()));
+              new EagerGradientAccumulator(grad_var_->SharedVar()));
         }
         accumulator_->IncreaseRefCnt();
       }

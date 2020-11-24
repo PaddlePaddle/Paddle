@@ -230,10 +230,10 @@ static std::unique_ptr<GradientAccumulator> CreateAccumulator(
     const std::shared_ptr<VariableWrapper>& var, bool sort_gradient) {
   if (sort_gradient) {
     return std::unique_ptr<GradientAccumulator>(
-        new SortedGradientAccumulator(var.get()));
+        new SortedGradientAccumulator(var));
   } else {
     return std::unique_ptr<GradientAccumulator>(
-        new EagerGradientAccumulator(var.get()));
+        new EagerGradientAccumulator(var));
   }
 }
 
