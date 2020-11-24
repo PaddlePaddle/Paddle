@@ -58,10 +58,14 @@ class PRChecker(object):
         with open('file_ut.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
-            if f not in file_ut_map:
-                return ''
             if f.endswith('.h') or f.endswith('.cu'):
                 return ''
+            if f not in file_ut_map:
+                if f.find('test_') != -1 or f.find('_test') != -1 or f.find(
+                        'get_pr_ut') != -1:
+                    continue
+                else:
+                    return ''
             else:
                 ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
