@@ -93,8 +93,10 @@ paddlecloud environment.".format(args_node_ips, node_ips))
                                selected_gpus)
     return cluster, cluster.pods[node_rank]
 
+
 def _get_trainers_num():
     return int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+
 
 def get_cluster_and_pod(args):
     # parse arguments, used for cloud-single-machine and local
@@ -107,9 +109,8 @@ def get_cluster_and_pod(args):
     pod = None
 
     if args.use_paddlecloud and trainers_num != 1:
-        cluster, pod = get_cloud_cluster(
-            args.cluster_node_ips, args.node_ip, args.started_port,
-            selected_gpus)
+        cluster, pod = get_cloud_cluster(args.cluster_node_ips, args.node_ip,
+                                         args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
