@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/momentum_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -61,6 +62,12 @@ void MomentumOpMaker::Make() {
                 "(bool, default false) "
                 "Use Nesterov Momentum")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "regularization_method",
+      "(string) regularization_method, right now only support l2decay or none")
+      .SetDefault("");
+  AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
+      .SetDefault(0);
   AddComment(R"DOC(
 Momentum Optimizer.
 
@@ -90,3 +97,16 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(
     momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(momentum)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade momentum add 2 attributes [regularization_method, regularization_coeff].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("regularization_method",
+                     "(string) regularization_method, right now only support "
+                     "l2decay or none",
+                     std::string(""))
+            .NewAttr("regularization_coeff", "(float) regularization_coeff",
+                     0.0f));

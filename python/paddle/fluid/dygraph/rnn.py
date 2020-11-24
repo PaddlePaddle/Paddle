@@ -20,7 +20,7 @@ __all__ = ['LSTMCell', 'GRUCell']
 
 
 class LSTMCell(Layer):
-    """
+    r"""
     LSTMCell implementation using basic operators.
     There are two LSTMCell version, the default one is compatible with CUDNN LSTM implementation.
     The algorithm can be described as the equations below.
@@ -236,7 +236,7 @@ class LSTMCell(Layer):
 
 
 class GRUCell(Layer):
-    """
+    r"""
     GRU implementation using basic operators.
     There are two GRUCell version, the default one is compatible with CUDNN GRU implementation.
     The algorithm can be described as the equations below.

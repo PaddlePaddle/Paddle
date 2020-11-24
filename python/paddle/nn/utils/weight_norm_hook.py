@@ -153,7 +153,7 @@ class WeightNorm(object):
 
 
 def weight_norm(layer, name='weight', dim=0):
-    """
+    r"""
     This weight_norm layer applies weight normalization to a parameter according to the 
     following formula:
 

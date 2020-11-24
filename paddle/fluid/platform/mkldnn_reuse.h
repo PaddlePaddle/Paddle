@@ -51,6 +51,7 @@ class MKLDNNHandlerT {
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
+    key_ += dev_ctx.GetKeySuffix();
   }
 
   std::shared_ptr<TForward> AcquireForwardPrimitive() {
@@ -191,6 +192,12 @@ class MKLDNNHandlerT {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      const std::string& suffix) {
+    return std::static_pointer_cast<mkldnn::memory>(
+        dev_ctx_.GetBlob(key_ + suffix));
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::desc md, void* ptr, const std::string& suffix) {
     const auto local_key = key_ + suffix;
     auto mem_p =
@@ -310,6 +317,7 @@ class MKLDNNHandler {
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
+    key_ += dev_ctx.GetKeySuffix();
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(

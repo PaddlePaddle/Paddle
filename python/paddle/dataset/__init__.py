@@ -24,7 +24,6 @@ import paddle.dataset.conll05
 import paddle.dataset.uci_housing
 import paddle.dataset.wmt14
 import paddle.dataset.wmt16
-import paddle.dataset.mq2007
 import paddle.dataset.flowers
 import paddle.dataset.voc2012
 import paddle.dataset.image
