@@ -59,8 +59,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
-    auto target_rank = target_tensor->dims().size();
+    auto target_shape = context.Attr<std::vector<int>>("target_shape");
+    auto target_rank = target_shape.size();
     PADDLE_ENFORCE_GE(target_rank, rank,
                       platform::errors::InvalidArgument(
                           "The rank (%d) of the input 'target_tensor' for "
@@ -85,9 +85,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
   void ExpandAs(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<Tensor>("X");
     auto in_dims = in0->dims();
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
+    auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto vec_in_dims = framework::vectorize<int>(in_dims);
-    auto target_shape = framework::vectorize<int>(target_tensor->dims());
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> repeat_times(vec_in_dims.size());
@@ -132,9 +131,8 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
+    auto target_shape = framework::vectorize<int>(target_tensor->dims());
     auto x_dims = in0->dims();
-    auto target_shape = target_tensor->dims();
     auto vec_in_dims = framework::vectorize<int>(x_dims);
     auto diff = target_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
