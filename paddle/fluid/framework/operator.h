@@ -494,6 +494,8 @@ class OperatorWithKernel : public OperatorBase {
   }
   bool SupportsMKLDNN() const override;
 
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) const;
+
   virtual void InferShape(InferShapeContext* ctx) const = 0;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,

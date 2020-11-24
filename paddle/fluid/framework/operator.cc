@@ -1017,6 +1017,13 @@ bool OperatorWithKernel::SupportsMKLDNN() const {
                      });
 }
 
+bool OperatorWithKernel::CanMKLDNNBeUsed(
+    const framework::ExecutionContext& ctx) const {
+  bool use_mkldnn_ctx =
+      ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
+  return use_mkldnn_ctx && this->SupportsMKLDNN();
+}
+
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {

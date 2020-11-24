@@ -659,7 +659,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     using mkldnn::memory;
-    if (ctx.Attr<bool>("use_mkldnn") && SupportsMKLDNN()) {
+    if (this->CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

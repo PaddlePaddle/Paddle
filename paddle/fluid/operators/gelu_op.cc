@@ -49,8 +49,7 @@ class GeluOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && ctx.Attr<bool>("use_mkldnn") &&
-        SupportsMKLDNN()) {
+        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -90,8 +89,7 @@ class GeluGradOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     auto it = this->Attrs().find("use_mkldnn");
     if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && ctx.Attr<bool>("use_mkldnn") &&
-        SupportsMKLDNN()) {
+        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
