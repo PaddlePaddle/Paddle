@@ -62,7 +62,8 @@ class PRChecker(object):
             if f.endswith('.h') or f.endswith('.cu'):
                 return ''
             if f not in file_ut_map:
-                if f.find('test_') != -1 or f.find('_test') != -1:
+                if f.find('test_') != -1 or f.find('_test') != -1 or f.find(
+                        'get_pr_ut') != -1:
                     check_added_ut = True
                     continue
                 else:
