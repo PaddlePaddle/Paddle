@@ -5394,7 +5394,6 @@ def default_startup_program():
     return _startup_program_
 
 
-@static_only
 def default_main_program():
     """
     This API can be used to get ``default main program`` which store the 
