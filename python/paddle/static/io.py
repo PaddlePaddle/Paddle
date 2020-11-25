@@ -18,8 +18,8 @@ import errno
 import inspect
 import logging
 import os
-import six
 import warnings
+import six
 import numpy as np
 
 import paddle
@@ -71,7 +71,8 @@ def _check_vars(name, var_list):
     if not isinstance(var_list, list):
         var_list = [var_list]
     if not var_list or not all([isinstance(var, Variable) for var in var_list]):
-        raise ValueError("'{}' should be a Variable or a list of Variable.".format(name))
+        raise ValueError(
+            "'{}' should be a Variable or a list of Variable.".format(name))
 
 
 def _normalize_path_prefix(path_prefix):
@@ -142,7 +143,8 @@ def _normalize_program(program, feed_vars, fetch_vars):
     with program_guard(program):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
-            var = layers.scale(var, 1., name="save_infer_model/scale_{}".format(i))
+            var = layers.scale(
+                var, 1., name="save_infer_model/scale_{}".format(i))
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
@@ -227,6 +229,7 @@ def serialize_persistables(feed_vars, fetch_vars, executor):
     program = _normalize_program(program, feed_vars, fetch_vars)
     return _serialize_persistables(program, executor)
 
+
 def _serialize_persistables(program, executor):
     """
     """
@@ -260,8 +263,8 @@ def _serialize_persistables(program, executor):
         type='save_combine',
         inputs={'X': in_vars},
         outputs={'Y': out_var},
-        attrs={'file_path': '', 'save_to_memory': True}
-        )
+        attrs={'file_path': '',
+            'save_to_memory': True})
     # run save_program to save vars
     # NOTE(zhiqiu): save op will add variable kLookupTablePath to save_program.desc,
     # which leads to diff between save_program and its desc. Call _sync_with_cpp
@@ -391,8 +394,9 @@ def deserialize_persistables(program, data, executor):
     """
     """
     if not isinstance(program, Program):
-        raise TypeError("program type must be `fluid.Program`, but received `%s`"
-            % type(program))
+        raise TypeError(
+            "program type must be `fluid.Program`, but received `%s`" %
+            type(program))
     # load params to a tmp program
     load_program = Program()
     load_block = load_program.global_block()
@@ -424,8 +428,8 @@ def deserialize_persistables(program, data, executor):
         inputs={},
         outputs={"Out": load_var_list},
         # if load from memory, file_path is data
-        attrs={'file_path': data, 'model_from_memory': True}
-        )
+        attrs={'file_path': data,
+            'model_from_memory': True})
     executor.run(load_program)
     # check var shape
     for var in check_vars:
@@ -439,8 +443,8 @@ def deserialize_persistables(program, data, executor):
         if new_shape != origin_shape:
             raise RuntimeError(
                 "Shape mismatch, program needs a parameter with shape ({}), "
-                "but the loaded parameter ('{}') has a shape of ({}).".
-                format(origin_shape, var.name, new_shape))
+                "but the loaded parameter ('{}') has a shape of ({}).".format(
+                    origin_shape, var.name, new_shape))
 
 
 def load_from_file(path):
@@ -570,7 +574,8 @@ def load_inference_model(path_prefix, executor, **configs):
                 if not os.path.exists(params_path):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning("The old way to load inference model is deprecated."
-                    " model path: {}, params path: {}".format(model_path, params_path))
+                            " model path: {}, params path: {}".format(
+                                model_path, params_path))
         program_bytes = load_from_file(model_path)
         load_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)
