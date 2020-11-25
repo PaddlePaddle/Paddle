@@ -88,7 +88,8 @@ class TestSimpleRNN(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
@@ -174,7 +175,8 @@ class TestGRU(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
@@ -259,7 +261,8 @@ class TestLSTM(unittest.TestCase):
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, (h2, c2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
-        y2 = paddle.multiply(y2, mask, axis=0)
+        mask = paddle.unsqueeze(mask, -1)
+        y2 = paddle.multiply(y2, mask)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
@@ -323,10 +326,7 @@ def predict_test_util(place, mode):
         exe = paddle.static.Executor(place)
         [inference_program, feed_target_names,
          fetch_targets] = paddle.static.load_inference_model(
-             dirname="./inference",
-             executor=exe,
-             model_filename="%s_infer.pdmodel" % mode,
-             params_filename="%s_infer.pdiparams" % mode)
+             "./inference/%s_infer" % mode, exe)
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: x.numpy()},
                           fetch_list=fetch_targets)
@@ -345,3 +345,7 @@ def load_tests(loader, tests, pattern):
                 for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:
                     suite.addTest(test_class(time_major, direction, device))
     return suite
+
+
+if __name__ == '__main__':
+    unittest.main()

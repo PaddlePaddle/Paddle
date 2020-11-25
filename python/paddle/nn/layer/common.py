@@ -40,7 +40,7 @@ __all__ = [
 
 
 class Linear(layers.Layer):
-    """
+    r"""
 
     Fully-connected linear transformation layer. For each input :math:`X` ,
     the equation is:
@@ -381,7 +381,7 @@ class Upsample(layers.Layer):
 
 
 class Bilinear(layers.Layer):
-    """
+    r"""
 
     This layer performs bilinear on two inputs.
 
@@ -425,7 +425,6 @@ class Bilinear(layers.Layer):
         import paddle
         import numpy
 
-        paddle.disable_static()
         layer1 = numpy.random.random((5, 5)).astype('float32')
         layer2 = numpy.random.random((5, 4)).astype('float32')
         bilinear = paddle.nn.Bilinear(
@@ -744,7 +743,6 @@ class Pad1D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             input_shape = (1, 2, 3)
             pad = [1, 2]
@@ -752,7 +750,7 @@ class Pad1D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad1D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[0. 1. 2. 3. 0. 0.]
             #   [0. 4. 5. 6. 0. 0.]]]
     """
@@ -821,14 +819,13 @@ class Pad2D(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             mode = "constant"
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad2D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[0. 0. 0. 0.]
             #    [0. 1. 2. 3.]
             #    [0. 4. 5. 6.]
@@ -906,7 +903,7 @@ class Pad3D(layers.Layer):
             data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
             my_pad = nn.Pad3D(padding=pad, mode=mode)
             result = my_pad(data)
-            print(result.numpy())
+            print(result)
             # [[[[[0. 0. 0. 0.]
             #     [0. 1. 2. 3.]
             #     [0. 4. 5. 6.]
@@ -968,7 +965,6 @@ class CosineSimilarity(layers.Layer):
             import paddle
             import paddle.nn as nn
             import numpy as np
-            paddle.disable_static()
 
             np.random.seed(0)
             x1 = np.random.rand(2,3)
@@ -978,7 +974,7 @@ class CosineSimilarity(layers.Layer):
 
             cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
-            print(result.numpy())
+            print(result)
             # [0.99806249 0.9817672  0.94987036]
     """
 
@@ -992,7 +988,7 @@ class CosineSimilarity(layers.Layer):
 
 
 class Embedding(layers.Layer):
-    """
+    r"""
     **Embedding Layer**
 
     This interface is used to construct a callable object of the ``Embedding`` class.
@@ -1106,8 +1102,7 @@ class Embedding(layers.Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
-        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            num_embeddings + padding_idx)
+        self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
             raise ValueError("num_embeddings must be gather than 0")
@@ -1115,7 +1110,10 @@ class Embedding(layers.Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-        if self._padding_idx >= num_embeddings or self._padding_idx < -num_embeddings:
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            num_embeddings + padding_idx)
+
+        if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
             raise ValueError("padding_idx must be within [-{}, {})".format(
                 num_embeddings, num_embeddings))
 
