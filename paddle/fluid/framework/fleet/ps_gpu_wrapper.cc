@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 #if (defined PADDLE_WITH_PSLIB) && (defined PADDLE_WITH_CUDA)
 
-namespace paddle {ps_gpu_wrapper.cc
+namespace paddle {
 namespace framework {
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;

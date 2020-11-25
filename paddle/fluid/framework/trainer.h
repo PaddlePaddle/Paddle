@@ -277,10 +277,10 @@ class HeterBoxTrainer : public TrainerBase {
 #endif
 
 #if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
-class PSBoxTrainer : TrainerBase {
+class PSGPUTrainer : public TrainerBase {
  public:
-  PSBoxTrainer() {}
-  virtual ~PSBoxTrainer() {}
+  PSGPUTrainer() {}
+  virtual ~PSGPUTrainer() {}
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place);
@@ -302,10 +302,10 @@ class PSBoxTrainer : TrainerBase {
                    cudaStream_t stream);
   */
   void CreateThreadParam(const ProgramDesc& program, int num);
-  /*
+  
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
-  */
+  
 
  protected:
   DownpourWorkerParameter param_;
@@ -325,7 +325,7 @@ class PSBoxTrainer : TrainerBase {
   int thread_num_;
   std::vector<cudaStream_t> copy_streams_;
   std::vector<cudaEvent_t> events_;
-}
+};
 #endif
 
 #if defined(PADDLE_WITH_NCCL)

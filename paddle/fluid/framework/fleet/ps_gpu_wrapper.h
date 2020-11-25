@@ -36,10 +36,7 @@ namespace framework {
 
 class PSGPUWrapper {
  public:
-  virtual ~PSGPUWrapper() {
-    server_.Stop(1000);
-    server_.Join();
-  }
+  virtual ~PSGPUWrapper() {}
 
   PSGPUWrapper() {}
 
@@ -65,7 +62,6 @@ class PSGPUWrapper {
   static std::shared_ptr<PSGPUWrapper> s_instance_;
 
  protected:
-  brpc::Server server_;
   static bool is_initialized_;
 
 };
