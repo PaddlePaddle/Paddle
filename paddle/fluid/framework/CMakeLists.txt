@@ -204,13 +204,8 @@ if(WITH_DISTRIBUTE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
-<<<<<<< HEAD
-    data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-    heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-=======
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
     heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
->>>>>>> ps gpu test commit
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
@@ -223,13 +218,8 @@ if(WITH_DISTRIBUTE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
     dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
     heterxpu_trainer.cc
-<<<<<<< HEAD
-    data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-    heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-=======
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
     heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
->>>>>>> ps gpu test commit
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
@@ -243,13 +233,8 @@ elseif(WITH_PSLIB)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
-<<<<<<< HEAD
-  data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-=======
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
   heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
->>>>>>> ps gpu test commit
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
@@ -262,13 +247,8 @@ else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   heterxpu_trainer.cc
-<<<<<<< HEAD
-  data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-  heterbox_worker.cc heterbox_trainer.cc psbox_trainer.cc downpour_worker.cc downpour_worker_opt.cc
-=======
   data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
   heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
->>>>>>> ps gpu test commit
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
