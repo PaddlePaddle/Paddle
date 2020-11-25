@@ -161,7 +161,7 @@ class TestTranslatedLayer(unittest.TestCase):
 
         expect_spec = [
             paddle.static.InputSpec(
-                shape=[None, IMAGE_SIZE], dtype='float32', name='x_0')
+                shape=[None, IMAGE_SIZE], dtype='float32', name='x')
         ]
         actual_spec = translated_layer._input_spec()
 

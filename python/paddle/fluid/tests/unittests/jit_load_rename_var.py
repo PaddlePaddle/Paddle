@@ -25,6 +25,7 @@ def _generate_unique_var_name_sync_with_main_program(prefix):
 
 def rename_var_with_generator(names_old):
     dict_rename_var_old_new = dict()
+    names_old = list(names_old)
     for var_idx, name_old in enumerate(names_old):
         while True:
             temp_name = name_old.split('_')
