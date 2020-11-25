@@ -110,13 +110,13 @@ class TestCoverage(unittest.TestCase):
         if args.print_config:
             _print_arguments(args)
 
-        gpus = get_gpus("0,1")
-        self.assertEqual(gpus, ['0', '1'])
+        gpus = get_gpus("0")
+        self.assertEqual(gpus, ['0'])
 
         gpus = get_gpus(None)
 
         args.use_paddlecloud = True
-        cluster, pod = get_cluster_from_args(args, "0,1")
+        cluster, pod = get_cluster_from_args(args, "0")
 
 
 if __name__ == '__main__':
