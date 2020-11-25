@@ -317,9 +317,8 @@ def _serialize_persistables(program, executor):
     vars_ = list(filter(is_persistable, program.list_vars()))
     # warn if no variable found in model
     if len(vars_) == 0:
-        warnings.warn(
-            "no variable in your model, please ensure there are any "
-            "variables in your model to save")
+        warnings.warn("no variable in your model, please ensure there are any "
+                      "variables in your model to save")
         return None
     # create a new program and clone persitable vars to it
     save_program = Program()
@@ -345,7 +344,7 @@ def _serialize_persistables(program, executor):
         inputs={'X': in_vars},
         outputs={'Y': out_var},
         attrs={'file_path': '',
-                'save_to_memory': True})
+               'save_to_memory': True})
     # run save_program to save vars
     # NOTE(zhiqiu): save op will add variable kLookupTablePath to save_program.desc,
     # which leads to diff between save_program and its desc. Call _sync_with_cpp
@@ -510,7 +509,7 @@ def deserialize_persistables(program, data, executor):
         outputs={"Out": load_var_list},
         # if load from memory, file_path is data
         attrs={'file_path': data,
-                'model_from_memory': True})
+               'model_from_memory': True})
     executor.run(load_program)
     # check var shape
     for var in check_vars:
