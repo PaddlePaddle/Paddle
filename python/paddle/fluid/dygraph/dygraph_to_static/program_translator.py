@@ -147,24 +147,25 @@ class CacheKey(object):
     """
 
     __slots__ = [
-        'function_spec', 'input_with_spec', 'class_instance',
-        'input_kwargs_with_spec'
+        'function_spec', 'input_args_with_spec', 'input_kwargs_with_spec',
+        'class_instance'
     ]
 
-    def __init__(self, function_spec, input_with_spec, class_instance,
-                 input_kwargs_with_spec):
+    def __init__(self, function_spec, input_args_with_spec,
+                 input_kwargs_with_spec, class_instance):
         """
         Initializes a cache key.
 
         Args:
             functions_spec(FunctionSpec): a FunctionSpec instance of decorated function.
-            input_with_spec(list[InputSpec]): actual inputs with some arguments replaced by InputSpec.
+            input_args_with_spec(list[InputSpec]): actual input args with some arguments replaced by InputSpec.
+            input_kwargs_with_spec(list[{string:InputSpec}]): actual input kwargs with some arguments replaced by InputSpec.
             class_instance(object): a instance of class `Layer`.
         """
         self.function_spec = function_spec
-        self.input_with_spec = input_with_spec
-        self.class_instance = class_instance
+        self.input_args_with_spec = input_args_with_spec
         self.input_kwargs_with_spec = input_kwargs_with_spec
+        self.class_instance = class_instance
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -182,19 +183,19 @@ class CacheKey(object):
             args = args[1:]
         # 2. convert tensor and numpy array into InputSpec
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
-        input_with_spec, input_kwargs_with_spec = function_spec.args_to_input_spec(
+        input_args_with_spec, input_kwargs_with_spec = function_spec.args_to_input_spec(
             _args, _kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
-        return CacheKey(function_spec, input_with_spec, class_instance,
-                        input_kwargs_with_spec)
+        return CacheKey(function_spec, input_args_with_spec,
+                        input_kwargs_with_spec, class_instance)
 
     def __hash__(self):
         error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
         return hash((id(self.function_spec),
-                     make_hashable(self.input_with_spec, error_msg),
-                     self.class_instance,
-                     make_hashable(self.input_kwargs_with_spec, error_msg)))
+                     make_hashable(self.input_args_with_spec, error_msg),
+                     make_hashable(self.input_kwargs_with_spec, error_msg),
+                     self.class_instance))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -203,9 +204,9 @@ class CacheKey(object):
         return not self == other
 
     def __repr__(self):
-        return "id(function_spec): {}, input_with_spec: {}, class_instance: {}, input_kwargs_with_spec: {}".format(
-            id(self.function_spec), self.input_with_spec, self.class_instance,
-            self.input_kwargs_with_spec)
+        return "id(function_spec): {}, input_args_with_spec: {}, input_kwargs_with_spec: {}, class_instance: {}".format(
+            id(self.function_spec), self.input_args_with_spec,
+            self.input_kwargs_with_spec, self.class_instance)
 
 
 def unwrap_decorators(func):
@@ -389,12 +390,12 @@ class StaticFunction(object):
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
                                                                        kwargs)
-        input_with_spec, input_kwargs_with_spec = self._function_spec.args_to_input_spec(
+        input_args_with_spec, input_kwargs_with_spec = self._function_spec.args_to_input_spec(
             args, kwargs)
 
         # 2. generate cache key
-        cache_key = CacheKey(self._function_spec, input_with_spec,
-                             self._class_instance, input_kwargs_with_spec)
+        cache_key = CacheKey(self._function_spec, input_args_with_spec,
+                             input_kwargs_with_spec, self._class_instance)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
@@ -669,7 +670,7 @@ class ProgramCache(object):
     def _build_once(self, cache_key):
         concrete_program = ConcreteProgram.from_func_spec(
             func_spec=cache_key.function_spec,
-            input_spec=cache_key.input_with_spec,
+            input_spec=cache_key.input_args_with_spec,
             input_kwargs_spec=cache_key.input_kwargs_with_spec,
             class_instance=cache_key.class_instance)
         return concrete_program, partial_program_from(concrete_program)
