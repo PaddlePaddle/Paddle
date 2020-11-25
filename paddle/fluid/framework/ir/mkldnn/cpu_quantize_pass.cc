@@ -236,7 +236,7 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
 std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
     const std::string& name) const {
   auto& scales = Get<VarQuantScale>("quant_var_scales");
-  return scales[name];
+  return scales.at(name);
 }
 
 std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataForNode(
