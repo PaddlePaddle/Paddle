@@ -87,7 +87,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
     VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
 
-    framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
+    framework::Async([var_name_val, p_scope, p_ctx, s, method, h, this] {
       auto* var = p_scope->FindVar(var_name_val);
 
       ::grpc::ByteBuffer req;
@@ -209,8 +209,8 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
     VarHandlePtr h(new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
 
-    framework::AsyncIO([var_name_val, out_varname_val, table_name_val, s,
-                        method, p_ctx, h, rpc_path, this] {
+    framework::Async([var_name_val, out_varname_val, table_name_val, s, method,
+                      p_ctx, h, rpc_path, this] {
       // prepare input
       sendrecv::VariableMessage req;
       req.set_varname(var_name_val);
@@ -468,7 +468,7 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
+  framework::Async([var_name_val, p_scope, p_ctx, s, method, h, this] {
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -524,8 +524,8 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
     s->Prepare(h, time_out);
     s->RecvPrepare(h_recv);
 
-    framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
-                        p_scope, p_ctx, s, method, h, this] {
+    framework::Async([send_var_name_val, recv_var_name_val, table_name_val,
+                      p_scope, p_ctx, s, method, h, this] {
       auto* send_var = p_scope->FindVar(send_var_name_val);
       send_var->GetMutable<framework::LoDTensor>()->set_lod({});
       ::grpc::ByteBuffer buf;

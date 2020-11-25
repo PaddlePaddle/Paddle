@@ -66,7 +66,7 @@ VarHandlePtr BRPCClient::AsyncSendVar(const std::string& ep,
   const std::string method = kSendRPC;
   VarHandlePtr var_h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
 
-  framework::AsyncIO([=] {
+  framework::Async([=] {
     auto ch_ctx = ch_ptr->Pop();
     brpc::Controller* cntl = new brpc::Controller();
     sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
@@ -172,7 +172,7 @@ VarHandlePtr BRPCClient::_AsyncGetVar(const std::string& ep,
   VarHandlePtr var_h(
       new VarHandle(ep, method, out_varname_val, p_ctx, p_scope));
 
-  framework::AsyncIO([=] {
+  framework::Async([=] {
     auto ch_ctx = ch_ptr->Pop();
 
     brpc::Controller* cntl = new brpc::Controller();
@@ -263,7 +263,7 @@ VarHandlePtr BRPCClient::AsyncPrefetchVar(const std::string& ep,
   VarHandlePtr var_h(
       new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
 
-  framework::AsyncIO([=] {
+  framework::Async([=] {
     auto ch_ctx = ch_ptr->Pop();
 
     brpc::Controller* cntl = new brpc::Controller();
