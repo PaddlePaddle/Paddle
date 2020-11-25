@@ -2627,7 +2627,6 @@ def adaptive_pool3d(input,
     return (pool_out, mask) if require_index else pool_out
 
 
-@static_only
 def batch_norm(input,
                act=None,
                is_test=False,
@@ -3544,7 +3543,6 @@ def layer_norm(input,
     return helper.append_activation(layer_norm_out)
 
 
-@static_only
 @templatedoc()
 def group_norm(input,
                groups,

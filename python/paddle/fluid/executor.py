@@ -546,7 +546,6 @@ class Executor(object):
 
     """
 
-    @static_only
     def __init__(self, place=None):
         if place is None:
             expected_place = framework._current_expected_place()

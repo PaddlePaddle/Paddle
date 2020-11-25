@@ -148,7 +148,6 @@ class ParallelExecutor(object):
 
     """
 
-    @framework.static_only
     def __init__(self,
                  use_cuda,
                  loss_name=None,

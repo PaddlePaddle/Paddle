@@ -18,7 +18,7 @@ import six
 import sys
 from .. import compat as cpt
 from . import framework
-from .framework import cuda_places, cpu_places, static_only
+from .framework import cuda_places, cpu_places
 
 from . import core
 
@@ -134,7 +134,6 @@ class CompiledProgram(object):
                                 fetch_list=[loss.name])
     """
 
-    @static_only
     def __init__(self, program_or_graph, build_strategy=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph

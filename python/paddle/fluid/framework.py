@@ -384,7 +384,6 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
-@static_only
 def cuda_places(device_ids=None):
     """
     **Note**:
@@ -431,7 +430,6 @@ def cuda_places(device_ids=None):
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
 
 
-@static_only
 def cpu_places(device_count=None):
     """
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
