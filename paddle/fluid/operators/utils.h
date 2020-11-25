@@ -108,5 +108,18 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   return framework::make_ddim(vec_shape);
 }
 
+template <typename T>
+inline T GetValue(const framework::Tensor* x) {
+  T value = static_cast<T>(0);
+  if (!platform::is_cpu_place(x->place())) {
+    framework::Tensor cpu_x;
+    framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x->data<T>()[0];
+  }
+  return value;
+}
+
 }  // namespace operators
 }  // namespace paddle

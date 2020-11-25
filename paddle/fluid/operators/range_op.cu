@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/range_op.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
@@ -33,13 +34,9 @@ class CUDARangeKernel : public framework::OpKernel<T> {
     auto* step_t = context.Input<framework::Tensor>("Step");
     auto* out = context.Output<framework::Tensor>("Out");
 
-    framework::Tensor n;
-    framework::TensorCopy(*start_t, platform::CPUPlace(), &n);
-    T start = n.data<T>()[0];
-    framework::TensorCopy(*end_t, platform::CPUPlace(), &n);
-    T end = n.data<T>()[0];
-    framework::TensorCopy(*step_t, platform::CPUPlace(), &n);
-    T step = n.data<T>()[0];
+    T start = GetValue<T>(start_t);
+    T end = GetValue<T>(end_t);
+    T step = GetValue<T>(step_t);
 
     int64_t size = 0;
     GetSize(start, end, step, &size);
