@@ -217,8 +217,9 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = \
             self.load_and_train_dygraph()
 
-        static_out, static_param_init_value, static_param_value = \
-            self.load_and_train_static()
+        with unique_name.guard():
+            static_out, static_param_init_value, static_param_value = \
+                self.load_and_train_static()
 
         # Phase 3. compare
         with unique_name.guard():

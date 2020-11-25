@@ -304,6 +304,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
                 self.load_and_train_dygraph()
 
+        with unique_name.guard():
             static_x_data, static_out, static_param_init_value, static_param_value = \
                 self.load_and_train_static()
 
@@ -335,7 +336,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         with unique_name.guard():
             dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
                 self.load_and_train_dygraph()
-
+        with unique_name.guard():
             static_x_data, static_out, static_param_init_value, static_param_value = \
                 self.load_and_train_static()
 
