@@ -693,13 +693,12 @@ def conv1d_transpose(x,
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2,]]]).astype(np.float32)
           # shape: (2, 1, 2)
-          y=np.array([[[7, 0]],
+          w=np.array([[[7, 0]],
                       [[4, 2]]]).astype(np.float32)
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
-          print y_np
+          print(y_var)
           
           # [[[60. 16. 99. 75.  4.]]]
     """

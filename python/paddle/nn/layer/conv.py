@@ -141,7 +141,7 @@ class _ConvNd(layers.Layer):
 
 
 class Conv1D(_ConvNd):
-    r"""
+    """
     This interface is used to construct a callable object of the ``Conv1D`` class.
     For more details, refer to code examples.
     The convolution1D layer calculates the output based on the input, filter
@@ -164,6 +164,7 @@ class Conv1D(_ConvNd):
     * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
     Example:
         - Input:
           Input shape: :math:`(N, C_{in}, L_{in})`
@@ -173,6 +174,7 @@ class Conv1D(_ConvNd):
         Where
         .. math::
             L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of filter. It is as same as the output
@@ -209,17 +211,21 @@ class Conv1D(_ConvNd):
             If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
+
     Attribute:
         **weight** (Parameter): the learnable weights of filter of this layer.
         **bias** (Parameter or None): the learnable bias of this layer.
+
     Shape:
         - x: 3-D tensor with shape: (batch, in_channels, length) or (batch, length, in_channels).
         - output: 3-D tensor with same shape as input x.
     
     Raises:
         None
+
     Examples:
         .. code-block:: python
+
           import paddle
           from paddle.nn import Conv1D
           import numpy as np
@@ -233,13 +239,11 @@ class Conv1D(_ConvNd):
            [[0, 3, 4],
             [2, 9, 7],
             [5, 6, 8]]]).astype(np.float32)
-          paddle.disable_static()
           x_t = paddle.to_tensor(x)
           conv = Conv1D(3, 2, 3)
           conv.weight.set_value(w)
           y_t = conv(x_t)
-          y_np = y_t.numpy()
-          print(y_np)
+          print(y_t)
           # [[[133. 238.]
           #   [160. 211.]]]
     """
@@ -409,7 +413,6 @@ class Conv1DTranspose(_ConvNd):
           from paddle.nn import Conv1DTranspose
           import numpy as np
           
-          paddle.disable_static()
           # shape: (1, 2, 4)
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2]]]).astype(np.float32)
@@ -420,8 +423,7 @@ class Conv1DTranspose(_ConvNd):
           conv = Conv1DTranspose(2, 1, 2)
           conv.weight.set_value(y)
           y_t = conv(x_t)
-          y_np = y_t.numpy()
-          print y_np
+          print(y_t)
           
           # [[[60. 16. 99. 75.  4.]]]
     """

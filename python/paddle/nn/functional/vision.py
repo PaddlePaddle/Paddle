@@ -86,7 +86,6 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-            paddle.disable_static()
             # theta shape = [1, 2, 3]
             theta = np.array([[[-0.7, -0.4, 0.3],
                                [ 0.6,  0.5, 1.5]]]).astype("float32")
@@ -95,7 +94,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                     theta_t,
                     [1, 2, 3, 3],
                     align_corners=False)
-            print(y_t.numpy())
+            print(y_t)
             
             #[[[[ 1.0333333   0.76666665]
             #   [ 0.76666665  1.0999999 ]
@@ -270,7 +269,7 @@ def grid_sample(x,
                 mode='bilinear',
                 padding_mode='border',
                 align_corners=True)
-            print(y_t.numpy())
+            print(y_t)
             
             # output shape = [1, 1, 3, 4]
             # [[[[ 0.34   0.016  0.086 -0.448]
