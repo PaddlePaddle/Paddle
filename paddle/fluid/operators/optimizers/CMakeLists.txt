@@ -1,2 +1,7 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc ftrl_op.cc lars_momentum_op.cc momentum_op.cc sgd_op.cc proximal_adagrad_op.cc)
+    register_unity_group(cc adagrad_op.cc adam_op.cc adamax_op.cc dgc_momentum_op.cc proximal_gd_op.cc)
+    register_unity_group(cc decayed_adagrad_op.cc adadelta_op.cc lamb_op.cc dpsgd_op.cc rmsprop_op.cc)
+endif()
 register_operators()

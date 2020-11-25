@@ -1,4 +1,7 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc fused_elemwise_activation_op.cc fused_embedding_fc_lstm_op.cc fused_embedding_seq_pool_op.cc fusion_lstm_op.cc fusion_repeated_fc_relu_op.cc fusion_seqconv_eltadd_relu_op.cc fusion_seqexpand_concat_fc_op.cc fusion_seqpool_concat_op.cc fusion_squared_mat_sub_op.cc multi_gru_op.cc mkldnn/multi_gru_mkldnn_op.cc fusion_seqpool_cvm_concat_op.cc)
+endif()
 register_operators(EXCLUDES
     fused_bn_activation_op
     conv_fusion_op

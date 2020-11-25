@@ -1,2 +1,5 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc accuracy_op.cc auc_op.cc precision_recall_op.cc)
+endif()
 register_operators()

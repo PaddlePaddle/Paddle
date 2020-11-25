@@ -1,4 +1,7 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc elementwise_add_op.cc mkldnn/elementwise_add_mkldnn_op.cc elementwise_div_op.cc elementwise_floordiv_op.cc elementwise_max_op.cc elementwise_min_op.cc elementwise_mod_op.cc elementwise_mul_op.cc mkldnn/elementwise_mul_mkldnn_op.cc elementwise_pow_op.cc elementwise_sub_op.cc)
+endif()
 register_operators()
 
 cc_test(test_elementwise_add_op_inplace SRCS test_elementwise_add_op_inplace.cc DEPS op_registry elementwise_add_op scope device_context enforce executor)

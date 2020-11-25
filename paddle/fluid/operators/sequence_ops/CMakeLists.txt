@@ -1,2 +1,6 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc sequence_concat_op.cc sequence_conv_op.cc sequence_enumerate_op.cc sequence_erase_op.cc sequence_expand_op.cc sequence_mask_op.cc sequence_pad_op.cc sequence_pool_op.cc)
+    register_unity_group(cc sequence_expand_as_op.cc sequence_reshape_op.cc sequence_reverse_op.cc sequence_scatter_op.cc sequence_slice_op.cc sequence_softmax_op.cc sequence_topk_avg_pooling_op.cc sequence_unpad_op.cc)
+endif()
 register_operators()

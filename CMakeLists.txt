@@ -145,6 +145,7 @@ option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
 option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
+option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -288,6 +289,16 @@ if(ON_INFER)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
+
+if(WITH_UNITY_BUILD)
+    if(WIN32)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /we4005")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /we4005")
+    else()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    endif()
 endif()
 
 add_subdirectory(paddle)

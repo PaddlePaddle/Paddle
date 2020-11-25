@@ -1,4 +1,7 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc reduce_all_op.cc reduce_any_op.cc reduce_prod_op.cc reduce_sum_op.cc)
+endif()
 if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         register_operators(DEPS cub)

@@ -1,2 +1,5 @@
 include(operators)
+if(WITH_UNITY_BUILD)
+    register_unity_group(cc check_finite_and_unscale_op.cc update_loss_scaling_op.cc)
+endif()
 register_operators()
