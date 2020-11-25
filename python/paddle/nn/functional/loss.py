@@ -1368,7 +1368,7 @@ def sigmoid_focal_loss(logit,
             fg_label = paddle.greater_equal(label, one)
             fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
-            print(output.numpy())  # [0.65782464]
+            print(output)  # [0.65782464]
 
     """
     if reduction not in ['sum', 'mean', 'none']:
