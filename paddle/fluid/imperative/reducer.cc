@@ -41,7 +41,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
         const auto variable_index = VariableIndex{
             .group_index = group_index, .inside_group_index = var_index,
         };
-        VLOG(0) << "add hook for var[" << vars_[global_var_index]->GradVarName()
+        VLOG(3) << "add hook for var[" << vars_[global_var_index]->GradVarName()
                 << "], it's in group [" << group_index << "]";
         vars_[global_var_index]->SharedVar()->AddGradVarLeafBackwardHook(
             std::unique_ptr<LambdaGradAccumulatorPostHook>(
@@ -76,6 +76,53 @@ void Reducer::ReleaseReducer() {
   comm_enent_.reset();
 }
 
+int64_t Reducer::InitializeDenseGroups(
+    const std::vector<size_t> &variable_indices_, Group *p_group) {
+  int64_t all_length = 0;
+  for (size_t index = 0; index < variable_indices_.size(); ++index) {
+    const auto variable_index = variable_indices_[index];
+    const auto &var = vars_[variable_index];
+    const auto var_name = var->Name();
+    PADDLE_ENFORCE_EQ(is_sparse_gradient_[variable_index], false,
+                      platform::errors::PreconditionNotMet(
+                          "Tensor `%s` 's GRAD must be LoDTensor.", var_name));
+
+    auto lod_tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(), true,
+                      platform::errors::PreconditionNotMet(
+                          "Tensor `%s` is not initialized.", var_name));
+    auto size = lod_tensor->numel();
+    PADDLE_ENFORCE_GT(
+        size, 0, platform::errors::PreconditionNotMet(
+                     "The number of tensor `%s`'s elements is 0.", var_name));
+    all_length += size;
+
+    p_group->length_.push_back(size);
+    // for concat operator
+    p_group->dense_tensors.push_back(framework::Tensor());
+
+    // check the dtype and place, it must be same.
+    auto dtype = var->DataType();
+    auto place = var->Place();
+    if (index > 0) {
+      PADDLE_ENFORCE_EQ(dtype, p_group->dtype,
+                        platform::errors::PreconditionNotMet(
+                            "Tensor `%s` has different dtype.", var_name));
+      PADDLE_ENFORCE_EQ(place, place_,
+                        platform::errors::PreconditionNotMet(
+                            "Tensor `%s` has different place.", var_name));
+    } else {
+      p_group->dtype = dtype;
+      place_ = place;
+    }
+  }
+  return all_length;
+}
+
+// Each parameter will be initialized according to the group information.
+// For the sparse parameter, sparse_contents in the group directly points
+// to the parameter. For dense parameters, first construct an empty Tensor().
+// Then specify the actual memory in MarkVariableReady.
 void Reducer::InitializeGroups(
     const std::vector<std::vector<size_t>> &group_indices) {
   VLOG(3) << "Start initialize groups ..";
@@ -93,7 +140,6 @@ void Reducer::InitializeGroups(
     Group group;
     group.variable_indices_ = variable_indices_;
     int64_t all_length = 0;
-    size_t offset = 0;
 
     // It's just for check the sparse or dense
     auto first_varbase = vars_[variable_indices_.front()];
@@ -105,46 +151,7 @@ void Reducer::InitializeGroups(
       group.is_sparse_ = true;
     } else {
       // process the dense gradient.
-      for (size_t index = 0; index < variable_indices_.size(); ++index) {
-        const auto variable_index = variable_indices_[index];
-        const auto &var = vars_[variable_index];
-        const auto var_name = var->Name();
-        PADDLE_ENFORCE_EQ(
-            is_sparse_gradient_[variable_index], false,
-            platform::errors::PreconditionNotMet(
-                "Tensor `%s` 's GRAD must be LoDTensor.", var_name));
-
-        auto lod_tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
-        PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(), true,
-                          platform::errors::PreconditionNotMet(
-                              "Tensor `%s` is not initialized.", var_name));
-        auto size = lod_tensor->numel();
-        PADDLE_ENFORCE_GT(
-            size, 0,
-            platform::errors::PreconditionNotMet(
-                "The number of tensor `%s`'s elements is 0.", var_name));
-        all_length += size;
-
-        group.length_.push_back(size);
-        // for concat operator
-        group.dense_tensors.push_back(framework::Tensor());
-        offset += size;
-
-        // check the dtype and place, it must be same.
-        auto dtype = var->DataType();
-        auto place = var->Place();
-        if (index > 0) {
-          PADDLE_ENFORCE_EQ(dtype, group.dtype,
-                            platform::errors::PreconditionNotMet(
-                                "Tensor `%s` has different dtype.", var_name));
-          PADDLE_ENFORCE_EQ(place, place_,
-                            platform::errors::PreconditionNotMet(
-                                "Tensor `%s` has different place.", var_name));
-        } else {
-          group.dtype = dtype;
-          place_ = place;
-        }
-      }
+      all_length = InitializeDenseGroups(variable_indices_, &group);
       // Alloc the continuous space
       auto tensor = group.dense_contents.GetMutable<framework::LoDTensor>();
       tensor->Resize(framework::make_ddim({all_length}))
@@ -158,6 +165,8 @@ void Reducer::InitializeGroups(
   }
 }
 
+// After each batch is calculated, the counter of each group(group.pending)
+// and allreudce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward() {
   VLOG(3) << "start reseting count..";
   next_group_ = 0;
@@ -166,6 +175,18 @@ void Reducer::PrepareForBackward() {
   });
 }
 
+// Add hook function to each leaf node. When the gradient of a leaf node is
+// generated, if it is the sparse parameter, it will directly execute allreduce,
+// if it is the dense parameter, it will execute three steps: 1.
+// MarkVariableReady:
+// Find the position of the corresponding group through var_index, share the
+// gradient memory and the group dense_tensors, the group counter is reduced by
+// 1.
+// 2. MarkGroupReady: When the group counter is 0, it means that allreduce can
+// be
+// emitted, and concat + allreduce + split is emitted in turn according to
+// next_group_.
+// 3. FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
                           const VariableIndex &var_index) {
   auto group_index = var_index.group_index;
@@ -238,6 +259,15 @@ void Reducer::FinalizeBackward() {
   VLOG(3) << "In the batch, Reducer is finished...";
 }
 
+// According to the size of each parameter, it is allocated to different groups.
+// The sparse parameter occupies a group exclusively. The dense parameters of
+// the
+// same data type are assigned to the same group. When dividing groups, the size
+// of each group will be limited according to each value in group_size_limits in
+// turn. When it is not enough, it will be divided by the last value of
+// group_size_limits.
+// The limit value is 0, which means that the parameter will monopolize the
+// group.
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     const std::vector<bool> &is_sparse_gradient,

@@ -413,7 +413,11 @@ class DataParallel(layers.Layer):
                 # train()
     """
 
-    def __init__(self, layers, strategy=None, group_size_limits=25):
+    def __init__(self,
+                 layers,
+                 strategy=None,
+                 group_size_limits=25,
+                 small_group_size=1):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
@@ -429,25 +433,34 @@ class DataParallel(layers.Layer):
             self._strategy = _build_default_parallel_strategy()
 
         if self._strategy.nranks > 1:
-            # convert group_size_limits MB
             self.group_size_limits = int(group_size_limits * 1024 * 1024)
+            # NOTE(shenliang03): We can set environment variables to control 
+            # the size of the group, Default: 1MB. The role of this small group is: 
+            # when the last group allreduce, the overlap cannot work. Making the 
+            # the last group small is useful to improve performance.
+            self.small_group_size = int(small_group_size * 1024 * 1024)
             self.init_reducer()
         else:
             warnings.warn(
                 "nranks is less than 2, "
                 "maybe you need to check the current system environment."
                 " Need to use spawn or fleetrun to "
-                "start distributed programs. ")
+                "start distributed programs.")
 
     def init_reducer(self):
         layers_param = []
+        params_set = set()
         for sublayer in self.sublayers():
             for _, param in sublayer.named_parameters(include_sublayers=False):
+                if param is None or param in params_set:
+                    continue
+                params_set.add(param)
                 if not isinstance(param, core.VarBase):
                     raise TypeError("The data type of '%s' must be Varbase" %
                                     param.name)
                 if param.trainable:
                     layers_param.append((sublayer, param))
+
         trainable_parameters = [param for _, param in layers_param]
 
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
@@ -462,17 +475,13 @@ class DataParallel(layers.Layer):
         is_sparse_gradient = [
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
-        # NOTE(shenliang03): We can set environment variables to control the size of the group,
-        # Default: 1MB. The role of this small group is: when the last group allreduce, 
-        # the overlap cannot work. Making the the last group small is useful to improve performance.
-        small_group_size = float(
-            os.getenv('FLAGS_small_group_memory_size', 1.0))  # MB
+
         self.group_indices = core.assign_group_by_size(
             trainable_parameters, is_sparse_gradient,
-            [int(small_group_size * 1024 * 1024), self.group_size_limits])
+            [self.small_group_size, self.group_size_limits])
 
         assert parallel_helper.__parallel_ctx__clz__ is not None, \
-            "ParallelContext must be initialized before. Maybe you should use init_parallel_env() before" \
+            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
         self._reducer = core.Reducer(trainable_parameters,

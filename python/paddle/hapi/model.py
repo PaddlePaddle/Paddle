@@ -48,6 +48,7 @@ from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
+import paddle.distributed as dist
 
 from .callbacks import config_callbacks
 from .model_summary import summary
@@ -884,7 +885,7 @@ class Model(object):
 
         # init backend
         if fluid.in_dygraph_mode():
-            fluid.dygraph.parallel.prepare_context()
+            dist.init_parallel_env()
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)

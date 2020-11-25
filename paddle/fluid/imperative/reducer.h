@@ -160,6 +160,9 @@ class Reducer {
 
   void InitializeGroups(const std::vector<std::vector<size_t>>& group_indices);
 
+  int64_t InitializeDenseGroups(const std::vector<size_t>& variable_indices_,
+                                Group* p_group);
+
   void PrepareForBackward();
 
   void AddDistHook(VariableWrapper* var_warpper,

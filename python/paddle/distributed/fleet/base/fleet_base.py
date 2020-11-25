@@ -587,7 +587,8 @@ class Fleet(object):
         return self
 
     @dygraph_only
-    def distributed_model(self, model, group_size_limits=25):
+    def distributed_model(self, model, group_size_limits=25,
+                          small_group_size=1):
         """
         Return distributed data parallel model (Only work in dygraph mode)
 
@@ -647,7 +648,9 @@ class Fleet(object):
         """
         assert model is not None
         self.model = paddle.DataParallel(
-            model, group_size_limits=group_size_limits)
+            model,
+            group_size_limits=group_size_limits,
+            small_group_size=small_group_size)
         return self.model
 
     @dygraph_only
