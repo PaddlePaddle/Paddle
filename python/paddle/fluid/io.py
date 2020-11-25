@@ -2038,10 +2038,11 @@ def load_program_state(model_path, var_list=None):
                         filename=filename)
                     return True
                 except:
-                    error_str = "Failed to load model/variable `%s`, please make sure " \
-                                "model/variable file is saved with the following APIs: " \
+                    error_str = "Failed to load model/variables `%s`, please make sure " \
+                                "model/variables file is saved with the following APIs: " \
                                 "save_params, save_persistables, save_vars."
-                    filenames = [var.name for var in vars]
+                    filenames = [var.name for var in vars
+                                 ] if filename is None else filename
                     if raise_error:
                         raise RuntimeError(error_str % filenames)
                     else:
