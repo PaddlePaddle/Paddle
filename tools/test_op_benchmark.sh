@@ -161,17 +161,20 @@ function run_op_benchmark_test {
 
 # diff benchmakr result and miss op
 function summary_problems {
-  local op_name
+  local op_name exit_code
   python ${PADDLE_ROOT}/tools/check_op_benchmark_result.py \
       --develop_logs_dir $(pwd)/logs-develop \
       --pr_logs_dir $(pwd)/logs-test_pr
+  exit_code=$?
   for op_name in ${!CHANGE_OP_MAP[@]}
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
     then
+      exit_code=8
       LOG "[WARNING] Missing test script of \"${op_name}\" in benchmark."
     fi
   done
+  [ $exit_code -ne 0 ] && exit $exit_code
 }
 
 function main {
