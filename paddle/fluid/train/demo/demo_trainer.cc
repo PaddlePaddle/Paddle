@@ -55,7 +55,7 @@ std::unique_ptr<paddle::framework::ProgramDesc> Load(
 }  // namespace paddle
 
 int main() {
-  paddle::framework::InitDevices(false);
+  paddle::framework::InitDevices();
 
   const auto cpu_place = paddle::platform::CPUPlace();
 

@@ -169,6 +169,25 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
         return y, [(z, loss), out]
 
 
+class LinearNetWithDictInput(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithDictInput, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @paddle.jit.to_static(input_spec=[{
+        'img': InputSpec(
+            shape=[None, 8], dtype='float32', name='img')
+    }, {
+        'label': InputSpec(
+            shape=[None, 1], dtype='int64', name='label')
+    }])
+    def forward(self, img, label):
+        out = self._linear(img['img'])
+        # not return loss to avoid prune output
+        loss = paddle.nn.functional.cross_entropy(out, label['label'])
+        return out
+
+
 class EmptyLayer(paddle.nn.Layer):
     def __init__(self):
         super(EmptyLayer, self).__init__()
@@ -357,6 +376,37 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
         self.assertTrue(len(dy_outs) == 4)
         for dy_out, load_out in zip(dy_outs, load_outs):
             self.assertTrue(np.allclose(dy_out.numpy(), load_out.numpy()))
+
+
+class TestSaveLoadWithDictInput(unittest.TestCase):
+    def test_dict_input(self):
+        # NOTE: This net cannot be executed, it is just 
+        # a special case for exporting models in model validation
+        # We DO NOT recommend this writing way of Layer
+        net = LinearNetWithDictInput(8, 8)
+        # net.forward.concrete_program.inputs: 
+        # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>, 
+        #  {'img': var img : fluid.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)}, 
+        #  {'label': var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
+        self.assertEqual(len(net.forward.concrete_program.inputs), 3)
+
+        path = "test_jit_save_load_with_dict_input/model"
+        # prune inputs
+        paddle.jit.save(
+            layer=net,
+            path=path,
+            input_spec=[{
+                'img': InputSpec(
+                    shape=[None, 8], dtype='float32', name='img')
+            }])
+
+        img = paddle.randn(shape=[4, 8], dtype='float32')
+        loaded_net = paddle.jit.load(path)
+        loaded_out = loaded_net(img)
+
+        # loaded_net._input_spec():
+        # [InputSpec(shape=(-1, 8), dtype=VarType.FP32, name=img)]
+        self.assertEqual(len(loaded_net._input_spec()), 1)
 
 
 class TestSaveLoadWithInputSpec(unittest.TestCase):
