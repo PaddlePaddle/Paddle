@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
@@ -47,13 +48,17 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
     ops_.push_back(local_op_ptr);
     continue;
   }
+  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+      program, 0, ops_);
 }
 
 void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   auto &block = program.Block(0);
 
   PADDLE_ENFORCE_NOT_NULL(
-      root_scope_, "root_scope should be set before creating thread scope");
+      root_scope_,
+      platform::errors::NotFound(
+          "Root scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
 

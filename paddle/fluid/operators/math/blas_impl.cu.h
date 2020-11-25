@@ -60,7 +60,8 @@ struct CUBlas<float> {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cublasSgemmStridedBatched(args...));
 #else
-    PADDLE_THROW("SgemmStridedBatched is not supported on cuda <= 7.5");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "SgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
@@ -85,7 +86,8 @@ struct CUBlas<float> {
           beta, C, Ctype, ldc));
     });
 #else
-    PADDLE_THROW("cublasSgemmEx is supported on cuda >= 8.0");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasSgemmEx is not supported on cuda <= 7.5"));
 #endif
   }
 
@@ -146,13 +148,15 @@ struct CUBlas<double> {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cublasDgemmStridedBatched(args...));
 #else
-    PADDLE_THROW("DgemmStridedBatched is not supported on cuda <= 7.5");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "DgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW("Currently there are not cublasDgemmEx.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Currently there are not cublasDgemmEx."));
   }
 
   template <typename... ARGS>
@@ -216,7 +220,8 @@ struct CUBlas<platform::float16> {
         reinterpret_cast<const __half *>(beta), reinterpret_cast<__half *>(C),
         ldc, strideC, batchCount));
 #else
-    PADDLE_THROW("HgemmStridedBatched is not supported on cuda <= 7.5");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "HgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
@@ -247,7 +252,8 @@ struct CUBlas<platform::float16> {
           beta, C, Ctype, ldc, computeType, algo));
     });
 #else
-    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
   }
 };
@@ -302,8 +308,12 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
-  PADDLE_ENFORCE_GE(context_.GetComputeCapability(), 53,
-                    "cublas fp16 gemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas fp16 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
@@ -411,6 +421,22 @@ void Blas<platform::CUDADeviceContext>::GEMV(bool trans_a, int M, int N,
 }
 
 template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::GEMV(
+    bool trans_a, int M, int N, platform::float16 alpha,
+    const platform::float16 *A, const platform::float16 *B,
+    platform::float16 beta, platform::float16 *C) const {
+  // Because cublas doesn't support half gemv, we use cublasHgemm to achieve it.
+  if (trans_a) {
+    this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, 1, N, M,
+                                           alpha, B, A, beta, C);
+  } else {
+    this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, M, 1, N,
+                                           alpha, A, B, beta, C);
+  }
+}
+
+template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
@@ -428,7 +454,8 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   const int64_t strideC = M * N;
 
 #if CUDA_VERSION >= 9010
-  if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
+  if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
+      std::is_same<T, paddle::platform::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = context_.tensor_core_available();
     if (use_tensor_op_math) {
@@ -437,11 +464,11 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
 
+    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
-          handle, cuTransB, cuTransA, N, M, K, &alpha, B, CUDA_R_32F, ldb,
-          strideB, A, CUDA_R_32F, lda, strideA, &beta, C, CUDA_R_32F, ldc,
-          strideC, batchCount, CUDA_R_32F, algo));
+          handle, cuTransB, cuTransA, N, M, K, &alpha, B, fp, ldb, strideB, A,
+          fp, lda, strideA, &beta, C, fp, ldc, strideC, batchCount, fp, algo));
     });
   } else {
 #endif  // CUDA_VERSION >= 9010
@@ -455,6 +482,30 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+}
+
+template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    platform::float16 alpha, const platform::float16 **A,
+    const platform::float16 **B, platform::float16 beta, platform::float16 **C,
+    int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<platform::float16>(transA, transB, M, N, K, alpha, A[k],
+                                           B[k], beta, C[k]);
+  }
 }
 
 template <>

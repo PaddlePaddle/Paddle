@@ -35,10 +35,10 @@ def random_reader():
 
 
 def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
+    paddle.seed(1)
+    paddle.framework.random._manual_program_seed(1)
     startup_prog = fluid.Program()
     main_prog = fluid.Program()
-    startup_prog.random_seed = 1
-    main_prog.random_seed = 1
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
@@ -117,7 +117,6 @@ class TestBase(unittest.TestCase):
                 for _ in six.moves.range(EPOCH_NUM):
                     step = 0
                     for d in py_reader():
-                        print(d)
                         assert len(d) == len(places), "{} != {}".format(
                             len(d), len(places))
                         for i, item in enumerate(d):

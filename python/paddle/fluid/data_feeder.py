@@ -50,25 +50,26 @@ def convert_dtype(dtype):
     elif isinstance(dtype, type):
         if dtype in [
                 np.bool, np.float16, np.float32, np.float64, np.int8, np.int16,
-                np.int32, np.int64, np.uint8
+                np.int32, np.int64, np.uint8, np.complex64, np.complex128
         ]:
             return dtype.__name__
     else:
         if dtype in [
                 'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
-                'int32', 'int64', 'uint8', u'bool', u'float16', u'float32',
-                u'float64', u'int8', u'int16', u'int32', u'int64', u'uint8'
+                'int32', 'int64', 'uint8', 'complex64', 'complex128', u'bool',
+                u'float16', u'float32', u'float64', u'int8', u'int16', u'int32',
+                u'int64', u'uint8', u'complex64', u'complex128'
         ]:
             # this code is a little bit dangerous, since error could happen
-            # when casting no-asci code to str in python2.
+            # when casting no-ascii code to str in python2.
             # but since the set itself is limited, so currently, it is good.
             # however, jointly supporting python2 and python3, (as well as python4 maybe)
             # may still be a long-lasting problem.
             return str(dtype)
 
-    raise ValueError(
+    raise TypeError(
         "dtype must be any of [bool, float16, float32, float64, int8, int16, "
-        "int32, int64, uint8]")
+        "int32, int64, uint8, complex64, complex128], but received %s" % dtype)
 
 
 def check_variable_and_dtype(input,
@@ -76,8 +77,7 @@ def check_variable_and_dtype(input,
                              expected_dtype,
                              op_name,
                              extra_message=''):
-    check_type(input, input_name, (Variable, core.VarBase), op_name,
-               extra_message)
+    check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -91,6 +91,22 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # each step in dynamic graph mode, it will bring a heavy performance burden.
     if in_dygraph_mode():
         return
+
+    from .dygraph.dygraph_to_static.program_translator import in_declarative_mode
+    # NOTE: `in_declarative_mode` is used to determined whether this op is called under
+    # @declarative in transformation from dygrah to static layer. We add VarBase in
+    # expected_type to skip checking because varBase may be created and used in unusual way.
+    # Need a better design to be fix this.
+    if in_declarative_mode():
+        if not isinstance(expected_type, tuple):
+            expected_type = (expected_type, )
+        expected_type += (core.VarBase, )
+    elif isinstance(input, core.VarBase):
+        raise TypeError(
+            "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
+            "Because received '{}' in {} is a imperative Variable.".format(
+                input_name, op_name))
+
     if not isinstance(input, expected_type):
         raise TypeError(
             "The type of '%s' in %s must be %s, but received %s. %s" %
@@ -114,6 +130,28 @@ def check_dtype(input_dtype,
             "The data type of '%s' in %s must be %s, but received %s. %s" %
             (input_name, op_name, expected_dtype, convert_dtype(input_dtype),
              extra_message))
+
+
+def check_shape(shape,
+                op_name,
+                expected_shape_type=(list, tuple, Variable),
+                expected_element_type=(int, Variable),
+                expected_tensor_dtype=('int32', 'int64')):
+    # See NOTE [ Why skip dynamic graph check ]
+    if in_dygraph_mode():
+        return
+    check_type(shape, 'shape', expected_shape_type, op_name)
+    if expected_element_type is not None and not isinstance(shape, Variable):
+        for item in shape:
+            check_type(item, 'element of shape', expected_element_type, op_name)
+            if expected_tensor_dtype is not None and isinstance(item, Variable):
+                check_dtype(
+                    item.dtype, 'element of shape', expected_tensor_dtype,
+                    op_name,
+                    'If element of shape is Tensor, its data type should be {}'.
+                    format(', '.join(expected_tensor_dtype)))
+    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
 class DataToLoDTensorConverter(object):

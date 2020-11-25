@@ -16,9 +16,18 @@
 
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -29,11 +38,10 @@ struct MultiHeadMatmulPattern : public PatternBase {
   MultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "multihead_matmul") {}
 
-  PDNode* operator()(PDNode* x);
+  PDNode* operator()();
 
   // declare operator node's name
-  PATTERN_DECL_NODE(layer_norm);
-  PATTERN_DECL_NODE(layer_norm_out);
+  PATTERN_DECL_NODE(input0);
   PATTERN_DECL_NODE(mul0);
   PATTERN_DECL_NODE(mul1);
   PATTERN_DECL_NODE(mul2);

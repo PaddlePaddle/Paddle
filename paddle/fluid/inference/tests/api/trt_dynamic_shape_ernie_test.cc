@@ -86,17 +86,16 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
 void trt_ernie(bool with_fp16, std::vector<float> result) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
-  SetConfig(&config, model_dir, true /* use_gpu */);
+  SetConfig(&config, model_dir, true);
 
   config.SwitchUseFeedFetchOps(false);
 
-  int head_number = 12;
-  int batch = 1;
+  int batch = 32;
   int min_seq_len = 1;
   int max_seq_len = 128;
   int opt_seq_len = 128;
 
-  std::vector<int> min_shape = {batch, min_seq_len, 1};
+  std::vector<int> min_shape = {1, min_seq_len, 1};
   std::vector<int> max_shape = {batch, max_seq_len, 1};
   std::vector<int> opt_shape = {batch, opt_seq_len, 1};
   // Set the input's min, max, opt shape
@@ -104,29 +103,30 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
       {"read_file_0.tmp_0", min_shape},
       {"read_file_0.tmp_1", min_shape},
       {"read_file_0.tmp_2", min_shape},
-      {"stack_0.tmp_0", {batch, head_number, min_seq_len, min_seq_len}}};
+      {"read_file_0.tmp_4", min_shape}};
   std::map<std::string, std::vector<int>> max_input_shape = {
       {"read_file_0.tmp_0", max_shape},
       {"read_file_0.tmp_1", max_shape},
       {"read_file_0.tmp_2", max_shape},
-      {"stack_0.tmp_0", {batch, head_number, max_seq_len, max_seq_len}}};
+      {"read_file_0.tmp_4", max_shape}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"read_file_0.tmp_0", opt_shape},
       {"read_file_0.tmp_1", opt_shape},
       {"read_file_0.tmp_2", opt_shape},
-      {"stack_0.tmp_0", {batch, head_number, opt_seq_len, opt_seq_len}}};
+      {"read_file_0.tmp_4", opt_shape}};
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
     precision = AnalysisConfig::Precision::kHalf;
   }
-  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, true);
+  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data);
+
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-6);
+    EXPECT_NEAR(result[i], out_data[i], 1e-5);
   }
 }
 

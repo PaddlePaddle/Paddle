@@ -93,6 +93,7 @@ void GraphPatternDetector::operator()(Graph *graph,
 
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
+  SortSubgraphs(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
   ValidateByNodeRole(&subgraphs);
 
@@ -140,7 +141,7 @@ void GraphPatternDetector::ValidateByNodeRole(
           subgraphs->begin(), subgraphs->end(),
           [](const GraphPatternDetector::subgraph_t &subgraph) -> bool {
             // Collect the inputs and outputs.
-            std::unordered_set<Node *> ios;
+            std::set<Node *> ios;
             for (auto &item : subgraph) {
               if (!item.first->IsIntermediate()) {
                 ios.insert(item.second);
@@ -166,7 +167,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 }
 
 struct HitGroup {
-  std::unordered_map<PDNode *, Node *> roles;
+  std::map<PDNode *, Node *> roles;
 
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
@@ -184,7 +185,7 @@ struct HitGroup {
   }
 
  private:
-  std::unordered_set<Node *> nodes_;
+  std::set<Node *> nodes_;
 };
 
 // Tell whether Node a links to b.
@@ -283,7 +284,7 @@ void GraphPatternDetector::UniquePatterns(
   if (subgraphs->empty()) return;
   std::vector<GraphPatternDetector::subgraph_t> result;
 
-  std::unordered_set<size_t> set;
+  std::set<size_t> set;
   std::hash<std::string> hasher;
   for (auto &g : *subgraphs) {
     // Sort the items in the sub-graph, and transform to a string key.
@@ -302,10 +303,50 @@ void GraphPatternDetector::UniquePatterns(
   *subgraphs = result;
 }
 
+void GraphPatternDetector::SortSubgraphs(
+    std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
+  if (subgraphs->empty()) return;
+  bool has_bn_add_act = false;
+  for (auto &subgraph : *subgraphs) {
+    for (auto &item : subgraph) {
+      if (item.first->name().find("bn_add_act") != std::string::npos) {
+        has_bn_add_act = true;
+        break;
+      }
+    }
+  }
+  if (!has_bn_add_act) {
+    return;
+  }
+
+  std::sort(
+      subgraphs->begin(), subgraphs->end(),
+      [](const GraphPatternDetector::subgraph_t &a,
+         const GraphPatternDetector::subgraph_t &b) {
+        for (auto &item : a) {
+          if (item.first->name().find("bn_add_act") != std::string::npos &&
+              item.first->name().find("bn_reserve_space") !=
+                  std::string::npos) {
+            auto it_b = b.find(item.first);
+            if (it_b != b.end()) {
+              if (item.second->Name() != it_b->second->Name()) {
+                return item.second->Name() < it_b->second->Name();
+              } else {
+                return false;
+              }
+            } else {
+              return false;
+            }
+          }
+        }
+        return false;
+      });
+}
+
 void GraphPatternDetector::RemoveOverlappedMatch(
     std::vector<subgraph_t> *subgraphs) {
   std::vector<subgraph_t> result;
-  std::unordered_set<Node *> node_set;
+  std::set<Node *> node_set;
 
   for (const auto &subgraph : *subgraphs) {
     bool valid = true;
@@ -1188,6 +1229,171 @@ PDNode *patterns::BatchNormActGrad::operator()(
   return bn_grad;
 }
 
+PDNode *patterns::BatchNormActOneDNN::operator()(const std::string &act_type) {
+  auto *bn_x = pattern->NewNode(bn_in_repr())
+                   ->AsInput()
+                   ->assert_is_op_input("batch_norm", "X");
+  auto *bn = pattern->NewNode(batch_norm_repr())->assert_is_op("batch_norm");
+  auto *bn_out = pattern->NewNode(bn_out_repr())
+                     ->assert_is_op_output("batch_norm", "Y")
+                     ->assert_is_op_input(act_type);
+  auto *act =
+      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
+  auto *act_out = pattern->NewNode(act_out_repr())
+                      ->assert_is_op_output(act_type, "Out")
+                      ->AsOutput();
+
+  bn->LinksFrom({bn_x}).LinksTo({bn_out});
+  act->LinksFrom({bn_out}).LinksTo({act_out});
+
+  return act_out;
+}
+
+PDNode *patterns::BatchNormAddAct::operator()(
+    paddle::framework::ir::PDNode *bn_x_var,
+    std::unordered_set<std::string> act_types) {
+  bn_x_var->assert_is_op_input("batch_norm", "X")
+      ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->assert_is_op_input("batch_norm", "Scale");
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->assert_is_op_input("batch_norm", "Bias");
+
+  auto *bn = pattern->NewNode(batch_norm_repr())
+                 ->assert_is_op("batch_norm")
+                 ->assert_is_not_op_input("MomentumTensor")
+                 ->assert_op_attr<bool>("is_test", false)
+                 ->assert_op_attr<bool>("use_global_stats", false)
+                 ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+  auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
+                              ->assert_is_op_output("batch_norm", "MeanOut");
+  auto *bn_variance_out_var =
+      pattern->NewNode(bn_variance_out_repr())
+          ->assert_is_op_output("batch_norm", "VarianceOut");
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->assert_is_op_output("batch_norm", "SavedVariance");
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->assert_is_op_output("batch_norm", "SavedMean");
+  auto *bn_reserve_space =
+      pattern->NewNode(bn_reserve_space_repr())
+          ->assert_is_op_output("batch_norm", "ReserveSpace");
+  auto *bn_out_var = pattern->NewNode(bn_out_repr())
+                         ->assert_is_op_output("batch_norm", "Y")
+                         ->assert_var_dtype(proto::VarType::FP16);
+
+  bn_out_var->assert_is_op_input("elementwise_add");
+
+  auto *elewise_add =
+      pattern->NewNode(elewise_add_repr())->assert_is_op("elementwise_add");
+
+  auto *elewise_add_in_var = pattern->NewNode(elewise_add_in_repr())
+                                 ->assert_is_not_ctrl_var()
+                                 ->assert_is_op_input("elementwise_add")
+                                 ->assert_var_dtype(proto::VarType::FP16);
+
+  auto *elewise_add_out_var =
+      pattern->NewNode(elewise_add_out_repr())
+          ->assert_is_op_output("elementwise_add", "Out")
+          ->assert_has_n_outputs(1);
+
+  elewise_add_out_var->AsIntermediate()->assert_is_ops_input(act_types);
+
+  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+
+  auto *act_out_var =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+
+  bn->LinksFrom({bn_x_var, bn_scale_var, bn_bias_var})
+      .LinksTo({bn_mean_out_var, bn_variance_out_var, bn_saved_variance_var,
+                bn_saved_mean_var, bn_reserve_space, bn_out_var});
+  elewise_add->LinksFrom({elewise_add_in_var, bn_out_var})
+      .LinksTo({elewise_add_out_var});
+  act->LinksFrom({elewise_add_out_var}).LinksTo({act_out_var});
+
+  return act_out_var;
+}
+
+PDNode *patterns::BatchNormAddActGrad::operator()(
+    paddle::framework::ir::PDNode *d_act_out_var,
+    std::unordered_set<std::string> act_grad_types) {
+  auto *act_grad =
+      pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
+  auto *elewise_add_grad = pattern->NewNode(elewise_add_grad_repr())
+                               ->assert_is_op("elementwise_add_grad");
+  auto *bn_grad = pattern->NewNode(batch_norm_grad_repr())
+                      ->assert_is_op("batch_norm_grad")
+                      ->assert_op_attr<bool>("use_global_stats", false)
+                      ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+  auto *act_out_var = pattern->NewNode(act_out_repr())
+                          ->assert_is_ops_input(act_grad_types, "Out");
+  auto *d_act_x_var =
+      pattern->NewNode(d_act_x_repr())
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"))
+          ->assert_has_n_outputs(1);  // d_act_x
+
+  d_act_x_var->AsIntermediate()->assert_is_op_input("elementwise_add_grad");
+
+  auto *d_elewise_add_in_var =
+      pattern->NewNode(d_elewise_add_in_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("elementwise_add_grad")
+          ->assert_var_dtype(proto::VarType::FP16);  // d_add_in_1
+  auto *d_bn_out_var =
+      pattern->NewNode(d_bn_out_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("elementwise_add_grad")
+          ->assert_var_dtype(proto::VarType::FP16);  // d_add_in_2
+
+  d_bn_out_var->assert_is_op_input("batch_norm_grad", GradVarName("Y"));
+
+  auto *bn_x_var = pattern->NewNode(bn_x_repr())
+                       ->assert_is_op_input("batch_norm_grad", "X")
+                       ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->assert_is_op_input("batch_norm_grad", "Scale");
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->assert_is_op_input("batch_norm_grad", "Bias");
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->assert_is_op_input("batch_norm_grad", "SavedMean");
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->assert_is_op_input("batch_norm_grad", "SavedVariance");
+
+  auto *bn_reserve_space =
+      pattern->NewNode(bn_reserve_space_repr())
+          ->assert_is_op_input("batch_norm_grad", "ReserveSpace");
+  auto *d_bn_x_var =
+      pattern->NewNode(d_bn_x_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("X"))
+          ->assert_var_dtype(proto::VarType::FP16);
+  auto *d_bn_scale_var =
+      pattern->NewNode(d_bn_scale_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Scale"));
+  auto *d_bn_bias_var =
+      pattern->NewNode(d_bn_bias_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Bias"));
+
+  act_grad->LinksFrom({d_act_out_var, act_out_var}).LinksTo({d_act_x_var});
+
+  elewise_add_grad->LinksFrom({d_act_x_var})
+      .LinksTo({d_elewise_add_in_var, d_bn_out_var});
+
+  bn_grad
+      ->LinksFrom({bn_x_var, d_bn_out_var, bn_scale_var, bn_bias_var,
+                   bn_saved_mean_var, bn_saved_variance_var, bn_reserve_space})
+      .LinksTo({d_bn_x_var, d_bn_scale_var, d_bn_bias_var});
+
+  return bn_grad;
+}
+
 PDNode *patterns::ElewiseAddAct::operator()(
     paddle::framework::ir::PDNode *ele_x_var,
     std::unordered_set<std::string> act_types) {
@@ -1879,10 +2085,114 @@ PDNode *patterns::MultipleQuantize::operator()() {
   return prev_out;
 }
 
+PDNode *patterns::QuantizePlacement::operator()(
+    const std::unordered_set<std::string> &quantize_enabled_op_types) {
+  std::unordered_set<std::string> supported_op_types =
+      std::unordered_set<std::string>(
+          {"concat", "conv2d", "elementwise_add", "fc", "matmul", "pool2d",
+           "prior_box", "relu", "reshape2", "transpose2", "fusion_gru"});
+  if (!quantize_enabled_op_types.empty()) {
+    supported_op_types = quantize_enabled_op_types;
+  }
+  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  return op;
+}
+
+PDNode *patterns::Bfloat16Placement::operator()(
+    const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
+  std::unordered_set<std::string> supported_op_types =
+      std::unordered_set<std::string>(
+          {"concat", "conv2d", "elementwise_add", "elementwise_mul", "fc",
+           "fusion_gru", "gelu", "layer_norm", "matmul", "reshape2", "softmax",
+           "sum", "transpose2"});
+  if (!bfloat16_enabled_op_types.empty()) {
+    supported_op_types = bfloat16_enabled_op_types;
+  }
+  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+           node->Op()->Type() == "reshape2";
+  });
+  return op;
+}
+
+PDNode *patterns::OrphanedBfloat16::operator()() {
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "float32";
+  });
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  next_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "float32";
+  });
+
+  prev_op->LinksTo({prev_out});
+  op->LinksFrom({prev_out}).LinksTo({op_out});
+  next_op->LinksFrom({op_out});
+  return next_op;
+}
+
+PDNode *patterns::LastBfloat16Ops::operator()() {
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  next_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+           "bfloat16";
+  });
+
+  op->LinksTo({op_out});
+  next_op->LinksFrom({op_out});
+  return next_op;
+}
+
+PDNode *patterns::FirstBfloat16Ops::operator()() {
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+           "bfloat16";
+  });
+  auto *op_in = pattern->NewNode(op_in_repr())->AsOutput();
+
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+
+  prev_op->LinksTo({op_in});
+  op->LinksFrom({op_in});
+  return op;
+}
+
 PDNode *patterns::MKLDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
-      "abs",  "elementwise_add", "gelu", "leaky_relu", "relu", "softmax",
-      "sqrt", "swish",           "tanh"};
+      "abs",
+      "elementwise_mul",
+      "elementwise_add",
+      "gelu",
+      "leaky_relu",
+      "relu",
+      "softmax",
+      "sqrt",
+      "swish",
+      "tanh"};
 
   auto possible_inplace_op = pattern->NewNode(inplace_to_be_op_repr())
                                  ->assert_is_ops(supported_op_types);
@@ -1972,99 +2282,58 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
   return concat_out;
 }
 
-void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
-                                              const std::string &op_type,
-                                              const std::string &weight_name,
-                                              int times,
-                                              const std::string &quant_type,
-                                              const std::string &dequant_type) {
-  int kNumFields = 5;
-  const int kQuantizedWeightOffset = 0;
-  const int kQuantizedOpOffset = 1;
-  const int kQuantizedOpOutOffset = 2;
-  const int kDequantOpOffset = 3;
-  const int kDequantOpOutOffset = 4;
-  const int kDequantOpWeightScaleOffset = 5;
-
-  // the quant op always be one.
-  auto quant_op_in_scale = pattern->NewNode(GetNodeName("quant_op_in_scale"))
+void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,
+                                             const std::string &quant_type) {
+  auto *input_scale_node = pattern->NewNode(GetNodeName("input_scale_node"))
                                ->assert_is_op_input(quant_type, "InScale")
                                ->AsInput();
-  auto quant_op =
-      pattern->NewNode(GetNodeName("quant_op"))->assert_is_op(quant_type);
+  auto *quant_node =
+      pattern->NewNode(GetNodeName("quant_node"))->assert_is_op(quant_type);
+  auto *output_scale_node = pattern->NewNode(GetNodeName("output_scale_node"))
+                                ->assert_is_op_output(quant_type, "OutScale")
+                                ->AsOutput();
+  auto *output_act_node = pattern->NewNode(GetNodeName("output_act_node"))
+                              ->assert_is_op_output(quant_type, "Out")
+                              ->AsOutput();
+  quant_node->LinksFrom({input_scale_node, input_act_node});
+  output_scale_node->LinksFrom({quant_node});
+  output_act_node->LinksFrom({quant_node});
+}
 
-  PDNode *quant_op_out_scale = nullptr;
+void patterns::DequantOpFuse::operator()(PDNode *quantized_op_input,
+                                         const std::string &quantized_op_type,
+                                         const std::string &dequant_type,
+                                         const std::string &weight_name) {
+  auto *quantized_op_weight =
+      pattern->NewNode(GetNodeName("quantized_op_weight"))
+          ->assert_is_op_input(quantized_op_type, weight_name)
+          ->AsInput();
+  auto *quantized_op = pattern->NewNode(GetNodeName("quantized_op"))
+                           ->assert_is_op(quantized_op_type);
+  auto *quantized_op_out = pattern->NewNode(GetNodeName("quantized_op_out"))
+                               ->assert_is_op_output(quantized_op_type)
+                               ->assert_is_op_input(dequant_type, "X");
+  auto *dequant_op =
+      pattern->NewNode(GetNodeName("dequant_op"))->assert_is_op(dequant_type);
+  auto *dequant_op_out = pattern->NewNode(GetNodeName("dequant_op_out"))
+                             ->assert_is_op_output(dequant_type, "Out")
+                             ->AsOutput();
+  PDNode *dequant_channel_scale = nullptr;
   if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
-    kNumFields += 1;
-    quant_op_out_scale = pattern->NewNode(GetNodeName("quant_op_out_scale"))
-                             ->assert_is_op_output(quant_type, "OutScale")
-                             ->assert_is_op_nth_input(dequant_type, "Scales", 1)
-                             ->AsIntermediate();
+    dequant_channel_scale =
+        pattern->NewNode(GetNodeName("dequant_channel_scale"))
+            ->assert_is_op_nth_input(dequant_type, "Scales", 0)
+            ->AsInput();
+  }
+  quantized_op->LinksFrom({quantized_op_input, quantized_op_weight});
+  quantized_op_out->LinksFrom({quantized_op});
+
+  if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
+    dequant_op->LinksFrom({quantized_op_out, dequant_channel_scale});
   } else {
-    quant_op_out_scale = pattern->NewNode(GetNodeName("quant_op_out_scale"))
-                             ->assert_is_op_output(quant_type, "OutScale")
-                             ->assert_is_op_input(dequant_type, "Scale")
-                             ->AsIntermediate();
+    dequant_op->LinksFrom({quantized_op_out});
   }
-
-  auto quant_op_out = pattern->NewNode(GetNodeName("quant_op_out"))
-                          ->assert_is_op_output(quant_type, "Out")
-                          ->assert_is_op_input(op_type)
-                          ->AsIntermediate();
-
-  // there are 'times' quantized and dequant op
-  std::vector<PDNode *> nodes;
-  for (int i = 0; i < times; i++) {
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("quantized_op_weight") + std::to_string(i))
-            ->assert_is_op_input(op_type, weight_name)
-            ->AsInput());
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("quantized_op") + std::to_string(i))
-            ->assert_is_op(op_type));
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("quantized_op_out") + std::to_string(i))
-            ->assert_is_op_output(op_type)
-            ->assert_is_op_input(dequant_type, "X")
-            ->AsIntermediate());
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("dequant_op") + std::to_string(i))
-            ->assert_is_op(dequant_type));
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("dequant_op_out") + std::to_string(i))
-            ->assert_is_op_output(dequant_type, "Out")
-            ->AsOutput());
-
-    if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
-      nodes.push_back(pattern
-                          ->NewNode(GetNodeName("dequant_channel_scale") +
-                                    std::to_string(i))
-                          ->assert_is_op_nth_input(dequant_type, "Scales", 0)
-                          ->AsInput());
-    }
-  }
-
-  quant_op->LinksFrom({quant_op_input, quant_op_in_scale});
-  quant_op_out->LinksFrom({quant_op});
-  for (int i = 0; i < times; i++) {
-    nodes[i * kNumFields + kQuantizedOpOffset]->LinksFrom(
-        {quant_op_out, nodes[i * kNumFields + kQuantizedWeightOffset]});
-    nodes[i * kNumFields + kQuantizedOpOutOffset]->LinksFrom(
-        {nodes[i * kNumFields + kQuantizedOpOffset]});
-    if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
-      nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
-          {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale,
-           nodes[i * kNumFields + kDequantOpWeightScaleOffset]});
-    } else {
-      nodes[i * kNumFields + kDequantOpOffset]->LinksFrom(
-          {nodes[i * kNumFields + kQuantizedOpOutOffset], quant_op_out_scale});
-    }
-    nodes[i * kNumFields + kDequantOpOutOffset]->LinksFrom(
-        {nodes[i * kNumFields + kDequantOpOffset]});
-  }
+  dequant_op_out->LinksFrom({dequant_op});
 }
 
 void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
@@ -2223,6 +2492,127 @@ PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
   transpose_op->LinksFrom({matmul_out}).LinksTo({transpose_out});
   reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
   return reshape_out;
+}
+
+PDNode *patterns::FusionGru::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_op("fusion_gru");
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "X");
+  auto weight_h = pattern->NewNode(weight_h_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fusion_gru", "WeightH");
+  auto weight_x = pattern->NewNode(weight_x_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fusion_gru", "WeightX");
+  auto out = pattern->NewNode(out_repr())
+                 ->AsOutput()
+                 ->assert_is_op_output("fusion_gru", "Hidden");
+  op->LinksFrom({x, weight_h, weight_x}).LinksTo({out});
+  return out;
+}
+
+PDNode *patterns::TwoFusionGruConcat::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "X");
+  auto gru1 =
+      pattern->NewNode(gru1_repr())
+          ->assert_is_op("fusion_gru")
+          ->assert_more([&](Node *node) {
+            return node->Op()->GetAttrIfExists<bool>("is_reverse") == false;
+          });
+  auto gru2 =
+      pattern->NewNode(gru2_repr())
+          ->assert_is_op("fusion_gru")
+          ->assert_more([&](Node *node) {
+            return node->Op()->GetAttrIfExists<bool>("is_reverse") == true;
+          });
+  auto wh1 = pattern->NewNode(wh1_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightH");
+  auto wh2 = pattern->NewNode(wh2_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightH");
+  auto wx1 = pattern->NewNode(wx1_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightX");
+  auto wx2 = pattern->NewNode(wx2_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightX");
+  auto b1 = pattern->NewNode(b1_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "Bias");
+  auto b2 = pattern->NewNode(b2_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "Bias");
+  auto h1 = pattern->NewNode(h1_repr())
+                ->AsOutput()
+                ->assert_is_op_output("fusion_gru", "Hidden")
+                ->assert_is_op_input("concat")
+                ->AsIntermediate();
+  auto h2 = pattern->NewNode(h2_repr())
+                ->AsOutput()
+                ->assert_is_op_output("fusion_gru", "Hidden")
+                ->assert_is_op_input("concat")
+                ->AsIntermediate();
+  auto concat = pattern->NewNode(concat_repr())->assert_is_op("concat");
+  auto out = pattern->NewNode(out_repr())
+                 ->AsOutput()
+                 ->assert_is_op_output("concat", "Out");
+  gru1->LinksFrom({x, wh1, wx1, b1}).LinksTo({h1});
+  gru2->LinksFrom({x, wh2, wx2, b2}).LinksTo({h2});
+  concat->LinksFrom({h1, h2}).LinksTo({out});
+  return out;
+}
+
+PDNode *patterns::MultiGruSeq::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "multi_gru", "X");
+  auto gru1 = pattern->NewNode(gru1_repr())->assert_is_op("multi_gru");
+  auto wx11 = pattern->NewNode(wx11_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 0);
+  auto wx12 = pattern->NewNode(wx12_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 1);
+  auto wh11 = pattern->NewNode(wh11_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 0);
+  auto wh12 = pattern->NewNode(wh12_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 1);
+  auto b11 = pattern->NewNode(b11_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 0);
+  auto b12 = pattern->NewNode(b12_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 1);
+  auto h1 = pattern->NewNode(h1_repr())
+                ->AsOutput()
+                ->assert_is_op_output("multi_gru", "Hidden")
+                ->assert_is_op_input("multi_gru", "X")
+                ->AsIntermediate();
+  auto gru2 = pattern->NewNode(gru2_repr())->assert_is_op("multi_gru");
+  auto wx21 = pattern->NewNode(wx21_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 0);
+  auto wx22 = pattern->NewNode(wx22_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightX", 1);
+  auto wh21 = pattern->NewNode(wh21_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 0);
+  auto wh22 = pattern->NewNode(wh22_repr())
+                  ->AsInput()
+                  ->assert_is_op_nth_input("multi_gru", "WeightH", 1);
+  auto b21 = pattern->NewNode(b21_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 0);
+  auto b22 = pattern->NewNode(b22_repr())
+                 ->AsInput()
+                 ->assert_is_op_nth_input("multi_gru", "Bias", 1);
+  auto h2 = pattern->NewNode(h2_repr())->AsOutput()->assert_is_op_output(
+      "multi_gru", "Hidden");
+  gru1->LinksFrom({x, wx11, wx12, wh11, wh12, b11, b12}).LinksTo({h1});
+  gru2->LinksFrom({h1, wx21, wx22, wh21, wh22, b21, b22}).LinksTo({h2});
+  return h2;
 }
 
 }  // namespace ir

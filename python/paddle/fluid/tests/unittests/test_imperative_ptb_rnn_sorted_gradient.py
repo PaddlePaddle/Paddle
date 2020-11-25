@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
@@ -43,10 +44,10 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -82,7 +83,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
-                dy_loss.backward(backward_strategy)
+                dy_loss.backward()
                 sgd.minimize(dy_loss)
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
@@ -94,8 +95,9 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             dy_last_hidden_value = last_hidden.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,

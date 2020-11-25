@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+
 #include <functional>
-#include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -26,7 +28,11 @@ namespace ir {
 template <typename BinaryOperation>
 LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
                                BinaryOperation f) {
-  PADDLE_ENFORCE_EQ(vec_a.dims(), vec_b.dims());
+  PADDLE_ENFORCE_EQ(vec_a.dims(), vec_b.dims(),
+                    platform::errors::InvalidArgument(
+                        "Input two tensors must have same shape, but they are "
+                        "different: %s, %s.",
+                        vec_a.dims(), vec_b.dims()));
   LoDTensor vec_y;
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
@@ -39,11 +45,13 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
 }
 
 void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -68,7 +76,9 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     // elementwise_add op
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_bias_pattern);
 
-    PADDLE_ENFORCE(subgraph.count(conv_input));
+    PADDLE_ENFORCE_NE(
+        subgraph.count(conv_input), 0,
+        platform::errors::NotFound("Detector did not find conv input."));
 
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
@@ -86,10 +96,16 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     if (has_bias && conv->Op()->Input("Bias").size() > 0) {
       auto conv_bias_names = conv->Op()->Input("Bias");
       // add eltwise bias to existing conv bias
-      PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1);
+      PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1,
+                        platform::errors::NotFound("Can not find var Bias."));
       auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
       auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
-      PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(), eltwise_bias_tensor->dims());
+      PADDLE_ENFORCE_EQ(
+          conv_bias_tensor->dims(), eltwise_bias_tensor->dims(),
+          platform::errors::InvalidArgument(
+              "Conv bias tensor and eltwise bias tensor "
+              "must have same shape, but they are different: %s, %s.",
+              conv_bias_tensor->dims(), eltwise_bias_tensor->dims()));
       *conv_bias_tensor = tensor_apply_eltwise(
           *conv_bias_tensor, *eltwise_bias_tensor, std::plus<float>());
 
@@ -133,7 +149,19 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
+REGISTER_PASS_CAPABILITY(conv_bias_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("elementwise_add", 0));
+
 REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DTransposeBiasFusePass);
+REGISTER_PASS_CAPABILITY(conv_transpose_bias_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d_transpose", 1)
+            .EQ("elementwise_add", 0));
+
 REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
               paddle::framework::ir::Conv3DBiasFusePass);

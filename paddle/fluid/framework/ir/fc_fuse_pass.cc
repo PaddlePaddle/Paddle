@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
-#include <memory>
+
 #include <string>
-#include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -25,7 +26,8 @@ namespace framework {
 namespace ir {
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("fc_fuse", graph);
 
   int found_fc_count = 0;
@@ -181,3 +183,10 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
 
 REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass)
     .RequirePassAttr("use_gpu");
+REGISTER_PASS_CAPABILITY(fc_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("relu", 0)
+            .EQ("fc", 0));

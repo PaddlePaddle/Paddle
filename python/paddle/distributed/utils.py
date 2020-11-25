@@ -143,7 +143,7 @@ class Trainer(object):
             return False
 
         if self.endpoint != t.endpoint or \
-                self.rank != t.rank :
+                self.rank != t.rank:
             return False
 
         for a, b in zip(self.gpus, t.gpus):
@@ -227,18 +227,23 @@ def get_logger(log_level, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
-    assert type(paddle_ports) is list, "paddle_ports must be list"
+def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
+        cur_node_endpoints = trainer_endpoints[node_rank]
+        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
+        assert len(cur_node_endpoints) >= len(
+            selected_gpus
+        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s:%d" % (ip, paddle_ports[i])
+            trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -253,7 +258,8 @@ def terminate_local_procs(procs):
     for p in procs:
         if p.proc.poll() is None:
             p.proc.terminate()
-            p.log_fn.close()
+            if p.log_fn:
+                p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
     #wait all process terminiated
@@ -327,11 +333,24 @@ def find_free_ports(num):
     return None
 
 
+def _prepare_trainer_env(cluster, trainer):
+    proc_env = {
+        "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
+        "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+        "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+        "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+    }
+    return proc_env
+
+
 class TrainerProc(object):
     def __init__(self):
         self.proc = None
         self.log_fn = None
+        self.log_offset = None
         self.rank = None
+        self.local_rank = None
         self.cmd = None
 
 
@@ -350,14 +369,7 @@ def start_local_trainers(cluster,
 
     procs = []
     for idx, t in enumerate(pod.trainers):
-        proc_env = {
-            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-        }
-
+        proc_env = _prepare_trainer_env(cluster, t)
         current_env.update(proc_env)
 
         logger.debug("trainer proc env:{}".format(current_env))
@@ -377,12 +389,29 @@ def start_local_trainers(cluster,
         tp = TrainerProc()
         tp.proc = proc
         tp.rank = t.rank
+        tp.local_rank = idx
         tp.log_fn = fn
+        tp.log_offset = fn.tell() if fn else None
         tp.cmd = cmd
 
         procs.append(tp)
 
     return procs
+
+
+def pull_worker_log(tp):
+    if tp.log_fn:
+        with open(tp.log_fn.name, 'r') as fin:
+            fin.seek(tp.log_offset, 0)
+            for line in fin:
+                try:
+                    sys.stdout.write(line)
+                except UnicodeEncodeError:
+                    sys.stdout.write(
+                        'UnicodeEncodeError occurs at this line. '
+                        'Please refer to the original log file "%s"\n' %
+                        tp.log_fn.name)
+            tp.log_offset = fin.tell()
 
 
 def watch_local_trainers(procs, nranks):
@@ -392,6 +421,9 @@ def watch_local_trainers(procs, nranks):
         # wait all process finish or one error
         alive = False
         for p in procs:
+            if p.log_fn and p.local_rank == 0:
+                pull_worker_log(p)
+
             ret = p.proc.poll()
             if ret is None:
                 alive = True

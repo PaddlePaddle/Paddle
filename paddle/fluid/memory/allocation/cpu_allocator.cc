@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
+
 #include <stdlib.h>
-#include <string>
 
 namespace paddle {
 namespace memory {
@@ -37,8 +37,11 @@ Allocation *CPUAllocator::AllocateImpl(size_t size) {
 #ifdef _WIN32
   p = _aligned_malloc(size, kAlignment);
 #else
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, kAlignment, size), 0, "Alloc %ld error!",
-                    size);
+  int error = posix_memalign(&p, kAlignment, size);
+  PADDLE_ENFORCE_EQ(
+      error, 0,
+      platform::errors::ResourceExhausted(
+          "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
   return new Allocation(p, size, platform::CPUPlace());
 }

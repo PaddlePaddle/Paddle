@@ -12,20 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/parameter_recv.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class RecvOp : public framework::OperatorBase {
  public:
@@ -36,11 +45,6 @@ class RecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    int do_not_run = Attr<int>("do_not_run");
-    if (do_not_run) {
-      VLOG(3) << "recv do not run!";
-      return;
-    }
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::vector<std::string> varnames =
         Attr<std::vector<std::string>>("varnames");
@@ -59,10 +63,12 @@ class RecvOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("recv_varnames");
 
     if (recv_varnames.size() > 0) {
-      auto recv_functor = distributed::ParameterRecv<float>();
-      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {},
-                                             trainer_id);
-      recv_functor(rpc_ctx, scope);
+      auto *communicator = distributed::Communicator::GetInstance();
+
+      if (communicator != nullptr) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "execute startup program must before fleet.init_worker"));
+      }
     } else {
       std::vector<distributed::VarHandlePtr> rets;
       if (with_barrier) {

@@ -28,9 +28,10 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
-from ..transpiler.distribute_transpiler import DistributedMode
+
 import logging
 from ..data_feeder import check_dtype, check_type
+from paddle.fluid.framework import static_only
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',
@@ -38,6 +39,7 @@ __all__ = [
 ]
 
 
+@static_only
 def data(name,
          shape,
          append_batch_size=True,
@@ -231,6 +233,8 @@ class ListenAndServ(object):
         return parent_block
 
     def complete_op(self):
+        from ..incubate.fleet.parameter_server.mode import DistributedMode
+
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
@@ -391,7 +395,6 @@ def _py_reader(capacity,
                name=None,
                use_double_buffer=True,
                feed_list=None):
-
     if feed_list is not None:
         if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"

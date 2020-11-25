@@ -18,6 +18,7 @@ import contextlib
 import unittest
 import numpy as np
 import six
+import itertools
 
 import paddle
 import paddle.fluid as fluid
@@ -73,8 +74,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             try:
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
+                paddle.seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
                 mlp = MLP()
                 optimizer = self.get_optimizer_dygraph(
                     parameter_list=mlp.parameters())
@@ -90,8 +91,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CUDAPlace(0)
 
         with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
@@ -131,8 +132,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             if place == None:
                 place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
@@ -428,6 +429,46 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
                 self.assertTrue(np.allclose(lr, ret[i], rtol=1e-06, atol=0.0))
 
+    def test_set_lr(self):
+        with fluid.dygraph.guard():
+            a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            linear = fluid.dygraph.nn.Linear(10, 10)
+
+            a = fluid.dygraph.to_variable(a)
+
+            b = linear(a)
+
+            loss = fluid.layers.reduce_mean(b)
+
+            adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
+
+            lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+            for i in range(5):
+                adam.set_lr(lr_list[i])
+                adam.minimize(loss)
+                lr = adam.current_step_lr()
+                self.assertTrue(
+                    np.allclose(
+                        lr, lr_list[i], rtol=1e-06, atol=0.0))
+
+            lr_var = fluid.layers.create_global_var(
+                shape=[1], value=0.7, dtype='float32')
+            adam.set_lr(lr_var)
+            adam.minimize(loss)
+            lr = adam.current_step_lr()
+            self.assertTrue(np.allclose(lr, 0.7, rtol=1e-06, atol=0.0))
+
+            with self.assertRaises(RuntimeError):
+                adam = fluid.optimizer.Adam(
+                    fluid.dygraph.NaturalExpDecay(
+                        learning_rate=0.1,
+                        decay_steps=3,
+                        decay_rate=0.5,
+                        staircase=True),
+                    parameter_list=linear.parameters())
+                adam.set_lr(0.01)
+
 
 class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
@@ -657,6 +698,31 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
     def test_recompute(self):
         exception_message = "In dygraph, don't support RecomputeOptimizer."
         self._check_exception(exception_message)
+
+
+class TestImperativeOptimizerList(unittest.TestCase):
+    def test_parameter_list(self):
+        with fluid.dygraph.guard():
+            linear_1 = Linear(10, 10)
+            linear_2 = Linear(10, 10)
+
+            sgd = SGDOptimizer(
+                1.0,
+                parameter_list=itertools.chain(linear_1.parameters(),
+                                               linear_2.parameters()))
+
+            in_np = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            in_data = fluid.dygraph.to_variable(in_np)
+
+            y = linear_1(in_data)
+            y = linear_2(y)
+            loss = fluid.layers.reduce_mean(y)
+            loss.backward()
+            sgd.minimize(loss)
+
+            self.assertTrue(
+                len(sgd._parameter_list) ==
+                len(linear_1.parameters() + linear_2.parameters()))
 
 
 if __name__ == '__main__':

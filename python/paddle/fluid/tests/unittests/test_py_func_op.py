@@ -147,10 +147,8 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
     with fluid.program_guard(fluid.Program(), fluid.Program()):
         with fluid.scope_guard(fluid.core.Scope()):
-            fluid.default_main_program().random_seed = 1
-            fluid.default_startup_program().random_seed = 1
+            gen = paddle.seed(1)
             np.random.seed(1)
-
             img = fluid.layers.data(name='image', shape=[784], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             loss = simple_fc_net(img, label, use_py_func_op)
@@ -189,17 +187,17 @@ class TestPyFuncOpUseExecutor(unittest.TestCase):
         self.use_parallel_executor = False
 
     def test_loss_diff(self):
-        losses = []
         for use_cuda in [True, False]:
+            losses = []
             for use_py_func_op in [True, False]:
                 L = test_main(use_cuda, use_py_func_op,
                               self.use_parallel_executor)
                 if L is not None:
                     losses.append(L)
 
-        for idx in six.moves.range(len(losses) - 1):
-            max_diff = np.max(np.abs(losses[idx] - losses[0]))
-            self.assertAlmostEqual(max_diff, 0, delta=1e-3)
+                for idx in six.moves.range(len(losses) - 1):
+                    max_diff = np.max(np.abs(losses[idx] - losses[0]))
+                    self.assertAlmostEqual(max_diff, 0, delta=1e-3)
 
 
 class TestPyFuncOpUseParallelExecutor(TestPyFuncOpUseExecutor):

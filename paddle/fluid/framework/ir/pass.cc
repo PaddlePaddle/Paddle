@@ -14,11 +14,18 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
 
-#include <memory>
-#include <utility>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -26,7 +33,8 @@ namespace ir {
 
 Graph* Pass::Apply(Graph* graph) const {
   CheckPrevPass();
-  PADDLE_ENFORCE(graph, "graph passed to Pass::Apply() cannot be empty.");
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE_NE(
         attrs_.find(attr), attrs_.end(),
@@ -40,11 +48,14 @@ Graph* Pass::Apply(Graph* graph) const {
   }
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
-  PADDLE_ENFORCE(!HasCircle(*graph),
-                 "Illegal Pass %s. Generated graph shouldn't have cycle.",
-                 Type());
-  PADDLE_ENFORCE(VarDescIsConsistency(*graph),
-                 "The VarDescs of persistable variable are not consistency.");
+  PADDLE_ENFORCE_EQ(
+      HasCircle(*graph), false,
+      platform::errors::InvalidArgument(
+          "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
+  PADDLE_ENFORCE_EQ(
+      VarDescIsConsistency(*graph), true,
+      platform::errors::InvalidArgument(
+          "The VarDescs of persistable variable are not consistency."));
   applied_ = true;
   if (!graph->Has(kPassRecorder)) {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
@@ -53,10 +64,7 @@ Graph* Pass::Apply(Graph* graph) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::MKLDNNDeviceContext* dev_ctx =
-      (platform::MKLDNNDeviceContext*)pool.Get(paddle::platform::CPUPlace());
-  dev_ctx->ResetBlobMap();
+  ClearMKLDNNCache(paddle::platform::CPUPlace());
 #endif
   return graph;
 }

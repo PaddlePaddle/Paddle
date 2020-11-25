@@ -20,6 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class DeviceWorker;
+
 typedef std::shared_ptr<DeviceWorker> (*Createdevice_workerFunction)();
 typedef std::unordered_map<std::string, Createdevice_workerFunction>
     device_workerMap;
@@ -62,6 +64,10 @@ std::shared_ptr<DeviceWorker> DeviceWorkerFactory::CreateDeviceWorker(
 REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
+#ifdef PADDLE_WITH_PSLIB
+REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
+REGISTER_DEVICE_WORKER_CLASS(HeterBoxWorker);
+#endif
 #if defined(PADDLE_WITH_NCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif

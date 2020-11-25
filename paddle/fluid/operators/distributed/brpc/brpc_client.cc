@@ -446,11 +446,13 @@ VarHandlePtr BRPCClient::AsyncSendMessage(const std::string& ep,
 }
 
 VarHandlePtr BRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                               const std::string& dir,
+                                               const std::string& dirname,
+                                               const std::string& varname,
+                                               const int mode,
                                                int64_t time_out) {
   sendrecv::VariableMessage req;
-  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
-  req.set_out_varname(dir);
+  req.set_varname(varname);
+  req.set_out_varname(dirname);
 
   return AsyncSendVarMessage(ep, "CheckPointNotifyRPC", req, time_out);
 }

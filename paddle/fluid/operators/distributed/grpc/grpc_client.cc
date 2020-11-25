@@ -32,8 +32,9 @@ namespace distributed {
 void GRPCClient::InitImpl() {
   // start the client process thread
   // TODO(wuyi): can make this in a threadpool
-  PADDLE_ENFORCE(client_thread_ == nullptr,
-                 "please not re init proceed thread");
+  PADDLE_ENFORCE_EQ(client_thread_ == nullptr, true,
+                    platform::errors::PreconditionNotMet(
+                        "please not re init proceed thread"));
   client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
 }
 
@@ -44,7 +45,8 @@ void GRPCClient::SendComplete() {
       VLOG(3) << "send complete message to " << it.first;
       this->AsyncSendComplete(it.first);
     }
-    PADDLE_ENFORCE(this->Wait(), "internal grpc error");
+    PADDLE_ENFORCE_EQ(this->Wait(), true, platform::errors::PreconditionNotMet(
+                                              "internal grpc service error."));
     completed_ = true;
   }
 }
@@ -130,6 +132,15 @@ void ProcGetResponse(const VarHandle& var_h,
   int trainer_id;
   DeserializeFromByteBuffer(ret_msg, *var_h.ctx(), var_h.scope(), &outvar,
                             &trainer_id);
+}
+
+void ProcGetRecvResponse(const VarHandle& var_h,
+                         const ::grpc::ByteBuffer& ret_msg) {
+  VLOG(4) << "ProcGetRecvResponse";
+  framework::Variable* outvar = nullptr;
+  int trainer_id;
+  DeserializeRecvFromByteBuffer(ret_msg, *var_h.ctx(), var_h.scope(), &outvar,
+                                &trainer_id);
 }
 
 template <typename T>
@@ -260,7 +271,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   while (true) {
     GetProcessor* s = new GetProcessor(ch);
     VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
-    s->Prepare(h, time_out);
+    s->Prepare(h, kPrefetchTimeout);
 
     framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope,
                         p_ctx, s, method, h, table_name_val, this] {
@@ -409,7 +420,9 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
 }
 
 VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                               const std::string& dir,
+                                               const std::string& dirname,
+                                               const std::string& varname,
+                                               const int mode,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
 
@@ -422,8 +435,9 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
-  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
-  req.set_out_varname(dir);
+  req.set_varname(varname);
+  req.set_table_name(std::to_string(mode));
+  req.set_out_varname(dirname);
 
   platform::RecordRPCEvent record_event(method);
 
@@ -481,10 +495,95 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   return h;
 }
 
+VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
+                                          const platform::DeviceContext& ctx,
+                                          const framework::Scope& scope,
+                                          const std::string& send_var_name,
+                                          const std::string& recv_var_name,
+                                          const std::string& table_name,
+                                          int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string send_var_name_val = send_var_name;
+  const std::string recv_var_name_val = recv_var_name;
+  const std::string table_name_val = table_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
+  const std::string method = kSendAndRecvRPC;
+  VLOG(4) << "GRPCClient::SendAndRecv Begin ,Send_var_name: "
+          << send_var_name_val << " Recv_var_name: " << recv_var_name_val;
+  int retry_times_ = 0;
+
+  while (true) {
+    SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
+    VarHandlePtr h(
+        new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
+    VarHandlePtr h_recv(
+        new VarHandle(ep, method, recv_var_name_val, p_ctx, p_scope));
+    s->Prepare(h, time_out);
+    s->RecvPrepare(h_recv);
+
+    framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
+                        p_scope, p_ctx, s, method, h, this] {
+      auto* send_var = p_scope->FindVar(send_var_name_val);
+      send_var->GetMutable<framework::LoDTensor>()->set_lod({});
+      ::grpc::ByteBuffer buf;
+      VLOG(4) << "SerializeToByteBuffer: send_var_name_val: "
+              << send_var_name_val
+              << " recv_var_name_val: " << recv_var_name_val;
+      SerializeToByteBuffer(send_var_name_val, send_var, *p_ctx, &buf,
+                            recv_var_name_val, trainer_id_, table_name_val);
+
+      VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+
+      // stub context
+      s->response_call_back_ = ProcGetRecvResponse;
+
+      platform::RecordRPCEvent record_event(method);
+
+      auto call = s->stub_g_.PrepareUnaryCall(
+          s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
+          buf, &cq_);
+      call->StartCall();
+      call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+      if (UNLIKELY(platform::IsProfileEnabled())) {
+        h->Wait();
+      }
+    });
+    req_count_++;
+
+    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+      h->Wait();
+      if (h->should_retry) {
+        VLOG(3) << "rpc call failed, retry times " << retry_times_;
+        retry_times_++;
+        std::random_device rd;
+        std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
+        continue;
+      }
+    }
+
+    return h;
+  }
+}
+
 bool GRPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
   sync_cond_.wait(lk, [this] { return (req_count_ == 0 || ok_ == false); });
   return ok_;
+}
+
+inline bool ShouldRetry(const std::string& method, int error_code) {
+  if (method == kPrefetchRPC) {
+    return true;
+  }
+
+  if (error_code == grpc::StatusCode::DEADLINE_EXCEEDED) {
+    return true;
+  }
+
+  return false;
 }
 
 void GRPCClient::Proceed() {
@@ -495,24 +594,15 @@ void GRPCClient::Proceed() {
   while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
-    PADDLE_ENFORCE(c);
+    PADDLE_ENFORCE_NOT_NULL(
+        c, platform::errors::PreconditionNotMet("Make BaseProcessor failed."));
 
     if (c->status_.ok()) {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
-    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      PADDLE_THROW(platform::errors::External(
-          "%s meets grpc error, error_code is %d, error message is %s, error "
-          "details is %s.",
-          c->GetVarHandlePtr()->String(), c->status_.error_code(),
-          c->status_.error_message(), c->status_.error_details()));
-      {
-        std::lock_guard<std::mutex> lk(sync_mutex_);
-        ok_ = false;
-      }
-      c->Finish(false);
-    } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
-      VLOG(3) << c->GetVarHandlePtr()->String()
+    } else if (ShouldRetry(c->GetVarHandlePtr()->method(),
+                           c->status_.error_code())) {
+      VLOG(0) << c->GetVarHandlePtr()->String()
               << " meets grpc error, error_code:" << c->status_.error_code()
               << " error_message:" << c->status_.error_message()
               << " error_details:" << c->status_.error_details()

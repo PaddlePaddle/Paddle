@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -101,7 +102,10 @@ class InferNoNeedBufferVarsFN {
   inline const std::unordered_set<std::string> &operator()(
       const VariableNameMap &inputs, const VariableNameMap &outputs,
       const AttributeMap &attrs) const {
-    PADDLE_ENFORCE_NOT_NULL(inferer_);
+    PADDLE_ENFORCE_NOT_NULL(
+        inferer_,
+        platform::errors::PreconditionNotMet(
+            "The `inferer_` of InferNoNeedBufferVarsFN is not initialized."));
     StaticGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
     return (*inferer_)(ctx);
   }
@@ -110,7 +114,10 @@ class InferNoNeedBufferVarsFN {
       const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
       const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
       const AttributeMap &attrs) const {
-    PADDLE_ENFORCE_NOT_NULL(inferer_);
+    PADDLE_ENFORCE_NOT_NULL(
+        inferer_,
+        platform::errors::PreconditionNotMet(
+            "The `inferer_` of InferNoNeedBufferVarsFN is not initialized."));
     DyGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
     return (*inferer_)(ctx);
   }
@@ -120,8 +127,14 @@ class InferNoNeedBufferVarsFN {
   inline bool operator!() const { return inferer_ == nullptr; }
 
   inline void Reset(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
-    PADDLE_ENFORCE_NOT_NULL(inferer);
-    PADDLE_ENFORCE_EQ(inferer_, nullptr);
+    PADDLE_ENFORCE_NOT_NULL(
+        inferer, platform::errors::InvalidArgument("The input inferer of "
+                                                   "InferNoNeedBufferVarsFN::"
+                                                   "Reset is nullptr."));
+    PADDLE_ENFORCE_EQ(
+        inferer_, nullptr,
+        platform::errors::AlreadyExists(
+            "The `inferer_` of InferNoNeedBufferVarsFN has been initialized."));
     inferer_ = inferer;
   }
 

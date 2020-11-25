@@ -84,10 +84,10 @@ TEST(LiteEngineOp, engine_op) {
   inference::lite::EngineConfig config;
   config.valid_places = {
 #ifdef PADDLE_WITH_CUDA
-      paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
-      paddle::lite::Place({TARGET(kHost), PRECISION(kAny)}),
-      paddle::lite::Place({TARGET(kX86), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
   serialize_params(&(config.param), &scope, repetitive_params);
   config.model = program.Proto()->SerializeAsString();
@@ -100,6 +100,7 @@ TEST(LiteEngineOp, engine_op) {
   engine_op_desc.SetAttr("engine_key", engine_key);
   engine_op_desc.SetAttr("enable_int8", false);
   engine_op_desc.SetAttr("use_gpu", true);
+  engine_op_desc.SetAttr("zero_copy", true);
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   inference::Singleton<inference::lite::EngineManager>::Global().Create(
       engine_key, config);

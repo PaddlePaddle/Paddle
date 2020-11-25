@@ -35,17 +35,18 @@ list(APPEND CUDNN_CHECK_LIBRARY_DIRS
 	${CUDA_TOOLKIT_ROOT_DIR}/lib/x64
 	)
 set(CUDNN_LIB_NAME "")
+
 if (LINUX)
-set(CUDNN_LIB_NAME "libcudnn.so")
+    set(CUDNN_LIB_NAME "libcudnn.so")
 endif(LINUX)
 
 if(WIN32)
-# only support cudnn7
-set(CUDNN_LIB_NAME "cudnn.lib" "cudnn64_7.dll")
+    # only support cudnn7
+    set(CUDNN_LIB_NAME "cudnn.lib" "cudnn64_7.dll")
 endif(WIN32)
 
 if(APPLE)
-set(CUDNN_LIB_NAME "libcudnn.dylib" "libcudnn.so")
+    set(CUDNN_LIB_NAME "libcudnn.dylib" "libcudnn.so")
 endif(APPLE)
 
 find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
@@ -60,9 +61,8 @@ else()
     set(CUDNN_FOUND OFF)
 endif()
 
-if(CUDNN_FOUND)
-    file(READ ${CUDNN_INCLUDE_DIR}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
-
+macro(find_cudnn_version cudnn_header_file) 
+    file(READ ${cudnn_header_file} CUDNN_VERSION_FILE_CONTENTS)
     get_filename_component(CUDNN_LIB_PATH ${CUDNN_LIBRARY} DIRECTORY)
 
     string(REGEX MATCH "define CUDNN_VERSION +([0-9]+)"
@@ -89,14 +89,19 @@ if(CUDNN_FOUND)
         if(NOT CUDNN_MAJOR_VERSION)
             set(CUDNN_VERSION "???")
         else()
-            add_definitions("-DPADDLE_CUDNN_BINVER=\"${CUDNN_MAJOR_VERSION}\"")
+            add_definitions("-DCUDNN_MAJOR_VERSION=\"${CUDNN_MAJOR_VERSION}\"")
             math(EXPR CUDNN_VERSION
                 "${CUDNN_MAJOR_VERSION} * 1000 +
                  ${CUDNN_MINOR_VERSION} * 100 + ${CUDNN_PATCHLEVEL_VERSION}")
+            message(STATUS "Current cuDNN header is ${cudnn_header_file} "
+              "Current cuDNN version is v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}. ")
         endif()
-
-        message(STATUS "Current cuDNN header is ${CUDNN_INCLUDE_DIR}/cudnn.h. "
-            "Current cuDNN version is v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}. ")
-
     endif()
+endmacro()
+
+if(CUDNN_FOUND)
+  find_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn.h) 
+  if (NOT CUDNN_MAJOR_VERSION) 
+    find_cudnn_version(${CUDNN_INCLUDE_DIR}/cudnn_version.h) 
+  endif()
 endif()

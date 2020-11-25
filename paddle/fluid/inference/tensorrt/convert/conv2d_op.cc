@@ -15,6 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -51,8 +60,15 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    CHECK(op_desc.HasAttr("Input_scale"));
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    if (op_desc.Type() != "conv2d_transpose") {
+      PADDLE_ENFORCE_EQ(
+          op_desc.HasAttr("Input_scale"), true,
+          platform::errors::InvalidArgument("Input scale not found. TRT int8"
+                                            " requires conv/deconv to have "
+                                            "input quantization scales."));
+    }
+    float in_scale =
+        BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
     auto weight_scale =
         BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
     weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
@@ -93,7 +109,9 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
                            nv_ksize, weight, bias);
-  PADDLE_ENFORCE(layer != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(layer,
+                          platform::errors::Fatal("TensorRT create conv2d"
+                                                  " layer error."));
   layer->setStride(nv_strides);
   layer->setPadding(nv_paddings);
   layer->setNbGroups(groups);

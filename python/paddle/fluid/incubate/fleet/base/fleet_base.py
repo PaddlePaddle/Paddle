@@ -19,13 +19,21 @@ import abc
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
+from paddle.optimizer import SGD as SGD_v2
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
-from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
-from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
+from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
+
+
+class Mode:
+    """
+    There are various mode for fleet, each of them is designed for different model.
+    """
+    PS = 1
+    COLLECTIVE = 2
+
 
 __all__ = ['Fleet', 'DistributedOptimizer']
 __all__ += mode.__all__
@@ -138,9 +146,19 @@ class Fleet(object):
 
         Returns:
             bool: True if this is a node of server,
-                  False if not.
+                  False if not
         """
         return self._role_maker.is_server()
+
+    def is_xpu(self):
+        """
+        Check whether the node is an instance of server.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+        """
+        return self._role_maker.is_xpu()
 
     def split_files(self, files):
         """
@@ -192,7 +210,10 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise TypeError("role_maker must be an instance of RoleMakerBase")
+            from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase as RoleMakerBaseIncubate
+            if role_maker and not isinstance(role_maker, RoleMakerBaseIncubate):
+                raise TypeError(
+                    "role_maker must be an instance of RoleMakerBase")
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
@@ -219,7 +240,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def init_server(self, model_dir=None):
+    def init_server(self, model_dir=None, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -271,7 +292,8 @@ class DistributedOptimizer(object):
 
     def __init__(self, optimizer, strategy=None):
         if not isinstance(optimizer, SGD.__bases__) \
-                and not isinstance(optimizer, OptimizerWithMixedPrecision):
+                and not isinstance(optimizer, OptimizerWithMixedPrecision) \
+                and not isinstance(optimizer, SGD_v2.__base__):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer

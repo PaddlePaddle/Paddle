@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
-#include "xxhash.h"  // NOLINT
 
 namespace paddle {
 namespace framework {
+
+class LoDTensor;
+class Scope;
 
 void DeviceWorker::SetRootScope(Scope* root_scope) { root_scope_ = root_scope; }
 
@@ -111,6 +113,7 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     writer_ << os.str();
   }
 }
+
 void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   bool enable_random_dump = desc.enable_random_dump();
   if (!enable_random_dump) {

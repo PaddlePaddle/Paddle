@@ -19,9 +19,11 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -82,7 +84,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       auto y_dims = ctx->GetInputDim("Y");
       int max_dim = std::max(x_dims.size(), y_dims.size());
       int axis = ctx->Attrs().Get<int>("axis");
-      axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim), true,
+                        platform::errors::InvalidArgument(
+                            "The axis range must be [%s, %s), but axis is %s. "
+                            "Please set the axis again.",
+                            -1 * max_dim, max_dim, axis));
+      axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
+                       : axis);
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
@@ -100,15 +108,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNElementwiseAddBeUsed = [&]() {
-      int axis = ctx.Attr<int>("axis");
-      int rankdiff = ctx.Input<Tensor>("X")->dims().size() -
-                     ctx.Input<Tensor>("Y")->dims().size();
-      return (rankdiff == 0) || (axis == -1) || (axis == rankdiff);
-    };
-
-    if (platform::CanMKLDNNBeUsed(ctx) &&
-        (ctx.Type() != "elementwise_add" || CanMKLDNNElementwiseAddBeUsed())) {
+    if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -140,14 +140,33 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Y.dimension must be a subsequence of x.dimension. And axis "
                  "is the start dimension index "
                  "for broadcasting Y onto X. ")
-        .SetDefault(-1)
-        .EqualGreaterThan(-1);
+        .SetDefault(-1);
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
         .SetDefault(false);
     AddAttr<std::string>("x_data_format", "This parameter is no longer used.")
         .SetDefault("");
     AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
         .SetDefault("");
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
+    /* int8 parameters */
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
     AddOpComment();
   }
 

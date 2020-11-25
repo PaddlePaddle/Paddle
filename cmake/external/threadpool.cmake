@@ -16,7 +16,7 @@ INCLUDE(ExternalProject)
 
 SET(THREADPOOL_PREFIX_DIR ${THIRD_PARTY_PATH}/threadpool)
 SET(THREADPOOL_SOURCE_DIR ${THIRD_PARTY_PATH}/threadpool/src/extern_threadpool)
-SET(THREADPOOL_REPOSITORY https://github.com/progschj/ThreadPool.git)
+SET(THREADPOOL_REPOSITORY ${GIT_URL}/progschj/ThreadPool.git)
 SET(THREADPOOL_TAG        9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
 
 cache_third_party(extern_threadpool
@@ -41,12 +41,6 @@ ExternalProject_Add(
     TEST_COMMAND      ""
 )
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/threadpool_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy_threadpool = \"${dummyfile}\";")
-    add_library(simple_threadpool STATIC ${dummyfile})
-else()
-    add_library(simple_threadpool INTERFACE)
-endif()
+add_library(simple_threadpool INTERFACE)
 
 add_dependencies(simple_threadpool extern_threadpool)

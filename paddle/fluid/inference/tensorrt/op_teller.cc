@@ -13,6 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace inference {
@@ -24,11 +32,14 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
     teller_set.insert("hard_sigmoid");
+    int8_teller_set.insert("relu6");
+    int8_teller_set.insert("hard_sigmoid");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
+    teller_set.insert("slice");
 #endif
   }
 
@@ -43,13 +54,25 @@ struct SimpleOpTypeSetTeller : public Teller {
 
  private:
   // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{
-      "mul",        "conv2d",           "pool2d",
-      "relu",       "depthwise_conv2d", "softmax",
-      "batch_norm", "elementwise_add",  "leaky_relu",
-      "fc"};
+  std::unordered_set<std::string> int8_teller_set{"mul",
+                                                  "conv2d",
+                                                  "pool2d",
+                                                  "relu",
+                                                  "depthwise_conv2d",
+                                                  "softmax",
+                                                  "sigmoid",
+                                                  "batch_norm",
+                                                  "elementwise_add",
+                                                  "leaky_relu",
+                                                  "fc",
+                                                  "concat",
+                                                  "scale",
+                                                  "elementwise_mul",
+                                                  "conv2d_transpose",
+                                                  "hard_swish"};
   std::unordered_set<std::string> teller_set{
       "mul",
+      "matmul",
       "conv2d",
       "pool2d",
       "relu",
@@ -75,6 +98,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gelu",
       "layer_norm",
       "scale",
+      "stack",
   };
 };
 
@@ -92,7 +116,28 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
         op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-      if (paddings.size() > 2) return false;
+
+      std::string padding_algorithm = "EXPLICIT";
+      if (desc.HasAttr("padding_algorithm"))
+        padding_algorithm =
+            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+      if (paddings.size() > 2 ||
+          (padding_algorithm == "SAME" && op_type != "pool2d"))
+        return false;
+    }
+    if (op_type == "matmul") {
+      auto* block = desc.Block();
+      for (auto& param_name : desc.Inputs()) {
+        for (auto& var_name : param_name.second) {
+          auto* var_desc = block->FindVar(var_name);
+          const auto shape = var_desc->GetShape();
+          if (shape.size() < 3) {
+            VLOG(1) << "matmul op dims < 3 not supported in tensorrt, but got dims " 
+              << shape.size() << ", so jump it.";
+            return false;
+          }
+        }
+      }
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

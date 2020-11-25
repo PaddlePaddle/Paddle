@@ -17,12 +17,12 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 
 class AssertTransformer(gast.NodeTransformer):
     """
-    A class transforms python assert to fluid.layers.Assert.
+    A class transforms python assert to convert_assert.
     """
 
     def __init__(self, wrapper_root):
@@ -32,21 +32,14 @@ class AssertTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
 
-        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
-
     def transform(self):
         self.visit(self.root)
 
     def visit_Assert(self, node):
-        if not self.static_analysis_visitor.is_tensor_node(node.test):
-            return node
-        cast_node = gast.Call(
-            func=gast.parse("fluid.layers.cast").body[0].value,
-            args=[node.test, gast.Constant(
-                value="bool", kind=None)],
-            keywords=[])
-        assert_node = gast.Call(
-            func=gast.parse("fluid.layers.Assert").body[0].value,
-            args=[cast_node],
-            keywords=[])
-        return gast.Expr(value=assert_node)
+        convert_assert_node = gast.parse(
+            'paddle.jit.dy2static.convert_assert({test}, {msg})'.format(
+                test=ast_to_source_code(node.test),
+                msg=ast_to_source_code(node.msg)
+                if node.msg else "")).body[0].value
+
+        return gast.Expr(value=convert_assert_node)

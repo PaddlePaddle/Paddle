@@ -36,15 +36,15 @@ void zero_copy_run() {
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
-  CHECK(!use_feed_fetch) << "NO";
+  EXPECT_FALSE(use_feed_fetch);
   bool specify_input_names = PD_SpecifyInputName(config);
-  CHECK(specify_input_names) << "NO";
+  EXPECT_TRUE(specify_input_names);
 
   const int batch_size = 1;
   const int channels = 3;
   const int height = 318;
   const int width = 318;
-  float input[batch_size * channels * height * width] = {0};
+  float *input = new float[batch_size * channels * height * width]();
 
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
@@ -65,6 +65,7 @@ void zero_copy_run() {
 
   PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
 
+  delete[] input;
   delete[] inputs;
   delete[] outputs;
 }
@@ -84,10 +85,11 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_SwitchIrDebug(config, true);
   PD_EnableMKLDNN(config);
   bool mkldnn_enable = PD_MkldnnEnabled(config);
-  CHECK(mkldnn_enable) << "NO";
+  EXPECT_TRUE(mkldnn_enable);
   PD_EnableMkldnnQuantizer(config);
   bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
-  CHECK(quantizer_enable) << "NO";
+  EXPECT_TRUE(quantizer_enable);
+  PD_EnableMkldnnBfloat16(config);
   PD_SetMkldnnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);

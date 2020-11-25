@@ -15,18 +15,23 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-
 #include "gflags/gflags.h"
-
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -45,7 +50,8 @@ class GetMonomerHandler final : public RequestHandler {
     VLOG(50) << "GetMonomerHandler recv " << var_name;
 
     *outvar = scope->FindVar(var_name);
-    PADDLE_ENFORCE(outvar != nullptr, "%s not found", var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        outvar, platform::errors::NotFound("var: %s is not found.", var_name));
 
     return true;
   }

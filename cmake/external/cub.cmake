@@ -16,7 +16,7 @@ include(ExternalProject)
 
 set(CUB_PREFIX_DIR ${THIRD_PARTY_PATH}/cub)
 set(CUB_SOURCE_DIR ${THIRD_PARTY_PATH}/cub/src/extern_cub)
-set(CUB_REPOSITORY https://github.com/NVlabs/cub.git)
+set(CUB_REPOSITORY ${GIT_URL}/NVlabs/cub.git)
 set(CUB_TAG        1.8.0)
 
 cache_third_party(extern_cub
@@ -41,12 +41,6 @@ ExternalProject_Add(
   TEST_COMMAND      ""
 )
 
-if(${CMAKE_VERSION} VERSION_LESS "3.3.0")
-  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cub_dummy.c)
-  file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
-  add_library(cub STATIC ${dummyfile})
-else()
-  add_library(cub INTERFACE)
-endif()
+add_library(cub INTERFACE)
 
 add_dependencies(cub extern_cub)

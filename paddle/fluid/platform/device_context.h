@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_helper.h"
@@ -35,6 +36,7 @@ limitations under the License. */
 #endif
 
 #include <map>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -42,6 +44,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
+
+namespace Eigen {
+struct DefaultDevice;
+struct GpuDevice;
+}  // namespace Eigen
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -76,10 +87,39 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
 
+#ifdef PADDLE_WITH_XPU
+class XPUDeviceContext : public DeviceContext {
+ public:
+  XPUDeviceContext();
+  explicit XPUDeviceContext(XPUPlace place);
+  virtual ~XPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  xpu::Context* x_context() const;
+
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+ private:
+  XPUPlace place_;
+  xpu::Context* context_;
+
+  // Need to be the same with other DeviceContext,
+  // Eventhough eigen_device_ is not used in XPU
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  DISABLE_COPY_AND_ASSIGN(XPUDeviceContext);
+};
+
+template <>
+struct DefaultDeviceContextType<platform::XPUPlace> {
+  using TYPE = XPUDeviceContext;
+};
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 
-class EigenCudaStreamDevice;
 class CudnnWorkspaceHandle;
+class EigenCudaStreamDevice;
 
 class CUDAContext {
  public:
@@ -167,8 +207,8 @@ class CUDAContext {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
+      PADDLE_RETRY_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
+      PADDLE_RETRY_CUDA_SUCCESS(
           dynload::cudnnSetStream(cudnn_handle_, RawStream()));
     } else {
       cudnn_handle_ = nullptr;
@@ -176,9 +216,8 @@ class CUDAContext {
   }
 
   void InitCuSolverContext() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cusolverDnCreate(&cusolver_dn_handle_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cusolverDnCreate(&cusolver_dn_handle_));
+    PADDLE_RETRY_CUDA_SUCCESS(
         dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
   }
 
@@ -487,7 +526,14 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const mkldnn::engine& GetEngine() const { return engine_; }
 
   // Remove all entries from the blob map
-  void ResetBlobMap() const;
+  void ResetBlobMap();
+
+  // Set a suffix to be added to key
+  void SetKeySuffix(const std::string& suffix) { key_suffix_ = suffix; }
+  const std::string& GetKeySuffix(void) const { return key_suffix_; }
+
+  // Prevent next ResetBlobMap()
+  void BlockNextCacheClearing();
 
   // Get the ShapeBlob size in cur_mkldnn_session_id.
   size_t GetShapeBlobSize() const;
@@ -506,6 +552,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
+  bool block_next_cache_clearing_ = false;
+  std::string key_suffix_;  // Key identifying current Executor
 };
 #endif
 
@@ -515,7 +563,9 @@ class DeviceContextPool {
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
   static DeviceContextPool& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
+    PADDLE_ENFORCE_NOT_NULL(pool,
+                            platform::errors::PreconditionNotMet(
+                                "Need to Create DeviceContextPool firstly!"));
     return *pool;
   }
 

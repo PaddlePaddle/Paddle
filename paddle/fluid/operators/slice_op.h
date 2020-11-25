@@ -191,8 +191,9 @@ class SliceKernel : public framework::OpKernel<T> {
       if (decrease_axis.size() > 0) {
         std::vector<int64_t> new_out_shape;
         for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+          PADDLE_ENFORCE_EQ(
+              out_dims[decrease_axis[i]], 1,
+              platform::errors::InvalidArgument("decrease dim should be 1"));
           out_dims[decrease_axis[i]] = 0;
         }
 
@@ -350,7 +351,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       auto& dev_ctx = *pool.Get(context.GetPlace());
-      T value = 0.0;
+      T value = T(0);
       math::SetConstant<DeviceContext, T> functor;
       for (int i = 0; i < d_in_size; ++i) {
         auto dim = input_array->at(i).dims();
@@ -440,7 +441,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto d_out_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *d_out, out_dims);
-    d_in_t.device(place) = d_out_t.pad(paddings, 0);
+    d_in_t.device(place) = d_out_t.pad(paddings, T(0));
   }
 };
 }  // namespace operators

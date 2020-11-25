@@ -4,6 +4,7 @@ cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
 cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)
 cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(naive_best_fit_allocator SRCS naive_best_fit_allocator.cc DEPS allocator buddy_allocator profiler)
+cc_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc DEPS naive_best_fit_allocator)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allocator buffered_allocator cpu_allocator best_fit_allocator)
 
 if (WITH_MKLDNN)
@@ -23,6 +24,8 @@ cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
 if (WITH_GPU)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator)
+elseif(WITH_XPU)
+    set(AllocatorFacadeDeps xpu_info)
 else ()
     set(AllocatorFacadeDeps)
 endif()
@@ -30,19 +33,19 @@ endif()
 if (WITH_GPU)
     nv_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc
-                 best_fit_allocator_test.cu
+                best_fit_allocator_test.cu
             DEPS best_fit_allocator
-                 locked_allocator
-                 cpu_allocator
-                 cuda_allocator
-                 device_context
-                 memcpy)
+                locked_allocator
+                cpu_allocator
+                cuda_allocator
+                device_context
+                memcpy)
 else()
     cc_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc
             DEPS best_fit_allocator
-                 locked_allocator
-                 cpu_allocator)
+                locked_allocator
+                cpu_allocator)
 endif()
 
 list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator best_fit_allocator)

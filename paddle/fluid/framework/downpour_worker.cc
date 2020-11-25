@@ -12,11 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cstdlib>
+#include <ctime>
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/string/string_helper.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -59,6 +65,13 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     for (int j = 0; j < table.dense_grad_name_size(); ++j) {
       dense_grad_names_[table_id][j] = table.dense_grad_name(j);
     }
+  }
+
+  flag_partial_push_ = false;
+  for (auto& m : param_.program_config(0).partial_pushdense_condtable_map()) {
+    cond2table_map_[m.key()] = m.value();
+    condvalue_set_.insert(m.value());
+    flag_partial_push_ = true;
   }
 
   skip_ops_.resize(param_.skip_ops_size());
@@ -379,7 +392,7 @@ void DownpourWorker::CopyDenseTable() {
       pull_dense_status.resize(0);
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
                                      dense_value_names_[dest_table],
-                                     &pull_dense_status);
+                                     &pull_dense_status, true);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -556,9 +569,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -829,9 +844,11 @@ void DownpourWorker::TrainFiles() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -868,14 +885,42 @@ void DownpourWorker::TrainFiles() {
 #endif
 
     if (need_to_push_dense_) {
-      for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-           ++i) {
-        uint64_t tid = static_cast<uint64_t>(
-            param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
+      if (flag_partial_push_) {
+        Variable* var = (*thread_scope_).FindVar("cond_tag");
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        // check type in python code
+        int64_t* cond_value_batch = tensor->data<int64_t>();
+
+        for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
+             ++i) {
+          uint64_t tid = static_cast<uint64_t>(
+              param_.program_config(0).push_dense_table_id(i));
+          if (condvalue_set_.find(tid) != condvalue_set_.end()) {
+            // common dense table must push dense
+            if (cond2table_map_[cond_value_batch[0]] != tid) {
+              // can't push dense
+              continue;
+            }
+          }
+
+          VLOG(3) << "push multitask dense gradient " << tid;
+          fleet_ptr_->PushDenseVarsAsync(
+              *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+              scale_datanorm_, cur_batch);
+        }
+
+      } else {
+        for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
+             ++i) {
+          uint64_t tid = static_cast<uint64_t>(
+              param_.program_config(0).push_dense_table_id(i));
+
+          fleet_ptr_->PushDenseVarsAsync(
+              *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+              scale_datanorm_, cur_batch);
+        }
       }
+
       VLOG(3) << "push dense gradient done.";
 
       // the following code should be more precise and clean

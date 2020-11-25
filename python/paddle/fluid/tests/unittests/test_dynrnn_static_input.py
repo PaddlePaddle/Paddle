@@ -25,6 +25,7 @@ import bisect
 import numpy as np
 
 fluid.default_startup_program().random_seed = 1
+np.random.seed(1)
 
 
 class TestDyRnnStaticInput(unittest.TestCase):

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
@@ -25,7 +26,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           bool use_quantizer = false) {
+           const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -46,14 +47,14 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});
-    op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "pool2d" || type == "transpose2" || type == "reshape2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-    op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -62,14 +63,14 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("W", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
     op->SetOutput("Out", {outputs[0]});
-    op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "concat") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
-    op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   } else if (type == "dequantize") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
@@ -78,10 +79,28 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
-    op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
+  } else if (type == "elementwise_add") {
+    op->SetInput("X", {inputs[0]});
+    if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
+    op->SetOutput("Out", {outputs[0]});
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+    op->SetAttr("Scale_x", 1.0f);
+    op->SetAttr("Scale_y", 1.0f);
+    op->SetAttr("Scale_out", 1.0f);
+  } else if (type == "fusion_gru") {
+    op->SetInput("X", {inputs[0]});
+    op->SetInput("Bias", {inputs[1]});
+    op->SetInput("WeightX", {inputs[2]});
+    op->SetInput("WeightH", {inputs[3]});
+    op->SetOutput("Hidden", {outputs[0]});
+    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+    op->SetAttr("Scale_data", 1.0f);
+    op->SetAttr("Shift_data", 0.0f);
+    op->SetAttr("Weight_scale", std::vector<float>{1.0f});
   }
 }
 
@@ -95,7 +114,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
                  const std::initializer_list<std::string> variable_names,
                  int* original_nodes_num, int* current_nodes_num,
-                 std::string var_without_scale = "") {
+                 std::string var_without_scale = "",
+                 std::string var_signed = "") {
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
@@ -108,8 +128,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = 2.0;
-
-    (*scales)[v] = std::make_pair(false, std::move(tensor));
+    (*scales)[v] = std::make_pair(v == var_signed, std::move(tensor));
   }
 
   (*graph)->SetNotOwned(kParamScopeAttr, &scope);
@@ -133,7 +152,8 @@ static const std::initializer_list<std::string> variable_names{
 // d->Dropout1->g and (g, w5, b3)->Fc1->h and (h,w3,b1,i)->Conv3->j
 //
 // (d,w4, b2)->Conv4->i
-ProgramDesc BuildProgramDesc(bool use_mkldnn, bool use_quantizer) {
+ProgramDesc BuildProgramDesc(bool use_mkldnn,
+                             const std::string& mkldnn_data_type) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     auto* var = prog.MutableBlock(0)->Var(v);
@@ -143,21 +163,21 @@ ProgramDesc BuildProgramDesc(bool use_mkldnn, bool use_quantizer) {
   }
 
   SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"c"}, use_mkldnn,
-        use_quantizer);
-  SetOp(&prog, "pool2d", "Pool1", {"c"}, {"d"}, use_mkldnn, use_quantizer);
+        mkldnn_data_type);
+  SetOp(&prog, "pool2d", "Pool1", {"c"}, {"d"}, use_mkldnn, mkldnn_data_type);
 
   SetOp(&prog, "conv2d", "Conv2", {"d", "w2"}, {"e"}, use_mkldnn,
-        use_quantizer);
-  SetOp(&prog, "pool2d", "Pool2", {"e"}, {"f"}, use_mkldnn, use_quantizer);
+        mkldnn_data_type);
+  SetOp(&prog, "pool2d", "Pool2", {"e"}, {"f"}, use_mkldnn, mkldnn_data_type);
 
   SetOp(&prog, "dropout", "Dropout1", {"d"}, {"g"}, use_mkldnn);
   SetOp(&prog, "fc", "Fc1", {"g", "w5", "b3"}, {"h"}, use_mkldnn,
-        use_quantizer);
+        mkldnn_data_type);
   SetOp(&prog, "conv2d", "Conv3", {"h", "w3", "b1", "i"}, {"j"}, use_mkldnn,
-        use_quantizer);
+        mkldnn_data_type);
 
   SetOp(&prog, "conv2d", "Conv4", {"c", "w4", "b2"}, {"i"}, use_mkldnn,
-        use_quantizer);
+        mkldnn_data_type);
 
   return prog;
 }
@@ -206,7 +226,7 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
 
 TEST(CpuQuantizePass, quantize) {
   bool use_mkldnn = true;
-  bool use_quantizer = true;
+  std::string mkldnn_data_type = "int8";
   // (a->QUANT1->IN1,w1)->Conv1->OUT1->DEQUANT1->c and
   // c->QUANT2->IN2->Pool1->OUT2->DEQUANT2->d
   //
@@ -219,16 +239,16 @@ TEST(CpuQuantizePass, quantize) {
   // (d->QUANT7->IN7,w4, b2)->Conv4->DEQUANT6->OUT6->i
   // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
   int added_nodes = 8 + 8 + 7 + 7;
-  MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 8, 7, added_nodes,
-           2.0f * 127);
+  MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type), 4, 2, 8, 7,
+           added_nodes, 2.0f * 127);
 }
 
 TEST(CpuQuantizePass, do_not_quantize) {
   bool use_mkldnn = true;
-  bool use_quantizer = false;
+  std::string mkldnn_data_type = "float32";
   int added_nodes = 0;
-  MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 0, 0, added_nodes,
-           1.0f);
+  MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type), 4, 2, 0, 0,
+           added_nodes, 1.0f);
 }
 
 static const std::initializer_list<std::string> variable_names_concat = {
@@ -241,10 +261,10 @@ static const std::initializer_list<std::string> variable_names_concat = {
 ProgramDesc BuildProgramDescConcat() {
   ProgramDesc prog;
 
-  SetOp(&prog, "pool2d", "Pool1", {"a1"}, {"b1"}, true, false);
-  SetOp(&prog, "pool2d", "Pool2", {"a2"}, {"b2"}, true, false);
-  SetOp(&prog, "concat", "Concat", {"b1", "b2"}, {"c"}, true, true);
-  SetOp(&prog, "pool2d", "Pool3", {"c"}, {"d"}, true, false);
+  SetOp(&prog, "pool2d", "Pool1", {"a1"}, {"b1"}, true, "float32");
+  SetOp(&prog, "pool2d", "Pool2", {"a2"}, {"b2"}, true, "float32");
+  SetOp(&prog, "concat", "Concat", {"b1", "b2"}, {"c"}, true, "int8");
+  SetOp(&prog, "pool2d", "Pool3", {"c"}, {"d"}, true, "float32");
 
   return prog;
 }
@@ -312,11 +332,11 @@ ProgramDesc BuildProgramDescTranspose() {
     }
   }
 
-  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, true);
-  SetOp(&prog, "transpose2", "Transpose1", {"b"}, {"c"}, true, true);
-  SetOp(&prog, "conv2d", "Conv1", {"c", "w2"}, {"d"}, true, true);
-  SetOp(&prog, "transpose2", "Transpose2", {"d"}, {"e"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, "int8");
+  SetOp(&prog, "transpose2", "Transpose1", {"b"}, {"c"}, true, "int8");
+  SetOp(&prog, "conv2d", "Conv1", {"c", "w2"}, {"d"}, true, "int8");
+  SetOp(&prog, "transpose2", "Transpose2", {"d"}, {"e"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
 }
@@ -379,6 +399,77 @@ TEST(CpuQuantizePass, transpose) {
                     quant_count, dequant_count, added_nodes_count, 2.0f * 127);
 }
 
+static const std::initializer_list<std::string> variable_names_fusion_gru = {
+    "x", "wx", "wh", "b", "h"};
+
+// x->Fusion_gru->h
+ProgramDesc BuildProgramDescFusionGru() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_transpose) {
+    auto* var = prog.MutableBlock(0)->Var(v);
+    if (v.find("wx") == 0 || v.find("wh") || v.find("b")) {
+      var->SetPersistable(true);
+    }
+  }
+
+  SetOp(&prog, "fusion_gru", "Fusion_gru", {"x", "wx", "wh", "b"}, {"h"}, true,
+        "int8");
+
+  return prog;
+}
+
+void MainTestFusionGru(const ProgramDesc& prog, int gru_count, int quant_count,
+                       int dequant_count, int added_nodes_count, float scale,
+                       float shift) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_fusion_gru, &original_nodes_num,
+              &current_nodes_num);
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int gru_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "fusion_gru") {
+        gru_nodes_count++;
+
+        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_data")), scale)
+            << "Scale_data for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Shift_data")), shift)
+            << "Shift_data for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(std::vector<float>,
+                                  op->GetAttr("Scale_weights"))[0],
+                  scale)
+            << "Scale_weights for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(bool, op->GetAttr("force_fp32_output")), true)
+            << "force_fp32_output for node '" + op_name + "'.";
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(gru_nodes_count, gru_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, fusion_gru) {
+  // x->Fusion_gru->h
+  int gru_count = 1;
+  int quant_count = 1;
+  int dequant_count = 0;
+  // 1 Quant + 1 IN + 0 DeQuant + 0 OUT
+  int added_nodes_count = 1 + 1 + 0 + 0;
+  MainTestFusionGru(BuildProgramDescFusionGru(), gru_count, quant_count,
+                    dequant_count, added_nodes_count, 2. * 127, 128.);
+}
+
 static const std::initializer_list<std::string> variable_names_reshape = {
     "a", "w1", "b", "c", "d", "e", "f"};
 
@@ -387,12 +478,12 @@ static const std::initializer_list<std::string> variable_names_reshape = {
 // c->Dropout->d
 ProgramDesc BuildProgramDescReshape() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_reshape) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
-  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, false);
+  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, "float32");
 
   return prog;
 }
@@ -402,13 +493,13 @@ ProgramDesc BuildProgramDescReshape() {
 // c->Dropout->d
 ProgramDesc BuildProgramDescReshapeBetweenNonQuantizedOp() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_reshape) {
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "transpose2", "Transpose2", {"a"}, {"b"}, true, false);
-  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, false);
+  SetOp(&prog, "transpose2", "Transpose2", {"a"}, {"b"}, true, "float32");
+  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, "float32");
 
   return prog;
 }
@@ -491,26 +582,26 @@ static const std::initializer_list<std::string> variable_names_matmul = {
 
 ProgramDesc BuildProgramDescMatmul() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_matmul) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
 }
 
 ProgramDesc BuildProgramDescMatmulNotQuantized() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_matmul) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, false);
   SetOp(&prog, "dequantize", "Dequantize", {"c"}, {"d"}, true);
-  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
 }
@@ -569,6 +660,97 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
   MainTestMatmul(BuildProgramDescMatmulNotQuantized(), matmul_count,
                  quant_count, dequant_count, added_nodes_count, 1.0f);
 }
+
+static const std::initializer_list<std::string> variable_names_elementwise_add =
+    {"a", "b", "c", "d", "e", "f"};
+
+ProgramDesc BuildProgramDescElementwiseAdd() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_elementwise_add) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
+  SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
+  SetOp(&prog, "elementwise_add", "ElementwiseAdd", {"b", "d"}, {"e"}, true,
+        "int8");
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+
+  return prog;
+}
+
+void MainTestElementwiseAdd(const ProgramDesc& prog, int elementwise_add_count,
+                            int quant_count, int dequant_count,
+                            int added_nodes_count, float scale,
+                            bool output_scale_missing = false,
+                            bool unsigned_and_signed_input = false) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_elementwise_add, &original_nodes_num,
+              &current_nodes_num, output_scale_missing ? "e" : "",
+              unsigned_and_signed_input ? "b" : "");
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int elementwise_add_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "elementwise_add") {
+        elementwise_add_nodes_count++;
+        if (unsigned_and_signed_input) scale = 1.0f;
+        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_x")), scale)
+            << "Scale_x for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_y")), scale)
+            << "Scale_y for node '" + op_name + "'.";
+        if (output_scale_missing) scale = 1.0;
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_out")), scale)
+            << "Scale_out for node '" + op_name + "'.";
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(elementwise_add_nodes_count, elementwise_add_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, elementwise_add) {
+  int elementwise_add_count = 1;
+  int quant_count = 2;
+  int dequant_count = 3;
+  // 2 Quant + 2 IN + 1 DeQuant + 1 OUT
+  int added_nodes_count = 6;
+  MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
+                         elementwise_add_count, quant_count, dequant_count,
+                         added_nodes_count, 2.0f * 127);
+}
+
+TEST(CpuQuantizePass, elementwise_add_output_scale_missing) {
+  int elementwise_add_count = 1;
+  int quant_count = 2;
+  int dequant_count = 2;
+  // 2 Quant + 2 IN
+  int added_nodes_count = 4;
+  MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
+                         elementwise_add_count, quant_count, dequant_count,
+                         added_nodes_count, 2.0f * 127, true);
+}
+
+TEST(CpuQuantizePass, elementwise_add_unsigned_and_signed_input) {
+  int elementwise_add_count = 1;
+  int quant_count = 0;
+  int dequant_count = 2;
+  int added_nodes_count = 0;
+  MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
+                         elementwise_add_count, quant_count, dequant_count,
+                         added_nodes_count, 2.0f * 127, false, true);
+}
+
 }  // namespace
 
 }  // namespace ir

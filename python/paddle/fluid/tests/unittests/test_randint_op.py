@@ -17,12 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import paddle
+from paddle.fluid import core
+from paddle.static import program_guard, Program
 
 
 def output_hist(out):
@@ -56,25 +53,16 @@ class TestRandintOp(OpTest):
 
 class TestRandintOpError(unittest.TestCase):
     def test_errors(self):
-        main_prog = Program()
-        start_prog = Program()
-        with program_guard(main_prog, start_prog):
-
-            def test_shape():
-                shape = np.array([2, 3])
-                paddle.randint(5, shape=shape, dtype='int32')
-
-            self.assertRaises(TypeError, test_shape)
-
-            def test_dtype():
-                paddle.randint(5, shape=[32, 32], dtype='float32')
-
-            self.assertRaises(TypeError, test_dtype)
-
-            def test_low_high():
-                paddle.randint(low=5, high=5, shape=[32, 32], dtype='int32')
-
-            self.assertRaises(ValueError, test_low_high)
+        with program_guard(Program(), Program()):
+            self.assertRaises(TypeError, paddle.randint, 5, shape=np.array([2]))
+            self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
+            self.assertRaises(ValueError, paddle.randint, 5, 5)
+            self.assertRaises(ValueError, paddle.randint, -5)
+            self.assertRaises(TypeError, paddle.randint, 5, shape=['2'])
+            shape_tensor = paddle.static.data('X', [1])
+            self.assertRaises(TypeError, paddle.randint, 5, shape=shape_tensor)
+            self.assertRaises(
+                TypeError, paddle.randint, 5, shape=[shape_tensor])
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -127,46 +115,45 @@ class TestRandint_attr_tensor(OpTest):
 # Test python API
 class TestRandintAPI(unittest.TestCase):
     def test_api(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        with program_guard(Program(), Program()):
             # results are from [0, 5).
-            output1 = paddle.randint(5)
+            out1 = paddle.randint(5)
             # shape is a list and dtype is 'int32'
-            output2 = paddle.randint(
+            out2 = paddle.randint(
                 low=-100, high=100, shape=[64, 64], dtype='int32')
             # shape is a tuple and dtype is 'int64'
-            output3 = paddle.randint(
+            out3 = paddle.randint(
                 low=-100, high=100, shape=(32, 32, 3), dtype='int64')
             # shape is a tensorlist and dtype is 'float32'
-            dim_1 = fluid.layers.fill_constant([1], "int64", 32)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 50)
-            output4 = paddle.randint(
-                low=-100, high=100, shape=[dim_1, 5], dtype='int32')
+            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 32)
+            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
+            out4 = paddle.randint(
+                low=-100, high=100, shape=[dim_1, 5, dim_2], dtype='int32')
             # shape is a tensor and dtype is 'float64'
-            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            output5 = paddle.randint(
+            var_shape = paddle.static.data(
+                name='var_shape', shape=[2], dtype="int64")
+            out5 = paddle.randint(
                 low=1, high=1000, shape=var_shape, dtype='int64')
 
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-
-            exe.run(startup_program)
+            place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
             outs = exe.run(
-                train_program,
                 feed={'var_shape': np.array([100, 100]).astype('int64')},
-                fetch_list=[output1, output2, output3, output4, output5])
+                fetch_list=[out1, out2, out3, out4, out5])
 
 
-class TestRandintDygraphMode(unittest.TestCase):
-    def test_check_output(self):
-        with fluid.dygraph.guard():
-            x = paddle.randint(10, shape=[10], dtype="int32")
-            x_np = x.numpy()
-            for i in range(10):
-                self.assertTrue((x_np[i] >= 0 and x_np[i] < 10))
+class TestRandintImperative(unittest.TestCase):
+    def test_api(self):
+        n = 10
+        paddle.disable_static()
+        x1 = paddle.randint(n, shape=[10], dtype="int32")
+        x2 = paddle.tensor.randint(n)
+        x3 = paddle.tensor.random.randint(n)
+        for i in [x1, x2, x3]:
+            for j in i.numpy().tolist():
+                self.assertTrue((j >= 0 and j < n))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

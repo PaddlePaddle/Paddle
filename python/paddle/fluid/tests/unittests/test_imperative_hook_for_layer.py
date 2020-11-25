@@ -62,8 +62,7 @@ class Test_Forward_Hook(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 fluid.default_startup_program().random_seed = seed
                 fluid.default_main_program().random_seed = seed
-                backward_strategy = fluid.dygraph.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
+                fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
                 input_word = np.array(
                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7,
@@ -132,8 +131,7 @@ class Test_Forward_Hook(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 fluid.default_startup_program().random_seed = seed
                 fluid.default_main_program().random_seed = seed
-                backward_strategy = fluid.dygraph.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
+                fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
                 global call_forward_hook
                 global call_forward_pre_hook

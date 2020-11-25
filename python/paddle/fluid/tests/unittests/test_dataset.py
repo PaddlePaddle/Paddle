@@ -17,6 +17,7 @@ including create, config, run, etc.
 """
 
 from __future__ import print_function
+import paddle
 import paddle.fluid as fluid
 import paddle.compat as cpt
 import paddle.fluid.core as core
@@ -37,23 +38,22 @@ class TestDataset(unittest.TestCase):
     def test_dataset_create(self):
         """ Testcase for dataset create. """
         try:
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset = paddle.distributed.InMemoryDataset()
         except:
             self.assertTrue(False)
 
         try:
-            dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+            dataset = paddle.distributed.QueueDataset()
         except:
             self.assertTrue(False)
 
         try:
-            dataset = fluid.DatasetFactory().create_dataset(
-                "FileInstantDataset")
+            dataset = paddle.distributed.fleet.dataset.FileInstantDataset()
         except:
             self.assertTrue(False)
 
         try:
-            dataset = fluid.DatasetFactory().create_dataset("MyOwnDataset")
+            dataset = paddle.distributed.fleet.dataset.MyOwnDataset()
             self.assertTrue(False)
         except:
             self.assertTrue(True)
@@ -91,24 +91,29 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
+        dataset.update_settings(pipe_command="cat1")
+        dataset._init_distributed_settings(
+            parse_ins_id=True,
+            parse_content=True,
+            fea_eval=True,
+            candidate_size=10000)
         dataset.set_filelist(
             ["test_run_with_dump_a.txt", "test_run_with_dump_b.txt"])
-        dataset.set_parse_ins_id(True)
-        dataset.set_parse_content(True)
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
-        dataset.set_fea_eval(10000, True)
         dataset.local_shuffle()
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        paddle.enable_static()
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe.run(startup_program)
         for i in range(2):
             try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
+                exe.train_from_dataset(main_program, dataset)
             except ImportError as e:
                 pass
             except Exception as e:
@@ -125,7 +130,7 @@ class TestDataset(unittest.TestCase):
         dataset.set_trainer_num(4)
         dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
         dataset.set_download_cmd("./read_from_afs my_fs_name my_fs_ugi")
-        dataset.enable_pv_merge()
+        dataset.set_enable_pv_merge(False)
 
         thread_num = dataset.get_thread_num()
         self.assertEqual(thread_num, 12)
@@ -171,28 +176,33 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32,
+            thread_num=3,
+            pipe_command="cat",
+            download_cmd="cat",
+            use_var=slots_vars)
         dataset.set_filelist([filename1, filename2])
-        dataset.set_pipe_command("cat")
-        dataset.set_download_cmd("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
+        paddle.enable_static()
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
         exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe.run(startup_program)
         if self.use_data_loader:
             data_loader = fluid.io.DataLoader.from_dataset(dataset,
                                                            fluid.cpu_places(),
                                                            self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(main_program, feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(fluid.default_main_program(),
-                                           dataset)
+                    exe.train_from_dataset(main_program, dataset)
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -222,21 +232,19 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
+        dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
         dataset.set_filelist([
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
         ])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
-        dataset.set_fea_eval(1, True)
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
-        dataset.set_generate_unique_feasigns(True, 15)
-        dataset.generate_local_tables_unlock(0, 11, 1, 25, 15)
+        dataset._set_generate_unique_feasigns(True, 15)
+        dataset._generate_local_tables_unlock(0, 11, 1, 25, 15)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
@@ -293,16 +301,14 @@ class TestDataset(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1)
                 slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(1)
-        dataset.set_parse_ins_id(True)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
+        dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist([
             "test_in_memory_dataset_masterpatch_a.txt",
             "test_in_memory_dataset_masterpatch_b.txt"
         ])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
         dataset.local_shuffle()
 
@@ -317,7 +323,8 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
 
-        dataset.set_merge_by_lineid(2)
+        #dataset._set_merge_by_lineid(2)
+        dataset.update_settings(merge_size=2)
         dataset.dataset.merge_by_lineid()
 
         os.remove("./test_in_memory_dataset_masterpatch_a.txt")
@@ -359,16 +366,14 @@ class TestDataset(unittest.TestCase):
                 name="slot4", shape=[1], dtype="float32", lod_level=0)
             slots_vars = [var1, var2, var3, var4]
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(1)
-        dataset.set_parse_ins_id(True)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
+        dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist([
             "test_in_memory_dataset_masterpatch1_a.txt",
             "test_in_memory_dataset_masterpatch1_b.txt"
         ])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
         dataset.local_shuffle()
 
@@ -383,7 +388,7 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
 
-        dataset.set_merge_by_lineid(2)
+        dataset._set_merge_by_lineid(2)
         dataset.dataset.merge_by_lineid()
 
         os.remove("./test_in_memory_dataset_masterpatch1_a.txt")
@@ -414,15 +419,13 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="float32", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
         dataset.set_filelist([
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
         ])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
         dataset.local_shuffle()
 
@@ -463,9 +466,9 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        dataset.set_merge_by_lineid(2)
-        dataset.set_parse_ins_id(False)
-        dataset.set_fleet_send_sleep_seconds(2)
+        dataset._set_merge_by_lineid(2)
+        dataset._set_parse_ins_id(False)
+        dataset._set_fleet_send_sleep_seconds(2)
         dataset.preload_into_memory()
         dataset.wait_preload_done()
         dataset.release_memory()
@@ -473,10 +476,25 @@ class TestDataset(unittest.TestCase):
         dataset.wait_preload_done()
         dataset.dataset.merge_by_lineid()
         dataset.release_memory()
-        dataset.set_merge_by_lineid(30)
-        dataset.set_parse_ins_id(False)
+        dataset._set_merge_by_lineid(30)
+        dataset._set_parse_ins_id(False)
         dataset.load_into_memory()
         dataset.dataset.merge_by_lineid()
+        dataset.update_settings(
+            batch_size=1,
+            thread_num=2,
+            input_type=1,
+            pipe_command="cat",
+            use_var=[],
+            fs_name="",
+            fs_ugi="",
+            download_cmd="cat",
+            merge_size=-1,
+            parse_ins_id=False,
+            parse_content=False,
+            fleet_send_batch_size=2,
+            fleet_send_sleep_seconds=2,
+            fea_eval=True)
         fleet_ptr = fluid.core.Fleet()
         fleet_ptr.set_client2client_config(1, 1, 1)
         fleet_ptr.get_cache_threshold(0)
@@ -507,13 +525,11 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.QueueDataset()
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
         dataset.set_filelist(
             ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
@@ -532,11 +548,9 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        dataset2 = fluid.DatasetFactory().create_dataset("QueueDataset")
-        dataset2.set_use_var(slots_vars)
-        dataset2.set_batch_size(32)
-        dataset2.set_thread(3)
-        dataset2.set_pipe_command("cat")
+        dataset2 = paddle.distributed.QueueDataset()
+        dataset2.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
         dataset.set_filelist([])
         try:
             exe.train_from_dataset(fluid.default_main_program(), dataset2)
@@ -545,8 +559,10 @@ class TestDataset(unittest.TestCase):
         except Exception as e:
             self.assertTrue(False)
 
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        if os.path.exists("./test_queue_dataset_run_a.txt"):
+            os.remove("./test_queue_dataset_run_a.txt")
+        if os.path.exists("./test_queue_dataset_run_b.txt"):
+            os.remove("./test_queue_dataset_run_b.txt")
 
     def test_queue_dataset_run_2(self):
         """
@@ -573,13 +589,11 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="float32", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.QueueDataset()
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
         dataset.set_filelist(
             ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
 
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0))
@@ -599,8 +613,10 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        if os.path.exists("./test_queue_dataset_run_a.txt"):
+            os.remove("./test_queue_dataset_run_a.txt")
+        if os.path.exists("./test_queue_dataset_run_b.txt"):
+            os.remove("./test_queue_dataset_run_b.txt")
 
     def test_queue_dataset_run_3(self):
         """
@@ -628,14 +644,15 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[None, 1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_input_type(1)
-        dataset.set_batch_size(1)
-        dataset.set_thread(2)
+        dataset = paddle.distributed.InMemoryDataset()
+        dataset.init(
+            batch_size=1,
+            thread_num=2,
+            input_type=1,
+            pipe_command="cat",
+            use_var=slots_vars)
         dataset.set_filelist(
             ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
 
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
@@ -656,8 +673,10 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        os.remove("./test_queue_dataset_run_a.txt")
-        os.remove("./test_queue_dataset_run_b.txt")
+        if os.path.exists("./test_queue_dataset_run_a.txt"):
+            os.remove("./test_queue_dataset_run_a.txt")
+        if os.path.exists("./test_queue_dataset_run_b.txt"):
+            os.remove("./test_queue_dataset_run_b.txt")
 
 
 class TestDatasetWithDataLoader(TestDataset):
@@ -707,12 +726,10 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             inputs(list): inputs of get_dataset
             files(list): files of  get_dataset
         """
-        dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
-        dataset.set_batch_size(32)
-        dataset.set_thread(3)
+        dataset = paddle.distributed.QueueDataset()
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=inputs)
         dataset.set_filelist(files)
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(inputs)
         return dataset
 
     def setUp(self):
@@ -819,6 +836,9 @@ class TestDataset2(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
+
+        self.skipTest("parameter server will add pslib UT later")
+
         with open("test_in_memory_dataset2_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
@@ -834,7 +854,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         with fluid.program_guard(train_program, startup_program):
             slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
             slots_vars = []
@@ -861,15 +881,17 @@ class TestDataset2(unittest.TestCase):
             except ImportError as e:
                 print("warning: no mpi4py")
             exe.run(startup_program)
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_batch_size(32)
-            dataset.set_thread(3)
+            dataset = paddle.distributed.InMemoryDataset()
+
+            dataset.init(
+                batch_size=32,
+                thread_num=3,
+                pipe_command="cat",
+                use_var=slots_vars)
             dataset.set_filelist([
                 "test_in_memory_dataset2_run_a.txt",
                 "test_in_memory_dataset2_run_b.txt"
             ])
-            dataset.set_pipe_command("cat")
-            dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
             fleet._opt_info = None
             fleet._fleet_ptr = None
@@ -930,15 +952,16 @@ class TestDataset2(unittest.TestCase):
             except ImportError as e:
                 print("warning: no mpi4py")
             exe.run(startup_program)
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_batch_size(32)
-            dataset.set_thread(3)
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=3,
+                pipe_command="cat",
+                use_var=slots_vars)
             dataset.set_filelist([
                 "test_in_memory_dataset2_run2_a.txt",
                 "test_in_memory_dataset2_run2_b.txt"
             ])
-            dataset.set_pipe_command("cat")
-            dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
             try:
                 dataset.global_shuffle(fleet)
@@ -946,9 +969,173 @@ class TestDataset2(unittest.TestCase):
                 print("warning: catch expected error")
             fleet._opt_info = None
             fleet._fleet_ptr = None
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(fs_name="", fs_ugi="")
+            d = paddle.distributed.fleet.DatasetBase()
+            try:
+                dataset._set_feed_type("MultiSlotInMemoryDataFeed")
+            except:
+                print("warning: catch expected error")
+            dataset.thread_num = 0
+            try:
+                dataset._prepare_to_run()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.preprocess_instance()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.set_current_phase(1)
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.postprocess_instance()
+            except:
+                print("warning: catch expected error")
+            dataset._set_fleet_send_batch_size(1024)
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
+            #dataset.get_pv_data_size()
+            dataset.get_memory_data_size()
+            dataset.get_shuffle_data_size()
+            dataset = paddle.distributed.QueueDataset()
+            try:
+                dataset.local_shuffle()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
+            dataset = paddle.distributed.fleet.FileInstantDataset()
+            try:
+                dataset.local_shuffle()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
 
         os.remove("./test_in_memory_dataset2_run2_a.txt")
         os.remove("./test_in_memory_dataset2_run2_b.txt")
+
+    def test_bosps_dataset_fleet2(self):
+        """
+        Testcase for InMemoryDataset from create to run.
+        """
+        with open("test_in_memory_dataset2_run2_a.txt", "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open("test_in_memory_dataset2_run2_b.txt", "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        scope = fluid.Scope()
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        with fluid.program_guard(train_program, startup_program):
+            slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
+            slots_vars = []
+            for slot in slots:
+                var = fluid.layers.data(\
+                    name=slot, shape=[1], dtype="float32", lod_level=1)
+                slots_vars.append(var)
+            fake_cost = \
+                fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
+            fake_cost = fluid.layers.mean(fake_cost)
+        with fluid.scope_guard(scope):
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            try:
+                fleet.init()
+            except ImportError as e:
+                print("warning: no mpi4py")
+            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            try:
+                adam = fleet.distributed_optimizer(
+                    adam,
+                    strategy={
+                        "fs_uri": "fs_uri_xxx",
+                        "fs_user": "fs_user_xxx",
+                        "fs_passwd": "fs_passwd_xxx",
+                        "fs_hadoop_bin": "fs_hadoop_bin_xxx"
+                    })
+                adam.minimize([fake_cost], [scope])
+            except AttributeError as e:
+                print("warning: no mpi")
+            except ImportError as e:
+                print("warning: no mpi4py")
+            exe.run(startup_program)
+            dataset = paddle.distributed.fleet.BoxPSDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=3,
+                pipe_command="cat",
+                use_var=slots_vars)
+            dataset.set_filelist([
+                "test_in_memory_dataset2_run2_a.txt",
+                "test_in_memory_dataset2_run2_b.txt"
+            ])
+            dataset.load_into_memory()
+            try:
+                dataset.global_shuffle(fleet)
+            except:
+                print("warning: catch expected error")
+            fleet._opt_info = None
+            fleet._fleet_ptr = None
+            dataset = paddle.distributed.fleet.BoxPSDataset()
+            dataset.init(
+                rank_offset="",
+                pv_batch_size=1,
+                fs_name="",
+                fs_ugi="",
+                data_feed_type="MultiSlotInMemoryDataFeed",
+                parse_logkey=True,
+                merge_by_sid=True,
+                enable_pv_merge=True)
+            d = paddle.distributed.fleet.DatasetBase()
+            try:
+                dataset._set_feed_type("MultiSlotInMemoryDataFeed")
+            except:
+                print("warning: catch expected error")
+            dataset.thread_num = 0
+            try:
+                dataset._prepare_to_run()
+            except:
+                print("warning: catch expected error")
+            dataset._set_parse_logkey(True)
+            dataset._set_merge_by_sid(True)
+            dataset._set_enable_pv_merge(True)
+            try:
+                dataset.preprocess_instance()
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.set_current_phase(1)
+            except:
+                print("warning: catch expected error")
+            try:
+                dataset.postprocess_instance()
+            except:
+                print("warning: catch expected error")
+            dataset._set_fleet_send_batch_size(1024)
+            try:
+                dataset.global_shuffle()
+            except:
+                print("warning: catch expected error")
+            #dataset.get_pv_data_size()
+            dataset.get_memory_data_size()
+            dataset.get_shuffle_data_size()
 
 
 if __name__ == '__main__':

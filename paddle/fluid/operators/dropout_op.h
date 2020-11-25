@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -27,6 +28,10 @@ using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class CPUDropoutKernel : public framework::OpKernel<T> {
@@ -54,24 +59,22 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
         return;
       }
-
+      // std::minstd_rand engine;
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
-      std::random_device rnd;
-      std::minstd_rand engine;
-      int seed_data;
+      int seed_data = 0;
       if (seed) {
         seed_data = *(seed->data<int>());
       } else {
         seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-      engine.seed(seed_data);
+      auto engine = framework::GetCPURandomEngine(seed_data);
 
       std::uniform_real_distribution<float> dist(0, 1);
 
       for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
+        if (dist(*engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {
@@ -117,9 +120,9 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
 
-    auto M = EigenMatrix<uint8_t>::Reshape(*mask, 1);
-    auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
-    auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
+    auto M = EigenVector<uint8_t>::Flatten(*mask);
+    auto dX = EigenVector<T>::Flatten(*grad_x);
+    auto dY = EigenVector<T>::Flatten(*grad_y);
 
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();

@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -34,8 +35,18 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+namespace plugin {
+class PluginTensorRT;
+}  // namespace plugin
 
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
@@ -60,9 +71,9 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 template <typename T>
 nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                             bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GT(shape.size(), 1UL,
+  PADDLE_ENFORCE_GT(shape.size(), 0UL,
                     platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 2 "
+                        "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
@@ -83,12 +94,18 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
-    return nvinfer1::Dims4(shape[0], shape[1], 1, 1);
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size();
+    for (size_t i = 0; i < shape.size(); i++) {
+      dims.d[i] = shape[i];
+    }
+    return dims;
   }
 }
 }  // NOLINT
 
 class TRTInt8Calibrator;
+
 /*
  * TensorRT Engine.
  *
@@ -157,6 +174,7 @@ class TensorRTEngine {
                       "version should be at least 6.";
 #endif
     }
+    dy::initLibNvInferPlugins(&logger, "");
   }
 
   ~TensorRTEngine() {}
@@ -191,8 +209,10 @@ class TensorRTEngine {
   }
 
   nvinfer1::IHostMemory* Serialize() {
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "You should build engine first and then serialize");
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "The TensorRT engine must be built first before serialization"));
     ihost_memory_.reset(infer_engine_->serialize());
     return ihost_memory_.get();
   }
@@ -200,11 +220,31 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data) {
     freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-    infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data.c_str(), engine_serialized_data.size(),
-        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "build cuda engine failed when deserialize engine info.!");
+    if (with_dynamic_shape_) {
+#if IS_TRT_VERSION_GE(6000)
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          nullptr));
+#else
+
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "To enable dynamic shape support, the TensorRT version should be "
+          "greater than 6.0.0"));
+
+#endif
+    } else {
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::Fatal(
+            "Building TRT cuda engine failed when deserializing engine info. "
+            "Please check:\n1. Your TRT serialization is generated and loaded "
+            "on the same GPU architecture;\n2. The Paddle Inference version of "
+            "generating serialization file and doing inference are "
+            "consistent."));
   }
 
   void SetRuntimeBatch(size_t batch_size);
@@ -246,6 +286,9 @@ class TensorRTEngine {
     suffix_counter += 1;
   }
 
+  void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+  void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
+
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
@@ -273,6 +316,8 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  bool use_oss() { return use_oss_; };
+  bool with_ernie() { return with_ernie_; };
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
@@ -308,6 +353,8 @@ class TensorRTEngine {
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
+  bool use_oss_{false};
+  bool with_ernie_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -340,7 +387,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+  nvinfer1::IOptimizationProfile* optim_profile_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;

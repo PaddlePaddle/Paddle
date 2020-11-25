@@ -1,0 +1,164 @@
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.fleet;
+
+enum Mode {
+  COLLECTIVE = 1;
+  PS = 2;
+  PIPELINE = 3;
+  HETER = 4; // support XPU and GPU computing server
+}
+
+message RecomputeConfig { repeated string checkpoints = 1; }
+
+message ShardingConfig {
+  optional float fuse_broadcast_MB = 1 [ default = 32.0 ];
+}
+
+message AMPConfig {
+  optional float init_loss_scaling = 1 [ default = 32768.0 ];
+  optional int32 incr_every_n_steps = 2 [ default = 1000 ];
+  optional int32 decr_every_n_nan_or_inf = 3 [ default = 2 ];
+  optional float incr_ratio = 4 [ default = 2.0 ];
+  optional float decr_ratio = 5 [ default = 0.8 ];
+  optional bool use_dynamic_loss_scaling = 6 [ default = true ];
+  repeated string custom_white_list = 7;
+  repeated string custom_black_list = 8;
+  repeated string custom_black_varnames = 9;
+}
+
+message LocalSGDConfig {
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional int32 begin_step = 2 [ default = 1 ];
+}
+
+message AdaptiveLocalSGDConfig {
+  optional int32 init_k_steps = 1 [ default = 1 ];
+  optional int32 begin_step = 2 [ default = 1 ];
+}
+
+message GradientMergeConfig {
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional bool avg = 2 [ default = true ];
+}
+
+message DGCConfig {
+  optional int32 rampup_begin_step = 1 [ default = 0 ];
+  optional int32 rampup_step = 2 [ default = 1 ];
+  repeated float sparsity = 3;
+}
+
+message LarsConfig {
+  optional float lars_coeff = 1 [ default = 0.001 ];
+  optional float lars_weight_decay = 2 [ default = 0.0005 ];
+  optional float epsilon = 3 [ default = 0.0 ];
+  repeated string exclude_from_weight_decay = 4;
+}
+
+message LambConfig {
+  optional float lamb_weight_decay = 1 [ default = 0.01 ];
+  repeated string exclude_from_weight_decay = 2;
+}
+
+message BuildStrategy {
+  optional bool enable_sequential_execution = 1 [ default = false ];
+  optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
+  optional bool fuse_bn_act_ops = 3 [ default = false ];
+  optional bool fuse_relu_depthwise_conv = 4 [ default = false ];
+  optional bool fuse_broadcast_ops = 5 [ default = false ];
+  optional bool fuse_all_optimizer_ops = 6 [ default = false ];
+  optional bool enable_inplace = 7 [ default = false ];
+  optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
+  optional bool cache_runtime_context = 9 [ default = false ];
+}
+
+message ExecutionStrategy {
+  optional int32 num_threads = 1 [ default = 1 ];
+  optional int32 num_iteration_per_drop_scope = 2 [ default = 10 ];
+  optional int32 num_iteration_per_run = 3 [ default = 1 ];
+  optional bool use_thread_barrier = 4 [ default = false ];
+}
+
+message AsyncConfig {
+  optional int32 k_steps = 1 [ default = -1 ];
+  optional int32 max_merge_var_num = 2 [ default = 1 ];
+  optional int32 send_queue_size = 3 [ default = 16 ];
+  optional bool independent_recv_thread = 4 [ default = false ];
+  optional int32 min_send_grad_num_before_recv = 5 [ default = 1 ];
+  optional int32 thread_pool_size = 6 [ default = 1 ];
+  optional int32 send_wait_times = 7 [ default = 1 ];
+  optional bool runtime_split_send_recv = 8 [ default = false ];
+  optional bool launch_barrier = 9 [ default = true ];
+  optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
+}
+
+message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }
+
+message DistributedStrategy {
+  // bool options
+  optional Mode mode = 1 [ default = COLLECTIVE ];
+  optional bool amp = 2 [ default = false ];
+  optional bool recompute = 3 [ default = false ];
+  optional bool localsgd = 4 [ default = false ];
+  optional bool dgc = 5 [ default = false ];
+  optional bool gradient_merge = 6 [ default = false ];
+  optional bool lars = 7 [ default = false ];
+  optional bool lamb = 8 [ default = false ];
+  optional bool pipeline = 9 [ default = false ];
+  optional bool elastic = 10 [ default = false ];
+  optional bool auto = 11 [ default = false ];
+  optional bool a_sync = 12 [ default = true ];
+  optional bool sync_nccl_allreduce = 13 [ default = true ];
+  optional int32 nccl_comm_num = 14 [ default = 1 ];
+  optional bool use_hierarchical_allreduce = 15 [ default = false ];
+  optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
+  optional bool sync_batch_norm = 17 [ default = false ];
+  optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
+  optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
+  optional bool cudnn_exhaustive_search = 21 [ default = true ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
+  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
+  optional bool adaptive_localsgd = 24 [ default = false ];
+  optional bool fp16_allreduce = 25 [ default = false ];
+  optional bool sharding = 26 [ default = false ];
+
+  optional RecomputeConfig recompute_configs = 101;
+  optional AMPConfig amp_configs = 102;
+  optional LocalSGDConfig localsgd_configs = 103;
+  optional GradientMergeConfig gradient_merge_configs = 104;
+  optional DGCConfig dgc_configs = 105;
+  optional PipelineConfig pipeline_configs = 106;
+  optional AsyncConfig a_sync_configs = 107;
+  optional LarsConfig lars_configs = 108;
+  optional LambConfig lamb_configs = 109;
+  optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
+  optional ShardingConfig sharding_configs = 111;
+  optional BuildStrategy build_strategy = 201;
+  optional ExecutionStrategy execution_strategy = 202;
+}
+
+message DistributedJobInfo {
+  optional int32 worker_num = 1;
+  optional int32 server_num = 2;
+  repeated string worker_ips = 3;
+  repeated string server_endpoints = 4;
+  optional string origin_startup = 5;
+  optional string origin_main = 6; // without backpropagation and optimization
+  optional string distributed_main = 7; // with backpropagation and optimization
+  optional string optimizer_name = 8;   // optimizer name
+  optional DistributedStrategy strategy = 101;
+}

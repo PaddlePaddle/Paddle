@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
@@ -56,11 +57,8 @@ def center_loss(input,
                 alpha,
                 param_attr,
                 update_center=True):
-    """
+    r"""
     :api_attr: Static Graph
-	:alias_main: paddle.nn.functional.center_loss
-	:alias: paddle.nn.functional.center_loss,paddle.nn.functional.loss.center_loss
-	:old_api: paddle.fluid.layers.center_loss
 
     **Center loss Cost layer**
     
@@ -91,6 +89,8 @@ def center_loss(input,
         .. code-block:: python
 
           import paddle.fluid as fluid 
+          import paddle
+          paddle.enable_static()
 
           input = fluid.data(name='x',shape=[20,30],dtype='float32')
           label = fluid.data(name='y',shape=[20,1],dtype='int64')
@@ -151,10 +151,7 @@ def center_loss(input,
 
 
 def bpr_loss(input, label, name=None):
-    """
-    :alias_main: paddle.nn.functional.bpr_loss
-	:alias: paddle.nn.functional.bpr_loss,paddle.nn.functional.loss.bpr_loss
-	:old_api: paddle.fluid.layers.bpr_loss
+    r"""
 
     **Bayesian Personalized Ranking Loss Operator**
 
@@ -182,6 +179,9 @@ def bpr_loss(input, label, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
+
+          paddle.enable_static()
 
           neg_size = 10
           label = fluid.data(
@@ -203,7 +203,7 @@ def bpr_loss(input, label, name=None):
 
 
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
-    """
+    r"""
     :alias_main: paddle.nn.functional.cross_entropy
 	:alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
 	:old_api: paddle.fluid.layers.cross_entropy
@@ -300,10 +300,7 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 
 def square_error_cost(input, label):
-    """
-    :alias_main: paddle.nn.functional.square_error_cost
-	:alias: paddle.nn.functional.square_error_cost,paddle.nn.functional.loss.square_error_cost
-	:old_api: paddle.fluid.layers.square_error_cost
+    r"""
 
     This op accepts input predictions and target label and returns the
     squared error cost.
@@ -315,50 +312,32 @@ def square_error_cost(input, label):
         Out = (input - label)^2
 
     Parameters:
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Tensor): Input tensor, the data type should be float32.
+        label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        The tensor variable storing the element-wise squared error \
+        The tensor storing the element-wise squared error \
                   difference between input and label.
 
-    Return type: Variable.
+    Return type: Tensor.
 
     Examples:
 
         .. code-block:: python
 
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
-	    input = fluid.data(name="input", shape=[1])
-	    label = fluid.data(name="label", shape=[1])
-	    output = fluid.layers.square_error_cost(input,label)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
- 
-	    input_data = np.array([1.5]).astype("float32")
-	    label_data = np.array([1.7]).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
- 
-	    print(output_data)
-	    # [array([0.04000002], dtype=float32)]
-	    
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
+            import paddle
+            input = paddle.to_tensor([1.1, 1.9])
+            label = paddle.to_tensor([1.0, 2.0])
+            output = paddle.nn.functional.square_error_cost(input, label)
+            print(output)
+            # [0.01, 0.01]
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		label = dg.to_variable(label_data)
-    		output = fluid.layers.square_error_cost(input, label)
-    		print(output.numpy())
-	        
-	        # [0.04000002]
     """
+    if in_dygraph_mode():
+        minus_out = core.ops.elementwise_sub(input, label)
+        square_out = core.ops.square(minus_out)
+        return square_out
+
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
                              'square_error_cost')
     check_variable_and_dtype(label, "label", ['float32', 'float64'],
@@ -540,7 +519,7 @@ def warpctc(input,
          (not including the blank label). When it is a 3-D Tensor, its shape 
          is `[max_logit_length, batch_size, num_classes + 1]`,
          where `max_logit_length` is the longest length of
-         input logit sequence. The data type must be float32.
+         input logit sequence. The data type should be float32 or float64.
        label (Variable): The ground truth of variable-length sequence,
          which must be a 2-D Tensor with LoD information or a 3-D Tensor without
          LoD information, needs to be consistent with the coressponding input. 
@@ -570,6 +549,7 @@ def warpctc(input,
         .. code-block:: python
 
             # using LoDTensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -580,6 +560,7 @@ def warpctc(input,
             # class num
             class_num = 5
 
+            paddle.enable_static()
             logits = fluid.data(name='logits',shape=[None, class_num+1],
                                  dtype='float32',lod_level=1)
             label = fluid.data(name='label', shape=[None, 1],
@@ -601,6 +582,7 @@ def warpctc(input,
         .. code-block:: python
 
             # using Tensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -612,6 +594,7 @@ def warpctc(input,
             batch_size = 16
             # class num
             class_num = 5
+            paddle.enable_static()
             logits = fluid.data(name='logits',
                            shape=[max_seq_length, batch_size, class_num+1],
                            dtype='float32')
@@ -636,8 +619,23 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        grad, loss_out = core.ops.warpctc(
+            input,
+            label,
+            input_length,
+            label_length,
+            'blank',
+            blank,
+            'norm_by_times',
+            norm_by_times, )
+        return loss_out
     helper = LayerHelper('warpctc', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], "warpctc")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
     this_inputs = {'Logits': [input], 'Label': [label]}
     if input_length is not None and label_length is not None:
@@ -725,7 +723,7 @@ def nce(input,
 
             window_size = 5
             words = []
-            for i in xrange(window_size):
+            for i in range(window_size):
                 words.append(fluid.data(
                     name='word_{0}'.format(i), shape=[-1, 1], dtype='int64'))
 
@@ -733,7 +731,7 @@ def nce(input,
             label_word = int(window_size / 2) + 1
 
             embs = []
-            for i in xrange(window_size):
+            for i in range(window_size):
                 if i == label_word:
                     continue
 
@@ -746,14 +744,14 @@ def nce(input,
                       num_total_classes=dict_size, param_attr='nce.w_0',
                       bias_attr='nce.b_0')
 
-             #or use custom distribution
-             dist = np.array([0.05,0.5,0.1,0.3,0.05])
-             loss = fluid.layers.nce(input=embs, label=words[label_word],
-                       num_total_classes=5, param_attr='nce.w_1',
-                       bias_attr='nce.b_1',
-                       num_neg_samples=3,
-                       sampler="custom_dist",
-                       custom_dist=dist)
+            #or use custom distribution
+            dist = np.array([0.05,0.5,0.1,0.3,0.05])
+            loss = fluid.layers.nce(input=embs, label=words[label_word],
+                    num_total_classes=5, param_attr='nce.w_1',
+                    bias_attr='nce.b_1',
+                    num_neg_samples=3,
+                    sampler="custom_dist",
+                    custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nce')
@@ -1187,7 +1185,7 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
-    """
+    r"""
     :alias_main: paddle.nn.functional.softmax_with_cross_entropy
 	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
 	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
@@ -1314,10 +1312,7 @@ def softmax_with_cross_entropy(logits,
 
 
 def rank_loss(label, left, right, name=None):
-    """
-    :alias_main: paddle.nn.functional.rank_loss
-	:alias: paddle.nn.functional.rank_loss,paddle.nn.functional.loss.rank_loss
-	:old_api: paddle.fluid.layers.rank_loss
+    r"""
 
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
@@ -1355,6 +1350,8 @@ def rank_loss(label, left, right, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             label = fluid.data(name="label", shape=[-1, 1], dtype="float32")
             left = fluid.data(name="left", shape=[-1, 1], dtype="float32")
             right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
@@ -1378,7 +1375,7 @@ def rank_loss(label, left, right, name=None):
 
 
 def margin_rank_loss(label, left, right, margin=0.1, name=None):
-    """
+    r"""
     Margin Ranking Loss Layer for ranking problem,
     which compares left score and right score passed in.
     The ranking loss can be defined as following equation:
@@ -1497,9 +1494,6 @@ def teacher_student_sigmoid_loss(input,
                                  soft_max_up_bound=15.0,
                                  soft_max_lower_bound=-15.0):
     """
-    :alias_main: paddle.nn.functional.teacher_student_sigmoid_loss
-	:alias: paddle.nn.functional.teacher_student_sigmoid_loss,paddle.nn.functional.loss.teacher_student_sigmoid_loss
-	:old_api: paddle.fluid.layers.teacher_student_sigmoid_loss
 
     **Teacher Student Log Loss Layer**
 
@@ -1527,7 +1521,8 @@ def teacher_student_sigmoid_loss(input,
         .. code-block:: python
           
           import paddle.fluid as fluid
-
+          import paddle
+          paddle.enable_static()
           batch_size = 64
           label = fluid.data(
                     name="label", shape=[batch_size, 1], dtype="int64")
@@ -1556,7 +1551,7 @@ def teacher_student_sigmoid_loss(input,
 
 
 def huber_loss(input, label, delta):
-    """
+    r"""
     This operator computes the Huber loss between input and label.
     Huber loss is commonly used in regression tasks. Compared to square_error_cost, Huber loss is more robust and less sensitivity to outliers.
 
@@ -1619,6 +1614,7 @@ def huber_loss(input, label, delta):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.kl_div")
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
     """
@@ -1685,12 +1681,7 @@ from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
-    '''
-    :alias_main: paddle.nn.functional.npair_loss
-	:alias: paddle.nn.functional.npair_loss,paddle.nn.functional.loss.npair_loss
-	:old_api: paddle.fluid.layers.npair_loss
-
-  **Npair Loss Layer**
+    r'''
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
        <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
@@ -1701,29 +1692,31 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
   takes the similarity matrix of anchor and positive as logits.
 
   Args:
-    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+    anchor(Tensor): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
                       the data type is float32 or float64.
-    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+    positive(Tensor): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
                       the data type is float32 or float64.
-    labels(Variable): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
+    labels(Tensor): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
     l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
   Returns:
-    A Variable holding Tensor representing the npair loss, the data type is the same as 
+    A Tensor representing the npair loss, the data type is the same as 
     anchor, the shape is [1].
 
   Examples:
     .. code-block:: python
 
-       import paddle.fluid as fluid
-       anchor = fluid.data(
-                     name = 'anchor', shape = [18, 6], dtype = 'float32')
-       positive = fluid.data(
-                     name = 'positive', shape = [18, 6], dtype = 'float32')
-       labels = fluid.data(
-                     name = 'labels', shape = [18], dtype = 'float32')
+        import paddle
+        
+        DATATYPE = "float32"
 
-       npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+        anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        labels = paddle.rand(shape=(18,), dtype=DATATYPE)
+        
+        npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+        print(npair_loss.numpy())
+
   '''
     check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
                              'npair_loss')
@@ -1734,7 +1727,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     Beta = 0.25
     batch_size = labels.shape[0]
 
-    labels = nn.reshape(labels, shape=[batch_size, 1], inplace=True)
+    labels = nn.reshape(labels, shape=[batch_size, 1])
     labels = nn.expand(labels, expand_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
@@ -1756,9 +1749,6 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 def mse_loss(input, label):
     """
-    :alias_main: paddle.nn.functional.mse_loss
-	:alias: paddle.nn.functional.mse_loss,paddle.nn.functional.loss.mse_loss
-	:old_api: paddle.fluid.layers.mse_loss
 
     This op accepts input predications and target label and returns the mean square error.
 
@@ -1769,47 +1759,23 @@ def mse_loss(input, label):
         Out = MEAN((input - label)^2)
 
     Parameters: 
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Tensor): Input tensor, the data type should be float32.
+        label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        Variable: The tensor variable storing the mean square error difference of input and label.
+        Tensor: The tensor storing the mean square error difference of input and label.
 
-    Return type: Variable.
+    Return type: Tensor.
     
     Examples:
         .. code-block:: python
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
-	    input = fluid.data(name="input", shape=[1])
-	    label = fluid.data(name="label", shape=[1])
-	    output = fluid.layers.mse_loss(input,label)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
- 
-	    input_data = np.array([1.5]).astype("float32")
-	    label_data = np.array([1.7]).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
- 
-	    print(output_data)
-	    # [array([0.04000002], dtype=float32)]
-	    
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		label = dg.to_variable(label_data)
-    		output = fluid.layers.mse_loss(input, label)
-    		print(output.numpy())
-	        
-	        # [0.04000002]
-
+            import paddle
+            input = paddle.to_tensor([1.1, 1.9])
+            label = paddle.to_tensor([1.0, 2.0])
+            output = paddle.fluid.layers.mse_loss(input, label)
+            print(output.numpy())
+            # [0.01]
     """
     check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
     check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')

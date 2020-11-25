@@ -63,8 +63,10 @@ class ClipByNormKernel : public framework::OpKernel<T> {
       output->Resize(merged_input->value().dims());
       output->mutable_data<T>(context.GetPlace());
     } else {
-      PADDLE_THROW("Unexpected branch, input variable type is %s",
-                   framework::ToTypeName(in_var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid input variable type, only support LodTensor and "
+          "SelectedRows types, but got type is %s.",
+          framework::ToTypeName(in_var->Type())));
     }
 
     PADDLE_ENFORCE_NOT_NULL(input,
@@ -82,7 +84,12 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
     Eigen::array<int, 1> one_dim{{1}};
     Eigen::DSizes<int, 1> m_dsize(input->numel());
-    out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+    if (context.GetPlace() == platform::CPUPlace()) {
+      out.device(place) =
+          x * scaling.reshape(one_dim).eval().broadcast(m_dsize);
+    } else {
+      out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+    }
   }
 };
 

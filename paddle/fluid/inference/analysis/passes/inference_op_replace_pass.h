@@ -32,6 +32,8 @@ namespace analysis {
  * So, We added the corresponding inference impl to these ops separately.
  * This pass replaces these ops with corresponding inference ops.
  */
+struct Argument;
+
 class InferenceOpReplacePass : public AnalysisPass {
  public:
   void RunImpl(Argument *argument) override;

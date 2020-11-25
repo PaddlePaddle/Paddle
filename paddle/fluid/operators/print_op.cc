@@ -12,12 +12,20 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <algorithm>
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class LoDTensor;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -73,18 +81,6 @@ class PrintOp : public framework::OperatorBase {
     int first_n = Attr<int>("first_n");
     if (first_n > 0 && ++times_ > first_n) return;
 
-    framework::LoDTensor printed_tensor;
-    printed_tensor.set_lod(in_tensor.lod());
-    printed_tensor.Resize(in_tensor.dims());
-
-    if (is_cpu_place(in_tensor.place())) {
-      printed_tensor.ShareDataWith(in_tensor);
-    } else {
-      // copy data to cpu to print
-      platform::CPUPlace place;
-      TensorCopy(in_tensor, place, &printed_tensor);
-    }
-
     TensorFormatter formatter;
     const std::string &name =
         Attr<bool>("print_tensor_name") ? printed_var_name : "";
@@ -93,7 +89,7 @@ class PrintOp : public framework::OperatorBase {
     formatter.SetPrintTensorLod(Attr<bool>("print_tensor_lod"));
     formatter.SetPrintTensorLayout(Attr<bool>("print_tensor_layout"));
     formatter.SetSummarize(static_cast<int64_t>(Attr<int>("summarize")));
-    formatter.Print(printed_tensor, name, Attr<std::string>("message"));
+    formatter.Print(in_tensor, name, Attr<std::string>("message"));
   }
 
  private:

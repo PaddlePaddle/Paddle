@@ -17,10 +17,12 @@
 //
 
 #include <paddle/fluid/framework/op_registry.h>
+
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -240,9 +242,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::AttributeMap reduce_attr_map;
   tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
                  gpu_place, true);
-  detail::BackwardStrategy back_st;
   imperative::BasicEngine engine;
-  engine.Init(reduce_sum_out.get(), back_st);
+  engine.Init(reduce_sum_out.get());
   engine.Execute();
 
   framework::LoDTensor rlt;
@@ -285,6 +286,11 @@ TEST(test_tracer, test_unique_name_generator) {
   auto fc_2 = tracer.GenerateUniqueName("fc");
   ASSERT_STREQ("fc_0", fc_1.c_str());
   ASSERT_STREQ("fc_1", fc_2.c_str());
+  // use `eager_tmp` as key if not specify it.
+  auto tmp_var_2 = tracer.GenerateUniqueName();
+  ASSERT_STREQ("dygraph_tmp_2", tmp_var_2.c_str());
+  auto tmp_var_3 = tracer.GenerateUniqueName("dygraph_tmp");
+  ASSERT_STREQ("dygraph_tmp_3", tmp_var_3.c_str());
 }
 
 TEST(test_tracer, test_current_tracer) {
@@ -351,9 +357,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 
-  detail::BackwardStrategy back_st;
   imperative::BasicEngine engine;
-  engine.Init(vout.get(), back_st);
+  engine.Init(vout.get());
   engine.Execute();
 
   // check the grad

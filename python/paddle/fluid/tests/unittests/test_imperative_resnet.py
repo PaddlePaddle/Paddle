@@ -83,7 +83,8 @@ class ConvBNLayer(fluid.Layer):
                  filter_size,
                  stride=1,
                  groups=1,
-                 act=None):
+                 act=None,
+                 use_cudnn=False):
         super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
@@ -94,8 +95,8 @@ class ConvBNLayer(fluid.Layer):
             padding=(filter_size - 1) // 2,
             groups=groups,
             act=None,
-            bias_attr=None,
-            use_cudnn=False)
+            bias_attr=False,
+            use_cudnn=use_cudnn)
 
         self._batch_norm = BatchNorm(num_filters, act=act)
 
@@ -107,32 +108,41 @@ class ConvBNLayer(fluid.Layer):
 
 
 class BottleneckBlock(fluid.Layer):
-    def __init__(self, num_channels, num_filters, stride, shortcut=True):
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 stride,
+                 shortcut=True,
+                 use_cudnn=False):
         super(BottleneckBlock, self).__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
-            act='relu')
+            act='relu',
+            use_cudnn=use_cudnn)
         self.conv1 = ConvBNLayer(
             num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
-            act='relu')
+            act='relu',
+            use_cudnn=use_cudnn)
         self.conv2 = ConvBNLayer(
             num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
-            act=None)
+            act=None,
+            use_cudnn=use_cudnn)
 
         if not shortcut:
             self.short = ConvBNLayer(
                 num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
-                stride=stride)
+                stride=stride,
+                use_cudnn=use_cudnn)
 
         self.shortcut = shortcut
 
@@ -153,7 +163,7 @@ class BottleneckBlock(fluid.Layer):
 
 
 class ResNet(fluid.Layer):
-    def __init__(self, layers=50, class_dim=102):
+    def __init__(self, layers=50, class_dim=102, use_cudnn=False):
         super(ResNet, self).__init__()
 
         self.layers = layers
@@ -171,7 +181,12 @@ class ResNet(fluid.Layer):
         num_filters = [64, 128, 256, 512]
 
         self.conv = ConvBNLayer(
-            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
+            num_channels=3,
+            num_filters=64,
+            filter_size=7,
+            stride=2,
+            act='relu',
+            use_cudnn=use_cudnn)
         self.pool2d_max = Pool2D(
             pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
@@ -186,7 +201,8 @@ class ResNet(fluid.Layer):
                         if i == 0 else num_filters[block] * 4,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
-                        shortcut=shortcut))
+                        shortcut=shortcut,
+                        use_cudnn=use_cudnn))
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
@@ -235,8 +251,8 @@ class TestDygraphResnet(unittest.TestCase):
         traced_layer = None
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet()
             optimizer = optimizer_setting(
@@ -318,8 +334,8 @@ class TestDygraphResnet(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

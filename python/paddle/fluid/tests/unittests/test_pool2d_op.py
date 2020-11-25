@@ -102,14 +102,21 @@ def avg_pool2D_forward_naive(x,
                 c_start = adaptive_start_index(j, W, ksize[1])
                 c_end = adaptive_end_index(j, W, ksize[1])
             else:
-                r_start = np.max((i * strides[0] - paddings[0], 0))
-                r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-                c_start = np.max((j * strides[1] - paddings[1], 0))
-                c_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
+                r_start = i * strides[0] - paddings[0]
+                r_end = i * strides[0] + ksize[0] - paddings[0]
+                c_start = j * strides[1] - paddings[1]
+                c_end = j * strides[1] + ksize[1] - paddings[1]
+                field_size = (r_end - r_start) * (c_end - c_start)
+                r_start = np.max((r_start, 0))
+                r_end = np.min((r_end, H))
+                c_start = np.max((c_start, 0))
+                c_end = np.min((c_end, W))
+
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
 
-            field_size = ((r_end - r_start) * (c_end - c_start)) \
-                if (exclusive or adaptive) else (ksize[0] * ksize[1])
+            if (exclusive or adaptive):
+                field_size = (r_end - r_start) * (c_end - c_start)
+
             if data_type == np.int8 or data_type == np.uint8:
                 out[:, :, i, j] = (np.rint(
                     np.sum(x_masked, axis=(2, 3)) /
@@ -207,22 +214,34 @@ def pool2D_forward_naive(x,
                 in_w_start = adaptive_start_index(j, W, ksize[1])
                 in_w_end = adaptive_end_index(j, W, ksize[1])
             else:
-                in_w_start = np.max((j * strides[1] - pad_w_left, 0))
-                in_w_end = np.min((j * strides[1] + ksize[1] - pad_w_left, W))
+                in_h_start = i * strides[0] - pad_h_up
+                in_w_start = j * strides[1] - pad_w_left
+                in_h_end = i * strides[0] + ksize[0] - pad_h_up
+                in_w_end = j * strides[1] + ksize[1] - pad_w_left
+
+                field_size = (in_h_end - in_h_start) * (in_w_end - in_w_start)
+                in_h_start = np.max((in_h_start, 0))
+                in_w_start = np.max((in_w_start, 0))
+                in_h_end = np.min((in_h_end, H))
+                in_w_end = np.min((in_w_end, W))
 
             if data_format == 'NCHW':
                 x_masked = x[:, :, in_h_start:in_h_end, in_w_start:in_w_end]
                 if pool_type == 'avg':
-                    field_size = ((in_h_end - in_h_start) * (in_w_end - in_w_start)) \
-                        if (exclusive or adaptive) else (ksize[0] * ksize[1])
+                    if (exclusive or adaptive):
+                        field_size = (in_h_end - in_h_start) * (
+                            in_w_end - in_w_start)
+
+#                         if (exclusive or adaptive) else (ksize[0] * ksize[1])
                     out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
                 elif pool_type == 'max':
                     out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
             elif data_format == 'NHWC':
                 x_masked = x[:, in_h_start:in_h_end, in_w_start:in_w_end, :]
                 if pool_type == 'avg':
-                    field_size = ((in_h_end - in_h_start) * (in_w_end - in_w_start)) \
-                        if (exclusive or adaptive) else (ksize[0] * ksize[1])
+                    if (exclusive or adaptive):
+                        field_size = (in_h_end - in_h_start) * (
+                            in_w_end - in_w_start)
                     out[:, i, j, :] = np.sum(x_masked, axis=(1, 2)) / field_size
                 elif pool_type == 'max':
                     out[:, i, j, :] = np.max(x_masked, axis=(1, 2))
@@ -456,12 +475,54 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
     globals()[cls_name] = TestCUDNNFp16Case
 
 
+def create_test_fp16_class(parent, check_grad=True):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestFp16Case(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = False
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(
+                        place,
+                        atol=1e-3,
+                        check_dygraph=(self.use_mkldnn == False))
+
+        def test_check_grad(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(
+                    place) and self.pool_type != "max" and check_grad:
+                self.check_grad_with_place(
+                    place,
+                    set(['X']),
+                    'Out',
+                    max_relative_error=0.07,
+                    check_dygraph=(self.use_mkldnn == False))
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    TestFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestFp16Case
+
+
 create_test_cudnn_fp16_class(TestPool2D_Op)
 create_test_cudnn_fp16_class(TestCase1, check_grad=False)
 create_test_cudnn_fp16_class(TestCase2)
 create_test_cudnn_fp16_class(TestCase3)
 create_test_cudnn_fp16_class(TestCase4)
 create_test_cudnn_fp16_class(TestCase5)
+
+create_test_fp16_class(TestPool2D_Op)
+create_test_fp16_class(TestCase1, check_grad=False)
+create_test_fp16_class(TestCase2)
+create_test_fp16_class(TestCase3)
+create_test_fp16_class(TestCase4)
+create_test_fp16_class(TestCase5)
 
 #--------------------test pool2d use ceil mode--------------------
 
@@ -515,6 +576,19 @@ class TestCUDNNAvgInclude(TestCase2):
 class TestAvgPoolAdaptive(TestCase1):
     def init_adaptive(self):
         self.adaptive = True
+
+
+class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
+    def init_adaptive(self):
+        self.adaptive = True
+
+    def init_shape(self):
+        self.shape = [8, 3, 6, 6]
+
+    def init_test_case(self):
+        self.ksize = [2, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0, 0, 0]
 
 
 #-------test pool2d with asymmetric padding-----
@@ -986,7 +1060,7 @@ create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
 # ----- test API
-class TestPool2dAPI(unittest.TestCase):
+class TestPool2DAPI(unittest.TestCase):
     def test_api(self):
         x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
         x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
@@ -1205,7 +1279,7 @@ class TestPool2dAPI(unittest.TestCase):
                 data_format="NHWC"))
 
 
-class TestPool2dAPI_Error(unittest.TestCase):
+class TestPool2DAPI_Error(unittest.TestCase):
     def test_api(self):
         input_NHWC = fluid.layers.data(
             name="input_NHWC",

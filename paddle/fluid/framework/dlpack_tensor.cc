@@ -11,10 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <unordered_map>
-
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include <unordered_map>
+#include "paddle/fluid/framework/data_type.h"
+
+namespace paddle {
+namespace platform {
+struct bfloat16;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 
@@ -23,6 +30,7 @@ template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
   if (std::is_same<T, platform::float16>::value ||
+      std::is_same<T, platform::bfloat16>::value ||
       std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
@@ -30,7 +38,10 @@ static ::DLDataType GetDLDataTypeCode() {
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else {
-    PADDLE_THROW("Unsupported data type %s", typeid(T).name());
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported data type (%s), only supports float16, float, unsigned "
+        "int and int.",
+        platform::demangle(typeid(T).name())));
   }
   dtype.bits = 8 * sizeof(T);
   dtype.lanes = 1;
@@ -52,8 +63,9 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
-  PADDLE_ENFORCE(it != type_to_dtype_map_end_it, "Unsupported data type %d",
-                 type);
+  PADDLE_ENFORCE_NE(it, type_to_dtype_map_end_it,
+                    platform::errors::InvalidArgument(
+                        "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;
 #undef REG_DL_DATA_TYPE
 }
@@ -66,6 +78,11 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     return ctx;
   }
 
+  inline ::DLContext operator()(const platform::XPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::XPUPlace is not supported"));
+  }
+
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
 #ifdef PADDLE_WITH_CUDA
     ::DLContext ctx;
@@ -73,7 +90,8 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     ctx.device_id = place.device;
     return ctx;
 #else
-    PADDLE_THROW("platform::CUDAPlace is not supported in CPU only version");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "platform::CUDAPlace is not supported in CPU only version."));
 #endif
   }
 
@@ -84,8 +102,8 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     ctx.device_id = 0;
     return ctx;
 #else
-    PADDLE_THROW(
-        "platform::CUDAPinnedPlace is not supported in CPU only version");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "platform::CUDAPinnedPlace is not supported in CPU only version."));
 #endif
   }
 };
@@ -136,7 +154,10 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // refer to cupy and cudf, the compact tensor first dim's strides need to be 1
   // and second dim's strides need to be length of rows of cudf
   // cudf now only support dim=2
-  PADDLE_ENFORCE_LE(t_.ndim, 2, "cudf now only support dim=2.");
+  PADDLE_ENFORCE_LE(t_.ndim, 2, platform::errors::InvalidArgument(
+                                    "cudf now only supports dimension is 2, "
+                                    "but received dimension is %d.",
+                                    t_.ndim));
 
   if (t_.ndim > 1)
     t_.strides = new int64_t[2]{1, t_.shape[1]};

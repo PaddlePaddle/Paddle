@@ -4,6 +4,12 @@ if(WITH_GPU)
   proto_library(cuda_error_proto SRCS cuda_error.proto)
 endif(WITH_GPU)
 
+if(WITH_XPU)
+  set(XPU_CTX_DEPS xpulib)
+ELSE()
+  set(XPU_CTX_DEPS)
+endif(WITH_XPU)
+
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -25,7 +31,7 @@ if (WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
-cc_library(flags SRCS flags.cc DEPS gflags) 
+cc_library(flags SRCS flags.cc DEPS gflags)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
@@ -35,6 +41,7 @@ if(WITH_GPU)
   set(enforce_deps ${enforce_deps} cuda_error_proto)
 endif()
 cc_library(enforce INTERFACE SRCS enforce.cc DEPS ${enforce_deps})
+cc_library(monitor SRCS monitor.cc)
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
 set(CPU_INFO_DEPS gflags glog enforce)
@@ -44,10 +51,14 @@ ENDIF()
 cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
-nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
 
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
+
+if(WITH_XPU)
+cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce)
+endif()
 
 add_subdirectory(dynload)
 add_subdirectory(stream)
@@ -77,13 +88,17 @@ ELSE()
   set(STREAM_CALLBACK_DEPS)
 ENDIF()
 
+if(WITH_GLOO)
+    cc_library(gloo_context SRCS gloo_context.cc DEPS framework_proto gloo_wrapper enforce)
+endif()
+
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    ${dgc_deps} dlpack cudnn_workspace_helper)
+    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
 cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
 
@@ -91,13 +106,6 @@ if(WITH_GPU)
     cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
     target_link_libraries(device_context cuda_resource_pool)
 endif()
-
-if(WIN32)
-    if(WITH_GPU AND NOT WITH_DSO)
-        get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
-        target_link_libraries(device_context ${cuda_modules})
-    endif(WITH_GPU AND NOT WITH_DSO)
-endif(WIN32)
 
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
@@ -122,10 +130,13 @@ else()
   cc_library(profiler SRCS profiler.cc DEPS device_tracer enforce)
   cc_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info place)
 endif()
+
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
+
+cc_test(bfloat16_test SRCS bfloat16_test.cc DEPS lod_tensor)
 
 nv_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info flags)
 

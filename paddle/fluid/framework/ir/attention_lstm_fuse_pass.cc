@@ -108,7 +108,9 @@ void FindWhileOp(Graph* graph) {
   GraphSafeRemoveNodes(graph, marked_nodes);
 }
 
-#define CHECK_P1(x) PADDLE_ENFORCE_NOT_NULL(x);
+#define CHECK_P1(x)        \
+  PADDLE_ENFORCE_NOT_NULL( \
+      x, platform::errors::NotFound("%s is a null pointer.", #x))
 #define CHECK_P2(x0, x1) \
   CHECK_P1(x0);          \
   CHECK_P1(x1);
@@ -135,7 +137,9 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
-  PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
+  PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr), true,
+                    platform::errors::InvalidArgument(
+                        "Graph have no attribute: kParamScopeAttr."));
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
 
   // Create new parameters.
@@ -193,7 +197,10 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // reshape attention_bias
   auto* attention_bias_t =
       scope.FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
-  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1);
+  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1,
+                    platform::errors::InvalidArgument(
+                        "Tensor attention bias dimension size(%d) must be 1.",
+                        attention_bias_t->dims().size()));
   attention_bias_t->Resize(make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
@@ -252,7 +259,10 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
       B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
       B_cell.data<float>()};
 
-  PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
+  PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1,
+                    platform::errors::InvalidArgument(
+                        "Tensor B forget dimension size(%d) must be 1.",
+                        B_forget.dims().size()));
   int D = B_forget.dims()[0];
   out->Resize(make_ddim({1, 4 * D}));
   auto* out_data = out->mutable_data<float>(platform::CPUPlace());

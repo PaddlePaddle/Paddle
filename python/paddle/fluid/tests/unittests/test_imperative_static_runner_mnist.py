@@ -25,6 +25,8 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from test_imperative_base import new_program_scope
 
+LOADED_VAR_SUFFIX = ".load_0"
+
 
 def convolutional_neural_network(img):
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
@@ -119,8 +121,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
             mnist = fluid.dygraph.static_runner.StaticModelRunner(
                 model_dir=self.save_dirname,
@@ -154,7 +155,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
-                    avg_loss.backward(backward_strategy)
+                    avg_loss.backward()
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
 
@@ -307,14 +308,14 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
 
         for key, value in six.iteritems(static_param_init_value):
-            key += core.loaded_var_suffix()
+            key += LOADED_VAR_SUFFIX
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
         for key, value in six.iteritems(static_param_value):
-            key += core.loaded_var_suffix()
+            key += LOADED_VAR_SUFFIX
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
     def test_mnist_train_with_params_filename(self):
@@ -335,14 +336,14 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
 
         for key, value in six.iteritems(static_param_init_value):
-            key += core.loaded_var_suffix()
+            key += LOADED_VAR_SUFFIX
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
         for key, value in six.iteritems(static_param_value):
-            key += core.loaded_var_suffix()
+            key += LOADED_VAR_SUFFIX
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
     def test_mnist_infer_no_params_filename(self):

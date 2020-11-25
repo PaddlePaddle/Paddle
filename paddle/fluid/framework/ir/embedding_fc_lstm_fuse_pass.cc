@@ -23,6 +23,8 @@
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -34,7 +36,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
   // Build pattern
   PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope, "x"))
-                  ->assert_is_op_input("lookup_table")
+                  ->assert_is_op_input("lookup_table_v2")
                   ->assert_var_not_persistable();
   patterns::Embedding embedding_pattern(pattern, name_scope);
   // TODO(jczaja): Intermediate can only be for val that are not used anywhere
@@ -64,17 +66,23 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef SET_IN
 
     // Multiply embeddings with Weights
-    PADDLE_ENFORCE(scope);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
     const std::string& embeddings = patterns::UniqueKey("Embeddings");
     auto* embeddings_var = scope->Var(embeddings);
-    PADDLE_ENFORCE(embeddings_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        embeddings_var,
+        platform::errors::InvalidArgument(
+            "Embeddings variable's pointer cannot be nullptr."));
     auto* embeddings_tensor =
         embeddings_var->GetMutable<framework::LoDTensor>();
     // Get WeightX size: [single_embedding, fc_size]
     // and embedding size: [dict_size, single_embedding]
     // and create new size of embeddings eg. [dict_size , hidden_size]
     auto* embedding_var = scope->FindVar(W->Name());
-    PADDLE_ENFORCE(embedding_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        embedding_var, platform::errors::InvalidArgument(
+                           "Embedding variable's pointer cannot be nullptr."));
     const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
 
     const auto& weightx_tensor =
@@ -90,7 +98,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     // Adding biases to GEMM result to be
     auto* lstm_bias_var = scope->FindVar(bias->Name());
-    PADDLE_ENFORCE(lstm_bias_var);
+    PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
+                            platform::errors::InvalidArgument(
+                                "Lstm bias var ptr cannot be nullptr."));
     const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
 
     auto alpha = 1.0f;
@@ -248,3 +258,11 @@ void EmbeddingFCLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(embedding_fc_lstm_fuse_pass,
               paddle::framework::ir::EmbeddingFCLSTMFusePass);
+REGISTER_PASS_CAPABILITY(embedding_fc_lstm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("lookup_table_v2", 0)
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("lstm", 0)
+            .EQ("fused_embedding_fc_lstm", 0));

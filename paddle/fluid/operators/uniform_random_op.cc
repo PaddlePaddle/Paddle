@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/uniform_random_op.h"
+
 #include <string>
+
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+
 namespace paddle {
 namespace operators {
 
@@ -50,24 +54,25 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
-      PADDLE_THROW(
-          "uniform_random_op's output only"
-          "supports SelectedRows and LoDTensor");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "SelectedRows. But got "
+          "unsupport type: %s.",
+          framework::ToTypeName(out_var->Type())));
     }
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
+
+    int64_t size = tensor->numel();
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
-    int64_t size = tensor->numel();
+    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+
     for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(engine);
+      data[i] = dist(*engine);
     }
+
     unsigned int diag_num =
         static_cast<unsigned int>(ctx.Attr<int>("diag_num"));
     unsigned int diag_step =
@@ -116,12 +121,12 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
       auto inputs_name = ctx->Inputs("ShapeTensorList");
-      PADDLE_ENFORCE_GT(
-          inputs_name.size(), 0,
-          platform::errors::InvalidArgument(
-              "Input(ShapeTensorList)'size of Op(uniform_random) can't be zero."
-              "Please check the Attr(shape)'s size of"
-              "Op(fluid.layers.uniform_random).)"));
+      PADDLE_ENFORCE_GT(inputs_name.size(), 0,
+                        platform::errors::InvalidArgument(
+                            "Input(ShapeTensorList)'size of "
+                            "Op(uniform_random) can't be zero."
+                            "Please check the Attr(shape)'s size of"
+                            "Op(fluid.layers.uniform_random).)"));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
 

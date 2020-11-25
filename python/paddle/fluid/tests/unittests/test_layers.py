@@ -57,8 +57,8 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
     def get_static_graph_result(self,
@@ -77,8 +77,8 @@ class LayerTest(unittest.TestCase):
     def dynamic_graph(self, force_to_use_cpu=False):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
 
@@ -180,6 +180,51 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    def test_Flatten(self):
+        inp = np.ones([3, 4, 4, 5], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 4, 4, 5],
+                dtype='float32',
+                append_batch_size=False)
+            flatten = nn.Flatten()
+            ret = flatten(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            flatten = nn.Flatten()
+            dy_ret = flatten(t)
+            dy_ret_value = dy_ret.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
+        with self.static_graph():
+
+            # the input of Linear must be Variable.
+            def test_Variable():
+                inp = np.ones([3, 32, 32], dtype='float32')
+                linear = nn.Linear(
+                    32,
+                    4,
+                    bias_attr=fluid.initializer.ConstantInitializer(value=1))
+                linear_ret1 = linear(inp)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of Linear must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            def test_type():
+                inp = np.ones([3, 32, 32], dtype='int32')
+                linear = nn.Linear(
+                    32,
+                    4,
+                    bias_attr=fluid.initializer.ConstantInitializer(value=1))
+                linear_ret2 = linear(inp)
+
+            self.assertRaises(TypeError, test_type)
+
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -237,6 +282,24 @@ class TestLayer(LayerTest):
                 act='sigmoid')
             with self.assertRaises(ValueError):
                 lm(base.to_variable(inp))
+
+    def test_SyncBatchNorm(self):
+        if core.is_compiled_with_cuda():
+            with self.static_graph():
+                t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
+                my_sync_bn = paddle.nn.SyncBatchNorm(3)
+                ret = my_sync_bn(t)
+                static_ret = self.get_static_graph_result(
+                    feed={'t': np.ones(
+                        [3, 3, 5, 5], dtype='float32')},
+                    fetch_list=[ret])[0]
+
+            with self.dynamic_graph():
+                t = np.ones([3, 3, 5, 5], dtype='float32')
+                my_syncbn = paddle.nn.SyncBatchNorm(3)
+                dy_ret = my_syncbn(base.to_variable(t))
+                dy_ret_value = dy_ret.numpy()
+            self.assertTrue(np.array_equal(static_ret, dy_ret_value))
 
     def test_relu(self):
         with self.static_graph():
@@ -954,7 +1017,7 @@ class TestLayer(LayerTest):
             static_rlt2 = self.get_static_graph_result(
                 feed=feed_dict, fetch_list=[nce_loss2])[0]
 
-        with self.dynamic_graph(force_to_use_cpu=True):
+        with self.dynamic_graph():
             words = []
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
@@ -990,7 +1053,7 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
 
-        with self.dynamic_graph(force_to_use_cpu=True):
+        with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 128).astype("float32")
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
@@ -1289,7 +1352,7 @@ class TestLayer(LayerTest):
             dy_rlt_value = dy_ret.numpy()
 
         with self.dynamic_graph():
-            instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
             dy_ret = instanceNorm(base.to_variable(input))
             dy_rlt_value2 = dy_ret.numpy()
 
@@ -1300,7 +1363,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             # the input of InstanceNorm must be Variable.
             def test_Variable():
-                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
                 ret1 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_Variable)
@@ -1308,7 +1371,7 @@ class TestLayer(LayerTest):
             # the input dtype of InstanceNorm must be float32 or float64
             def test_type():
                 input = np.random.random(shape).astype('int32')
-                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                instanceNorm = nn.InstanceNorm(num_channels=shape[1])
                 ret2 = instanceNorm(input)
 
             self.assertRaises(TypeError, test_type)
@@ -1576,21 +1639,6 @@ class TestLayer(LayerTest):
             layers.eye(num_rows=3, batch_shape=2)
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3, batch_shape=[-1])
-
-    def test_hard_swish(self):
-        with self.static_graph():
-            t = layers.data(name='t', shape=[3, 3], dtype='float32')
-            ret = layers.hard_swish(t)
-            static_ret = self.get_static_graph_result(
-                feed={'t': np.ones(
-                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
-
-        with self.dynamic_graph():
-            t = np.ones([3, 3], dtype='float32')
-            dy_ret = layers.hard_swish(base.to_variable(t))
-            dy_ret_rlt = dy_ret.numpy()
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_rlt))
 
     def test_while_loop(self):
         with self.static_graph():
@@ -1916,13 +1964,13 @@ class TestLayer(LayerTest):
             exe = fluid.Executor(place)
 
             exe.run(fluid.default_startup_program())
-            x = np.random.rand(3, 32, 32).astype("float32")
-            y = np.array([[1], [0], [1]])
+            # x = np.random.rand(3, 32, 32).astype("float32")
+            # y = np.array([[1], [0], [1]])
             static_out = exe.run(feed={"input": x,
                                        "label": y},
                                  fetch_list=result[0])
 
-        with self.dynamic_graph():
+        with self.dynamic_graph(force_to_use_cpu=True):
             data = base.to_variable(x)
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)
@@ -2015,7 +2063,8 @@ class TestBook(LayerTest):
         if base.enabled():
             return base.to_variable(
                 value=self._get_np_data(shape, dtype, append_batch_size),
-                name=name)
+                name=name,
+                zero_copy=False)
         else:
             if set_feed_dict:
                 self._feed_dict[name] = self._get_np_data(shape, dtype,
@@ -2482,13 +2531,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_maxout(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            data = self._get_data(name='x', shape=[8, 6, 6], dtype="float32")
-            output = layers.maxout(x=data, groups=2)
-            return (output)
-
     def make_crop(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2575,20 +2617,6 @@ class TestBook(LayerTest):
                 name='prelu')
             return (out)
 
-    def make_brelu(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.brelu(input, t_min=1.0, t_max=20.0, name='brelu')
-            return (out)
-
-    def make_leaky_relu(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.leaky_relu(input, alpha=0.1, name='leaky_relu')
-            return (out)
-
     def make_soft_relu(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2601,13 +2629,6 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             input = self._get_data(name="input", shape=[16], dtype="float32")
             out = layers.sigmoid(input, name='sigmoid')
-            return (out)
-
-    def make_logsigmoid(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.logsigmoid(input, name='logsigmoid')
             return (out)
 
     def make_exp(self):
@@ -2706,6 +2727,13 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             input = self._get_data(name="input", shape=[16], dtype="float32")
             out = layers.softsign(input, name='softsign')
+            return (out)
+
+    def make_mish(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = self._get_data(name="input", shape=[16], dtype="float32")
+            out = layers.mish(input, name='mish')
             return (out)
 
     def make_cross_entropy(self):
@@ -3055,8 +3083,7 @@ class TestBook(LayerTest):
             out, ids = layers.argsort(input=data, axis=1)
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
-            out_shape = layers.data(
-                name="out_shape", shape=[-1], dtype="float32")
+            out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
             data_0 = layers.affine_grid(theta, out_shape)
             data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
 
@@ -3238,15 +3265,29 @@ class TestBook(LayerTest):
             return (out)
 
     def test_roi_pool(self):
-        # TODO(minqiyang): dygraph do not support lod now
+        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
+        rois_np = np.random.rand(3, 4).astype('float32')
+        rois_num_np = np.array([1, 2]).astype('int32')
+
         with self.static_graph():
-            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[4], dtype="float32", lod_level=1)
-            rois_lod = layers.data(
-                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
-            output = layers.roi_pool(x, rois, 7, 7, 0.6, rois_lod)
-            return (output)
+            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
+            rois = layers.data(name="rois", shape=[4], dtype="float32")
+            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
+            output = layers.roi_pool(x, rois, 4, 4, 0.5, rois_num=rois_num)
+            static_res = self.get_static_graph_result(
+                feed={'x': x_np,
+                      'rois': rois_np,
+                      'rois_num': rois_num_np},
+                fetch_list=[output])[0]
+
+        with self.dynamic_graph():
+            x_dy = base.to_variable(x_np)
+            rois_dy = base.to_variable(rois_np)
+            rois_num_dy = base.to_variable(rois_num_np)
+            dy_res = layers.roi_pool(
+                x_dy, rois_dy, 4, 4, 0.5, rois_num=rois_num_dy)
+            dy_res_value = dy_res[0].numpy()
+        self.assertTrue(np.array_equal(static_res, dy_res_value))
 
     def test_sequence_enumerate(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -3255,16 +3296,29 @@ class TestBook(LayerTest):
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
 
     def test_roi_align(self):
-        # TODO(minqiyang): dygraph do not support lod now
+        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
+        rois_np = np.random.rand(3, 4).astype('float32')
+        rois_num_np = np.array([1, 2]).astype('int32')
+
         with self.static_graph():
-            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[4], dtype="float32", lod_level=1)
-            rois_lod = layers.data(
-                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
-            output = layers.roi_align(x, rois, 14, 14, 0.5, 2, 'roi_align',
-                                      rois_lod)
-            return (output)
+            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
+            rois = layers.data(name="rois", shape=[4], dtype="float32")
+            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
+            output = layers.roi_align(x, rois, 4, 4, 0.5, 2, rois_num=rois_num)
+            static_res = self.get_static_graph_result(
+                feed={'x': x_np,
+                      'rois': rois_np,
+                      'rois_num': rois_num_np},
+                fetch_list=[output])[0]
+
+        with self.dynamic_graph():
+            x_dy = base.to_variable(x_np)
+            rois_dy = base.to_variable(rois_np)
+            rois_num_dy = base.to_variable(rois_num_np)
+            dy_res = layers.roi_align(
+                x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy)
+            dy_res_value = dy_res.numpy()
+        self.assertTrue(np.array_equal(static_res, dy_res_value))
 
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -3602,5 +3656,51 @@ class TestBook(LayerTest):
                         batch_first=batch_first)
 
 
+class TestMetricsDetectionMap(unittest.TestCase):
+    def test_detection_map(self):
+        program = fluid.Program()
+        with program_guard(program):
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='float32')
+            box = fluid.layers.data(
+                name='bbox',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            map_eval = fluid.metrics.DetectionMAP(
+                detect_res, label, box, class_num=21)
+            cur_map, accm_map = map_eval.get_map_var()
+            self.assertIsNotNone(cur_map)
+            self.assertIsNotNone(accm_map)
+        print(str(program))
+
+
+class ExampleNet(paddle.nn.Layer):
+    def __init__(self):
+        super(ExampleNet, self).__init__()
+        self.weight = self.create_parameter(
+            shape=[1, 1], attr=paddle.ParamAttr(trainable=False))
+
+    def forward(self):
+        # only for test parameter trainable attr
+        pass
+
+
+class TestLayerParameterTrainableSet(unittest.TestCase):
+    def test_layer_parameter_set(self):
+        with fluid.dygraph.guard():
+            net = ExampleNet()
+            self.assertFalse(net.weight.trainable)
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

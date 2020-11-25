@@ -13,10 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+
 #include <string>
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
+
 #include "gtest/gtest.h"
 
 TEST(Event, CpuElapsedTime) {
@@ -28,6 +27,9 @@ TEST(Event, CpuElapsedTime) {
   while (counter != 1000) {
     counter++;
   }
+#ifdef _WIN32
+  Sleep(1);
+#endif
   Event stop_event(EventType::kPopRange, "test", 0);
   EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }

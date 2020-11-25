@@ -77,10 +77,10 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
         batch_size = train_parameters["batch_size"]
         batch_num = 10
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+
             resnet = ResNet()
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters())
@@ -119,7 +119,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss.backward(backward_strategy)
+                avg_loss.backward()
 
                 dy_grad_value = {}
                 for param in resnet.parameters():
@@ -137,8 +137,8 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

@@ -15,11 +15,15 @@
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
                 bool with_fc_bias) {
@@ -32,9 +36,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
                   ->assert_var_not_persistable();
   patterns::FC fc_pattern(pattern, name_scope);
 
-  // fc_out is a tmp var, will be removed after fuse, so marked as intermediate.
-  auto* fc_out =
-      fc_pattern(x, with_fc_bias, /* with_relu */ false)->AsIntermediate();
+  auto* fc_out = fc_pattern(x, with_fc_bias, /* with_relu */ false);
   patterns::LSTM lstm_pattern(pattern, name_scope);
   lstm_pattern(fc_out);
 
@@ -52,26 +54,27 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 #undef SET_IN
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias and create a new weight
-      PADDLE_ENFORCE(scope);
-      const std::string& new_bias_var = patterns::UniqueKey("NewBias");
-      auto* bias_var = scope->Var(new_bias_var);
-      PADDLE_ENFORCE(bias_var);
-      auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
+      PADDLE_ENFORCE_NOT_NULL(
+          scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
       auto* lstm_bias_var = scope->FindVar(bias->Name());
-      PADDLE_ENFORCE(lstm_bias_var);
-      const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
-      bias_tensor->Resize(lstm_bias_tensor.dims());
-
       auto* fc_bias_var = scope->FindVar(fc_bias->Name());
+      PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
+                              platform::errors::InvalidArgument(
+                                  "Lstm bias var ptr cannot be nullptr."));
+      PADDLE_ENFORCE_NOT_NULL(fc_bias_var,
+                              platform::errors::InvalidArgument(
+                                  "FC bias var ptr cannot be nullptr."));
+      auto* lstm_bias_tensor =
+          lstm_bias_var->GetMutable<framework::LoDTensor>();
       const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
 
-      auto* data = bias_tensor->mutable_data<float>(platform::CPUPlace());
+      auto lstm_bias_data =
+          lstm_bias_tensor->mutable_data<float>(platform::CPUPlace());
+      auto* fc_bias_data = fc_bias_tensor.data<float>();
 
-      for (int i = 0; i < bias_tensor->numel(); i++) {
-        data[i] =
-            fc_bias_tensor.data<float>()[i] + lstm_bias_tensor.data<float>()[i];
+      for (int i = 0; i < lstm_bias_tensor->numel(); i++) {
+        lstm_bias_data[i] += fc_bias_data[i];
       }
-      op_desc.SetInput("Bias", {new_bias_var});
     }
 
     op_desc.SetInput("H0", {});
@@ -106,6 +109,8 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     IR_NODE_LINK_TO(weight_h, op);
     IR_NODE_LINK_TO(bias, op);
     IR_NODE_LINK_TO(op, hidden);
+    IR_NODE_LINK_TO(op, cell);
+    IR_NODE_LINK_TO(op, xx);
 
 #define IR_NODE(x)                                 \
   VarDesc key_##x(x);                              \
@@ -192,3 +197,17 @@ void FCLstmFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(mul_lstm_fuse_pass, paddle::framework::ir::MulLstmFusePass);
 REGISTER_PASS(fc_lstm_fuse_pass, paddle::framework::ir::FCLstmFusePass);
+
+REGISTER_PASS_CAPABILITY(fc_lstm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("lstm", 0)
+            .EQ("fusion_lstm", 0));
+REGISTER_PASS_CAPABILITY(mul_lstm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("lstm", 0)
+            .EQ("fusion_lstm", 0));

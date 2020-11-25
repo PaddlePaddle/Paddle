@@ -16,8 +16,8 @@ include(ExternalProject)
 
 set(PYBIND_PREFIX_DIR     ${THIRD_PARTY_PATH}/pybind)
 set(PYBIND_SOURCE_DIR     ${THIRD_PARTY_PATH}/pybind/src/extern_pybind)
-SET(PYBIND_REPOSITORY     https://github.com/pybind/pybind11.git)
-SET(PYBIND_TAG            v2.2.4)
+SET(PYBIND_REPOSITORY     ${GIT_URL}/pybind/pybind11.git)
+SET(PYBIND_TAG            v2.4.3)
 
 cache_third_party(extern_pybind
     REPOSITORY    ${PYBIND_REPOSITORY}
@@ -34,6 +34,11 @@ ExternalProject_Add(
         "${PYBIND_DOWNLOAD_CMD}"
         PREFIX            ${PYBIND_PREFIX_DIR}
         SOURCE_DIR        ${PYBIND_SOURCE_DIR}
+        # If we explicitly leave the `UPDATE_COMMAND` of the ExternalProject_Add
+        # function in CMakeLists blank, it will cause another parameter GIT_TAG
+        # to be modified without triggering incremental compilation, and the
+        # third-party library version changes cannot be incorporated.
+        # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
         UPDATE_COMMAND    ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
@@ -41,12 +46,6 @@ ExternalProject_Add(
         TEST_COMMAND      ""
 )
 
-if(${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/pybind_dummy.c)
-    file(WRITE ${dummyfile} "const char * dummy_pybind = \"${dummyfile}\";")
-    add_library(pybind STATIC ${dummyfile})
-else()
-    add_library(pybind INTERFACE)
-endif()
+add_library(pybind INTERFACE)
 
 add_dependencies(pybind extern_pybind)

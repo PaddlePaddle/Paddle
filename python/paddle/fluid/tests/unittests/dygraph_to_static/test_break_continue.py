@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 
@@ -90,15 +91,14 @@ def test_break_in_while(x):
 def test_break_continue_in_for(x):
     x = fluid.dygraph.to_variable(x)
 
-    # TODO(liym27): Uncomment code after "if" statement can be transformed correctly.
-    # for i in range(1, 10, 1):
-    #     if i <= 4:
-    #         x += 1
-    #         continue
-    #     else:
-    #         x += 10010
-    #         break
-    #     x += 10086
+    for i in range(1, 10, 1):
+        if i <= 4:
+            x += 1
+            continue
+        else:
+            x += 10010
+            break
+        x += 10086
 
     a = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
     for i in range(1, 10, 1):
@@ -117,16 +117,15 @@ def test_break_continue_in_for(x):
 def test_for_in_else(x):
     x = fluid.dygraph.to_variable(x)
 
-    # TODO(liym27): Uncomment code after "if" statement can be transformed correctly.
-    # # Case 1:
-    # if False:
-    #     pass
-    # else:
-    #     for i in range(0, 10):
-    #         if i > 5:
-    #             x += 1
-    #             break
-    #         x += i
+    # Case 1:
+    if False:
+        pass
+    else:
+        for i in range(0, 10):
+            if i > 5:
+                x += 1
+                break
+            x += i
 
     # Case 2:
     if False:
@@ -157,6 +156,30 @@ def while_loop_class_var(x):
         if foo.c > 6:
             break
     return foo.c
+
+
+def test_optim_break_in_for(x):
+    x = paddle.to_tensor(x)
+    for i in range(10):
+        if x.sum() > 5:
+            break
+            x += 10086
+        x += i
+        if i < 3:
+            x = x * 2
+    return x
+
+
+def test_optim_break_in_while(x):
+    x = paddle.to_tensor(x)
+    i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    while i < 10:
+        if i > 5:
+            break
+            x += 10086
+        x += i
+        i += 1
+    return x
 
 
 class TestContinueInFor(unittest.TestCase):
@@ -226,6 +249,16 @@ class TestBreakInWhile(TestContinueInWhile):
 class TestWhileLoopClassVar(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = while_loop_class_var
+
+
+class TestOptimBreakInFor(TestContinueInWhile):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_optim_break_in_for
+
+
+class TestOptimBreakInWhile(TestContinueInWhile):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_optim_break_in_while
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -31,6 +32,9 @@ namespace ir {
  * bool denotes whether quantization of the variable should be done to unsigned
  * type.
  */
+class Graph;
+class Node;
+
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
@@ -45,29 +49,26 @@ class CPUQuantizePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
   void QuantizeConv(Graph* graph, bool with_residual_data = false) const;
-
   void QuantizeFc(Graph* graph) const;
-
   void QuantizePool(Graph* graph) const;
-
   void QuantizeConcat(Graph* graph) const;
-
   void QuantizePriorBox(Graph* graph) const;
-
   void QuantizeTranspose(Graph* graph) const;
-
   void QuantizeReshape(Graph* graph) const;
-
   void QuantizeMatmul(Graph* graph) const;
+  void QuantizeElementwiseAdd(Graph* graph) const;
+  void QuantizeFusionGru(Graph* graph) const;
 
   void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
-                     double scale_to_one, bool is_unsigned,
-                     std::string scale_attr_name = "") const;
+                     double scale_to_one, bool is_input_unsigned,
+                     std::string scale_attr_name = "", float shift = 0.0,
+                     std::string shift_attr_name = "") const;
 
   // quantize all inputs of given name with the same (minimum) scale
   void QuantizeInputs(Graph* g, Node* op, std::string input_name,
-                      bool are_unsigned,
-                      std::string scale_attr_name = "") const;
+                      bool are_inputs_unsigned,
+                      std::string scale_attr_name = "", float shift = 0.0,
+                      std::string shift_attr_name = "") const;
 
   void DequantizeOutput(Graph* g, Node* op, Node* output,
                         std::string output_name, double scale_to_one,

@@ -29,7 +29,9 @@ namespace train {
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  PADDLE_ENFORCE_EQ(
+      fin.is_open(), true,
+      platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -53,7 +55,7 @@ std::unique_ptr<paddle::framework::ProgramDesc> Load(
 }  // namespace paddle
 
 int main() {
-  paddle::framework::InitDevices(false);
+  paddle::framework::InitDevices();
 
   const auto cpu_place = paddle::platform::CPUPlace();
 
@@ -70,7 +72,8 @@ int main() {
     }
   }
 
-  PADDLE_ENFORCE_NE(loss_name, "", "loss not found");
+  PADDLE_ENFORCE_NE(loss_name, "",
+                    platform::errors::NotFound("Loss name is not found."));
 
   // init all parameters
   executor.Run(*startup_program, &scope, 0);

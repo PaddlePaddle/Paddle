@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -36,30 +37,20 @@ extern void *cublas_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#ifdef PADDLE_USE_DSO
 #define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
-    using FUNC_TYPE = decltype(&::__name);                                   \
     template <typename... Args>                                              \
-    inline cublasStatus_t operator()(Args... args) {                         \
+    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {  \
+      using cublas_func =                                                    \
+          decltype(::__name(std::declval<Args>()...)) (*)(Args...);          \
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
       static void *p_##__name = dlsym(cublas_dso_handle, #__name);           \
-      return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
+      return reinterpret_cast<cublas_func>(p_##__name)(args...);             \
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
-  struct DynLoad__##__name {                         \
-    template <typename... Args>                      \
-    inline cublasStatus_t operator()(Args... args) { \
-      return ::__name(args...);                      \
-    }                                                \
-  };                                                 \
-  extern DynLoad__##__name __name
-#endif
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \

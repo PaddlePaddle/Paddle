@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import six
 import unittest
@@ -37,12 +38,12 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
             self.assertTrue(np.array_equal(grad_value1, grad_value2))
 
     def run_program(self, place, stop_gradient=False):
+        np.random.seed(1)
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
+
         startup_program = fluid.Program()
         main_program = fluid.Program()
-
-        np.random.seed(1)
-        startup_program.random_seed = 1
-        main_program.random_seed = 1
 
         scope = fluid.Scope()
         with fluid.program_guard(main_program, startup_program):

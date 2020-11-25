@@ -23,22 +23,29 @@ class TopkOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TopkOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TopkOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Indices"),
-                   "Output(Indices) of TopkOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of TopkOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of TopkOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Indices"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Indices) of TopkOp should not be null."));
 
     auto input_dims = ctx->GetInputDim("X");
     const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
 
-    PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
-    PADDLE_ENFORCE_GE(input_dims.size(), 1, "input must have >= 1d shape");
+    PADDLE_ENFORCE_GE(k, 1,
+                      platform::errors::InvalidArgument(
+                          "Attribute k must be >= 1, but got k is %d.", k));
+    PADDLE_ENFORCE_GE(input_dims.size(), 1, platform::errors::InvalidArgument(
+                                                "input must have >= 1d shape"));
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_GE(input_dims[input_dims.size() - 1], k,
-                        "input must have >= k columns");
+      PADDLE_ENFORCE_GE(
+          input_dims[input_dims.size() - 1], k,
+          platform::errors::InvalidArgument("input must have >= k columns"));
     }
 
     framework::DDim dims = input_dims;

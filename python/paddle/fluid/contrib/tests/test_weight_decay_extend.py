@@ -14,12 +14,35 @@
 
 from __future__ import print_function
 
+import six
 import unittest
 from functools import partial
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import contextlib
+
+paddle.enable_static()
+
+SEED = 2020
+
+
+def fake_imdb_reader(word_dict_size,
+                     sample_num,
+                     lower_seq_len=100,
+                     upper_seq_len=200,
+                     class_dim=2):
+    def __reader__():
+        for _ in six.moves.range(sample_num):
+            length = np.random.random_integers(
+                low=lower_seq_len, high=upper_seq_len, size=[1])[0]
+            ids = np.random.random_integers(
+                low=0, high=word_dict_size - 1, size=[length]).astype('int64')
+            label = np.random.random_integers(
+                low=0, high=class_dim - 1, size=[1]).astype('int64')[0]
+            yield ids, label
+
+    return __reader__
 
 
 def get_places():
@@ -66,10 +89,16 @@ def bow_net(data,
 
 class TestWeightDecay(unittest.TestCase):
     def setUp(self):
-        self.word_dict = paddle.dataset.imdb.word_dict()
-        reader = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict), batch_size=2)()
-        self.train_data = [next(reader) for _ in range(5)]
+        # set seed
+        np.random.seed(SEED)
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+        # configs
+        self.word_dict_len = 5147
+        batch_size = 2
+        reader = fake_imdb_reader(self.word_dict_len, batch_size * 100)
+        reader = paddle.batch(reader, batch_size=batch_size)()
+        self.train_data = [next(reader) for _ in range(3)]
         self.learning_rate = .5
 
     def run_program(self, place, feed_list):
@@ -94,12 +123,12 @@ class TestWeightDecay(unittest.TestCase):
     def check_weight_decay(self, place, model):
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            avg_cost = model(data, label, len(self.word_dict))
+            avg_cost = model(data, label, self.word_dict_len)
             AdamW = fluid.contrib.extend_with_decoupled_weight_decay(
                 fluid.optimizer.Adam)
 
@@ -115,24 +144,27 @@ class TestWeightDecay(unittest.TestCase):
     def check_weight_decay2(self, place, model):
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
-            avg_cost = model(data, label, len(self.word_dict))
+            avg_cost = model(data, label, self.word_dict_len)
+
+            optimizer = fluid.optimizer.Adam(learning_rate=self.learning_rate)
+
+            params_grads = optimizer.backward(avg_cost)
 
             param_list = [(var, var * self.learning_rate)
                           for var in main_prog.block(0).all_parameters()]
 
-            optimizer = fluid.optimizer.Adam(learning_rate=self.learning_rate)
-
-            optimizer.minimize(avg_cost)
             for params in param_list:
                 updated_p = fluid.layers.elementwise_sub(
                     x=params[0], y=params[1])
                 fluid.layers.assign(input=updated_p, output=params[0])
+
+            optimizer.apply_optimize(avg_cost, startup_prog, params_grads)
 
             param_sum = self.run_program(place, [data, label])
         return param_sum
@@ -144,7 +176,12 @@ class TestWeightDecay(unittest.TestCase):
             param_sum2 = self.check_weight_decay2(place, model)
 
             for i in range(len(param_sum1)):
-                assert np.isclose(a=param_sum1[i], b=param_sum2[i], rtol=5e-5)
+                self.assertTrue(
+                    np.allclose(param_sum1[i], param_sum2[i]),
+                    "Current place: {}, i: {}, sum1: {}, sum2: {}".format(
+                        place, i, param_sum1[i][~np.isclose(param_sum1[
+                            i], param_sum2[i])], param_sum2[i][~np.isclose(
+                                param_sum1[i], param_sum2[i])]))
 
 
 if __name__ == '__main__':

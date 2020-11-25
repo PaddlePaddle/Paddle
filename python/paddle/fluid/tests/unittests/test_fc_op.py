@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -135,31 +136,32 @@ class TestFCOpWithPadding(TestFCOp):
 
 class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
-        startup_program = Program()
-        main_program = Program()
-        startup_program.random_seed = SEED
-        main_program.random_seed = SEED
+        def run_program(num_flatten_dims):
+            paddle.seed(SEED)
+            startup_program = Program()
+            main_program = Program()
 
-        with program_guard(main_program, startup_program):
-            input = np.random.random([2, 2, 25]).astype("float32")
-            x = fluid.layers.data(
-                name="x",
-                shape=[2, 2, 25],
-                append_batch_size=False,
-                dtype="float32")
+            with program_guard(main_program, startup_program):
+                input = np.random.random([2, 2, 25]).astype("float32")
+                x = fluid.layers.data(
+                    name="x",
+                    shape=[2, 2, 25],
+                    append_batch_size=False,
+                    dtype="float32")
 
-            out_1 = fluid.layers.fc(input=x, size=1, num_flatten_dims=-1)
-            out_2 = fluid.layers.fc(input=x, size=1, num_flatten_dims=2)
+                out = paddle.static.nn.fc(x=x,
+                                          size=1,
+                                          num_flatten_dims=num_flatten_dims)
 
-        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place=place)
-        exe.run(startup_program)
-        res_1, res_2 = exe.run(main_program,
-                               feed={"x": input},
-                               fetch_list=[out_1, out_2])
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place=place)
+            exe.run(startup_program)
+            out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
 
-        assert np.array_equal(res_1, res_2)
+        res_1 = run_program(-1)
+        res_2 = run_program(2)
+        self.assertTrue(np.array_equal(res_1, res_2))
 
 
 class TestFCOpError(unittest.TestCase):

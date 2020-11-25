@@ -19,7 +19,8 @@ import time
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
 from paddle.fluid.log_helper import get_logger
 
 import ctr_dataset_reader
@@ -149,8 +150,7 @@ def train(args):
     exe = fluid.Executor(fluid.CPUPlace())
     fleet.init(role)
 
-    strategy = DistributeTranspilerConfig()
-    strategy.sync_mode = False
+    strategy = StrategyFactory.create_half_async_strategy()
 
     optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
     optimizer = fleet.distributed_optimizer(optimizer, strategy)
@@ -164,8 +164,8 @@ def train(args):
     elif fleet.is_worker():
         logger.info("run trainer")
 
-        fleet.init_worker()
         exe.run(fleet.startup_program)
+        fleet.init_worker()
 
         thread_num = 2
         filelist = []

@@ -15,10 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include <cstring>  // for memcpy
 #include <string>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -27,16 +31,18 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fusion_gru");
   OP_INOUT_CHECK(ctx->HasInput("WeightX"), "Input", "WeightX", "fusion_gru");
   OP_INOUT_CHECK(ctx->HasInput("WeightH"), "Input", "WeightH", "fusion_gru");
-
   OP_INOUT_CHECK(ctx->HasOutput("XX"), "Output", "XX", "fusion_gru");
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "fusion_gru");
-
   auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2,
-                    platform::errors::InvalidArgument(
-                        "Input(X)'s rank must be 2, but received input dim "
-                        "size is:%d, input dim is:[%s]",
-                        x_dims.size(), x_dims));
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
+                        ? framework::flatten_to_2d(x_dims, 1)
+                        : x_dims;
+  PADDLE_ENFORCE_EQ(
+      x_mat_dims.size(), 2,
+      platform::errors::InvalidArgument("The size of input X dims should be 2, "
+                                        "or 3 with second dimension equal to "
+                                        "1, but now Input X dim is:[%s] ",
+                                        x_dims));
 
   auto wx_dims = ctx->GetInputDim("WeightX");
   PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
@@ -44,12 +50,14 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                         "The rank of Input(WeightX) should be 2, but received "
                         "WeightX dim size is:%d, WeightX dim is:[%s] ",
                         wx_dims.size(), wx_dims));
-  PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
-                    platform::errors::InvalidArgument(
-                        "The first dimension of Input(WeightX) "
-                        "should equal to second dimension of input x, but "
-                        "received WeightX dimension is:%d, x dimension is:%d",
-                        wx_dims[0], x_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      wx_dims[0], x_mat_dims[1],
+      platform::errors::InvalidArgument(
+          "The first dimension of flattened WeightX"
+          "should equal to last dimension of flattened input X, but "
+          "received fattened WeightX dimension is:%d, flattened X dimension "
+          "is:%d",
+          wx_dims[0], x_mat_dims[1]));
 
   int frame_size = wx_dims[1] / 3;
   auto wh_dims = ctx->GetInputDim("WeightH");
@@ -99,31 +107,40 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                           "received bias dim is:[%s], frame size is:%d",
                           b_dims, frame_size));
   }
-  framework::DDim out_dims({x_dims[0], frame_size});
+  framework::DDim out_dims({x_mat_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->ShareLoD("X", "Hidden");
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = wx_dims[1];
   } else {
-    xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
+    xx_width = x_mat_dims[1] > wx_dims[1] ? wx_dims[1] : x_mat_dims[1];
     OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0",
                    "fusion_gru");
     OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
                    "fusion_gru");
     OP_INOUT_CHECK(ctx->HasOutput("BatchedOut"), "Output", "BatchedOut",
                    "fusion_gru");
-    ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
+    ctx->SetOutputDim("BatchedInput", {x_mat_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedOut", out_dims);
   }
-  ctx->SetOutputDim("XX", {x_dims[0], xx_width});
+  ctx->SetOutputDim("XX", {x_mat_dims[0], xx_width});
   ctx->ShareLoD("X", "XX");
 }
 
 framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+  if (platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
   return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
+      library);
 }
 
 void FusionGRUOpMaker::Make() {
@@ -183,6 +200,34 @@ void FusionGRUOpMaker::Make() {
                 "(bool, default: True) "
                 "whether to use seq mode to compute GRU.")
       .SetDefault(true);
+  AddAttr<bool>("origin_mode",
+                "bool"
+                "use origin mode in article https://arxiv.org/abs/1412.3555")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"});
+  AddAttr<float>("Scale_data",
+                 "Scale to be used for int8 input/output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Shift_data",
+                 "Shift to be used for int8 input/output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(0.0f);
+  AddAttr<std::vector<float>>("Scale_weights",
+                              "Scale_weights to be used for int8 weights data."
+                              "Only used with MKL-DNN INT8.")
+      .SetDefault({1.0f});
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in MKL-DNN INT8")
+      .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
 This operator fuse the fully-connected operator into GRU, 
@@ -201,14 +246,17 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     }
   }
 
-#define INIT_BASE_DEFINES                  \
-  auto* x = ctx.Input<LoDTensor>("X");     \
-  auto* wh = ctx.Input<Tensor>("WeightH"); \
-  auto* xx = ctx.Output<LoDTensor>("XX");  \
-  auto x_lod = x->lod();                   \
-  auto x_dims = x->dims();   /* T x M*/    \
-  auto wh_dims = wh->dims(); /* D x 3D*/   \
-  const int total_T = x_dims[0];           \
+#define INIT_BASE_DEFINES                                     \
+  auto* x = ctx.Input<LoDTensor>("X");                        \
+  auto* wh = ctx.Input<Tensor>("WeightH");                    \
+  auto* xx = ctx.Output<LoDTensor>("XX");                     \
+  auto x_lod = x->lod();                                      \
+  auto x_dims = x->dims(); /* T x M*/                         \
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)    \
+                        ? framework::flatten_to_2d(x_dims, 1) \
+                        : x_dims;                             \
+  auto wh_dims = wh->dims(); /* D x 3D*/                      \
+  const int total_T = x_mat_dims[0];                          \
   const int D3 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                   \
@@ -217,7 +265,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   auto* bias = ctx.Input<Tensor>("Bias");                                    \
   auto* hidden_out = ctx.Output<LoDTensor>("Hidden");                        \
   bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
-  const int M = x_dims[1];                                                   \
+  const int M = x_mat_dims[1];                                               \
   const int D = wh_dims[0];                                                  \
   const int D2 = D * 2;                                                      \
   const jit::gru_attr_t attr(                                                \

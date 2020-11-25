@@ -61,6 +61,19 @@ class TransposeOp : public framework::OperatorWithKernel {
     }
 
     framework::DDim out_dims(x_dims);
+#ifdef PADDLE_WITH_MKLDNN
+    // Here we need to match dims to paddle layout
+    // as we are producing non-oneDNN result
+    if ((x_dims.size() >= 3) &&
+        (paddle::platform::MKLDNNDeviceContext::tls()
+             .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
+      auto dims = framework::vectorize<int>(x_dims);
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      x_dims = x_dims.reshape(dims);
+      VLOG(3)
+          << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+    }
+#endif
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = x_dims[axis[i]];
     }
@@ -108,13 +121,17 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    /* int8 parameters */
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
+    /* int8 parameters */
     AddComment(R"DOC(
 Transpose Operator.
 

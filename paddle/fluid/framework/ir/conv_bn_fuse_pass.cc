@@ -13,13 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
-#include <algorithm>
-#include <functional>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -61,7 +69,12 @@ void recompute_bias_and_weights(const Scope* scope,
       Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
 
   // Re-compute bias of conv2d from BN
-  PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(), bn_bias_tensor.dims());
+  PADDLE_ENFORCE_EQ(
+      eltwise_y_in_tensor->dims(), bn_bias_tensor.dims(),
+      platform::errors::InvalidArgument("Tensor elementwise y(%d) and batch "
+                                        "norm bias(%d) must have same dims.",
+                                        eltwise_y_in_tensor->dims().size(),
+                                        bn_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(bn_scale.Name())->GetMutable<LoDTensor>();
   auto* variance_tensor =
@@ -116,11 +129,13 @@ void recompute_bias_and_weights(const Scope* scope,
 }
 
 void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -186,11 +201,18 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       if (has_bias && conv->Op()->Input("Bias").size() > 0) {
         // reuse existing conv bias node
         auto conv_bias_names = conv->Op()->Input("Bias");
-        PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1UL);
+        PADDLE_ENFORCE_EQ(
+            conv_bias_names.size(), 1UL,
+            platform::errors::InvalidArgument("Find input var Bais error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
-        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
-                          eltwise_y_in_tensor->dims());
+        PADDLE_ENFORCE_EQ(
+            conv_bias_tensor->dims(), eltwise_y_in_tensor->dims(),
+            platform::errors::InvalidArgument(
+                "Tensor convolution bias(%d) and elementwise y(%d) "
+                "must have same dims.",
+                conv_bias_tensor->dims().size(),
+                eltwise_y_in_tensor->dims().size()));
 
         auto eigen_conv_bias = EigenVector<float>::From(*conv_bias_tensor);
         eigen_conv_bias += EigenVector<float>::From(*eltwise_y_in_tensor);
@@ -236,11 +258,13 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -352,3 +376,18 @@ REGISTER_PASS(conv_transpose_bn_fuse_pass,
               paddle::framework::ir::ConvTransposeBNFusePass);
 REGISTER_PASS(conv_transpose_eltwiseadd_bn_fuse_pass,
               paddle::framework::ir::ConvTransposeEltwiseAddBNFusePass);
+REGISTER_PASS(depthwise_conv_bn_fuse_pass,
+              paddle::framework::ir::DepthwiseConvBNFusePass);
+REGISTER_PASS(depthwise_conv_eltwiseadd_bn_fuse_pass,
+              paddle::framework::ir::DepthwiseConvEltwiseAddBNFusePass);
+REGISTER_PASS_CAPABILITY(conv_bn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("batch_norm", 0));
+REGISTER_PASS_CAPABILITY(conv_eltwiseadd_bn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("elementwise_add", 0)
+            .EQ("batch_norm", 0));

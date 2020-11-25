@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/rw_lock.h"
 #include <gtest/gtest.h>
-#include <chrono>  // NOLINT
 #include <thread>  // NOLINT
 #include <vector>
 

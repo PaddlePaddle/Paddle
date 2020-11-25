@@ -106,9 +106,9 @@ def bow_net(data,
             label,
             dict_dim,
             is_sparse=False,
-            emb_dim=128,
-            hid_dim=128,
-            hid_dim2=96,
+            emb_dim=8,
+            hid_dim=8,
+            hid_dim2=6,
             class_dim=2):
     """
     BOW net
@@ -132,8 +132,8 @@ class TestRegularizer(unittest.TestCase):
     def setUp(self):
         self.word_dict = paddle.dataset.imdb.word_dict()
         reader = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict), batch_size=8)()
-        self.train_data = [next(reader) for _ in range(5)]
+            paddle.dataset.imdb.train(self.word_dict), batch_size=1)()
+        self.train_data = [next(reader) for _ in range(1)]
 
     def get_places(self):
         places = [core.CPUPlace()]
@@ -169,9 +169,10 @@ class TestRegularizer(unittest.TestCase):
         return param_sum
 
     def check_l2decay_regularizer(self, place, model):
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
         with self.scope_prog_guard(
                 main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
@@ -188,9 +189,11 @@ class TestRegularizer(unittest.TestCase):
         return param_sum
 
     def check_l2decay(self, place, model):
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with self.scope_prog_guard(
                 main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
@@ -242,13 +245,14 @@ class TestRegularizer(unittest.TestCase):
             sgd.minimize(loss)
         with fluid.dygraph.guard():
             input = fluid.dygraph.to_variable(
-                np.random.randn(3, 5).astype('float32'))
-            fluid.default_main_program().random_seed = 1
+                np.random.randn(3, 2).astype('float32'))
+            paddle.seed(1)
+            paddle.framework.random._manual_program_seed(1)
 
             linear1 = fluid.dygraph.Linear(
-                5, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
             linear2 = fluid.dygraph.Linear(
-                5, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
 
             loss1 = linear1(input)
             loss1.backward()

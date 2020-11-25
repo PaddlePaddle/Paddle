@@ -12,28 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <iomanip>
 #include <limits>
-#include <map>
 #include <mutex>  // NOLINT
 #include <random>
-#include <stack>
 #include <string>
-#include <vector>
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#endif  // PADDLE_WITH_CUDA
 
-#include "glog/logging.h"
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
-#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
 
@@ -71,8 +58,8 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   role_ = role;
   is_enabled_ = true;
   // lock is not needed, the code below is thread-safe
-  Event *e = PushEvent(name, role);
   // Maybe need the same push/pop behavior.
+  Event *e = PushEvent(name, role);
   SetCurAnnotation(e);
   name_ = e->name();
 }
@@ -94,10 +81,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE_EQ(
-      events.count(ptr), 0,
-      platform::errors::InvalidArgument(
-          "The Place can't  exist in the stage of PushMemRecord"));
+  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+                    platform::errors::InvalidArgument(
+                        "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
                           new MemEvenRecorder::RecordMemEvent(place, size)));
 }

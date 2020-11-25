@@ -25,17 +25,23 @@ namespace operators {
 using framework::Tensor;
 using platform::Transform;
 
+#ifdef __NVCC__
+template <typename T, typename UnaryOperation>
+__global__ void ClipCudaKernel(const T* input, T* out, int num,
+                               UnaryOperation op) {
+  int idx = threadIdx.x + blockDim.x * blockIdx.x;
+  if (idx < num) {
+    out[idx] = op(input[idx]);
+  }
+}
+#endif
+
 template <typename T>
 class ClipFunctor {
  public:
   explicit ClipFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T& x) const {
-    if (x < min_)
-      return min_;
-    else if (x > max_)
-      return max_;
-    else
-      return x;
+    return x < min_ ? min_ : x > max_ ? max_ : x;
   }
 
  private:
@@ -84,11 +90,12 @@ class ClipKernel : public framework::OpKernel<T> {
       }
       min = min_data[0];
     }
-    min = static_cast<T>(min);
-    PADDLE_ENFORCE_LT(min, max, platform::errors::InvalidArgument(
-                                    "max should be greater than min. "
-                                    "But received min = %f, max = %f",
-                                    min, max));
+
+    PADDLE_ENFORCE_LE(min, max,
+                      platform::errors::InvalidArgument(
+                          "max should be greater than or equal to min. "
+                          "But received min = %f, max = %f",
+                          min, max));
 
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
@@ -97,9 +104,20 @@ class ClipKernel : public framework::OpKernel<T> {
       T* out_data = out->mutable_data<T>(context.GetPlace());
       const T* x_data = x->data<T>();
       int64_t numel = x->numel();
-      Transform<DeviceContext> trans;
-      trans(context.template device_context<DeviceContext>(), x_data,
-            x_data + numel, out_data, ClipFunctor<T>(min, max));
+      if (platform::is_gpu_place(context.GetPlace())) {
+#ifdef __NVCC__
+        int threads = 256;
+        int blocks = (numel + threads - 1) / threads;
+        ClipCudaKernel<T, ClipFunctor<T>><<<
+            blocks, threads, 0,
+            context.template device_context<platform::CUDADeviceContext>()
+                .stream()>>>(x_data, out_data, numel, ClipFunctor<T>(min, max));
+#endif
+      } else {
+        Transform<DeviceContext> trans;
+        trans(context.template device_context<DeviceContext>(), x_data,
+              x_data + numel, out_data, ClipFunctor<T>(min, max));
+      }
     } else if (x_var->IsType<framework::SelectedRows>()) {
       auto* x = context.Input<framework::SelectedRows>("X");
       auto* out = context.Output<framework::SelectedRows>("Out");
@@ -115,7 +133,8 @@ class ClipKernel : public framework::OpKernel<T> {
       trans(context.template device_context<DeviceContext>(), out_data,
             out_data + numel, out_data, ClipFunctor<T>(min, max));
     } else {
-      PADDLE_THROW("ClipOp only supports LoDTensor and SelectedRows");
+      PADDLE_THROW(platform::errors::Unavailable(
+          "ClipOp only supports LoDTensor and SelectedRows."));
     }
   }
 };

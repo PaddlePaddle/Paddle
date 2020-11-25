@@ -13,16 +13,27 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
-#include <functional>
-#include <string>
+
+#include <cmath>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+class LoDTensor;
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Node;
 
 #define GET_CONV_BN_NODES(pattern_name)                                    \
   /* OPERATORS */                                                          \
@@ -50,7 +61,12 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
       Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
 
   // Re-compute bias of conv2d from AffineChannel
-  PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(), ac_bias_tensor.dims());
+  PADDLE_ENFORCE_EQ(
+      eltwise_y_in_tensor->dims(), ac_bias_tensor.dims(),
+      platform::errors::InvalidArgument(
+          "Tensor elementwise y(%d) and activation bias(%d) must have same "
+          "dimension.",
+          eltwise_y_in_tensor->dims().size(), ac_bias_tensor.dims().size()));
 
   auto* scale_tensor = scope->FindVar(ac_scale.Name())->GetMutable<LoDTensor>();
 
@@ -69,20 +85,27 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
   auto weights_shape = weights->dims();
   auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
+  auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
-  EigenMatrixArrayMap weights_array_2d(
-      weights->mutable_data<float>(platform::CPUPlace()), weights_shape_2d[0],
-      weights_shape_2d[1]);
+  EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
+                                       weights_shape_2d[1]);
 
   weights_array_2d.colwise() *= scale_array;
+
+  // Check for subnormal values that slows down convolution execution
+  for (int i = 0; i < weights->numel(); ++i) {
+    if (std::fpclassify(weights_data[i]) == FP_SUBNORMAL) weights_data[i] = 0;
+  }
 }
 
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -100,13 +123,6 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle ConvAffineChannel fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
-
-    // check if fuse can be done and if MKL-DNN should be used
-    FuseOptions fuse_option = FindFuseOption(*conv, *affine_channel);
-    if (fuse_option == DO_NOT_FUSE) {
-      VLOG(3) << "do not perform conv+affinechannel fuse";
-      return;
-    }
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
@@ -136,6 +152,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetOutput("Out", std::vector<std::string>({ac_out->Name()}));
     desc.SetType("elementwise_add");
     desc.SetAttr("axis", 1);
+    desc.SetAttr("use_mkldnn", conv->Op()->GetAttrIfExists<bool>("use_mkldnn"));
     auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
     GraphSafeRemoveNodes(graph, {ac_scale, ac_bias, affine_channel});
@@ -152,11 +169,13 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -216,3 +235,14 @@ REGISTER_PASS(conv_affine_channel_fuse_pass,
               paddle::framework::ir::ConvAffineChannelFusePass);
 REGISTER_PASS(conv_eltwiseadd_affine_channel_fuse_pass,
               paddle::framework::ir::ConvEltwiseAddAffineChannelFusePass);
+REGISTER_PASS_CAPABILITY(conv_affine_channel_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("affine_channel", 0));
+REGISTER_PASS_CAPABILITY(conv_eltwiseadd_affine_channel_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("elementwise_add", 0)
+            .EQ("affine_channel", 0));

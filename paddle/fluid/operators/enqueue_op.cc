@@ -13,12 +13,23 @@
 // limitations under the License.
 
 #include <string>
-#include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorBlockingQueueHolder =

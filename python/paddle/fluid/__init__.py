@@ -51,6 +51,7 @@ from . import trainer_desc
 from . import io
 from . import evaluator
 from . import initializer
+from .initializer import set_global_initializer
 from . import layers
 from . import dygraph
 from . import contrib
@@ -67,7 +68,7 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
@@ -88,6 +89,9 @@ from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
+from . import generator
+from .core import _cuda_synchronize
+
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
@@ -95,7 +99,7 @@ disable_imperative = disable_dygraph
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + generator.__all__ + [
         'io',
         'initializer',
         'embedding',
@@ -117,6 +121,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'LoDTensor',
         'LoDTensorArray',
         'CPUPlace',
+        'XPUPlace',
         'CUDAPlace',
         'CUDAPinnedPlace',
         'Tensor',
@@ -130,7 +135,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'install_check',
         'save',
         'load',
-        'VarBase'
+        'VarBase',
+        '_cuda_synchronize'
     ]
 
 
@@ -146,6 +152,9 @@ def __bootstrap__():
     import platform
     from . import core
 
+    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7, 
+    # unittest is always imported in numpy (maybe some versions not). 
+    # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
     try:
@@ -165,17 +174,36 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
-        'eager_delete_scope', 'fraction_of_cpu_memory_to_use',
-        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'paddle_num_threads',
-        'dist_threadpool_size', 'eager_delete_tensor_gb',
-        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
-        'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
-        'enable_parallel_graph', 'fuse_parameter_groups_size',
-        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
-        'enable_unused_var_check', 'free_idle_chunk', 'free_when_no_cache_hit'
+        'check_nan_inf',
+        'fast_check_nan_inf',
+        'benchmark',
+        'eager_delete_scope',
+        'fraction_of_cpu_memory_to_use',
+        'initial_cpu_memory_in_mb',
+        'init_allocated_mem',
+        'paddle_num_threads',
+        'dist_threadpool_size',
+        'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode',
+        'memory_fraction_of_eager_deletion',
+        'allocator_strategy',
+        'reader_queue_speed_test_mode',
+        'print_sub_graph_dir',
+        'pe_profile_fname',
+        'inner_op_parallelism',
+        'enable_parallel_graph',
+        'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size',
+        'fuse_parameter_memory_size',
+        'tracer_profile_fname',
+        'dygraph_debug',
+        'use_system_allocator',
+        'enable_unused_var_check',
+        'free_idle_chunk',
+        'free_when_no_cache_hit',
+        'call_stack_level',
+        'sort_sum_gradient',
+        'max_inplace_grad_add',
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -185,6 +213,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
+        read_env_flags.append('tracer_mkldnn_ops_on')
+        read_env_flags.append('tracer_mkldnn_ops_off')
 
     if core.is_compiled_with_dist():
         #env for rpc
@@ -207,17 +237,24 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
-            'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
-            'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
-            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
-            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
+            'fraction_of_gpu_memory_to_use',
+            'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb',
+            'cudnn_deterministic',
+            'enable_cublas_tensor_op_math',
+            'conv_workspace_size_limit',
+            'cudnn_exhaustive_search',
+            'selected_gpus',
+            'sync_nccl_allreduce',
+            'cudnn_batchnorm_spatial_persistent',
+            'gpu_allocator_retry_time',
+            'local_exe_sub_scope_limit',
+            'gpu_memory_limit_mb',
         ]
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
-    core.init_devices(not in_test)
+    core.init_devices()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

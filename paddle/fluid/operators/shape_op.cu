@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/shape_op.h"
 
-REGISTER_OP_CUDA_KERNEL(shape, paddle::operators::ShapeKernel<int>,
-                        paddle::operators::ShapeKernel<int32_t>,
-                        paddle::operators::ShapeKernel<int64_t>,
-                        paddle::operators::ShapeKernel<float>,
-                        paddle::operators::ShapeKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    shape, paddle::operators::ShapeKernel<bool>,
+    paddle::operators::ShapeKernel<int>,
+    paddle::operators::ShapeKernel<int64_t>,
+    paddle::operators::ShapeKernel<float>,
+    paddle::operators::ShapeKernel<double>,
+    paddle::operators::ShapeKernel<paddle::platform::float16>);

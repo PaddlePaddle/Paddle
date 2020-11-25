@@ -24,24 +24,30 @@ template <typename T>
 __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
                                  const int n, const int d, const int remain,
                                  const int ignore_index) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n * remain;
-       i += blockDim.x * gridDim.x) {
-    int idx_n = i / remain;
-    int idx_remain = i % remain;
-    int idx = idx_n * d + labels[i] * remain + idx_remain;
-    logit_grad[idx] -=
-        ignore_index == labels[i] ? static_cast<T>(0.) : static_cast<T>(1.);
+  CUDA_KERNEL_LOOP(index, n * remain) {
+    int idx_n = index / remain;
+    int idx_remain = index % remain;
+    int tmp = labels[index];
+    if (ignore_index != tmp) {
+      int idx = idx_n * d + tmp * remain + idx_remain;
+      logit_grad[idx] -= static_cast<T>(1.);
+    }
   }
 }
 
 template <typename T>
 __global__ void Scale(T* logit_grad, const T* loss_grad, const int num,
-                      const int d, const int remain) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    int idx_n = i / d;
-    int idx_remain = i % remain;
-    logit_grad[i] *= loss_grad[idx_n * remain + idx_remain];
+                      const int d, const int remain, const int64_t* labels,
+                      const int ignore_index) {
+  CUDA_KERNEL_LOOP(index, num) {
+    int idx_n = index / d;
+    int idx_remain = index % remain;
+    int idx_lbl = idx_n * remain + idx_remain;
+    if (labels[idx_lbl] == ignore_index) {
+      logit_grad[index] = static_cast<T>(0.);
+    } else {
+      logit_grad[index] *= loss_grad[idx_lbl];
+    }
   }
 }
 
@@ -260,6 +266,7 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
     int idx_remain = idx % remain;
     // labels, loss view as [n, remain]
     int idx_lbl = idx_n * remain + idx_remain;
+    // It also would ignore labels not in range(class_num).
     if (idx_axis != labels_[idx_lbl]) {
       log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
     } else {
@@ -357,7 +364,8 @@ static void HardLabelSoftmaxWithCrossEntropy(
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(4);
     CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
     default:
-      PADDLE_THROW("BlockDim must be 2^n in softmax_with_cross_entropy_op");
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Block Dimension must be 2^n in softmax_with_cross_entropy_op."));
       break;
   }
 #undef CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL
@@ -397,7 +405,8 @@ static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(4);
     CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(2);
     default:
-      PADDLE_THROW("BlockDim must be 2^n in softmax_with_cross_entropy_op");
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Block Dimension must be 2^n in softmax_with_cross_entropy_op."));
       break;
   }
 
@@ -408,8 +417,10 @@ template <typename T>
 class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                      "CUDA kernel only runs on GPU device."));
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* softmax = context.Output<Tensor>("Softmax");
@@ -469,8 +480,10 @@ template <typename T>
 class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                      "CUDA kernel only runs on GPU device."));
     const Tensor* labels = context.Input<Tensor>("Label");
     const T* loss_grad_data =
         context.Input<Tensor>(framework::GradVarName("Loss"))->data<T>();
@@ -507,7 +520,7 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
       int num = n * d;
       grid = (num + block - 1) / block;
       Scale<T><<<grid, block, 0, stream>>>(logit_grad_data, loss_grad_data, num,
-                                           d, remain);
+                                           d, remain, label_data, ignore_index);
     }
   }
 };

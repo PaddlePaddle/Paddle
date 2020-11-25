@@ -37,10 +37,10 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
                                   use_cuda=True,
                                   use_mem_opt=False,
                                   iter_num=5):
+        paddle.seed(100)
+        paddle.framework.random._manual_program_seed(100)
         prog = Program()
         startup_prog = Program()
-        prog.random_seed = 100
-        startup_prog.random_seed = 100
         with program_guard(prog, startup_prog):
             image = layers.data(name='x', shape=[784], dtype='float32')
 

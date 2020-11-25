@@ -164,6 +164,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
+    AppendPassWithCheck(strategy_.fuse_bn_add_act_ops_, "fuse_bn_add_act_pass");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #else
@@ -235,7 +236,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
               AppendPass("reduce_mode_multi_devices_pass").get();
           break;
         default:
-          PADDLE_THROW("Unknown reduce strategy.");
+          PADDLE_THROW(
+              platform::errors::Unimplemented("Unknown reduce strategy."));
       }
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -389,6 +391,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "fuse_bn_add_act_pass") {
+      if (!use_cuda) {
+        LOG(WARNING) << "fuse_bn_add_act_pass is only supported on "
+                        "GPU, skipped.";
+        continue;
+      }
     } else if (pass->Type() == "mkldnn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
@@ -415,6 +423,7 @@ USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(fuse_bn_act_pass);
+USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
 USE_PASS(reduce_mode_multi_devices_pass);

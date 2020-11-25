@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 
 #ifdef PADDLE_WITH_XBYAK
-#include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
 #endif
 
@@ -23,7 +22,9 @@ limitations under the License. */
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #elif defined(_WIN32)
+#ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -139,7 +140,8 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   if (cpu_isa == isa_any) {
     return true;
   } else {
-#ifndef WITH_NV_JETSON
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
+    !defined(PADDLE_WITH_SW)
     int reg[4];
     cpuid(reg, 0);
     int nIds = reg[0];
@@ -163,6 +165,13 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
         // AVX512F: EBX Bit 16
         int avx512f_mask = (1 << 16);
         return (reg[1] & avx512f_mask) != 0;
+      } else if (cpu_isa == avx512_core) {
+        unsigned int avx512f_mask = (1 << 16);
+        unsigned int avx512dq_mask = (1 << 17);
+        unsigned int avx512bw_mask = (1 << 30);
+        unsigned int avx512vl_mask = (1 << 31);
+        return ((reg[1] & avx512f_mask) && (reg[1] & avx512dq_mask) &&
+                (reg[1] & avx512bw_mask) && (reg[1] & avx512vl_mask));
       }
     }
 #endif

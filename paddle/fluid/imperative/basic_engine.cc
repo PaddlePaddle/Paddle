@@ -30,11 +30,13 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(sort_sum_gradient);
+
 namespace paddle {
 namespace imperative {
 
-void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
-  backward_strategy_ = strategy;
+void BasicEngine::Init(VarBase* var, bool retain_graph) {
+  retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
   var->GradVarBase()->ClearGradNode();
 
@@ -103,7 +105,7 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       auto& accumulator = accumulators_[var.get()];
       if (!accumulator) {
-        if (backward_strategy_.sorted_sum_gradient_) {
+        if (FLAGS_sort_sum_gradient) {
           accumulator.reset(new SortedGradientAccumulator(var.get()));
         } else {
           accumulator.reset(new EagerGradientAccumulator(var.get()));
@@ -111,6 +113,16 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
       }
 
       accumulator->IncreaseRefCnt();
+
+      if (var->HasLeafHooks()) {
+        VLOG(3) << "Grad variable wrapper (" << var->Name()
+                << ") has leaf grad hooks.";
+        PADDLE_ENFORCE_NE(var->HasGradNode(), true,
+                          platform::errors::PermissionDenied(
+                              "Only leaf Tensor's gradient can append hook to "
+                              "Gradientaccumulator."));
+        accumulator->SetPostHooks(var->GetLeafHooks());
+      }
 
       VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
               << var.get() << ")  with reference count "
@@ -202,10 +214,13 @@ void BasicEngine::Execute() {
                                          var->Name()));
 
           if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
+            no_need_run_accumulators_.emplace_back(iter->second.get());
             continue;
           }
 
-          var = std::make_shared<VariableWrapper>(var->Name());
+          auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+          tmp_var->SetType(var->Type());
+          var = tmp_var;
           need_accu_var_list_.emplace_back(iter->second.get(), var);
         }
       }
@@ -216,15 +231,24 @@ void BasicEngine::Execute() {
                     cur_op.place());
       }
 
-      // Step 2: Sum Gradient
+      // Step 2: Sum Gradient & Call Accumulator Hooks
+      for (auto* accumulator : no_need_run_accumulators_) {
+        if (accumulator->HasPostHooks()) {
+          accumulator->CallBackwardPostHooks();
+        }
+      }
+
       for (auto& pair : need_accu_var_list_) {
         pair.first->Add(std::move(pair.second), cur_op.id());
       }
 
       need_accu_var_list_.clear();
+      no_need_run_accumulators_.clear();
 
       VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
-      cur_op.ClearBackwardTrace();
+      if (!retain_graph_) {
+        cur_op.ClearBackwardTrace();
+      }
     }
 
     // Step 3: Collect ready ops
@@ -252,6 +276,7 @@ void BasicEngine::Clear() {
   node_deps_.clear();
   accumulators_.clear();
   need_accu_var_list_.clear();
+  no_need_run_accumulators_.clear();
 }
 
 }  // namespace imperative

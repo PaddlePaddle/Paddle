@@ -37,7 +37,7 @@ class TestAddcmulLayer(unittest.TestCase):
             tensor1 = fluid.data(name="tensor1", dtype=self._dtype, shape=[100])
             tensor2 = fluid.data(
                 name="tensor2", dtype=self._dtype, shape=[3, 100])
-            out = paddle.addcmul(input, tensor1, tensor2, value)
+            out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value)
 
         exe = fluid.Executor(self._place)
         return exe.run(feed={
@@ -53,7 +53,7 @@ class TestAddcmulLayer(unittest.TestCase):
             input = fluid.dygraph.to_variable(self.input)
             tensor1 = fluid.dygraph.to_variable(self.tensor1)
             tensor2 = fluid.dygraph.to_variable(self.tensor2)
-            out = paddle.addcmul(input, tensor1, tensor2, value)
+            out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value)
             return out.numpy()
 
     def numpy(self, value=1.0):
@@ -85,7 +85,7 @@ class TestAddcmul(unittest.TestCase):
             tensor1 = fluid.data(name='t1', shape=data_shape, dtype='float32')
             tensor2 = fluid.data(name='t2', shape=data_shape, dtype='float32')
 
-            out = paddle.addcmul(input, tensor1, tensor2)
+            out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
             self.assertEqual(out.shape, input.shape)
 
     def test_addcmul_with_broadcast0(self):
@@ -95,7 +95,7 @@ class TestAddcmul(unittest.TestCase):
             tensor1 = fluid.data(name='t1', shape=[3, 100], dtype='float32')
             tensor2 = fluid.data(name='t2', shape=[100], dtype='float32')
 
-            out = paddle.addcmul(input, tensor1, tensor2)
+            out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
             self.assertEqual(out.shape, input.shape)
 
     def test_addcmul_with_broadcast1(self):
@@ -105,7 +105,7 @@ class TestAddcmul(unittest.TestCase):
             tensor1 = fluid.data(name='t1', shape=[100], dtype='float32')
             tensor2 = fluid.data(name='t2', shape=[4, 100], dtype='float32')
 
-            out = paddle.addcmul(input, tensor1, tensor2)
+            out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
             self.assertEqual(out.shape, input.shape)
 
     def test_addcmul_with_broadcast2(self):
@@ -115,18 +115,7 @@ class TestAddcmul(unittest.TestCase):
             tensor1 = fluid.data(name='t1', shape=[100], dtype='float32')
             tensor2 = fluid.data(name='t2', shape=[100], dtype='float32')
 
-            out = paddle.addcmul(input, tensor1, tensor2)
-            self.assertEqual(out.shape, input.shape)
-
-    def test_addcmul_has_out(self):
-        program = Program()
-        with program_guard(program):
-            input = fluid.data(name='in', shape=[4, 100], dtype='float32')
-            tensor1 = fluid.data(name='t1', shape=[100], dtype='float32')
-            tensor2 = fluid.data(name='t2', shape=[100], dtype='float32')
-            out = fluid.data(name='out', shape=[4, 100], dtype='float32')
-
-            out = paddle.addcmul(input, tensor1, tensor2, out=out)
+            out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
             self.assertEqual(out.shape, input.shape)
 
 
@@ -140,7 +129,7 @@ class InvalidInputTest(unittest.TestCase):
                     name='tensor1', shape=[20, 20], dtype='float32')
                 tensor2 = fluid.data(
                     name='tensor2', shape=[20, 20], dtype='float32')
-                out = paddle.addcmul(input, tensor1, tensor2)
+                out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
 
         self.assertRaises(TypeError, test_invalid_input)
 
@@ -152,7 +141,7 @@ class InvalidInputTest(unittest.TestCase):
                 tensor1 = [20, 20]
                 tensor2 = fluid.data(
                     name='tensor2', shape=[20, 20], dtype='float32')
-                out = paddle.addcmul(input, tensor1, tensor2)
+                out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
 
         self.assertRaises(TypeError, test_invalid_tensor1)
 
@@ -164,7 +153,7 @@ class InvalidInputTest(unittest.TestCase):
                 tensor1 = fluid.data(
                     name='tensor1', shape=[20, 20], dtype='float32')
                 tensor2 = [20, 20]
-                out = paddle.addcmul(input, tensor1, tensor2)
+                out = paddle.tensor.math.addcmul(input, tensor1, tensor2)
 
         self.assertRaises(TypeError, test_invalid_tensor2)
 
@@ -177,7 +166,7 @@ class InvalidInputTest(unittest.TestCase):
                     name='tensor1', shape=[20, 20], dtype='float32')
                 tensor2 = fluid.data(
                     name='tensor2', shape=[20, 20], dtype='float32')
-                out = paddle.addcmul(input, tensor1, tensor2, value=1)
+                out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=1)
 
         self.assertRaises(TypeError, test_invalid_value_int)
 
@@ -189,7 +178,7 @@ class InvalidInputTest(unittest.TestCase):
                     name='tensor1', shape=[20, 20], dtype='int32')
                 tensor2 = fluid.data(
                     name='tensor2', shape=[20, 20], dtype='int32')
-                out = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+                out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=1.0)
 
         self.assertRaises(TypeError, test_invalid_value_float)
 

@@ -345,6 +345,22 @@ class TestTensor(unittest.TestCase):
             self.assertEqual([2, 200, 300], tensor.shape())
             self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
 
+    def test_tensor_set_error(self):
+        scope = core.Scope()
+        var = scope.var("test_tensor")
+        place = core.CPUPlace()
+
+        tensor = var.get_tensor()
+
+        exception = None
+        try:
+            error_array = ["1", "2"]
+            tensor.set(error_array, place)
+        except ValueError as ex:
+            exception = ex
+
+        self.assertIsNotNone(exception)
+
 
 if __name__ == '__main__':
     unittest.main()

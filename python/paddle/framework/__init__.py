@@ -14,23 +14,29 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
-    'BuildStrategy', 'CompiledProgram', 'default_main_program',
-    'default_startup_program', 'create_global_var', 'create_parameter', 'Print',
-    'py_func', 'ExecutionStrategy', 'name_scope', 'ParallelExecutor',
-    'ParamAttr', 'Program', 'program_guard', 'Variable', 'WeightNormParamAttr',
-    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
+    'create_parameter', 'ParamAttr', 'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace',
+    'get_default_dtype', 'set_default_dtype'
 ]
 
+__all__ += ['grad', 'LayerList', 'load', 'save', 'no_grad', 'DataParallel']
+
 from . import random
-from .random import manual_seed
-from ..fluid.executor import Executor, global_scope, scope_guard
-from ..fluid.backward import append_backward, gradients
-from ..fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
-from ..fluid.framework import default_main_program, default_startup_program, name_scope, Program, program_guard, Variable
-from ..fluid.layers.control_flow import Print
-from ..fluid.layers.nn import py_func
-from ..fluid.parallel_executor import ParallelExecutor
-from ..fluid.param_attr import ParamAttr, WeightNormParamAttr
-from ..fluid.layers.tensor import create_global_var, create_parameter
-from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
+from .random import seed
+from .framework import get_default_dtype
+from .framework import set_default_dtype
+
+from ..fluid.framework import ComplexVariable  #DEFINE_ALIAS
+from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
+# from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_parameter  #DEFINE_ALIAS
+from ..fluid.core import CPUPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
+from ..fluid.core import VarBase  #DEFINE_ALIAS
+
+from paddle.fluid import core  #DEFINE_ALIAS
+from ..fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
+from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
+from .io import save
+from .io import load
+from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS

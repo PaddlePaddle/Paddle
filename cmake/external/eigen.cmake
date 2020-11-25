@@ -22,14 +22,14 @@ set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
 
 # the recent version of eigen will cause compilation error on windows
 if(WIN32)
-    set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git)
+    set(EIGEN_REPOSITORY ${GIT_URL}/eigenteam/eigen-git-mirror.git)
     set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
 endif()
 
 # eigen on cuda9.1 missing header of math_funtions.hpp
 # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
 if(WITH_AMD_GPU)
-    set(EIGEN_REPOSITORY https://github.com/sabreshao/hipeigen.git)
+    set(EIGEN_REPOSITORY ${GIT_URL}/sabreshao/hipeigen.git)
     set(EIGEN_TAG        7cb2b6e5a4b4a1efe658abb215cd866c6fb2275e)
 endif()
 
@@ -49,9 +49,14 @@ elseif(LINUX)
     # refer to: https://gitlab.com/libeigen/eigen/-/blob/4da2c6b1974827b1999bab652a3d4703e1992d26/Eigen/src/Core/arch/SSE/PacketMath.h#L33-60
     # add -fabi-version=4 could avoid above error, but will cause "double free corruption" when compile with gcc8
     # so use following patch to solve compilation error with different version of gcc.
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Geometry_SSE.h native_src)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst)
-    set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst})
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Geometry_SSE.h native_src1)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst1)
+    # The compiler fully support const expressions since c++14,
+    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
+    # add patch to avoid compilation error in c++11
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/MathFunctions.h native_src2)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/MathFunctions.h native_dst2)
+    set(EIGEN_PATCH_COMMAND cp ${native_src1} ${native_dst1} && cp ${native_src2} ${native_dst2})
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
@@ -89,12 +94,11 @@ else()
     )
 endif()
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/eigen3_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy_eigen3 = \"${dummyfile}\";")
-    add_library(eigen3 STATIC ${dummyfile})
-else()
-    add_library(eigen3 INTERFACE)
-endif()
+add_library(eigen3 INTERFACE)
 
 add_dependencies(eigen3 extern_eigen3)
+
+# sw not support thread_local semantic
+if(WITH_SW)
+  add_definitions(-DEIGEN_AVOID_THREAD_LOCAL)
+endif()

@@ -19,9 +19,17 @@ limitations under the License. */
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -66,12 +74,18 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE_EQ(IsVar(), true);
+    PADDLE_ENFORCE_EQ(IsVar(), true,
+                      platform::errors::InvalidArgument(
+                          "Node(%s) must be kVariable type, but not %d.", name_,
+                          static_cast<int>(type_)));
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE_EQ(IsOp(), true);
+    PADDLE_ENFORCE_EQ(IsOp(), true,
+                      platform::errors::InvalidArgument(
+                          "Node(%s) must be kOperation type, but not %d.",
+                          name_, static_cast<int>(type_)));
     return op_desc_.get();
   }
 
@@ -92,8 +106,9 @@ class Node {
     try {
       return *boost::any_cast<T*>(wrapper_);
     } catch (boost::bad_any_cast&) {
-      PADDLE_THROW("Invalid wrapper type error, expected %s, actual %s",
-                   typeid(T).name(), wrapper_type_.name());
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid wrapper type error, expected %s, actual %s.",
+          typeid(T).name(), wrapper_type_.name()));
     }
   }
 
@@ -114,8 +129,9 @@ class Node {
   }
 
   void RenameVar(const std::string& new_name) {
-    PADDLE_ENFORCE(type_ == Type::kVariable && var_desc_,
-                   "Must be type of variable");
+    PADDLE_ENFORCE_EQ(
+        type_ == Type::kVariable && var_desc_, true,
+        platform::errors::InvalidArgument("Node must be type of variable."));
     name_ = new_name;
     var_desc_->SetName(new_name);
   }

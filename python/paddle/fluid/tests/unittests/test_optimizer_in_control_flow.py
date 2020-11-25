@@ -261,7 +261,13 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             exe.run(startup_program)
 
             np.random.seed(SEED)
+
+            # NOTE(liym27):
+            # This test needs to run in multi cards to test NotImplementedError.
+            # Here, move this test from RUN_TYPE=DIST in tests/unittests/CMakeList.txt,
+            # to use multi cards ** only on CPU ** not GPU to reduce CI time.
             os.environ['CPU_NUM'] = str(2)
+
             pe_exe = fluid.ParallelExecutor(
                 use_cuda=use_cuda,
                 main_program=main_program,

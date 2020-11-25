@@ -15,30 +15,33 @@
 from __future__ import print_function
 import unittest
 
+import paddle
 import paddle.fluid as fluid
-from paddle.framework import manual_seed
+from paddle.framework import seed
 from paddle.fluid.framework import Program, default_main_program, default_startup_program
+import numpy as np
 
 
 class TestManualSeed(unittest.TestCase):
-    def test_manual_seed(self):
-        local_program = Program()
-        local_main_prog = default_main_program()
-        local_start_prog = default_startup_program()
+    def test_seed(self):
+        fluid.enable_dygraph()
 
-        self.assertEqual(0, local_program.random_seed)
-        self.assertEqual(0, local_main_prog.random_seed)
-        self.assertEqual(0, local_start_prog.random_seed)
+        gen = paddle.seed(12312321111)
+        x = fluid.layers.gaussian_random([10], dtype="float32")
+        st1 = gen.get_state()
+        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        gen.set_state(st1)
+        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        gen.manual_seed(12312321111)
+        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x_np = x.numpy()
+        x1_np = x1.numpy()
+        x2_np = x2.numpy()
+        x3_np = x3.numpy()
 
-        manual_seed(102)
-        global_program1 = Program()
-        global_program2 = Program()
-        global_main_prog = default_main_program()
-        global_start_prog = default_startup_program()
-        self.assertEqual(102, global_program1.random_seed)
-        self.assertEqual(102, global_program2.random_seed)
-        self.assertEqual(102, global_main_prog.random_seed)
-        self.assertEqual(102, global_start_prog.random_seed)
+        if not fluid.core.is_compiled_with_cuda():
+            self.assertTrue(np.allclose(x1_np, x2_np))
+            self.assertTrue(np.allclose(x_np, x3_np))
 
 
 if __name__ == '__main__':

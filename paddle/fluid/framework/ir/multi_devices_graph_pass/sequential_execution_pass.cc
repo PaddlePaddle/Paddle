@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -54,11 +55,16 @@ class SequentialExecutionPass : public ir::Pass {
       if (!node->IsOp()) continue;
       std::unordered_set<ir::Node *> preceding_ops;
       for (auto *in : node->inputs) {
-        PADDLE_ENFORCE(in->IsVar(),
-                       "Preceding Node of Op Nodes must be Var Node");
+        PADDLE_ENFORCE_EQ(
+            in->IsVar(), true,
+            platform::errors::InvalidArgument(
+                "Preceding Node(%s) of Op Nodes must be Var Node.",
+                in->Name()));
         if (in->inputs.empty()) continue;
-        PADDLE_ENFORCE(in->inputs.size() == 1 && in->inputs[0]->IsOp(),
-                       "Preceding Op Node of Var Node must be unique");
+        PADDLE_ENFORCE_EQ((in->inputs.size() == 1 && in->inputs[0]->IsOp()),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Preceding Op Node of Var Node must be unique."));
         preceding_ops.insert(in->inputs[0]);
         pending_ops[in->inputs[0]].insert(node);
       }
@@ -72,15 +78,18 @@ class SequentialExecutionPass : public ir::Pass {
       ir::Node *found_node = nullptr;
       for (auto *node : ready_ops) {
         if (IsSameOpDesc(op_desc, node->Op())) {
-          PADDLE_ENFORCE(found_node == nullptr,
-                         "Found multiple op_desc in graph: %s",
-                         op_desc->Type());
+          PADDLE_ENFORCE_EQ(
+              found_node, nullptr,
+              platform::errors::InvalidArgument(
+                  "Found multiple op_desc in graph: %s.", op_desc->Type()));
           found_node = node;
         }
       }
 
-      PADDLE_ENFORCE_NOT_NULL(found_node, "Cannot find op_desc in graph: %s",
-                              op_desc->Type());
+      PADDLE_ENFORCE_NOT_NULL(
+          found_node,
+          platform::errors::NotFound("Cannot find op_desc in graph: %s.",
+                                     op_desc->Type()));
       for (auto *pending_op : pending_ops[found_node]) {
         if (--op_deps.at(pending_op) == 0) {
           ready_ops.insert(pending_op);

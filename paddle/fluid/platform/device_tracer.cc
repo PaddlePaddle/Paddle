@@ -37,9 +37,16 @@ namespace paddle {
 namespace platform {
 namespace {
 // Tracking the nested block stacks of each thread.
+#ifdef PADDLE_WITH_SW
+// sw not supported thread_local
+std::deque<int> block_id_stack;
+std::deque<Event *> annotation_stack;
+#else
+// Tracking the nested event stacks.
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
+#endif
 // stack to strore event sunch as pe and so on
 static std::deque<Event *> main_thread_annotation_stack{};
 static std::deque<std::string> main_thread_annotation_stack_name{};
@@ -177,8 +184,10 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
   static std::thread::id cupti_thread_id(0);
   if (cupti_thread_id == std::thread::id(0))
     cupti_thread_id = std::this_thread::get_id();
-  PADDLE_ENFORCE_EQ(std::this_thread::get_id(), cupti_thread_id,
-                    "Only one thread is allowed to call bufferCompleted()");
+  PADDLE_ENFORCE_EQ(
+      std::this_thread::get_id(), cupti_thread_id,
+      platform::errors::PermissionDenied(
+          "Only one thread is allowed to call bufferCompleted()."));
   CUptiResult status;
   CUpti_Activity *record = NULL;
   if (validSize > 0) {
@@ -286,8 +295,13 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void AddAnnotation(uint32_t id, Event *event) {
+#ifdef PADDLE_WITH_SW
+    std::forward_list<std::pair<uint32_t, Event *>> *local_correlations_pairs =
+        nullptr;
+#else
     thread_local std::forward_list<std::pair<uint32_t, Event *>>
         *local_correlations_pairs = nullptr;
+#endif
     if (local_correlations_pairs == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       correlations_pairs.emplace_front();
@@ -302,7 +316,11 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
+#ifdef PADDLE_WITH_SW
+    std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
+#else
     thread_local std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
+#endif
     if (local_cpu_records_ == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       cpu_records_.emplace_front();
@@ -333,8 +351,12 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
     }
+#ifdef PADDLE_WITH_SW
+    std::forward_list<MemInfoRecord> *local_mem_info_record = nullptr;
+#else
     thread_local std::forward_list<MemInfoRecord> *local_mem_info_record =
         nullptr;
+#endif
     if (local_mem_info_record == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       mem_info_record_.emplace_front();
@@ -351,8 +373,12 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
+#ifdef PADDLE_WITH_SW
+    std::forward_list<ActiveKindRecord> *local_active_kind_records = nullptr;
+#else
     thread_local std::forward_list<ActiveKindRecord>
         *local_active_kind_records = nullptr;
+#endif
     if (local_active_kind_records == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       active_kind_records_.emplace_front();
@@ -573,7 +599,8 @@ class DeviceTracerImpl : public DeviceTracer {
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else {
-          PADDLE_THROW("The current place is not supported.");
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "The current place is not supported."));
         }
         event->set_alloc_in(r.alloc_in);
         event->set_free_in(r.free_in);
@@ -646,7 +673,6 @@ DeviceTracer *GetDeviceTracer() {
 // so when event is not in same thread of PE event, we need add
 // father event(PE::run event) for this event
 void SetCurAnnotation(Event *event) {
-  std::string ret;
   if (!annotation_stack.empty()) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
@@ -670,17 +696,16 @@ void SetCurAnnotation(Event *event) {
 }
 
 void ClearCurAnnotation() {
-  if (!main_thread_annotation_stack.empty() &&
-      main_thread_annotation_stack.back()->name() ==
-          annotation_stack.back()->name()) {
+  if (!main_thread_annotation_stack.empty()) {
     std::string name = annotation_stack.back()->name();
     std::string main_name = main_thread_annotation_stack.back()->name();
     int main_name_len = main_name.length();
     int name_len = name.length();
     int prefix_len = main_name_len - name_len;
 
-    if (prefix_len >= 0 && main_name.at(prefix_len) == '/' &&
-        name == main_name.substr(prefix_len, name_len)) {
+    if ((prefix_len > 0 && main_name.at(prefix_len - 1) == '/' &&
+         name == main_name.substr(prefix_len, name_len)) ||
+        (name == main_name)) {
       main_thread_annotation_stack_name.pop_back();
       main_thread_annotation_stack.pop_back();
     }

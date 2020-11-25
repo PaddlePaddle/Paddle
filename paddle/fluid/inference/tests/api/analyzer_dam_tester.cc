@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <vector>
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
-DEFINE_int32(max_turn_num, 9,
-             "The max turn number: 1 for the small and 9 for the normal.");
+const int FLAGS_max_turn_num = 1;
 
 namespace paddle {
 namespace inference {
@@ -125,7 +126,9 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   std::string turn_mask_pre = "turn_mask_";
 
   auto one_batch = data->NextBatch();
-  PADDLE_ENFORCE(!one_batch.response.empty());
+  PADDLE_ENFORCE(
+      !one_batch.response.empty(),
+      paddle::platform::errors::Fatal("The response of one batch is empty."));
   int size = one_batch.response[0].size();
   CHECK_EQ(size, kMaxTurnLen);
   // turn tensor assignment
@@ -213,11 +216,17 @@ void profile(bool use_mkldnn = false) {
                  input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of outputs should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_GT(output.size(), 0);
+    PADDLE_ENFORCE_GT(output.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size, 0);
+    PADDLE_ENFORCE_GT(size, 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);
@@ -300,7 +309,7 @@ TEST(Analyzer_dam, compare_determine) {
 TEST(Analyzer_dam, save_optim_model) {
   AnalysisConfig cfg;
   std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
-  mkdir(optimModelPath.c_str(), 0777);
+  MKDIR(optimModelPath.c_str());
   SetConfig(&cfg);
   SaveOptimModel(&cfg, optimModelPath);
 }

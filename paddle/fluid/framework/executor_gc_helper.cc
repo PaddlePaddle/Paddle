@@ -13,16 +13,19 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
+
 #include <deque>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <vector>
+
 #include "glog/logging.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -175,8 +178,9 @@ void DeleteUnusedTensors(
         garbages.emplace_back(t.MoveMemoryHolder());
       }
     } else {
-      PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                   framework::ToTypeName(var->Type()), var_name);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Type %s of variable %s is not supported eager deletion.",
+          framework::ToTypeName(var->Type()), var_name));
     }
   }
 

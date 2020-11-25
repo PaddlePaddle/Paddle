@@ -25,6 +25,9 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
+if fluid.is_compiled_with_cuda():
+    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+
 batch_size = 8
 train_parameters = {
     "input_size": [3, 224, 224],
@@ -308,8 +311,8 @@ class TestImperativeResneXt(unittest.TestCase):
         batch_num = 1
         epoch_num = 1
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             se_resnext = SeResNeXt()
             optimizer = optimizer_setting(
@@ -340,7 +343,9 @@ class TestImperativeResneXt(unittest.TestCase):
                     label.stop_gradient = True
 
                     out = se_resnext(img)
-                    loss = fluid.layers.cross_entropy(input=out, label=label)
+                    softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+                    loss = fluid.layers.cross_entropy(
+                        input=softmax_out, label=label)
                     avg_loss = fluid.layers.mean(x=loss)
 
                     dy_out = avg_loss.numpy()
@@ -367,8 +372,8 @@ class TestImperativeResneXt(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
@@ -386,7 +391,8 @@ class TestImperativeResneXt(unittest.TestCase):
                 name='pixel', shape=[3, 224, 224], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = se_resnext(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+            loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
             avg_loss = fluid.layers.mean(x=loss)
             optimizer.minimize(avg_loss)
 
@@ -443,7 +449,9 @@ class TestImperativeResneXt(unittest.TestCase):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        self.assertTrue(
+            np.allclose(static_out, dy_out),
+            "\nstatic_out: {}\ndy_out: {}".format(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
 
@@ -455,16 +463,23 @@ class TestImperativeResneXt(unittest.TestCase):
         self.assertEqual(len(dy_grad_value), len(static_grad_value))
 
         for key, value in six.iteritems(static_grad_value):
-            self.assertTrue(np.allclose(value, dy_grad_value[key]))
+            self.assertTrue(
+                np.allclose(value, dy_grad_value[key]),
+                "\nstatic_grad_value: {}\ndy_grad_value: {}".format(
+                    value, dy_grad_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+            self.assertTrue(
+                np.allclose(value, dy_param_value[key]),
+                "\nstatic_param_value: {}\ndy_param_value: {}".format(
+                    value, dy_param_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

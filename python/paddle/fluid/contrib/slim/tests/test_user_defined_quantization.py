@@ -14,6 +14,7 @@
 
 import os
 import unittest
+import json
 import random
 import numpy as np
 import six
@@ -28,37 +29,35 @@ from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 
+paddle.enable_static()
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
 
 
-def residual_block(img, label, num=1):
-    def conv_bn_layer(input,
-                      ch_out,
-                      filter_size,
-                      stride,
-                      padding,
-                      act='relu',
-                      bias_attr=False):
-        tmp = fluid.layers.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
-            bias_attr=bias_attr)
-        return fluid.layers.batch_norm(input=tmp, act=act)
-
-    hidden = img
-    for _ in six.moves.xrange(num):
-        conv = conv_bn_layer(hidden, 20, 3, 1, 1, act=None, bias_attr=True)
-        short = conv_bn_layer(hidden, 20, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    fc = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=fc, label=label)
-    loss = fluid.layers.mean(loss)
-    return loss
+def conv_net(img, label):
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        pool_type='max',
+        act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        pool_type='avg',
+        act="relu")
+    hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
+    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_loss = fluid.layers.mean(loss)
+    return avg_loss
 
 
 def pact(x, name=None):
@@ -100,7 +99,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
                     img.stop_gradient = False
                     label = fluid.layers.data(
                         name='label', shape=[1], dtype='int64')
-                    loss = residual_block(img, label, 1)
+                    loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.SGD(learning_rate=0.0001)
                         opt.minimize(loss)
@@ -108,6 +107,16 @@ class TestUserDefinedQuantization(unittest.TestCase):
 
         def get_optimizer():
             return fluid.optimizer.MomentumOptimizer(0.0001, 0.9)
+
+        def load_dict():
+            with open('mapping_table_for_saving_inference_model', 'r') as file:
+                data = file.read()
+                data = json.loads(data)
+                return data
+
+        def save_dict(Dict):
+            with open('mapping_table_for_saving_inference_model', 'w') as file:
+                file.write(json.dumps(Dict))
 
         random.seed(0)
         np.random.seed(0)
@@ -151,6 +160,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             executor=exe)
 
         test_transform_pass.apply(test_graph)
+        save_dict(test_graph.out_node_mapping_table)
 
         add_quant_dequant_pass = AddQuantDequantPass(scope=scope, place=place)
         add_quant_dequant_pass.apply(main_graph)
@@ -181,6 +191,21 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 loss_v = exe.run(binary,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
+
+        out_scale_infer_pass = OutScaleForInferencePass(scope=scope)
+        out_scale_infer_pass.apply(test_graph)
+
+        freeze_pass = QuantizationFreezePass(
+            scope=scope,
+            place=place,
+            weight_bits=8,
+            activation_bits=8,
+            weight_quantize_type=weight_quant_type)
+
+        mapping_table = load_dict()
+        test_graph.out_node_mapping_table = mapping_table
+        if act_quantize_func == None and weight_quantize_func == None:
+            freeze_pass.apply(test_graph)
 
     def test_act_preprocess_cuda(self):
         if fluid.core.is_compiled_with_cuda():

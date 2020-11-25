@@ -41,10 +41,35 @@ TEST(AnalysisPredictor, use_gpu) {
   SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
 
   std::vector<PaddleTensor> outputs;
-  for (auto& input : inputs_all) {
+  for (auto &input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
+    predictor->ClearIntermediateTensor();
   }
 }
 
 }  // namespace inference
 }  // namespace paddle
+
+namespace paddle_infer {
+TEST(PredictorPool, use_gpu) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  Config config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
+  config.EnableTensorRtEngine();
+  services::PredictorPool pred_pool(config, 1);
+
+  auto predictor = pred_pool.Retrive(0);
+  auto input_names = predictor->GetInputNames();
+  auto input_t = predictor->GetInputHandle(input_names[0]);
+  std::vector<int> in_shape = {1, 3, 224, 224};
+  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
+                               [](int &a, int &b) { return a * b; });
+
+  std::vector<float> input(in_num, 0);
+  input_t->Reshape(in_shape);
+  input_t->CopyFromCpu(input.data());
+  predictor->Run();
+}
+
+}  // namespace paddle_infer

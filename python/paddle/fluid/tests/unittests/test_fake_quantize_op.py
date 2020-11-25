@@ -72,26 +72,60 @@ class TestFakeQuantizeOp2(OpTest):
 
 class TestFakeChannelWiseQuantizeOp(OpTest):
     def setUp(self):
+        self.set_arg()
+        assert self.quant_axis in [0, 1], "quant_axis should be 0 or 1."
+
         self.op_type = "fake_channel_wise_quantize_abs_max"
-        self.attrs = {'bit_length': 8}
-        self.inputs = {
-            'X': np.random.random((4, 3, 64, 64)).astype("float32"),
-        }
+        self.attrs = {'bit_length': 8, 'quant_axis': self.quant_axis}
+
         scales = []
-        for i in range(self.inputs['X'].shape[0]):
-            scales.append(np.max(np.abs(self.inputs['X'][i])).astype("float32"))
         outputs = self.inputs['X'].copy()
-        for i, scale in enumerate(scales):
-            outputs[i] = np.round(outputs[i] / scale * (
-                (1 << (self.attrs['bit_length'] - 1)) - 1))
+        bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
+        if self.quant_axis == 0:
+            for i in range(self.inputs['X'].shape[0]):
+                scale_v = np.max(np.abs(self.inputs['X'][i])).astype("float32")
+                scales.append(scale_v)
+                outputs[i] = np.round(outputs[i] / scale_v * bnt)
+        elif self.quant_axis == 1:
+            for i in range(self.inputs['X'].shape[1]):
+                scale_v = np.max(np.abs(self.inputs['X'][:, i])).astype(
+                    "float32")
+                scales.append(scale_v)
+                outputs[:, i] = np.round(outputs[:, i] / scale_v * bnt)
 
         self.outputs = {
             'Out': outputs,
             'OutScale': np.array(scales).astype("float32"),
         }
 
+    def set_arg(self):
+        self.quant_axis = 0
+        self.inputs = {
+            'X': np.random.random((20, 15, 6, 6)).astype("float32"),
+        }
+
     def test_check_output(self):
         self.check_output()
+
+
+class TestFakeChannelWiseQuantizeOp1(TestFakeChannelWiseQuantizeOp):
+    def set_quant_axis(self):
+        self.quant_axis = 1
+        self.inputs = {
+            'X': np.random.random((15, 20, 5, 5)).astype("float32"),
+        }
+
+
+class TestFakeChannelWiseQuantizeOp2(TestFakeChannelWiseQuantizeOp):
+    def set_quant_axis(self):
+        self.quant_axis = 0
+        self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
+
+
+class TestFakeChannelWiseQuantizeOp3(TestFakeChannelWiseQuantizeOp):
+    def set_quant_axis(self):
+        self.quant_axis = 1
+        self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
 
 
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
@@ -146,7 +180,6 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         out_state[0] = self.attrs['moving_rate'] * state[0] + 1
         out_scale = out_accum / out_state
         self.outputs = {
-            'Out': self.inputs['X'],
             'OutAccum': out_accum,
             'OutState': out_state,
             'OutScale': out_scale,
@@ -241,6 +274,101 @@ class TestFakeQuantDequantMovingOp(TestMovingOpBase):
         range_v = (1 << (self.attrs['bit_length'] - 1)) - 1
         return np.round(self.inputs['X'] / out_scale *
                         range_v) * out_scale / range_v
+
+    def test_check_grad(self):
+        x = self.inputs["X"]
+        gradient = [np.ones(x.shape) / np.product(x.shape)]
+        self.check_grad(["X"], "Out", user_defined_grads=gradient)
+
+
+class TestFakeQuantDequantAbsOp(OpTest):
+    def setUp(self):
+        self.op_type = "fake_quantize_dequantize_abs_max"
+        self.attrs = {'bit_length': 8}
+        self.inputs = {'X': np.random.random((124, 240)).astype("float32"), }
+        scale = np.max(np.abs(self.inputs['X'])).astype("float32")
+        out_data = self.calc_output(scale)
+        self.outputs = {
+            'Out': out_data,
+            'OutScale': np.array(scale).astype("float32"),
+        }
+
+    def calc_output(self, scale):
+        range_v = (1 << (self.attrs['bit_length'] - 1)) - 1
+        return np.round(self.inputs['X'] / scale * range_v) * scale / range_v
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        x = self.inputs["X"]
+        gradient = [np.ones(x.shape) / np.product(x.shape)]
+        self.check_grad(["X"], "Out", user_defined_grads=gradient)
+
+
+class TestChannelWiseFakeQuantDequantOp(OpTest):
+    def setUp(self):
+        self.set_arg()
+        assert self.quant_axis in [0, 1], "quant_axis should be 0 or 1."
+
+        self.op_type = "fake_channel_wise_quantize_dequantize_abs_max"
+        self.attrs = {'bit_length': 8, 'quant_axis': self.quant_axis}
+
+        scales = []
+        outputs = self.inputs['X'].copy()
+        range_v = (1 << (self.attrs['bit_length'] - 1)) - 1
+        if self.quant_axis == 0:
+            for i in range(self.inputs['X'].shape[0]):
+                scale_v = np.max(np.abs(self.inputs['X'][i])).astype("float32")
+                scales.append(scale_v)
+                outputs[i] = np.round(outputs[i] * range_v /
+                                      scale_v) * scale_v / range_v
+        elif self.quant_axis == 1:
+            for i in range(self.inputs['X'].shape[1]):
+                scale_v = np.max(np.abs(self.inputs['X'][:, i])).astype(
+                    "float32")
+                scales.append(scale_v)
+                outputs[:, i] = np.round(outputs[:, i] * range_v /
+                                         scale_v) * scale_v / range_v
+
+        self.outputs = {
+            'Out': outputs,
+            'OutScale': np.array(scales).astype("float32"),
+        }
+
+    def set_arg(self):
+        self.quant_axis = 0
+        self.inputs = {
+            'X': np.random.random((3, 4, 64, 64)).astype("float32"),
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        x = self.inputs["X"]
+        gradient = [np.ones(x.shape) / np.product(x.shape)]
+        self.check_grad(["X"], "Out", user_defined_grads=gradient)
+
+
+class TestChannelWiseFakeQuantDequantOp1(TestChannelWiseFakeQuantDequantOp):
+    def set_arg(self):
+        self.quant_axis = 1
+        self.inputs = {
+            'X': np.random.random((15, 20, 5, 5)).astype("float32"),
+        }
+
+
+class TestChannelWiseFakeQuantDequantOp2(TestChannelWiseFakeQuantDequantOp):
+    def set_arg(self):
+        self.quant_axis = 0
+        self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
+
+
+class TestChannelWiseFakeQuantDequantOp3(TestChannelWiseFakeQuantDequantOp):
+    def set_arg(self):
+        self.quant_axis = 1
+        self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
 
 
 if __name__ == "__main__":

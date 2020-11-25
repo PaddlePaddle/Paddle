@@ -468,8 +468,8 @@ def build_optimizer(layer, cfg, loss=None):
 
 class DyGraphTrainModel(object):
     def __init__(self, cfg):
-        fluid.default_startup_program().random_seed = cfg.seed
-        fluid.default_main_program().random_seed = cfg.seed
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
 
         self.generator = Generator(cfg)
         self.discriminator = Discriminator(cfg)
@@ -479,8 +479,7 @@ class DyGraphTrainModel(object):
 
         self.cfg = cfg
 
-        self.backward_strategy = fluid.dygraph.BackwardStrategy()
-        self.backward_strategy.sort_sum_gradient = cfg.sort_sum_gradient
+        fluid.set_flags({'FLAGS_sort_sum_gradient': cfg.sort_sum_gradient})
 
     def clear_gradients(self):
         if self.g_optimizer:
@@ -497,7 +496,7 @@ class DyGraphTrainModel(object):
         g_loss = get_generator_loss(image_real, label_org, label_trg,
                                     self.generator, self.discriminator,
                                     self.cfg)
-        g_loss.backward(self.backward_strategy)
+        g_loss.backward()
         if self.g_optimizer:
             self.g_optimizer.minimize(g_loss)
 
@@ -506,7 +505,7 @@ class DyGraphTrainModel(object):
         d_loss = get_discriminator_loss(image_real, label_org, label_trg,
                                         self.generator, self.discriminator,
                                         self.cfg)
-        d_loss.backward(self.backward_strategy)
+        d_loss.backward()
         if self.d_optimizer:
             self.d_optimizer.minimize(d_loss)
 
@@ -530,12 +529,12 @@ class StaticGraphTrainModel(object):
                 shape=[None, cfg.c_dim], dtype='float32', name='label_trg')
             return image_real, label_org, label_trg
 
+        paddle.seed(cfg.seed)
+        paddle.framework.random._manual_program_seed(cfg.seed)
         self.gen_program = fluid.Program()
         gen_startup_program = fluid.Program()
 
         with fluid.program_guard(self.gen_program, gen_startup_program):
-            self.gen_program.random_seed = cfg.seed
-            gen_startup_program.random_seed = cfg.seed
             with fluid.unique_name.guard():
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
@@ -547,8 +546,6 @@ class StaticGraphTrainModel(object):
         self.dis_program = fluid.Program()
         dis_startup_program = fluid.Program()
         with fluid.program_guard(self.dis_program, dis_startup_program):
-            self.dis_program.random_seed = cfg.seed
-            dis_startup_program.random_seed = cfg.seed
             with fluid.unique_name.guard():
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
@@ -595,7 +592,7 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
         cfg = Config(place)
 
         dataset = create_mnist_dataset(cfg)
-        dataset = fluid.io.cache(dataset)
+        dataset = paddle.reader.cache(dataset)
 
         static_graph_model = StaticGraphTrainModel(cfg)
         static_loss = []

@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http:  // www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Contrib layers just related to the neural network.
 """
 
 from __future__ import print_function
 
-import numpy as np
-import six
 import os
+import six
+import warnings
 import inspect
+
+import numpy as np
+import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+
+from paddle.fluid import core
+from paddle.fluid.param_attr import ParamAttr
+from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
+
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
@@ -34,8 +56,9 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc',
-    '_pull_box_extended_sparse'
+    'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
+    'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
+    'correlation', 'fused_bn_add_act'
 ]
 
 
@@ -114,7 +137,7 @@ def var_conv_2d(input,
                 act=None,
                 dtype='float32',
                 name=None):
-    """
+    r"""
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
     and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with
@@ -150,7 +173,8 @@ def var_conv_2d(input,
             of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{
+  0.5}`. Default: None.
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
         dtype ('float32'): The data type of parameter and output.
@@ -386,10 +410,8 @@ def tree_conv(nodes_vector,
               name=None):
     """
     ${comment}
-
-    Args:
-        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
-        edge_set(${edge_set_type}): ${edge_set_comment}
+Args : nodes_vector(${nodes_vector_type}) : $ { nodes_vector_comment }
+edge_set(${edge_set_type}) : $ { edge_set_comment }
         output_size(int): output feature width
         num_filters(int): number of filters, Default 1
         max_depth(int): max depth of filters, Default 2
@@ -399,12 +421,15 @@ def tree_conv(nodes_vector,
         name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
 
     Returns:
-        out(${out_type}): ${out_comment}
+        out(${out_type}): ${
+          out_comment
+        }
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
+
           # 10 for max_node_size of dataset, 5 for vector width
           nodes_vector = fluid.layers.data(
               name='vectors', shape=[10, 5], dtype='float32')
@@ -415,10 +440,10 @@ def tree_conv(nodes_vector,
           # the shape of output will be [10, 6, 1],
           # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
           out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
-          # After reshape, output tensor could be nodes_vector for next tree convolution
+#After reshape, output tensor could be nodes_vector for next tree convolution
           out_vector = fluid.layers.reshape(out_vector, shape=[-1, 10, 6])
           out_vector_2 = fluid.layers.tree_conv(out_vector, edge_set, 3, 4, 2)
-          # also output tensor could be pooling(the pooling in paper called global pooling)
+#also output tensor could be pooling(the pooling in paper called global pooling)
           pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
     """
     check_type(nodes_vector, 'nodes_vector', (Variable), 'tree_conv')
@@ -452,7 +477,7 @@ def fused_embedding_seq_pool(input,
                              combiner='sum',
                              param_attr=None,
                              dtype='float32'):
-    """
+    r"""
     **Embedding Sequence pool**
 
     This layer is the fusion of lookup table and sequence_pool.
@@ -627,7 +652,6 @@ def multiclass_nms2(bboxes,
             'score_threshold': score_threshold,
             'nms_top_k': nms_top_k,
             'nms_threshold': nms_threshold,
-            'nms_eta': nms_eta,
             'keep_top_k': keep_top_k,
             'nms_eta': nms_eta,
             'normalized': normalized
@@ -937,6 +961,59 @@ def partial_sum(input, start_index=0, length=-1):
     helper.append_op(
         type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
+
+
+def sparse_embedding(input,
+                     size,
+                     padding_idx=None,
+                     is_test=False,
+                     entry=None,
+                     param_attr=None,
+                     dtype='float32'):
+    helper = LayerHelper('sparse_embedding', **locals())
+
+    check_variable_and_dtype(input, 'input', ['int64'],
+                             'fluid.contrib.layers.sparse_embedding')
+
+    check_dtype(dtype, 'dtype', ['float32'],
+                'fluid.contrib.layers.sparse_embedding')
+
+    w = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=size,
+        type=core.VarDesc.VarType.SELECTED_ROWS,
+        dtype=dtype,
+        is_bias=False)
+
+    tmp = helper.create_variable_for_type_inference(dtype)
+
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
+
+    entry_str = "none"
+
+    if entry is not None:
+        if not isinstance(entry, ProbabilityEntry) and not isinstance(
+                entry, CountFilterEntry):
+            raise ValueError(
+                "entry must be instance in [ProbabilityEntry, CountFilterEntry]")
+        entry_str = entry.to_attr()
+
+    helper.append_op(
+        type='lookup_table',
+        inputs={'Ids': input,
+                'W': w},
+        outputs={'Out': tmp},
+        attrs={
+            'padding_idx': padding_idx,
+            'is_sparse': True,
+            'is_distributed': True,
+            'remote_prefetch': True,
+            'is_test': is_test,
+            'entry': entry_str
+        })
+
+    return tmp
 
 
 def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
@@ -1365,7 +1442,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
 
 
 def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
-    """
+    r"""
     **Pull Box Extended Sparse Layer**
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     BoxPS lookup table. The result of this lookup is the embedding of each ID in the
@@ -1409,3 +1486,333 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     if len(outs) == 1:
         return outs[0], outs_extend[0]
     return outs, outs_extend
+
+
+def bilateral_slice(x, guide, grid, has_offset, name=None):
+    """
+    :alias_main: paddle.nn.functional.bilateral_slice
+	:alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
+	:old_api: paddle.fluid.layers.bilateral_slice
+
+    This operation implements bilateral slicing on the input according to the guide map.
+    For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
+
+    Args:
+        x(Variable): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W], N is the batch size, C is the channel
+                     number, H and W is the feature height and width.
+                     The data type is float32 and float64.
+        guide(Variable): Input grid tensor of shape [N, H, W]. The
+                        data type is float32 and float64.
+        grid(Variable): Input grid tensor of shape [N, C, D, H, W]. The
+                        data type is float32 and float64.
+        has_offset(bool): Whether to slice with affine offset.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Variable: Output of shape [N, C, H, W]. The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x = fluid.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
+            guide = fluid.data(name='guide', shape=[None, 101, 60], dtype='float32')
+            grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+
+            # without offset
+            output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)
+            
+            # has offset
+            output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
+
+    """
+    helper = LayerHelper("bilateral_slice", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
+    check_variable_and_dtype(guide, 'guide', ['float32', 'float64'],
+                             'bilateral_slice')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'bilateral_slice')
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    inputs = {'X': x, 'Guide': guide, 'Grid': grid}
+    if paddle.fluid.in_dygraph_mode():
+        attrs = ('has_offset', has_offset)
+        return getattr(core.ops, "bilateral_slice")(x, grid, guide, *attrs)
+    helper.append_op(
+        type='bilateral_slice',
+        inputs=inputs,
+        attrs={'has_offset': has_offset},
+        outputs={'Out': out})
+    return out
+
+
+def correlation(x,
+                y,
+                pad_size,
+                kernel_size,
+                max_displacement,
+                stride1,
+                stride2,
+                corr_type_multiply=1):
+    """
+
+    This operation compute correlation of two tensor.
+    For more information of correlation, please refer to PWC-Net: 
+    CNNs for Optical Flow Using Pyramid, Warping, and Cost Volume 
+    <https://arxiv.org/pdf/1709.02371.pdf>_
+
+    Args:
+        x(Tensor): The input x is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
+        y(Tensor): The input y is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
+        pad_size(int): Pad size. The data type is int.
+        max_displacement(int): Max displacement. The data type is int.
+        stride1(int): stride size of x. The data type is int.
+        stride2(int): stride size of y. The data type is int.
+        corr_type_multiply(int, optional): The type of multiply. The data type is int. Default: 1.
+
+    Returns:
+        Tensor: The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x1 = fluid.layers.data(name='x1',
+                               shape=x_shape,
+                               dtype=x_type,
+                               append_batch_size=False)
+            x2 = fluid.layers.data(name='x2',
+                                shape=x_shape,
+                                dtype=x_type,
+                                append_batch_size=False)
+
+
+            out = fluid.contrib.correlation(
+                            x1,
+                            x2,
+                            pad_size=4,
+                            kernel_size=1,
+                            max_displacement=4,
+                            stride1=1,
+                            stride2=1)
+
+    """
+
+    helper = LayerHelper("correlation", **locals())
+    output = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if paddle.fluid.in_dygraph_mode():
+        attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
+                 "max_displacement", max_displacement, "stride1", stride1,
+                 "stride2", stride2, "corr_type_multiply", corr_type_multiply)
+        output = getattr(core.ops, "correlation")(x, y, *attrs)
+    else:
+        helper.append_op(
+            type="correlation",
+            inputs={"Input1": x,
+                    "Input2": y},
+            attrs={
+                "pad_size": pad_size,
+                "kernel_size": kernel_size,
+                "max_displacement": max_displacement,
+                "stride1": stride1,
+                "stride2": stride2,
+                "corr_type_multiply": corr_type_multiply
+            },
+            outputs={"Output": output})
+    return output
+
+
+def fused_bn_add_act(x,
+                     y,
+                     momentum=0.9,
+                     epsilon=1e-05,
+                     param_attr=None,
+                     bias_attr=None,
+                     moving_mean_name=None,
+                     moving_variance_name=None,
+                     act=None,
+                     name=None):
+    r"""
+    This Op performs batch norm on input x, and adds the result to input y. Then
+    it performs activation on the sum. The data format of inputs must be NHWC
+    `[batch, in_height, in_width, in_channels]`.
+
+    Args:
+        x(Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
+            is float16.
+        y(Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
+            is float16.
+        momentum(float|Tensor, optional): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a tensor with
+            shape [1] and data type as float32. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+            of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+	        will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	        If the Initializer of the param_attr is not set, the parameter is initialized
+	        with Xavier. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm.
+            If it is set to None or one attribute of ParamAttr, batch_norm
+	        will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	        If the Initializer of the bias_attr is not set, the bias is initialized zero.
+	        Default: None.
+        moving_mean_name(str, optional): The name of moving_mean which store the global Mean. If it
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
+            will save global mean with the string.
+        moving_variance_name(str, optional): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
+            will save global variance with the string.
+        act(string, optional): Activation type, linear|relu|prelu|...
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+
+    Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def build_program(main_program, startup_program):
+                with fluid.program_guard(main_program, startup_program):
+                    x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
+                    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                    conv1_1 = fluid.layers.conv2d(
+                        input=x,
+                        filter_size=3,
+                        num_filters=32,
+                        stride=1,
+                        padding=1,
+                        act=None,
+                        bias_attr=False,
+                        data_format='NHWC')
+                    conv1_2 = fluid.layers.conv2d(
+                        input=x,
+                        filter_size=3,
+                        num_filters=32,
+                        stride=1,
+                        padding=1,
+                        act=None,
+                        bias_attr=False,
+                        data_format='NHWC')
+                    bn = fluid.layers.batch_norm(
+                        input=conv1_1,
+                        act=None,
+                        data_layout='NHWC')
+                    fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(conv1_2, bn)
+                    prediction = fluid.layers.fc(input=fused_bn_add_act, size=10, act='softmax')
+                    loss = fluid.layers.cross_entropy(input=prediction, label=y)
+                    loss = fluid.layers.mean(loss)
+                    sgd = fluid.optimizer.SGD(learning_rate=0.001)
+                    sgd = fluid.contrib.mixed_precision.decorate(
+                        sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
+                    sgd.minimize(loss)
+
+                return x, y, loss
+
+            iters = 5
+            batch_size = 16
+            support_gpu = fluid.is_compiled_with_cuda()
+            if support_gpu:
+                main_program = fluid.Program()
+                startup_program = fluid.Program()
+                place = fluid.CUDAPlace(0)
+                x, y, loss = build_program(main_program, startup_program)
+  
+                feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+                train_reader = paddle.batch(
+                    paddle.dataset.mnist.train(), batch_size=batch_size)
+                exe = fluid.Executor(place)
+                scope = fluid.Scope()
+                with fluid.scope_guard(scope):
+                    exe.run(startup_program)
+                    for _ in range(iters):
+                        data = next(train_reader())
+                        loss_v = exe.run(main_program, feed=feeder.feed(data), fetch_list=[loss])
+    """
+    helper = LayerHelper('fused_bn_add_act', **locals())
+
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'fused_bn_add_act')
+    check_variable_and_dtype(y, 'input', ['float16', 'float32', 'float64'],
+                             'fused_bn_add_act')
+    bn_param_dtype = core.VarDesc.VarType.FP32
+
+    x_shape = x.shape
+    channel_num = x_shape[-1]
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=bn_param_dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=param_shape,
+        dtype=bn_param_dtype,
+        is_bias=True)
+    mean = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_mean_name, initializer=Constant(0.0), trainable=False),
+        shape=param_shape,
+        dtype=bn_param_dtype)
+    mean.stop_gradient = True
+    variance = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_variance_name,
+            initializer=Constant(1.0),
+            trainable=False),
+        shape=param_shape,
+        dtype=bn_param_dtype)
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=bn_param_dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=bn_param_dtype, stop_gradient=True)
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+    batch_norm_out = helper.create_variable_for_type_inference(
+        core.VarDesc.VarType.FP16)
+
+    inputs = {
+        "X": x,
+        "Z": y,
+        "Scale": scale,
+        "Bias": bias,
+    }
+    attrs = {"epsilon": epsilon, 'momentum': momentum}
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance,
+        "ReserveSpace": reserve_space
+    }
+
+    helper.append_op(
+        type="fused_bn_add_activation",
+        inputs=inputs,
+        outputs=outputs,
+        attrs=attrs)
+
+    return batch_norm_out

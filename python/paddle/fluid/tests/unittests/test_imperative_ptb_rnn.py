@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
@@ -225,8 +226,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         traced_layer = None
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -272,7 +273,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     program = traced_layer.program
 
                     traced_layer.save_inference_model(
-                        './infe_imperative_ptb_rnn', feed=range(4))
+                        './infe_imperative_ptb_rnn', feed=list(range(4)))
                 else:
                     outs = ptb_model(x, y, init_hidden, init_cell)
 
@@ -293,8 +294,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             dy_last_hidden_value = last_hidden.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,

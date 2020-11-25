@@ -18,9 +18,9 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <fstream>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/io/crypto/cipher.h"
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 

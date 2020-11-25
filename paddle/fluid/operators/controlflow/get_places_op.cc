@@ -12,9 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>  // NOLINT
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/gpu_info.h"
 #endif

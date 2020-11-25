@@ -14,12 +14,17 @@
 
 #include <map>
 #include <string>
+
 #include "paddle/fluid/framework/program_desc.h"
 
 #pragma once
 
 namespace paddle {
 namespace framework {
+
+namespace proto {
+class OpCompatibleMap;
+}  // namespace proto
 
 enum class OpCompatibleType {
   compatible = 0,       //   support previous version
@@ -52,14 +57,6 @@ class OpCompatibleMap {
 
   OpCompatibleType IsRequireMiniVersion(std::string op_name,
                                         std::string current_version) const;
-
-  // Convert the entire OpCompatibleMap to Proto, which can be serialized
-  // to the model file as part of the ProgramDesc.
-  bool ConvertToProto(proto::OpCompatibleMap* desc) const;
-
-  // Read and reset the entire object from proto, which can be read from
-  // the model file as part of the program.
-  bool ReadFromProto(const proto::OpCompatibleMap& desc);
 
   const std::string& GetDefaultRequiredVersion() const {
     return default_required_version_;

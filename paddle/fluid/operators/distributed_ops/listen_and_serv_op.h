@@ -32,7 +32,23 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCServer;
+class RequestHandler;
+}  // namespace distributed
 
 constexpr char kOptimizeBlocks[] = "optimize_blocks";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
@@ -99,6 +115,8 @@ class ListenAndServOp : public framework::OperatorBase {
   mutable std::shared_ptr<distributed::RequestHandler>
       request_checkpoint_handler_;
   mutable std::shared_ptr<distributed::RequestHandler> request_notify_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler>
+      request_send_and_recv_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
   mutable std::vector<std::string> sparse_vars_;

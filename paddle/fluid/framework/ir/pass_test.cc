@@ -13,15 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include <memory>
+
 #include <string>
-#include <utility>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+class Graph;
+class Node;
+
 void BuildCircleGraph(Graph* g) {
   ir::Node* o1 = g->CreateEmptyNode("op1", Node::Type::kOperation);
   ir::Node* o2 = g->CreateEmptyNode("op2", Node::Type::kOperation);
@@ -119,7 +121,7 @@ TEST(PassTest, TestPassAttrCheck) {
   } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);
+  ASSERT_TRUE(exception.find("shouldn't contain cycle") != exception.npos);
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->Set<int>("test_pass_attr", new int);

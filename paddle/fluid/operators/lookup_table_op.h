@@ -49,83 +49,89 @@ class LookupTableKernel : public framework::OpKernel<T> {
     auto embedding_name = context.InputNames("W").front();
     auto out_name = context.OutputNames("Out").front();
 
-    // for remote prefetch
-    auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto remote_prefetch = context.Attr<bool>("remote_prefetch");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
-    auto table_names = context.Attr<std::vector<std::string>>("table_names");
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+    bool is_test = context.Attr<bool>("is_test");
 
-    if (remote_prefetch && !epmap.empty()) {
-// if epmap is not empty, then the parameter will be fetched from remote
-// parameter server
+    int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
+    int64_t ids_numel = ids_t->numel();
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch(id_name, out_name, embedding_name, false,
-                                       table_names, epmap, height_sections,
-                                       context, context.scope());
-#else
-      PADDLE_THROW(
-          "paddle is not compiled with distribute support, can not do "
-          "parameter prefetch!");
-#endif
-    } else {
-      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-      int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
-      int64_t ids_numel = ids_t->numel();
+    if (table_var->IsType<LoDTensor>()) {
+      auto *table_t = context.Input<LoDTensor>("W");
+      int64_t row_number = table_t->dims()[0];
+      int64_t row_width = table_t->dims()[1];
 
-      if (table_var->IsType<LoDTensor>()) {
-        auto *table_t = context.Input<LoDTensor>("W");
-        int64_t row_number = table_t->dims()[0];
-        int64_t row_width = table_t->dims()[1];
+      auto *table = table_t->data<T>();
+      auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-        auto *table = table_t->data<T>();
-        auto *output = output_t->mutable_data<T>(context.GetPlace());
-
-        for (int64_t i = 0; i < ids_numel; ++i) {
-          if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-            memset(output + i * row_width, 0, row_width * sizeof(T));
-          } else {
-            PADDLE_ENFORCE_LT(
-                ids[i], row_number,
-                platform::errors::InvalidArgument(
-                    "Variable value (input) of OP(fluid.layers.embedding) "
-                    "expected >= 0 and < %ld, but got %ld. Please check input "
-                    "value.",
-                    row_number, ids[i]));
-            PADDLE_ENFORCE_GE(
-                ids[i], 0,
-                platform::errors::InvalidArgument(
-                    "Variable value (input) of OP(fluid.layers.embedding) "
-                    "expected >= 0 and < %ld, but got %ld. Please check input "
-                    "value.",
-                    row_number, ids[i]));
-            memcpy(output + i * row_width, table + ids[i] * row_width,
-                   row_width * sizeof(T));
-          }
+      for (int64_t i = 0; i < ids_numel; ++i) {
+        if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+          memset(output + i * row_width, 0, row_width * sizeof(T));
+        } else {
+          PADDLE_ENFORCE_LT(
+              ids[i], row_number,
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0 and < %ld, but got %ld. Please check input "
+                  "value.",
+                  row_number, ids[i]));
+          PADDLE_ENFORCE_GE(
+              ids[i], 0,
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0 and < %ld, but got %ld. Please check input "
+                  "value.",
+                  row_number, ids[i]));
+          memcpy(output + i * row_width, table + ids[i] * row_width,
+                 row_width * sizeof(T));
         }
-      } else if (table_var->IsType<SelectedRows>()) {
-        const auto &table_t = table_var->Get<SelectedRows>();
-        int64_t row_width = table_t.value().dims()[1];
-        const auto *table = table_t.value().data<T>();
-        auto *output = output_t->mutable_data<T>(context.GetPlace());
-        auto input_data_type = table_t.value().type();
-        for (int64_t i = 0; i < ids_numel; ++i) {
-          if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-            memset(output + i * row_width, 0, row_width * sizeof(T));
+      }
+
+    } else if (table_var->IsType<SelectedRows>()) {
+      const auto &table_t = table_var->Get<SelectedRows>();
+      int64_t row_width = table_t.value().dims()[1];
+      const auto *table = table_t.value().data<T>();
+      auto *output = output_t->mutable_data<T>(context.GetPlace());
+      auto input_data_type = table_t.value().type();
+      for (int64_t i = 0; i < ids_numel; ++i) {
+        if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+          memset(output + i * row_width, 0, row_width * sizeof(T));
+        } else {
+          PADDLE_ENFORCE_GE(
+              ids[i], 0,
+              platform::errors::InvalidArgument(
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0. But received %ld",
+                  ids[i]));
+          if (is_test) {
+            auto id_index = table_t.GetIndexFromId(ids[i]);
+
+            if (id_index != -1) {
+              if (input_data_type == framework::proto::VarType::INT8) {
+                memcpy(output + i * row_width, table + id_index * row_width,
+                       row_width * sizeof(T));
+              } else {
+                auto blas =
+                    math::GetBlas<platform::CPUDeviceContext, T>(context);
+                blas.VCOPY(row_width, table + id_index * row_width,
+                           output + i * row_width);
+              }
+            } else {
+              memset(output + i * row_width, 0, row_width * sizeof(T));
+            }
           } else {
+            auto id_index = table_t.Index(ids[i]);
             PADDLE_ENFORCE_GE(
                 ids[i], 0,
                 platform::errors::InvalidArgument(
                     "Variable value (input) of OP(fluid.layers.embedding) "
                     "expected >= 0. But received %ld",
                     ids[i]));
-            auto id_index = table_t.Index(ids[i]);
             PADDLE_ENFORCE_GE(
                 id_index, 0,
                 platform::errors::InvalidArgument(
                     "the input key should be exists. But received %d.",
                     id_index));
+
             if (input_data_type == framework::proto::VarType::INT8) {
               memcpy(output + i * row_width, table + id_index * row_width,
                      row_width * sizeof(T));
@@ -153,9 +159,9 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *table_t = context.Input<SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "The parameter W of a LookupTable "
-          "must be either LoDTensor or SelectedRows");
+          "must be either LoDTensor or SelectedRows"));
     }
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
@@ -177,36 +183,23 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       auto *d_table_value = d_table->mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
-      // FIXME(minqiyang):
-      // memory optimization will NOT reuse Tensor with SelectedRows
-      // so we could just share the tensor here directly.
-      // However, the InferVarType method will infer the output SelectedRows
-      // to Tensor sometimes, which is a bug, so we will add an attribute
-      // here to indicate the inplace and remove this attribute after
-      // the InferVarType's bug was fixed
-      bool grad_inplace = context.Attr<bool>("grad_inplace");
-      if (grad_inplace) {
-        d_table_value->ShareDataWith(*d_output);
-      } else {
-        d_table_value->mutable_data<T>(context.GetPlace());
+      d_table_value->mutable_data<T>(context.GetPlace());
+      d_table->set_height(table_dim[0]);
 
-        d_table->set_height(table_dim[0]);
+      auto *d_output_data = d_output->data<T>();
+      auto *d_table_data = d_table_value->data<T>();
 
-        auto *d_output_data = d_output->data<T>();
-        auto *d_table_data = d_table_value->data<T>();
-
-        auto d_output_dims = d_output->dims();
-        auto d_output_dims_2d =
-            framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
-        PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
-                          platform::errors::InvalidArgument(
-                              "ShapeError: The shape of lookup_table@Grad and "
-                              "output@Grad should be same. "
-                              "But received lookup_table@Grad's shape = [%s], "
-                              "output@Grad's shape = [%s].",
-                              d_table_value->dims(), d_output_dims_2d));
-        memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
-      }
+      auto d_output_dims = d_output->dims();
+      auto d_output_dims_2d =
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+                        platform::errors::InvalidArgument(
+                            "ShapeError: The shape of lookup_table@Grad and "
+                            "output@Grad should be same. "
+                            "But received lookup_table@Grad's shape = [%s], "
+                            "output@Grad's shape = [%s].",
+                            d_table_value->dims(), d_output_dims_2d));
+      memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));

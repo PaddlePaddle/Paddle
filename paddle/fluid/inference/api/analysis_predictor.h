@@ -188,6 +188,23 @@ class AnalysisPredictor : public PaddlePredictor {
   void OptimizeInferenceProgram();
 
   ///
+  /// \brief Clear the intermediate tensors of the predictor
+  ///
+  ///
+  void ClearIntermediateTensor();
+
+  ///
+  /// \brief Release all tmp tensor to compress the size of the memory pool.
+  /// The memory pool is considered to be composed of a list of chunks, if
+  /// the chunk is not occupied, it can be released.
+  ///
+  /// \return Number of bytes released. It may be smaller than the actual
+  /// released memory, because part of the memory is not managed by the
+  /// MemoryPool.
+  ///
+  uint64_t TryShrinkMemory() override;
+
+  ///
   /// \brief Get the argument used by predictor
   ///
   /// \return the argument obtained by config
@@ -311,6 +328,17 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] inputs tensors
   ///
   void MkldnnPreSet(const std::vector<PaddleTensor> &inputs);
+
+  ///
+  /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
+  ///
+  /// Used in AnalysisPredictor::Run(), do not support
+  /// AnalysisPredictor::ZeroCopyRun() now.
+  ///
+  /// \param[in] inputs tensor shape
+  ///
+  void MkldnnPreSet(const std::vector<std::vector<int>> &inputs_shape);
+
   ///
   /// \brief PostReset for Mkldnn multi-thread and dynamic shape input.
   ///
@@ -318,13 +346,6 @@ class AnalysisPredictor : public PaddlePredictor {
   /// AnalysisPredictor::ZeroCopyRun() now.
   ///
   void MkldnnPostReset();
-  ///
-  /// \brief Compute compatibility based on model version information and
-  /// operator version information
-  ///
-  /// \return Compatible information
-  ///
-  bool CheckOperatorCompatible();
 
 #if PADDLE_WITH_TENSORRT
   ///

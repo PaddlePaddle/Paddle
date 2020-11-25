@@ -16,7 +16,14 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 #define MAX_CONCAT_INPUTS 200
 
@@ -139,11 +146,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE(subgraph.count(pat.RetrieveNode(name)),
-                   "pattern has no Node called %s", name.c_str());
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+                      platform::errors::NotFound(
+                          "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(
-        p, platform::errors::NotFound("subgraph has no node %s", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
+                                   "Subgraph has no node %s.", name.c_str()));
     return p;
   };
 

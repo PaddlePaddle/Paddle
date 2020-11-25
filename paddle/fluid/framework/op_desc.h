@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -27,6 +28,7 @@ namespace framework {
 
 class BlockDesc;
 class ProgramDesc;
+
 class OpDesc {
  public:
   OpDesc() {}
@@ -56,6 +58,8 @@ class OpDesc {
                 const std::vector<std::string> &args);
 
   const std::vector<std::string> &Output(const std::string &name) const;
+
+  bool HasOutput(const std::string &name) const;
 
   std::vector<std::string> OutputArgumentNames() const;
 

@@ -25,11 +25,14 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
+from . import unique_name
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from . import framework
+from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -51,11 +54,11 @@ def global_scope():
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy
 
-          fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
-          numpy.array(fluid.global_scope().find_var("data").get_tensor())
+          paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
+          numpy.array(paddle.static.global_scope().find_var("data").get_tensor())
     """
     return g_scope
 
@@ -91,12 +94,13 @@ def scope_guard(scope):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy
+            paddle.enable_static()
 
-            new_scope = fluid.Scope()
-            with fluid.scope_guard(new_scope):
-                 fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
+            new_scope = paddle.static.Scope()
+            with paddle.static.scope_guard(new_scope):
+                 paddle.static.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), paddle.CPUPlace())
             numpy.array(new_scope.find_var("data").get_tensor())
     """
 
@@ -107,7 +111,7 @@ def scope_guard(scope):
         _switch_scope(ex)
 
 
-def as_numpy(tensor):
+def as_numpy(tensor, copy=False):
     """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
     For higher dimensional sequence data, please use LoDTensor directly.
@@ -126,6 +130,7 @@ def as_numpy(tensor):
 
     Args:
        tensor(Variable): a instance of Tensor
+       copy(bool, optional): Whether to use deep copy.
 
     Returns:
         numpy.ndarray
@@ -142,7 +147,10 @@ def as_numpy(tensor):
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
     if tensor._is_initialized():
-        return np.array(tensor)
+        if copy:
+            return np.array(tensor)
+        else:
+            return np.asarray(tensor)
     else:
         return None
 
@@ -347,7 +355,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
         " program.")
     tensor = var.get_tensor()
     if return_numpy:
-        tensor = as_numpy(tensor)
+        tensor = as_numpy(tensor, copy=True)
     return tensor
 
 
@@ -404,29 +412,35 @@ def _as_lodtensor(data, place, dtype=None):
             >>>     ...
 
         Args:
-            data(numpy.ndarray): a instance of array
+            data(numpy.ndarray|list|tuple|scalar): a instance of array, scalar, list or tuple
             data(core.Place): the place of created tensor
-            dtype(core.VarDesc.VarType): the expected data type of created tensor
+            dtype(core.VarDesc.VarType|str): the expected data type of created tensor
 
         Returns:
             LoDTensor
         """
-    if isinstance(data, list):
-        raise RuntimeError("Some of your feed data hold LoD information. \
-                They can not be completely cast from a list of Python \
-                ndarray to LoDTensor. Please convert data to LoDTensor \
-                directly before feeding the data.\
-                ")
-
-    #NOTE(zhiqiu): convert python builtin ,like float and int, to numpy array
+    #NOTE(zhiqiu): convert python builtin, like float, int, and list, to numpy ndarray
     if not isinstance(data, np.ndarray):
+        assert dtype is not None, 'The dtype should be given when feed data is not np.ndarray'
+        dtype = convert_dtype(dtype) if isinstance(
+            dtype, core.VarDesc.VarType) else dtype
         if np.isscalar(data):
-            assert dtype is not None, 'dtype should be given when casting python scalar to tensor'
-            dtype = convert_dtype(dtype) if isinstance(
-                dtype, core.VarDesc.VarType) else dtype
             data = np.array([data]).astype(dtype)
+        elif isinstance(data, (list, tuple)):
+            data = np.array(data)
+            if data.dtype == np.object:
+                raise TypeError(
+                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "this means the input data contains nested lists with different lengths. "
+                    "Please consider using 'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
+                )
+            data = data.astype(dtype)
+        else:
+            raise TypeError(
+                "Convert data of type {} to Tensor is not supported".format(
+                    type(data)))
 
-    # single tensor case
+    # convert numpy.ndarray to tensor
     tensor = core.LoDTensor()
     tensor.set(data, place)
     return tensor
@@ -466,7 +480,7 @@ class Executor(object):
     and single/multiple-CPU running.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
+        place(paddle.CPUPlace()|paddle.CUDAPlace(n)|None): This parameter represents
             which device the executor runs on. When this parameter is None, PaddlePaddle
             will set the default device according to its installation version. If Paddle
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
@@ -478,68 +492,63 @@ class Executor(object):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.fluid.compiler as compiler
-          import numpy
-          import os
+            import paddle
+            import numpy
+            import os
 
-          # Set place explicitly.
-          # use_cuda = True
-          # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          # exe = fluid.Executor(place)
+            # Executor is only used in static graph mode
+            paddle.enable_static()
 
-          # If you don't set place, PaddlePaddle sets the default device.
-          exe = fluid.Executor()
+            # Set place explicitly.
+            # use_cuda = True
+            # place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            # exe = paddle.static.Executor(place)
 
-          train_program = fluid.Program()
-          startup_program = fluid.Program()
-          with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            # If you don't set place, PaddlePaddle sets the default device.
+            exe = paddle.static.Executor()
 
-          # Run the startup program once and only once.
-          # Not need to optimize/compile the startup program.
-          startup_program.random_seed=1
-          exe.run(startup_program)
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                hidden = paddle.static.nn.fc(data, 10)
+                loss = paddle.mean(hidden)
+                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-          # Run the main program directly without compile.
-          x = numpy.random.random(size=(10, 1)).astype('float32')
-          loss_data, = exe.run(train_program,
-                               feed={"X": x},
-                               fetch_list=[loss.name])
+            # Run the startup program once and only once.
+            # Not need to optimize/compile the startup program.
+            exe.run(startup_program)
 
-          # Or, compiled the program and run. See `CompiledProgram`
-          # for more detail.
-          # NOTE: If you use CPU to run the program or Paddle is
-          # CPU version, you need to specify the CPU_NUM, otherwise,
-          # fluid will use all the number of the logic core as
-          # the CPU_NUM, in that case, the batch size of the input
-          # should be greater than CPU_NUM, if not, the process will be
-          # failed by an exception.
+            # Run the main program directly without compile.
+            x = numpy.random.random(size=(10, 1)).astype('float32')
+            loss_data, = exe.run(train_program, feed={"X": x}, fetch_list=[loss.name])
 
-          # Set place explicitly.
-          # if not use_cuda:
-          #     os.environ['CPU_NUM'] = str(2)
+            # Or, compiled the program and run. See `CompiledProgram`
+            # for more details.
+            # NOTE: If you use CPU to run the program or Paddle is
+            # CPU version, you need to specify the CPU_NUM, otherwise,
+            # PaddlePaddle will use all the number of the logic core as
+            # the CPU_NUM, in that case, the batch size of the input
+            # should be greater than CPU_NUM, if not, the process will be
+            # failed by an exception.
 
-          # If you don't set place and PaddlePaddle is CPU version
-          os.environ['CPU_NUM'] = str(2)
+            # Set place explicitly.
+            # if not use_cuda:
+            #     os.environ['CPU_NUM'] = str(2)
 
-          compiled_prog = compiler.CompiledProgram(
-              train_program).with_data_parallel(
-              loss_name=loss.name)
-          loss_data, = exe.run(compiled_prog,
-                               feed={"X": x},
-                               fetch_list=[loss.name])
+            # If you don't set place and PaddlePaddle is CPU version
+            os.environ['CPU_NUM'] = str(2)
+
+            compiled_prog = paddle.static.CompiledProgram(
+                train_program).with_data_parallel(loss_name=loss.name)
+            loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
+
     """
 
     def __init__(self, place=None):
         if place is None:
-            if core.is_compiled_with_cuda():
-                self.place = core.CUDAPlace(0)
-            else:
-                self.place = core.CPUPlace()
+            expected_place = framework._current_expected_place()
+            self.place = expected_place
         else:
             self.place = place
         self.program_caches = dict()
@@ -552,6 +561,10 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
         self.pruned_program_scope_caches = dict()
+        self._prepare_to_run_called = False
+
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_executor__")
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -827,10 +840,10 @@ class Executor(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
 
-              cpu = fluid.CPUPlace()
-              exe = fluid.Executor(cpu)
+              cpu = paddle.CPUPlace()
+              exe = paddle.static.Executor(cpu)
               # execute training or testing
               exe.close()
         """
@@ -840,6 +853,7 @@ class Executor(object):
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
+        from paddle.optimizer.lr import LRScheduler
         exe = program._executor
         # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
         # instead of program. We will add support for checking Vars in Graph
@@ -883,6 +897,16 @@ class Executor(object):
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
 
+        if hasattr(program._program, 'lr_sheduler'):
+            lr_sheduler = program._program.lr_sheduler
+            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
+            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
+            exe.feed_and_split_tensor_into_local_scopes({
+                lr_sheduler._var_name: lr_tensor
+            })
+
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
         return as_numpy(tensors) if return_numpy else tensors
@@ -902,17 +926,17 @@ class Executor(object):
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
         operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
-        specify the scope to store the :code:`Variables` during the executor running if the scope
-        is not set, the executor will use the global scope, i.e. :code:`fluid.global_scope()`.
+        specify the scope to store the :code:`Tensor` during the executor running if the scope
+        is not set, the executor will use the global scope, i.e. :code:`paddle.static.global_scope()`.
 
         Args:
             program(Program|CompiledProgram): This parameter represents the :code:`Program` or
                 :code:`CompiledProgram` to be executed. If this parameter is not provided, that
-                parameter is None, the program will be set to :code:`fluid.default_main_program()`.
+                parameter is None, the program will be set to :code:`paddle.static.default_main_program()`.
                 The default is None.
-            feed(list|dict): This parameter represents the input variables of the model.
+            feed(list|dict): This parameter represents the input Tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list type variable. If the
+                training, the parameter feed can be dict or list of Tensors. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
                 sent to different devices, so you should make sure the number of samples of
@@ -920,23 +944,23 @@ class Executor(object):
                 if the parameter type is list, those data are copied directly to each device,
                 so the length of this list should be equal to the number of places.
                 The default is None.
-            fetch_list(list): This parameter represents the variables that need to be returned
+            fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None. 
-            feed_var_name(str): This parameter represents the name of the input variable of
+            feed_var_name(str): This parameter represents the name of the input Tensor of
                 the feed operator. The default is "feed".
-            fetch_var_name(str): This parameter represents the name of the output variable of
+            fetch_var_name(str): This parameter represents the name of the output Tensor of
                 the fetch operator. The default is "fetch".
             scope(Scope): the scope used to run this program, you can switch 
-                it to different scope. default is :code:`fluid.global_scope()`
-            return_numpy(bool): This parameter indicates whether convert the fetched variables
-                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+                it to different scope. default is :code:`paddle.static.global_scope()`
+            return_numpy(bool): This parameter indicates whether convert the fetched Tensors
+                (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
             use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
                 If the parameter is True, the model may run faster in the following cases:
-                the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
-                and fetch_list variable) of this interface remains unchanged during running.
+                the input program is :code:`paddle.static.Program`, and the parameters(program, feed Tensor name
+                and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched variables (the variables
+            return_merged(bool): This parameter indicates whether fetched Tensors (the Tensors
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
                 of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
@@ -970,81 +994,88 @@ class Executor(object):
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same variable values
-               (variables in fetch_list) on different devices.
+               results are spliced together in dimension 0 for the same Tensor values
+               (Tensors in fetch_list) on different devices.
 
         Examples 1:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy
+                import paddle
+                import numpy
 
-              # First create the Executor.
-              place = fluid.CPUPlace() # fluid.CUDAPlace(0)
-              exe = fluid.Executor(place)
+                # First create the Executor.
+                paddle.enable_static()
+                place = paddle.CPUPlace()  # paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
 
-              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              adam = fluid.optimizer.Adam()
-              adam.minimize(loss)
-              i = fluid.layers.zeros(shape=[1], dtype='int64')
-              array = fluid.layers.array_write(x=loss, i=i)
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                hidden = paddle.static.nn.fc(data, 10)
+                loss = paddle.mean(hidden)
+                adam = paddle.optimizer.Adam()
+                adam.minimize(loss)
+                i = paddle.zeros(shape=[1], dtype='int64')
+                array = paddle.fluid.layers.array_write(x=loss, i=i)
 
-              # Run the startup program once and only once.
-              exe.run(fluid.default_startup_program())
+                # Run the startup program once and only once.
+                exe.run(paddle.static.default_startup_program())
 
-              x = numpy.random.random(size=(10, 1)).astype('float32')
-              loss_val, array_val = exe.run(feed={'X': x},
-                                            fetch_list=[loss.name, array.name])
-              print(array_val)
-              # [array([0.02153828], dtype=float32)]
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                loss_val, array_val = exe.run(feed={'X': x},
+                                              fetch_list=[loss.name, array.name])
+                print(array_val)
+                # [array([0.02153828], dtype=float32)]
 
         Examples 2:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 # First create the Executor.
-                place = fluid.CUDAPlace(0)
-                exe = fluid.Executor(place)
+                paddle.enable_static()
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
 
-                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
                 class_dim = 2
-                prediction = fluid.layers.fc(input=data, size=class_dim)
-                loss = fluid.layers.mean(prediction)
-                adam = fluid.optimizer.Adam()
+                prediction = paddle.static.nn.fc(data, class_dim)
+                loss = paddle.mean(prediction)
+                adam = paddle.optimizer.Adam()
                 adam.minimize(loss)
 
                 # Run the startup program once and only once.
-                exe.run(fluid.default_startup_program())
-                build_strategy = fluid.BuildStrategy()
-                binary = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(
-                    loss_name=loss.name, build_strategy=build_strategy)
+                exe.run(paddle.static.default_startup_program())
+                build_strategy = paddle.static.BuildStrategy()
+                binary = paddle.static.CompiledProgram(
+                    paddle.static.default_main_program()).with_data_parallel(
+                        loss_name=loss.name, build_strategy=build_strategy)
                 batch_size = 6
                 x = np.random.random(size=(batch_size, 1)).astype('float32')
 
                 # Set return_merged as False to fetch unmerged results:
-                unmerged_prediction, = exe.run(binary, feed={'X': x},
-                    fetch_list=[prediction.name],
-                    return_merged=False)
+                unmerged_prediction, = exe.run(binary,
+                                               feed={'X': x},
+                                               fetch_list=[prediction.name],
+                                               return_merged=False)
                 # If the user uses two GPU cards to run this python code, the printed result will be
                 # (2, 3, class_dim). The first dimension value of the printed result is the number of used
                 # GPU cards, and the second dimension value is the quotient of batch_size and the
                 # number of used GPU cards.
-                print("The unmerged prediction shape: {}".format(np.array(unmerged_prediction).shape))
+                print("The unmerged prediction shape: {}".format(
+                    np.array(unmerged_prediction).shape))
                 print(unmerged_prediction)
 
                 # Set return_merged as True to fetch merged results:
-                merged_prediction, = exe.run(binary, feed={'X': x},
-                    fetch_list=[prediction.name],
-                    return_merged=True)
+                merged_prediction, = exe.run(binary,
+                                             feed={'X': x},
+                                             fetch_list=[prediction.name],
+                                             return_merged=True)
                 # If the user uses two GPU cards to run this python code, the printed result will be
                 # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                print("The merged prediction shape: {}".format(np.array(merged_prediction).shape))
+                print("The merged prediction shape: {}".format(
+                    np.array(merged_prediction).shape))
                 print(merged_prediction)
-
+ 
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1059,6 +1090,7 @@ class Executor(object):
                 #  [-0.24635398 -0.13003758]
                 #  [-0.49232286 -0.25939852]
                 #  [-0.44514108 -0.2345845 ]]
+
         """
         try:
             return self._run_impl(
@@ -1073,9 +1105,6 @@ class Executor(object):
                 use_prune=use_prune,
                 return_merged=return_merged)
         except Exception as e:
-            if not isinstance(e, core.EOFException):
-                warnings.warn(
-                    "The following exception is not an EOF exception.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
@@ -1087,6 +1116,24 @@ class Executor(object):
         use_default_main_program = program is None
         if program is None:
             program = default_main_program()
+
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(
+                    fetch_list, str) or isinstance(fetch_list,
+                                                   six.string_types):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
+        else:
+            fetch_list = []
+
+        if isinstance(program, Program) and program._pipeline_opt:
+            if "startup_program" in program._pipeline_opt:
+                program = program._pipeline_opt["startup_program"]
+            else:
+                return self.train_from_dataset(program, fetch_list=fetch_list)
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
@@ -1102,18 +1149,6 @@ class Executor(object):
 
         if scope is None:
             scope = global_scope()
-
-        if fetch_list is not None:
-            if isinstance(fetch_list, Variable) or isinstance(
-                    fetch_list, str) or isinstance(fetch_list,
-                                                   six.string_types):
-                fetch_list = [fetch_list]
-            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                "Currently , The fetch_list type only should be list or tuple, \n"\
-                "but the input type is {}. For more information please refer to \n"\
-                "the executor.run(...).".format(type(fetch_list))
-        else:
-            fetch_list = []
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
@@ -1149,8 +1184,47 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
+        # Check if fluid.data() variable no feed data
+        if use_prune:
+            if compiled:
+                global_block = program._program.global_block()
+            else:
+                global_block = program.global_block()
+            for varname in global_block.vars:
+                vardesc = global_block.desc.find_var(cpt.to_bytes(varname))
+                varobj = global_block.vars[varname]
+
+                # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed
+                if vardesc.persistable() == False and \
+                    vardesc.type() == core.VarDesc.VarType.LOD_TENSOR and \
+                    vardesc.need_check_feed() == True and \
+                    varobj._stop_gradient == True and \
+                    varobj.is_data == True and \
+                    varobj.belong_to_optimizer == False and \
+                    varname not in feed:
+                    raise ValueError('Need feed data for variable %s' % varname)
+
+        acp._auto_checkpoint(self, program)
+
         # For backward compatibility, run directly.
         if not compiled:
+            # In distributed training, the compiled program is saved in Program._graph
+            has_compiled_graph = isinstance(program._graph,
+                                            compiler.CompiledProgram)
+            if has_compiled_graph:
+                program._graph._compile(scope, self.place)
+                # _graph in program does not support inference since the _graph is optimized
+                # through optimizer.minimize function and should not be used as inference graph
+                # assert not program._graph._is_inference
+                return self._run_parallel(
+                    program._graph,
+                    scope=scope,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    fetch_var_name=fetch_var_name,
+                    return_numpy=return_numpy,
+                    return_merged=return_merged)
+
             return self._run_program(
                 program,
                 feed=feed,
@@ -1176,7 +1250,7 @@ class Executor(object):
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
-
+        from paddle.optimizer.lr import LRScheduler
         if feed is None:
             feed = {}
         elif isinstance(feed, (list, tuple)):
@@ -1193,6 +1267,11 @@ class Executor(object):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
+
+        if not isinstance(fetch_var_name, str):
+            raise TypeError(
+                "The name of fetch variable requires string as its Parameter. But you passed in %s"
+                % (type(fetch_var_name)))
 
         if use_program_cache:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
@@ -1232,9 +1311,19 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
+        if hasattr(program, 'lr_sheduler'):
+            assert isinstance(program.lr_sheduler,
+                              LRScheduler), "must be LRScheduler"
+            lr_sheduler = program.lr_sheduler
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
         if not use_program_cache:
             self._default_executor.run(program.desc, scope, 0, True, True,
-                                       fetch_var_name)
+                                       [fetch_var_name])
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
@@ -1280,6 +1369,14 @@ class Executor(object):
                          fetch_list=None,
                          fetch_info=None,
                          print_period=100):
+        is_heter = 0
+        if not program._fleet_opt is None:
+            if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
+                is_heter = 1
+            if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
+                is_heter = 1
+            if program._fleet_opt.get("use_ps_gpu", ""):
+                is_heter = 1
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1288,6 +1385,11 @@ class Executor(object):
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
+        if is_heter:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+            fu = FleetUtil()
+            ret = fu.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -1297,6 +1399,8 @@ class Executor(object):
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
+            if is_heter:
+                trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
@@ -1331,16 +1435,46 @@ class Executor(object):
                           fetch_info=None,
                           print_period=100,
                           fetch_handler=None):
-        if dataset is None:
-            raise RuntimeError("dataset is need and should be initialized")
-
-        if program._pipeline_opt is not None and program._pipeline_opt[
-                "sync_steps"] != -1:
-            # hack for paddlebox: sync_steps(-1) denotes paddlebox
-            thread = self._adjust_pipeline_resource(program._pipeline_opt,
-                                                    dataset, thread)
+        if program._pipeline_opt is not None:
+            import paddle
+            if dataset is not None:
+                raise RuntimeError("dataset should be None for pipeline mode")
+            # The following fake dataset is created to call 
+            # the _prepare_trainer api, and it is meaningless.
+            data_vars = []
+            for var in program.global_block().vars.values():
+                if var.is_data:
+                    data_vars.append(var)
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset')
+            dataset.set_batch_size(1)
+            dataset.set_thread(1)
+            dataset.set_filelist(['None'])
+            dataset.set_use_var(data_vars)
+        else:
+            if dataset is None:
+                raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
+        real_fetch_list = []
+        if program._pipeline_opt:
+            real_program = program._pipeline_opt["section_program"]['program']
+            for fetch_var in fetch_list:
+                if isinstance(fetch_var, Variable):
+                    fetch_var_name = fetch_var.name
+                else:
+                    fetch_var_name = fetch_var
+                if fetch_var_name in real_program.global_block().vars:
+                    real_fetch_list.append(fetch_var)
+
+            program._pipeline_opt["section_program"][
+                'program'] = self._add_feed_fetch_ops(
+                    program=program._pipeline_opt["section_program"]['program'],
+                    feed=[],
+                    fetch_list=real_fetch_list,
+                    feed_var_name='feed',
+                    fetch_var_name='fetch')
+            fetch_list = None
 
         scope, trainer = self._prepare_trainer(
             program=program,
@@ -1375,6 +1509,10 @@ class Executor(object):
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
+        if real_fetch_list:
+            arr = scope.find_var('fetch').get_fetch_list()
+            tensors = arr._move_to_list()
+            return as_numpy(tensors)
 
         return None
 
@@ -1412,9 +1550,9 @@ class Executor(object):
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
             debug(bool): whether a user wants to run infer_from_dataset, default is False
-            fetch_list(Variable List): fetch variable list, each variable will be printed during
+            fetch_list(Tensor List): fetch Tensor list, each Tensor will be printed during
                 training, default is None
-            fetch_info(String List): print information for each variable, default is None
+            fetch_info(String List): print information for each Tensor, default is None
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
 
@@ -1425,25 +1563,81 @@ class Executor(object):
 
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
-                exe = fluid.Executor(place)
-                x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-                y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
-                dataset = fluid.DatasetFactory().create_dataset()
+                paddle.enable_static()
+                place = paddle.CPUPlace()  # you can set place = paddle.CUDAPlace(0) to use gpu
+                exe = paddle.static.Executor(place)
+                x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+                y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+                dataset = paddle.fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
-                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                filelist = []
                 dataset.set_filelist(filelist)
-                exe.run(fluid.default_startup_program())
-                exe.infer_from_dataset(program=fluid.default_main_program(),
-                                       dataset=dataset)        
+                exe.run(paddle.static.default_startup_program())
+                exe.infer_from_dataset(program=paddle.static.default_main_program(),
+                                       dataset=dataset)
 
         """
         return self._run_from_dataset(program, dataset, scope, thread, True,
                                       debug, fetch_list, fetch_info,
                                       print_period, fetch_handler)
+
+    def start_heter_trainer(self,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        return self._start_heter_trainer(program, scope, False, debug,
+                                         fetch_list, fetch_info, print_period,
+                                         fetch_handler)
+
+    def _start_heter_trainer(self,
+                             program=None,
+                             scope=None,
+                             is_infer=False,
+                             debug=False,
+                             fetch_list=None,
+                             fetch_info=None,
+                             print_period=100,
+                             fetch_handler=None):
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=None,
+            scope=scope,
+            thread=1,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+
+        trainer._set_infer(is_infer)
+        trainer._gen_trainer_desc()
+
+        self._dump_debug_info(program=program, trainer=trainer)
+
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, None)
+
+        #if fetch_handler is not None:
+        #    scope0 = trainer_instance.get_worker_scope(0)
+        #    fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+        #    fetch_monitor.start()
+        #    self._default_executor.run_from_dataset(trainer_instance)
+        #    fetch_monitor.stop()
+        #    self._default_executor.release_trainer(trainer_instance)
+        #else:
+
+        self._default_executor.run_from_dataset(trainer_instance)
+        #self._default_executor.release_trainer(trainer_instance)
+
+        return trainer_instance
 
     def train_from_dataset(self,
                            program=None,
@@ -1477,9 +1671,9 @@ class Executor(object):
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
             debug(bool): whether a user wants to run train_from_dataset 
-            fetch_list(Variable List): fetch variable list, each variable will be printed
+            fetch_list(Tensor List): fetch Tensor list, each variable will be printed
                 during training
-            fetch_info(String List): print information for each variable, its length should be equal
+            fetch_info(String List): print information for each Tensor, its length should be equal
                 to fetch_list
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
@@ -1491,19 +1685,21 @@ class Executor(object):
         
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
 
-              place = fluid.CPUPlace() # you can set place = fluid.CUDAPlace(0) to use gpu
-              exe = fluid.Executor(place)
-              x = fluid.layers.data(name="x", shape=[10, 10], dtype="int64")
-              y = fluid.layers.data(name="y", shape=[1], dtype="int64", lod_level=1)
-              dataset = fluid.DatasetFactory().create_dataset()
+              paddle.enable_static()
+              place = paddle.CPUPlace() # you can set place = paddle.CUDAPlace(0) to use gpu
+              exe = paddle.static.Executor(place)
+              x = paddle.static.data(name="x", shape=[None, 10, 10], dtype="int64")
+              y = paddle.static.data(name="y", shape=[None, 1], dtype="int64", lod_level=1)
+              dataset = paddle.fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)
-              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+              # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+              filelist = []
               dataset.set_filelist(filelist)
-              exe.run(fluid.default_startup_program())
-              exe.train_from_dataset(program=fluid.default_main_program(),
+              exe.run(paddle.static.default_startup_program())
+              exe.train_from_dataset(program=paddle.static.default_main_program(),
                                      dataset=dataset)
 
         """

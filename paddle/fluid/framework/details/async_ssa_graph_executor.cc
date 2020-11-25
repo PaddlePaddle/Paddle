@@ -42,45 +42,30 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
   }
 }
 
-// get RpcContext and remote send and recv op
+// get CommContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using RpcCtxMap = operators::distributed::RpcCtxMap;
-  VLOG(3) << "ProcessGraph";
-  RpcCtxMap send_varname_to_ctx;
+
+  bool need_communicator = false;
 
   for (auto &node : graphs[0]->Nodes()) {
     VLOG(3) << "node name " << node->Name();
     if (node && node->IsOp()) {
       if (node->Name() == "send") {
-        auto send_var_name = node->Op()->Input("X")[0];
         auto send_varnames =
             BOOST_GET_CONST(std::vector<std::string>,
                             node->Op()->GetNullableAttr("send_varnames"));
-        auto epmap = BOOST_GET_CONST(std::vector<std::string>,
-                                     node->Op()->GetNullableAttr("epmap"));
-        auto height_section = BOOST_GET_CONST(
-            std::vector<int64_t>, node->Op()->GetNullableAttr("sections"));
-        auto trainer_id =
-            BOOST_GET_CONST(int, node->Op()->GetNullableAttr("trainer_id"));
-        auto merge_add =
-            BOOST_GET_CONST(bool, node->Op()->GetNullableAttr("merge_add"));
-        if (!merge_add) {
-          merge_add = FLAGS_communicator_is_sgd_optimizer;
+
+        if (send_varnames.size() > 0) {
+          need_communicator = true;
+          break;
         }
-        auto use_send_handler = BOOST_GET_CONST(
-            bool, node->Op()->GetNullableAttr("use_send_handler"));
-        send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-            send_var_name, send_varnames, epmap, height_section, trainer_id,
-            merge_add, use_send_handler);
-        VLOG(3) << "find and init an send op: "
-                << send_varname_to_ctx[send_var_name];
       }
     }
   }
 
-  // init communicator here
-  if (send_varname_to_ctx.size() > 0) {
+  if (need_communicator) {
+    // init communicator here
     auto *instance = operators::distributed::Communicator::GetInstance();
     auto initialized = instance ? true : false;
     PADDLE_ENFORCE_EQ(initialized, true,
@@ -89,6 +74,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
                           "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
                           "develop/markdown_doc/transpiler)"));
   }
+
 #endif
 }
 
@@ -103,8 +89,19 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
-  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and the number of local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
+  PADDLE_ENFORCE_EQ(
+      local_scopes_.size(), local_exec_scopes_.size(),
+      platform::errors::InvalidArgument(
+          "The number of local scopes and the number of local execution scopes "
+          "should be equal, but got number of local scopes is %d and "
+          "number of local execution scopes is %d.",
+          local_scopes_.size(), local_exec_scopes_.size()));
 
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()

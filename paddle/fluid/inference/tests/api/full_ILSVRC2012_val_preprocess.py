@@ -23,7 +23,7 @@ from PIL import Image
 import math
 from paddle.dataset.common import download
 import tarfile
-import StringIO
+from six.moves import StringIO
 import argparse
 
 random.seed(0)
@@ -152,7 +152,7 @@ def convert_Imagenet_tar2bin(tar_file, output_file):
 
         idx = 0
         for imagedata in dataset.values():
-            img = Image.open(StringIO.StringIO(imagedata))
+            img = Image.open(StringIO(imagedata))
             img = process_image(img)
             np_img = np.array(img)
             ofs.write(np_img.astype('float32').tobytes())

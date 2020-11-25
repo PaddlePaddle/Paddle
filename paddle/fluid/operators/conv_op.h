@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
@@ -138,102 +139,6 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
   return !(filter_1 && strides_1 && padding_0 && dilation_1);
 }
 
-template <typename DeviceContext, typename T>
-inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
-                                 const Tensor* input,
-                                 Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[4];
-    in_dims_vec[2] = input->dims()[1];
-    in_dims_vec[3] = input->dims()[2];
-    in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-
-  } else if (dim == 2) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[3];
-    in_dims_vec[2] = input->dims()[1];
-    in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-  }
-}
-
-template <typename DeviceContext, typename T>
-inline void ResizeToChannelLast(const framework::ExecutionContext& context,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[2];
-    in_dims_vec[2] = input->dims()[3];
-    in_dims_vec[3] = input->dims()[4];
-    in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-
-  } else if (dim == 2) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[2];
-    in_dims_vec[2] = input->dims()[3];
-    in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-  }
-}
-
-template <typename DeviceContext, typename T>
-inline void TransToChannelFirst(const framework::ExecutionContext& context,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 4, 1, 2, 3};
-    math::Transpose<DeviceContext, T, 5> trans5;
-    trans5(dev_ctx, *input, transformed_input, axis);
-
-  } else if (dim == 2) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 3, 1, 2};
-    math::Transpose<DeviceContext, T, 4> trans4;
-    trans4(dev_ctx, *input, transformed_input, axis);
-  }
-}
-
-template <typename DeviceContext, typename T>
-inline void TransToChannelLast(const framework::ExecutionContext& context,
-                               const Tensor* input, Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 2, 3, 4, 1};
-    math::Transpose<DeviceContext, T, 5> trans5;
-    trans5(dev_ctx, *input, transformed_input, axis);
-
-  } else if (dim == 2) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 2, 3, 1};
-    math::Transpose<DeviceContext, T, 4> trans4;
-    trans4(dev_ctx, *input, transformed_input, axis);
-  }
-}
 // Define Op classes in .h file so that other conv
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -685,8 +590,9 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
     const Tensor* X = ctx.Input<Tensor>("Input");
     const Tensor* dY = ctx.Input<Tensor>("DOutput");
     const Tensor* ddX = ctx.Input<Tensor>("DDInput");
@@ -982,11 +888,20 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           output->dims()[output->dims().size() - 1] %
               input->dims()[input->dims().size() - 1],
-          0, "The output channels must be a multiple of the input channels");
+          0, platform::errors::InvalidArgument(
+                 "ShapeError: The output channels must be a multiple of the "
+                 "input channels. But receivced output channel number is %d "
+                 "and input channel number is %d",
+                 output->dims()[output->dims().size() - 1],
+                 input->dims()[input->dims().size() - 1]));
     } else {
       PADDLE_ENFORCE_EQ(
           output->dims()[1] % input->dims()[1], 0,
-          "The output channels must be a multiple of the input channels");
+          platform::errors::InvalidArgument(
+              "ShapeError: The output channels must be a multiple of the "
+              "input channels. But receivced output channel number is %d "
+              "and input channel number is %d",
+              output->dims()[1], input->dims()[1]));
     }
     // transform tensor
     Tensor transformed_input(input->type());

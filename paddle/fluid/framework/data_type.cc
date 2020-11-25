@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_type.h"
-#include <stdint.h>
 #include <string>
 #include <unordered_map>
 
 using float16 = paddle::platform::float16;
+using bfloat16 = paddle::platform::bfloat16;
 
 namespace paddle {
 namespace framework {
@@ -65,7 +65,8 @@ proto::VarType::Type ToDataType(std::type_index type) {
   if (it != gDataTypeMap().cpp_to_proto_.end()) {
     return it->second;
   }
-  PADDLE_THROW("Not support %s as tensor type", type.name());
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not support %s as tensor data type.", platform::demangle(type.name())));
 }
 
 std::type_index ToTypeIndex(proto::VarType::Type type) {
@@ -73,8 +74,9 @@ std::type_index ToTypeIndex(proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_cpp_.end()) {
     return it->second;
   }
-  PADDLE_THROW("Not support proto::VarType::Type(%d) as tensor type",
-               static_cast<int>(type));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not support proto::VarType::Type(%d) as tensor type.",
+      static_cast<int>(type)));
 }
 
 std::string DataTypeToString(const proto::VarType::Type type) {
@@ -82,8 +84,9 @@ std::string DataTypeToString(const proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_str_.end()) {
     return it->second;
   }
-  PADDLE_THROW("Not support proto::VarType::Type(%d) as tensor type",
-               static_cast<int>(type));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not support proto::VarType::Type(%d) as tensor type.",
+      static_cast<int>(type)));
 }
 
 size_t SizeOfType(proto::VarType::Type type) {
@@ -91,7 +94,8 @@ size_t SizeOfType(proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_size_.end()) {
     return it->second;
   }
-  PADDLE_THROW("Not support %s as tensor type", DataTypeToString(type));
+  PADDLE_THROW(platform::errors::Unimplemented("Not support %s as tensor type.",
+                                               DataTypeToString(type)));
 }
 
 }  // namespace framework

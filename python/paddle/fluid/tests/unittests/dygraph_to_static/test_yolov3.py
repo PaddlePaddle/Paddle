@@ -17,12 +17,14 @@ import random
 import time
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
 
 from yolov3 import cfg, YOLOv3
 
+paddle.enable_static()
 random.seed(0)
 np.random.seed(0)
 
@@ -53,13 +55,9 @@ class FakeDataReader(object):
             for j in range(cfg.batch_size):
                 img = np.random.normal(0.485, 0.229,
                                        [3, cfg.input_size, cfg.input_size])
-                gt_boxes_node1 = np.random.randint(
-                    low=cfg.input_size / 4,
-                    high=cfg.input_size / 2,
-                    size=[1, 2])
-                gt_boxes_node2 = gt_boxes_node1 + cfg.input_size / 4
-                gt_boxes = np.concatenate(
-                    (gt_boxes_node1, gt_boxes_node2), axis=1)
+                point1 = cfg.input_size / 4
+                point2 = cfg.input_size / 2
+                gt_boxes = np.array([[point1, point1, point2, point2]])
                 gt_labels = np.random.randint(
                     low=0, high=cfg.class_num, size=[1])
                 gt_scores = np.zeros([1])
@@ -165,7 +163,8 @@ class TestYolov3(unittest.TestCase):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
         self.assertTrue(
-            np.allclose(dygraph_loss, static_loss),
+            np.allclose(
+                dygraph_loss, static_loss, atol=1e-5, rtol=1e-3),
             msg="dygraph_loss: {} \nstatic_loss: {}".format(dygraph_loss,
                                                             static_loss))
 

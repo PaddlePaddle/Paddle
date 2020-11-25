@@ -19,12 +19,25 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class PassBuilder;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class NCCLCommunicator;
+}  // namespace platform
+}  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -87,6 +100,7 @@ struct BuildStrategy {
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.
   bool fuse_bn_act_ops_{false};
+  bool fuse_bn_add_act_ops_{true};
   bool fuse_elewise_add_act_ops_{false};
   bool enable_auto_fusion_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
@@ -118,6 +132,9 @@ struct BuildStrategy {
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
+
+  // Turn off inplace addto by default.
+  bool enable_addto_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

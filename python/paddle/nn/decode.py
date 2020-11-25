@@ -12,19 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define api to implement decoding algorithm  
-from ..fluid.layers import beam_search  #DEFINE_ALIAS
-from ..fluid.layers import beam_search_decode  #DEFINE_ALIAS
-
-from ..fluid.layers import gather_tree  #DEFINE_ALIAS
+from ..fluid.layers import BeamSearchDecoder  #DEFINE_ALIAS
+from ..fluid.layers import dynamic_decode  #DEFINE_ALIAS
 
 __all__ = [
-    #       'BeamSearchDecoder',
-    #       'Decoder',
-    'beam_search',
-    'beam_search_decode',
-    #       'crf_decoding',
-    #       'ctc_greedy_decoder',
-    #       'dynamic_decode',
-    'gather_tree'
+    'BeamSearchDecoder',
+    'dynamic_decode',
 ]

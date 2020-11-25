@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
@@ -94,8 +95,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
             for is_sort_sum_gradient in [True, False]:
                 with fluid.dygraph.guard(place):
-                    fluid.default_startup_program().random_seed = seed
-                    fluid.default_main_program().random_seed = seed
+                    paddle.seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,
@@ -113,8 +114,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_loss = None
 
                     helper = DyGraphProgramDescTracerTestHelper(self)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = is_sort_sum_gradient
+                    fluid.set_flags({
+                        'FLAGS_sort_sum_gradient': is_sort_sum_gradient
+                    })
 
                     for i in range(batch_num):
                         x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -129,7 +131,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         if i == 0:
                             for param in simple_net.parameters():
                                 dy_param_init[param.name] = param.numpy()
-                        dy_loss.backward(backward_strategy)
+                        dy_loss.backward()
                         sgd.minimize(dy_loss)
                         sgd.clear_gradients()
                         if i == batch_num - 1:
@@ -138,8 +140,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_loss_value = dy_loss.numpy()
 
                 with new_program_scope():
-                    fluid.default_startup_program().random_seed = seed
-                    fluid.default_main_program().random_seed = seed
+                    paddle.seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,
@@ -186,7 +188,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                     k - 1]] = out[k]
 
                 self.assertTrue(
-                    np.array_equal(static_loss_value, dy_loss_value))
+                    np.allclose(
+                        static_loss_value, dy_loss_value, rtol=1e-3))
                 for key, value in six.iteritems(static_param_init):
                     self.assertTrue(np.array_equal(value, dy_param_init[key]))
                 for key, value in six.iteritems(static_param_updated):

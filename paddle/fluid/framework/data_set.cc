@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 #include "xxhash.h"  // NOLINT
 
@@ -31,6 +32,7 @@
 #define _LINUX
 #endif
 
+USE_INT_STAT(STAT_total_feasign_num_in_mem);
 namespace paddle {
 namespace framework {
 
@@ -42,6 +44,7 @@ DatasetImpl<T>::DatasetImpl() {
   trainer_num_ = 1;
   channel_num_ = 1;
   file_idx_ = 0;
+  total_fea_num_ = 0;
   cur_channel_ = 0;
   fleet_send_batch_size_ = 1024;
   fleet_send_sleep_seconds_ = 0;
@@ -92,9 +95,10 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
                                    const std::string& fs_ugi) {
   fs_name_ = fs_name;
   fs_ugi_ = fs_ugi;
-  std::string cmd = std::string("hadoop fs");
+  std::string cmd = std::string("$HADOOP_HOME/bin/hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
+  cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
   paddle::framework::hdfs_set_command(cmd);
 }
 
@@ -328,7 +332,13 @@ void DatasetImpl<T>::ReleaseMemory() {
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   input_records_.clear();
   std::vector<T>().swap(input_records_);
+  std::vector<T>().swap(slots_shuffle_original_data_);
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
+  VLOG(3) << "total_feasign_num_(" << STAT_GET(STAT_total_feasign_num_in_mem)
+          << ") - current_fea_num_(" << total_fea_num_ << ") = ("
+          << STAT_GET(STAT_total_feasign_num_in_mem) - total_fea_num_
+          << ")";  // For Debug
+  STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
 }
 
 // do local shuffle
@@ -617,6 +627,8 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetThreadNum(thread_num_);
     readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     readers_[i]->SetFileListIndex(&file_idx_);
+    readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
+    readers_[i]->SetFeaNum(&total_fea_num_);
     readers_[i]->SetFileList(filelist_);
     readers_[i]->SetParseInsId(parse_ins_id_);
     readers_[i]->SetParseContent(parse_content_);
@@ -686,6 +698,8 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     preload_readers_[i]->SetFileListIndex(&file_idx_);
     preload_readers_[i]->SetFileList(filelist_);
+    preload_readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
+    preload_readers_[i]->SetFeaNum(&total_fea_num_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
     preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetParseLogKey(parse_logkey_);

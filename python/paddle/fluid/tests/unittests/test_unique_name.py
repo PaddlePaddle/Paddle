@@ -43,3 +43,18 @@ class TestUniqueName(unittest.TestCase):
             name3 = fluid.unique_name.generate('tmp')
             self.assertNotEqual(name1, name2)
             self.assertEqual(name1[-2:], name3[-2:])
+
+
+class TestImperativeUniqueName(unittest.TestCase):
+    def test_name_generator(self):
+        with fluid.dygraph.guard():
+            tracer = fluid.framework._dygraph_tracer()
+            tmp_var_0 = tracer._generate_unique_name()
+            self.assertEqual(tmp_var_0, "dygraph_tmp_0")
+
+            tmp_var_1 = tracer._generate_unique_name("dygraph_tmp")
+            self.assertEqual(tmp_var_1, "dygraph_tmp_1")
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -16,10 +16,6 @@ if(NOT WITH_PYTHON)
     add_definitions(-DPADDLE_NO_PYTHON)
 endif(NOT WITH_PYTHON)
 
-if(WITH_DSO)
-    add_definitions(-DPADDLE_USE_DSO)
-endif(WITH_DSO)
-
 if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
@@ -48,11 +44,22 @@ if(WIN32)
   SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
   SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
+  add_definitions(-DPADDLE_DLL_INFERENCE)
   # set definition for the dll export
   if (NOT MSVC)
     message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
   endif(NOT MSVC)
 endif(WIN32)
+
+if(WITH_MUSL)
+    add_definitions(-DPADDLE_WITH_MUSL)
+
+    message(STATUS, "Set compile option WITH_MKL=OFF when WITH_MUSL=ON")
+    SET(WITH_MKL OFF)
+
+    message(STATUS, "Set compile option WITH_GPU=OFF when WITH_MUSL=ON")
+    SET(WITH_GPU OFF)
+endif()
 
 if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
@@ -66,17 +73,18 @@ if(WITH_BOX_PS)
     add_definitions(-DPADDLE_WITH_BOX_PS)
 endif()
 
+if(WITH_XPU)
+    message(STATUS "Compile with XPU!")
+    add_definitions(-DPADDLE_WITH_XPU)
+endif()
+
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)
-    # The compiler fully support const expressions since c++14,
-    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
-    # use following definition to set EIGEN_HAS_CONSTEXPR=0 to avoid compilation error in c++11
-    add_definitions(-DEIGEN_MAX_CPP_VER=11)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
         message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
@@ -89,7 +97,7 @@ if(WITH_GPU)
     else()
         message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
     endif()
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${SIMD_FLAG}\"")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
@@ -97,11 +105,11 @@ if(WITH_GPU)
 
     if(TENSORRT_FOUND)
         if(WIN32)
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 9)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 9)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 9.0 to compile on Windows")
             endif()
         else()
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 8)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
             endif()
             if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)

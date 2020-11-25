@@ -51,7 +51,7 @@ class EyeKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     set_zero(dev_ctx, out_tensor, static_cast<T>(0));
 
-    int64_t num_eyes = std::min(num_rows, num_columns);
+    int64_t num_eyes = (std::min)(num_rows, num_columns);
     platform::ForRange<DeviceContext> for_range(dev_ctx, num_eyes);
     EyeFunctor<T> functor(num_columns, out_data);
     for_range(functor);

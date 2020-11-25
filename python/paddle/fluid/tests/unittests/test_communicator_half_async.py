@@ -24,12 +24,12 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.communicator import Communicator
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
+paddle.enable_static()
 
 
 class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
@@ -83,10 +83,7 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         fleet.stop_worker()
 
     def run_ut(self):
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.runtime_split_send_recv = True
-        strategy.half_async = True
+        strategy = StrategyFactory.create_half_async_strategy()
 
         training_role = os.getenv("TRAINING_ROLE", "TRAINER")
 
@@ -118,18 +115,21 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
+paddle.enable_static()
 
 class RunServer(TestCommunicatorHalfAsyncEnd2End):
     def runTest(self):
         pass
 
+os.environ["http_proxy"] = ""
+os.environ["https_proxy"] = ""
 os.environ["TRAINING_ROLE"] = "PSERVER"
 half_run_server = RunServer()
 half_run_server.run_ut()
@@ -147,6 +147,8 @@ half_run_server.run_ut()
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["FLAGS_communicator_send_queue_size"] = "1"
         os.environ["FLAGS_communicator_max_merge_var_num"] = "1"
@@ -157,21 +159,6 @@ half_run_server.run_ut()
         if os.path.exists(server_file):
             os.remove(server_file)
 
-
-# class TestCommunicatorHalfAsync2(unittest.TestCase):
-#     def test_communicator_init_and_start(self):
-#         prog = fluid.Program()
-
-#         envs = {}
-#         envs["communicator_send_queue_size"] = "12"
-#         envs["communicator_max_merge_var_num"] = "12"
-#         envs["communicator_thread_pool_size"] = "5"
-#         envs["communicator_send_wait_times"] = "5"
-
-#         comm = Communicator(prog, DistributedMode.HALF_ASYNC, None, envs)
-#         comm.start()
-#         time.sleep(10)
-#         comm.stop()
 
 if __name__ == '__main__':
     unittest.main()

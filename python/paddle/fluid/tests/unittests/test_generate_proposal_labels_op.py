@@ -22,66 +22,91 @@ import paddle.fluid as fluid
 from op_test import OpTest
 
 
-def generate_proposal_labels_in_python(
-        rpn_rois, gt_classes, is_crowd, gt_boxes, im_info, batch_size_per_im,
-        fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
-        class_nums, use_random, is_cls_agnostic, is_cascade_rcnn):
+def generate_proposal_labels_in_python(rpn_rois,
+                                       gt_classes,
+                                       is_crowd,
+                                       gt_boxes,
+                                       im_info,
+                                       batch_size_per_im,
+                                       fg_fraction,
+                                       fg_thresh,
+                                       bg_thresh_hi,
+                                       bg_thresh_lo,
+                                       bbox_reg_weights,
+                                       class_nums,
+                                       use_random,
+                                       is_cls_agnostic,
+                                       is_cascade_rcnn,
+                                       max_overlaps=None):
     rois = []
     labels_int32 = []
     bbox_targets = []
     bbox_inside_weights = []
     bbox_outside_weights = []
+    max_overlap_with_gt = []
     lod = []
     assert len(rpn_rois) == len(
         im_info), 'batch size of rpn_rois and ground_truth is not matched'
 
     for im_i in range(len(im_info)):
+        max_overlap = max_overlaps[im_i] if is_cascade_rcnn else None
         frcn_blobs = _sample_rois(
             rpn_rois[im_i], gt_classes[im_i], is_crowd[im_i], gt_boxes[im_i],
             im_info[im_i], batch_size_per_im, fg_fraction, fg_thresh,
             bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
-            use_random, is_cls_agnostic, is_cascade_rcnn)
+            use_random, is_cls_agnostic, is_cascade_rcnn, max_overlap)
         lod.append(frcn_blobs['rois'].shape[0])
         rois.append(frcn_blobs['rois'])
         labels_int32.append(frcn_blobs['labels_int32'])
         bbox_targets.append(frcn_blobs['bbox_targets'])
         bbox_inside_weights.append(frcn_blobs['bbox_inside_weights'])
         bbox_outside_weights.append(frcn_blobs['bbox_outside_weights'])
+        max_overlap_with_gt.append(frcn_blobs['max_overlap'])
 
-    return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, lod
+    return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, max_overlap_with_gt, lod
+
+
+def filter_roi(rois, max_overlap):
+    ws = rois[:, 2] - rois[:, 0] + 1
+    hs = rois[:, 3] - rois[:, 1] + 1
+    keep = np.where((ws > 0) & (hs > 0) & (max_overlap < 1.0))[0]
+    if len(keep) > 0:
+        return rois[keep, :]
+    return np.zeros((1, 4)).astype('float32')
 
 
 def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                  batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
                  bg_thresh_lo, bbox_reg_weights, class_nums, use_random,
-                 is_cls_agnostic, is_cascade_rcnn):
+                 is_cls_agnostic, is_cascade_rcnn, max_overlap):
     rois_per_image = int(batch_size_per_im)
     fg_rois_per_im = int(np.round(fg_fraction * rois_per_image))
 
     # Roidb
     im_scale = im_info[2]
     inv_im_scale = 1. / im_scale
-    if is_cascade_rcnn:
-        rpn_rois = rpn_rois[len(gt_boxes):, :]
     rpn_rois = rpn_rois * inv_im_scale
+
+    if is_cascade_rcnn:
+        rpn_rois = filter_roi(rpn_rois, max_overlap)
+
     boxes = np.vstack([gt_boxes, rpn_rois])
 
     gt_overlaps = np.zeros((boxes.shape[0], class_nums))
     box_to_gt_ind_map = np.zeros((boxes.shape[0]), dtype=np.int32)
-    if len(gt_boxes) > 0:
-        proposal_to_gt_overlaps = _bbox_overlaps(boxes, gt_boxes)
+    proposal_to_gt_overlaps = _bbox_overlaps(boxes, gt_boxes)
 
-        overlaps_argmax = proposal_to_gt_overlaps.argmax(axis=1)
-        overlaps_max = proposal_to_gt_overlaps.max(axis=1)
-        # Boxes which with non-zero overlap with gt boxes
-        overlapped_boxes_ind = np.where(overlaps_max > 0)[0]
-        overlapped_boxes_gt_classes = gt_classes[overlaps_argmax[
-            overlapped_boxes_ind]]
-        gt_overlaps[overlapped_boxes_ind,
-                    overlapped_boxes_gt_classes] = overlaps_max[
-                        overlapped_boxes_ind]
-        box_to_gt_ind_map[overlapped_boxes_ind] = overlaps_argmax[
-            overlapped_boxes_ind]
+    overlaps_argmax = proposal_to_gt_overlaps.argmax(axis=1)
+    overlaps_max = proposal_to_gt_overlaps.max(axis=1)
+    # Boxes which with non-zero overlap with gt boxes
+    overlapped_boxes_ind = np.where(overlaps_max > 0)[0]
+    overlapped_boxes_gt_classes = gt_classes[overlaps_argmax[
+        overlapped_boxes_ind]]
+    gt_overlaps[overlapped_boxes_ind,
+                overlapped_boxes_gt_classes] = overlaps_max[
+                    overlapped_boxes_ind]
+    box_to_gt_ind_map[overlapped_boxes_ind] = overlaps_argmax[
+        overlapped_boxes_ind]
 
     crowd_ind = np.where(is_crowd)[0]
     gt_overlaps[crowd_ind] = -1.0
@@ -90,11 +115,6 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
 
     if is_cascade_rcnn:
         # Cascade RCNN Decode Filter
-        ws = boxes[:, 2] - boxes[:, 0] + 1
-        hs = boxes[:, 3] - boxes[:, 1] + 1
-        keep = np.where((ws > 0) & (hs > 0))[0]
-        boxes = boxes[keep]
-        max_overlaps = max_overlaps[keep]
         fg_inds = np.where(max_overlaps >= fg_thresh)[0]
         bg_inds = np.where((max_overlaps < bg_thresh_hi) & (max_overlaps >=
                                                             bg_thresh_lo))[0]
@@ -125,6 +145,7 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
     sampled_labels = max_classes[keep_inds]
     sampled_labels[fg_rois_per_this_image:] = 0
     sampled_boxes = boxes[keep_inds]
+    sampled_max_overlap = max_overlaps[keep_inds]
     sampled_gts = gt_boxes[box_to_gt_ind_map[keep_inds]]
     sampled_gts[fg_rois_per_this_image:, :] = gt_boxes[0]
     bbox_label_targets = _compute_targets(sampled_boxes, sampled_gts,
@@ -142,7 +163,8 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
         labels_int32=sampled_labels,
         bbox_targets=bbox_targets,
         bbox_inside_weights=bbox_inside_weights,
-        bbox_outside_weights=bbox_outside_weights)
+        bbox_outside_weights=bbox_outside_weights,
+        max_overlap=sampled_max_overlap)
     return frcn_blobs
 
 
@@ -224,10 +246,11 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
 
 class TestGenerateProposalLabelsOp(OpTest):
     def set_data(self):
-        self.use_random = False
-        self.init_test_cascade()
+        #self.use_random = False
+        self.init_use_random()
         self.init_test_params()
         self.init_test_input()
+        self.init_test_cascade()
         self.init_test_output()
 
         self.inputs = {
@@ -235,8 +258,12 @@ class TestGenerateProposalLabelsOp(OpTest):
             'GtClasses': (self.gt_classes[0], self.gts_lod),
             'IsCrowd': (self.is_crowd[0], self.gts_lod),
             'GtBoxes': (self.gt_boxes[0], self.gts_lod),
-            'ImInfo': self.im_info
+            'ImInfo': self.im_info,
         }
+        if self.max_overlaps is not None:
+            self.inputs['MaxOverlap'] = (self.max_overlaps[0],
+                                         self.rpn_rois_lod)
+
         self.attrs = {
             'batch_size_per_im': self.batch_size_per_im,
             'fg_fraction': self.fg_fraction,
@@ -255,6 +282,7 @@ class TestGenerateProposalLabelsOp(OpTest):
             'BboxTargets': (self.bbox_targets, [self.lod]),
             'BboxInsideWeights': (self.bbox_inside_weights, [self.lod]),
             'BboxOutsideWeights': (self.bbox_outside_weights, [self.lod]),
+            'MaxOverlapWithGT': (self.max_overlap_with_gt, [self.lod]),
         }
 
     def test_check_output(self):
@@ -266,9 +294,13 @@ class TestGenerateProposalLabelsOp(OpTest):
 
     def init_test_cascade(self, ):
         self.is_cascade_rcnn = False
+        self.max_overlaps = None
+
+    def init_use_random(self):
+        self.use_random = False
 
     def init_test_params(self):
-        self.batch_size_per_im = 512
+        self.batch_size_per_im = 100
         self.fg_fraction = 0.25
         self.fg_thresh = 0.5
         self.bg_thresh_hi = 0.5
@@ -280,7 +312,7 @@ class TestGenerateProposalLabelsOp(OpTest):
     def init_test_input(self):
         np.random.seed(0)
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
-        proposal_nums = 2000 if not self.is_cascade_rcnn else 512  #self.batch_size_per_im - gt_nums
+        proposal_nums = 200
         images_shape = [[64, 64]]
         self.im_info = np.ones((len(images_shape), 3)).astype(np.float32)
         for i in range(len(images_shape)):
@@ -297,24 +329,16 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.gt_boxes = [gt['boxes'] for gt in ground_truth]
         self.is_crowd = [gt['is_crowd'] for gt in ground_truth]
 
-        if self.is_cascade_rcnn:
-            rpn_rois_new = []
-            for im_i in range(len(self.im_info)):
-                gt_boxes = self.gt_boxes[im_i]
-                rpn_rois = np.vstack(
-                    [gt_boxes, self.rpn_rois[im_i][len(gt_boxes):, :]])
-                rpn_rois_new.append(rpn_rois)
-            self.rpn_rois = rpn_rois_new
-
     def init_test_output(self):
         self.rois, self.labels_int32, self.bbox_targets, \
         self.bbox_inside_weights, self.bbox_outside_weights, \
+        self.max_overlap_with_gt, \
         self.lod = generate_proposal_labels_in_python(
                 self.rpn_rois, self.gt_classes, self.is_crowd, self.gt_boxes, self.im_info,
                 self.batch_size_per_im, self.fg_fraction,
                 self.fg_thresh, self.bg_thresh_hi, self.bg_thresh_lo,
                 self.bbox_reg_weights, self.class_nums, self.use_random,
-                self.is_cls_agnostic, self.is_cascade_rcnn
+                self.is_cls_agnostic, self.is_cascade_rcnn, self.max_overlaps
             )
         self.rois = np.vstack(self.rois)
         self.labels_int32 = np.hstack(self.labels_int32)
@@ -322,11 +346,40 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.bbox_targets = np.vstack(self.bbox_targets)
         self.bbox_inside_weights = np.vstack(self.bbox_inside_weights)
         self.bbox_outside_weights = np.vstack(self.bbox_outside_weights)
+        self.max_overlap_with_gt = np.vstack(self.max_overlap_with_gt)
 
 
 class TestCascade(TestGenerateProposalLabelsOp):
     def init_test_cascade(self):
         self.is_cascade_rcnn = True
+        roi_num = len(self.rpn_rois[0])
+        self.max_overlaps = []
+        max_overlap = np.random.rand(roi_num).astype('float32')
+        # Make GT samples with overlap = 1
+        max_overlap[max_overlap > 0.9] = 1.
+        self.max_overlaps.append(max_overlap)
+
+
+class TestUseRandom(TestGenerateProposalLabelsOp):
+    def init_use_random(self):
+        self.use_random = True
+        self.is_cascade_rcnn = False
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_out)
+
+    def verify_out(self, outs):
+        print("skip")
+
+    def init_test_params(self):
+        self.batch_size_per_im = 512
+        self.fg_fraction = 0.025
+        self.fg_thresh = 0.5
+        self.bg_thresh_hi = 0.5
+        self.bg_thresh_lo = 0.0
+        self.bbox_reg_weights = [0.1, 0.1, 0.2, 0.2]
+        self.is_cls_agnostic = False
+        self.class_nums = 2 if self.is_cls_agnostic else 81
 
 
 class TestClsAgnostic(TestCascade):
@@ -361,6 +414,15 @@ class TestOnlyGT(TestCascade):
         self.is_crowd = [gt['is_crowd'] for gt in ground_truth]
         self.rpn_rois = self.gt_boxes
         self.rpn_rois_lod = self.gts_lod
+
+
+class TestOnlyGT2(TestCascade):
+    def init_test_cascade(self):
+        self.is_cascade_rcnn = True
+        roi_num = len(self.rpn_rois[0])
+        self.max_overlaps = []
+        max_overlap = np.ones(roi_num).astype('float32')
+        self.max_overlaps.append(max_overlap)
 
 
 def _generate_proposals(images_shape, proposal_nums):

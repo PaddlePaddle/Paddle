@@ -23,6 +23,8 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 
 #include "paddle/fluid/operators/distributed/communicator.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 
 namespace py = pybind11;
 
@@ -30,41 +32,93 @@ using paddle::framework::ProgramDesc;
 using paddle::framework::Scope;
 using paddle::operators::distributed::AsyncCommunicator;
 using paddle::operators::distributed::Communicator;
-using paddle::operators::distributed::GeoSgdCommunicator;
+using paddle::operators::distributed::GeoCommunicator;
 using paddle::operators::distributed::HalfAsyncCommunicator;
 using paddle::operators::distributed::SyncCommunicator;
 
+using paddle::operators::distributed::CommContext;
+using paddle::operators::distributed::RpcCtxMap;
+
+using paddle::operators::distributed::LargeScaleKV;
+
 namespace paddle {
 namespace pybind {
+
+void BindCommunicatorContext(py::module* m) {
+  py::class_<CommContext>(*m, "CommContext")
+      .def(
+          py::init<const std::string&, const std::vector<std::string>&,
+                   const std::vector<std::string>&, const std::vector<int64_t>&,
+                   const std::vector<std::string>&, int, bool, bool, bool>())
+      .def("var_name", [](const CommContext& self) { return self.var_name; })
+      .def("trainer_id",
+           [](const CommContext& self) { return self.trainer_id; })
+      .def("split_varnames",
+           [](const CommContext& self) { return self.splited_varnames; })
+      .def("split_endpoints",
+           [](const CommContext& self) { return self.epmap; })
+      .def("sections",
+           [](const CommContext& self) { return self.height_sections; })
+      .def("aggregate", [](const CommContext& self) { return self.merge_add; })
+      .def("is_sparse", [](const CommContext& self) { return self.is_sparse; })
+      .def("is_distributed",
+           [](const CommContext& self) { return self.is_distributed; })
+      .def("origin_varnames",
+           [](const CommContext& self) { return self.origin_varnames; })
+      .def("__str__", [](const CommContext& self) { return self.print(); });
+}
 
 void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const std::string& mode, const ProgramDesc& program,
-                       Scope* param_scope,
+      .def(py::init([](const std::string& mode, const RpcCtxMap& send_ctx,
+                       const RpcCtxMap& recv_ctx, Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
         if (mode == "HALF_ASYNC") {
-          Communicator::InitInstance<HalfAsyncCommunicator>(program,
+          Communicator::InitInstance<HalfAsyncCommunicator>(send_ctx, recv_ctx,
                                                             param_scope, envs);
         } else if (mode == "ASYNC") {
-          Communicator::InitInstance<AsyncCommunicator>(program, param_scope,
-                                                        envs);
-        } else if (mode == "GEO") {
-          Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,
-                                                         envs);
+          Communicator::InitInstance<AsyncCommunicator>(send_ctx, recv_ctx,
+                                                        param_scope, envs);
         } else if (mode == "SYNC") {
-          Communicator::InitInstance<SyncCommunicator>(program, param_scope,
-                                                       envs);
+          Communicator::InitInstance<SyncCommunicator>(send_ctx, recv_ctx,
+                                                       param_scope, envs);
+        } else if (mode == "GEO") {
+          Communicator::InitInstance<GeoCommunicator>(send_ctx, recv_ctx,
+                                                      param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsuported communicator MODE"));
         }
+
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
-      .def("is_running", &Communicator::IsRunning);
+      .def("is_running", &Communicator::IsRunning)
+      .def("recv", &Communicator::RecvNoBarrier);
+}
+
+void BindLargeScaleKV(py::module* m) {
+  py::class_<LargeScaleKV, std::shared_ptr<LargeScaleKV>>(*m, "LargeScaleKV")
+      .def(py::init([]() { return LargeScaleKV::GetInstantcePtr(); }))
+      .def("load",
+           [](LargeScaleKV& self, const std::string& table_name,
+              const std::string& dir) {
+             auto* sparse_variable = self.Get(table_name);
+             sparse_variable->Load(dir);
+           })
+      .def("save",
+           [](LargeScaleKV& self, const std::string& table_name,
+              const std::string& dir) {
+             auto* sparse_variable = self.Get(table_name);
+             sparse_variable->Save(dir);
+           })
+      .def("size", [](LargeScaleKV& self, const std::string& table_name) {
+        auto* sparse_variable = self.Get(table_name);
+        return sparse_variable->Size();
+      });
 }
 }  // namespace pybind
 }  // namespace paddle

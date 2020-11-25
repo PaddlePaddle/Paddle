@@ -13,14 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/scale_matmul_fuse_pass.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 using string::PrettyLogDetail;
 
@@ -46,12 +51,15 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     if (scale_op->Op()->GetAttrIfExists<float>("bias") == 0.0) {
       auto matmul_alpha = matmul_op->Op()->GetAttrIfExists<float>("alpha");
       auto scale_scale = scale_op->Op()->GetAttrIfExists<float>("scale");
-      PADDLE_ENFORCE_GT(matmul_alpha, 0.0f,
-                        platform::errors::InvalidArgument(
-                            "Alpha of matmul op should have positive value"));
+      PADDLE_ENFORCE_GT(
+          matmul_alpha, 0.0f,
+          platform::errors::InvalidArgument(
+              "Alpha(%f) of matmul op should have positive value.",
+              matmul_alpha));
       PADDLE_ENFORCE_GT(scale_scale, 0.0f,
                         platform::errors::InvalidArgument(
-                            "Scale of scale op should have positive value"));
+                            "Scale(%f) of scale op should have positive value.",
+                            scale_scale));
 
       std::string matmul_op_input_name;
       for (auto name : matmul_op->Op()->InputNames())
@@ -60,8 +68,9 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
       PADDLE_ENFORCE_NE(
           matmul_op_input_name.empty(), true,
-          platform::errors::NotFound("Operator after scale operator "
-                                     "should have scale output as input"));
+          platform::errors::NotFound("Operator after scale operator(%s) "
+                                     "should have scale output as input.",
+                                     scale_out->Name()));
       matmul_op->Op()->SetAttr("alpha", matmul_alpha * scale_scale);
       matmul_op->Op()->SetInput(matmul_op_input_name,
                                 std::vector<std::string>({scale_in->Name()}));
@@ -82,3 +91,9 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(scale_matmul_fuse_pass,
               paddle::framework::ir::ScaleMatmulFusePass);
+
+REGISTER_PASS_CAPABILITY(scale_matmul_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("scale", 0)
+            .EQ("matmul", 0));

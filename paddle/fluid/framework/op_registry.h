@@ -28,12 +28,44 @@ limitations under the License. */
 #include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
+namespace proto {
+
+class BlockDesc;
+class OpDesc;
+class OpDesc_Attr;
+class OpDesc_Var;
+class OpProto;
+class OpProto_Attr;
+class OpProto_Var;
+class OpVersion;
+class OpVersionMap;
+class OpVersionMap_OpVersionPair;
+class ProgramDesc;
+class VarDesc;
+class VarType;
+class VarType_LoDTensorArrayDesc;
+class VarType_LoDTensorDesc;
+class VarType_ReaderDesc;
+class VarType_TensorDesc;
+class VarType_Tuple;
+class Version;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -54,9 +86,10 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
-    if (OpInfoMap::Instance().Has(op_type)) {
-      PADDLE_THROW("'%s' is registered more than once.", op_type);
-    }
+    PADDLE_ENFORCE_EQ(
+        OpInfoMap::Instance().Has(op_type), false,
+        platform::errors::AlreadyExists(
+            "Operator '%s' is registered more than once.", op_type));
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
     OpInfo info;
@@ -268,6 +301,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_XPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
+
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -295,6 +331,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_CPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, CPU, ::paddle::platform::CPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_XPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, XPU, ::paddle::platform::XPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 

@@ -12,13 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/matrix_inverse.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
+
+namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+template <typename DeviceContext, typename T>
+class MatrixInverseFunctor;
 
 template <typename T>
 class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
@@ -67,6 +74,8 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
 
+    std::vector<int> info;  // only for singular checking
+    info.resize(batch_size);
     // This functions in cuBLAS is intended to be used for matrices of small
     // sizes where the launch overhead is a significant factor.
     // TODO(Xreki): call function in cusolver for large matrices.
@@ -90,6 +99,15 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
       blas.BatchedGETRI(n,
                         reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr()),
                         gpu_pivot_ptr, gpu_inv_ptrs, gpu_info_ptr, batch_size);
+    }
+    memory::Copy(platform::CPUPlace(), info.data(),
+                 BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
+                 gpu_info_ptr, sizeof(int) * batch_size, context.stream());
+    for (int i = 0; i < batch_size; ++i) {
+      PADDLE_ENFORCE_EQ(info[i], 0,
+                        platform::errors::PreconditionNotMet(
+                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
+                            info[i], info[i]));
     }
   }
 };

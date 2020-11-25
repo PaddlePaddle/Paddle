@@ -17,92 +17,72 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle.static import program_guard, Program
 
 
 class TestRandnOp(unittest.TestCase):
     def test_api(self):
-        x1 = paddle.randn(shape=[1000, 784], dtype='float32')
-        x2 = paddle.randn(shape=[1000, 784], dtype='float64')
-        x3 = fluid.layers.fill_constant(
-            shape=[1000, 784], dtype='float32', value=0)
-        paddle.randn(shape=[1000, 784], out=x3, dtype='float32')
-        x4 = paddle.randn(shape=[1000, 784], dtype='float32', device='cpu')
-        x5 = paddle.randn(shape=[1000, 784], dtype='float32', device='gpu')
-        x6 = paddle.randn(
-            shape=[1000, 784],
-            dtype='float32',
-            device='gpu',
-            stop_gradient=False)
+        shape = [1000, 784]
+        train_program = Program()
+        startup_program = Program()
+        with program_guard(train_program, startup_program):
+            x1 = paddle.randn(shape, 'float32')
+            x2 = paddle.randn(shape, 'float64')
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        res = exe.run(fluid.default_main_program(),
-                      feed={},
-                      fetch_list=[x1, x2, x3, x4, x5, x6])
+            dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 20)
+            dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
+            x3 = paddle.randn([dim_1, dim_2, 784])
 
-        self.assertAlmostEqual(np.mean(res[0]), .0, delta=0.1)
-        self.assertAlmostEqual(np.std(res[0]), 1., delta=0.1)
-        self.assertAlmostEqual(np.mean(res[1]), .0, delta=0.1)
-        self.assertAlmostEqual(np.std(res[1]), 1., delta=0.1)
-        self.assertAlmostEqual(np.mean(res[2]), .0, delta=0.1)
-        self.assertAlmostEqual(np.std(res[2]), 1., delta=0.1)
-        self.assertAlmostEqual(np.mean(res[3]), .0, delta=0.1)
-        self.assertAlmostEqual(np.std(res[3]), 1., delta=0.1)
-        self.assertAlmostEqual(np.mean(res[4]), .0, delta=0.1)
-        self.assertAlmostEqual(np.std(res[4]), 1., delta=0.1)
-        self.assertAlmostEqual(np.mean(res[5]), .0, delta=0.1)
-        self.assertAlmostEqual(np.std(res[5]), 1., delta=0.1)
+            var_shape = paddle.static.data('X', [2], 'int32')
+            x4 = paddle.randn(var_shape)
+
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        res = exe.run(train_program,
+                      feed={'X': np.array(
+                          shape, dtype='int32')},
+                      fetch_list=[x1, x2, x3, x4])
+
+        for out in res:
+            self.assertAlmostEqual(np.mean(out), .0, delta=0.1)
+            self.assertAlmostEqual(np.std(out), 1., delta=0.1)
+
+
+class TestRandnOpForDygraph(unittest.TestCase):
+    def test_api(self):
+        shape = [1000, 784]
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        paddle.disable_static(place)
+        x1 = paddle.randn(shape, 'float32')
+        x2 = paddle.randn(shape, 'float64')
+
+        dim_1 = paddle.fluid.layers.fill_constant([1], "int64", 20)
+        dim_2 = paddle.fluid.layers.fill_constant([1], "int32", 50)
+        x3 = paddle.randn(shape=[dim_1, dim_2, 784])
+
+        var_shape = paddle.to_tensor(np.array(shape))
+        x4 = paddle.randn(var_shape)
+
+        for out in [x1, x2, x3, x4]:
+            self.assertAlmostEqual(np.mean(out.numpy()), .0, delta=0.1)
+            self.assertAlmostEqual(np.std(out.numpy()), 1., delta=0.1)
+        paddle.enable_static()
 
 
 class TestRandnOpError(unittest.TestCase):
     def test_error(self):
         with program_guard(Program(), Program()):
-
             # The argument shape's size of randn_op should not be 0.
-            def test_shape_size():
-                out = paddle.randn(shape=[])
-
-            self.assertRaises(AssertionError, test_shape_size)
+            self.assertRaises(AssertionError, paddle.randn, [])
 
             # The argument shape's type of randn_op should be list or tuple.
-            def test_shape_type():
-                out = paddle.randn(shape=1)
-
-            self.assertRaises(TypeError, test_shape_type)
+            self.assertRaises(TypeError, paddle.randn, 1)
 
             # The argument dtype of randn_op should be float32 or float64.
-            def test_dtype_float16():
-                out = paddle.randn(shape=[1, 2], dtype='float16')
-
-            self.assertRaises(TypeError, test_dtype_float16)
-
-            # The argument dtype of randn_op should be float32 or float64.
-            def test_dtype_int32():
-                out = paddle.randn(shape=[1, 2], dtype='int32')
-
-            self.assertRaises(TypeError, test_dtype_int32)
-
-            # The argument dtype of randn_op should be float32 or float64.
-            def test_dtype_int64():
-                out = paddle.randn(shape=[1, 2], dtype='int64')
-
-            self.assertRaises(TypeError, test_dtype_int64)
-
-            # The argument dtype of randn_op should be float32 or float64.
-            def test_dtype_uint8():
-                out = paddle.randn(shape=[1, 2], dtype='uint8')
-
-            self.assertRaises(TypeError, test_dtype_uint8)
-
-            # The argument dtype of randn_op should be float32 or float64.
-            def test_dtype_bool():
-                out = paddle.randn(shape=[1, 2], dtype='bool')
-
-            self.assertRaises(TypeError, test_dtype_bool)
+            self.assertRaises(TypeError, paddle.randn, [1, 2], 'int32')
 
 
 if __name__ == "__main__":

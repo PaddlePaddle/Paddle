@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
@@ -60,15 +61,22 @@ struct FindRangeAbsMaxFunctor {
 
 template <typename DeviceContext, typename T>
 struct FindChannelAbsMaxFunctor {
-  void operator()(const DeviceContext& ctx, const T* in, const int num,
-                  const int channel, T* out);
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in_tensor,
+                  const int quant_axis, T* out_abs_max);
 };
 
 template <typename DeviceContext, typename T>
 struct ChannelClipAndFakeQuantFunctor {
   void operator()(const DeviceContext& ctx, const framework::Tensor& in,
                   const framework::Tensor& scale, const int bin_cnt,
-                  const int channel, framework::Tensor* out);
+                  const int quant_axis, framework::Tensor* out);
+};
+
+template <typename DeviceContext, typename T>
+struct ChannelClipFakeQuantDequantFunctor {
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
+                  const framework::Tensor& scale, const int bin_cnt,
+                  const int quant_axis, framework::Tensor* out);
 };
 
 template <typename DeviceContext, typename T>
@@ -81,7 +89,7 @@ struct FindMovingAverageAbsMaxFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class FakeQuantizeAbsMaxKernel : public framework::OpKernel<T> {
+class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
@@ -95,8 +103,38 @@ class FakeQuantizeAbsMaxKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     const T* in_data = in->data<T>();
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in_data, in->numel(), out_s);
-    ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *out_scale,
-                                                bin_cnt, out);
+    RunClipFunctor(dev_ctx, *in, *out_scale, bin_cnt, out);
+  }
+
+  virtual ~FakeAbsMaxKernelBase() = default;
+
+ protected:
+  virtual void RunClipFunctor(const DeviceContext& dev_ctx,
+                              const framework::Tensor& in,
+                              const framework::Tensor& scale, int bin_cnt,
+                              framework::Tensor* out) const = 0;
+};
+
+template <typename DeviceContext, typename T>
+class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
+ protected:
+  void RunClipFunctor(const DeviceContext& dev_ctx, const framework::Tensor& in,
+                      const framework::Tensor& scale, int bin_cnt,
+                      framework::Tensor* out) const override {
+    ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, in, scale, bin_cnt,
+                                                out);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FakeQuantizeDequantizeAbsMaxKernel
+    : public FakeAbsMaxKernelBase<DeviceContext, T> {
+ protected:
+  void RunClipFunctor(const DeviceContext& dev_ctx, const framework::Tensor& in,
+                      const framework::Tensor& scale, int bin_cnt,
+                      framework::Tensor* out) const override {
+    ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(dev_ctx, in, scale,
+                                                       bin_cnt, out);
   }
 };
 
@@ -108,17 +146,45 @@ class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
 
     auto* out = context.Output<framework::Tensor>("Out");
     auto* out_scale = context.Output<framework::Tensor>("OutScale");
-    T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
     out->mutable_data<T>(context.GetPlace());
 
     int bit_length = context.Attr<int>("bit_length");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
+    int quant_axis = context.Attr<int>("quant_axis");
+    bool is_test = context.Attr<bool>("is_test");
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    FindChannelAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, in->data<T>(), in->numel(), in->dims()[0], out_scale_data);
+    if (!is_test) {
+      T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
+      FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
+                                                   out_scale_data);
+    }
     ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, in->dims()[0], out);
+        dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out_scale = context.Output<framework::Tensor>("OutScale");
+    T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    out->mutable_data<T>(dev_ctx.GetPlace());
+
+    int bit_length = context.Attr<int>("bit_length");
+    int bin_cnt = std::pow(2, bit_length - 1) - 1;
+    int quant_axis = context.Attr<int>("quant_axis");
+
+    FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
+                                                 out_scale_data);
+
+    ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
+        dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
   }
 };
 
@@ -167,11 +233,6 @@ class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
-  ~FakeMovingAverageAbsMaxKernelBase() {}
-  virtual void RunClipFunctor(const DeviceContext& dev_ctx,
-                              const framework::Tensor& in,
-                              const framework::Tensor& in_scale, int bin_cnt,
-                              framework::Tensor* out) const = 0;
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* in_scale = context.Input<framework::Tensor>("InScale");
@@ -212,12 +273,20 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
 
     RunClipFunctor(dev_ctx, *in, *out_scale, bin_cnt, out);
   }
+
+  virtual ~FakeMovingAverageAbsMaxKernelBase() = default;
+
+ protected:
+  virtual void RunClipFunctor(const DeviceContext& dev_ctx,
+                              const framework::Tensor& in,
+                              const framework::Tensor& in_scale, int bin_cnt,
+                              framework::Tensor* out) const = 0;
 };
 
 template <typename DeviceContext, typename T>
 class FakeQuantizeMovingAverageAbsMaxKernel
     : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
- public:
+ protected:
   void RunClipFunctor(const DeviceContext& dev_ctx, const framework::Tensor& in,
                       const framework::Tensor& in_scale, int bin_cnt,
                       framework::Tensor* out) const override {
@@ -229,7 +298,7 @@ class FakeQuantizeMovingAverageAbsMaxKernel
 template <typename DeviceContext, typename T>
 class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
     : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
- public:
+ protected:
   void RunClipFunctor(const DeviceContext& dev_ctx, const framework::Tensor& in,
                       const framework::Tensor& in_scale, int bin_cnt,
                       framework::Tensor* out) const override {
@@ -243,10 +312,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
 
     bool is_test = context.Attr<bool>("is_test");
     // testing
@@ -274,6 +340,25 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
     FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, *in_accum, *in_state, cur_scale_data, moving_rate, out_state,
         out_accum, out_scale);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class FakeQuantDequantGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* d_out =
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto x_grad_name = framework::GradVarName("X");
+    auto* d_x = context.Output<framework::LoDTensor>(x_grad_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        d_x, platform::errors::PreconditionNotMet(
+                 "FakeQuantDequantGradOp doesn't have the output named %s.",
+                 x_grad_name));
+
+    // Initialize dx as same as d_out
+    d_x->mutable_data<T>(context.GetPlace());
+    framework::TensorCopy(*d_out, context.GetPlace(), d_x);
   }
 };
 

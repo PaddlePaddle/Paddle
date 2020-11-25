@@ -20,6 +20,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     concat, ops::ConcatKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ConcatKernel<paddle::platform::CUDADeviceContext, int>);
@@ -27,6 +28,7 @@ REGISTER_OP_CUDA_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int>);

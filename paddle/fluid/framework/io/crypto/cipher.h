@@ -46,6 +46,5 @@ class CipherFactory {
   CipherFactory() = default;
   static std::shared_ptr<Cipher> CreateCipher(const std::string& config_file);
 };
-
 }  // namespace framework
 }  // namespace paddle

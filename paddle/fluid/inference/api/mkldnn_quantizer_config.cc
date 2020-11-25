@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+
 #include "paddle/fluid/inference/api/paddle_mkldnn_quantizer_config.h"
 
 namespace paddle {
@@ -48,6 +50,10 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["matmul"]["X"] = ScaleAlgo::KL;
   rules_["matmul"]["Y"] = ScaleAlgo::KL;
   rules_["matmul"]["Out"] = ScaleAlgo::KL;
+
+  rules_["elementwise_add"]["X"] = ScaleAlgo::KL;
+  rules_["elementwise_add"]["Y"] = ScaleAlgo::KL;
+  rules_["elementwise_add"]["Out"] = ScaleAlgo::KL;
 
   // Reshape2 does not perform calculation on the data and shapes are not
   // changed. Scale is calculated on input data and assign to Quantize and

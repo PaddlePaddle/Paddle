@@ -28,10 +28,15 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 struct Linspace<paddle::platform::CPUDeviceContext, T> {
-  void operator()(T start, T end, int count, framework::Tensor* numbers,
+  void operator()(T start, T end, int count, bool align_corners,
+                  framework::Tensor* numbers,
                   const framework::ExecutionContext& ctx) {
     T* number_data = numbers->mutable_data<T>({count}, platform::CPUPlace());
     T slice = (end - start) / (T)(count - 1);
+    if (!align_corners) {
+      slice = (end - start) / (T)count;
+      start *= (T)(count - 1) / (T)count;
+    }
     for (int i = 0; i < count; ++i) {
       number_data[i] = start + (T)i * slice;
     }
@@ -42,29 +47,57 @@ class AffineGridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Theta"),
-                   "Input(Theta) of AffineGridOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of AffineGridOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Theta"), true,
+                      platform::errors::NotFound(
+                          "The input 'Theta' of AffineGridOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
+                      platform::errors::NotFound(
+                          "The output 'Output' of AffineGridOp is not found."));
     auto theta_dims = ctx->GetInputDim("Theta");
-    PADDLE_ENFORCE(theta_dims.size() == 3,
-                   "AffineGrid's Input(Theta) should be 3-D tensor.");
+    PADDLE_ENFORCE_EQ(
+        theta_dims.size(), 3,
+        platform::errors::InvalidArgument(
+            "The input Theta's dimensions size should be 3. But received "
+            "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
+            theta_dims.size(), theta_dims));
 
     auto output_shape = ctx->Attrs().Get<std::vector<int>>("output_shape");
     if (output_shape.size() == 0) {
-      PADDLE_ENFORCE(ctx->HasInput("OutputShape"),
-                     "Input(OutputShape) of AffineGridOp should not be null if "
-                     "attr(output_shape) is not configured.");
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("OutputShape"), true,
+          platform::errors::NotFound(
+              "The input 'OutputShape' of AffineGridOp should not be null if "
+              "'output_shape' is not configured."));
       auto output_shape_dims = ctx->GetInputDim("OutputShape");
-      PADDLE_ENFORCE(output_shape_dims.size() == 1,
-                     "AffineGrid's Input(OutputShape) should be 1-D tensor.");
+      PADDLE_ENFORCE_EQ(
+          output_shape_dims.size(), 1,
+          platform::errors::InvalidArgument(
+              "The dimesions size of input OutputShape in AffineGridOp should "
+              "be 1. But received OutputShape's  dimesions size=[%d], "
+              "OutputShape's  dimesions=[%s]",
+              output_shape_dims.size(), output_shape_dims));
     } else {
-      PADDLE_ENFORCE(output_shape.size() == 4,
-                     "The size of attr(output_shape) should be 4.");
+      PADDLE_ENFORCE_EQ(
+          output_shape.size(), 4,
+          platform::errors::InvalidArgument(
+              "The size of attribute 'output_shape' in AffineGridOp should be "
+              "4. But received output_shape's size=[%d].",
+              output_shape.size()));
     }
 
-    PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] should be 2.");
-    PADDLE_ENFORCE(theta_dims[2] == 3, "Input(theta) dims[2] should be 3.");
+    PADDLE_ENFORCE_EQ(
+        theta_dims[1], 2,
+        platform::errors::InvalidArgument(
+            "The second dimesion of input 'theta' in AffineGridOp should be 2. "
+            "But received second dimesion=[%d], dimesions=[%s]",
+            theta_dims[1], theta_dims));
+    PADDLE_ENFORCE_EQ(
+        theta_dims[2], 3,
+        platform::errors::InvalidArgument(
+            "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+            "But received third dimesion=[%d], dimesions=[%s]",
+            theta_dims[2], theta_dims));
+
     // N * H * W * 2
     ctx->SetOutputDim("Output",
                       framework::make_ddim({theta_dims[0], -1, -1, 2}));
@@ -102,6 +135,10 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
+    AddAttr<bool>("align_corners",
+                  "(bool, default false) Whether to align the corners of input"
+                  "and ouput.")
+        .SetDefault(true);
     AddAttr<std::vector<int>>(
         "output_shape",
         "The target output image shape with format [N, C, H, W].")
@@ -136,10 +173,12 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]]]
-        C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+        C[0] is the coordinates in height axis and  C[1] is the coordinates in
+        width axis.
     
     Step2:
-        Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+        Tanspose and reshape C to shape [H * W, 2] and append ones to last
+        dimension. The we get:
         C_ = [[-1.  -1.   1. ]
               [-0.5 -1.   1. ]
               [ 0.  -1.   1. ]

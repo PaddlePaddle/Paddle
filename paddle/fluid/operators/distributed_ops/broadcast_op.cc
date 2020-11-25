@@ -58,7 +58,8 @@ template <typename T>
 class BroadcastOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("Broadcast op can run on gpu place only for now.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Broadcast op can run on gpu place only for now."));
   }
 };
 

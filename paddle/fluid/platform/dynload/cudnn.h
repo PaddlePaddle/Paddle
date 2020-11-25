@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <glog/logging.h>
-
 #include <cudnn.h>
+#include <glog/logging.h>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -27,8 +27,6 @@ namespace dynload {
 extern std::once_flag cudnn_dso_flag;
 extern void* cudnn_dso_handle;
 extern bool HasCUDNN();
-
-#ifdef PADDLE_USE_DSO
 
 extern void EnforceCUDNNLoaded(const char* fn_name);
 #define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name)                            \
@@ -46,19 +44,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   };                                                                       \
   extern struct DynLoad__##__name __name
 
-#else
-
-#define DECLARE_DYNAMIC_LOAD_CUDNN_WRAP(__name) \
-  struct DynLoad__##__name {                    \
-    template <typename... Args>                 \
-    inline auto operator()(Args... args) {      \
-      return ::__name(args...);                 \
-    }                                           \
-  };                                            \
-  extern DynLoad__##__name __name
-
-#endif
-
 /**
  * include all needed cudnn functions in HPPL
  * different cudnn version has different interfaces
@@ -69,7 +54,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnSetTensorNdDescriptor);                    \
   __macro(cudnnGetTensorNdDescriptor);                    \
   __macro(cudnnGetConvolutionNdForwardOutputDim);         \
-  __macro(cudnnGetConvolutionForwardAlgorithm);           \
   __macro(cudnnCreateTensorDescriptor);                   \
   __macro(cudnnDestroyTensorDescriptor);                  \
   __macro(cudnnCreateFilterDescriptor);                   \
@@ -111,13 +95,14 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnGetVersion);                               \
   __macro(cudnnFindConvolutionForwardAlgorithmEx);        \
   __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx); \
+  __macro(cudnnFindConvolutionBackwardFilterAlgorithm);   \
   __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);   \
   __macro(cudnnGetErrorString);                           \
   __macro(cudnnCreateDropoutDescriptor);                  \
   __macro(cudnnDropoutGetStatesSize);                     \
   __macro(cudnnSetDropoutDescriptor);                     \
+  __macro(cudnnRestoreDropoutDescriptor);                 \
   __macro(cudnnCreateRNNDescriptor);                      \
-  __macro(cudnnSetRNNDescriptor);                         \
   __macro(cudnnGetRNNParamsSize);                         \
   __macro(cudnnGetRNNWorkspaceSize);                      \
   __macro(cudnnGetRNNTrainingReserveSize);                \
@@ -141,10 +126,18 @@ CUDNN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #if CUDNN_VERSION >= 3000
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R3(__macro)           \
   __macro(cudnnGetConvolutionBackwardFilterWorkspaceSize); \
-  __macro(cudnnGetConvolutionBackwardDataAlgorithm);       \
-  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);     \
   __macro(cudnnGetConvolutionBackwardDataWorkspaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+// APIs available after R3:
+#if CUDNN_VERSION >= 3000 && CUDNN_VERSION < 8000
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(__macro) \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
+  __macro(cudnnGetConvolutionForwardAlgorithm);          \
+  __macro(cudnnGetConvolutionBackwardDataAlgorithm);     \
+  __macro(cudnnSetRNNDescriptor);
+CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 // APIs available after R4:
@@ -185,8 +178,22 @@ CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnCTCLoss);                                  \
   __macro(cudnnGetConvolutionBackwardDataAlgorithm_v7);   \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm_v7); \
-  __macro(cudnnGetConvolutionForwardAlgorithm_v7);
+  __macro(cudnnGetConvolutionForwardAlgorithm_v7);        \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+#if CUDNN_VERSION >= 7201
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(__macro) \
+  __macro(cudnnCreateRNNDataDescriptor);             \
+  __macro(cudnnDestroyRNNDataDescriptor);            \
+  __macro(cudnnSetRNNDataDescriptor);                \
+  __macro(cudnnSetRNNPaddingMode);                   \
+  __macro(cudnnRNNForwardTrainingEx);                \
+  __macro(cudnnRNNBackwardDataEx);                   \
+  __macro(cudnnRNNBackwardWeightsEx);                \
+  __macro(cudnnRNNForwardInferenceEx);
+CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7401
@@ -198,6 +205,12 @@ CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
+
+#if CUDNN_VERSION >= 8000
+#define CUDNN_DNN_ROUTINE_EACH_R8(__macro) __macro(cudnnSetRNNDescriptor_v8);
+CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

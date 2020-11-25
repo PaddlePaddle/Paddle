@@ -16,7 +16,16 @@
 #define LITE_WITH_CUDA 1
 #endif
 
+#ifdef LITE_SUBGRAPH_WITH_XPU
+#define LITE_WITH_XPU 1
+#endif
+
+#ifndef PADDLE_WITH_ARM
+#define LITE_WITH_X86 1
+#endif
+
 #include "paddle/fluid/inference/lite/engine.h"
+#include <utility>
 
 namespace paddle {
 namespace inference {
@@ -31,25 +40,40 @@ bool EngineManager::Has(const std::string& name) const {
   return engines_.at(name).get() != nullptr;
 }
 
-paddle::lite::Predictor* EngineManager::Get(const std::string& name) const {
+paddle::lite_api::PaddlePredictor* EngineManager::Get(
+    const std::string& name) const {
   return engines_.at(name).get();
 }
 
-paddle::lite::Predictor* EngineManager::Create(const std::string& name,
-                                               const EngineConfig& cfg) {
-  auto* p = new paddle::lite::Predictor();
-#ifdef PADDLE_WITH_CUDA
-  paddle::lite::Env<TARGET(kCUDA)>::Init();
+paddle::lite_api::PaddlePredictor* EngineManager::Create(
+    const std::string& name, const EngineConfig& cfg) {
+  // config info for predictor.
+  paddle::lite_api::CxxConfig lite_cxx_config;
+  lite_cxx_config.set_model_buffer(cfg.model.c_str(), cfg.model.size(),
+                                   cfg.param.c_str(), cfg.param.size());
+  lite_cxx_config.set_valid_places(cfg.valid_places);
+#ifdef PADDLE_WITH_ARM
+  lite_cxx_config.set_threads(cfg.cpu_math_library_num_threads);
+#else
+  lite_cxx_config.set_x86_math_library_num_threads(
+      cfg.cpu_math_library_num_threads);
 #endif
-  p->Build("", cfg.model, cfg.param, cfg.valid_places, cfg.neglected_passes,
-           cfg.model_type, cfg.model_from_memory);
-  engines_[name].reset(p);
-  return p;
+
+#ifdef LITE_SUBGRAPH_WITH_XPU
+  lite_cxx_config.set_xpu_workspace_l3_size_per_thread(
+      cfg.xpu_l3_workspace_size);
+#endif
+
+  // create predictor
+  std::shared_ptr<paddle::lite_api::PaddlePredictor> p =
+      paddle::lite_api::CreatePaddlePredictor(lite_cxx_config);
+  engines_[name] = std::move(p);
+  return engines_[name].get();
 }
 
 void EngineManager::DeleteAll() {
   for (auto& item : engines_) {
-    item.second.reset(nullptr);
+    item.second.reset();
   }
 }
 

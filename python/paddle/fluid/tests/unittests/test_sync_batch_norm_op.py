@@ -22,9 +22,11 @@ import unittest
 import numpy as np
 import os
 import six
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
+from paddle.fluid import Program, program_guard
 
 from op_test import OpTest, _set_use_system_allocator
 
@@ -48,9 +50,9 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         """Setup."""
         #self.dtype = np.float32
         self.dtype = np.float64
-        self.N = 32
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
@@ -194,12 +196,46 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
     def setUp(self):
         """Setup."""
         self.dtype = np.float16
-        self.N = 32
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
+
+
+class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CUDAPlace(0))
+            self.assertRaises(TypeError, my_sync_batch_norm, x1)
+
+            # the input dtype of SyncBatchNorm must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, my_sync_batch_norm, x2)
+
+
+class TestConvertSyncBatchNorm(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            compare_model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3), paddle.nn.BatchNorm2D(5))
+            model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3), paddle.nn.BatchNorm2D(5))
+            model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            for idx, sublayer in enumerate(compare_model.sublayers()):
+                if isinstance(sublayer, paddle.nn.BatchNorm2D):
+                    self.assertEqual(
+                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
 
 
 if __name__ == '__main__':

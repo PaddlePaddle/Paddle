@@ -17,6 +17,7 @@ from __future__ import print_function
 import sys
 from functools import partial, reduce
 
+import paddle
 from . import nn
 from . import tensor
 from . import control_flow
@@ -38,6 +39,7 @@ __all__ = [
     'Decoder',
     'BeamSearchDecoder',
     'rnn',
+    'birnn',
     'dynamic_decode',
     'DecodeHelper',
     'TrainingHelper',
@@ -65,7 +67,7 @@ class RNNCell(object):
     """
 
     def call(self, inputs, states, **kwargs):
-        """
+        r"""
         Every cell must implement this method to do the calculations mapping the
         inputs and states to the output and new states.
 
@@ -95,7 +97,7 @@ class RNNCell(object):
                            dtype='float32',
                            init_value=0,
                            batch_dim_idx=0):
-        """
+        r"""
         Generate initialized states according to provided shape, data type and
         value.
 
@@ -127,7 +129,8 @@ class RNNCell(object):
         else:
             integer_types = (int, )
         check_variable_and_dtype(batch_ref, 'batch_ref',
-                                 ['float32', 'float64'], 'RNNCell')
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'RNNCell')
         check_type(shape, 'shape', (list, tuple, type(None), integer_types),
                    'RNNCell')
         if isinstance(shape, (list, tuple)):
@@ -222,7 +225,7 @@ class RNNCell(object):
 
 
 class GRUCell(RNNCell):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Gated Recurrent Unit cell. It is a wrapper for 
@@ -284,7 +287,7 @@ class GRUCell(RNNCell):
             activation, dtype)
 
     def call(self, inputs, states):
-        """
+        r"""
         Perform calculations of GRU.
 
         Parameters:
@@ -320,7 +323,7 @@ class GRUCell(RNNCell):
 
 
 class LSTMCell(RNNCell):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Long-Short Term Memory cell. It is a wrapper for 
@@ -387,7 +390,7 @@ class LSTMCell(RNNCell):
             activation, forget_bias, dtype)
 
     def call(self, inputs, states):
-        """
+        r"""
         Perform calculations of LSTM.
 
         Parameters:
@@ -437,61 +440,153 @@ def rnn(cell,
         is_reverse=False,
         **kwargs):
     """
-	:api_attr: Static Graph
-
     rnn creates a recurrent neural network specified by RNNCell `cell`,
-    which performs :code:`cell.call()` repeatedly until reaches to the maximum
-    length of `inputs`.
+    which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`) 
+    repeatedly until reaches to the maximum length of `inputs`.
 
-    Parameters:
-        cell(RNNCell): An instance of `RNNCell`.
-        inputs(Variable): A (possibly nested structure of) tensor variable[s]. 
-            The shape of tensor should be `[batch_size, sequence_length, ...]`
-            for `time_major == False` or `[sequence_length, batch_size, ...]`
-            for `time_major == True`. It represents the inputs to be unrolled
-            in RNN.
-        initial_states(Variable, optional): A (possibly nested structure of)
-            tensor variable[s], representing the initial state for RNN. 
-            If not provided, `cell.get_initial_states` would be used to produce
-            the initial state. Default None.
-        sequence_length(Variable, optional): A tensor with shape `[batch_size]`.
-            It stores real length of each instance, thus enables users to extract
-            the last valid state when past a batch element's sequence length for
-            correctness. If not provided, the paddings would be treated same as
-            non-padding inputs. Default None.
-        time_major(bool, optional): Indicate the data layout of Tensor included
-            in `input` and `output` tensors. If `False`, the data layout would
-            be batch major with shape `[batch_size, sequence_length, ...]`.  If
-            `True`, the data layout would be time major with shape
-            `[sequence_length, batch_size, ...]`. Default: `False`.
-        is_reverse(bool, optional): Indicate whether to calculate in the reverse
-            order of input sequences. Default: `False`.
-        **kwargs: Additional keyword arguments. Arguments passed to `cell.call`. 
+    Arguments:
+        cell(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences. 
+            If time_major is True, the shape is 
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(Tensor|tuple|list, optional): the initial state of the 
+            rnn cell. Tensor or a possibly nested structure of tensors. If not 
+            provided, `cell.get_initial_states` would be called to produce
+            the initial state. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as 
+            padded sequences. In each input sequence, elements whose time step 
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        is_reverse (bool, optional): Indicate whether to calculate in the reverse
+            order of input sequences. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of the cell. 
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states)` ) including the final \
-            outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as \
-            the returned `outputs` of :code:`cell.call` , and each Tenser in `final_outputs` \
-            stacks all time steps' counterpart in `outputs` thus has shape `[batch_size, sequence_length, ...]` \
-            for `time_major == False` or `[sequence_length, batch_size, ...]` for `time_major == True`. \
-            `final_states` is the counterpart at last time step of initial states, \
-            thus has the same structure with it and has tensors with same shapes \
-            and data types.
+        (outputs, final_states)
+        outputs (Tensor|list|tuple): the output sequence. Tensor or nested 
+            structure of Tensors.
+            If `time_major` is True, the shape of each tensor in outpus is 
+            `[time_steps, batch_size, hidden_size]`, else 
+            `[batch_size, time_steps, hidden_size]`.
+        final_states (Tensor|list|tuple): final states. A (possibly nested structure of)
+            tensor[s], representing the final state for RNN. It has the same 
+            structure of intial state. Each tensor in final states has the same
+            shape and dtype as the corresponding tensor in initial states.
             
 
     Examples:
 
         .. code-block:: python
-            
-            import paddle.fluid as fluid
 
-            inputs = fluid.data(name="inputs",
-                                shape=[-1, 32, 128],
-                                dtype="float32")
-            cell = fluid.layers.GRUCell(hidden_size=128)
-            outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
+            import paddle
+            paddle.disable_static()
+
+            cell = paddle.nn.SimpleRNNCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            prev_h = paddle.randn((4, 32))
+            outputs, final_states = paddle.fluid.layers.rnn(cell, inputs, prev_h) 
+
     """
+    if in_dygraph_mode():
+        return _rnn_dynamic_graph(cell, inputs, initial_states, sequence_length,
+                                  time_major, is_reverse, **kwargs)
+    else:
+        return _rnn_static_graph(cell, inputs, initial_states, sequence_length,
+                                 time_major, is_reverse, **kwargs)
+
+
+class ArrayWrapper(object):
+    def __init__(self, x):
+        self.array = [x]
+
+    def append(self, x):
+        self.array.append(x)
+        return self
+
+    def __getitem__(self, item):
+        return self.array.__getitem__(item)
+
+
+def _maybe_copy(state, new_state, step_mask):
+    """update rnn state or just pass the old state through"""
+    new_state = nn.elementwise_mul(new_state, step_mask, axis=0) \
+              + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    return new_state
+
+
+def _transpose_batch_time(x):
+    perm = [1, 0] + list(range(2, len(x.shape)))
+    return nn.transpose(x, perm)
+
+
+def _rnn_dynamic_graph(cell,
+                       inputs,
+                       initial_states=None,
+                       sequence_length=None,
+                       time_major=False,
+                       is_reverse=False,
+                       **kwargs):
+    time_step_index = 0 if time_major else 1
+    flat_inputs = flatten(inputs)
+    time_steps = flat_inputs[0].shape[time_step_index]
+
+    if initial_states is None:
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+
+    if not time_major:
+        inputs = map_structure(_transpose_batch_time, inputs)
+
+    if sequence_length is not None:
+        mask = sequence_lod.sequence_mask(
+            sequence_length, maxlen=time_steps, dtype=inputs.dtype)
+        mask = nn.transpose(mask, [1, 0])
+
+    if is_reverse:
+        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
+        mask = tensor.reverse(mask, axis=[0]) \
+            if sequence_length is not None else None
+
+    states = initial_states
+    outputs = []
+    for i in range(time_steps):
+        step_inputs = map_structure(lambda x: x[i], inputs)
+        step_outputs, new_states = cell(step_inputs, states, **kwargs)
+        if sequence_length is not None:
+            new_states = map_structure(
+                partial(
+                    _maybe_copy, step_mask=mask[i]), states, new_states)
+        states = new_states
+        outputs = map_structure(lambda x: ArrayWrapper(x),
+                                step_outputs) if i == 0 else map_structure(
+                                    lambda x, x_array: x_array.append(x),
+                                    step_outputs, outputs)
+
+    final_outputs = map_structure(
+        lambda x: nn.stack(x.array, axis=time_step_index),
+        outputs)
+
+    if is_reverse:
+        final_outputs = map_structure(
+            lambda x: tensor.reverse(x, axis=time_step_index),
+            final_outputs)
+
+    final_states = new_states
+    return final_outputs, final_states
+
+
+def _rnn_static_graph(cell,
+                      inputs,
+                      initial_states=None,
+                      sequence_length=None,
+                      time_major=False,
+                      is_reverse=False,
+                      **kwargs):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
         for i, input_x in enumerate(inputs):
@@ -499,29 +594,9 @@ def rnn(cell,
                                      ['float32', 'float64'], 'rnn')
     check_type(initial_states, 'initial_states',
                (Variable, list, tuple, type(None)), 'rnn')
-    if isinstance(initial_states, (list, tuple)):
-        states = map_structure(lambda x: x, initial_states)[0]
-        for i, state in enumerate(states):
-            if isinstance(state, (list, tuple)):
-                for j, state_j in enumerate(state):
-                    check_variable_and_dtype(state_j, 'state_j[' + str(j) + ']',
-                                             ['float32', 'float64'], 'rnn')
-            else:
-                check_variable_and_dtype(state, 'states[' + str(i) + ']',
-                                         ['float32', 'float64'], 'rnn')
 
     check_type(sequence_length, 'sequence_length', (Variable, type(None)),
                'rnn')
-
-    def _maybe_copy(state, new_state, step_mask):
-        # TODO: use where_op
-        new_state = nn.elementwise_mul(
-            new_state, step_mask, axis=0) - nn.elementwise_mul(
-                state, (step_mask - 1), axis=0)
-        return new_state
-
-    def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _switch_grad(x, stop=False):
         x.stop_gradient = stop
@@ -552,7 +627,7 @@ def rnn(cell,
         inputs = map_structure(rnn.step_input, inputs)
         states = map_structure(rnn.memory, initial_states)
         copy_states = map_structure(lambda x: x, states)
-        outputs, new_states = cell.call(inputs, copy_states, **kwargs)
+        outputs, new_states = cell(inputs, copy_states, **kwargs)
         assert_same_structure(states, new_states)
         if sequence_length:
             step_mask = rnn.step_input(mask)
@@ -579,6 +654,98 @@ def rnn(cell,
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
 
     return (final_outputs, final_states)
+
+
+def birnn(cell_fw,
+          cell_bw,
+          inputs,
+          initial_states=None,
+          sequence_length=None,
+          time_major=False,
+          **kwargs):
+    """
+    birnn creates a bidirectional recurrent neural network specified by 
+    RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()` 
+    (for dygraph mode :code:`cell.forward`) repeatedly until reaches to 
+    the maximum length of `inputs` and then concat the ouputs for both RNNs
+    along the last axis.
+
+    Arguments:
+        cell_fw(RNNCellBase): An instance of `RNNCellBase`.
+        cell_bw(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences. 
+            If time_major is True, the shape is 
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(tuple, optional): A tuple of initial states of 
+            `cell_fw` and `cell_bw`.
+            If not provided, `cell.get_initial_states` would be called to 
+            produce initial state for each cell. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as 
+            padded sequences. In each input sequence, elements whose time step 
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of each cell. 
+
+    Returns:
+        (outputs, final_states)
+        outputs (Tensor): the outputs of the bidirectional RNN. It is the 
+            concatenation of the outputs from the forward RNN and backward 
+            RNN along the last axis. 
+            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            else the shape is `[batch_size, time_steps, size]`, where size is
+            `cell_fw.hidden_size + cell_bw.hidden_size`.
+        final_states (tuple): A tuple of the final states of the forward 
+            cell and backward cell.        
+
+    Examples:
+
+        .. code-block:: python
+            
+            import paddle
+            paddle.disable_static()
+
+            cell_fw = paddle.nn.LSTMCell(16, 32)
+            cell_bw = paddle.nn.LSTMCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
+            hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
+            initial_states = ((hf, cf), (hb, cb))
+            outputs, final_states = paddle.fluid.layers.birnn(
+                cell_fw, cell_bw, inputs, initial_states)
+        
+    """
+    if initial_states is None:
+        states_fw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+        states_bw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+    else:
+        states_fw, states_bw = initial_states
+    outputs_fw, states_fw = rnn(cell_fw,
+                                inputs,
+                                states_fw,
+                                sequence_length,
+                                time_major=time_major,
+                                **kwargs)
+
+    outputs_bw, states_bw = rnn(cell_bw,
+                                inputs,
+                                states_bw,
+                                sequence_length,
+                                time_major=time_major,
+                                is_reverse=True,
+                                **kwargs)
+
+    outputs = map_structure(lambda x, y: tensor.concat([x, y], -1), outputs_fw,
+                            outputs_bw)
+
+    final_states = (states_fw, states_bw)
+    return outputs, final_states
 
 
 class Decoder(object):
@@ -615,7 +782,7 @@ class Decoder(object):
     """
 
     def initialize(self, inits):
-        """
+        r"""
         Called once before the decoding iterations.
 
         Parameters:
@@ -630,7 +797,7 @@ class Decoder(object):
         raise NotImplementedError
 
     def step(self, time, inputs, states, **kwargs):
-        """
+        r"""
         Called per step of decoding. 
 
         Parameters:
@@ -651,7 +818,7 @@ class Decoder(object):
         raise NotImplementedError
 
     def finalize(self, outputs, final_states, sequence_lengths):
-        """
+        r"""
         Called once after the decoding iterations if implemented.
 
         Parameters:
@@ -696,8 +863,6 @@ class Decoder(object):
 
 class BeamSearchDecoder(Decoder):
     """
-	:api_attr: Static Graph
-
     Decoder with beam search decoding strategy. It wraps a cell to get probabilities,
     and follows a beam search step to calculate scores and select candidate
     token ids for each decoding step.
@@ -718,24 +883,20 @@ class BeamSearchDecoder(Decoder):
 
         .. code-block:: python
             
-            import paddle.fluid as fluid
-            from paddle.fluid.layers import GRUCell, BeamSearchDecoder
-
-            trg_embeder = lambda x: fluid.embedding(
-                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
-                                            size=10000,
-                                            num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
-                                                                        "output_w"),
-                                            bias_attr=False)
-            decoder_cell = GRUCell(hidden_size=128)
+            import numpy as np
+            import paddle
+            from paddle.nn import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import GRUCell, Linear, Embedding
+            trg_embeder = Embedding(100, 32)
+            output_layer = Linear(32, 32)
+            decoder_cell = GRUCell(input_size=32, hidden_size=32)
             decoder = BeamSearchDecoder(decoder_cell,
                                         start_token=0,
                                         end_token=1,
                                         beam_size=4,
                                         embedding_fn=trg_embeder,
                                         output_fn=output_layer)
+
     """
 
     def __init__(self,
@@ -749,16 +910,13 @@ class BeamSearchDecoder(Decoder):
         Constructor of BeamSearchDecoder.
 
         Parameters:
-            cell(RNNCell): An instance of `RNNCell` or object with the same interface.
+            cell(RNNCellBase): An instance of `RNNCellBase` or object with the same interface.
             start_token(int): The start token id.
             end_token(int): The end token id.
             beam_size(int): The beam width used in beam search.
             embedding_fn(optional): A callable to apply to selected candidate ids. 
                 Mostly it is an embedding layer to transform ids to embeddings,
                 and the returned value acts as the `input` argument for `cell.call`.
-                **Note that fluid.embedding should be used here rather than
-                fluid.layers.embedding, since shape of ids is [batch_size, beam_size].
-                when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
                 If not provided, the id to embedding transformation must be built into
                 `cell.call`. Default None.
             output_fn(optional): A callable to apply to the cell's output prior to
@@ -773,7 +931,7 @@ class BeamSearchDecoder(Decoder):
 
     @staticmethod
     def tile_beam_merge_with_batch(x, beam_size):
-        """
+        r"""
         Tile the batch dimension of a tensor. Specifically, this function takes
         a tensor t shaped `[batch_size, s0, s1, ...]` composed of minibatch 
         entries `t[0], ..., t[batch_size - 1]` and tiles it to have a shape
@@ -808,7 +966,7 @@ class BeamSearchDecoder(Decoder):
         return x
 
     def _split_batch_beams(self, x):
-        """
+        r"""
         Reshape a tensor with shape `[batch_size * beam_size, ...]` to a new
         tensor with shape `[batch_size, beam_size, ...]`. 
 
@@ -825,7 +983,7 @@ class BeamSearchDecoder(Decoder):
         return nn.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
 
     def _merge_batch_beams(self, x):
-        """
+        r"""
         Reshape a tensor with shape `[batch_size, beam_size, ...]` to a new
         tensor with shape `[batch_size * beam_size, ...]`. 
 
@@ -842,7 +1000,7 @@ class BeamSearchDecoder(Decoder):
         return nn.reshape(x, shape=[-1] + list(x.shape[2:]))
 
     def _expand_to_beam_size(self, x):
-        """
+        r"""
         This function takes a tensor t shaped `[batch_size, s0, s1, ...]` composed
         of minibatch entries `t[0], ..., t[batch_size - 1]` and tiles it to have a
         shape `[batch_size, beam_size, s0, s1, ...]` composed of minibatch entries
@@ -865,7 +1023,7 @@ class BeamSearchDecoder(Decoder):
         return x
 
     def _mask_probs(self, probs, finished):
-        """
+        r"""
         Mask log probabilities. It forces finished beams to allocate all probability
         mass to eos and unfinished beams to remain unchanged.
 
@@ -894,7 +1052,7 @@ class BeamSearchDecoder(Decoder):
         return probs
 
     def _gather(self, x, indices, batch_size):
-        """
+        r"""
         Gather from the tensor `x` using `indices`.
 
         Parameters:
@@ -946,7 +1104,7 @@ class BeamSearchDecoder(Decoder):
         pass
 
     def initialize(self, initial_cell_states):
-        """
+        r"""
         Initialize the BeamSearchDecoder.
 
         Parameters:
@@ -987,6 +1145,8 @@ class BeamSearchDecoder(Decoder):
                 np.array(
                     [[0.] + [-self.kinf] * (self.beam_size - 1)],
                     dtype="float32")), [self.batch_size, 1])
+        if paddle.get_default_dtype() == "float64":
+            log_probs = tensor.cast(log_probs, "float64")
         # TODO: remove the restriction of force_cpu
         init_finished = tensor.fill_constant_batch_size_like(
             input=state,
@@ -1002,7 +1162,7 @@ class BeamSearchDecoder(Decoder):
                                               init_lengths), init_finished
 
     def _beam_search_step(self, time, logits, next_cell_states, beam_state):
-        """
+        r"""
         Calculate scores and select candidate token ids.
 
         Parameters:
@@ -1034,7 +1194,11 @@ class BeamSearchDecoder(Decoder):
             shape=[1], dtype="int64", value=self.vocab_size)
         noend_array = [-self.kinf] * self.vocab_size
         noend_array[self.end_token] = 0
+
         self.noend_mask_tensor = tensor.assign(np.array(noend_array, "float32"))
+        if paddle.get_default_dtype() == "float64":
+            self.noend_mask_tensor = tensor.cast(self.noend_mask_tensor,
+                                                 "float64")
 
         step_log_probs = nn.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
@@ -1071,7 +1235,7 @@ class BeamSearchDecoder(Decoder):
         return beam_search_output, beam_search_state
 
     def step(self, time, inputs, states, **kwargs):
-        """
+        r"""
         Perform a beam search decoding step, which uses `cell` to get probabilities,
         and follows a beam search step to calculate scores and select candidate
         token ids.
@@ -1123,7 +1287,7 @@ class BeamSearchDecoder(Decoder):
         return (beam_search_output, beam_search_state, next_inputs, finished)
 
     def finalize(self, outputs, final_states, sequence_lengths):
-        """
+        r"""
         Use `gather_tree` to backtrace along the beam search tree and construct
         the full predicted sequences.
 
@@ -1165,98 +1329,103 @@ class BeamSearchDecoder(Decoder):
         return True
 
 
-def dynamic_decode(decoder,
-                   inits=None,
-                   max_step_num=None,
-                   output_time_major=False,
-                   impute_finished=False,
-                   is_test=False,
-                   return_length=False,
-                   **kwargs):
-    """
-	:api_attr: Static Graph
+def _dynamic_decode_imperative(decoder,
+                               inits=None,
+                               max_step_num=None,
+                               output_time_major=False,
+                               impute_finished=False,
+                               is_test=False,
+                               return_length=False,
+                               **kwargs):
+    def _maybe_copy(state, new_state, step_mask):
+        # TODO: use where_op
+        state_dtype = state.dtype
+        if convert_dtype(state_dtype) in ["bool"]:
+            state = tensor.cast(state, dtype="float32")
+            new_state = tensor.cast(new_state, dtype="float32")
+        if step_mask.dtype != state.dtype:
+            step_mask = tensor.cast(step_mask, dtype=state.dtype)
+            # otherwise, renamed bool gradients of would be summed up leading
+            # to sum(bool) error.
+            step_mask.stop_gradient = True
+        new_state = nn.elementwise_mul(
+            state, step_mask, axis=0) - nn.elementwise_mul(
+                new_state, (step_mask - 1), axis=0)
+        if convert_dtype(state_dtype) in ["bool"]:
+            new_state = tensor.cast(new_state, dtype=state_dtype)
+        return new_state
 
-    Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
-    Tensor indicating finished status contains all True values or the number of
-    decoding step reaches to :attr:`max_step_num`.
+    initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
+    inputs, states, finished = (initial_inputs, initial_states,
+                                initial_finished)
+    cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
+    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    outputs = None
 
-    :code:`decoder.initialize()` would be called once before the decoding loop.
-    If the `decoder` has implemented `finalize` method, :code:`decoder.finalize()`
-    would be called once after the decoding loop.
+    step_idx = 0
+    step_idx_tensor = tensor.fill_constant(
+        shape=[1], dtype="int64", value=step_idx)
+    while cond.numpy():
+        (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
+            step_idx_tensor, inputs, states, **kwargs)
+        if not decoder.tracks_own_finished:
+            # BeamSearchDecoder would track it own finished, since
+            # beams would be reordered and the finished status of each
+            # entry might change. Otherwise, perform logical OR which
+            # would not change the already finished.
+            next_finished = control_flow.logical_or(next_finished, finished)
+            # To confirm states.finished/finished be consistent with
+            # next_finished.
+            tensor.assign(next_finished, finished)
+        next_sequence_lengths = nn.elementwise_add(
+            sequence_lengths,
+            tensor.cast(
+                control_flow.logical_not(finished), sequence_lengths.dtype))
 
-    Parameters:
-        decoder(Decoder): An instance of `Decoder`.
-        inits(object, optional): Argument passed to `decoder.initialize`. 
-            Default `None`.
-        max_step_num(int, optional): The maximum number of steps. If not provided,
-            decode until the decoder is fully done, or in other words, the returned
-            Tensor by :code:`decoder.step()` indicating finished status contains
-            all True. Default `None`.
-        output_time_major(bool, optional): Indicate the data layout of Tensor included
-            in the final outputs(the first returned value of this method). If
-            attr:`False`, the data layout would be batch major with shape
-            `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
-            be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
-        impute_finished(bool, optional): If `True`, then states get copied through
-            for batch entries which are marked as finished, which differs with the
-            unfinished using the new states returned by :code:`decoder.step()` and
-            ensures that the final states have the correct values. Otherwise, states
-            wouldn't be copied through when finished. If the returned `final_states`
-            is needed, it should be set as True, which causes some slowdown.
-            Default `False`.
-        is_test(bool, optional): A flag indicating whether to use test mode. In
-            test mode, it is more memory saving. Default `False`.
-        return_length(bool, optional):  A flag indicating whether to return an
-            extra Tensor variable in the output tuple, which stores the actual
-            lengths of all decoded sequences. Default `False`.
-        **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`. 
+        if impute_finished:  # rectify the states for the finished.
+            next_states = map_structure(
+                lambda x, y: _maybe_copy(x, y, finished), states, next_states)
+        outputs = map_structure(
+            lambda x: ArrayWrapper(x),
+            step_outputs) if step_idx == 0 else map_structure(
+                lambda x, x_array: x_array.append(x), step_outputs, outputs)
+        inputs, states, finished, sequence_lengths = (
+            next_inputs, next_states, next_finished, next_sequence_lengths)
 
-    Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
-            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
-            The final outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as the :code:`outputs` \
-            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
-            is the stacked of all decoding steps' outputs, which might be revised \
-            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
-            `final_states` is the counterpart at last time step of initial states \
-            returned by :code:`decoder.initialize()` , thus has the same structure \
-            with it and has tensors with same shapes and data types. `sequence_lengths` \
-            is an `int64` tensor with the same shape as `finished` returned \
-            by :code:`decoder.initialize()` , and it stores the actual lengths of \
-            all decoded sequences.
-            
+        control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
+        step_idx += 1
 
-    Examples:
+        cond = control_flow.logical_not(nn.reduce_all(finished))
+        if max_step_num is not None and step_idx > max_step_num:
+            break
 
-        .. code-block:: python
-            
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            from paddle.fluid.layers import GRUCell, BeamSearchDecoder, dynamic_decode
+    final_outputs = map_structure(lambda x: nn.stack(x.array, axis=0), outputs)
+    final_states = states
 
-            encoder_output = fluid.data(name="encoder_output",
-                                    shape=[-1, 32, 128],
-                                    dtype="float32")
-            trg_embeder = lambda x: fluid.embedding(
-                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
-                                            size=10000,
-                                            num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
-                                                                        "output_w"),
-                                            bias_attr=False)
-            decoder_cell = GRUCell(hidden_size=128)
-            decoder = BeamSearchDecoder(decoder_cell,
-                                        start_token=0,
-                                        end_token=1,
-                                        beam_size=4,
-                                        embedding_fn=trg_embeder,
-                                        output_fn=output_layer)
+    try:
+        final_outputs, final_states = decoder.finalize(
+            final_outputs, final_states, sequence_lengths)
+    except NotImplementedError:
+        pass
 
-            outputs = dynamic_decode(
-                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
-    """
+    if not output_time_major:
+        final_outputs = map_structure(
+            lambda x: nn.transpose(x, [1, 0] + list(range(2, len(x.shape)))),
+            final_outputs)
+
+    return (final_outputs, final_states,
+            sequence_lengths) if return_length else (final_outputs,
+                                                     final_states)
+
+
+def _dynamic_decode_declarative(decoder,
+                                inits=None,
+                                max_step_num=None,
+                                output_time_major=False,
+                                impute_finished=False,
+                                is_test=False,
+                                return_length=False,
+                                **kwargs):
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
     global_inputs, global_states, global_finished = (
         initial_inputs, initial_states, initial_finished)
@@ -1395,6 +1564,98 @@ def dynamic_decode(decoder,
                                                      final_states)
 
 
+def dynamic_decode(decoder,
+                   inits=None,
+                   max_step_num=None,
+                   output_time_major=False,
+                   impute_finished=False,
+                   is_test=False,
+                   return_length=False,
+                   **kwargs):
+    r"""
+    Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
+    Tensor indicating finished status contains all True values or the number of
+    decoding step reaches to :attr:`max_step_num`.
+
+    :code:`decoder.initialize()` would be called once before the decoding loop.
+    If the `decoder` has implemented `finalize` method, :code:`decoder.finalize()`
+    would be called once after the decoding loop.
+
+    Parameters:
+        decoder(Decoder): An instance of `Decoder`.
+        inits(object, optional): Argument passed to `decoder.initialize`. 
+            Default `None`.
+        max_step_num(int, optional): The maximum number of steps. If not provided,
+            decode until the decoder is fully done, or in other words, the returned
+            Tensor by :code:`decoder.step()` indicating finished status contains
+            all True. Default `None`.
+        output_time_major(bool, optional): Indicate the data layout of Tensor included
+            in the final outputs(the first returned value of this method). If
+            attr:`False`, the data layout would be batch major with shape
+            `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
+            be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
+        impute_finished(bool, optional): If `True`, then states get copied through
+            for batch entries which are marked as finished, which differs with the
+            unfinished using the new states returned by :code:`decoder.step()` and
+            ensures that the final states have the correct values. Otherwise, states
+            wouldn't be copied through when finished. If the returned `final_states`
+            is needed, it should be set as True, which causes some slowdown.
+            Default `False`.
+        is_test(bool, optional): A flag indicating whether to use test mode. In
+            test mode, it is more memory saving. Default `False`.
+        return_length(bool, optional):  A flag indicating whether to return an
+            extra Tensor variable in the output tuple, which stores the actual
+            lengths of all decoded sequences. Default `False`.
+        **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`. 
+
+    Returns:
+        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
+            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
+            The final outputs and states, both are Tensor or nested structure of Tensor. \
+            `final_outputs` has the same structure and data types as the :code:`outputs` \
+            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
+            is the stacked of all decoding steps' outputs, which might be revised \
+            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
+            `final_states` is the counterpart at last time step of initial states \
+            returned by :code:`decoder.initialize()` , thus has the same structure \
+            with it and has tensors with same shapes and data types. `sequence_lengths` \
+            is an `int64` tensor with the same shape as `finished` returned \
+            by :code:`decoder.initialize()` , and it stores the actual lengths of \
+            all decoded sequences.
+            
+
+    Examples:
+
+        .. code-block:: python
+            
+            import numpy as np
+            import paddle
+            from paddle.nn import BeamSearchDecoder, dynamic_decode
+            from paddle.nn import GRUCell, Linear, Embedding
+            trg_embeder = Embedding(100, 32)
+            output_layer = Linear(32, 32)
+            decoder_cell = GRUCell(input_size=32, hidden_size=32)
+            decoder = BeamSearchDecoder(decoder_cell,
+                                        start_token=0,
+                                        end_token=1,
+                                        beam_size=4,
+                                        embedding_fn=trg_embeder,
+                                        output_fn=output_layer)
+            encoder_output = paddle.ones((4, 8, 32), dtype=paddle.get_default_dtype())
+            outputs = dynamic_decode(decoder=decoder,
+                                    inits=decoder_cell.get_initial_states(encoder_output),
+                                    max_step_num=10)
+    """
+    if in_dygraph_mode():
+        return _dynamic_decode_imperative(decoder, inits, max_step_num,
+                                          output_time_major, impute_finished,
+                                          is_test, return_length, **kwargs)
+    else:
+        return _dynamic_decode_declarative(decoder, inits, max_step_num,
+                                           output_time_major, impute_finished,
+                                           is_test, return_length, **kwargs)
+
+
 class DecodeHelper(object):
     """
     DecodeHelper is the base class for any helper instance used in `BasicDecoder`.
@@ -1403,7 +1664,7 @@ class DecodeHelper(object):
     """
 
     def initialize(self):
-        """
+        r"""
         DecodeHelper initialization to produce inputs for the first decoding step
         and give the initial status telling whether each sequence in the batch
         is finished. It is the partial of the initialization of `BasicDecoder`.
@@ -1437,7 +1698,7 @@ class DecodeHelper(object):
         pass
 
     def next_inputs(self, time, outputs, states, sample_ids):
-        """
+        r"""
         Produce the inputs and states for next time step and give status telling
         whether each minibatch entry is finished. It is called after `sample` in
         `BasicDecoder.step`. It is the partial of `BasicDecoder.step`.
@@ -1526,7 +1787,7 @@ class TrainingHelper(DecodeHelper):
             self.inputs)
 
     def initialize(self):
-        """
+        r"""
         TrainingHelper initialization produces inputs for the first decoding
         step by slicing at the first time step of full sequence inputs, and it
         gives initial status telling whether each sequence in the batch is
@@ -1548,7 +1809,7 @@ class TrainingHelper(DecodeHelper):
         return init_inputs, init_finished
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling by using `argmax` according to the `outputs`. Mostly
         the sampled ids would not be used since the inputs for next decoding
         step would be got by slicing.
@@ -1571,7 +1832,7 @@ class TrainingHelper(DecodeHelper):
         return sample_ids
 
     def next_inputs(self, time, outputs, states, sample_ids):
-        """
+        r"""
         Generate inputs for the next decoding step by slicing at corresponding
         step of the full sequence inputs. Simultaneously, produce the states
         for next time step by directly using the input `states` and emit status
@@ -1648,7 +1909,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
     """
 
     def __init__(self, embedding_fn, start_tokens, end_token):
-        """
+        r"""
         Constructor of GreedyEmbeddingHelper.
 
         Parameters:
@@ -1673,7 +1934,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
             shape=[1], dtype="int64", value=end_token)
 
     def initialize(self):
-        """
+        r"""
         GreedyEmbeddingHelper initialization produces inputs for the first decoding
         step by using `start_tokens` of the constructor, and gives initial
         status telling whether each sequence in the batch is finished. 
@@ -1696,7 +1957,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
         return init_inputs, init_finished
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling by using `argmax` according to the `outputs`.
 
         Parameters:
@@ -1717,7 +1978,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
         return sample_ids
 
     def next_inputs(self, time, outputs, states, sample_ids):
-        """
+        r"""
         Generate inputs for the next decoding step by applying `embedding_fn`
         to `sample_ids`. Simultaneously, produce the states for next time step
         by directly using the input `states` and emit status telling whether
@@ -1785,7 +2046,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
                  end_token,
                  softmax_temperature=None,
                  seed=None):
-        """
+        r"""
         Constructor of SampleEmbeddingHelper.
 
         Parameters:
@@ -1819,7 +2080,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         self.seed = seed
 
     def sample(self, time, outputs, states):
-        """
+        r"""
         Perform sampling from a categorical distribution, and the distribution
         is computed by `softmax(outputs/softmax_temperature)`.
 
@@ -1904,7 +2165,7 @@ class BasicDecoder(Decoder):
         self.output_fn = output_fn
 
     def initialize(self, initial_cell_states):
-        """
+        r"""
         BasicDecoder initialization includes helper initialization and cell
         initialization, and cell initialization uses `initial_cell_states` as
         the result directly.
@@ -1934,7 +2195,7 @@ class BasicDecoder(Decoder):
         pass
 
     def step(self, time, inputs, states, **kwargs):
-        """
+        r"""
         Perform one decoding step as following steps:
 
         1. Perform `cell_outputs, cell_states = cell.call(inputs, states)`
@@ -1997,7 +2258,7 @@ def dynamic_lstm(input,
                  candidate_activation='tanh',
                  dtype='float32',
                  name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -2169,7 +2430,7 @@ def lstm(input,
          name=None,
          default_initializer=None,
          seed=-1):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -2212,9 +2473,9 @@ def lstm(input,
         input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
         init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        max_len (int): This parameter has no effect and will be discarded.
         init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
         hidden_size (int): hidden size of the LSTM.
         num_layers (int): total layers number of the LSTM.
         dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
@@ -2255,7 +2516,6 @@ def lstm(input,
             data = fluid.data(name='x', shape=[None, 100], dtype='int64')
             emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
-            max_len = 100
             dropout_prob = 0.2
             input_size = 100
             hidden_size = 150
@@ -2281,23 +2541,17 @@ def lstm(input,
     input_shape = list(input.shape)
     input_size = input_shape[-1]
     weight_size = 0
+    num_dirrection = 2 if is_bidirec == True else 1
+
     for i in range(num_layers):
         if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
+            input_weight_size = (input_size * hidden_size) * 4 * num_dirrection
         else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
-            else:
-                input_weight_size = (hidden_size * hidden_size) * 4
+            input_weight_size = (hidden_size * hidden_size) * 4 * num_dirrection
+        hidden_weight_size = (hidden_size * hidden_size) * 4 * num_dirrection
 
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
+        weight_size += input_weight_size + hidden_weight_size
+        weight_size += hidden_size * 8 * num_dirrection
 
     weight = helper.create_parameter(
         attr=helper.param_attr,
@@ -2308,9 +2562,11 @@ def lstm(input,
     out = helper.create_variable_for_type_inference(dtype)
     last_h = helper.create_variable_for_type_inference(dtype)
     last_c = helper.create_variable_for_type_inference(dtype)
-
-    cache = helper.create_variable(
-        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+    reserve = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+    state_out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+    state_out.persistable = True
 
     helper.append_op(
         type='cudnn_lstm',
@@ -2319,15 +2575,15 @@ def lstm(input,
             'InitH': init_h,
             'InitC': init_c,
             'W': weight,
-            'Cache': cache,
         },
         outputs={
             'Out': out,
-            'last_h': last_h,
-            'last_c': last_c,
+            'LastH': last_h,
+            'LastC': last_c,
+            'Reserve': reserve,
+            'StateOut': state_out,
         },
         attrs={
-            'max_len': max_len,
             'is_bidirec': is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,
@@ -2356,7 +2612,7 @@ def dynamic_lstmp(input,
                   c_0=None,
                   cell_clip=None,
                   proj_clip=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note**:
@@ -2567,7 +2823,7 @@ def dynamic_gru(input,
                 candidate_activation='tanh',
                 h_0=None,
                 origin_mode=False):
-    """
+    r"""
 	:api_attr: Static Graph
 
     **Note: The input type of this must be LoDTensor. If the input type to be
@@ -2729,7 +2985,7 @@ def gru_unit(input,
              activation='tanh',
              gate_activation='sigmoid',
              origin_mode=False):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
@@ -2887,10 +3143,7 @@ def beam_search(pre_ids,
                 is_accumulated=True,
                 name=None,
                 return_parent_idx=False):
-    """
-	:alias_main: paddle.nn.beam_search
-	:alias: paddle.nn.beam_search,paddle.nn.decode.beam_search
-	:old_api: paddle.fluid.layers.beam_search
+    r"""
 
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
@@ -2968,6 +3221,8 @@ def beam_search(pre_ids,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             # Suppose `probs` contains predicted results from the computation
             # cell and `pre_ids` and `pre_scores` is the output of beam_search
@@ -3038,10 +3293,7 @@ def beam_search(pre_ids,
 
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
-    """
-	:alias_main: paddle.nn.beam_search_decode
-	:alias: paddle.nn.beam_search_decode,paddle.nn.decode.beam_search_decode
-	:old_api: paddle.fluid.layers.beam_search_decode
+    r"""
 
     This operator is used after beam search has completed. It constructs the
     full predicted sequences for each sample by walking back along the search
@@ -3088,7 +3340,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            import paddle
+            paddle.enable_static()
             # Suppose `ids` and `scores` are LodTensorArray variables reserving
             # the selected ids and scores of all steps
             ids = fluid.layers.create_array(dtype='int64')
@@ -3101,7 +3354,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
                              'beam_search_encode')
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
-    sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
+    sentence_scores = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
 
     helper.append_op(
         type="beam_search_decode",
@@ -3124,7 +3378,7 @@ def lstm_unit(x_t,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for

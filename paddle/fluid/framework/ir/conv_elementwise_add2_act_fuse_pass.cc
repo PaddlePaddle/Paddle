@@ -11,9 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/ir/conv_elementwise_add2_act_fuse_pass.h"
+
 #include <string>
+
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -91,7 +93,9 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 
     // Link inputs and outputs.
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_NE(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);            // Input
@@ -114,3 +118,10 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(conv_elementwise_add2_act_fuse_pass,
               paddle::framework::ir::ConvElementwiseAdd2ActFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add2_act_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("elementwise_add", 0)
+            .EQ("relu", 0)
+            .EQ("identity", 0));

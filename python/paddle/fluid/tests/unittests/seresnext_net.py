@@ -22,6 +22,7 @@ from simple_nets import init_data
 import math
 import os
 os.environ['CPU_NUM'] = str(4)
+os.environ['FLAGS_cudnn_deterministic'] = str(1)
 
 # FIXME(zcd): If the neural net has dropout_op, the output of ParallelExecutor
 # and Executor is different. Because, for ParallelExecutor, the dropout_op of
@@ -35,14 +36,10 @@ remove_dropout = False
 # and Executor is different.
 remove_bn = False
 
-# FIXME(huihuangzheng): Temporarily disable cudnn of conv2d in unit test because
-# it will cause random test failure. We have to re-enable it after someone fixs
-# cudnn_conv
-remove_cudnn_conv = False
+remove_cudnn_conv = True
 
 remove_dropout = True
 remove_bn = True
-remove_cudnn_conv = True
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
@@ -182,7 +179,7 @@ def batch_size(use_cuda):
 def iter(use_cuda):
     if use_cuda:
         return 10
-    return 2
+    return 1
 
 
 gpu_img, gpu_label = init_data(

@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/repeated_fc_relu_fuse_pass.h"
-#include <algorithm>  // for max
+#include <algorithm>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 #define MAX_NUM_FC 10
 
@@ -174,6 +176,11 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
             if (x->outputs.size() <= 0 || x->inputs.size() <= 0U) {
               return false;
             }
+            if (x->IsVar() && x->Var() && x->Var()->GetShape().size() > 2) {
+              VLOG(3) << "repeated fc relu only supports input dims = 2, so it "
+                         "is not applied.";
+              return false;
+            }
             int fc_idx = FindFCIdx(x);
             if (fc_idx < 0) {
               return false;
@@ -278,11 +285,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE(subgraph.count(pat.RetrieveNode(name)),
-                   "pattern has no Node called %s", name.c_str());
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+                      platform::errors::NotFound(
+                          "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(
-        p, platform::errors::NotFound("subgraph has no node %s", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
+                                   "Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -365,7 +373,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 }
 
 void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = 0;
@@ -382,3 +391,8 @@ void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(repeated_fc_relu_fuse_pass,
               paddle::framework::ir::RepeatedFCReluFusePass);
+REGISTER_PASS_CAPABILITY(repeated_fc_relu_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fc", 0)
+            .EQ("relu", 0));

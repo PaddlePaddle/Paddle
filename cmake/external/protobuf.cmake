@@ -145,9 +145,9 @@ if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
     find_program(PROTOBUF_PROTOC_EXECUTABLE protoc PATHS ${PROTOBUF_ROOT}/bin NO_DEFAULT_PATH)
     if (PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY AND PROTOBUF_LITE_LIBRARY AND PROTOBUF_PROTOC_LIBRARY AND PROTOBUF_PROTOC_EXECUTABLE)
         SET(PROTOBUF_FOUND true)
+        message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
         SET_PROTOBUF_VERSION()
         PROMPT_PROTOBUF_LIB()
-        message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
     endif()
 endif()
 
@@ -198,7 +198,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
-    SET(PROTOBUF_REPOSITORY  https://github.com/protocolbuffers/protobuf.git)
+    SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
     SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
 
     cache_third_party(${TARGET_NAME}

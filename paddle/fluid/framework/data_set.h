@@ -255,7 +255,9 @@ class DatasetImpl : public Dataset {
   int trainer_num_;
   std::vector<std::string> filelist_;
   size_t file_idx_;
+  uint64_t total_fea_num_;
   std::mutex mutex_for_pick_file_;
+  std::mutex mutex_for_fea_num_;
   std::string fs_name_;
   std::string fs_ugi_;
   int64_t fleet_send_batch_size_;

@@ -10,6 +10,7 @@ paddle/fluid/op_use_default_grad_maker_PR.spec
 build/
 build_doc/
 *.user
+*.tmp
 
 .vscode
 .idea
