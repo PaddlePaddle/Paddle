@@ -343,7 +343,7 @@ def concat(input, axis=0, name=None):
 
 
 def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
-    """
+    r"""
     This function concatenates or stacks all tensors in the input LoDTensorArray
     along the axis mentioned and returns that as the output.
 
@@ -452,7 +452,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 
 
 def sums(input, out=None):
-    """
+    r"""
     This function computes the sum of multiple input Tensors elementwisely.
 
     - Case 1, sum of 3 Tensors
@@ -1389,7 +1389,7 @@ def range(start, end, step, dtype, name=None):
 
 
 def linspace(start, stop, num, dtype=None, name=None):
-    """
+    r"""
     This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
@@ -1525,7 +1525,7 @@ def zeros_like(x, out=None):
 
 @deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
-    """
+    r"""
 	:alias_main: paddle.diag
 	:alias: paddle.diag,paddle.tensor.diag,paddle.tensor.creation.diag
 	:old_api: paddle.fluid.layers.diag

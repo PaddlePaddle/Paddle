@@ -179,6 +179,13 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
         with self.assertRaises(ValueError):
             mnist = FashionMNIST(mode='train', transform=transform, backend=1)
 
+    def test_dataset_value(self):
+        fmnist = FashionMNIST(mode='train')
+        value = np.mean([np.array(x[0]) for x in fmnist])
+
+        # 72.94035223214286 was getted from competitive products
+        np.testing.assert_allclose(value, 72.94035223214286)
+
 
 class TestFlowersTrain(unittest.TestCase):
     def test_main(self):
