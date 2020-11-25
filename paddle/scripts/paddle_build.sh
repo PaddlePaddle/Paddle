@@ -56,6 +56,9 @@ function init() {
     fi
 
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
+
+    # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
+    export FLAGS_call_stack_level=2
 }
 
 function cmake_base() {
