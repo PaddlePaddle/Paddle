@@ -152,9 +152,12 @@ class TestVarBase(unittest.TestCase):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
         _test_place(core.CPUPlace())
+        _test_place("CPUPlace")
         if core.is_compiled_with_cuda():
             _test_place(core.CUDAPinnedPlace())
+            _test_place("CUDAPinnedPlace")
             _test_place(core.CUDAPlace(0))
+            _test_place("CUDAPlace:0")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():

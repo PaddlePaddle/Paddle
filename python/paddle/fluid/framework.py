@@ -5756,7 +5756,7 @@ def _get_paddle_place(place):
             return core.CUDAPlace(0)
         else:
             place_info_list = place.split(':', 1)
-            device_id = device_info_list[1]
+            device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
     avaliable_xpu_place = re.match(r'XPUPlace:\d+', place)
@@ -5765,7 +5765,7 @@ def _get_paddle_place(place):
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is " \
                 "not compiled with XPU".format(avaliable_xpu_place))
-        place_info_list = device.split(':', 1)
+        place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.XPUPlace(device_id)
