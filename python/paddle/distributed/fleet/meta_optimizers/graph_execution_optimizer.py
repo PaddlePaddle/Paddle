@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import copy
 import paddle
 from paddle.fluid.framework import core
 from paddle.fluid import compiler
@@ -51,13 +52,21 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     # should fix the variable
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
         trainer_endpoints = self.role_maker._get_trainer_endpoints()
-        trainers = trainer_endpoints
+        other_trainers = copy.copy(trainer_endpoints)
+
         trainer_id = self.role_maker._worker_index()
         current_endpoint = self.role_maker._get_trainer_endpoints()[trainer_id]
+        other_trainers.remove(current_endpoint)
+
         trainer_endpoints_env = ",".join(trainer_endpoints)
         trainers_num = self.role_maker._worker_num()
+
+        if trainer_id == 0:
+            wait_server_ready(other_trainers)
+
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+
         for i in range(1, build_strategy.nccl_comm_num):
             startup_program.global_block().create_var(
                 name="NCCLID_{}".format(i),
@@ -90,7 +99,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             })
 
     def _try_to_compile(self, startup_program, main_program, loss):
-        import copy
         dist_strategy = self.user_defined_strategy
         local_build_strategy = paddle.fluid.BuildStrategy()
         local_build_strategy.enable_sequential_execution = \
