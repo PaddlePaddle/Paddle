@@ -177,14 +177,13 @@ void Reducer::PrepareForBackward() {
 
 // Add hook function to each leaf node. When the gradient of a leaf node is
 // generated, if it is the sparse parameter, it will directly execute allreduce,
-// if it is the dense parameter, it will execute three steps: 1.
+// if it is the dense parameter, it will execute three steps: 1,
 // MarkVariableReady. Find the position of the corresponding group
 // through var_index, share the gradient memory and the group dense_tensors,
-// the group counter is reduced by 1.
-// 2. MarkGroupReady: When the group counter is 0, it means that allreduce
-// can be emitted, and concat + allreduce + split is emitted in turn according
-// to
-// next_group_. 3. FinalizeBackward: after the end, synchronize each stream.
+// the group counter is reduced by 1. 2, MarkGroupReady: When the group
+// counter is 0, it means that allreduce can be emitted, and
+// concat + allreduce + split is emitted in turn according to next_group_.
+// 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
                           const VariableIndex &var_index) {
   auto group_index = var_index.group_index;
