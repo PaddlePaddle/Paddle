@@ -1248,7 +1248,7 @@ def broadcast_to(x, shape, name=None):
 
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.broadcast_to(data, shape=[2, 3])
-            out = out.numpy()
+            print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
@@ -1338,7 +1338,7 @@ def expand(x, shape, name=None):
 
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.expand(data, shape=[2, 3])
-            out = out.numpy()
+            print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
     if in_dygraph_mode():
