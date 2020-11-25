@@ -2511,6 +2511,57 @@ PDNode *patterns::FusionGru::operator()() {
   return out;
 }
 
+PDNode *patterns::TwoFusionGruConcat::operator()() {
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "X");
+  auto gru1 =
+      pattern->NewNode(gru1_repr())
+          ->assert_is_op("fusion_gru")
+          ->assert_more([&](Node *node) {
+            return node->Op()->GetAttrIfExists<bool>("is_reverse") == false;
+          });
+  auto gru2 =
+      pattern->NewNode(gru2_repr())
+          ->assert_is_op("fusion_gru")
+          ->assert_more([&](Node *node) {
+            return node->Op()->GetAttrIfExists<bool>("is_reverse") == true;
+          });
+  auto wh1 = pattern->NewNode(wh1_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightH");
+  auto wh2 = pattern->NewNode(wh2_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightH");
+  auto wx1 = pattern->NewNode(wx1_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightX");
+  auto wx2 = pattern->NewNode(wx2_repr())
+                 ->AsInput()
+                 ->assert_is_op_input("fusion_gru", "WeightX");
+  auto b1 = pattern->NewNode(b1_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "Bias");
+  auto b2 = pattern->NewNode(b2_repr())->AsInput()->assert_is_op_input(
+      "fusion_gru", "Bias");
+  auto h1 = pattern->NewNode(h1_repr())
+                ->AsOutput()
+                ->assert_is_op_output("fusion_gru", "Hidden")
+                ->assert_is_op_input("concat")
+                ->AsIntermediate();
+  auto h2 = pattern->NewNode(h2_repr())
+                ->AsOutput()
+                ->assert_is_op_output("fusion_gru", "Hidden")
+                ->assert_is_op_input("concat")
+                ->AsIntermediate();
+  auto concat = pattern->NewNode(concat_repr())->assert_is_op("concat");
+  auto out = pattern->NewNode(out_repr())
+                 ->AsOutput()
+                 ->assert_is_op_output("concat", "Out");
+  gru1->LinksFrom({x, wh1, wx1, b1}).LinksTo({h1});
+  gru2->LinksFrom({x, wh2, wx2, b2}).LinksTo({h2});
+  concat->LinksFrom({h1, h2}).LinksTo({out});
+  return out;
+}
+
 PDNode *patterns::MultiGruSeq::operator()() {
   auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
       "multi_gru", "X");

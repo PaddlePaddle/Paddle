@@ -18,7 +18,6 @@ from ...fluid import dygraph
 from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...tensor.math import multiply
 
 __all__ = ['weight_norm', 'remove_weight_norm']
 
@@ -86,7 +85,8 @@ def _weight_norm(v, g, dim):
         v_normalized = F.l2_normalize(p_matrix, axis=1)
         v_normalized = F.reshape(v_normalized, transposed_shape)
         v_normalized = F.transpose(v_normalized, perm)
-    weight = multiply(v_normalized, g, axis=dim if dim is not None else -1)
+    weight = F.elementwise_mul(
+        v_normalized, g, axis=dim if dim is not None else -1)
     return weight
 
 
