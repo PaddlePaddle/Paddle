@@ -21,7 +21,8 @@ import six
 import sys
 import warnings
 
-from paddle.distributed.utils import _print_arguments, _prepare_trainer_env
+from paddle.distributed.utils import _prepare_trainer_env
+from paddle.distributed.fleet.launch import _print_arguments
 from paddle.distributed.cloud_utils import get_cluster_and_pod
 from paddle.device import get_device
 
