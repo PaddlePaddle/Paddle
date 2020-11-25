@@ -2038,13 +2038,14 @@ def load_program_state(model_path, var_list=None):
                         filename=filename)
                     return True
                 except:
-                    error_str = "Failed to load model/variable file `%s`, please make sure " \
+                    error_str = "Failed to load model/variable `%s`, please make sure " \
                                 "model/variable file is saved with the following APIs: " \
                                 "save_params, save_persistables, save_vars."
+                    filenames = [var.name for var in vars]
                     if raise_error:
-                        raise RuntimeError(error_str % file_name)
+                        raise RuntimeError(error_str % filenames)
                     else:
-                        warnings.warn(error_str % file_name, RuntimeWarning)
+                        warnings.warn(error_str % filenames, RuntimeWarning)
                 return False
 
             place = paddle.fluid.CPUPlace()
@@ -2065,8 +2066,8 @@ def load_program_state(model_path, var_list=None):
                     for var in var_list:
                         loaded_var_list.append(
                             clone_var_to_block(load_block, var))
-                    _load_vars_with_try_catch(exe, dir_name, loaded_var_list,
-                                              file_name)
+                    _load_vars_with_try_catch(exe, model_path, loaded_var_list,
+                                              None)
                 else:
                     for var_name in var_name_list:
                         # NOTE(chenweihang): If identify which files the user wants 
