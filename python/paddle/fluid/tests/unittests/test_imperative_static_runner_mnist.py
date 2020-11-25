@@ -130,6 +130,9 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                 model_filename=self.model_filename,
                 params_filename=self.params_filename)
 
+            suffix_varname_dict = mnist._program_holder_dict[
+                'forward']._suffix_varname_dict
+            dict_old_new = {v: k for k, v in suffix_varname_dict.items()}
             dy_param_init_value = {}
             for param in mnist.parameters():
                 dy_param_init_value[param.name] = param.numpy()
@@ -171,7 +174,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             for param in mnist.parameters():
                 dy_param_value[param.name] = param.numpy()
 
-        return dy_x_data, dy_out, dy_param_init_value, dy_param_value
+        return dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new
 
     def load_and_train_static(self):
         with new_program_scope():
@@ -301,7 +304,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         # Phase 2. load model & train dygraph
         with unique_name.guard():
-            dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
+            dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
                 self.load_and_train_dygraph()
 
         with unique_name.guard():
@@ -311,9 +314,10 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         # Phase 3. compare
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
 
-        with unique_name.guard():
-            dict_old_new_init = rename_var_with_generator(
-                static_param_init_value.keys())
+        # with unique_name.guard():
+        #     dict_old_new_init = rename_var_with_generator(
+        #         static_param_init_value.keys())
+
         print('dy_param_init_value:', dy_param_init_value.keys())
         print('static_param_init_value:', static_param_init_value.keys())
         print('dict_old_new_init:', dict_old_new_init)
@@ -337,7 +341,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         # Phase 2. load model & train dygraph
         with unique_name.guard():
-            dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
+            dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
                 self.load_and_train_dygraph()
         with unique_name.guard():
             static_x_data, static_out, static_param_init_value, static_param_value = \
@@ -345,9 +349,9 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         # Phase 3. compare
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
-        with unique_name.guard():
-            dict_old_new_init = rename_var_with_generator(
-                static_param_init_value.keys())
+        # with unique_name.guard():
+        #     dict_old_new_init = rename_var_with_generator(
+        #         static_param_init_value.keys())
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
