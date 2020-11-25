@@ -13,24 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+
+#include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 namespace paddle {
 namespace operators {
+
 template <typename DeviceContext, typename T>
-class ElementwiseMulXPUKernel : public framework::OpKernel<T> {
+class ElementwiseMinXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T>(ctx, xpu::mul<T>);
+    XPUElementwise<T>(ctx, xpu::min<T>);
   }
 };
-// DEFINE_XPU_GRAD_KERNEL(Mul, mul, true);
+
 template <typename DeviceContext, typename T>
-class ElementwiseMulGradXPUKernel : public framework::OpKernel<T> {
+class ElementwiseMinGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwiseGrad<T>(ctx, xpu::mul_grad<T>, true);
+    XPUElementwiseGrad<T>(ctx, xpu::min_grad<T>, true);
   }
 };
 
@@ -39,10 +41,9 @@ class ElementwiseMulGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(elementwise_mul_grad,
-                       ops::ElementwiseMulGradXPUKernel<
+    elementwise_min,
+    ops::ElementwiseMinXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(elementwise_min_grad,
+                       ops::ElementwiseMinGradXPUKernel<
                            paddle::platform::XPUDeviceContext, float>);
-
 #endif
