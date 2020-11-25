@@ -13,36 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
 namespace paddle {
 namespace operators {
+
 template <typename DeviceContext, typename T>
-class ElementwiseMulXPUKernel : public framework::OpKernel<T> {
+class ElementwiseFloordivXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T>(ctx, xpu::mul<T>);
-  }
-};
-// DEFINE_XPU_GRAD_KERNEL(Mul, mul, true);
-template <typename DeviceContext, typename T>
-class ElementwiseMulGradXPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwiseGrad<T>(ctx, xpu::mul_grad<T>, true);
+    XPUElementwise<T>(ctx, xpu::floordiv<T>);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(elementwise_mul_grad,
-                       ops::ElementwiseMulGradXPUKernel<
+REGISTER_OP_XPU_KERNEL(elementwise_floordiv,
+                       ops::ElementwiseFloordivXPUKernel<
                            paddle::platform::XPUDeviceContext, float>);
 
 #endif
