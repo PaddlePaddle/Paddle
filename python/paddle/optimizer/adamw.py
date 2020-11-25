@@ -80,6 +80,7 @@ class AdamW(Adam):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             linear = paddle.nn.Linear(10, 10)
