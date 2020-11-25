@@ -336,7 +336,9 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
-                          << ", CUDA Capability: " << compute_capability_
+                          << ", GPU Compute Capability: "
+                          << compute_capability_ / 10 << "."
+                          << compute_capability_ % 10
                           << ", Driver API Version: " << driver_version_ / 1000
                           << "." << (driver_version_ % 100) / 10
                           << ", Runtime API Version: "
