@@ -361,21 +361,12 @@ def _slice_tensor_array(array, start, end):
 
 
 def _run_python_pop(target, *args):
-    # Parse args
-    if len(args) == 0:
-        idx = -1
-    elif len(args) == 1:
-        idx = args[0]
-    elif len(args) == 2:
-        idx = args[0]
-        default = args[1]
-
     # 1. pop for a dict
     if len(args) == 2:
-        result = target.pop(idx, default)
+        idx, default = args
+        return target.pop(idx, default)
 
     # 2. pop for a list or dict
     else:
-        result = target.pop(idx)
-
-    return result
+        idx = args[0] if args else -1
+        return target.pop(idx)

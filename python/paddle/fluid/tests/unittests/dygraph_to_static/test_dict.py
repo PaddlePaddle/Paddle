@@ -165,11 +165,11 @@ def test_dic_pop_2(x):
     return out
 
 
-class TestDicPop(unittest.TestCase):
+class TestDictPop(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((3)).astype('int32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
         self._set_test_func()
 
     def _set_test_func(self):
@@ -184,9 +184,10 @@ class TestDicPop(unittest.TestCase):
     def _run(self, to_static):
         prog_trans = ProgramTranslator()
         prog_trans.enable(to_static)
-        with fluid.dygraph.guard(self.place):
-            result = self.dygraph_func(self.input)
-            return result.numpy()
+
+        result = self.dygraph_func(self.input)
+
+        return result.numpy()
 
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
@@ -197,7 +198,7 @@ class TestDicPop(unittest.TestCase):
                                                                    static_res))
 
 
-class TestDictPop2(TestDicPop):
+class TestDictPop2(TestDictPop):
     def _set_test_func(self):
         self.dygraph_func = test_dic_pop_2
 

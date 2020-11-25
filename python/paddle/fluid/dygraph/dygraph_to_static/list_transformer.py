@@ -240,22 +240,14 @@ class ListTransformer(gast.NodeTransformer):
 
         args_str = [ast_to_source_code(arg).strip() for arg in node.args]
 
-        # 1. pop stmt for a list
-        if len(args_str) == 0:
-            new_call_str = "paddle.jit.dy2static.convert_pop({})".format(
-                target_str, args_str)
-
-        # 2. pop stmt for a list or dict
-        elif len(args_str) == 1:
-            new_call_str = "paddle.jit.dy2static.convert_pop({}, {})".format(
-                target_str, args_str[0])
-
-        # 3. pop stmt for a dict
-        elif len(args_str) == 2:
-            new_call_str = "paddle.jit.dy2static.convert_pop({}, {}, {})".format(
-                target_str, args_str[0], args_str[1])
+        # NOTE(liym27):
+        # 1. pop stmt for a list if len(args_str) == 0
+        # 2. pop stmt for a list or dict if len(args_str) == 1
+        # 3. pop stmt for a dict if len(args_str) == 2
+        if len(args_str) <= 2:
+            new_pop_str = "paddle.jit.dy2static.convert_pop({}, {})"\
+                .format(target_str, ",".join(args_str))
+            new_pop_node = gast.parse(new_pop_str).body[0].value
+            return new_pop_node
         else:
-            raise node
-
-        new_call_node = gast.parse(new_call_str).body[0].value
-        return new_call_node
+            return node
