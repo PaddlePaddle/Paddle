@@ -1420,6 +1420,29 @@ struct FusionGru : public PatternBase {
   PATTERN_DECL_NODE(out);
 };
 
+// two concatenated fusion_gru ops
+// Forward pass for fusion of two concatenated fusion_gru ops.
+// concat_out is a result of the operator().
+struct TwoFusionGruConcat : public PatternBase {
+  TwoFusionGruConcat(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "bi_fusion_gru") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(gru1);
+  PATTERN_DECL_NODE(gru2);
+  PATTERN_DECL_NODE(wh1);
+  PATTERN_DECL_NODE(wh2);
+  PATTERN_DECL_NODE(wx1);
+  PATTERN_DECL_NODE(wx2);
+  PATTERN_DECL_NODE(b1);
+  PATTERN_DECL_NODE(b2);
+  PATTERN_DECL_NODE(h1);
+  PATTERN_DECL_NODE(h2);
+  PATTERN_DECL_NODE(concat);
+  PATTERN_DECL_NODE(out);
+};
+
 // two subsequent bi_fusion_gru ops
 // Forward pass for fusion of two subsequent fusion_gru ops.
 // Hidden of the last fusion_gru op is a result of the operator().
