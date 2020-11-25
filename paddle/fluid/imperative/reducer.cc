@@ -178,15 +178,13 @@ void Reducer::PrepareForBackward() {
 // Add hook function to each leaf node. When the gradient of a leaf node is
 // generated, if it is the sparse parameter, it will directly execute allreduce,
 // if it is the dense parameter, it will execute three steps: 1.
-// MarkVariableReady:
-// Find the position of the corresponding group through var_index, share the
-// gradient memory and the group dense_tensors, the group counter is reduced by
-// 1.
-// 2. MarkGroupReady: When the group counter is 0, it means that allreduce can
-// be
-// emitted, and concat + allreduce + split is emitted in turn according to
-// next_group_.
-// 3. FinalizeBackward: after the end, synchronize each stream.
+// MarkVariableReady. Find the position of the corresponding group
+// through var_index, share the gradient memory and the group dense_tensors,
+// the group counter is reduced by 1.
+// 2. MarkGroupReady: When the group counter is 0, it means that allreduce
+// can be emitted, and concat + allreduce + split is emitted in turn according
+// to
+// next_group_. 3. FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(VariableWrapper *var_warpper,
                           const VariableIndex &var_index) {
   auto group_index = var_index.group_index;
@@ -262,11 +260,10 @@ void Reducer::FinalizeBackward() {
 // According to the size of each parameter, it is allocated to different groups.
 // The sparse parameter occupies a group exclusively. The dense parameters of
 // the same data type are assigned to the same group. When dividing groups, the
-// size
-// of each group will be limited according to each value in group_size_limits in
-// turn. When it is not enough, it will be divided by the last value of
-// group_size_limits. The limit value is 0, which means that the parameter
-// will monopolize the group.
+// size of each group will be limited according to each value in
+// group_size_limits in turn. When it is not enough, it will be divided
+// by the last value of group_size_limits. The limit value is 0, which
+// means that the parameter will monopolize the group.
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     const std::vector<bool> &is_sparse_gradient,
