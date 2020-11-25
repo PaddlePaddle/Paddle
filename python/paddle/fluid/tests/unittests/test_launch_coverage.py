@@ -23,7 +23,7 @@ import unittest
 import paddle.fluid as fluid
 
 from argparse import ArgumentParser, REMAINDER
-from paddle.distributed.utils import _print_arguments, get_gpus
+from paddle.distributed.utils import _print_arguments, get_gpus, get_cluster_from_args
 
 
 def _parse_args():
