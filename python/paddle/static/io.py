@@ -272,20 +272,18 @@ def _serialize_persistables(program, executor):
     return global_scope().find_var(out_var_name).get_bytes()
 
 
-def save_to_file(path, content, **kwargs):
+def save_to_file(path, content):
     """
     Save content to given path.
     Args:
         path(str): Path to write content to.
-        content(str|bytes): Content to write.
+        content(bytes): Content to write.
     Returns:
         None
     """
 
-    if isinstance(content, str):
-        content = content.encode(**kwargs)
     if not isinstance(content, bytes):
-        raise ValueError("'path_prefix' should be a string.")
+        raise ValueError("'content' type should be bytes.")
     with open(path, "wb") as f:
         f.write(content)
 
