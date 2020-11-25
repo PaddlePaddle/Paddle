@@ -13,14 +13,15 @@
 # limitations under the License.
 
 from . import logger
-from . import callbacks
+from . import callbacks  #DEFINE_ALIAS
 from . import model_summary
 
 from . import model
 from .model import *
-from .model_summary import summary
-from .dynamic_flops import flops
+from .model_summary import summary  #DEFINE_ALIAS
+from .dynamic_flops import flops  #DEFINE_ALIAS
 
 logger.setup_logger()
 
-__all__ = ['callbacks'] + model.__all__ + ['summary'] + ['flops']
+__all__ = ['callbacks'] + model.__all__ + ['summary']
+__all__ = model.__all__ + ['flops']
