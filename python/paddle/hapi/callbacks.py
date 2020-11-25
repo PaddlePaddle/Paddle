@@ -385,12 +385,11 @@ class ProgBarLogger(Callback):
             cnt = timer['count'] if timer['count'] > 0 else 1.0
             samples = timer['samples'] if timer['samples'] > 0 else 1.0
             values.append(
-                ('avg_reader_cost', "%.5f sec " % (timer['data_time'] / cnt)))
+                ('avg_reader_cost', "%.5f sec" % (timer['data_time'] / cnt)))
             values.append(
-                ('avg_batch_cost', "%.5f sec " % (timer['batch_time'] / cnt)))
-            values.append(('avg_samples', "%.5f " % (samples * 1.0 / cnt)))
+                ('avg_batch_cost', "%.5f sec" % (timer['batch_time'] / cnt)))
             values.append(
-                ('ips', "%.5f images/sec " %
+                ('ips', "%.5f samples/sec" %
                  (samples / (timer['batch_time'] + timer['batch_time']))))
 
         progbar.update(steps, values)
