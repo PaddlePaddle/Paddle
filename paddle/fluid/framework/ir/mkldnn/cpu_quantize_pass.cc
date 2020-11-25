@@ -18,7 +18,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -26,8 +25,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 using string::PrettyLogDetail;
 
 namespace {
@@ -329,7 +326,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
 
     auto filter_scale_tensor = GetScaleTensorForNode(conv_filter);
     EigenVectorArrayMap<double> eigen_tensor{filter_scale_tensor.data<double>(),
-                                             filter_scale_tensor.numel(), 1};
+                                             filter_scale_tensor.numel()};
     eigen_tensor *= static_cast<double>(S8_MAX);
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
@@ -411,7 +408,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
 
     auto weight_scale_tensor = GetScaleTensorForNode(weights);
     EigenVectorArrayMap<double> eigen_tensor{weight_scale_tensor.data<double>(),
-                                             weight_scale_tensor.numel(), 1};
+                                             weight_scale_tensor.numel()};
     eigen_tensor *= static_cast<double>(S8_MAX);
     std::vector<float> filter_scale{
         weight_scale_tensor.data<double>(),
@@ -851,7 +848,7 @@ void CPUQuantizePass::QuantizeFusionGru(Graph* graph) const {
 
     auto weight_scale_tensor = GetScaleTensorForNode(weight_x);
     EigenVectorArrayMap<double> eigen_tensor{weight_scale_tensor.data<double>(),
-                                             weight_scale_tensor.numel(), 1};
+                                             weight_scale_tensor.numel()};
     eigen_tensor *= static_cast<double>(S8_MAX);
     std::vector<float> scale_weights{
         weight_scale_tensor.data<double>(),
@@ -912,7 +909,7 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
     for (int i = 0; i < wx_size; ++i) {
       auto scale_tensor_src = GetScaleTensorByName(wx_names[i]);
       EigenVectorArrayMap<double> eigen_tensor_src{
-          scale_tensor_src.data<double>(), scale_tensor_src.numel(), 1};
+          scale_tensor_src.data<double>(), scale_tensor_src.numel()};
 
       VarDesc scale_var_desc(patterns::PDNodeName("multi_gru", "w_scale"));
 
@@ -927,8 +924,8 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
       auto* dst_data =
           w_scale_tensor_dst->mutable_data<float>(platform::CPUPlace());
-      EigenVectorArrayMap<float> eigen_tensor_dst{
-          dst_data, w_scale_tensor_dst->numel(), 1};
+      EigenVectorArrayMap<float> eigen_tensor_dst{dst_data,
+                                                  w_scale_tensor_dst->numel()};
       eigen_tensor_dst =
           eigen_tensor_src.cast<float>() * static_cast<float>(S8_MAX);
       w_scale_var_names.push_back(w_scale_node->Name());
