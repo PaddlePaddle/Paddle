@@ -838,7 +838,6 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     return log_likelihood
 
 
-@static_only
 @templatedoc()
 def crf_decoding(input, param_attr, label=None, length=None):
     """
@@ -1327,7 +1326,6 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
     return softmax_out
 
 
-@static_only
 def conv2d(input,
            num_filters,
            filter_size,
@@ -1607,7 +1605,6 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
-@static_only
 def conv3d(input,
            num_filters,
            filter_size,
@@ -3094,7 +3091,6 @@ def inplace_abn(input,
     return batch_norm_out
 
 
-@static_only
 def instance_norm(input,
                   epsilon=1e-05,
                   param_attr=None,
@@ -3411,7 +3407,6 @@ def data_norm(input,
     return helper.append_activation(data_norm_out)
 
 
-@static_only
 @templatedoc()
 def layer_norm(input,
                scale=True,
@@ -3650,7 +3645,6 @@ def group_norm(input,
     return helper.append_activation(group_norm_out)
 
 
-@static_only
 @templatedoc()
 def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     """
@@ -3758,7 +3752,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     return out
 
 
-@static_only
 def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
@@ -4051,7 +4044,6 @@ def conv2d_transpose(input,
     return out
 
 
-@static_only
 def conv3d_transpose(input,
                      num_filters,
                      output_size=None,
@@ -5688,7 +5680,6 @@ def im2sequence(input,
     return out
 
 
-@static_only
 @templatedoc()
 def row_conv(input, future_context_size, param_attr=None, act=None):
     """
@@ -9737,7 +9728,6 @@ def swish(x, beta=1.0, name=None):
     return out
 
 
-@static_only
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, name=None):
     """
@@ -13172,7 +13162,6 @@ def add_position_encoding(input, alpha, beta, name=None):
     return out
 
 
-@static_only
 def bilinear_tensor_product(x,
                             y,
                             size,
