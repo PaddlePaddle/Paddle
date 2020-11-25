@@ -50,5 +50,6 @@ output_data := value.Interface().([][]float32)
 
 运行
 ``` go
+export LD_LIBRARY_PATH=`pwd`/paddle_c/paddle/lib:$LD_LIBRARY_PATH
 go run ./demo/mobilenet.go
 ```
