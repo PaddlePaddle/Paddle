@@ -5364,7 +5364,6 @@ _main_program_ = Program()
 _startup_program_ = Program()
 
 
-@static_only
 def default_startup_program():
     """
     Get default/global startup program.
