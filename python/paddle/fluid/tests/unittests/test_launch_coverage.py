@@ -110,9 +110,6 @@ class TestCoverage(unittest.TestCase):
         if args.print_config:
             _print_arguments(args)
 
-        gpus = get_gpus("0")
-        self.assertEqual(gpus, ['0'])
-
         gpus = get_gpus(None)
 
         args.use_paddlecloud = True
