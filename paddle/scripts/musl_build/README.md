@@ -105,8 +105,8 @@ make -j8
     environment variables:
 
     - BUILD_MAN: build the paddle manually, default=0.
-    - WITH_TEST: build with unitest, and run unitest check. default=0.
-    - WITH_PRUNE_CONTAINER: build and remove the container.
+    - WITH_TEST: build with unitest, and run unitest check, default=0.
+    - WITH_PRUNE_CONTAINER: remove the container after building, default=0.
     - HTTP_PROXY: use http proxy.
     - HTTPS_PROXY: use https proxy.
 
