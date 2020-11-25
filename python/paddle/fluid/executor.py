@@ -23,7 +23,7 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
-from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_, static_only
+from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
 from . import unique_name
 from . import compiler
@@ -41,7 +41,6 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 
 
-@static_only
 def global_scope():
     """
     :api_attr: Static Graph
