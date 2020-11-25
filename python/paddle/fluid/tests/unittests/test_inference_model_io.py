@@ -226,8 +226,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                           'y': tensor_y},
                     fetch_list=[avg_cost])
 
-        self.assertRaises(ValueError, paddle.static.save_inference_model,
-                          None, ['x', 'y'], [avg_cost], exe)
+        self.assertRaises(ValueError, paddle.static.save_inference_model, None,
+                          ['x', 'y'], [avg_cost], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
                           MODEL_DIR + "/", [x, y], [avg_cost], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
@@ -251,8 +251,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                           MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
         os.rmdir(params_path)
 
-        paddle.static.io.save_inference_model(
-            MODEL_DIR, [x, y], [avg_cost], exe)
+        paddle.static.io.save_inference_model(MODEL_DIR, [x, y], [avg_cost],
+                                              exe)
 
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
@@ -264,18 +264,31 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         six.moves.reload_module(executor)  # reload to build a new scope
 
-        self.assertRaises(ValueError, paddle.static.load_inference_model,
-                          None, exe)
+        self.assertRaises(ValueError, paddle.static.load_inference_model, None,
+                          exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
                           MODEL_DIR + "/", exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
                           [MODEL_DIR], exe)
-        self.assertRaises(ValueError, paddle.static.load_inference_model,
-                          MODEL_DIR, exe, pserver_endpoints=None)
-        self.assertRaises(ValueError, paddle.static.load_inference_model,
-                          MODEL_DIR, exe, unsupported_param=None)
-        self.assertRaises((TypeError, ValueError), paddle.static.load_inference_model,
-                          None, exe, model_filename="illegal", params_filename="illegal")
+        self.assertRaises(
+            ValueError,
+            paddle.static.load_inference_model,
+            MODEL_DIR,
+            exe,
+            pserver_endpoints=None)
+        self.assertRaises(
+            ValueError,
+            paddle.static.load_inference_model,
+            MODEL_DIR,
+            exe,
+            unsupported_param=None)
+        self.assertRaises(
+            (TypeError, ValueError),
+            paddle.static.load_inference_model,
+            None,
+            exe,
+            model_filename="illegal",
+            params_filename="illegal")
 
         model = InferModel(
             paddle.static.io.load_inference_model(MODEL_DIR, exe))
