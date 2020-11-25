@@ -24,15 +24,14 @@ import numpy as np
 
 import paddle
 from paddle.fluid import (
-        core,
-        Variable,
-        CompiledProgram,
-        default_main_program,
-        Program,
-        layers,
-        unique_name,
-        program_guard,
-        )
+    core,
+    Variable,
+    CompiledProgram,
+    default_main_program,
+    Program,
+    layers,
+    unique_name,
+    program_guard, )
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
 from paddle.fluid.executor import Executor, global_scope
@@ -77,6 +76,7 @@ def _check_vars(name, var_list):
 
 def _normalize_path_prefix(path_prefix):
     """
+    convert path_prefix to absolute path.
     """
     if not isinstance(path_prefix, six.string_types):
         raise ValueError("'path_prefix' should be a string.")
@@ -88,6 +88,9 @@ def _normalize_path_prefix(path_prefix):
 
 
 def _get_valid_program(program=None):
+    """
+    return default main program if program is None.
+    """
     if program is None:
         program = default_main_program()
     elif isinstance(program, CompiledProgram):
@@ -126,6 +129,7 @@ def _clone_var_in_block(block, var):
 
 def _normalize_program(program, feed_vars, fetch_vars):
     """
+    optimize program according feed_vars and fetch_vars.
     """
     # remind users to set auc_states to 0 if auc op were found.
     for op in program.global_block().ops:
@@ -201,6 +205,45 @@ def is_persistable(var):
 
 @static_only
 def serialize_program(feed_vars, fetch_vars):
+    """
+    :api_attr: Static Graph
+
+    Serialize default main program according to feed_vars and fetch_vars.
+
+    Args:
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+    Returns:
+        bytes: serialized program.
+
+    Raises:
+        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
+        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.enable_static()
+
+            path_prefix = "./infer_model"
+
+            # User defined network, here a softmax regession example
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            avg_loss = paddle.tensor.stat.mean(loss)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+
+            # serialize default main program.
+            serialized_program = paddle.static.serialize_program([image], [predict])
+
+    """
     # verify feed_vars
     _check_vars('feed_vars', feed_vars)
     # verify fetch_vars
@@ -213,13 +256,51 @@ def serialize_program(feed_vars, fetch_vars):
 
 def _serialize_program(program):
     """
-    :api_attr: Static Graph
     """
     return program.desc.serialize_to_string()
 
 
 @static_only
 def serialize_persistables(feed_vars, fetch_vars, executor):
+    """
+    :api_attr: Static Graph
+
+    Serialize params in executor default main program according to feed_vars and fetch_vars.
+
+    Args:
+        feed_vars(Variable | list[Variable]): Variables needed by inference.
+        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+    Returns:
+        bytes: serialized program.
+
+    Raises:
+        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
+        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.enable_static()
+
+            path_prefix = "./infer_model"
+
+            # User defined network, here a softmax regession example
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+
+            loss = paddle.nn.functional.cross_entropy(predict, label)
+            avg_loss = paddle.tensor.stat.mean(loss)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+
+            # serialize default main program.
+            serialized_program = paddle.static.serialize_program([image], [predict])
+
+    """
     # verify feed_vars
     _check_vars('feed_vars', feed_vars)
     # verify fetch_vars
@@ -237,8 +318,8 @@ def _serialize_persistables(program, executor):
     # warn if no variable found in model
     if len(vars_) == 0:
         warnings.warn(
-            "no variable in your model, please ensure there are any variables in your model to save"
-        )
+            "no variable in your model, please ensure there are any "
+            "variables in your model to save")
         return None
     # create a new program and clone persitable vars to it
     save_program = Program()
@@ -264,7 +345,7 @@ def _serialize_persistables(program, executor):
         inputs={'X': in_vars},
         outputs={'Y': out_var},
         attrs={'file_path': '',
-            'save_to_memory': True})
+                'save_to_memory': True})
     # run save_program to save vars
     # NOTE(zhiqiu): save op will add variable kLookupTablePath to save_program.desc,
     # which leads to diff between save_program and its desc. Call _sync_with_cpp
@@ -429,7 +510,7 @@ def deserialize_persistables(program, data, executor):
         outputs={"Out": load_var_list},
         # if load from memory, file_path is data
         attrs={'file_path': data,
-            'model_from_memory': True})
+                'model_from_memory': True})
     executor.run(load_program)
     # check var shape
     for var in check_vars:
