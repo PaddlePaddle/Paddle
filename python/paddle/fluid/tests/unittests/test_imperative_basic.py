@@ -486,6 +486,7 @@ class TestImperative(unittest.TestCase):
                 y.backward()
                 self.assertEqual(x.grad, (i + 1) * 500)
             x.clear_gradient()
+            self.assertEqual(x.grad, None)
             for i in range(5):
                 y = paddle.pow(x, 4.0)
                 y.backward()

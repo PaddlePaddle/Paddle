@@ -328,10 +328,10 @@ class GradientAccumulationInfo {
         grad_var_->SetOverridedStopGradient(false);
         if (sort_gradient_) {
           accumulator_.reset(
-              new SortedGradientAccumulator(grad_var_->SharedVar()));
+              new SortedGradientAccumulator(grad_var_->SharedVar().get()));
         } else {
           accumulator_.reset(
-              new EagerGradientAccumulator(grad_var_->SharedVar()));
+              new EagerGradientAccumulator(grad_var_->SharedVar().get()));
         }
         accumulator_->IncreaseRefCnt();
       }
@@ -367,7 +367,7 @@ class GradientAccumulationInfo {
                           "Reference count overflows, this may be a bug"));
 
     *is_finished = (cur_ref_cnt_ == total_ref_cnt_);
-    accumulator_->Add(grad_var_partial, trace_id, unchange_input);
+    accumulator_->SumGrad(grad_var_partial, trace_id, unchange_input);
 
     if (create_graph_) {
       VLOG(10) << "Store partial grad grad for double grad "

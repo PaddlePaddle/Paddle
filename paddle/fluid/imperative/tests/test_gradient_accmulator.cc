@@ -230,10 +230,10 @@ static std::unique_ptr<GradientAccumulator> CreateAccumulator(
     const std::shared_ptr<VariableWrapper>& var, bool sort_gradient) {
   if (sort_gradient) {
     return std::unique_ptr<GradientAccumulator>(
-        new SortedGradientAccumulator(var));
+        new SortedGradientAccumulator(var.get()));
   } else {
     return std::unique_ptr<GradientAccumulator>(
-        new EagerGradientAccumulator(var));
+        new EagerGradientAccumulator(var.get()));
   }
 }
 
@@ -287,11 +287,17 @@ static void TestGradientAccumulatorTestUnchangeInput(
       CopyVar(var2, var_wrapper1_2->MutableVar());
       CopyVar(var2, var_wrapper2_2->MutableVar());
 
-      g_accum1->Add(var_wrapper1_1, 0, false);
-      g_accum1->Add(var_wrapper1_2, 1, false);
+      // g_accum1: interior_var_ = var1 + var2
+      g_accum1->SumGrad(var_wrapper1_1, 0, false);
+      g_accum1->SumGrad(var_wrapper1_2, 1, false);
+      // g_accum1: interior_vars -> var_
+      g_accum1->AccumulateGrad();
 
-      g_accum2->Add(var_wrapper2_1, 0, true);
-      g_accum2->Add(var_wrapper2_2, 1, true);
+      // g_accum2: interior_var_ = var1 + var2
+      g_accum2->SumGrad(var_wrapper2_1, 0, true);
+      g_accum2->SumGrad(var_wrapper2_2, 1, true);
+      // g_accum2s: interior_vars -> var_
+      g_accum2->AccumulateGrad();
 
       ASSERT_TRUE(IsEqualVar(var_wrapper2_1->Var(), var1));
       ASSERT_TRUE(IsEqualVar(var_wrapper2_2->Var(), var2));

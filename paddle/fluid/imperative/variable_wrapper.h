@@ -78,6 +78,13 @@ class VariableWrapper {
     return false;
   }
 
+  bool IsLeafGrad() const {
+    if (!HasGradVar() && !HasGradNode() && !OverridedStopGradient()) {
+      return true;
+    }
+    return false;
+  }
+
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
   bool Persistable() const { return persistable_; }
