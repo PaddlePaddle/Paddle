@@ -79,9 +79,9 @@ class FP16Utils(object):
             output_name = op.desc.output_arg_names()[0]
             param_name = output_name.strip("@GRAD")
             if param_name not in shard.global_params:
-                raise ValueError("Cast op's output should be a model parameter,"
-                                 "but {} is not a model parameter".format(
-                                     param_name))
+                raise ValueError("Input 'X' of check_finite_and_unscale must"
+                                 "be grads, but {} is not a grad".format(
+                                     input_name))
             if output_name in reduced_grads_to_param:
                 continue
             if shard.has_param(param_name):
