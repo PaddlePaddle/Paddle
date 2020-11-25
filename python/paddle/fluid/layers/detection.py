@@ -33,6 +33,7 @@ import six
 import numpy as np
 from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from paddle.utils import deprecated
 
 __all__ = [
     'prior_box',
@@ -998,6 +999,7 @@ def polygon_box_transform(input, name=None):
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.vision.yolo_loss")
 @templatedoc(op_type="yolov3_loss")
 def yolov3_loss(x,
                 gt_box,
@@ -1127,6 +1129,7 @@ def yolov3_loss(x,
     return loss
 
 
+@deprecated(since="2.0.0", update_to="paddle.vision.yolo_box")
 @templatedoc(op_type="yolo_box")
 def yolo_box(x,
              img_size,
