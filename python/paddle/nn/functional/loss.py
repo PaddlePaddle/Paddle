@@ -42,7 +42,6 @@ __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
     'cross_entropy',
-    'softmax_cross_entropy',
     'dice_loss',
     'hsigmoid_loss',
     'kl_div',
@@ -1125,25 +1124,6 @@ def cross_entropy(input,
                   soft_label=False,
                   axis=-1,
                   name=None):
-    return softmax_cross_entropy(
-        input=input,
-        label=label,
-        weight=weight,
-        ignore_index=ignore_index,
-        reduction=reduction,
-        soft_label=soft_label,
-        axis=axis,
-        name=name)
-
-
-def softmax_cross_entropy(input,
-                          label,
-                          weight=None,
-                          ignore_index=-100,
-                          reduction='mean',
-                          soft_label=False,
-                          axis=-1,
-                          name=None):
     """
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
@@ -1368,7 +1348,7 @@ def sigmoid_focal_loss(logit,
             fg_label = paddle.greater_equal(label, one)
             fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
-            print(output.numpy())  # [0.65782464]
+            print(output)  # [0.65782464]
 
     """
     if reduction not in ['sum', 'mean', 'none']:

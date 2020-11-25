@@ -223,6 +223,31 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(linear.bias.is_leaf)
             self.assertFalse(out.is_leaf)
 
+    def test_detach(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
+            detach_x = x.detach()
+            self.assertTrue(detach_x.stop_gradient, True)
+
+            detach_x[:] = 10.0
+            self.assertTrue(np.array_equal(x.numpy(), [10.0]))
+
+            y = x**2
+            y.backward()
+            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertEqual(detach_x.grad, None)
+
+            detach_x.stop_gradient = False  # Set stop_gradient to be False, supported auto-grad
+            z = 3 * detach_x**2
+            z.backward()
+            self.assertTrue(np.array_equal(x.grad, [20.0]))
+            self.assertTrue(np.array_equal(detach_x.grad, [60.0]))
+            # Due to sharing of data with origin Tensor, There are some unsafe operations:
+            # with self.assertRaises(RuntimeError):
+            #     y = 2 * x
+            #     detach_x[:] = 5.0
+            #     y.backward()
+
     def test_write_property(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)

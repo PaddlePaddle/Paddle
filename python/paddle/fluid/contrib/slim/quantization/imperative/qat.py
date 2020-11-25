@@ -20,7 +20,8 @@ import paddle
 from paddle.fluid import dygraph, core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose
+from paddle.nn import Linear, Conv2D
+from paddle.fluid.dygraph.nn import BatchNorm, Pool2D, Conv2DTranspose
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
 from paddle.fluid.log_helper import get_logger
@@ -142,6 +143,8 @@ class ImperativeQuantAware(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
+        self._activation_quantize_type = activation_quantize_type
+        self._weight_quantize_type = weight_quantize_type
 
         self._weight_pre_layer = weight_preprocess_layer
         self._act_pre_layer = act_preprocess_layer
@@ -172,8 +175,6 @@ class ImperativeQuantAware(object):
                 "Unknown weight_quantize_type: '%s'. It can only be "
                 "'abs_max' or 'moving_average_abs_max' or 'channel_wise_abs_max' now."
                 % (str(weight_quantize_type)))
-        self._activation_quantize_type = activation_quantize_type
-        self._weight_quantize_type = weight_quantize_type
 
         self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
         self._quantizable_layer_type = tuple(

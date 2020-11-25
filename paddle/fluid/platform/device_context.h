@@ -43,7 +43,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
-#define EIGEN_USE_THREADS
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -73,17 +72,11 @@ class CPUDeviceContext : public DeviceContext {
 
   Eigen::DefaultDevice* eigen_device() const;
 
-  Eigen::ThreadPoolDevice* eigen_pool_device() const;
-
   Place GetPlace() const override;
-
-  inline void InitPoolDevice();
 
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-  std::unique_ptr<Eigen::ThreadPoolDevice> eigen_pool_device_;
-  std::unique_ptr<Eigen::ThreadPool> eigen_threadpool_;
 };
 
 template <typename Place>
