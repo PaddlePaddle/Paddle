@@ -843,7 +843,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    use_cudnn = True if axis is -1 else False
+    use_cudnn = True
 
     if in_dygraph_mode():
         outs_cast = x if dtype is None \

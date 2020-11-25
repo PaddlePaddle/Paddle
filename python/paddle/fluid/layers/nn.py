@@ -1198,7 +1198,7 @@ def chunk_eval(input,
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
-def softmax(input, use_cudnn=False, name=None, axis=-1):
+def softmax(input, use_cudnn=True, name=None, axis=-1):
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
