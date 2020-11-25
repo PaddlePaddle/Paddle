@@ -96,8 +96,7 @@ __device__ __forceinline__ float exp_func<float>(float a) {
 
 template <>
 __device__ __forceinline__ half exp_func<half>(half a) {
-// if cuda arch supports fp16 or not
-#if __CUDA_ARCH__ >= 600
+#if IF_CUDA_ARCH_SUPPORT_FP16(__CUDA_ARCH__)
   return hexp(a);
 #else
   return FromFloat<half>(expf(ToFloat<half>(a)));
@@ -138,8 +137,7 @@ struct KeyValuePair<half> {
   operator+(const KeyValuePair &a) const {
     const half2 a2 = __halves2half2(key, value);
     const half2 b2 = __halves2half2(a.key, a.value);
-// if cuda arch supports fp16 or not
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if IF_CUDA_ARCH_SUPPORT_FP16(__CUDA_ARCH__)
     const half2 res = __hadd2(a2, b2);
 #else
     float a2_1 = __low2float(a2);

@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/gelu_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace inference {
@@ -87,8 +88,7 @@ __device__ half do_tanh<half>(half a) {
 template <typename T, unsigned TPB>
 __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
                                      const T* input, T* output) {
-// only when cuda arch supports fp16
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#if IF_CUDA_ARCH_SUPPORT_FP16(__CUDA_ARCH__)
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];

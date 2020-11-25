@@ -46,8 +46,7 @@ __device__ T math_exp(T a);
 
 template <>
 __device__ half math_exp<half>(half a) {
-// only when cuda arch supports fp16
-#if __CUDA_ARCH__ >= 600
+#if IF_CUDA_ARCH_SUPPORT_FP16(__CUDA_ARCH__)
   return hexp(a);
 #endif
 }
@@ -77,8 +76,7 @@ __global__ void swish_kernel<half>(int num, const half *input, half *output,
                                    half beta) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < num) {
-// only when cuda arch supports fp16
-#if __CUDA_ARCH__ >= 600
+#if IF_CUDA_ARCH_SUPPORT_FP16(__CUDA_ARCH__)
     output[index] =
         __ldg(input + index) /
         (static_cast<half>(1.0) + math_exp<half>(-beta * __ldg(input + index)));
