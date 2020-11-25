@@ -240,8 +240,11 @@ def serialize_program(feed_vars, fetch_vars):
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
 
-            # serialize default main program.
+            # serialize the default main program to bytes.
             serialized_program = paddle.static.serialize_program([image], [predict])
+
+            # deserialize bytes to program
+            deserialized_program = paddle.static.deserialize_program(serialized_program)
 
     """
     # verify feed_vars
@@ -256,6 +259,7 @@ def serialize_program(feed_vars, fetch_vars):
 
 def _serialize_program(program):
     """
+    serialize given program to bytes.
     """
     return program.desc.serialize_to_string()
 
@@ -265,7 +269,7 @@ def serialize_persistables(feed_vars, fetch_vars, executor):
     """
     :api_attr: Static Graph
 
-    Serialize params in executor default main program according to feed_vars and fetch_vars.
+    Serialize parameters using given executor and default main program according to feed_vars and fetch_vars.
 
     Args:
         feed_vars(Variable | list[Variable]): Variables needed by inference.
@@ -297,8 +301,12 @@ def serialize_persistables(feed_vars, fetch_vars, executor):
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
 
-            # serialize default main program.
-            serialized_program = paddle.static.serialize_program([image], [predict])
+            # serialize parameters to bytes.
+            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+
+            # deserialize bytes to parameters.
+            main_program = paddle.static.default_main_program()
+            deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
 
     """
     # verify feed_vars
@@ -313,6 +321,7 @@ def serialize_persistables(feed_vars, fetch_vars, executor):
 
 def _serialize_persistables(program, executor):
     """
+    Serialize parameters using given program and executor.
     """
     vars_ = list(filter(is_persistable, program.list_vars()))
     # warn if no variable found in model
@@ -460,6 +469,14 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor):
 @static_only
 def deserialize_program(data):
     """
+    :api_attr: Static Graph
+
+    Deserialize given data to a program.
+
+    Args:
+        data(bytes): serialized program.
+    Returns:
+        Program: deserialized program.
     """
     program = Program.parse_from_string(data)
     if not core._is_program_version_supported(program._version()):
@@ -471,6 +488,16 @@ def deserialize_program(data):
 @static_only
 def deserialize_persistables(program, data, executor):
     """
+    :api_attr: Static Graph
+
+    Deserialize given data to parameters according to given program and executor.
+
+    Args:
+        program(Program): program that contains parameter names (to deserialize).
+        data(bytes): serialized parameters.
+        executor(Executor): executor used to run load op.
+    Returns:
+        Program: deserialized program.
     """
     if not isinstance(program, Program):
         raise TypeError(
