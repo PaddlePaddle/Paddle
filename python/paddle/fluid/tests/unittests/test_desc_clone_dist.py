@@ -19,7 +19,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 
-from .test_desc_clone import get_model
+from test_desc_clone import get_model
 
 
 def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
@@ -34,6 +34,7 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 
 class TestDistMnist(unittest.TestCase):
     def test_desc_clone(self):
+        paddle.enable_static()
         get_model(batch_size=20)
 
         pserver_endpoints = "127.0.0.1:9123"

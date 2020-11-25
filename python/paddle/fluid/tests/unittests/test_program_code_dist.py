@@ -29,6 +29,7 @@ class TestProgram2Code(unittest.TestCase):
     @unittest.skipIf(sys.platform == "win32",
                      "Windows does not support distribution")
     def test_print(self):
+        paddle.enable_static()
         place = fluid.CPUPlace()
         self.init_serv(place)
         self.init_client(place, 9123)
