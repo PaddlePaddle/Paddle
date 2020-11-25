@@ -795,9 +795,6 @@ def cholesky(x, upper=False, name=None):
 
 def bmm(x, y, name=None):
     """
-	:alias_main: paddle.bmm
-	:alias: paddle.bmm,paddle.tensor.bmm,paddle.tensor.linalg.bmm
-
     Applies batched matrix multiplication to two tensors.
 
     Both of the two input tensors must be three-dementional and share the same batch size.
