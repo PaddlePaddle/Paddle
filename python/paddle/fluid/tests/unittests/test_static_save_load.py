@@ -1161,7 +1161,7 @@ class TestProgramStateOldSave(unittest.TestCase):
             # case 2: load with no need file
             orig_filepath = './test_program_1/fc_0.w_0'
             symlink_filepath = './test_program_1/link_fc_0.w_0'
-            if not os.path.exists(symlink_filepath):
+            if os.path.exists(symlink_filepath):
                 os.remove(symlink_filepath)
             os.symlink(orig_filepath, symlink_filepath)
             program_state = fluid.load_program_state("test_program_1")
