@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import time
 import numbers
 import warnings
 
@@ -303,7 +304,9 @@ class ProgBarLogger(Callback):
         log_freq (int): The frequency, in number of steps, the logs such as `loss`, 
                 `metrics` are printed. Default: 1.
         verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
+                0 = silent, 1 = progress bar, 2 = one line per epoch, 3 = 2 + 
+                time counter, such as average reader cost, samples per second. 
+                Default: 2.
 
     Examples:
         .. code-block:: python
@@ -350,6 +353,13 @@ class ProgBarLogger(Callback):
         self.train_metrics = self.params['metrics']
         assert self.train_metrics
 
+        self._train_timer = {
+            'data_time': 0,
+            'batch_time': 0,
+            'count': 0,
+            'samples': 0,
+        }
+
     def on_epoch_begin(self, epoch=None, logs=None):
         self.steps = self.params['steps']
         self.epoch = epoch
@@ -357,6 +367,8 @@ class ProgBarLogger(Callback):
         if self.epochs and self._is_print():
             print('Epoch %d/%d' % (epoch + 1, self.epochs))
         self.train_progbar = ProgressBar(num=self.steps, verbose=self.verbose)
+
+        self._train_timer['batch_start_time'] = time.time()
 
     def _updates(self, logs, mode):
         values = []
@@ -368,15 +380,40 @@ class ProgBarLogger(Callback):
             if k in logs:
                 values.append((k, logs[k]))
 
+        if self.verbose == 3 and hasattr(self, '_%s_timer' % (mode)):
+            timer = getattr(self, '_%s_timer' % (mode))
+            cnt = timer['count'] if timer['count'] > 0 else 1.0
+            samples = timer['samples'] if timer['samples'] > 0 else 1.0
+            values.append(
+                ('avg_reader_cost', "%.5f sec " % (timer['data_time'] / cnt)))
+            values.append(
+                ('avg_batch_cost', "%.5f sec " % (timer['batch_time'] / cnt)))
+            values.append(('avg_samples', "%.5f " % (samples * 1.0 / cnt)))
+            values.append(
+                ('ips', "%.5f images/sec " %
+                 (samples / (timer['batch_time'] + timer['batch_time']))))
+
         progbar.update(steps, values)
+
+    def on_train_batch_begin(self, step, logs=None):
+        self._train_timer['batch_data_end_time'] = time.time()
+        self._train_timer['data_time'] += (
+            self._train_timer['batch_data_end_time'] -
+            self._train_timer['batch_start_time'])
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
         self.train_step += 1
 
+        self._train_timer['batch_time'] += (
+            time.time() - self._train_timer['batch_data_end_time'])
+        self._train_timer['count'] += 1
+        samples = logs.get('batch_size', 1)
+        self._train_timer['samples'] += samples
         if self._is_print() and self.train_step % self.log_freq == 0:
             if self.steps is None or self.train_step < self.steps:
                 self._updates(logs, 'train')
+        self._train_timer['batch_start_time'] = time.time()
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
@@ -389,10 +426,25 @@ class ProgBarLogger(Callback):
         self.eval_step = 0
         self.evaled_samples = 0
 
+        self._eval_timer = {
+            'data_time': 0,
+            'batch_time': 0,
+            'count': 0,
+            'samples': 0,
+        }
+
         self.eval_progbar = ProgressBar(
             num=self.eval_steps, verbose=self.verbose)
         if self._is_print():
             print('Eval begin...')
+
+        self._eval_timer['batch_start_time'] = time.time()
+
+    def on_eval_batch_begin(self, step, logs=None):
+        self._eval_timer['batch_data_end_time'] = time.time()
+        self._eval_timer['data_time'] += (
+            self._eval_timer['batch_data_end_time'] -
+            self._eval_timer['batch_start_time'])
 
     def on_eval_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -400,19 +452,43 @@ class ProgBarLogger(Callback):
         samples = logs.get('batch_size', 1)
         self.evaled_samples += samples
 
+        self._eval_timer['batch_time'] += (
+            time.time() - self._eval_timer['batch_data_end_time'])
+        self._eval_timer['count'] += 1
+        samples = logs.get('batch_size', 1)
+        self._eval_timer['samples'] += samples
+
         if self._is_print() and self.eval_step % self.log_freq == 0:
             if self.eval_steps is None or self.eval_step < self.eval_steps:
                 self._updates(logs, 'eval')
+
+        self._eval_timer['batch_start_time'] = time.time()
 
     def on_test_begin(self, logs=None):
         self.test_steps = logs.get('steps', None)
         self.test_metrics = logs.get('metrics', [])
         self.test_step = 0
         self.tested_samples = 0
+
+        self._test_timer = {
+            'data_time': 0,
+            'batch_time': 0,
+            'count': 0,
+            'samples': 0,
+        }
+
         self.test_progbar = ProgressBar(
             num=self.test_steps, verbose=self.verbose)
         if self._is_print():
             print('Predict begin...')
+
+        self._test_timer['batch_start_time'] = time.time()
+
+    def on_test_batch_begin(self, step, logs=None):
+        self._test_timer['batch_data_end_time'] = time.time()
+        self._test_timer['data_time'] += (
+            self._test_timer['batch_data_end_time'] -
+            self._test_timer['batch_start_time'])
 
     def on_test_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -420,9 +496,17 @@ class ProgBarLogger(Callback):
         samples = logs.get('batch_size', 1)
         self.tested_samples += samples
 
+        self._test_timer['batch_time'] += (
+            time.time() - self._test_timer['batch_data_end_time'])
+        self._test_timer['count'] += 1
+        samples = logs.get('batch_size', 1)
+        self._test_timer['samples'] += samples
+
         if self.test_step % self.log_freq == 0 and self._is_print():
             if self.test_steps is None or self.test_step < self.test_steps:
                 self._updates(logs, 'test')
+
+        self._test_timer['batch_start_time'] = time.time()
 
     def on_eval_end(self, logs=None):
         logs = logs or {}

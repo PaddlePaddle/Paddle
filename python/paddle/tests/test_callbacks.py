@@ -128,6 +128,10 @@ class TestCallbacks(unittest.TestCase):
         self.verbose = 2
         self.run_callback()
 
+    def test_callback_verbose_3(self):
+        self.verbose = 3
+        self.run_callback()
+
     def test_visualdl_callback(self):
         # visualdl not support python2
         if sys.version_info < (3, ):
