@@ -27,7 +27,7 @@ CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 git checkout -b prec_added_ut upstream/${BRANCH}
 mkdir prec_build
 cd prec_build
-bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >prebuild.log 2>&1
+bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir 
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/pr-ut
