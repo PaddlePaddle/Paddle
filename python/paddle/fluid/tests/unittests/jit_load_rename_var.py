@@ -34,7 +34,7 @@ def rename_var_with_generator(names_old):
             else:
                 temp_name = "_".join(temp_name)
             name_new = _generate_unique_var_name_sync_with_main_program(
-                temp_name)
+                temp_name) + '-load'
             if name_new not in names_old[:var_idx] + names_old[var_idx + 1:]:
                 break
         dict_rename_var_old_new[name_old] = name_new

@@ -314,6 +314,9 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         with unique_name.guard():
             dict_old_new_init = rename_var_with_generator(
                 static_param_init_value.keys())
+        print('dy_param_init_value:', dy_param_init_value.keys())
+        print('static_param_init_value:', static_param_init_value.keys())
+        print('dict_old_new_init:', dict_old_new_init)
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
