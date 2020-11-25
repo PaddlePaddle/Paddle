@@ -190,7 +190,7 @@ def _rename_var_program_desc(program_desc):
                     temp_name = "_".join(temp_name)
 
                 name_new = _generate_unique_var_name_sync_with_main_program(
-                    temp_name) + '-load'
+                    temp_name)
                 if name_new not in old_names[:var_idx] + old_names[var_idx +
                                                                    1:]:
                     break
