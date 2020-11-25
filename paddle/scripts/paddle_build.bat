@@ -411,11 +411,11 @@ test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm^|test_gru_rnn_op^
 test_ir_inplace_pass^|test_ir_memory_optimize_pass^|test_memory_reuse_exclude_feed_var^|test_mix_precision_all_reduce_fuse^|test_parallel_executor_pg^|test_print_op^|test_py_func_op^|^
 test_weight_decay^|test_mobile_net^|test_graph^|test_imperative_out_scale^|test_imperative_qat^|test_imperative_qat_channelwise^|test_moving_average_abs_max_scale_op^|^
 test_quantization_pass^|test_quantization_scale_pass^|test_user_defined_quantization^|test_matmul_v2_op^|test_sentiment^|test_conv2d_int8_mkldnn_op^|^
-test_crypto^|test_callbacks^|test_program_prune_backward^|test_train_recognize_digits^|test_imperative_ocr_attention_model
+test_crypto^|test_callbacks^|test_program_prune_backward^|test_imperative_ocr_attention_model
 rem /*===============================================================*/
 
 rem these unittest that cost long time, diabled temporarily, Maybe moved to the night
-set long_time_test=best_fit_allocator_test^|timer_test^|test_image_classification^|test_recognize_digits^|decorator_test^|^
+set long_time_test=best_fit_allocator_test^|timer_test^|test_image_classification^|test_recognize_digits^|test_train_recognize_digits^|decorator_test^|^
 test_dataset_cifar^|test_dataset_imdb^|test_dataset_movielens^|test_datasets^|test_pretrained_model^|test_concat_op^|test_elementwise_add_op^|test_elementwise_sub_op^|test_gather_op^|test_gather_nd_op^|^
 test_sequence_concat^|test_sequence_conv^|test_sequence_pool^|test_sequence_slice_op^|test_space_to_depth_op^|test_activation_nn_grad^|test_activation_op^|test_auto_growth_gpu_memory_limit^|^
 test_bicubic_interp_op^|test_bicubic_interp_v2_op^|test_bilinear_interp_v2_op^|test_conv2d_op^|test_conv3d_op^|test_conv3d_transpose_part2_op^|test_conv_nn_grad^|test_crop_tensor_op^|^
