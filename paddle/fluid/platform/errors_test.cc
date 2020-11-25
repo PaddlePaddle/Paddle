@@ -20,61 +20,59 @@ limitations under the License. */
 
 using namespace paddle::platform::errors;  // NOLINT
 
-#define CHECK_PADDLE_THROW(EFUNC)                                   \
-  do {                                                              \
-    bool caught_exception = false;                                  \
-    try {                                                           \
-      PADDLE_THROW((EFUNC)("paddle throw test."));                  \
-    } catch (paddle::platform::EnforceNotMet & error) {             \
-      caught_exception = true;                                      \
-      std::string ex_msg = error.what();                            \
-      EXPECT_TRUE(ex_msg.find("(" #EFUNC ") paddle throw test.") != \
-                  std::string::npos);                               \
-    }                                                               \
-    EXPECT_TRUE(caught_exception);                                  \
+#define CHECK_PADDLE_THROW(EFUNC)                                          \
+  do {                                                                     \
+    bool caught_exception = false;                                         \
+    try {                                                                  \
+      PADDLE_THROW((EFUNC)("paddle throw test."));                         \
+    } catch (paddle::platform::EnforceNotMet & error) {                    \
+      caught_exception = true;                                             \
+      std::string ex_msg = error.what();                                   \
+      EXPECT_TRUE(ex_msg.find("paddle throw test.") != std::string::npos); \
+    }                                                                      \
+    EXPECT_TRUE(caught_exception);                                         \
   } while (0)
 
-#define CHECK_PADDLE_ENFORCE(EFUNC)                                   \
+#define CHECK_PADDLE_ENFORCE(EFUNC)                                          \
+  do {                                                                       \
+    bool caught_exception = false;                                           \
+    try {                                                                    \
+      PADDLE_ENFORCE(false, (EFUNC)("paddle enforce test."));                \
+    } catch (paddle::platform::EnforceNotMet & error) {                      \
+      caught_exception = true;                                               \
+      std::string ex_msg = error.what();                                     \
+      EXPECT_TRUE(ex_msg.find("paddle enforce test.") != std::string::npos); \
+    }                                                                        \
+    EXPECT_TRUE(caught_exception);                                           \
+  } while (0)
+
+#define CHECK_PADDLE_ENFORCE_NOT_NULL(EFUNC)                             \
+  do {                                                                   \
+    bool caught_exception = false;                                       \
+    try {                                                                \
+      PADDLE_ENFORCE_NOT_NULL(nullptr,                                   \
+                              (EFUNC)("paddle enforce not null test.")); \
+    } catch (paddle::platform::EnforceNotMet & error) {                  \
+      caught_exception = true;                                           \
+      std::string ex_msg = error.what();                                 \
+      EXPECT_TRUE(ex_msg.find("paddle enforce not null test.") !=        \
+                  std::string::npos);                                    \
+    }                                                                    \
+    EXPECT_TRUE(caught_exception);                                       \
+  } while (0)
+
+#define CHECK_PADDLE_ENFORCE_EQ(EFUNC)                                \
   do {                                                                \
     bool caught_exception = false;                                    \
     try {                                                             \
-      PADDLE_ENFORCE(false, (EFUNC)("paddle enforce test."));         \
+      PADDLE_ENFORCE_EQ(1, 2, (EFUNC)("paddle enforce equal test.")); \
     } catch (paddle::platform::EnforceNotMet & error) {               \
       caught_exception = true;                                        \
       std::string ex_msg = error.what();                              \
-      EXPECT_TRUE(ex_msg.find("(" #EFUNC ") paddle enforce test.") != \
+      EXPECT_TRUE(ex_msg.find("paddle enforce equal test.") !=        \
                   std::string::npos);                                 \
     }                                                                 \
     EXPECT_TRUE(caught_exception);                                    \
-  } while (0)
-
-#define CHECK_PADDLE_ENFORCE_NOT_NULL(EFUNC)                                   \
-  do {                                                                         \
-    bool caught_exception = false;                                             \
-    try {                                                                      \
-      PADDLE_ENFORCE_NOT_NULL(nullptr,                                         \
-                              (EFUNC)("paddle enforce not null test."));       \
-    } catch (paddle::platform::EnforceNotMet & error) {                        \
-      caught_exception = true;                                                 \
-      std::string ex_msg = error.what();                                       \
-      EXPECT_TRUE(ex_msg.find("(" #EFUNC ") paddle enforce not null test.") != \
-                  std::string::npos);                                          \
-    }                                                                          \
-    EXPECT_TRUE(caught_exception);                                             \
-  } while (0)
-
-#define CHECK_PADDLE_ENFORCE_EQ(EFUNC)                                      \
-  do {                                                                      \
-    bool caught_exception = false;                                          \
-    try {                                                                   \
-      PADDLE_ENFORCE_EQ(1, 2, (EFUNC)("paddle enforce equal test."));       \
-    } catch (paddle::platform::EnforceNotMet & error) {                     \
-      caught_exception = true;                                              \
-      std::string ex_msg = error.what();                                    \
-      EXPECT_TRUE(ex_msg.find("(" #EFUNC ") paddle enforce equal test.") != \
-                  std::string::npos);                                       \
-    }                                                                       \
-    EXPECT_TRUE(caught_exception);                                          \
   } while (0)
 
 #define CHECK_ALL_PADDLE_EXCEPTION_MACRO(EFUNC) \
