@@ -227,31 +227,32 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                     fetch_list=[avg_cost])
 
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                None, ['x', 'y'], [avg_cost], exe)
+                          None, ['x', 'y'], [avg_cost], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR + "/", [x, y], [avg_cost], exe)
+                          MODEL_DIR + "/", [x, y], [avg_cost], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR, ['x', 'y'], [avg_cost], exe)
+                          MODEL_DIR, ['x', 'y'], [avg_cost], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR, 'x', [avg_cost], exe)
+                          MODEL_DIR, 'x', [avg_cost], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR, [x, y], ['avg_cost'], exe)
+                          MODEL_DIR, [x, y], ['avg_cost'], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR, [x, y], 'avg_cost', exe)
+                          MODEL_DIR, [x, y], 'avg_cost', exe)
 
         model_path = MODEL_DIR + "_isdir.pdmodel"
         os.makedirs(model_path)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+                          MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
         os.rmdir(model_path)
 
         params_path = MODEL_DIR + "_isdir.pdmodel"
         os.makedirs(params_path)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
-                MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+                          MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
         os.rmdir(params_path)
 
-        paddle.static.io.save_inference_model(MODEL_DIR, [x, y], [avg_cost], exe)
+        paddle.static.io.save_inference_model(
+            MODEL_DIR, [x, y], [avg_cost], exe)
 
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
@@ -264,19 +265,20 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         six.moves.reload_module(executor)  # reload to build a new scope
 
         self.assertRaises(ValueError, paddle.static.load_inference_model,
-                None, exe)
+                          None, exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
-                MODEL_DIR + "/", exe)
+                          MODEL_DIR + "/", exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
-                [MODEL_DIR], exe)
+                          [MODEL_DIR], exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
-                MODEL_DIR, exe, pserver_endpoints=None)
+                          MODEL_DIR, exe, pserver_endpoints=None)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
-                MODEL_DIR, exe, unsupported_param=None)
+                          MODEL_DIR, exe, unsupported_param=None)
         self.assertRaises((TypeError, ValueError), paddle.static.load_inference_model,
-                None, exe, model_filename="illegal", params_filename="illegal")
+                          None, exe, model_filename="illegal", params_filename="illegal")
 
-        model = InferModel(paddle.static.io.load_inference_model(MODEL_DIR, exe))
+        model = InferModel(
+            paddle.static.io.load_inference_model(MODEL_DIR, exe))
 
         outs = exe.run(model.program,
                        feed={
@@ -339,7 +341,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         res = paddle.static.io._serialize_persistables(Program(), None)
         self.assertEqual(res, None)
         self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
-                None, None, None)
+                          None, None, None)
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
