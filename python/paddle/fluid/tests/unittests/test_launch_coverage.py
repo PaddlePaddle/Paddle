@@ -113,6 +113,8 @@ class TestCoverage(unittest.TestCase):
         gpus = get_gpus("0,1")
         self.assertEqual(gpus, ['0', '1'])
 
+        gpus = get_gpus(None)
+
 
 if __name__ == '__main__':
     unittest.main()
