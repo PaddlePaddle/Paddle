@@ -303,24 +303,16 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.train_and_save_model()
 
         # Phase 2. load model & train dygraph
-        with unique_name.guard():
-            dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
-                self.load_and_train_dygraph()
 
-        with unique_name.guard():
-            static_x_data, static_out, static_param_init_value, static_param_value = \
-                self.load_and_train_static()
+        dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
+            self.load_and_train_dygraph()
+
+        static_x_data, static_out, static_param_init_value, static_param_value = \
+            self.load_and_train_static()
 
         # Phase 3. compare
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
 
-        # with unique_name.guard():
-        #     dict_old_new_init = rename_var_with_generator(
-        #         static_param_init_value.keys())
-
-        print('dy_param_init_value:', dy_param_init_value.keys())
-        print('static_param_init_value:', static_param_init_value.keys())
-        print('dict_old_new_init:', dict_old_new_init)
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
@@ -339,19 +331,15 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         # Phase 1. run and save static model
         self.train_and_save_model()
 
-        # Phase 2. load model & train dygraph
-        with unique_name.guard():
-            dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
-                self.load_and_train_dygraph()
-        with unique_name.guard():
-            static_x_data, static_out, static_param_init_value, static_param_value = \
-                self.load_and_train_static()
+        # Phase 2. load model & train dygraph        
+        dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
+            self.load_and_train_dygraph()
+
+        static_x_data, static_out, static_param_init_value, static_param_value = \
+            self.load_and_train_static()
 
         # Phase 3. compare
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
-        # with unique_name.guard():
-        #     dict_old_new_init = rename_var_with_generator(
-        #         static_param_init_value.keys())
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))

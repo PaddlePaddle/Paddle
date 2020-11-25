@@ -190,7 +190,7 @@ def _rename_var_program_desc(program_desc):
                     temp_name = "_".join(temp_name)
 
                 name_new = _generate_unique_var_name_sync_with_main_program(
-                    temp_name) + '-load'
+                    temp_name)
                 if name_new not in old_names[:var_idx] + old_names[var_idx +
                                                                    1:]:
                     break
@@ -300,6 +300,7 @@ class _ProgramHolder(object):
         return self._inner_scope
 
     def _preprocess(self, program_desc):
+        # rename variables of 'program_desc'
         rename_new_old_dict, _ = _rename_var_program_desc(program_desc)
         # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
