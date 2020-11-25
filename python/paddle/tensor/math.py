@@ -80,6 +80,7 @@ __all__ = [
         'increment',
         'log',
         'log2',
+        'log10',
         'logsumexp',
         'mul',
         'multiplex',
@@ -378,7 +379,7 @@ def floor_divide(x, y, name=None):
 
 
 def remainder(x, y, name=None):
-    """
+    r"""
     Mod two tensors element-wise. The equation is:
 
     .. math::
@@ -420,7 +421,7 @@ mod = remainder  #DEFINE_ALIAS
 floor_mod = remainder  #DEFINE_ALIAS
 
 
-def multiply(x, y, axis=-1, name=None):
+def multiply(x, y, name=None):
     """
     multiply two tensors element-wise. The equation is:
 
@@ -444,20 +445,20 @@ def multiply(x, y, axis=-1, name=None):
 
             import paddle
 
-            paddle.disable_static()
             x = paddle.to_tensor([[1, 2], [3, 4]])
             y = paddle.to_tensor([[5, 6], [7, 8]])
             res = paddle.multiply(x, y)
-            print(res.numpy()) # [[5, 12], [21, 32]]
+            print(res) # [[5, 12], [21, 32]]
 
             x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-            y = paddle.to_tensor([1, 2])
-            res = paddle.multiply(x, y, axis=1)
-            print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
+            y = paddle.to_tensor([2])
+            res = paddle.multiply(x, y)
+            print(res) # [[[2, 4, 6], [2, 4, 6]]]
 
     """
     op_type = 'elementwise_mul'
     act = None
+    axis = -1
 
     if x.dtype != y.dtype:
         raise TypeError(
@@ -466,19 +467,12 @@ def multiply(x, y, axis=-1, name=None):
 
     if in_dygraph_mode():
         if not isinstance(x, (paddle.Tensor)):
-            x = paddle.to_tensor(x)
-        if not isinstance(y, (paddle.Tensor)):
-            y = paddle.to_tensor(y)
+            raise TypeError(
+                    'Input x must tensor type, but received type of x: %s'
+                    % (x.dtype))
+
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
-
-    if not isinstance(x, (paddle.Tensor, Variable)):
-        x = paddle.static.data(
-            name='x', shape=x.shape, dtype=x.dtype)
-    if not isinstance(y, (paddle.Tensor, Variable)):
-        y = paddle.static.data(
-            name='y', shape=y.shape, dtype=y.dtype)
-
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, axis=-1, name=None):
@@ -980,7 +974,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
-    """
+    r"""
     This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
@@ -1175,7 +1169,7 @@ def max(x, axis=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max')
 
     out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=x.dtype)
     helper.append_op(
         type='reduce_max',
         inputs={'X': x},
@@ -1266,7 +1260,7 @@ def min(x, axis=None, keepdim=False, name=None):
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min')
 
     out = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+            dtype=x.dtype)
     helper.append_op(
         type='reduce_min',
         inputs={'X': x},
@@ -1280,7 +1274,7 @@ def min(x, axis=None, keepdim=False, name=None):
 
 
 def log1p(x, name=None):
-    """
+    r"""
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
@@ -1314,7 +1308,7 @@ def log1p(x, name=None):
     return out
 
 def log2(x, name=None):
-    """
+    r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
     .. math::
@@ -1361,6 +1355,57 @@ def log2(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
     return out
+
+
+def log10(x, name=None):
+    r"""
+    Calculates the log to the base 10 of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \\log_10_x
+
+    Args:
+        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        Tensor: The log to the base 10 of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import paddle
+
+            # example 1: x is a float
+            x_i = paddle.to_tensor([[1.0], [10.0]])
+            res = paddle.log10(x_i) # [[0.], [1.0]]
+
+            # example 2: x is float32
+            x_i = paddle.full(shape=[1], fill_value=10, dtype='float32')
+            paddle.to_tensor(x_i)
+            res = paddle.log10(x_i)
+            print(res) # [1.0]
+
+            # example 3: x is float64
+            x_i = paddle.full(shape=[1], fill_value=10, dtype='float64')
+            paddle.to_tensor(x_i)
+            res = paddle.log10(x_i)
+            print(res) # [1.0]
+    """
+    if in_dygraph_mode():
+        return core.ops.log10(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "log10")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log10', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
+    return out
+
 
 def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     """
@@ -1895,7 +1940,7 @@ def sign(x, name=None):
 
 
 def tanh(x, name=None):
-    """
+    r"""
     Tanh Activation Operator.
 
     .. math::
