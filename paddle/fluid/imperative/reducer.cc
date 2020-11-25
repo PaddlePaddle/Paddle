@@ -261,13 +261,12 @@ void Reducer::FinalizeBackward() {
 
 // According to the size of each parameter, it is allocated to different groups.
 // The sparse parameter occupies a group exclusively. The dense parameters of
-// the
-// same data type are assigned to the same group. When dividing groups, the size
+// the same data type are assigned to the same group. When dividing groups, the
+// size
 // of each group will be limited according to each value in group_size_limits in
 // turn. When it is not enough, it will be divided by the last value of
-// group_size_limits.
-// The limit value is 0, which means that the parameter will monopolize the
-// group.
+// group_size_limits. The limit value is 0, which means that the parameter
+// will monopolize the group.
 std::vector<std::vector<size_t>> AssignGroupBySize(
     const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
     const std::vector<bool> &is_sparse_gradient,
