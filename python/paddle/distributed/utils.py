@@ -20,6 +20,7 @@ import os
 import signal
 import copy
 import sys
+import six
 import subprocess
 from contextlib import closing
 import socket
