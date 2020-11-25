@@ -226,8 +226,6 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
 
-    var_wrappers = SnapshotVarWrapperList(var_wrappers);
-
     if (!var_wrappers.empty()) {
       op_->SetInput(name, std::move(var_wrappers),
                     kRole == TracedVarRole::kBackward);
@@ -295,7 +293,8 @@ class TracedGradOp {
                             var->OverridedStopGradient()))) {
         result.emplace_back();
       } else {
-        result.emplace_back(var->SharedVar());
+        auto var_wrapper = SnapshotVarWrapper(var->SharedVar());
+        result.emplace_back(var_wrapper);
         has_valid = true;
       }
     }
@@ -307,29 +306,23 @@ class TracedGradOp {
   }
 
   // Get a snapshot of VariableWrapper at a certain inplace version.
-  // The inplace version number of VariableWrapper is used for inplace detection
-  // in gradient compution.
-  static std::vector<std::shared_ptr<VariableWrapper>> SnapshotVarWrapperList(
-      const std::vector<std::shared_ptr<VariableWrapper>>& var_wrappers) {
-    std::vector<std::shared_ptr<VariableWrapper>> result;
-    result.reserve(var_wrappers.size());
-
-    for (auto& var : var_wrappers) {
-      // NOTE(liym27):
-      //  Emplace back original var_wrapper if its inplace_version is not
-      //  changed. Otherwise, it will affect the accuracy of the model results
-      //  and affect double grad.
-      if (!var->MutableVar()->IsInitialized() ||
-          var->InplaceVersionSnapshot() ==
-              var->MutableVar()->CurrentInplaceVersion()) {
-        result.emplace_back(var);
-      } else {
-        VariableWrapper new_var_wrapper = *var.get();
-        new_var_wrapper.ResetInplaceVersion();
-        result.emplace_back(std::make_shared<VariableWrapper>(new_var_wrapper));
-      }
+  // The inplace version number of VariableWrapper is used for inplace
+  // detection in gradient compution.
+  static const std::shared_ptr<VariableWrapper> SnapshotVarWrapper(
+      const std::shared_ptr<VariableWrapper>& var_wrapper) {
+    // NOTE(liym27):
+    //  Use original var_wrapper if its inplace_version is not
+    //  changed. Otherwise, it will affect the accuracy of the model
+    //  results and affect double grad.
+    if (!var_wrapper->MutableVar()->IsInitialized() ||
+        var_wrapper->InplaceVersionSnapshot() ==
+            var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else {
+      VariableWrapper new_var_wrapper = *var_wrapper.get();
+      new_var_wrapper.ResetInplaceVersion();
+      return std::make_shared<VariableWrapper>(new_var_wrapper);
     }
-    return result;
   }
 
  private:

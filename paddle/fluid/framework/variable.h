@@ -115,13 +115,12 @@ class Variable {
 
 inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
   framework::TensorInplaceVersion* version_counter_ptr(nullptr);
-  if (IsType<framework::Tensor>()) {
-    version_counter_ptr =
-        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
-
-  } else if (IsType<framework::LoDTensor>()) {
+  if (IsType<framework::LoDTensor>()) {
     version_counter_ptr =
         &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::Tensor>()) {
+    version_counter_ptr =
+        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
 
   } else if (IsType<framework::SelectedRows>()) {
     version_counter_ptr = &GetMutable<framework::SelectedRows>()
