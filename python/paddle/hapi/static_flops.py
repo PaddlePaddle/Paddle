@@ -19,18 +19,6 @@ from prettytable import PrettyTable
 from collections import OrderedDict
 from paddle.static import Program, program_guard, Variable
 
-OPTIMIZER_OPS = [
-    'momentum',
-    'lars_momentum',
-    'adagrad',
-    'adam',
-    'adamax',
-    'dpsgd',
-    'decayed_adagrad',
-    'adadelta',
-    'rmsprop',
-]
-
 
 class VarWrapper(object):
     def __init__(self, var, graph):
