@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/multi_gru_seq_fuse_pass.h"
-#include <limits>
-#include <sstream>
-#include <utility>
+#include "paddle/fluid/framework/ir/mkldnn/multi_gru_fuse_pass.h"
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -42,8 +38,8 @@ std::vector<std::string> JoinInputs(Node* op1, Node* op2,
 
 }  // namespace
 
-void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(3) << "Fusing two consecutive multi_gru ops.";
+void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+  VLOG(3) << "Fusing two concatenated multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
@@ -52,7 +48,7 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
                                              "Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
-  patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};
+  patterns::TwoFusionGruConcat pattern{gpd.mutable_pattern(), name_scope_};
   pattern();
 
   int fused_count = 0;
@@ -60,25 +56,21 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru1, gru1, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wx11, wx11, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wx12, wx12, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wh11, wh11, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wh12, wh12, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(b11, b11, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(b12, b12, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(h1, h1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru2, gru2, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wx21, wx21, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wx22, wx22, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wh21, wh21, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(wh22, wh22, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(b21, b21, pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(b22, b22, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(wh1, wh1, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(wh2, wh2, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(wx1, wx1, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(wx2, wx2, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(b1, b1, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(b2, b2, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(h1, h1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(h2, h2, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat, concat, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out, out, pattern);
 
     if (gru1->Op()->GetAttrIfExists<bool>("origin_mode") !=
         gru2->Op()->GetAttrIfExists<bool>("origin_mode")) {
-      LOG(INFO) << "The two multi_gru ops have different values of the "
+      LOG(INFO) << "The two fusion_gru ops have different values of the "
                    "origin_mode attribute. Skipping fuse.";
       return;
     }
@@ -93,41 +85,34 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
     multi_gru_desc.SetInput("WeightX", wx);
     multi_gru_desc.SetInput("WeightH", wh);
     multi_gru_desc.SetInput("Bias", b);
-    multi_gru_desc.SetOutput("Hidden", std::vector<std::string>({h2->Name()}));
+    multi_gru_desc.SetOutput("Hidden", std::vector<std::string>({out->Name()}));
 
+    auto attrs_to_skip = {"is_reverse", "use_seq"};
     for (auto& attr : gru1->Op()->GetAttrMap()) {
-      multi_gru_desc.SetAttr(attr.first, attr.second);
+      if (std::find(attrs_to_skip.begin(), attrs_to_skip.end(), attr.first) ==
+          attrs_to_skip.end())
+        multi_gru_desc.SetAttr(attr.first, attr.second);
     }
-
-    auto layers = BOOST_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
-                  BOOST_GET_CONST(int, gru2->Op()->GetAttr("layers"));
-    multi_gru_desc.SetAttr("layers", layers);
-
+    multi_gru_desc.SetAttr("layers", 1);
     auto multi_gru =
         g->CreateOpNode(&multi_gru_desc);  // OpDesc will be copied.
 
     IR_NODE_LINK_TO(x, multi_gru);
-    IR_NODE_LINK_TO(wx11, multi_gru);
-    IR_NODE_LINK_TO(wx12, multi_gru);
-    IR_NODE_LINK_TO(wx21, multi_gru);
-    IR_NODE_LINK_TO(wx22, multi_gru);
-    IR_NODE_LINK_TO(wh11, multi_gru);
-    IR_NODE_LINK_TO(wh12, multi_gru);
-    IR_NODE_LINK_TO(wh21, multi_gru);
-    IR_NODE_LINK_TO(wh22, multi_gru);
-    IR_NODE_LINK_TO(b11, multi_gru);
-    IR_NODE_LINK_TO(b12, multi_gru);
-    IR_NODE_LINK_TO(b21, multi_gru);
-    IR_NODE_LINK_TO(b22, multi_gru);
-    IR_NODE_LINK_TO(multi_gru, h2);
-    GraphSafeRemoveNodes(graph, {gru1, gru2, h1});
+    IR_NODE_LINK_TO(b1, multi_gru);
+    IR_NODE_LINK_TO(b2, multi_gru);
+    IR_NODE_LINK_TO(wh1, multi_gru);
+    IR_NODE_LINK_TO(wh2, multi_gru);
+    IR_NODE_LINK_TO(wx1, multi_gru);
+    IR_NODE_LINK_TO(wx2, multi_gru);
+    IR_NODE_LINK_TO(multi_gru, out);
+    GraphSafeRemoveNodes(graph, {gru1, gru2, h1, h2, concat});
 
     ++fused_count;
   };
   gpd(graph, handler);
   AddStatis(fused_count);
 
-  PrettyLogDetail("---    fused %d sequences of two multi_gru ops",
+  PrettyLogDetail("---    fused %d pairs of concatenated multi_gru ops",
                   fused_count);
 }
 
@@ -135,5 +120,4 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(multi_gru_seq_fuse_pass,
-              paddle::framework::ir::MultiGruSeqFusePass);
+REGISTER_PASS(multi_gru_fuse_pass, paddle::framework::ir::MultiGRUFusePass);
