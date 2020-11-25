@@ -116,7 +116,7 @@ class TestCoverage(unittest.TestCase):
         gpus = get_gpus(None)
 
         args.use_paddlecloud = True
-        cluster, pod = get_cluster_from_args(args)
+        cluster, pod = get_cluster_from_args(args, "0,1")
 
 
 if __name__ == '__main__':
