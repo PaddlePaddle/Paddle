@@ -325,10 +325,9 @@ def _serialize_persistables(program, executor):
     save_block = save_program.global_block()
     save_var_map = {}
     for var in vars_:
-        if var.type == core.VarDesc.VarType.RAW:
-            continue
-        var_copy = _clone_var_in_block(save_block, var)
-        save_var_map[var_copy.name] = var
+        if var.type != core.VarDesc.VarType.RAW:
+            var_copy = _clone_var_in_block(save_block, var)
+            save_var_map[var_copy.name] = var
 
     # create in_vars and out_var, then append a save_combine op to save_program
     in_vars = []

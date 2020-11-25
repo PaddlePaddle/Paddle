@@ -289,7 +289,57 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertEqual(model.feed_var_names, ["x", "y"])
         self.assertEqual(len(model.fetch_vars), 1)
         self.assertEqual(expected, actual)
+        # test save_to_file content type should be bytes
+        self.assertRaises(ValueError, paddle.static.io.save_to_file, '', 123)
+        # test _get_valid_program
+        self.assertRaises(TypeError, paddle.static.io._get_valid_program, 0)
+        p = Program()
+        cp = CompiledProgram(p)
+        paddle.static.io._get_valid_program(cp)
+        self.assertTrue(paddle.static.io._get_valid_program(cp) is p)
+        cp._program = None
+        self.assertRaises(TypeError, paddle.static.io._get_valid_program, cp)
 
+    def test_serialize_program_and_persistables(self):
+        init_program = fluid.default_startup_program()
+        program = fluid.default_main_program()
+
+        # fake program without feed/fetch
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(cost)
+
+            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_cost, init_program)
+
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        exe.run(init_program, feed={}, fetch_list=[])
+
+        tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
+        tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={'x': tensor_x,
+                          'y': tensor_y},
+                    fetch_list=[avg_cost])
+
+        # test if return type of serialize_program is bytes
+        res1 = paddle.static.io.serialize_program([x, y], [avg_cost])
+        self.assertTrue(isinstance(res1, bytes))
+        # test if return type of serialize_persistables is bytes
+        res2 = paddle.static.io.serialize_persistables([x, y], [avg_cost], exe)
+        self.assertTrue(isinstance(res2, bytes))
+        # test if variables in program is empty
+        res = paddle.static.io._serialize_persistables(Program(), None)
+        self.assertEqual(res, None)
+        self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
+                None, None, None)
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
