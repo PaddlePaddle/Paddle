@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import sys
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.layers.io import ListenAndServ

@@ -19,7 +19,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 
-from test_desc_clone import get_model
+from test_desc_clone import get_model, program_equal
 
 
 def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
