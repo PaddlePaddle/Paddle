@@ -647,10 +647,10 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -663,7 +663,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -677,7 +677,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -708,7 +708,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -1696,11 +1696,11 @@ class Model(object):
         test_steps = self._len_data_loader(test_loader)
         logs = {'steps': test_steps}
 
-        cbks.on_begin('test', logs)
+        cbks.on_begin('predict', logs)
 
         outputs = []
 
-        logs, outputs = self._run_one_epoch(test_loader, cbks, 'test')
+        logs, outputs = self._run_one_epoch(test_loader, cbks, 'predict')
 
         outputs = list(zip(*outputs))
 
@@ -1711,7 +1711,7 @@ class Model(object):
 
         self._test_dataloader = None
 
-        cbks.on_end('test', logs)
+        cbks.on_end('predict', logs)
         return outputs
 
     def _save_inference_model(self, path):
@@ -1797,7 +1797,7 @@ class Model(object):
 
             callbacks.on_batch_begin(mode, step, logs)
 
-            if mode != 'test':
+            if mode != 'predict':
                 outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
                                                       data[len(self._inputs):])
                 if self._metrics and self._loss:
@@ -1833,7 +1833,7 @@ class Model(object):
             callbacks.on_batch_end(mode, step, logs)
         self._reset_metrics()
 
-        if mode == 'test':
+        if mode == 'predict':
             return logs, outputs
         return logs
 

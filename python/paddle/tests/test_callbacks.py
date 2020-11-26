@@ -106,13 +106,13 @@ class TestCallbacks(unittest.TestCase):
 
             test_logs = {}
             params = {'steps': eval_steps}
-            cbks.on_begin('test', params)
+            cbks.on_begin('predict', params)
             for step in range(eval_steps):
-                cbks.on_batch_begin('test', step, test_logs)
+                cbks.on_batch_begin('predict', step, test_logs)
                 test_logs['batch_size'] = 2
                 time.sleep(0.005)
-                cbks.on_batch_end('test', step, test_logs)
-            cbks.on_end('test', test_logs)
+                cbks.on_batch_end('predict', step, test_logs)
+            cbks.on_end('predict', test_logs)
 
         cbks.on_end('train')
 

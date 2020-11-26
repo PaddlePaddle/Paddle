@@ -97,8 +97,8 @@ class CallbackList(object):
             func(*args)
 
     def _check_mode(self, mode):
-        assert mode in ['train', 'eval', 'test'], \
-            'mode should be train, eval or test'
+        assert mode in ['train', 'eval', 'predict'], \
+            'mode should be train, eval or predict'
 
     def on_begin(self, mode, logs=None):
         self._check_mode(mode)
@@ -210,14 +210,14 @@ class Callback(object):
                 of last batch of validation dataset.
         """
 
-    def on_test_begin(self, logs=None):
+    def on_predict_begin(self, logs=None):
         """Called at the beginning of predict.
 
         Args:
             logs (dict): The logs is a dict or None.
         """
 
-    def on_test_end(self, logs=None):
+    def on_predict_end(self, logs=None):
         """Called at the end of predict.
 
         Args:
@@ -281,7 +281,7 @@ class Callback(object):
                 of current batch.
         """
 
-    def on_test_batch_begin(self, step, logs=None):
+    def on_predict_batch_begin(self, step, logs=None):
         """Called at the beginning of each batch in predict.
 
         Args:
@@ -289,7 +289,7 @@ class Callback(object):
             logs (dict): The logs is a dict or None.
         """
 
-    def on_test_batch_end(self, step, logs=None):
+    def on_predict_batch_end(self, step, logs=None):
         """Called at the end of each batch in predict.
 
         Args:
@@ -470,7 +470,7 @@ class ProgBarLogger(Callback):
 
         self._eval_timer['batch_start_time'] = time.time()
 
-    def on_test_begin(self, logs=None):
+    def on_predict_begin(self, logs=None):
         self.test_steps = logs.get('steps', None)
         self.test_metrics = logs.get('metrics', [])
         self.test_step = 0
@@ -490,13 +490,13 @@ class ProgBarLogger(Callback):
 
         self._test_timer['batch_start_time'] = time.time()
 
-    def on_test_batch_begin(self, step, logs=None):
+    def on_predict_batch_begin(self, step, logs=None):
         self._test_timer['batch_data_end_time'] = time.time()
         self._test_timer['data_time'] += (
             self._test_timer['batch_data_end_time'] -
             self._test_timer['batch_start_time'])
 
-    def on_test_batch_end(self, step, logs=None):
+    def on_predict_batch_end(self, step, logs=None):
         logs = logs or {}
         self.test_step += 1
         samples = logs.get('batch_size', 1)
@@ -520,7 +520,7 @@ class ProgBarLogger(Callback):
             self._updates(logs, 'eval')
             print('Eval samples: %d' % (self.evaled_samples))
 
-    def on_test_end(self, logs=None):
+    def on_predict_end(self, logs=None):
         logs = logs or {}
         if self._is_print():
             if self.test_step % self.log_freq != 0 or self.verbose == 1:
