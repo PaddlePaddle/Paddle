@@ -19,6 +19,10 @@ import importlib
 def try_import(module_name):
     """Try importing a module, with an informative error message on failure."""
     install_name = module_name
+
+    if module_name.find('.') > -1:
+        install_name = module_name.split('.')[0]
+
     if module_name == 'cv2':
         install_name = 'opencv-python'
 
