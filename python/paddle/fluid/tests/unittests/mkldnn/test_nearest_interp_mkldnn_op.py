@@ -18,8 +18,9 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
-# from paddle.fluid.tests.unittests.test_nearest_interp_op import nearest_neighbor_interp_np, TestNearestInterpOp
+# from paddle.fluid.tests.unittests.test_nearest_interp_op import nearest_neighbor_interp_np
 
 
 def nearest_neighbor_interp_np(X,
@@ -133,7 +134,8 @@ def nearest_neighbor_interp_np(X,
 #         self.align_corners = True
 
 
-class TestNearestInterpOpMKLDNN_attr_tensor(OpTest):
+@skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
+class TestNearestInterpOpMKLDNN(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
@@ -144,13 +146,16 @@ class TestNearestInterpOpMKLDNN_attr_tensor(OpTest):
         self.attrs = {
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_layout
         }
 
-        input_np = np.random.random(self.input_shape).astype("float64")
+        input_np = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'X': input_np}
+        print(input, input_np)
 
         if self.scale_by_1Dtensor:
-            self.inputs['Scale'] = np.array([self.scale]).astype("float64")
+            self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)
             out_w = int(self.input_shape[3] * self.scale)
@@ -173,6 +178,7 @@ class TestNearestInterpOpMKLDNN_attr_tensor(OpTest):
         output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
                                                self.out_size, self.actual_shape,
                                                self.align_corners)
+        print(output_np)
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -184,14 +190,30 @@ class TestNearestInterpOpMKLDNN_attr_tensor(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [3, 2, 32, 16]
-        self.out_h = 64
-        self.out_w = 32
+        self.input_shape = [1, 1, 2, 2]
+        self.out_h = 4
+        self.out_w = 4
         self.scale = 2.0
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
+        self.use_mkldnn = True
+        self.data_layout = 'NCHW'
 
+
+# @skip_check_grad_ci(
+#     reason="Haven not implement interpolate grad kernel.")
+# class TestNearestInterpOpMKLDNNNHWC(TestNearestInterpOpMKLDNN_attr_tensor):
+#     def init_test_case(self):
+#         self.interp_method = 'nearest'
+#         self.input_shape = [3, 2, 32, 16]
+#         self.out_h = 27
+#         self.out_w = 32
+#         self.scale = 2.0
+#         self.out_size = None
+#         self.align_corners = True
+#         self.scale_by_1Dtensor = True
+#         self.data_layout = 'NHWC'
 
 # class TestNearestNeighborInterpCase1(TestNearestInterpMKLDNNOp):
 #     def init_test_case(self):

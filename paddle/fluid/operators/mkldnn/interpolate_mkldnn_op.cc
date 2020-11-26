@@ -48,14 +48,15 @@ class InterpolateMKLDNNHandler
     if (!this->isCached()) {
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto dst_tz = framework::vectorize(z->dims());
-
+      std::cout << "src_x_tz:" << src_x_tz[2] << std::endl;
+      std::cout << "dst_tz:" << dst_tz[2] << std::endl;
+      std::cout << "key_:" << this->key_ << std::endl;
       const auto src0_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
       auto resampling_d = dnnl::resampling_forward::desc(
-          dnnl::prop_kind::forward_inference,
-          dnnl::algorithm::resampling_linear, scale, src0_md, dst_md);
+          dnnl::prop_kind::forward_inference, algo, src0_md, dst_md);  // scale
 
       this->fwd_pd_.reset(new dnnl::resampling_forward::primitive_desc(
           resampling_d, this->engine_));
@@ -71,7 +72,6 @@ class InterpolateMKLDNNHandler
 
   std::shared_ptr<resampling_forward::primitive_desc>
   AcquireForwardPrimitiveDescriptor() {
-    // Sum op does not have backward so no passing from FWD to BWD is needed
     const std::string key_pd = this->key_ + "@fwd_pd";
     this->fwd_pd_ =
         std::static_pointer_cast<dnnl::resampling_forward::primitive_desc>(
@@ -138,6 +138,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     // auto out_w = ctx.Attr<int>("out_w");
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
+    std::cout << "interp_method:" << interp_method << std::endl;
     dnnl::algorithm algo = (interp_method == "nearest")
                                ? dnnl::algorithm::resampling_nearest
                                : dnnl::algorithm::resampling_linear;
