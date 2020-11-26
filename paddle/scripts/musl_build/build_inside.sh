@@ -63,6 +63,9 @@ fi
 
 echo ">>> compile source code"
 set -x
+
+export FLAGS_call_stack_level=2
+
 cmake "$PADDLE_DIR" \
     -DWITH_MUSL=ON \
     -DWITH_CRYPTO=OFF \
