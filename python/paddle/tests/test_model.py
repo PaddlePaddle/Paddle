@@ -33,8 +33,6 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-import paddle.vision.models as models
-import paddle.fluid.dygraph.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.fluid.dygraph.jit import declarative
@@ -547,24 +545,6 @@ class TestModelFunction(unittest.TestCase):
         params_info = paddle.summary(rnn, (4, 23, 16))
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
-
-    def test_static_flops(self):
-        paddle.disable_static()
-        net = models.__dict__['mobilenet_v2'](pretrained=False)
-        inputs = paddle.randn([1, 3, 224, 224])
-        static_program = jit._trace(net, inputs=[inputs])[1]
-        paddle.flops(static_program, [1, 3, 224, 224], print_detail=True)
-
-    def test_dynamic_flops(self):
-        net = models.__dict__['mobilenet_v2'](pretrained=False)
-
-        def customize_dropout(m, x, y):
-            m.total_ops += 0
-
-        paddle.flops(
-            net, [1, 3, 224, 224],
-            custom_ops={paddle.nn.Dropout: customize_dropout},
-            print_detail=True)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
