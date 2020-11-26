@@ -69,7 +69,7 @@ class ParallelEnv(object):
     This class is used to obtain the environment variables required for 
     the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
-    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch`` 
+    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch``
     or ``paddle.distributed.spawn`` .
 
     Examples:
@@ -104,7 +104,11 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+
+        # imperative only support one gpu
+        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+        self._device_id = int(selected_gpus[0])
+
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -347,7 +351,7 @@ class DataParallel(layers.Layer):
     
     2. start by ``paddle.distributed.launch`` module, for example:
     
-        ``python -m paddle.distributed.launch --selected_gpus=0,1 demo.py`` .
+        ``python -m paddle.distributed.launch --gpus=0,1 demo.py`` .
 
     And the content of `demo.py` is the code of examples.
 
@@ -377,13 +381,10 @@ class DataParallel(layers.Layer):
                     return self._linear2(self._linear1(x))
 
             def train():
-                # 1. enable dynamic mode
-                paddle.disable_static()
-                
-                # 2. initialize parallel environment
+                # 1. initialize parallel environment
                 dist.init_parallel_env()
 
-                # 3. create data parallel layer & optimizer
+                # 2. create data parallel layer & optimizer
                 layer = LinearNet()
                 dp_layer = paddle.DataParallel(layer)
 
@@ -391,7 +392,7 @@ class DataParallel(layers.Layer):
                 adam = opt.Adam(
                     learning_rate=0.001, parameters=dp_layer.parameters())
 
-                # 4. run layer
+                # 3. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
@@ -450,28 +451,28 @@ class DataParallel(layers.Layer):
                    include_sublayers=True,
                    structured_name_prefix=""):
         '''
-        Get all parameters of self._layers and its sub-layers. And set all the parameters into a dict
+        Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            structured_name_prefix(str, optional): If not empty str, all the key in state dict will start 
-                                                 with structured_name_prefix
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
         Retruns:
-            dict: a dict contains all the parameters of self._layers
+            dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
+                import paddle
+                import paddle.distributed as dist
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                dist.init_parallel_env()
+
+                emb = fluid.dygraph.Embedding([10, 10])
+                emb = fluid.dygraph.DataParallel(emb)
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
 
@@ -486,12 +487,12 @@ class DataParallel(layers.Layer):
                        include_sublayers=True,
                        use_structured_name=True):
         '''
-        Set parameters of self._layers from state_dict. All the parameters of self._layers will be reset by the tensor in the state_dict
+        Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
             None
@@ -499,18 +500,18 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle   
+                import paddle
+                import paddle.distributed as dist
 
-                paddle.disable_static()
+                dist.init_parallel_env()
 
                 emb = paddle.nn.Embedding(10, 10)
-                emb = fluid.dygraph.DataParallel(emb, strategy)
+                emb = fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")
 
                 para_state_dict = paddle.load("paddle_dy.pdparams")
-
                 emb.set_state_dict(para_state_dict)
 
         '''

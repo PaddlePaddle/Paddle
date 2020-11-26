@@ -83,10 +83,12 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.prelu, x=1, weight=weight_fp32)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32', shape=[2, 3], dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[2, 3], dtype='int32')
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16', shape=[2, 3], dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[2, 3], dtype='float16')
             F.prelu(x=x_fp16, weight=weight_fp32)
 
 
@@ -100,7 +102,8 @@ class TestNNPReluAPI(unittest.TestCase):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
         with paddle.static.program_guard(train_program, startup_program):
-            x = paddle.fluid.data(name='X', shape=self.x_np.shape, dtype='float32')
+            x = paddle.fluid.data(
+                name='X', shape=self.x_np.shape, dtype='float32')
             m = paddle.nn.PReLU()
             out = m(x)
             exe = paddle.static.Executor(self.place)
@@ -296,7 +299,7 @@ class TestModeError(unittest.TestCase):
             try:
                 y = prelu_t(x, 'any')
             except Exception as e:
-                assert (e.args[0].find('InvalidArgumentError') != -1)
+                assert (e.args[0].find('InvalidArgument') != -1)
 
 
 if __name__ == "__main__":

@@ -954,7 +954,7 @@ class Optimizer(object):
 
 
 class SGDOptimizer(Optimizer):
-    """
+    r"""
     Optimizer of the stochastic gradient descent algorithm.
 
     .. math::
@@ -1048,7 +1048,7 @@ class SGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(Optimizer):
-    """
+    r"""
 
     Simple Momentum optimizer with velocity state
 
@@ -1183,7 +1183,7 @@ class MomentumOptimizer(Optimizer):
 
 
 class DGCMomentumOptimizer(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
@@ -1603,7 +1603,7 @@ class DGCMomentumOptimizer(Optimizer):
 
 
 class LarsMomentumOptimizer(Optimizer):
-    """
+    r"""
     Momentum optimizer with LARS support
 
     The update equations are as follows:
@@ -1735,7 +1735,7 @@ class LarsMomentumOptimizer(Optimizer):
 
 
 class AdagradOptimizer(Optimizer):
-    """
+    r"""
     The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
     different learning rates to individual parameters.
 
@@ -1851,7 +1851,7 @@ class AdagradOptimizer(Optimizer):
 
 
 class AdamOptimizer(Optimizer):
-    """
+    r"""
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
@@ -2117,7 +2117,7 @@ class AdamOptimizer(Optimizer):
 
 
 class AdamaxOptimizer(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -2289,7 +2289,7 @@ class AdamaxOptimizer(Optimizer):
 
 
 class DpsgdOptimizer(Optimizer):
-    """
+    r"""
     We implement the Dpsgd optimizer according to CCS16 paper -
     Deep Learning with Differential Privacy.
 
@@ -2384,7 +2384,7 @@ class DpsgdOptimizer(Optimizer):
 
 
 class DecayedAdagradOptimizer(Optimizer):
-    """
+    r"""
     The Decayed Adagrad optimizer can be seen as an Adagrad algorithm that introduces
     the decay rate to solve the problem of a sharp drop in the learning rate
     during model training when using the AdagradOptimizer.
@@ -2494,7 +2494,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
 
 class AdadeltaOptimizer(Optimizer):
-    """
+    r"""
     **Notes: This API does not support sparse parameter optimization.**
 
     Adadelta Optimizer. Please refer to this for details:
@@ -2613,7 +2613,7 @@ class AdadeltaOptimizer(Optimizer):
 
 
 class RMSPropOptimizer(Optimizer):
-    """
+    r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
     rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
@@ -2801,7 +2801,7 @@ class RMSPropOptimizer(Optimizer):
 
 
 class FtrlOptimizer(Optimizer):
-    """
+    r"""
     FTRL (Follow The Regularized Leader) Optimizer.
 
     The paper that proposed Follow The Regularized Leader (FTRL):
@@ -2960,7 +2960,7 @@ class FtrlOptimizer(Optimizer):
 
 
 class LambOptimizer(AdamOptimizer):
-    """
+    r"""
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
@@ -3132,7 +3132,7 @@ Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
@@ -3441,7 +3441,7 @@ class ModelAverage(Optimizer):
 
 
 class ExponentialMovingAverage(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
@@ -4795,7 +4795,7 @@ class RecomputeOptimizer(Optimizer):
 
 
 class LookaheadOptimizer(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This implements the Lookahead optimizer of the
