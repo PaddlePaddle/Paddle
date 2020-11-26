@@ -54,11 +54,7 @@ import numpy as np
 # from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
 # from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
 
-__all__ = [
-    'affine_grid',
-    'grid_sample',
-    'pixel_shuffle'
-]
+__all__ = ['affine_grid', 'grid_sample', 'pixel_shuffle']
 
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):
@@ -347,11 +343,9 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             import paddle.nn.functional as F
             import numpy as np
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            paddle.disable_static()
             x_var = paddle.to_tensor(x)
             out_var = F.pixel_shuffle(x_var, 3)
             out = out_var.numpy()
-            print(out.shape) 
             # (2, 1, 12, 12)
     """
     if not in_dygraph_mode():

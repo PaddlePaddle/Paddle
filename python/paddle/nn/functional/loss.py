@@ -1128,7 +1128,7 @@ def cross_entropy(input,
     and ``NLLLoss`` together.
 
     It is useful when training a classification problem with ``C`` classes.
-    If provided, the optional argument ``weight`` should be a 1D Variable assigning
+    If provided, the optional argument ``weight`` should be a 1D Tensor assigning
     weight to each of the classes.
 
     For predictions label, and target label, the loss is calculated as follows.
@@ -1165,15 +1165,13 @@ def cross_entropy(input,
             and does not contribute to the input gradient. Default is ``-100``.
 
     Returns:
-        The tensor variable storing the cross_entropy_loss of input and label.
+        Tensor.The tensor storing the cross_entropy_loss of input and label.
 
-    Return type: Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
             input_data = np.random.random([5, 100]).astype("float64")
             label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
             weight_data = np.random.random([100]).astype("float64")
@@ -1181,7 +1179,6 @@ def cross_entropy(input,
             label =  paddle.to_tensor(label_data)
             weight = paddle.to_tensor(weight_data)
             loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
-            print(loss.numpy())
 
     """
     if not in_dygraph_mode():
@@ -1199,7 +1196,7 @@ def cross_entropy(input,
     log_softmax_out = paddle.nn.functional.log_softmax(input, axis=1)
     if weight is not None and not isinstance(weight, Variable):
         raise ValueError(
-            "The weight' is not a Variable, please convert to Variable.")
+            "The weight' is not a Tensor, please convert to Tensor.")
 
     #step 2. nll_loss
     input = log_softmax_out

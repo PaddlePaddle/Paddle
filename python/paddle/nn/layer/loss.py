@@ -142,14 +142,11 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
-	:alias_main: paddle.nn.CrossEntropyLoss
-	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
-
     This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
     and ``NLLLoss`` together.
 
     It is useful when training a classification problem with ``C`` classes.
-    If provided, the optional argument ``weight`` should be a 1D Variable assigning
+    If provided, the optional argument ``weight`` should be a 1D Tensor assigning
     weight to each of the classes.
 
     For predictions label, and target label, the loss is calculated as follows.
@@ -167,13 +164,13 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right)), j = 1,..., K
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32, float64. Shape is
+        input (Tensor): Input tensor, the data type is float32, float64. Shape is
 	    (N, C), where C is number of classes, and if shape is more than 2D, this
 	    is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Variable): Label tensor, the data type is int64. Shape is (N), where each
+        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each
 	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
 	    (N, D1, D2,..., Dk), k >= 1.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight given
+        weight (Tensor, optional): Weight tensor, a manual rescaling weight given
             to each class and the shape is (C). It has the same dimensions as class
 	    number and the data type is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -186,9 +183,8 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             and does not contribute to the input gradient. Default is ``-100``.
 
     Returns:
-        The tensor variable storing the cross_entropy_loss of input and label.
+        Tensor. The tensor storing the cross_entropy_loss of input and label.
 
-    Return type: Variable.
 
     Examples:
         .. code-block:: python
@@ -213,17 +209,15 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                         feed={"input": input_data, "label": label_data,"weight": weight_data},
                         fetch_list=[output],
                         return_numpy=True)
-            print(output)
 
             # imperative mode
-            import paddle.fluid.dygraph as dg
+            import paddle.dygraph as dg
             with dg.guard(place) as g:
                 input = dg.to_variable(input_data)
                 label = dg.to_variable(label_data)
                 weight = dg.to_variable(weight_data)
                 ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
                 output = ce_loss(input, label)
-                print(output.numpy())
     """
 
     def __init__(self, weight=None, ignore_index=-100, reduction='mean'):
