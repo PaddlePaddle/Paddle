@@ -1417,10 +1417,12 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     Examples:
         .. code-block:: python
 
+
           import paddle
           input = paddle.ones([2,2])
           tensor1 = paddle.ones([2,2])
           tensor2 = paddle.ones([2,2])
+
           out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
           print(out.numpy())
           # [[1.5 1.5]

@@ -95,6 +95,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = F.sigmoid(x)
+        print(out)
         # [0.40131234 0.450166   0.52497919 0.57444252]
 
 """)
@@ -109,6 +110,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = F.log_sigmoid(x)
+        print(out)
         # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
 
 """)
@@ -122,6 +124,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.exp(x)
+        print(out)
         # [0.67032005 0.81873075 1.10517092 1.34985881]
 
 """)
@@ -135,6 +138,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.tanh(x)
+        print(out)
         # [-0.37994896 -0.19737532  0.09966799  0.29131261]
 
 """)
@@ -148,6 +152,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.atan(x)
+        print(out)
         # [-0.38050638 -0.19739556  0.09966865  0.29145679]
 
 """)
@@ -162,7 +167,9 @@ Examples:
         paddle.disable_static()
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+        out = F.tanhshrink(x) 
+        print(out)
+        # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
 
 """)
 
@@ -175,6 +182,7 @@ Examples:
 
         x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
         out = paddle.sqrt(x)
+        print(out)
         # [0.31622777 0.4472136  0.54772256 0.63245553]
 
 """)
@@ -187,6 +195,7 @@ Examples:
 
         x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
         out = paddle.rsqrt(x)
+        print(out)
         # [3.16227766 2.23606798 1.82574186 1.58113883]
 
 """)
@@ -200,6 +209,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.abs(x)
+        print(out)
         # [0.4 0.2 0.1 0.3]
 
 """)
@@ -213,6 +223,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.ceil(x)
+        print(out)
         # [-0. -0.  1.  1.]
 
 """)
@@ -226,6 +237,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.floor(x)
+        print(out)
         # [-1. -1.  0.  0.]
 
 """)
@@ -239,6 +251,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.cos(x)
+        print(out)
         # [0.92106099 0.98006658 0.99500417 0.95533649]
 
 """)
@@ -252,6 +265,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.acos(x)
+        print(out)
         # [1.98231317 1.77215425 1.47062891 1.26610367]
 
 """)
@@ -265,6 +279,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.sin(x)
+        print(out)
         # [-0.38941834 -0.19866933  0.09983342  0.29552021]
 
 """)
@@ -278,6 +293,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.asin(x)
+        print(out)
         # [-0.41151685 -0.20135792  0.10016742  0.30469265]
 
 """)
@@ -290,6 +306,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.cosh(x)
+        print(out)
         # [1.08107237 1.02006676 1.00500417 1.04533851]
 
 """)
@@ -303,6 +320,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.sinh(x)
+        print(out)
         # [-0.41075233 -0.201336    0.10016675  0.30452029]
 
 """)
@@ -316,6 +334,7 @@ Examples:
 
         x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
         out = paddle.round(x)
+        print(out)
         # [-1. -0.  1.  2.]
 
 """)
@@ -329,6 +348,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.reciprocal(x)
+        print(out)
         # [-2.5        -5.         10.          3.33333333]
 
 """)
@@ -342,6 +362,7 @@ Examples:
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.square(x)
+        print(out)
         # [0.16 0.04 0.01 0.09]
 
 """)
@@ -356,7 +377,9 @@ Examples:
         paddle.disable_static()
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+        out = F.softplus(x) 
+        print(out)
+        # [0.513015, 0.598139, 0.744397, 0.854355]
 
 """)
 
@@ -370,7 +393,9 @@ Examples:
         paddle.disable_static()
 
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+        out = F.softsign(x) 
+        print(out)
+        # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
 """)
 
@@ -705,5 +730,6 @@ Examples:
         import paddle
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
+        print(out)
         # [-0.42839236 -0.22270259  0.11246292  0.32862676]
 """
