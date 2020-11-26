@@ -14,6 +14,8 @@
 
 import os
 import numbers
+import warnings
+import numpy as np
 
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.utils import try_import
@@ -596,3 +598,171 @@ class VisualDL(Callback):
             if (not hasattr(self, '_is_fit')) and hasattr(self, 'writer'):
                 self.writer.close()
                 delattr(self, 'writer')
+
+
+class ReduceLROnPlateau(Callback):
+    """Reduce learning rate when a metric has stopped improving.
+    Models often benefit from reducing the learning rate by a factor
+    of 2-10 once learning stagnates. This callback monitors a
+    quantity and if no improvement is seen for a 'patience' number
+    of epochs, the learning rate is reduced.
+    
+    Arguments:
+        monitor(str, optional): Quantity to be monitored. Default: 'loss'.
+        factor(float, optional): factor by which the learning rate will be reduced.
+            `new_lr = lr * factor`. Default: 0.1.
+        patience(int, optional): Number of epochs with no improvement after which
+            training will be stopped. Default: 10.
+        verbose(int, optional): The verbosity mode. 0: quiet, 1: update messages.
+            Default: 1.
+        mode(str, optional): one of `{'auto', 'min', 'max'}`. In `'min'` mode,
+            the learning rate will be reduced when the quantity monitored has 
+            stopped decreasing. In 'max' mode, training will stop until monitored 
+            quantity stops increasing. In 'auto' mode, exact mode can be inferred 
+            by the name of monitor. If 'acc' in monitor, the mode will be 
+            considered as 'max', otherwise the mode will be set to 'min'. 
+            Default: 'auto'.
+        min_delta(int|float, optional): threshold for measuring the new optimum, 
+            to only focus on significant changes. Default: 0.
+        cooldown(int, optional): number of epochs to wait before resuming normal operation after
+            lr has been reduced. Default: 0.
+        min_lr(float, optional): lower bound on the learning rate. Default: 0.
+  
+    Examples:
+          .. code-block:: python
+  
+              import paddle
+              from paddle import Model
+              from paddle.static import InputSpec
+              from paddle.vision.models import LeNet
+              from paddle.vision.datasets import MNIST
+              from paddle.metric import Accuracy
+              from paddle.nn.layer.loss import CrossEntropyLoss
+              import paddle.vision.transforms as T  
+              sample_num = 200
+              transform = T.Compose(
+                  [T.Transpose(), T.Normalize([127.5], [127.5])])
+              train_dataset = MNIST(mode='train', transform=transform)
+              val_dataset = MNIST(mode='test', transform=transform)
+              net = LeNet()
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=net.parameters())  
+              inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+              labels = [InputSpec([None, 1], 'int64', 'label')]  
+              model = Model(net, inputs=inputs, labels=labels)
+              model.prepare(
+                  optim,
+                  loss=CrossEntropyLoss(),
+                  metrics=[Accuracy()])  
+              callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
+              model.fit(train_dataset,
+                          val_dataset,
+                          batch_size=64,
+                          log_freq=200,
+                          save_freq=10,
+                          epochs=20,
+                          callbacks=[callbacks])
+  
+    """
+
+    def __init__(self,
+                 monitor='loss',
+                 factor=0.1,
+                 patience=10,
+                 verbose=1,
+                 mode='auto',
+                 min_delta=1e-4,
+                 cooldown=0,
+                 min_lr=0):
+        super(ReduceLROnPlateau, self).__init__()
+
+        self.monitor = monitor
+        if factor >= 1.0:
+            raise ValueError('ReduceLROnPlateau '
+                             'does not support a factor >= 1.0.')
+
+        self.factor = factor
+        self.min_lr = min_lr
+        self.min_delta = min_delta
+        self.patience = patience
+        self.verbose = verbose
+        self.cooldown = cooldown
+        self.cooldown_counter = 0  # Cooldown counter.
+        self.wait = 0
+        self.best = 0
+        self.mode = mode
+        self.monitor_op = None
+        self.epoch = 0
+        self._reset()
+
+    def _reset(self):
+        """Resets wait counter and cooldown counter.
+        """
+        if self.mode not in ['auto', 'min', 'max']:
+            logging.warning('Learning rate reduction mode %s is unknown, '
+                            'fallback to auto mode.', self.mode)
+            self.mode = 'auto'
+        if (self.mode == 'min' or
+            (self.mode == 'auto' and 'acc' not in self.monitor)):
+            self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
+            self.best = np.Inf
+        else:
+            self.monitor_op = lambda a, b: np.greater(a, b + self.min_delta)
+            self.best = -np.Inf
+        self.cooldown_counter = 0
+        self.wait = 0
+
+    def on_train_begin(self, logs=None):
+        self._reset()
+
+    def on_eval_end(self, logs=None):
+        if logs is None or self.monitor not in logs:
+            warnings.warn(
+                'Monitor of ReduceLROnPlateau should be loss or metric name.')
+            return
+        else:
+            try:
+                lr = self.model._optimizer._learning_rate
+                if not isinstance(lr, float):
+                    warnings.warn(
+                        'Expected learning_rate be float, bug got {}.'.format(
+                            type(lr)))
+                    return
+            except Exception as e:
+                warnings.warn(
+                    'There are something wrong when get learning_rate from optimizer: {}.'.
+                    format(e))
+                return
+
+        current = logs[self.monitor]
+        if isinstance(current, (list, tuple)):
+            current = current[0]
+        elif isinstance(current, numbers.Number):
+            current = current
+        else:
+            return
+
+        if self.in_cooldown():
+            self.cooldown_counter -= 1
+            self.wait = 0
+
+        if self.monitor_op(current, self.best):
+            self.best = current
+            self.wait = 0
+        elif not self.in_cooldown():
+            self.wait += 1
+            if self.wait >= self.patience:
+                old_lr = self.model._optimizer.get_lr()
+                if old_lr > np.float32(self.min_lr):
+                    new_lr = old_lr * self.factor
+                    new_lr = max(new_lr, self.min_lr)
+                    self.model._optimizer._learning_rate = new_lr
+                    if self.verbose > 0 and ParallelEnv().local_rank == 0:
+                        print('\nEpoch %d: ReduceLROnPlateau reducing learning '
+                              'rate to %s.' % (self.epoch + 1, new_lr))
+                    self.cooldown_counter = self.cooldown
+                    self.wait = 0
+        self.epoch += 1
+
+    def in_cooldown(self):
+        return self.cooldown_counter > 0
