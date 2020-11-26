@@ -192,7 +192,7 @@ void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
   PADDLE_ENFORCE_EQ(
       platform::is_gpu_place(place_), true,
       platform::errors::Unimplemented(
-          "Imperative mode does not support multi-CPU training yet."));
+          "Dynamic graph mode does not support multi-CPU training yet."));
   auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place_);
   cudaStream_t stream = nullptr;
   if (use_calc_stream) {

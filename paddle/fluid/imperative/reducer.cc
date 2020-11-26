@@ -85,7 +85,9 @@ int64_t Reducer::InitializeDenseGroups(
     const auto var_name = var->Name();
     PADDLE_ENFORCE_EQ(is_sparse_gradient_[variable_index], false,
                       platform::errors::PreconditionNotMet(
-                          "Tensor `%s` 's GRAD must be LoDTensor.", var_name));
+                          "Tensor `%s`'s GRAD must be LoDTensor, but received "
+                          "GRAD is SelectedRows",
+                          var_name));
 
     auto lod_tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
     PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(), true,
@@ -99,20 +101,26 @@ int64_t Reducer::InitializeDenseGroups(
 
     p_group->length_.push_back(size);
     // for concat operator
-    p_group->dense_tensors.push_back(framework::Tensor());
+    p_group->dense_tensors_.push_back(framework::Tensor());
 
     // check the dtype and place, it must be same.
     auto dtype = var->DataType();
     auto place = var->Place();
     if (index > 0) {
-      PADDLE_ENFORCE_EQ(dtype, p_group->dtype,
-                        platform::errors::PreconditionNotMet(
-                            "Tensor `%s` has different dtype.", var_name));
+      PADDLE_ENFORCE_EQ(
+          dtype, p_group->dtype_,
+          platform::errors::PreconditionNotMet(
+              "Tensor %s has different dtype. Expected dtype is %s, but actual "
+              "dtype is %s",
+              var_name, framework::DataTypeToString(p_group->dtype_),
+              framework::DataTypeToString(dtype)));
       PADDLE_ENFORCE_EQ(place, place_,
                         platform::errors::PreconditionNotMet(
-                            "Tensor `%s` has different place.", var_name));
+                            "Tensor %s has different place. Expected place is "
+                            "%s, but actual place is %s",
+                            var_name, place_, place));
     } else {
-      p_group->dtype = dtype;
+      p_group->dtype_ = dtype;
       place_ = place;
     }
   }
@@ -120,7 +128,7 @@ int64_t Reducer::InitializeDenseGroups(
 }
 
 // Each parameter will be initialized according to the group information.
-// For the sparse parameter, sparse_contents in the group directly points
+// For the sparse parameter, sparse_contents_ in the group directly points
 // to the parameter. For dense parameters, first construct an empty Tensor().
 // Then specify the actual memory in MarkVariableReady.
 void Reducer::InitializeGroups(
@@ -146,32 +154,32 @@ void Reducer::InitializeGroups(
     if (variable_indices_.size() == 1 &&
         is_sparse_gradient_[variable_indices_.front()]) {
       // process the sparse gradient. one sparse, one group
-      group.sparse_contents = first_varbase->MutableGradVar();
-      group.dtype = first_varbase->DataType();
+      group.sparse_contents_ = first_varbase->MutableGradVar();
+      group.dtype_ = first_varbase->DataType();
       group.is_sparse_ = true;
     } else {
       // process the dense gradient.
       all_length = InitializeDenseGroups(variable_indices_, &group);
       // Alloc the continuous space
-      auto tensor = group.dense_contents.GetMutable<framework::LoDTensor>();
+      auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
       tensor->Resize(framework::make_ddim({all_length}))
-          .mutable_data(place_, group.dtype);
+          .mutable_data(place_, group.dtype_);
     }
     // Debug Message For Reducer
-    VLOG(0) << "the groups_[" << group_index << "] basic message:";
-    VLOG(0) << "numul: " << all_length << " ;is_sparse: " << group.is_sparse_
+    VLOG(3) << "the groups_[" << group_index << "] basic message:";
+    VLOG(3) << "numul: " << all_length << " ;is_sparse: " << group.is_sparse_
             << " ;var number: " << group.variable_indices_.size();
     groups_.emplace_back(std::move(group));
   }
 }
 
-// After each batch is calculated, the counter of each group(group.pending)
+// After each batch is calculated, the counter of each group(group.pending_)
 // and allreudce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward() {
   VLOG(3) << "start reseting count..";
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
-    group.pending = group.variable_indices_.size();
+    group.pending_ = group.variable_indices_.size();
   });
 }
 
@@ -190,10 +198,10 @@ void Reducer::AddDistHook(VariableWrapper *var_warpper,
   auto &group = groups_[group_index];
 
   if (!group.is_sparse_) {
-    // Only dense_contents need memory copy
+    // Only dense_contents_ need memory copy
     MarkVariableReady(var_index, var_warpper);
   }
-  if (--group.pending == 0) {
+  if (--group.pending_ == 0) {
     // can start allreduce
     MarkGroupReady(group_index);
   }
@@ -211,7 +219,7 @@ void Reducer::MarkVariableReady(const VariableIndex &var_index,
   auto length = group.length_[variable_index];
 
   auto tensor = var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
-  group.dense_tensors[variable_index].ShareDataWith(*tensor).Resize(
+  group.dense_tensors_[variable_index].ShareDataWith(*tensor).Resize(
       {static_cast<int64_t>(length)});
 }
 
@@ -226,24 +234,24 @@ void Reducer::MarkGroupReady(size_t group_index) {
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaStreamWaitEvent(comm_stream_, events_[group_index].get(), 0));
 
-  for (; next_group_ < groups_.size() && groups_[next_group_].pending == 0;
+  for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
     if (group.is_sparse_) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce...";
-      parallel_ctx_->AllReduceByStream(*group.sparse_contents,
-                                       group.sparse_contents, 0, false);
+      parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
+                                       group.sparse_contents_, 0, false);
     } else {
       VLOG(3) << "dense group [" << next_group_ << "] start allreduce...";
       // Select common commstream to concat tensors
-      // group.dense_tensors ---> group.dense_contents
+      // group.dense_tensors ---> group.dense_contents_
       group.ConcatTensors(*parallel_ctx_->GetDeviceContext(0));
 
       // Start allreduce
-      parallel_ctx_->AllReduceByStream(group.dense_contents,
-                                       &(group.dense_contents), 0, false);
+      parallel_ctx_->AllReduceByStream(group.dense_contents_,
+                                       &(group.dense_contents_), 0, false);
       // Select common commstream to split tensors
-      // group.dense_contents ---> group.dense_tensors
+      // group.dense_contents_ ---> group.dense_tensors
       group.SplitTensors(*parallel_ctx_->GetDeviceContext(0));
     }
   }

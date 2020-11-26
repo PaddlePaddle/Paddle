@@ -282,60 +282,6 @@ def scale_loss(loss):
     return scaled_loss
 
 
-@no_grad
-def apply_collective_grads(parameters):
-    if not ParallelEnv().world_size > 1:
-        return
-    warnings.warn("If you use DataParallel, "
-                  "you shouldn't use apply_collective_grads.")
-
-    grad_var_set = set()
-    grad_vars = []
-    sparse_grad_vars = []
-    strategy = _build_default_parallel_strategy()
-    for param in parameters:
-        # NOTE(zcd): The grad_ivar maybe no generated.
-        if param.trainable and (param._grad_ivar() is not None):
-            g_var = param._grad_ivar()
-            if g_var._is_sparse():
-                sparse_grad_vars.append(g_var)
-                continue
-            grad_vars.append(g_var)
-            assert g_var not in grad_var_set
-            grad_var_set.add(g_var)
-
-    if sparse_grad_vars:
-        sparse_grad_vars.sort(key=lambda x: x.name)
-        for grad_var in sparse_grad_vars:
-            grad_var._allreduce(strategy)
-
-    # FIXME(zcd): the type of the var should be LoDTensor, i.e
-    # the gradients should be dense, otherwise, the following
-    # logic should be updated.
-    # 128 MB as a group
-    mega_bytes = 128 * 1024 * 1024
-    group_idx = 0
-    memory_counter = 0
-    grad_var_groups = OrderedDict()
-    dtype = grad_vars[0].dtype
-    for g_var in grad_vars:
-        # NOTE: the dtype of the same group should be the same.
-        bytes = np.prod(g_var.shape) * core.size_of_dtype(g_var.dtype)
-        if memory_counter < mega_bytes and dtype == g_var.dtype:
-            memory_counter += bytes
-        else:
-            memory_counter = bytes
-            group_idx += 1
-        grad_var_groups.setdefault(group_idx, []).append(g_var)
-
-    coalesced_grads_and_vars = _coalesce_tensors(grad_var_groups)
-
-    for coalesced_grad, _, _ in coalesced_grads_and_vars:
-        coalesced_grad._allreduce(strategy)
-
-    _split_tensors(coalesced_grads_and_vars)
-
-
 class DataParallel(layers.Layer):
     """
     Run the dygraph module with data parallelism.
