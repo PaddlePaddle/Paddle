@@ -599,9 +599,9 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
 
     auto stream = ctx.cuda_device_context().stream();
 
-    LayerNormBackward<T, U>(x_data, d_y_data, scale_data, mean_data, var_data,
-                            d_x_data, d_scale_data, d_bias_data, epsilon,
-                            batch_size, feature_size, stream);
+    LayerNormBackward<T>(x_data, d_y_data, scale_data, mean_data, var_data,
+                         d_x_data, d_scale_data, d_bias_data, epsilon,
+                         batch_size, feature_size, stream);
   }
 };
 
