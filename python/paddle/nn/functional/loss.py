@@ -469,14 +469,14 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     .. math::
 
-         loss(x,y)=\\frac{1}{n}\\sum_{i}z_i
+         loss(x,y) = \\frac{1}{n}\\sum_{i}z_i
 
 
     where z_i is given by:
 
     .. math::
 
-         \\mathop{z_i}=\\left\\{\\begin{array}{rcl}
+         \\mathop{z_i} = \\left\\{\\begin{array}{rcl}
         0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\\\
         delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
         \\end{array} \\right.
@@ -511,13 +511,12 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             input_data = np.random.rand(3,3).astype("float32")
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
             output = paddle.nn.functioanl.smooth_l1_loss(input, label)
-            print(output.numpy())
+            print(output)
     """
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'smooth_l1_loss')
@@ -1348,7 +1347,7 @@ def sigmoid_focal_loss(logit,
             fg_label = paddle.greater_equal(label, one)
             fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
-            print(output.numpy())  # [0.65782464]
+            print(output)  # [0.65782464]
 
     """
     if reduction not in ['sum', 'mean', 'none']:
