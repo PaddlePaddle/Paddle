@@ -25,6 +25,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -47,9 +48,6 @@ using BlockDesc = framework::BlockDesc;
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
-using ExecutorInfo =
-    std::tuple<std::shared_ptr<framework::Executor>,
-               std::shared_ptr<framework::ExecutorPrepareContext>>;
 
 namespace details {
 
@@ -202,23 +200,23 @@ static void AppendSafeEagerDeletionSkipVars(
   }
 }
 
-static ExecutorInfo GetExecutorInfoFromCache(
-    std::unordered_map<framework::ProgramDesc *, ExecutorInfo> *cached_exe_info,
-    const framework::ExecutionContext &ctx,
+static std::shared_ptr<framework::ExecutorPrepareContext>
+GetExecutorInfoFromCache(
+    const framework::Executor &exe, const framework::ExecutionContext &ctx,
     const std::vector<std::vector<std::string>> &ctx_output_names,
     bool is_grad = false) {
   auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
 
-  auto it = cached_exe_info->find(program);
-  if (it == cached_exe_info->end()) {
+  auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
+  auto cache_key = framework::ExecutorInfoCache::KeyType(program, is_grad);
+
+  if (!cached_exe_info.Has(cache_key)) {
     VLOG(1) << "create exe_info for program: " << program;
-    auto exe = std::make_shared<framework::Executor>(ctx.GetPlace());
     // skip delete vars
     std::vector<std::string> skip_vars;
     for (auto &output_names : ctx_output_names) {
       details::AppendSkipDeletionVars(output_names, &skip_vars);
     }
-
     if (is_grad) {
       details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
     }
@@ -226,21 +224,16 @@ static ExecutorInfo GetExecutorInfoFromCache(
     VLOG(2) << "Prepare to skip " << skip_vars.size()
             << " var(s): " << string::join_strings(skip_vars, ' ');
     std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx =
-        std::move(exe->Prepare(*program, 0, skip_vars));
-    cached_exe_info->emplace(program, std::make_tuple(exe, exe_ctx));
+        std::move(exe.Prepare(*program, 0, skip_vars));
+    cached_exe_info.Insert(cache_key, exe_ctx);
   }
 
-  return cached_exe_info->at(program);
+  return cached_exe_info.Get(cache_key);
 }
-
 }  // namespace details
 
 template <typename DeviceContext, typename T>
 class RunProgramOpKernel : public framework::OpKernel<T> {
- private:
-  static std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
-      cached_exe_info_;
-
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     VLOG(2) << "RunProgramOpKernel Compute";
@@ -271,10 +264,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
             "The OutScope of RunProgramGradOp should only hold one scope."));
 
     // Step 2. prepare executor and init persistable variables
-    std::shared_ptr<framework::Executor> exe;
-    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx;
-    std::tie(exe, exe_ctx) = details::GetExecutorInfoFromCache(
-        &cached_exe_info_, ctx, {output_var_names}, /*is_grad=*/false);
+    framework::Executor exe(ctx.GetPlace());
+    auto exe_ctx = details::GetExecutorInfoFromCache(
+        exe, ctx, {output_var_names}, /*is_grad=*/false);
 
     // NOTE(Aurelius84): While training some models, forward can be called many
     // times and then apply backpropagation all at once, such as Reinforcement
@@ -291,10 +283,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
     // Step 3. run ops
-    exe->RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
-                                   end_op_index, /*create_local_scope=*/false,
-                                   /*create_vars=*/true,
-                                   /*keep_kids=*/!is_test);
+    exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
+                                  end_op_index, /*create_local_scope=*/false,
+                                  /*create_vars=*/true,
+                                  /*keep_kids=*/!is_test);
 
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
@@ -314,15 +306,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
-    RunProgramOpKernel<DeviceContext, T>::cached_exe_info_;
-
-template <typename DeviceContext, typename T>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
- private:
-  static std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
-      cached_exe_info_;
-
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     VLOG(2) << "RunProgramGradOpKernel Compute";
@@ -372,10 +356,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     auto &scope = *(global_inner_scope->kids().front());
 
     // Step 2. prepare executor and scope
-    std::shared_ptr<framework::Executor> exe;
-    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx;
-    std::tie(exe, exe_ctx) = details::GetExecutorInfoFromCache(
-        &cached_exe_info_, ctx, {input_grad_var_names, param_grad_names},
+    framework::Executor exe(ctx.GetPlace());
+    auto exe_ctx = details::GetExecutorInfoFromCache(
+        exe, ctx, {input_grad_var_names, param_grad_names},
         /*is_grad=*/true);
 
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
@@ -384,9 +367,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     // Step 3. run ops
-    exe->RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
-                                   end_op_index, /*create_local_scope=*/false,
-                                   /*create_vars=*/true, /*keep_kids=*/false);
+    exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
+                                  end_op_index, /*create_local_scope=*/false,
+                                  /*create_vars=*/true, /*keep_kids=*/false);
 
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
@@ -398,10 +381,6 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
             << global_inner_scope->kids().size();
   }
 };
-
-template <typename DeviceContext, typename T>
-std::unordered_map<framework::ProgramDesc *, ExecutorInfo>
-    RunProgramGradOpKernel<DeviceContext, T>::cached_exe_info_;
 
 }  // namespace operators
 }  // namespace paddle
