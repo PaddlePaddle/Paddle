@@ -190,12 +190,12 @@ def disable_dygraph():
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
+        has_grad = tracer._has_grad
+        tracer._has_grad = is_train
         try:
             yield
         finally:
-            tracer._train_mode = mode
+            tracer._has_grad = has_grad
     else:
         yield
 
