@@ -167,7 +167,9 @@ def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
 def _rename_var_program_desc(program_desc, include=None, exclude=None):
     """
     Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication
-    e.g. x ==> x_0, x_0 ==> x_1
+    e.g. x ==> x_0, x_0 ==> x_1.
+    If 'include' is not `None`,variables that are not in include are not renamed.
+    If 'exclude' is not `None`,variables that are in exclude will are not renamed.
     """
     dict_rename_var_old_new = dict()
     dict_rename_var_new_old = dict()
@@ -302,8 +304,10 @@ class _ProgramHolder(object):
         return self._inner_scope
 
     def _preprocess(self, program_desc):
-        # rename variables of 'program_desc'
-        rename_new_old_dict, _ = _rename_var_program_desc(program_desc)
+        # rename persistable variables of 'program_desc'
+        list_persistable_var = _get_persistable_var_names(program_desc)
+        rename_new_old_dict, _ = _rename_var_program_desc(program_desc,
+                                                          list_persistable_var)
         # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
