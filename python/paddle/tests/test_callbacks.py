@@ -228,7 +228,7 @@ class TestCallbacks(unittest.TestCase):
                       verbose=0,
                       callbacks=[callbacks_0])
 
-    def test_reduce_lr(self):
+    def test_reduce_lr_on_plateau(self):
         sample_num = 200
         transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
         train_dataset = MNIST(mode='train', transform=transform)
