@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -77,6 +78,11 @@ class ExecutorInfoCache {
       info_map_;
   DISABLE_COPY_AND_ASSIGN(ExecutorInfoCache);
 };
+
+std::shared_ptr<framework::ExecutorPrepareContext> GetExecutorInfoFromCache(
+    const framework::Executor& exe, const framework::ExecutionContext& ctx,
+    const std::vector<std::vector<std::string>>& ctx_output_names,
+    bool is_grad = false);
 
 }  // namespace framework
 }  // namespace paddle

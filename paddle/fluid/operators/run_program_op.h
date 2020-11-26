@@ -159,76 +159,6 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
   }
 }
 
-static void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
-                                   std::vector<std::string> *all_vars) {
-  for (auto &var : append_vars) {
-    all_vars->emplace_back(var);
-  }
-}
-
-static void AppendSafeEagerDeletionSkipVars(
-    const framework::ProgramDesc &program,
-    std::vector<std::string> *skip_vars) {
-  const framework::BlockDesc &block = program.Block(0);
-  const std::vector<framework::OpDesc *> &all_ops = block.AllOps();
-
-  std::unordered_set<std::string> grad_op_output;
-  std::unordered_set<std::string> grad_op_input;
-  for (const framework::OpDesc *op : all_ops) {
-    int op_role = BOOST_GET_CONST(
-        int, op->GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
-    if ((op_role & static_cast<int>(framework::OpRole::kBackward)) == 0) {
-      continue;
-    }
-
-    for (const std::string &in_arg_name : op->InputArgumentNames()) {
-      grad_op_input.emplace(in_arg_name);
-    }
-    for (const std::string &out_arg_name : op->OutputArgumentNames()) {
-      grad_op_output.emplace(out_arg_name);
-    }
-  }
-
-  // For the grad op input variables, if it is not output of grad_op, it may
-  // be output of forward op and we should set the variables as skip_var to
-  // prevent it being deleted when grad op is called multiple times.
-  for (const std::string &var_name : grad_op_input) {
-    if (grad_op_output.find(var_name) == grad_op_output.end()) {
-      skip_vars->emplace_back(var_name);
-    }
-  }
-}
-
-static std::shared_ptr<framework::ExecutorPrepareContext>
-GetExecutorInfoFromCache(
-    const framework::Executor &exe, const framework::ExecutionContext &ctx,
-    const std::vector<std::vector<std::string>> &ctx_output_names,
-    bool is_grad = false) {
-  auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
-
-  auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
-  auto cache_key = framework::ExecutorInfoCache::KeyType(program, is_grad);
-
-  if (!cached_exe_info.Has(cache_key)) {
-    VLOG(1) << "create exe_info for program: " << program;
-    // skip delete vars
-    std::vector<std::string> skip_vars;
-    for (auto &output_names : ctx_output_names) {
-      details::AppendSkipDeletionVars(output_names, &skip_vars);
-    }
-    if (is_grad) {
-      details::AppendSafeEagerDeletionSkipVars(*program, &skip_vars);
-    }
-
-    VLOG(2) << "Prepare to skip " << skip_vars.size()
-            << " var(s): " << string::join_strings(skip_vars, ' ');
-    std::shared_ptr<framework::ExecutorPrepareContext> exe_ctx =
-        std::move(exe.Prepare(*program, 0, skip_vars));
-    cached_exe_info.Insert(cache_key, exe_ctx);
-  }
-
-  return cached_exe_info.Get(cache_key);
-}
 }  // namespace details
 
 template <typename DeviceContext, typename T>
@@ -264,7 +194,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and init persistable variables
     framework::Executor exe(ctx.GetPlace());
-    auto exe_ctx = details::GetExecutorInfoFromCache(
+    auto exe_ctx = framework::GetExecutorInfoFromCache(
         exe, ctx, {output_var_names}, /*is_grad=*/false);
 
     // NOTE(Aurelius84): While training some models, forward can be called many
@@ -356,7 +286,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());
-    auto exe_ctx = details::GetExecutorInfoFromCache(
+    auto exe_ctx = framework::GetExecutorInfoFromCache(
         exe, ctx, {input_grad_var_names, param_grad_names},
         /*is_grad=*/true);
 
