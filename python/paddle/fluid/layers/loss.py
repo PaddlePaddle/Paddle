@@ -20,7 +20,7 @@ from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode
+from ..framework import Variable, in_dygraph_mode, static_only
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type
 from ..param_attr import ParamAttr
@@ -664,6 +664,7 @@ def warpctc(input,
 # FIXME(wuyi): let docstring_checker.py understand @autodoc.
 # For now, the comments in c++ use types like Tensor, but in python side
 # the type is often "Variable", and arguments may vary.
+@static_only
 @templatedoc(op_type="nce")
 def nce(input,
         label,
