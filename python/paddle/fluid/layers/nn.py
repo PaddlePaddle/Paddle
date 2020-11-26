@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator, static_only
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -1198,7 +1198,7 @@ def chunk_eval(input,
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
-def softmax(input, use_cudnn=False, name=None, axis=-1):
+def softmax(input, use_cudnn=True, name=None, axis=-1):
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
@@ -3126,7 +3126,7 @@ def instance_norm(input,
         `H` means height of feature map, `W` means width of feature map.
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        input(Tensor): The rank of input tensor can be 2, 3, 4, 5.
             The data type is float32 or float64.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
@@ -3146,19 +3146,18 @@ def instance_norm(input,
             will be named automatically.
 
     Returns:
-        A Variable holding Tensor which is the result after applying instance normalization on the input,
+        A Tensor which is the result after applying instance normalization on the input,
         has same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            hidden2 = fluid.layers.instance_norm(input=hidden1)
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x, size=200)
+            hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'instance_norm')
@@ -3217,6 +3216,7 @@ def instance_norm(input,
     return instance_norm_out
 
 
+@static_only
 def data_norm(input,
               act=None,
               epsilon=1e-05,
@@ -5719,7 +5719,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
 
 @templatedoc()
-def multiplex(inputs, index):
+def multiplex(inputs, index, name=None):
     """
 
     Based on the given index parameter, the OP selects a specific row from each input Tensor to construct the output Tensor.
@@ -5748,35 +5748,30 @@ def multiplex(inputs, index):
 
 
     Args:
-       inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
-       index (Variable): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
-
+        inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
+        index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
     Returns:
-        Variable(Tensor): Output of multiplex OP, with data type being float32, float64, int32, int64.
+        Tensor: Output of multiplex OP, with data type being float32, float64, int32, int64.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import numpy as np
-
-            x1 = fluid.data(name='x1', shape=[None, 2], dtype='float32')
-            x2 = fluid.data(name='x2', shape=[None, 2], dtype='float32')
-            index = fluid.data(name='index', shape=[None, 1], dtype='int32')
-            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
             img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
             img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
-            index = np.array([[1], [0]]).astype(np.int32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x1':img1, 'x2':img2, 'index':index}, fetch_list=[out])
+            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+            res = paddle.multiplex(inputs, index)
             print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
 
     """
+    if in_dygraph_mode():
+        return core.ops.multiplex(index, inputs)
     helper = LayerHelper('multiplex', **locals())
 
     check_type(inputs, 'inputs', (list), 'multiplex')
@@ -13471,6 +13466,7 @@ class PyFuncRegistry(object):
         return tuple(ret)
 
 
+@static_only
 @templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """

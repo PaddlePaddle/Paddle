@@ -123,8 +123,17 @@ class _ConvNd(layers.Layer):
             filter_shape = [out_channels, in_channels // groups
                             ] + self._kernel_size
 
+        def _get_default_param_initializer():
+            if transposed:
+                return None
+            filter_elem_num = np.prod(self._kernel_size) * self._in_channels
+            std = (2.0 / filter_elem_num)**0.5
+            return Normal(0.0, std, 0)
+
         self.weight = self.create_parameter(
-            shape=filter_shape, attr=self._param_attr)
+            shape=filter_shape,
+            attr=self._param_attr,
+            default_initializer=_get_default_param_initializer())
         self.bias = self.create_parameter(
             attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
 

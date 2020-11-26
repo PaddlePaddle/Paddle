@@ -55,6 +55,7 @@ def load_benchmark_result_from_logs_dir(logs_dir):
 def compare_benchmark_result(develop_result, pr_result):
     """Compare the differences between devlop and pr.
     """
+    status = True
     develop_speed = develop_result.get("speed")
     pr_speed = pr_result.get("speed")
 
@@ -71,6 +72,9 @@ def compare_benchmark_result(develop_result, pr_result):
         total_time_diff = (
             pr_total_time - develop_total_time) / develop_total_time
 
+        if gpu_time_diff > 0.05:
+            status = False
+
         # TODO(Avin0323): Print all info for making relu of alart.
         logging.info("------ OP: %s ------" % pr_result.get("name"))
         logging.info("GPU time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
@@ -85,7 +89,7 @@ def compare_benchmark_result(develop_result, pr_result):
         # TODO(Avin0323): Accuracy need to add.
         pass
 
-    return True
+    return status
 
 
 if __name__ == "__main__":
@@ -93,7 +97,7 @@ if __name__ == "__main__":
     """
     logging.basicConfig(
         level=logging.INFO,
-        format="[%(pathname)s:%(lineno)d] [%(levelname)s] %(message)s")
+        format="[%(filename)s:%(lineno)d] [%(levelname)s] %(message)s")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -108,6 +112,8 @@ if __name__ == "__main__":
         help="Specify the benchmark result directory of PR branch.")
     args = parser.parse_args()
 
+    exit_code = 0
+
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir)
 
@@ -117,4 +123,7 @@ if __name__ == "__main__":
         pr_result = parse_log_file(os.path.join(args.pr_logs_dir, log_file))
         if develop_result is None or pr_result is None:
             continue
-        compare_benchmark_result(develop_result, pr_result)
+        if not compare_benchmark_result(develop_result, pr_result):
+            exit_code = 8
+
+    exit(exit_code)
