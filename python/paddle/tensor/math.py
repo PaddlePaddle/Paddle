@@ -830,7 +830,7 @@ def mm(input, mat2, name=None):
             input = paddle.arange(1, 7).reshape((3, 2)).astype('float32')
             mat2 = paddle.arange(1, 9).reshape((2, 4)).astype('float32')
             out = paddle.mm(input, mat2)
-            # Tensor(shape=[3, 4], dtype=float32, place=CPUPlace, stop_gradient=True,
+            print(out)
             #        [[11., 14., 17., 20.],
             #         [23., 30., 37., 44.],
             #         [35., 46., 57., 68.]])
@@ -1397,49 +1397,6 @@ def log10(x, name=None):
     return out
 
 
-def addcmul(input, tensor1, tensor2, value=1.0, name=None):
-    """
-    Calculate the element-wise multiplication of tensor1 and tensor2,
-    then multiply the result by value, and add it to input. The shape of input,
-    tensor1, tensor2 should be broadcastable.
-    The equation is:
-    ..  math::
-        out = input + value * tensor1 * tensor2
-    Args:
-        input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
-        tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-    Returns:
-        out(Tensor): The output result. A Tensor with the same data type as input's.
-    Examples:
-        .. code-block:: python
-
-
-          import paddle
-          input = paddle.ones([2,2])
-          tensor1 = paddle.ones([2,2])
-          tensor2 = paddle.ones([2,2])
-
-          out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
-          print(out.numpy())
-          # [[1.5 1.5]
-          # [1.5 1.5]]
-    """
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    if convert_dtype(input.dtype) in ['float32', 'float64']:
-        check_type(value, 'value', float, 'addcmul')
-    if convert_dtype(input.dtype) in ['int32', 'int64']:
-        check_type(value, 'value', int, 'addcmul')
-
-    out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
-    return out
-
 def clip(x, min=None, max=None, name=None):
     """
     **clip layer**
@@ -1643,7 +1600,7 @@ ${comment}
             x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
             y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
             out = paddle.kron(x, y)
-            # Tensor(shape=[6, 6], dtype=int64, place=CPUPlace, stop_gradient=True,
+            print(out)
             #        [[1, 2, 3, 2, 4, 6],
             #         [ 4,  5,  6,  8, 10, 12],
             #         [ 7,  8,  9, 14, 16, 18],

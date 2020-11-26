@@ -1179,7 +1179,8 @@ def cross_entropy(input,
             label =  paddle.to_tensor(label_data)
             weight = paddle.to_tensor(weight_data)
             loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
-
+            print(loss)
+            # [4.28546723]
     """
     if not in_dygraph_mode():
         fluid.data_feeder.check_variable_and_dtype(

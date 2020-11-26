@@ -189,14 +189,18 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
     Examples:
         .. code-block:: python
             import paddle
-            input_data = paddle.uniform([5, 100],dtype = "float64")
-            label_data = paddle.uniform(0, 100, size=(5),dtype = "int64")
-            weight_data = paddle.uniform([100],dtype = "float64")
-            input  = paddle.to_tensor(input_data)
-            label  = paddle.to_tensor(label_data)
+            import numpy as np
+
+            input_data = paddle.uniform([5, 100], dtype="float64")
+            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
+            weight_data = np.random.random([100]).astype("float64")
+            input =  paddle.to_tensor(input_data)
+            label =  paddle.to_tensor(label_data)
             weight = paddle.to_tensor(weight_data)
-            ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
+            ce_loss = paddle.nn.CrossEntropyLoss(weight=weight, reduction='mean')
             output = ce_loss(input, label)
+            print(output)
+            # [4.84496039]
     """
 
     def __init__(self, weight=None, ignore_index=-100, reduction='mean'):
@@ -832,7 +836,8 @@ class MarginRankingLoss(fluid.dygraph.Layer):
             label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             margin_rank_loss = paddle.nn.MarginRankingLoss()
             loss = margin_rank_loss(input, other, label)
-            print(loss.numpy()) # [0.75]
+            print(loss)
+            # [0.75]
     """
 
     def __init__(self, margin=0.0, reduction='mean', name=None):
