@@ -10,7 +10,7 @@ function(train_test TARGET_NAME)
                 DEPS paddle_fluid_shared
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
     else()
-        cc_test(test_train_${TARGET_NAME}${arg}
+        cc_test(test_train_${TARGET_NAME}
                 SRCS test_train_${TARGET_NAME}.cc
                 DEPS paddle_fluid_api
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
