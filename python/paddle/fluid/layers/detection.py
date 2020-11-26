@@ -20,7 +20,7 @@ from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, in_dygraph_mode
+from ..framework import Variable, in_dygraph_mode, static_only
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
@@ -2102,6 +2102,7 @@ def density_prior_box(input,
     return box, var
 
 
+@static_only
 def multi_box_head(inputs,
                    image,
                    base_size,
