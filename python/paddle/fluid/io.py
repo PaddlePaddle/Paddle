@@ -1900,6 +1900,10 @@ def load(program, model_path, executor=None, var_list=None):
             place = paddle.fluid.CPUPlace()
         elif p.is_cuda_pinned_place():
             place = paddle.fluid.CUDAPinnedPlace()
+        elif p.is_xpu_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.XPUPlace(p.xpu_device_id())
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())

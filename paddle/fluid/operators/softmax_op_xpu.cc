@@ -30,29 +30,34 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     const int rank = x->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-    PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
-                      platform::errors::InvalidArgument(
-                          "xpu softmax kernel only support last dimension of x "
-                          "(axis==-1 or axis==x_dims-1), but received axis: "
-                          "%d, x's shape: %s.",
-                          axis, x->dims()));
+    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    // PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
+    //                  platform::errors::InvalidArgument(
+    //                      "xpu softmax kernel only support last dimension of x
+    //                      "
+    //                      "(axis==-1 or axis==x_dims-1), but received axis: "
+    //                      "%d, x's shape: %s.",
+    //                      axis, x->dims()));
 
     // allocate memory on device.
     out->mutable_data<T>(context.GetPlace());
 
-    const int n = SizeToAxis(axis, x->dims());
-    const int d = SizeFromAxis(axis, x->dims());
+    std::vector<int> x_dims;
+    for (int i = 0; i < rank; i++) {
+      x_dims.push_back(x->dims()[i]);
+    }
+    if (axis < 0) {
+      axis += rank;
+    }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::softmax2d_forward(dev_ctx.x_context(), x->data<float>(),
-                                   out->data<float>(), n, d, d <= 2048);
+    int r = xpu::softmax<T>(dev_ctx.x_context(), x->data<float>(),
+                            out->data<float>(), x_dims, axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU API(softmax2d_forward) return wrong "
-                                   "value[%d], please check whether "
-                                   "Baidu Kunlun Card is properly installed.",
-                                   r));
+                                   "value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -64,24 +69,28 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dx->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
 
     // allocate memory on device.
     dx->mutable_data<T>(context.GetPlace());
 
-    const int n = SizeToAxis(axis, dx->dims());
-    const int d = SizeFromAxis(axis, dx->dims());
+    std::vector<int> x_dims;
+    for (int i = 0; i < rank; i++) {
+      x_dims.push_back(dx->dims()[i]);
+    }
+    if (axis < 0) {
+      axis += rank;
+    }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r =
-        xpu::softmax2d_backward(dev_ctx.x_context(), out->data<float>(),
-                                dout->data<float>(), dx->data<float>(), n, d);
+    int r = xpu::softmax_grad<T>(dev_ctx.x_context(), out->data<float>(),
+                                 dout->data<float>(), dx->data<float>(), x_dims,
+                                 axis);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External("XPU API(softmax2d_backward) return wrong "
-                                   "value[%d], please check whether "
-                                   "Baidu Kunlun Card is properly installed.",
-                                   r));
+                                   "value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 
