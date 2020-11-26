@@ -870,16 +870,16 @@ class ReduceLROnPlateau(Callback):
         factor(float, optional): factor by which the learning rate will be reduced.
             `new_lr = lr * factor`. Default: 0.1.
         patience(int, optional): Number of epochs with no improvement after which
-            training will be stopped. Default: 10.
+            learning rate will be reduced. Default: 10.
         verbose(int, optional): The verbosity mode. 0: quiet, 1: update messages.
             Default: 1.
         mode(str, optional): one of `{'auto', 'min', 'max'}`. In `'min'` mode,
             the learning rate will be reduced when the quantity monitored has 
-            stopped decreasing. In 'max' mode, training will stop until monitored 
-            quantity stops increasing. In 'auto' mode, exact mode can be inferred 
-            by the name of monitor. If 'acc' in monitor, the mode will be 
-            considered as 'max', otherwise the mode will be set to 'min'. 
-            Default: 'auto'.
+            stopped decreasing. In 'max' mode, learning rate will reduce until 
+            monitored quantity stops increasing. In 'auto' mode, exact mode 
+            can be inferred by the name of monitor. If 'acc' in monitor, the 
+            mode will be considered as 'max', otherwise the mode will be set 
+            to 'min'. Default: 'auto'.
         min_delta(int|float, optional): threshold for measuring the new optimum, 
             to only focus on significant changes. Default: 0.
         cooldown(int, optional): number of epochs to wait before resuming normal operation after
