@@ -5,3 +5,4 @@ mock
 opencv-python<=4.2.0.32
 visualdl ; python_version>="3.5"
 paddle2onnx>=0.4
+gym
