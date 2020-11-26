@@ -8,6 +8,5 @@ rarfile
 Pillow
 six
 decorator
-prettytable
 astor
 pathlib
