@@ -1715,7 +1715,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
         labels = paddle.rand(shape=(18,), dtype=DATATYPE)
         
         npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
-        print(npair_loss.numpy())
+        print(npair_loss)
 
   '''
     check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],

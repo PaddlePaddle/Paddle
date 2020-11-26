@@ -865,7 +865,6 @@ def dropout(x,
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout(x, 0.5)
@@ -873,12 +872,12 @@ def dropout(x,
             y_0 = paddle.nn.functional.dropout(x, axis=0)
             y_1 = paddle.nn.functional.dropout(x, axis=1)
             y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
-            print(y_0.numpy())
-            print(y_1.numpy())
-            print(y_01.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
+            print(y_0)
+            print(y_1)
+            print(y_01)
 
     """
     if not isinstance(p, (float, int)):
@@ -1002,7 +1001,6 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout2d(x)  #train
@@ -1059,7 +1057,6 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.dropout3d(x)  #train
@@ -1109,15 +1106,14 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
             x = paddle.to_tensor(x)
             y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
             y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
-            print(x.numpy())
-            print(y_train.numpy())
+            print(x)
+            print(y_train)
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
-            print(y_test.numpy())
+            print(y_test)
     """
     if not isinstance(p, (float, int)):
         raise TypeError("p argument should be a float or int")

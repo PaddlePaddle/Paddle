@@ -506,16 +506,15 @@ class Dropout(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[1,2,3], [4,5,6]]).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
@@ -566,16 +565,15 @@ class Dropout2D(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
@@ -624,16 +622,15 @@ class Dropout3D(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
-            print(y_test.numpy())
+            print(x)
+            print(y_train)
+            print(y_test)
    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
@@ -678,17 +675,16 @@ class AlphaDropout(layers.Layer):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             x = np.array([[-1, 1], [-1, 1]]).astype('float32')
             x = paddle.to_tensor(x)
             m = paddle.nn.AlphaDropout(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x.numpy())
-            print(y_train.numpy())
+            print(x)
+            print(y_train)
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
-            print(y_test.numpy())
+            print(y_test)
    """
 
     def __init__(self, p=0.5, name=None):
