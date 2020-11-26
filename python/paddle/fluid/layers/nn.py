@@ -1277,8 +1277,7 @@ def softmax(input, use_cudnn=True, name=None, axis=-1):
     Args:
         input (Variable): The input variable. A multi-dimension ``Tensor`` with type float32 or float64.
         use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed. To improve numerical stability, set use_cudnn to \
-            False by default.
+            library is installed. To improve performance, set use_cudnn to True by default.
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` . Default: None.
             will be named automatically. Default: None.
         axis (int, optional): The index of dimension to perform softmax calculations, it should
