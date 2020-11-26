@@ -487,6 +487,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     else:
         module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
+    # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
+    # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
         callable_func = getattr(module, '__i_m_p_l__')
         callable_func.__name__ = func_name
