@@ -339,6 +339,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         ValueError: If the square of upscale_factor cannot divide the channels of input.
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
