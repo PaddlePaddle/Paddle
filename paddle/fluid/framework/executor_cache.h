@@ -18,7 +18,6 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <vector>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -29,7 +28,11 @@ namespace framework {
 
 class ExecutorInfoCache {
  public:
-  using KeyType = std::pair<const framework::ProgramDesc*, bool>;
+  /*
+   * The ExecutorPrepareContext is different while running forward program and
+   * backward program. We add bool value into cached key to distinguish this.
+   */
+  using KeyType = std::pair<const framework::ProgramDesc*, /*is_grad*/ bool>;
 
   static ExecutorInfoCache& Instance();
 
