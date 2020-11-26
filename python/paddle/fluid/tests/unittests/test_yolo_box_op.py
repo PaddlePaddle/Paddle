@@ -161,7 +161,7 @@ class TestYoloBoxDygraph(unittest.TestCase):
         x = paddle.to_tensor(x)
         img_size = paddle.to_tensor(img_size)
 
-        boxes, scores = paddle.vision.yolo_box(
+        boxes, scores = paddle.vision.ops.yolo_box(
             x,
             img_size=img_size,
             anchors=[10, 13, 16, 30],
@@ -179,7 +179,7 @@ class TestYoloBoxStatic(unittest.TestCase):
         x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
         img_size = paddle.static.data('img_size', [2, 2], 'int32')
 
-        boxes, scores = paddle.vision.yolo_box(
+        boxes, scores = paddle.vision.ops.yolo_box(
             x,
             img_size=img_size,
             anchors=[10, 13, 16, 30],

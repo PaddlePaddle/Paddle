@@ -166,16 +166,16 @@ def yolo_loss(x,
           gt_box = paddle.to_tensor(gt_box)
           gt_label = paddle.to_tensor(gt_label)
 
-          loss = paddle.vision.yolo_loss(x,
-                                         gt_box=gt_box,
-                                         gt_label=gt_label,
-                                         anchors=[10, 13, 16, 30],
-                                         anchor_mask=[0, 1],
-                                         class_num=2,
-                                         ignore_thresh=0.7,
-                                         downsample_ratio=8,
-                                         use_label_smooth=True,
-                                         scale_x_y=1.)
+          loss = paddle.vision.ops.yolo_loss(x,
+                                             gt_box=gt_box,
+                                             gt_label=gt_label,
+                                             anchors=[10, 13, 16, 30],
+                                             anchor_mask=[0, 1],
+                                             class_num=2,
+                                             ignore_thresh=0.7,
+                                             downsample_ratio=8,
+                                             use_label_smooth=True,
+                                             scale_x_y=1.)
     """
 
     if in_dygraph_mode() and gt_score is None:
@@ -339,14 +339,14 @@ def yolo_box(x,
         x = paddle.to_tensor(x)
         img_size = paddle.to_tensor(img_size)
 
-        boxes, scores = paddle.vision.yolo_box(x,
-                                      img_size=img_size,
-                                      anchors=[10, 13, 16, 30],
-                                      class_num=2,
-                                      conf_thresh=0.01,
-                                      downsample_ratio=8,
-                                      clip_bbox=True,
-                                      scale_x_y=1.)
+        boxes, scores = paddle.vision.ops.yolo_box(x,
+                                                   img_size=img_size,
+                                                   anchors=[10, 13, 16, 30],
+                                                   class_num=2,
+                                                   conf_thresh=0.01,
+                                                   downsample_ratio=8,
+                                                   clip_bbox=True,
+                                                   scale_x_y=1.)
     """
     if in_dygraph_mode():
         boxes, scores = core.ops.yolo_box(

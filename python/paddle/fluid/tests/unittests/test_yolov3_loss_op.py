@@ -293,7 +293,7 @@ class TestYolov3LossDygraph(unittest.TestCase):
         gt_box = paddle.to_tensor(gt_box)
         gt_label = paddle.to_tensor(gt_label)
 
-        loss = paddle.vision.yolo_loss(
+        loss = paddle.vision.ops.yolo_loss(
             x,
             gt_box=gt_box,
             gt_label=gt_label,
@@ -315,7 +315,7 @@ class TestYolov3LossStatic(unittest.TestCase):
         gt_label = paddle.static.data('gt_label', [2, 10], 'int32')
         gt_score = paddle.static.data('gt_score', [2, 10], 'float32')
 
-        loss = paddle.vision.yolo_loss(
+        loss = paddle.vision.ops.yolo_loss(
             x,
             gt_box=gt_box,
             gt_label=gt_label,
@@ -329,7 +329,7 @@ class TestYolov3LossStatic(unittest.TestCase):
             scale_x_y=1.)
         assert loss is not None
 
-        loss = paddle.vision.yolo_loss(
+        loss = paddle.vision.ops.yolo_loss(
             x,
             gt_box=gt_box,
             gt_label=gt_label,
