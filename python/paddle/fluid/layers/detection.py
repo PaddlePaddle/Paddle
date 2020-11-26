@@ -77,7 +77,7 @@ def retinanet_target_assign(bbox_pred,
                             num_classes=1,
                             positive_overlap=0.5,
                             negative_overlap=0.4):
-    """
+    r"""
     **Target Assign Layer for the detector RetinaNet.**
 
     This OP finds out positive and negative samples from all anchors
@@ -471,7 +471,7 @@ def rpn_target_assign(bbox_pred,
 
 
 def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
-    """
+    r"""
 	:alias_main: paddle.nn.functional.sigmoid_focal_loss
 	:alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
 	:old_api: paddle.fluid.layers.sigmoid_focal_loss
@@ -821,7 +821,7 @@ def box_coder(prior_box,
               box_normalized=True,
               name=None,
               axis=0):
-    """
+    r"""
 
     **Box Coder Layer**
 
@@ -1523,7 +1523,7 @@ def ssd_loss(location,
              mining_type='max_negative',
              normalize=True,
              sample_size=None):
-    """
+    r"""
 	:alias_main: paddle.nn.functional.ssd_loss
 	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
 	:old_api: paddle.fluid.layers.ssd_loss
@@ -1930,7 +1930,7 @@ def density_prior_box(input,
                       offset=0.5,
                       flatten_to_2d=False,
                       name=None):
-    """
+    r"""
 
     This op generates density prior boxes for SSD(Single Shot MultiBox Detector) 
     algorithm. Each position of the input produce N prior boxes, N is 
@@ -2741,7 +2741,7 @@ def generate_proposal_labels(rpn_rois,
 
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
-    """
+    r"""
 
     **Generate Mask Labels for Mask-RCNN**
 
@@ -3671,7 +3671,7 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_scale,
                              rois_num=None,
                              name=None):
-    """
+    r"""
 	
     **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
     (FPN) models, it is needed to distribute all proposals into different FPN 

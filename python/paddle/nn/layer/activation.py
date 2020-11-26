@@ -50,7 +50,7 @@ from .. import functional as F
 
 
 class ELU(layers.Layer):
-    """
+    r"""
     ELU Activation.
 
     .. math::
@@ -88,7 +88,7 @@ class ELU(layers.Layer):
 
 
 class GELU(layers.Layer):
-    """
+    r"""
     GELU Activation.
 
     If approximate is True
@@ -137,7 +137,7 @@ class GELU(layers.Layer):
 
 
 class Hardshrink(layers.Layer):
-    """
+    r"""
     Hardshrink Activation
 
     .. math::
@@ -181,7 +181,7 @@ class Hardshrink(layers.Layer):
 
 
 class Hardswish(layers.Layer):
-    """
+    r"""
     Hardswish activation
 
     Hardswish is proposed in MobileNetV3, and performs better in computational stability
@@ -227,7 +227,7 @@ class Hardswish(layers.Layer):
 
 
 class Tanh(layers.Layer):
-    """
+    r"""
     Tanh Activation.
 
     .. math::
@@ -264,7 +264,7 @@ class Tanh(layers.Layer):
 
 
 class Hardtanh(layers.Layer):
-    """
+    r"""
     Hardtanh Activation
 
     .. math::
@@ -442,7 +442,7 @@ class ReLU6(layers.Layer):
 
 
 class SELU(layers.Layer):
-    """
+    r"""
     SELU Activation
 
     .. math::
@@ -488,7 +488,7 @@ class SELU(layers.Layer):
 
 
 class LeakyReLU(layers.Layer):
-    """
+    r"""
     Leaky ReLU Activation.
 
     .. math::
@@ -574,7 +574,7 @@ class Sigmoid(layers.Layer):
 
 
 class Hardsigmoid(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Hardsigmoid`` class.
     This layer calcluate the `hardsigmoid` of input x.
 
@@ -621,7 +621,7 @@ class Hardsigmoid(layers.Layer):
 
 
 class Softplus(layers.Layer):
-    """
+    r"""
     Softplus Activation
 
     .. math::
@@ -661,7 +661,7 @@ class Softplus(layers.Layer):
 
 
 class Softshrink(layers.Layer):
-    """
+    r"""
     Softshrink Activation
 
     .. math::
@@ -702,7 +702,7 @@ class Softshrink(layers.Layer):
 
 
 class Softsign(layers.Layer):
-    """
+    r"""
     Softsign Activation
 
     .. math::
@@ -737,7 +737,7 @@ class Softsign(layers.Layer):
 
 
 class Swish(layers.Layer):
-    """
+    r"""
     Swish Activation.
 
     .. math::
@@ -807,7 +807,7 @@ class Tanhshrink(layers.Layer):
 
 
 class ThresholdedReLU(layers.Layer):
-    """
+    r"""
     Thresholded ReLU Activation
 
     .. math::
@@ -847,7 +847,7 @@ class ThresholdedReLU(layers.Layer):
 
 
 class LogSigmoid(layers.Layer):
-    """
+    r"""
     LogSigmoid Activation.
 
     .. math::
@@ -882,7 +882,7 @@ class LogSigmoid(layers.Layer):
 
 
 class Softmax(layers.Layer):
-    """
+    r"""
     Softmax Activation.
 
     This operator implements the softmax layer. The calculation process is as follows:
@@ -1005,7 +1005,7 @@ class Softmax(layers.Layer):
 
 
 class LogSoftmax(layers.Layer):
-    """
+    r"""
     This operator implements the log_softmax layer. The calculation process is as follows:
 
     .. math::
@@ -1059,7 +1059,7 @@ class LogSoftmax(layers.Layer):
 
 
 class Maxout(layers.Layer):
-    """
+    r"""
     Maxout Activation.
 
     Assumed the input shape is (N, Ci, H, W).

@@ -433,6 +433,23 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
   }
 }
 
+inline unsigned int HashPointer(uintptr_t ptr) {
+  // Get four less meaningful digits in decimal numerals
+  return ptr % 1000;
+}
+
+// If MKLDNN build and CPU place then register suffix in DeviceContext
+inline void AttachPointerHashToMKLDNNKey(void* ptr,
+                                         const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->SetKeySuffix("E" + std::to_string(platform::HashPointer(
+                                    reinterpret_cast<uintptr_t>(ptr))));
+  }
+}
+
 template <typename... ArgTypes>
 inline std::string CreateKey(ArgTypes&&... args) {
   std::string key;
