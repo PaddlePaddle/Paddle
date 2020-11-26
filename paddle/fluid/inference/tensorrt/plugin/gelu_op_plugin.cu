@@ -88,7 +88,7 @@ __device__ half do_tanh<half>(half a) {
 template <typename T, unsigned TPB>
 __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
                                      const T* input, T* output) {
-#if IF_CUDA_ARCH_SUPPORT_FP16(__CUDA_ARCH__)
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];
