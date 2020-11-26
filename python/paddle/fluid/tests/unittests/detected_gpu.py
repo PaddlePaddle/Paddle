@@ -12,5 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet import launch
-launch.launch()
+import paddle
+import sys
+import paddle.fluid as fluid
+
+print("compile with cuda:", fluid.core.is_compiled_with_cuda())
+print("get_cuda_device_count:", fluid.core.get_cuda_device_count())
+
+if fluid.core.is_compiled_with_cuda() and fluid.core.get_cuda_device_count(
+) > 0:
+    sys.exit(0)
+else:
+    sys.exit(1)
