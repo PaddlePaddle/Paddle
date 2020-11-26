@@ -1,6 +1,9 @@
 include(operators)
 if(WITH_UNITY_BUILD)
     register_unity_group(cc elementwise_add_op.cc mkldnn/elementwise_add_mkldnn_op.cc elementwise_div_op.cc elementwise_floordiv_op.cc elementwise_max_op.cc elementwise_min_op.cc elementwise_mod_op.cc elementwise_mul_op.cc mkldnn/elementwise_mul_mkldnn_op.cc elementwise_pow_op.cc elementwise_sub_op.cc)
+    if(WITH_GPU)
+        register_unity_group(cu elementwise_add_op.cu elementwise_div_op.cu elementwise_floordiv_op.cu elementwise_max_op.cu elementwise_min_op.cu elementwise_mod_op.cu elementwise_mul_op.cu elementwise_pow_op.cu elementwise_sub_op.cu)
+    endif()
 endif()
 register_operators()
 

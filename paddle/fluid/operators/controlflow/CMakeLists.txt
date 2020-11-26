@@ -1,6 +1,9 @@
 include(operators)
 if(WITH_UNITY_BUILD)
     register_unity_group(cc compare_all_op.cc compare_op.cc conditional_block_infer_op.cc feed_op.cc fetch_op.cc get_places_op.cc logical_op.cc tensor_array_read_write_op.cc while_op.cc)
+    if(WITH_GPU)
+        register_unity_group(cu compare_all_op.cu compare_op.cu logical_op.cu)
+    endif()
 endif()
 register_operators(EXCLUDES conditional_block_op DEPS naive_executor)
 

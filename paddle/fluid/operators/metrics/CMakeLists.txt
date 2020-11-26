@@ -1,5 +1,8 @@
 include(operators)
 if(WITH_UNITY_BUILD)
     register_unity_group(cc accuracy_op.cc auc_op.cc precision_recall_op.cc)
+    if(WITH_GPU)
+        register_unity_group(cu accuracy_op.cu auc_op.cu)
+    endif()
 endif()
 register_operators()
