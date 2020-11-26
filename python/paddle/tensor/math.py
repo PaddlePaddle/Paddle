@@ -312,12 +312,10 @@ def divide(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([2, 3, 4], dtype='float64')
             y = paddle.to_tensor([1, 5, 2], dtype='float64')
             z = paddle.divide(x, y)
-            print(z.numpy())  # [2., 0.6, 2.]
+            print(z)  # [2., 0.6, 2.]
 
     """
     op_type = 'elementwise_div'
@@ -354,12 +352,10 @@ def floor_divide(x, y, name=None):
 
             import paddle
 
-            paddle.disable_static()
-
             x = paddle.to_tensor([2, 3, 8, 7])
             y = paddle.to_tensor([1, 5, 3, 3])
             z = paddle.floor_divide(x, y)
-            print(z.numpy())  # [2, 0, 2, 2]
+            print(z)  # [2, 0, 2, 2]
 
     """
     op_type = 'elementwise_floordiv'
@@ -376,10 +372,11 @@ def remainder(x, y, name=None):
     Mod two tensors element-wise. The equation is:
 
     .. math::
+
         out = x \% y
 
     **Note**:
-    ``paddle.mod`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -397,7 +394,7 @@ def remainder(x, y, name=None):
 
             x = paddle.to_tensor([2, 3, 8, 7])
             y = paddle.to_tensor([1, 5, 3, 3])
-            z = paddle.mod(x, y)
+            z = paddle.remainder(x, y)
             print(z)  # [0, 3, 2, 1]
 
     """
@@ -1037,7 +1034,7 @@ def inverse(x, name=None):
     (2-D Tensor) or batches of square matrices.
 
     Args:
-        x (Variable): The input tensor. The last two
+        x (Tensor): The input tensor. The last two
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
             type can be float32 and float64.
@@ -1046,14 +1043,13 @@ def inverse(x, name=None):
             please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor holds the inverse of x. The shape and data type
+        Tensor: A Tensor holds the inverse of x. The shape and data type
                         is the same as x.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            paddle.disable_static()
 
             mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
             inv = paddle.inverse(mat)
@@ -1915,7 +1911,6 @@ def sign(x, name=None):
 
           import paddle
 
-          paddle.disable_static()
           x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
           out = paddle.sign(x=x)
           print(out)  # [1.0, 0.0, -1.0, 1.0]
