@@ -164,7 +164,7 @@ def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
     return new_old_dict
 
 
-def _rename_var_program_desc(program_desc):
+def _rename_var_program_desc(program_desc, include=None, exclude=None):
     """
     Change the name of the loaded variables.Use 'unique_name.generate' to avoid duplication
     e.g. x ==> x_0, x_0 ==> x_1
@@ -176,25 +176,26 @@ def _rename_var_program_desc(program_desc):
         cur_block = program_desc.block(b_idx)
         for var in cur_block.all_vars():
             old_names.append(var.name())
-    persistable_vars = _get_persistable_vars(program_desc)
     for b_idx in six.moves.range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var_idx, var in enumerate(cur_block.all_vars()):
-            if var not in persistable_vars:
-                continue
             name_old = var.name()
-            while True:
-                temp_name = name_old.split('_')
-                if len(temp_name) > 1 and temp_name[-1].isnumeric():
-                    temp_name = "_".join(temp_name[:-1])
-                else:
-                    temp_name = "_".join(temp_name)
+            if (include is None or name_old in include) and (
+                    exclude is None or name_old not in exclude):
+                while True:
+                    temp_name = name_old.split('_')
+                    if len(temp_name) > 1 and temp_name[-1].isnumeric():
+                        temp_name = "_".join(temp_name[:-1])
+                    else:
+                        temp_name = "_".join(temp_name)
 
-                name_new = _generate_unique_var_name_sync_with_main_program(
-                    temp_name)
-                if name_new not in old_names[:var_idx] + old_names[var_idx +
-                                                                   1:]:
-                    break
+                    name_new = _generate_unique_var_name_sync_with_main_program(
+                        temp_name)
+                    if name_new not in old_names[:var_idx] + old_names[var_idx +
+                                                                       1:]:
+                        break
+            else:
+                name_new = name_old
             if name_old != name_new:
                 cur_block._rename_var(
                     cpt.to_bytes(name_old), cpt.to_bytes(name_new))
@@ -739,12 +740,18 @@ def _run_dygraph(instance, input, program_holder):
 
 def _run_static_graph(input, program_holder, trace_program):
     main_program = framework.default_main_program()
+    param_var_names = _get_persistable_var_names(trace_program)
+    dict_rename_var_old_new = None
+    _, dict_rename_var_old_new = _rename_var_program_desc(
+        trace_program, exclude=param_var_names)
+    trace_program.flush()
     output_names = [var.name() for var in program_holder.output_descs]
     # append blocks from 'trace_program'
     _append_block(main_program, trace_program, program_holder, input,
-                  output_names)
+                  dict_rename_var_old_new)
     main_program._sync_with_cpp()
-    outs = _get_output_from_program(main_program, program_holder)
+    outs = _get_output_from_program(main_program, program_holder,
+                                    dict_rename_var_old_new)
     if len(outs) == 1:
         outs = outs[0]
     return outs
@@ -772,8 +779,11 @@ def _collect_parent_var(program, block_idx):
     return vars
 
 
-def _append_block(dest_program, src_program_desc, program_holder, input_names,
-                  output_names):
+def _append_block(dest_program,
+                  src_program_desc,
+                  program_holder,
+                  input_names,
+                  dict_rename_var_old_new=None):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
     
@@ -782,7 +792,8 @@ def _append_block(dest_program, src_program_desc, program_holder, input_names,
         src_program_desc(ProgramDesc): index of current block.
         program_holder(_ProgramHolder): program_holder of TranslatedLayer
         input_names(list): list of input variables
-        output_names(list): list of output names
+        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc', 
+        use it to map the variables in 'program_holder' and 'program_holder'.
     '''
 
     origin_block_idx = dest_program.current_block_idx
@@ -799,10 +810,13 @@ def _append_block(dest_program, src_program_desc, program_holder, input_names,
             "The number of input is invalid, expected {}, but received {}.".
             format(len(name_inp_desc), len(name_inp)))
     for i in range(len(name_inp_desc)):
+        out_name = name_inp_desc[i]
+        if dict_rename_var_old_new is not None:
+            out_name = dict_rename_var_old_new[out_name]
         dest_program.block(origin_block_idx).append_op(
             type='assign',
             inputs={'X': [name_inp[i]]},
-            outputs={'Out': [name_inp_desc[i]]})
+            outputs={'Out': [out_name]})
 
     ops_append = append_op_from_block_desc_static(
         dest_program.block(origin_block_idx), src_program_desc.block(0))
@@ -838,7 +852,9 @@ def _append_block(dest_program, src_program_desc, program_holder, input_names,
     dest_program.current_block_idx = origin_block_idx
 
 
-def _get_output_from_program(program, program_holder):
+def _get_output_from_program(program,
+                             program_holder,
+                             dict_rename_var_old_new=None):
     """
         Get output name of 'program' according to program_holder
     """
@@ -846,8 +862,11 @@ def _get_output_from_program(program, program_holder):
     for var in program_holder.output_descs:
         for idx in range(program.num_blocks):
             vars = program.block(idx).vars
-            if var.name() in vars:
-                out = vars[var.name()]
+            var_name = var.name()
+            if dict_rename_var_old_new is not None:
+                var_name = dict_rename_var_old_new[var_name]
+            if var_name in vars:
+                out = vars[var_name]
                 if out not in outs:
                     outs.append(out)
     return outs
@@ -1134,7 +1153,7 @@ class TranslatedLayer(layers.Layer):
                 # 'OpDesc.op_size()' will return a very large wrong number.
                 # A Segmentation fault error may occur if used 'p=ProgramDesc(program_holder.infer_program)'.
                 p = framework.Program._construct_from_desc(
-                    program_holder.infer_program)
+                    core.ProgramDesc(program_holder.infer_program))
                 return _run_static_graph(input, program_holder, p.desc)
 
         __i_m_p_l__.__name__ = method_name

@@ -25,6 +25,7 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid import unique_name
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -866,30 +867,54 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
 class LayerSaved(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super(LayerSaved, self).__init__()
-        self._linear_0 = Linear(in_size, out_size)
-        self._linear_1 = Linear(in_size, out_size)
+        self.hidden = 100
+        self._linear_0 = Linear(in_size, self.hidden)
+        self._linear_1_0 = Linear(self.hidden, self.hidden)
+        self._linear_1_1 = Linear(self.hidden, self.hidden)
+        self._linear_2 = Linear(self.hidden, out_size)
         self._scale = paddle.to_tensor(9.9)
 
     @paddle.jit.to_static
     def forward(self, x):
         y = self._linear_0(x)
+        # Multiple blocks
         if x.shape[0] == 1:
-            return y
+            y = self._linear_1_0(y)
         else:
-            return y + self._linear_1(x) * self._scale
+            y += self._linear_1_1(y + self._scale)
+        return self._linear_2(y)
 
 
 class LayerLoadFinetune(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size, load_path):
         super(LayerLoadFinetune, self).__init__()
-        self._linear_0 = Linear(in_size, out_size)
-        self._linear_1 = paddle.jit.load(load_path)
+        # Test duplicate name
+        self._linear_0 = Linear(in_size, in_size)
+        self._linear_1_0 = Linear(out_size, in_size)
+        self._linear_1_1 = Linear(out_size, in_size)
+        self._linear_2 = Linear(out_size, out_size)
+        self._scale = paddle.to_tensor(9.9)
+
+        # Load multiple times
+        self._load_l1 = paddle.jit.load(load_path)
+        self._load_l2 = paddle.jit.load(load_path)
 
     @paddle.jit.to_static
     def forward(self, x):
-        y = self._linear_1(x)
+        y = self._linear_0(x)
+        y = self._load_l1(y)
+        # Multiple blocks
         if x.shape[0] == 1:
-            return self._linear_0(y)
+            y = self._linear_1_0(y)
+            y = self._load_l1(y)
+        else:
+            y += self._linear_1_1(x + self._scale)
+            self._load_l2(y)
+        y = self._linear_1_0(y)
+        y = self._load_l1(y)
+        y = self._linear_1_0(y)
+        # Use the same layer multiple times.
+        y = self._load_l1(y)
         return y
 
 
@@ -903,12 +928,15 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         IMAGE_SIZE = 224
         inps0 = paddle.randn([1, IMAGE_SIZE])
         inps1 = paddle.randn([2, IMAGE_SIZE])
-        layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
+        # Use new namespace
+        with unique_name.guard():
+            layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
         layer_save(inps0)
         #save
         paddle.jit.save(layer_save, model_path)
         #load
-        layer_load = LayerLoadFinetune(IMAGE_SIZE, IMAGE_SIZE, model_path)
+        with unique_name.guard():
+            layer_load = LayerLoadFinetune(IMAGE_SIZE, IMAGE_SIZE, model_path)
         #train
         train(layer_load, input_size=IMAGE_SIZE)
         result_00 = layer_load(inps0)
