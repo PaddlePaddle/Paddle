@@ -11255,12 +11255,16 @@ def shape(input):
 
             import paddle
             x = paddle.randn((2,3))
-            print(x.shape) # [2, 3]
+            print(paddle.shape(x)) # [2, 3]
 
     """
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'shape')
+
+    if in_dygraph_mode():
+        return core.ops.shape(input)
+
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
