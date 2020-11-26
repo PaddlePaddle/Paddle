@@ -146,7 +146,7 @@ if (WITH_NCCL)
 endif()
 
 if(NOT WITH_NCCL)
-    list(REMOVE_ITEM TEST_OPS "test_imperative_group")
+    list(REMOVE_ITEM TEST_OPS test_imperative_group)
 endif()
 
 if(NOT WITH_GPU OR WIN32)
