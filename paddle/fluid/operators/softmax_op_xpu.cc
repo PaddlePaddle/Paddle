@@ -31,13 +31,6 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto* out = context.Output<Tensor>("Out");
     const int rank = x->dims().size();
     int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-    // PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
-    //                  platform::errors::InvalidArgument(
-    //                      "xpu softmax kernel only support last dimension of x
-    //                      "
-    //                      "(axis==-1 or axis==x_dims-1), but received axis: "
-    //                      "%d, x's shape: %s.",
-    //                      axis, x->dims()));
 
     // allocate memory on device.
     out->mutable_data<T>(context.GetPlace());
