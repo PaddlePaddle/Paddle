@@ -859,13 +859,13 @@ class VisualDL(Callback):
 
 
 class ReduceLROnPlateau(Callback):
-    """Reduce learning rate when a metric has stopped improving.
+    """Reduce learning rate when a metric of evaluation has stopped improving.
     Models often benefit from reducing the learning rate by a factor
     of 2-10 once learning stagnates. This callback monitors a
     quantity and if no improvement is seen for a 'patience' number
     of epochs, the learning rate is reduced.
     
-    Arguments:
+    Args:
         monitor(str, optional): Quantity to be monitored. Default: 'loss'.
         factor(float, optional): factor by which the learning rate will be reduced.
             `new_lr = lr * factor`. Default: 0.1.
