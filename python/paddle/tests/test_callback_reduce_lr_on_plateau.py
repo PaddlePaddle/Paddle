@@ -90,13 +90,14 @@ class TestReduceLROnPlateau(unittest.TestCase):
             parameters=net.parameters())
 
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
-        callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
+        callbacks = paddle.callbacks.ReduceLROnPlateau(
+            monitor='acc', mode='max', patience=3, verbose=1, cooldown=1)
         model.fit(train_dataset,
                   val_dataset,
                   batch_size=8,
                   log_freq=1,
                   save_freq=10,
-                  epochs=1,
+                  epochs=3,
                   callbacks=[callbacks])
 
 
