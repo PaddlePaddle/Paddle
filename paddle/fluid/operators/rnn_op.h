@@ -215,14 +215,14 @@ void dropout_helper(const framework::ExecutionContext& context, Tensor* x,
                     Tensor* y, const Tensor* mask, const float& dropout_prob) {
   auto& place = *context.template device_context<platform::CPUDeviceContext>()
                      .eigen_device();
-  auto eigen_dropout_mask = EigenVector<uint8_t>::Flatten(*mask);
-  auto eigen_x = EigenVector<T>::Flatten(*x);
-  auto eigen_y = EigenVector<T>::Flatten(*y);
+  auto dropout_mask = EigenVector<uint8_t>::Flatten(*mask);
+  auto in = EigenVector<T>::Flatten(*x);
+  auto out = EigenVector<T>::Flatten(*y);
   if (dropout_prob == 1.0f) {
-    eigen_y.device(place) = static_cast<T>(0) * eigen_x;
+    out.device(place) = static_cast<T>(0) * in;
   } else {
-    eigen_y.device(place) = eigen_x * eigen_dropout_mask.cast<T>() /
-                            static_cast<T>(1.0f - dropout_prob);
+    out.device(place) =
+        in * dropout_mask.cast<T>() / static_cast<T>(1.0f - dropout_prob);
   }
 }
 
@@ -290,14 +290,13 @@ struct Layer {
     blas.MatMul(*input, mat_dim_a, weight, mat_dim_b, static_cast<T>(1.0),
                 cache_input, static_cast<T>(0));
 
-    auto eigen_in = framework::EigenMatrix<T>::Reshape(
+    auto in = framework::EigenMatrix<T>::Reshape(
         *cache_input, cache_input->dims().size() - 1);
-    auto eigen_bias_ih = framework::EigenMatrix<T>::From(
+    auto bias_ih_tmp = framework::EigenMatrix<T>::From(
         bias_ih, framework::make_ddim({1, bias_ih.dims()[0]}));
     const int& row_num =
         framework::product(cache_input->dims()) / cache_input->dims()[2];
-    eigen_in =
-        eigen_in + eigen_bias_ih.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
+    in = in + bias_ih_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     if (is_gru(context)) {
       // reset_gate update_gate cell_gate = [1, 1, 0]
       Tensor bias_hh_tmp;
@@ -309,15 +308,13 @@ struct Layer {
       math::SetConstant<platform::CPUDeviceContext, T> zero;
       zero(dev_ctx, &bias_hh_tmp_unbind[2], static_cast<T>(0.0));
 
-      auto eigen_bias_hh_tmp = framework::EigenMatrix<T>::From(
+      auto bias_hh_after_mask = framework::EigenMatrix<T>::From(
           bias_hh_tmp, framework::make_ddim({1, bias_hh.dims()[0]}));
-      eigen_in = eigen_in +
-                 eigen_bias_hh_tmp.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
+      in = in + bias_hh_after_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     } else {
-      auto eigen_bias_hh = framework::EigenMatrix<T>::From(
+      auto bias_hh_no_mask = framework::EigenMatrix<T>::From(
           bias_hh, framework::make_ddim({1, bias_hh.dims()[0]}));
-      eigen_in =
-          eigen_in + eigen_bias_hh.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
+      in = in + bias_hh_no_mask.broadcast(Eigen::DSizes<int, 2>(row_num, 1));
     }
   }
 
@@ -327,27 +324,26 @@ struct Layer {
     // in the output, if mask flag is 0, we will retun the zero data
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    auto eigen_output =
+    auto out =
         framework::EigenMatrix<T>::Reshape(*output, output->dims().size() - 1);
-    auto eigen_mask = framework::EigenMatrix<T>::From(
+    auto mask = framework::EigenMatrix<T>::From(
         mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    auto eigen_init_h =
+    auto pre_h =
         framework::EigenMatrix<T>::Reshape(*init_h, init_h->dims().size() - 1);
-    auto eigen_last_h =
+    auto curr_h =
         framework::EigenMatrix<T>::Reshape(*last_h, last_h->dims().size() - 1);
-    auto eigen_mask_broadcast =
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[2]));
-    eigen_last_h.device(place) = eigen_output * eigen_mask_broadcast +
-                                 eigen_init_h * (1 - eigen_mask_broadcast);
-    eigen_output.device(place) = eigen_output * eigen_mask_broadcast;
+    auto mask_broadcast =
+        mask.broadcast(Eigen::DSizes<int, 2>(1, output->dims()[2]));
+    curr_h.device(place) = out * mask_broadcast + pre_h * (1 - mask_broadcast);
+    out.device(place) = out * mask_broadcast;
 
     if (is_lstm(context)) {
-      auto eigen_init_c = framework::EigenMatrix<T>::Reshape(
+      auto pre_c = framework::EigenMatrix<T>::Reshape(
           *init_c, init_c->dims().size() - 1);
-      auto eigen_last_c = framework::EigenMatrix<T>::Reshape(
+      auto curr_c = framework::EigenMatrix<T>::Reshape(
           *last_c, last_c->dims().size() - 1);
-      eigen_last_c.device(place) = eigen_last_c * eigen_mask_broadcast +
-                                   eigen_init_c * (1 - eigen_mask_broadcast);
+      curr_c.device(place) =
+          curr_c * mask_broadcast + pre_c * (1 - mask_broadcast);
     }
   }
 
@@ -1212,16 +1208,17 @@ struct GradLayer {
       TensorList* init_h_grad_unbind, TensorList* init_c_grad_unbind,
       const std::vector<TensorList>& weight_list_grad, const int& layer_idx,
       const int& gate_num) {}
+
   void preprocess(const framework::ExecutionContext& context,
                   const Tensor* grad_output, Tensor* grad_last_h) {
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    auto eigen_grad_output = framework::EigenMatrix<T>::Reshape(
+    auto output_grad = framework::EigenMatrix<T>::Reshape(
         *grad_output, grad_output->dims().size() - 1);
-    auto eigen_grad_last_h = framework::EigenMatrix<T>::Reshape(
+    auto last_h_grad = framework::EigenMatrix<T>::Reshape(
         *grad_last_h, grad_last_h->dims().size() - 1);
     // the output gradient contribute the gradient to last_h
-    eigen_grad_last_h.device(place) = eigen_grad_last_h + eigen_grad_output;
+    last_h_grad.device(place) = last_h_grad + output_grad;
   }
 
   void mask_preprocess(const framework::ExecutionContext& context,
@@ -1230,32 +1227,28 @@ struct GradLayer {
                        Tensor* grad_pre_c, const Tensor& mask_tensor) {
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    auto eigen_mask = framework::EigenMatrix<T>::From(
+    auto mask = framework::EigenMatrix<T>::From(
         mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-    auto eigen_mask_broadcast =
-        eigen_mask.broadcast(Eigen::DSizes<int, 2>(1, grad_output->dims()[2]));
+    auto mask_broadcast =
+        mask.broadcast(Eigen::DSizes<int, 2>(1, grad_output->dims()[2]));
 
-    auto eigen_grad_last_h = framework::EigenMatrix<T>::Reshape(
+    auto last_h_grad = framework::EigenMatrix<T>::Reshape(
         *grad_last_h, grad_last_h->dims().size() - 1);
-    auto eigen_grad_pre_h = framework::EigenMatrix<T>::Reshape(
+    auto pre_h_grad = framework::EigenMatrix<T>::Reshape(
         *grad_pre_h, grad_pre_h->dims().size() - 1);
-    auto eigen_grad_output = framework::EigenMatrix<T>::Reshape(
+    auto output_grad = framework::EigenMatrix<T>::Reshape(
         *grad_output, grad_output->dims().size() - 1);
-    eigen_grad_last_h.device(place) =
-        eigen_grad_last_h + eigen_grad_output * eigen_mask_broadcast;
-    eigen_grad_pre_h.device(place) =
-        (1 - eigen_mask_broadcast) * eigen_grad_last_h;
-    eigen_grad_last_h.device(place) = eigen_mask_broadcast * eigen_grad_last_h;
+    last_h_grad.device(place) = last_h_grad + output_grad * mask_broadcast;
+    pre_h_grad.device(place) = (1 - mask_broadcast) * last_h_grad;
+    last_h_grad.device(place) = mask_broadcast * last_h_grad;
 
     if (grad_last_c && grad_pre_c && is_lstm(context)) {
-      auto eigen_grad_last_c = framework::EigenMatrix<T>::Reshape(
+      auto last_c_grad = framework::EigenMatrix<T>::Reshape(
           *grad_last_c, grad_last_c->dims().size() - 1);
-      auto eigen_grad_pre_c = framework::EigenMatrix<T>::Reshape(
+      auto pre_c_grad = framework::EigenMatrix<T>::Reshape(
           *grad_pre_c, grad_pre_c->dims().size() - 1);
-      eigen_grad_pre_c.device(place) =
-          (1 - eigen_mask_broadcast) * eigen_grad_last_c;
-      eigen_grad_last_c.device(place) =
-          eigen_mask_broadcast * eigen_grad_last_c;
+      pre_c_grad.device(place) = (1 - mask_broadcast) * last_c_grad;
+      last_c_grad.device(place) = mask_broadcast * last_c_grad;
     }
   }
 
@@ -1555,25 +1548,25 @@ struct GradCell {
       auto& place =
           *context.template device_context<platform::CPUDeviceContext>()
                .eigen_device();
-      auto eigen_mask = framework::EigenMatrix<T>::From(
+      auto mask = framework::EigenMatrix<T>::From(
           mask_tensor, framework::make_ddim({mask_tensor.dims()[1], 1}));
-      auto eigen_mask_broadcast = eigen_mask.broadcast(
-          Eigen::DSizes<int, 2>(1, grad_pre_hidden->dims()[2]));
-      auto eigen_grad_pre_hidden = framework::EigenMatrix<T>::Reshape(
+      auto mask_broadcast =
+          mask.broadcast(Eigen::DSizes<int, 2>(1, grad_pre_hidden->dims()[2]));
+      auto pre_hidden_grad = framework::EigenMatrix<T>::Reshape(
           *grad_pre_hidden, grad_pre_hidden->dims().size() - 1);
-      auto eigen_grad_pre_hidden_bak = framework::EigenMatrix<T>::Reshape(
+      auto pre_hidden_bak_grad = framework::EigenMatrix<T>::Reshape(
           *grad_pre_hidden_bak, grad_pre_hidden_bak->dims().size() - 1);
-      eigen_grad_pre_hidden.device(place) =
-          (1 - eigen_mask_broadcast) * eigen_grad_pre_hidden_bak +
-          eigen_grad_pre_hidden * eigen_mask_broadcast;
+      pre_hidden_grad.device(place) =
+          (1 - mask_broadcast) * pre_hidden_bak_grad +
+          pre_hidden_grad * mask_broadcast;
       if (grad_pre_state) {
-        auto eigen_grad_pre_state = framework::EigenMatrix<T>::Reshape(
+        auto pre_state_grad = framework::EigenMatrix<T>::Reshape(
             *grad_pre_state, grad_pre_state->dims().size() - 1);
-        auto eigen_grad_pre_state_bak = framework::EigenMatrix<T>::Reshape(
+        auto pre_state_bak_grad = framework::EigenMatrix<T>::Reshape(
             *grad_pre_state_bak, grad_pre_state_bak->dims().size() - 1);
-        eigen_grad_pre_state.device(place) =
-            (1 - eigen_mask_broadcast) * eigen_grad_pre_state_bak +
-            eigen_grad_pre_state * eigen_mask_broadcast;
+        pre_state_grad.device(place) =
+            (1 - mask_broadcast) * pre_state_bak_grad +
+            pre_state_grad * mask_broadcast;
       }
     }
   }

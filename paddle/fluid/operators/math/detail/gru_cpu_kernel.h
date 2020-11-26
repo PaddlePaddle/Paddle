@@ -249,23 +249,21 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
 }
 
 template <typename T>
-inline void eigen_forward_reset_output(
-    const platform::CPUDeviceContext &context, GRUMetaValue<T> value,
-    int frame_size) {
+inline void forward_reset_outputV2(const platform::CPUDeviceContext &context,
+                                   GRUMetaValue<T> value, int frame_size) {
   auto &place = *context.eigen_device();
-  auto eigen_value_reset_gate =
+  auto value_reset_gate =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
-  auto eigen_value_update_gate = typename EigenVector<T>::Type(
+  auto value_update_gate = typename EigenVector<T>::Type(
       value.gate_value + frame_size, Array1(frame_size));
-  auto eigen_value_reset_output = typename EigenVector<T>::Type(
+  auto value_reset_output = typename EigenVector<T>::Type(
       value.reset_output_value, Array1(frame_size));
-  auto eigen_value_reset_bias =
+  auto value_reset_bias =
       typename EigenVector<T>::ConstType(value.reset_bias, Array1(frame_size));
-  SigmoidFunctor<T>()(place, eigen_value_reset_gate, eigen_value_reset_gate);
-  SigmoidFunctor<T>()(place, eigen_value_update_gate, eigen_value_update_gate);
-  eigen_value_reset_output.device(place) =
-      (eigen_value_reset_output + eigen_value_reset_bias) *
-      eigen_value_reset_gate;
+  SigmoidFunctor<T>()(place, value_reset_gate, value_reset_gate);
+  SigmoidFunctor<T>()(place, value_update_gate, value_update_gate);
+  value_reset_output.device(place) =
+      (value_reset_output + value_reset_bias) * value_reset_gate;
 }
 
 template <class OpResetOutput, typename T>
@@ -275,10 +273,10 @@ inline void forward_reset_output(
     const platform::CPUDeviceContext *context = nullptr) {
   for (int b = 0; b < batch_size; b++) {
     if (!old_version) {
-      // eigen
-      eigen_forward_reset_output(*context, value, frame_size);
+      // use eigen
+      forward_reset_outputV2(*context, value, frame_size);
     } else {
-      if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
+      if (OpResetOutput::avx && (frame_size & static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
         hl_avx_gru_forward_reset_output(
             op_reset_output, value.gate_value, value.reset_output_value,
@@ -300,24 +298,23 @@ inline void forward_reset_output(
 }
 
 template <typename T>
-inline void eigen_forward_final_output(
-    const platform::CPUDeviceContext &context, GRUMetaValue<T> value,
-    int frame_size) {
+inline void forward_final_outputV2(const platform::CPUDeviceContext &context,
+                                   GRUMetaValue<T> value, int frame_size) {
   auto &place = *context.eigen_device();
-  auto eigen_value_update_gate = typename EigenVector<T>::Type(
+  auto value_update_gate = typename EigenVector<T>::Type(
       value.gate_value + frame_size, Array1(frame_size));
-  auto eigen_value_frame_state = typename EigenVector<T>::Type(
+  auto value_frame_state = typename EigenVector<T>::Type(
       value.gate_value + 2 * frame_size, Array1(frame_size));
-  auto eigen_value_output =
+  auto value_output =
       typename EigenVector<T>::Type(value.output_value, Array1(frame_size));
-  TanhFunctor<T>()(place, eigen_value_frame_state, eigen_value_frame_state);
-  eigen_value_output.device(place) =
-      (static_cast<T>(1.0) - eigen_value_update_gate) * eigen_value_frame_state;
+  TanhFunctor<T>()(place, value_frame_state, value_frame_state);
+  value_output.device(place) =
+      (static_cast<T>(1.0) - value_update_gate) * value_frame_state;
   if (value.prev_out_value) {
-    auto eigen_value_prev_out = typename EigenVector<T>::ConstType(
+    auto value_prev_out = typename EigenVector<T>::ConstType(
         value.prev_out_value, Array1(frame_size));
-    eigen_value_output.device(place) =
-        eigen_value_output + eigen_value_update_gate * eigen_value_prev_out;
+    value_output.device(place) =
+        value_output + value_update_gate * value_prev_out;
   }
 }
 
@@ -330,9 +327,9 @@ inline void forward_final_output(
   for (int b = 0; b < batch_size; b++) {
     if (!old_version) {
       // eigen
-      eigen_forward_final_output(*context, value, frame_size);
+      forward_final_outputV2(*context, value, frame_size);
     } else {
-      if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
+      if (OpFinalOutput::avx && (frame_size & static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
         hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
                                         value.prev_out_value,
@@ -723,61 +720,57 @@ inline void backward_reset_grad(OpResetGrad op_reset_grad,
 }
 
 template <typename T>
-inline void eigen_gru_backward(const platform::CPUDeviceContext &context,
-                               GRUMetaValue<T> value, GRUMetaGrad<T> grad,
-                               int frame_size) {
+inline void gru_backward(const platform::CPUDeviceContext &context,
+                         GRUMetaValue<T> value, GRUMetaGrad<T> grad,
+                         int frame_size) {
   auto &place = *context.eigen_device();
 
-  auto eigen_value_reset_gate =
+  auto value_reset_gate =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
-  auto eigen_grad_reset_gate =
+  auto grad_reset_gate =
       typename EigenVector<T>::Type(grad.gate_grad, Array1(frame_size));
-  auto eigen_value_update_gate = typename EigenVector<T>::Type(
+  auto value_update_gate = typename EigenVector<T>::Type(
       value.gate_value + frame_size, Array1(frame_size));
-  auto eigen_grad_update_gate = typename EigenVector<T>::Type(
+  auto grad_update_gate = typename EigenVector<T>::Type(
       grad.gate_grad + frame_size, Array1(frame_size));
-  auto eigen_value_frame_state = typename EigenVector<T>::Type(
+  auto value_frame_state = typename EigenVector<T>::Type(
       value.gate_value + frame_size * 2, Array1(frame_size));
-  auto eigen_grad_frame_state = typename EigenVector<T>::Type(
+  auto grad_frame_state = typename EigenVector<T>::Type(
       grad.gate_grad + frame_size * 2, Array1(frame_size));
 
-  auto eigen_grad_output =
+  auto grad_output =
       typename EigenVector<T>::Type(grad.output_grad, Array1(frame_size));
-  auto eigen_value_reset_output = typename EigenVector<T>::Type(
+  auto value_reset_output = typename EigenVector<T>::Type(
       value.reset_output_value, Array1(frame_size));
-  auto eigen_grad_reset_output =
+  auto grad_reset_output =
       typename EigenVector<T>::Type(grad.reset_output_grad, Array1(frame_size));
 
   if (value.prev_out_value) {
-    auto eigen_value_prev_out = typename EigenVector<T>::ConstType(
+    auto value_prev_out = typename EigenVector<T>::ConstType(
         value.prev_out_value, Array1(frame_size));
-    SigmoidGradFunctor<T>()(
-        place, 1 /*useless*/, eigen_value_update_gate,
-        (eigen_value_prev_out - eigen_value_frame_state) * eigen_grad_output,
-        eigen_grad_update_gate);
+    SigmoidGradFunctor<T>()(place, 1 /*useless*/, value_update_gate,
+                            (value_prev_out - value_frame_state) * grad_output,
+                            grad_update_gate);
   } else {
     SigmoidGradFunctor<T>()(
-        place, 1 /*useless*/, eigen_value_update_gate,
-        static_cast<T>(-1) * eigen_value_frame_state * eigen_grad_output,
-        eigen_grad_update_gate);
+        place, 1 /*useless*/, value_update_gate,
+        static_cast<T>(-1) * value_frame_state * grad_output, grad_update_gate);
   }
   if (grad.prev_out_grad) {
-    auto eigen_grad_prev_out =
+    auto grad_prev_out =
         typename EigenVector<T>::Type(grad.prev_out_grad, Array1(frame_size));
-    eigen_grad_prev_out.device(place) =
-        eigen_grad_prev_out + eigen_grad_output * eigen_value_update_gate;
+    grad_prev_out.device(place) =
+        grad_prev_out + grad_output * value_update_gate;
   }
-  TanhGradFunctor<T>()(
-      place, 1 /*useless*/, eigen_value_frame_state,
-      eigen_grad_output * (static_cast<T>(1.0) - eigen_value_update_gate),
-      eigen_grad_frame_state);
-  SigmoidGradFunctor<T>()(place, 1 /*useless*/, eigen_value_reset_gate,
-                          eigen_value_reset_output / eigen_value_reset_gate *
-                              eigen_grad_frame_state,
-                          eigen_grad_reset_gate);
+  TanhGradFunctor<T>()(place, 1 /*useless*/, value_frame_state,
+                       grad_output * (static_cast<T>(1.0) - value_update_gate),
+                       grad_frame_state);
+  SigmoidGradFunctor<T>()(
+      place, 1 /*useless*/, value_reset_gate,
+      value_reset_output / value_reset_gate * grad_frame_state,
+      grad_reset_gate);
   if (value.prev_out_value && grad.prev_out_grad) {
-    eigen_grad_reset_output.device(place) =
-        eigen_value_reset_gate * eigen_grad_frame_state;
+    grad_reset_output.device(place) = value_reset_gate * grad_frame_state;
   }
 }
 
@@ -789,7 +782,7 @@ inline void cpu_gru_backward(const platform::CPUDeviceContext &context,
                              ActivationType active_gate) {
   for (int b = 0; b < batch_size; ++b) {
     // eigen
-    eigen_gru_backward(context, value, grad, frame_size);
+    gru_backward(context, value, grad, frame_size);
 
     value.gate_value += frame_size * 3;
     value.reset_output_value += frame_size;
