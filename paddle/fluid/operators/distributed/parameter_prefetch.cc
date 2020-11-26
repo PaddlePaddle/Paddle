@@ -233,19 +233,6 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
   ids_union.assign(s.begin(), s.end());
 
-  // for (auto &i : ids_union) {
-  //   PADDLE_ENFORCE_GE(
-  //       i, 0, platform::errors::OutOfRange(
-  //                 "each element in embedding should be larger or equal 0"));
-  //   if (!is_distributed) {
-  //     PADDLE_ENFORCE_LT(
-  //         i, vec_dim_0,
-  //         platform::errors::OutOfRange(
-  //             "embedding id must in [0, %d) when is_distributed False",
-  //             vec_dim_0));
-  //   }
-  // }
-
   for (size_t i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
