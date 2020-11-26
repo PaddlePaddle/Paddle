@@ -413,7 +413,7 @@ def softshrink(x, alpha=None):
     return _softshrink_(**kwargs)
 
 
-softshrink.__doc__ = """
+softshrink.__doc__ = r"""
 	:alias_main: paddle.nn.functional.softshrink
 	:alias: paddle.nn.functional.softshrink,paddle.nn.functional.activation.softshrink
 	:old_api: paddle.fluid.layers.softshrink
@@ -530,7 +530,7 @@ def thresholded_relu(x, threshold=None):
     return _thresholded_relu_(**kwargs)
 
 
-thresholded_relu.__doc__ = """
+thresholded_relu.__doc__ = r"""
 	:alias_main: paddle.nn.functional.thresholded_relu
 	:alias: paddle.nn.functional.thresholded_relu,paddle.nn.functional.activation.thresholded_relu
 	:old_api: paddle.fluid.layers.thresholded_relu
@@ -617,7 +617,7 @@ def gelu(x, approximate=False):
     return _gelu_(**kwargs)
 
 
-gelu.__doc__ = """
+gelu.__doc__ = r"""
 :strong:`GeLU Activation Operator`
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
@@ -701,7 +701,7 @@ def erf(x, name=None):
     return _erf_(**kwargs)
 
 
-erf.__doc__ = """
+erf.__doc__ = r"""
 :strong:`Erf Operator`
 For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
 

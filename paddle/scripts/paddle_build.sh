@@ -56,6 +56,9 @@ function init() {
     fi
 
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
+
+    # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
+    export FLAGS_call_stack_level=2
 }
 
 function cmake_base() {
@@ -563,12 +566,12 @@ EOF
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label=""
         else
-            nightly_label="RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY"
+            nightly_label="(RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY)"
             echo "========================================="
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        ctest -E "($disable_ut_quickly)" -LE "($nightly_label)" --output-on-failure -j $2 | tee $tmpfile
+        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -727,6 +730,7 @@ function generate_api_spec() {
 }
 
 function check_approvals_of_unittest() {
+    set +x
     if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
         return 0
     fi
@@ -736,7 +740,6 @@ function check_approvals_of_unittest() {
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
         if [ "${approval_line}" != "" ]; then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
-            set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "TRUE" ]; then
                 echo "==================================="
@@ -750,7 +753,6 @@ function check_approvals_of_unittest() {
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
-            set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
@@ -1610,6 +1612,10 @@ function example() {
     fi
 }
 
+function test_op_benchmark() {
+    bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
+}
+
 function summary_check_problems() {
     set +x
     local check_style_code=$1
@@ -1784,6 +1790,9 @@ function main() {
         ;;
       api_example)
         example
+        ;;
+      test_op_benchmark)
+        test_op_benchmark
         ;;
       *)
         print_usage

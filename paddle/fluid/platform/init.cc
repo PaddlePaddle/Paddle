@@ -63,7 +63,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag p2p_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -95,28 +94,7 @@ bool InitGflags(std::vector<std::string> args) {
   return successed;
 }
 
-void InitP2P(std::vector<int> devices) {
-#ifdef PADDLE_WITH_CUDA
-  std::call_once(p2p_init_flag, [&]() {
-    int count = devices.size();
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0; j < count; ++j) {
-        if (devices[i] == devices[j]) continue;
-        int can_acess = -1;
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaDeviceCanAccessPeer(&can_acess, devices[i], devices[j]));
-        if (can_acess != 1) {
-          VLOG(2) << "Cannot enable P2P access from " << devices[i] << " to "
-                  << devices[j];
-        } else {
-          platform::CUDADeviceGuard guard(devices[i]);
-          cudaDeviceEnablePeerAccess(devices[j], 0);
-        }
-      }
-    }
-  });
-#endif
-}
+
 
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
@@ -144,7 +122,7 @@ void InitCupti() {
 #endif
 }
 
-void InitDevices(bool init_p2p) {
+void InitDevices() {
   // CUPTI attribute should be set before any CUDA context is created (see CUPTI
   // documentation about CUpti_ActivityAttribute).
   InitCupti();
@@ -166,10 +144,10 @@ void InitDevices(bool init_p2p) {
     LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
   }
 #endif
-  InitDevices(init_p2p, devices);
+  InitDevices(devices);
 }
 
-void InitDevices(bool init_p2p, const std::vector<int> devices) {
+void InitDevices(const std::vector<int> devices) {
   std::vector<platform::Place> places;
 
   for (size_t i = 0; i < devices.size(); ++i) {
@@ -186,9 +164,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(platform::XPUPlace(devices[i]));
 #endif
-  }
-  if (init_p2p) {
-    InitP2P(devices);
   }
   places.emplace_back(platform::CPUPlace());
 #ifdef PADDLE_WITH_CUDA

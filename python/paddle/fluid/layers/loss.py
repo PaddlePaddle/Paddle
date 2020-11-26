@@ -57,7 +57,7 @@ def center_loss(input,
                 alpha,
                 param_attr,
                 update_center=True):
-    """
+    r"""
     :api_attr: Static Graph
 
     **Center loss Cost layer**
@@ -151,7 +151,7 @@ def center_loss(input,
 
 
 def bpr_loss(input, label, name=None):
-    """
+    r"""
 
     **Bayesian Personalized Ranking Loss Operator**
 
@@ -203,7 +203,7 @@ def bpr_loss(input, label, name=None):
 
 
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
-    """
+    r"""
     :alias_main: paddle.nn.functional.cross_entropy
 	:alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
 	:old_api: paddle.fluid.layers.cross_entropy
@@ -300,7 +300,7 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 
 def square_error_cost(input, label):
-    """
+    r"""
 
     This op accepts input predictions and target label and returns the
     squared error cost.
@@ -329,10 +329,15 @@ def square_error_cost(input, label):
             input = paddle.to_tensor([1.1, 1.9])
             label = paddle.to_tensor([1.0, 2.0])
             output = paddle.nn.functional.square_error_cost(input, label)
-            print(output.numpy())
+            print(output)
             # [0.01, 0.01]
 
     """
+    if in_dygraph_mode():
+        minus_out = core.ops.elementwise_sub(input, label)
+        square_out = core.ops.square(minus_out)
+        return square_out
+
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
                              'square_error_cost')
     check_variable_and_dtype(label, "label", ['float32', 'float64'],
@@ -1182,7 +1187,7 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
-    """
+    r"""
     :alias_main: paddle.nn.functional.softmax_with_cross_entropy
 	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
 	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
@@ -1309,7 +1314,7 @@ def softmax_with_cross_entropy(logits,
 
 
 def rank_loss(label, left, right, name=None):
-    """
+    r"""
 
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
@@ -1372,7 +1377,7 @@ def rank_loss(label, left, right, name=None):
 
 
 def margin_rank_loss(label, left, right, margin=0.1, name=None):
-    """
+    r"""
     Margin Ranking Loss Layer for ranking problem,
     which compares left score and right score passed in.
     The ranking loss can be defined as following equation:
@@ -1548,7 +1553,7 @@ def teacher_student_sigmoid_loss(input,
 
 
 def huber_loss(input, label, delta):
-    """
+    r"""
     This operator computes the Huber loss between input and label.
     Huber loss is commonly used in regression tasks. Compared to square_error_cost, Huber loss is more robust and less sensitivity to outliers.
 
@@ -1678,7 +1683,7 @@ from .control_flow import equal
 
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
-    '''
+    r'''
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
        <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
