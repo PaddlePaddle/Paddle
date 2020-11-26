@@ -197,7 +197,6 @@ class Uniform(Distribution):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
           from paddle.distribution import Uniform
 
@@ -213,8 +212,7 @@ class Uniform(Distribution):
           u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
           # Complete example
-          value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_tensor(value_npdata)
+          value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
           uniform = Uniform([0.], [2.])
 
@@ -418,7 +416,6 @@ class Normal(Distribution):
     Examples:
         .. code-block:: python
           
-          import numpy as np
           import paddle
           from paddle.distribution import Normal
 
@@ -435,8 +432,7 @@ class Normal(Distribution):
           dist = Normal(loc=1., scale=[11., 22.])
 
           # Complete example
-          value_npdata = np.array([0.8], dtype="float32")
-          value_tensor = paddle.to_tensor(value_npdata)
+          value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
           normal_a = Normal([0.], [1.])
           normal_b = Normal([0.5], [2.])
