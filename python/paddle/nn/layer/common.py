@@ -30,8 +30,8 @@ __all__ = [
     'Pad1D',
     'Pad2D',
     'Pad3D',
-    'UpsamplingNearest2d',
-    'UpsamplingBilinear2d',
+    'UpsamplingNearest2D',
+    'UpsamplingBilinear2D',
     'CosineSimilarity',
     'Dropout',
     'Dropout2D',
@@ -381,7 +381,7 @@ class Upsample(layers.Layer):
         return out
 
 
-class UpsamplingNearest2d(layers.Layer):
+class UpsamplingNearest2D(layers.Layer):
     """
     This op upsamples a batch of images, using nearest neighbours' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
@@ -394,6 +394,7 @@ class UpsamplingNearest2d(layers.Layer):
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
 
+    Parameters:
         x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
@@ -415,21 +416,16 @@ class UpsamplingNearest2d(layers.Layer):
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: 'nearest' only support 4-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        ValueError: data_format can only be 'NCHW', 'NHWC'.
+
+
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.UpsamplingNearest2d(size=[12,12])
+            input_data = paddle.rand(2,3,6,10).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
             print(output.shape)
@@ -441,7 +437,7 @@ class UpsamplingNearest2d(layers.Layer):
                  scale_factor=None,
                  data_format='NCHW',
                  name=None):
-        super(UpsamplingNearest2d, self).__init__()
+        super(UpsamplingNearest2D, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -461,7 +457,7 @@ class UpsamplingNearest2d(layers.Layer):
         return out
 
 
-class UpsamplingBilinear2d(layers.Layer):
+class UpsamplingBilinear2D(layers.Layer):
     """
     This op upsamples a batch of images, using bilinear' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w),
@@ -476,6 +472,7 @@ class UpsamplingBilinear2d(layers.Layer):
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
 
+    Parameters:
         x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
@@ -497,21 +494,15 @@ class UpsamplingBilinear2d(layers.Layer):
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: 'bilinear' only support 4-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        ValueError: data_format can only be 'NCHW', 'NHWC'.
+
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.UpsamplingBilinear2d(size=[12,12])
+            input_data = paddle.rand(2,3,6,10).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
             print(output.shape)
@@ -523,7 +514,7 @@ class UpsamplingBilinear2d(layers.Layer):
                  scale_factor=None,
                  data_format='NCHW',
                  name=None):
-        super(UpsamplingBilinear2d, self).__init__()
+        super(UpsamplingBilinear2D, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
