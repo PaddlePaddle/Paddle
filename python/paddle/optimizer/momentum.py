@@ -121,8 +121,8 @@ class Momentum(Optimizer):
 
         if framework.in_dygraph_mode():
             _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
-                                     velocity_acc, lr, None, param_and_grad[0],
-                                     velocity_acc, None, 'mu', self._momentum,
+                                     velocity_acc, lr, param_and_grad[0],
+                                     velocity_acc, 'mu', self._momentum,
                                      'use_nesterov', self._use_nesterov)
             return None
 

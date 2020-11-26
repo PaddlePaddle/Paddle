@@ -59,7 +59,7 @@ class TestMomentumOp1(OpTest):
         param = np.random.random((123, 321)).astype(self.dtype)
         grad = np.random.random((123, 321)).astype(self.dtype)
         velocity = np.zeros((123, 321)).astype(self.dtype)
-        learning_rate = np.array([0.001]).astype(self.dtype)
+        learning_rate = np.array([0.001]).astype(np.float32)
         mu = 0.0001
         use_nesterov = False
 
@@ -335,7 +335,7 @@ class TestMomentumOpWithDecay(OpTest):
         param = np.random.random((123, 321)).astype(self.dtype)
         grad = np.random.random((123, 321)).astype(self.dtype)
         velocity = np.zeros((123, 321)).astype(self.dtype)
-        learning_rate = np.array([0.001]).astype(self.dtype)
+        learning_rate = np.array([0.001]).astype(np.float32)
         mu = 0.0001
         use_nesterov = self.use_nesterov
         regularization_method = self.regularization_method

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.regularizer import L1DecayRegularizer
 from paddle.fluid.regularizer import L2DecayRegularizer
@@ -208,14 +207,12 @@ class Momentum(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _, _, _ = core.ops.momentum(
+            _, _ = core.ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
-                master_weight, param_and_grad[0], velocity_acc, master_weight,
-                'mu', self._momentum, 'use_nesterov', self._use_nesterov,
-                'regularization_method', self._regularization_method,
-                'regularization_coeff', self._regularization_coeff,
-                'multi_precision', find_master, 'rescale_grad',
-                self._rescale_grad)
+                param_and_grad[0], velocity_acc, 'mu', self._momentum,
+                'use_nesterov', self._use_nesterov, 'regularization_method',
+                self._regularization_method, 'regularization_coeff',
+                self._regularization_coeff)
             return None
 
         attrs = {
