@@ -267,7 +267,7 @@ void* GetCUDNNDsoHandle() {
                                     {cuda_lib_path}, win_warn_meg);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libMIOpen.so", false,
-                                    {linux_cudnn_lib_path});
+                                    {cuda_lib_path});
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false,
                                     {cuda_lib_path});

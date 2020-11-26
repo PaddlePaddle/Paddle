@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include <glog/logging.h>
 
-//#include <hip/hip_runtime_api.h>
 #include <miopen/miopen.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"

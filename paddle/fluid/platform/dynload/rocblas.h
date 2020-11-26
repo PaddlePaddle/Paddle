@@ -64,7 +64,7 @@ extern void *cublas_dso_handle;
   __macro(rocblas_dgemm);                \
   __macro(rocblas_hgemm);                   \
   __macro(rocblas_dgeam);                   \
- /* __macro(rocblas_gemm_ex);                 */\
+  /*__macro(rocblas_gemm_ex);                 */\
   __macro(rocblas_sgemm_batched);            \
   __macro(rocblas_dgemm_batched);            \
   __macro(rocblas_cgemm_batched);            \
@@ -79,8 +79,6 @@ extern void *cublas_dso_handle;
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
-// APIs available after CUDA 8.0
-#if CUDA_VERSION >= 8000
 #define CUBLAS_BLAS_ROUTINE_EACH_R2(__macro) \
   __macro(rocblas_sgemm_strided_batched);        \
   __macro(rocblas_dgemm_strided_batched);        \
@@ -89,23 +87,16 @@ CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
   __macro(rocblas_hgemm_strided_batched);
 
 CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-#endif
 
-// APIs available after CUDA 9.0
-#if CUDA_VERSION >= 9000
 #define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) \
 
 CUBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-#endif
 
-// APIs available after CUDA 9.1
-#if CUDA_VERSION >= 9010
 #define CUBLAS_BLAS_ROUTINE_EACH_R4(__macro) \
   __macro(rocblas_gemm_batched_ex);              \
-  __macro(rocblas_gemm_strided_batched_ex);
+//  __macro(rocblas_gemm_strided_batched_ex);
 
 CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
-#endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP
 }  // namespace dynload
