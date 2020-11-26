@@ -174,8 +174,8 @@ set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
-:: call :unit_test || goto unit_test_error
-:: call :test_inference || goto test_inference_error
+call :unit_test || goto unit_test_error
+call :test_inference || goto test_inference_error
 :: call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
@@ -347,6 +347,7 @@ echo    ========================================
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
+
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -387,50 +388,56 @@ echo    ========================================
 echo    Running GPU unit tests...
 echo    ========================================
 
-set FLAGS_fraction_of_gpu_memory_to_use=0.75
-set PATH=C:\Program Files\NVIDIA Corporation\NVSMI;%PATH%
-cmd /C nvidia-smi -L
-if %errorlevel% NEQ 0 exit /b 8
-for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
+setlocal enabledelayedexpansion
+
+set FLAGS_fraction_of_gpu_memory_to_use=0.80
+:: set PATH=C:\Windows\System32;C:\Program Files\NVIDIA Corporation\NVSMI;%PATH%
+:: cmd /C nvidia-smi -L
+:: if %errorlevel% NEQ 0 exit /b 8
+:: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
+set CUDA_DEVICE_COUNT=1
 
 rem TODO: fix these unittest that is bound to fail
-rem /*==================Disabled Windows==============================*/
-set diable_wingpu_test=tensor_util_test^|lod_tensor_test^|selected_rows_test^|broadcast_op_test^|fused_broadcast_op_test^|assign_op_test^|save_load_op_test^|save_load_combine_op_test^|im2col_test^|^
-beam_search_test^|test_analysis_predictor^|test_model^|test_add_reader_dependency^|test_bilateral_slice_op^|test_buffer_shared_memory_reuse_pass^|test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass^|^
-test_cholesky_op^|test_dataloader_early_reset^|test_dataloader_keep_order^|test_dataloader_unkeep_order^|test_decoupled_py_reader^|test_decoupled_py_reader_data_check^|test_eager_deletion_delete_vars^|^
-test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fetch_lod_tensor_array^|test_fetch_unmerged^|test_fleet_base_single^|test_fuse_all_reduce_pass^|test_fuse_elewise_add_act_pass^|^
+rem /*==================Disabled Windows unite==============================*/
+set diable_wingpu_test=broadcast_op_test^|fused_broadcast_op_test^|test_analysis_predictor^|test_model^|test_add_reader_dependency^|test_bilateral_slice_op^|^
+test_cholesky_op^|test_dataloader_early_reset^|test_decoupled_py_reader^|test_decoupled_py_reader_data_check^|test_eager_deletion_delete_vars^|^
+test_eager_deletion_while_op^|test_feed_data_check_shape_type^|test_fetch_lod_tensor_array^|test_fleet_base_single^|test_fuse_all_reduce_pass^|test_fuse_elewise_add_act_pass^|^
 test_fuse_optimizer_pass^|test_generator_dataloader^|test_gpu_package_without_gpu_device^|test_ir_memory_optimize_ifelse_op^|test_ir_memory_optimize_nlp^|test_lr_scheduler^|^
 test_multiprocess_dataloader_iterable_dataset_dynamic^|test_multiprocess_dataloader_iterable_dataset_static^|test_nvprof^|test_parallel_dygraph_sync_batch_norm^|test_parallel_executor_drop_scope^|^
-test_parallel_executor_dry_run^|test_parallel_executor_feed_persistable_var^|test_parallel_executor_fetch_isolated_var^|test_parallel_executor_inference_feed_partial_data^|test_parallel_executor_mnist^|^
-test_parallel_executor_seresnext_base_gpu^|test_parallel_executor_seresnext_with_fuse_all_reduce_gpu^|test_parallel_executor_seresnext_with_reduce_gpu^|test_parallel_executor_test_while_train^|^
-test_parallel_ssa_graph_inference_feed_partial_data^|test_partial_eager_deletion_transformer^|test_program_prune_backward^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
-test_py_reader_push_pop^|test_py_reader_using_executor^|test_reader_reset^|test_sync_batch_norm_op^|test_update_loss_scaling_op^|test_imperative_static_runner_while^|test_parallel_executor_crf^|^
-test_parallel_executor_profiler^|test_parallel_executor_transformer^|test_parallel_executor_transformer_auto_growth^|test_parallel_executor_seresnext_base_cpu^|test_yolov3^|^
-test_parallel_executor_seresnext_with_reduce_cpu^|test_parallel_executor_seresnext_with_fuse_all_reduce_cpu^|test_flags_use_mkldnn^|test_spawn_and_init_parallel_env^|test_train_recognize_digits^|^
-test_optimizer_in_control_flow^|test_fuse_bn_act_pass^|test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm
+test_parallel_executor_dry_run^|test_partial_eager_deletion_transformer^|test_prune^|test_py_reader_combination^|test_py_reader_pin_memory^|^
+test_py_reader_push_pop^|test_py_reader_using_executor^|test_reader_reset^|test_update_loss_scaling_op^|test_imperative_static_runner_while^|^
+test_parallel_executor_transformer^|test_parallel_executor_transformer_auto_growth^|test_flags_use_mkldnn^|test_optimizer_in_control_flow^|test_fuse_bn_act_pass^|^
+test_fuse_bn_add_act_pass^|test_activation_mkldnn_op^|test_tsm^|test_gru_rnn_op^|test_rnn_op^|test_simple_rnn_op^|test_pass_builder^|test_lstm_cudnn_op^|test_inplace_addto_strategy^|^
+test_ir_inplace_pass^|test_ir_memory_optimize_pass^|test_memory_reuse_exclude_feed_var^|test_mix_precision_all_reduce_fuse^|test_parallel_executor_pg^|test_print_op^|test_py_func_op^|^
+test_weight_decay^|test_mobile_net^|test_graph^|test_imperative_out_scale^|test_imperative_qat^|test_imperative_qat_channelwise^|test_moving_average_abs_max_scale_op^|^
+test_quantization_pass^|test_quantization_scale_pass^|test_user_defined_quantization^|test_matmul_v2_op^|test_conv2d_int8_mkldnn_op^|^
+test_crypto^|test_callbacks^|test_program_prune_backward^|test_train_recognize_digits^|test_imperative_ocr_attention_model
 rem /*===============================================================*/
 
-rem these unittest that cost long time, diabled temporarily, greater than 10s
-set long_time_test=test_trilinear_interp_v2_op^|best_fit_allocator_test^|timer_test^|best_fit_allocator_test^|test_image_classification^|test_recognize_digits^|decorator_test^|test_callbacks^|^
+rem these unittest that cost long time, diabled temporarily, Maybe moved to the night
+set long_time_test=best_fit_allocator_test^|timer_test^|test_image_classification^|test_recognize_digits^|decorator_test^|^
 test_dataset_cifar^|test_dataset_imdb^|test_dataset_movielens^|test_datasets^|test_pretrained_model^|test_concat_op^|test_elementwise_add_op^|test_elementwise_sub_op^|test_gather_op^|test_gather_nd_op^|^
 test_sequence_concat^|test_sequence_conv^|test_sequence_pool^|test_sequence_slice_op^|test_space_to_depth_op^|test_activation_nn_grad^|test_activation_op^|test_auto_growth_gpu_memory_limit^|^
 test_bicubic_interp_op^|test_bicubic_interp_v2_op^|test_bilinear_interp_v2_op^|test_conv2d_op^|test_conv3d_op^|test_conv3d_transpose_part2_op^|test_conv_nn_grad^|test_crop_tensor_op^|^
 test_cross_entropy2_op^|test_cross_op^|test_deformable_conv_v1_op^|test_dropout_op^|test_dygraph_multi_forward^|test_elementwise_div_op^|test_elementwise_nn_grad^|test_empty_op^|^
 test_fused_elemwise_activation_op^|test_group_norm_op^|test_gru_op^|test_gru_unit_op^|test_imperative_lod_tensor_to_selected_rows^|test_imperative_optimizer^|test_imperative_ptb_rnn^|^
 test_imperative_save_load^|test_imperative_selected_rows_to_lod_tensor^|test_imperative_star_gan_with_gradient_penalty^|test_imperative_transformer_sorted_gradient^|test_layer_norm_op^|^
-test_lstm_cudnn_op^|test_masked_select_op^|test_matmul_v2_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
+test_masked_select_op^|test_multiclass_nms_op^|test_naive_best_fit_gpu_memory_limit^|test_nearest_interp_v2_op^|test_nn_grad^|test_norm_nn_grad^|^
 test_normal^|test_pool3d_op^|test_pool2d_op^|test_prroi_pool_op^|test_regularizer^|test_regularizer_api^|test_sgd_op^|test_softmax_with_cross_entropy_op^|test_static_save_load^|^
-test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_weight_decay^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|test_imperative_out_scale^|^
-test_imperative_qat^|test_imperative_qat_channelwise^|test_quantization_pass^|test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|^
-test_graph^|test_user_defined_quantization
+test_trilinear_interp_op^|test_trilinear_interp_v2_op^|test_bilinear_interp_op^|test_nearest_interp_op^|test_sequence_conv^|test_transformer^|^
+test_beam_search_decoder^|test_argsort_op^|test_eager_deletion_gru_net^|test_lstmp_op^|test_label_semantic_roles^|test_user_defined_quantization^|^
+test_machine_translation^|test_row_conv_op^|test_deformable_conv_op^|test_inplace_softmax_with_cross_entropy^|test_conv2d_transpose_op^|test_conv3d_transpose_op^|^
+test_cyclic_cifar_dataset^|test_deformable_psroi_pooling^|test_elementwise_mul_op^|test_imperative_auto_mixed_precision^|test_imperative_optimizer_v2^|test_imperative_ptb_rnn_sorted_gradient^|^
+test_imperative_save_load_v2^|test_nan_inf^|test_norm_op^|test_reduce_op^|test_sigmoid_cross_entropy_with_logits_op^|test_stack_op^|test_strided_slice_op^|test_transpose_op
+test_imperative_static_runner_mnist
+
+set parallel_test=test_diag^|place_test^|cpu_helper_test^|cpu_helper_test^|device_context_test^|cudnn_helper_test
 
 set /a end=CUDA_DEVICE_COUNT-1
 
-set parallel_test=''
-
 for /L %%# in (0,1,%end%) do (
     set CUDA_VISIBLE_DEVICES=%%#
-    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R %parallel_test% -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
+    ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -R "%parallel_test%" -E "%disable_ut_quickly%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 2 --repeat until-pass:4 after-timeout:4
     if !errorlevel! NEQ 0 exit /b 8
 )
 
@@ -439,6 +446,7 @@ for /L %%# in (0,1,%end%) do (
     ctest.exe -I %%#,,%CUDA_DEVICE_COUNT% -E "%disable_ut_quickly%|%parallel_test%|%diable_wingpu_test%|%long_time_test%" -LE %nightly_label% --output-on-failure -C Release -j 1 --repeat until-pass:4 after-timeout:4
     if !errorlevel! NEQ 0 exit /b 8
 )
+
 goto:eof
 
 :parallel_test_base_cpu

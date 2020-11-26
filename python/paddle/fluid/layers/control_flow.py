@@ -3012,7 +3012,7 @@ class DynamicRNN(object):
         self.mem_link = []
 
     def step_input(self, x, level=0):
-        """
+        r"""
         This function is used to set sequence x as DynamicRNN's input.
         The maximum sequence length in x determines the number of time steps
         the RNN unit will be executed. DynamicRNN can take multiple inputs.
@@ -3144,7 +3144,7 @@ class DynamicRNN(object):
         return array_read(array=input_array, i=self.step_idx)
 
     def static_input(self, x):
-        """
+        r"""
         This function is used to set x as DynamicRNN's static input. It is optional.
 
         - Case 1, set static input with LoD
@@ -3348,7 +3348,7 @@ class DynamicRNN(object):
                value=0.0,
                need_reorder=False,
                dtype='float32'):
-        """
+        r"""
         Create a memory Variable for DynamicRNN to deliver data cross time steps.
         It can be initialized by an existing Tensor or a constant Tensor of given
         dtype and shape.
