@@ -30,7 +30,8 @@ from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutS
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
+from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
+from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 
 paddle.enable_static()
@@ -91,10 +92,10 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
     sigmoid1 = layers.sigmoid(fc2)
     fc3 = fluid.layers.fc(input=sigmoid1,
                           size=num_classes,
-                          act=classifier_activation,
                           param_attr=fc_w3_attr,
                           bias_attr=fc_b3_attr)
-    return fc3
+    softmax1 = layers.softmax(fc3, use_cudnn=True)
+    return softmax1
 
 
 class ImperativeLenet(fluid.dygraph.Layer):
@@ -112,24 +113,24 @@ class ImperativeLenet(fluid.dygraph.Layer):
         fc_b3_attr = fluid.ParamAttr(name="fc_b_3")
         self.features = Sequential(
             Conv2D(
-                num_channels=1,
-                num_filters=6,
-                filter_size=3,
+                in_channels=1,
+                out_channels=6,
+                kernel_size=3,
                 stride=1,
                 padding=1,
-                param_attr=conv2d_w1_attr,
+                weight_attr=conv2d_w1_attr,
                 bias_attr=conv2d_b1_attr),
             BatchNorm(6),
             ReLU(),
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2),
             Conv2D(
-                num_channels=6,
-                num_filters=16,
-                filter_size=5,
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
                 stride=1,
                 padding=0,
-                param_attr=conv2d_w2_attr,
+                weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
             BatchNorm(16),
             ReLU6(),
@@ -138,23 +139,23 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
         self.fc = Sequential(
             Linear(
-                input_dim=400,
-                output_dim=120,
-                param_attr=fc_w1_attr,
+                in_features=400,
+                out_features=120,
+                weight_attr=fc_w1_attr,
                 bias_attr=fc_b1_attr),
             LeakyReLU(),
             Linear(
-                input_dim=120,
-                output_dim=84,
-                param_attr=fc_w2_attr,
+                in_features=120,
+                out_features=84,
+                weight_attr=fc_w2_attr,
                 bias_attr=fc_b2_attr),
             Sigmoid(),
             Linear(
-                input_dim=84,
-                act=classifier_activation,
-                output_dim=num_classes,
-                param_attr=fc_w3_attr,
-                bias_attr=fc_b3_attr))
+                in_features=84,
+                out_features=num_classes,
+                weight_attr=fc_w3_attr,
+                bias_attr=fc_b3_attr),
+            Softmax())
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -312,12 +313,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                     _logger.info('{}: {}'.format('loss', loss_v))
         scale_inference_pass = OutScaleForInferencePass(scope=scope)
         scale_inference_pass.apply(infer_graph)
-
-        out_scale_op_list = [
-            "batch_norm", "conv2d", "leaky_relu", "pool2d", "relu6", "relu",
-            "sigmoid", "tanh", "relu6", "softmax", "conv2d_transpose",
-            "elementwise_add"
-        ]
 
         save_program = infer_graph.to_program()
         static_save_dir = "./static_outscale_infer_model"
