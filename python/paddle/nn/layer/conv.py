@@ -141,7 +141,7 @@ class _ConvNd(layers.Layer):
 
 
 class Conv1D(_ConvNd):
-    """
+    r"""
     This interface is used to construct a callable object of the ``Conv1D`` class.
     For more details, refer to code examples.
     The convolution1D layer calculates the output based on the input, filter
@@ -154,10 +154,15 @@ class Conv1D(_ConvNd):
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
-    For each input :math:`X`, the equation is:
+
+    For each input :math:`X` , the equation is:
+
     .. math::
-        Out = \\sigma (W \\ast X + b)
+
+        Out = \sigma (W \\ast X + b)
+
     Where:
+
     * :math:`X`: Input value, a ``Tensor`` with 'NCL' format or 'NLC' format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCK] .
     * :math:`\\ast`: Convolution operation.
@@ -166,13 +171,21 @@ class Conv1D(_ConvNd):
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
+
         - Input:
+
           Input shape: :math:`(N, C_{in}, L_{in})`
+
           Kernel shape: :math:`(C_{out}, C_{in}, K)`
+
         - Output:
+
           Output shape: :math:`(N, C_{out}, L_{out})`
+
         Where
+
         .. math::
+
             L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Parameters:
@@ -396,14 +409,9 @@ class Conv1DTranspose(_ConvNd):
         **bias** (Parameter or None): the learnable bias of this layer.
 
     Shape:
-        - x(Tensor): 3-D tensor with shape (batch, in_channels, length) when data_format is
-            "NCL" or shape (batch, length, in_channels) when data_format is "NLC".
-        - output_size(int|tuple|list, optional): The output image size. If output size is a
-            tuple, it must contain one integer, (feature_length). None if use
-            kernel_size, padding, output_padding and stride to calculate output_size.
-            If output_size and kernel_size are specified at the same time, They
-            should follow the formula above. Default: None. output_size and kernel_size
-            should not be None at the same time.
+
+        - x(Tensor): 3-D tensor with shape (batch, in_channels, length) when data_format is "NCL" or shape (batch, length, in_channels) when data_format is "NLC".
+        - output_size(int|tuple|list, optional): The output image size. If output size is a tuple, it must contain one integer, (feature_length). None if use kernel_size, padding, output_padding and stride to calculate output_size. If output_size and kernel_size are specified at the same time, They should follow the formula above. Default: None. output_size and kernel_size should not be None at the same time.
         - output(Tensor): 3-D tensor with same shape as input x.
 
     Examples:
