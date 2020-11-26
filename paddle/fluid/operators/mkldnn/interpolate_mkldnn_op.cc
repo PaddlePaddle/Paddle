@@ -48,9 +48,6 @@ class InterpolateMKLDNNHandler
     if (!this->isCached()) {
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto dst_tz = framework::vectorize(z->dims());
-      std::cout << "src_x_tz:" << src_x_tz[2] << std::endl;
-      std::cout << "dst_tz:" << dst_tz[2] << std::endl;
-      std::cout << "key_:" << this->key_ << std::endl;
       const auto src0_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
@@ -61,10 +58,6 @@ class InterpolateMKLDNNHandler
       this->fwd_pd_.reset(new dnnl::resampling_forward::primitive_desc(
           resampling_d, this->engine_));
 
-      // this->fwd_pd_.reset(new dnnl::sum::primitive_desc(dst_md, scales,
-      // srcs_md,
-      //                                             this->engine_));
-      // this->dev_ctx_.SetBlob(key_pd, this->fwd_pd_);
       auto key_pd = this->key_ + "@fwd_pd";
       this->dev_ctx_.SetBlob(key_pd, this->fwd_pd_);
     }
@@ -118,24 +111,12 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
       auto scale_temp = *(tmp_tensor->data<float>());
       scale_prior.push_back(scale_temp);
       scale_prior.push_back(scale_temp);
-      //   scale_prior = *scale_data;
-      //   scale_prior.push_back(scale_data[0]);
-      //   scale_prior.push_back(scale_data[1]);
     } else {
       auto scale_temp = ctx.Attr<float>("scale");
-      //   scale_prior = &scale;
       scale_prior.push_back(scale_temp);
       scale_prior.push_back(scale_temp);
     }
     auto* z = ctx.Output<Tensor>("Out");
-
-    // This will be moved outside
-    // std::string data_layout = ctx.Attr<std::string>("data_layout");
-    // const auto* out_size = ctx.Input<Tensor>("OutSize");
-    // const auto* size_tensor = ctx.Input<Tensor>("SizeTensor");
-    // auto out_d = ctx.Attr<int>("out_d");
-    // auto out_h = ctx.Attr<int>("out_h");
-    // auto out_w = ctx.Attr<int>("out_w");
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     std::cout << "interp_method:" << interp_method << std::endl;
@@ -162,14 +143,6 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     z->set_layout(DataLayout::kMKLDNN);
     z->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
   }
-
-  /**
-   * That has cache key.
-   * @fwd_pd
-   * @src_mem_p
-   * @dst_mem_p
-   * @fwd_p
-   */
 };
 
 }  // namespace operators
