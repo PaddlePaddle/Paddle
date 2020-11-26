@@ -503,6 +503,7 @@ class Dropout(layers.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -562,6 +563,7 @@ class Dropout2D(layers.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -619,6 +621,7 @@ class Dropout3D(layers.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -672,6 +675,7 @@ class AlphaDropout(layers.Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 

@@ -862,6 +862,7 @@ def dropout(x,
             dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -998,6 +999,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -1054,6 +1056,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -1103,6 +1106,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
